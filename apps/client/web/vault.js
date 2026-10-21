@@ -1,0 +1,104 @@
+/* Password protects records at rest, not a compromised origin or unlocked tab. */
+(() => {
+  'use strict';
+  const sessions = new Map();
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder('utf-8', {fatal: true});
+  const bytes = n => crypto.getRandomValues(new Uint8Array(n));
+  const b64 = data => {
+    let result = '';
+    for (const byte of new Uint8Array(data)) result += String.fromCharCode(byte);
+    return btoa(result);
+  };
+  const unb64 = data => Uint8Array.from(atob(data), c => c.charCodeAt(0));
+  const request = req => new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+    req.onblocked = () => reject(new Error('Close other tabs before opening the vault'));
+  });
+  const completed = txn => new Promise((resolve, reject) => {
+    txn.oncomplete = resolve;
+    txn.onabort = txn.onerror = () => reject(txn.error || new Error('Storage write aborted'));
+  });
+  const aad = (name, store, id) => encoder.encode(JSON.stringify([name, store, id, 1]));
+  async function seal(key, name, store, id, text) {
+    const iv = bytes(12);
+    const body = await crypto.subtle.encrypt({name: 'AES-GCM', iv, additionalData: aad(name, store, id)}, key, encoder.encode(text));
+    return JSON.stringify({v: 1, iv: b64(iv), body: b64(body)});
+  }
+  async function unseal(key, name, store, id, envelope) {
+    const value = JSON.parse(envelope);
+    if (value.v !== 1 || typeof value.iv !== 'string' || typeof value.body !== 'string') throw new Error('Invalid encrypted record');
+    const iv = unb64(value.iv);
+    if (iv.length !== 12) throw new Error('Invalid nonce');
+    return decoder.decode(await crypto.subtle.decrypt({name: 'AES-GCM', iv, additionalData: aad(name, store, id)}, key, unb64(value.body)));
+  }
+  function session(name) {
+    const value = sessions.get(name);
+    if (!value) throw new Error('Vault is locked');
+    return value;
+  }
+  async function open(name, password) {
+    if (!isSecureContext || !crypto.subtle || !navigator.locks || !indexedDB.databases) throw new Error('Secure context and a modern browser are required');
+    if (password.length < 12 || password.length > 1024) throw new Error('Use a separate passphrase of 12–1024 characters');
+    let release;
+    const held = new Promise(resolve => { release = resolve; });
+    let acquired;
+    const ready = new Promise(resolve => { acquired = resolve; });
+    const lockTask = navigator.locks.request(`voicechat:${name}`, {ifAvailable: true}, async lock => {
+      acquired(!!lock);
+      if (lock) await held;
+    });
+    if (!await Promise.race([ready, lockTask.then(() => false)])) { await lockTask; throw new Error('This profile is open in another tab'); }
+    let db;
+    try {
+      const databases = await indexedDB.databases();
+      if (databases.some(d => d.name === name)) throw new Error('Legacy plaintext profile: recover history before removing site data');
+      const req = indexedDB.open(`${name}.vault`, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('meta');
+      db = await request(req);
+      let header = await request(db.transaction('meta').objectStore('meta').get('header'));
+      if (!header && databases.some(d => d.name === `${name}.encrypted`)) throw new Error('Vault header is missing; restore history instead of overwriting data');
+      const salt = header ? unb64(header.salt) : bytes(16);
+      if (salt.length !== 16 || (header && header.v !== 1)) throw new Error('Unsupported vault format');
+      const material = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveKey']);
+      const key = await crypto.subtle.deriveKey({name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 600000}, material, {name: 'AES-GCM', length: 256}, false, ['encrypt', 'decrypt']);
+      if (header) {
+        if (await unseal(key, name, 'meta', 'header', header.check) !== 'voicechat-vault-v1') throw new Error('Invalid vault check');
+      } else {
+        header = {v: 1, salt: b64(salt), check: await seal(key, name, 'meta', 'header', 'voicechat-vault-v1')};
+        const txn = db.transaction('meta', 'readwrite');
+        const done = completed(txn);
+        txn.objectStore('meta').put(header, 'header');
+        await done;
+      }
+      sessions.set(name, {key, release, lockTask});
+    } catch (error) {
+      release();
+      await lockTask;
+      throw error;
+    } finally {
+      db?.close();
+    }
+  }
+  async function close(name) {
+    const value = sessions.get(name);
+    if (!value) return;
+    sessions.delete(name);
+    value.release();
+    await value.lockTask;
+  }
+  globalThis.voicechatVault = Object.freeze({
+    open, close,
+    encrypt: (name, store, id, text) => seal(session(name).key, name, store, id, text),
+    decrypt: (name, store, id, envelope) => unseal(session(name).key, name, store, id, envelope),
+    async erase(name) {
+      if (sessions.has(name)) throw new Error('Close the vault before erasing');
+      await navigator.locks.request(`voicechat:${name}`, {ifAvailable: true}, async lock => {
+        if (!lock) throw new Error('Profile in use');
+        await request(indexedDB.deleteDatabase(`${name}.encrypted`));
+        await request(indexedDB.deleteDatabase(`${name}.vault`));
+      });
+    },
+  });
+})();

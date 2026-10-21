@@ -8,10 +8,7 @@ const vault = FlutterSecureStorage(
   aOptions: AndroidOptions(resetOnError: false),
 );
 
-Future<MatrixSdkDatabase> openStore(
-  String name, {
-  bool laboratory = false,
-}) async {
+Future<MatrixSdkDatabase> openStore(String name, {String? passphrase}) async {
   final root = await sql.getDatabasesPath();
   if (await sql.databaseExists('$root/$name.db')) {
     // Never silently abandon or delete an unencrypted prototype history.
@@ -63,3 +60,5 @@ Future<void> eraseStore(String name) async {
   await vault.delete(key: 'database:$name');
   await sql.deleteDatabase('${await sql.getDatabasesPath()}/$name.secure.db');
 }
+
+Future<void> closeStore(String name) async {}

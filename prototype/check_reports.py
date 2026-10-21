@@ -7,7 +7,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 run = json.loads((root / '.prototype/web.json').read_text())['RUN_ID']
-required = {'cross_platform_text_passed', 'history_recovered_without_old_devices',
+required = {'web_storage_roundtrip_passed', 'device_verification_passed', 'web_trust_persisted', 'cross_platform_text_passed', 'history_recovered_without_old_devices',
             'revocation_verified', 'android_revocation_closed', 'carol_revocation_closed', 'android_media_decrypted', 'carol_media_decrypted', 'carol_done', 'three_participant_media_passed', 'android_done', 'web_done'}
 end = time.monotonic() + 600
 while time.monotonic() < end:

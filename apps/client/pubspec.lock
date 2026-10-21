@@ -482,10 +482,9 @@ packages:
   matrix:
     dependency: "direct main"
     description:
-      name: matrix
-      sha256: efe7b5a456957e1292fa331c531abba89bb4867b0f0ba78642a51497e34ba3b1
-      url: "https://pub.dev"
-    source: hosted
+      path: "../../vendor/matrix"
+      relative: true
+    source: path
     version: "14.2.0"
   meta:
     dependency: transitive
@@ -909,7 +908,7 @@ packages:
     source: hosted
     version: "0.9.0"
   web:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: web
       sha256: "868d88a33d8a87b18ffc05f9f030ba328ffefba92d6c127917a2ba740f9cfe4a"

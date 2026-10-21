@@ -46,6 +46,12 @@ class AdmissionTests(unittest.TestCase):
         ]:
             self.assertEqual(self.request(body, path='/report')[0], 400)
 
+    def test_public_fingerprint_report(self):
+        with patch('pathlib.Path.write_text'), patch('pathlib.Path.chmod'):
+            status, _ = self.request({'run': 'test', 'role': 'web', 'stage': 'identity',
+                'user_id': '@alice:local', 'device_id': 'DEVICE', 'fingerprint': 'public-only'}, path='/report')
+        self.assertEqual(status, 200)
+
     def test_membership_encryption_and_grant(self):
         original = urllib.request.urlopen
         for membership, algorithm, expected in [

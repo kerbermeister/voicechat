@@ -45,8 +45,8 @@ class Handler(BaseHTTPRequestHandler):
                 size = int(self.headers.get('Content-Length', '0'))
                 if not 0 < size <= 8192: return self.reply(400, {'error': 'invalid_size'})
                 item = json.loads(self.rfile.read(size))
-                # Only diagnostic fields; callers must never submit secrets.
-                allowed = {'run', 'role', 'stage', 'room_id', 'event_id', 'detail'}
+                # Diagnostics and public device fingerprints only; never private keys or credentials.
+                allowed = {'run', 'role', 'stage', 'room_id', 'event_id', 'detail', 'user_id', 'device_id', 'fingerprint'}
                 if (not isinstance(item, dict) or set(item) - allowed
                         or not {'run', 'role', 'stage'} <= item.keys()
                         or any(not isinstance(v, str) or len(v) > 512 for v in item.values())):

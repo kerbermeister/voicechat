@@ -11,12 +11,14 @@ dependencies:
   flutter:
     sdk: flutter
 
-  matrix: ^14.2.0
+  matrix:
+    path: ../../vendor/matrix
   flutter_vodozemac: ^0.9.0
   livekit_client: ^2.13.1
   shared_preferences: ^2.5.3
   sqflite: ^2.4.2
   http: ^1.6.0
+  web: ^1.1.1
   vodozemac: ^0.9.0
   sqflite_sqlcipher: ^3.4.1
   flutter_secure_storage: ^11.2.0

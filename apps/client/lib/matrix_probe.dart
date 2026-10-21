@@ -5,29 +5,36 @@ import 'package:matrix/matrix.dart';
 import 'package:matrix/encryption.dart';
 import 'local_store.dart';
 import 'transport.dart';
+import 'user_action_error.dart';
 
-/// Matrix session backed by the platform store; web is laboratory-only.
+/// Matrix session backed by the platform encrypted store.
 class MatrixProbe {
   static Future<void>? _cryptoInit;
   final Client client;
   MatrixProbe(this.client);
 
-  static Future<MatrixProbe> open(
-    String profile, {
-    bool laboratory = false,
-  }) async {
+  static Future<MatrixProbe> open(String profile, {String? passphrase}) async {
     _cryptoInit ??= vod.init();
     await _cryptoInit;
     final name = 'voicechat_probe_${Uri.encodeComponent(profile)}';
-    final db = await openStore(name, laboratory: laboratory);
+    final db = await openStore(name, passphrase: passphrase);
     final client = Client(
       name,
       database: db,
-      shareKeysWith: ShareKeysWith.crossVerified,
+      shareKeysWith: ShareKeysWith.directlyVerifiedOnly,
       logLevel: Level.error,
     );
-    await client.init();
-    return MatrixProbe(client);
+    try {
+      await client.init();
+      return MatrixProbe(client);
+    } catch (_) {
+      try {
+        await client.dispose();
+      } finally {
+        await closeStore(name);
+      }
+      rethrow;
+    }
   }
 
   Future<void> login(String server, String username, String password) async {
@@ -170,7 +177,11 @@ class MatrixProbe {
   }
 
   Future<void> close() async {
-    await client.dispose();
+    try {
+      await client.dispose();
+    } finally {
+      await closeStore(client.clientName);
+    }
   }
 }
 
@@ -193,14 +204,14 @@ Future<List<DeviceKeys>> authorizedDevices(Room room) async {
   if (members == null || !members.containsKey(room.client.userID)) {
     throw StateError('Room access revoked');
   }
-  for (final user in members.keys) {
-    room.client.userDeviceKeys[user]?.outdated = true;
-  }
-  await room.client.updateUserDeviceKeys(additionalUsers: members.keys.toSet());
-  if (members.keys.any(
-    (user) => room.client.userDeviceKeys[user]?.outdated != false,
-  )) {
-    throw StateError('Device authorization refresh failed');
+  await refreshDevices(room.client, members.keys.toSet());
+  final devices = members.keys.expand(
+    (user) => room.client.userDeviceKeys[user]!.deviceKeys.values,
+  );
+  if (devices.any((device) => !device.blocked && !device.directVerified)) {
+    throw UserActionError(
+      'Сначала откройте «Проверить устройства» и сверьте отпечатки участников.',
+    );
   }
   return members.keys
       .expand(
@@ -210,4 +221,34 @@ Future<List<DeviceKeys>> authorizedDevices(Room room) async {
       )
       .where((device) => device.encryptToDevice && !device.blocked)
       .toList();
+}
+
+Future<void> refreshDevices(Client client, Set<String> users) async {
+  for (final user in users) {
+    client.userDeviceKeys[user]?.outdated = true;
+  }
+  await client.updateUserDeviceKeys(additionalUsers: users);
+  if (users.any((user) => client.userDeviceKeys[user]?.outdated != false)) {
+    throw StateError('Device authorization refresh failed');
+  }
+}
+
+Future<void> verifyDevice(
+  Client client,
+  String userId,
+  String deviceId,
+  String fingerprint,
+) async {
+  await refreshDevices(client, {userId});
+  final device = client.userDeviceKeys[userId]?.deviceKeys[deviceId];
+  final entered = fingerprint.replaceAll(RegExp(r'\s'), '');
+  if (device == null ||
+      device.blocked ||
+      entered.isEmpty ||
+      entered != device.ed25519Key) {
+    throw UserActionError(
+      'Отпечаток не совпал или устройство недоступно. Доверие не изменено.',
+    );
+  }
+  await device.setVerified(true, false);
 }

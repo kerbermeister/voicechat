@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'call_probe.dart';
 import 'matrix_probe.dart';
 import 'theme.dart';
+import 'user_action_error.dart';
 
 void main() => runApp(const VoiceChatApp());
 
@@ -68,6 +69,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   final mediaServer = TextEditingController(text: 'ws://localhost:7880');
   final username = TextEditingController(text: 'alice');
   final password = TextEditingController();
+  final vaultPassword = TextEditingController();
   final profile = TextEditingController(text: 'device-1');
   final invites = TextEditingController(
     text: '@bob:voicechat.local, @carol:voicechat.local',
@@ -90,8 +92,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
     } catch (e) {
       if (mounted) {
         setState(
-          () => status =
-              'Не удалось выполнить действие: ${e.runtimeType}. Проверьте подключение и ключ.',
+          () => status = e is UserActionError
+              ? e.message
+              : 'Не удалось выполнить действие: ${e.runtimeType}. Проверьте подключение и ключ.',
         );
       }
     } finally {
@@ -104,7 +107,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> login() async {
-    final next = await MatrixProbe.open(profile.text.trim());
+    final next = await MatrixProbe.open(
+      profile.text.trim(),
+      passphrase: kIsWeb ? vaultPassword.text : null,
+    );
     try {
       await next.login(server.text.trim(), username.text.trim(), password.text);
     } catch (_) {
@@ -112,6 +118,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       rethrow;
     }
     password.clear();
+    vaultPassword.clear();
     probe = next;
     sync = next.client.onSync.stream.listen((_) {
       if (mounted) setState(() {});
@@ -228,6 +235,118 @@ class _ProbeScreenState extends State<ProbeScreen> {
     return value;
   }
 
+  Future<void> lock() async {
+    await call?.close();
+    await sync?.cancel();
+    timeline?.cancelSubscriptions();
+    await probe!.close();
+    if (!mounted) return;
+    setState(() {
+      probe = null;
+      selected = null;
+      timeline = null;
+      call = null;
+    });
+    message.clear();
+    report('Хранилище заблокировано. Для открытия введите локальную фразу.');
+  }
+
+  Future<void> verifyDevices() async {
+    final client = probe!.client;
+    final users = selected == null
+        ? <String>{client.userID!}
+        : (await client.getJoinedMembersByRoom(selected!.id))!.keys.toSet();
+    await refreshDevices(client, users);
+    final devices = users
+        .expand((user) => client.userDeviceKeys[user]!.deviceKeys.values)
+        .toList();
+    if (!mounted) return;
+    final chosen = await showDialog<mx.DeviceKeys>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Проверка личности устройств'),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SelectableText(
+                  'Это устройство: ${client.userID} / ${client.deviceID}\nВаш отпечаток:\n${client.fingerprintKey}',
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Сверьте отпечаток лично или по независимому доверенному каналу. Для устройств собеседника сначала откройте его чат. Проверка взаимная: повторите её на втором устройстве.',
+                ),
+                ...devices.map(
+                  (device) => ListTile(
+                    title: Text('${device.userId} / ${device.deviceId}'),
+                    subtitle: Text(
+                      device.directVerified
+                          ? 'Проверено на этом устройстве'
+                          : 'Не проверено',
+                    ),
+                    trailing: Icon(
+                      device.directVerified
+                          ? Icons.verified_user
+                          : Icons.help_outline,
+                    ),
+                    onTap: device.blocked
+                        ? null
+                        : () => Navigator.pop(context, device),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
+    if (chosen == null || !mounted) return;
+    final input = TextEditingController();
+    final fingerprint = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Введите отпечаток со второго устройства'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('${chosen.userId} / ${chosen.deviceId}'),
+            TextField(
+              controller: input,
+              autocorrect: false,
+              enableSuggestions: false,
+              decoration: const InputDecoration(
+                labelText: 'Полный отпечаток Ed25519',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, input.text),
+            child: const Text('Сверить'),
+          ),
+        ],
+      ),
+    );
+    input.dispose();
+    if (fingerprint == null) return;
+    await verifyDevice(client, chosen.userId, chosen.deviceId!, fingerprint);
+    report('Отпечаток совпал. Устройство проверено локально.');
+  }
+
   Future<void> devices() async {
     final items = await probe!.client.getDevices();
     if (!mounted) return;
@@ -329,6 +448,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       username,
       password,
       profile,
+      vaultPassword,
       invites,
       message,
       session,
@@ -356,42 +476,43 @@ class _ProbeScreenState extends State<ProbeScreen> {
     icon: Icon(icon, size: 18),
     label: Text(label),
   );
-  Widget connection() => kIsWeb
-      ? const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'Защищённое браузерное хранилище ещё не готово. Вход в этой версии отключён; используйте Android.',
-            ),
-          ),
-        )
-      : ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Text(
-              'Хороший день для разговора',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Проверяем защищённую связь. Этот прототип ещё не предназначен для личных переписок.',
-            ),
-            const SizedBox(height: 24),
-            field(username, 'Имя пользователя'),
-            field(password, 'Пароль тестового аккаунта', secret: true),
-            field(profile, 'Профиль устройства'),
-            ExpansionTile(
-              title: const Text('Подключение к стенду'),
-              children: [
-                field(server, 'Matrix URL'),
-                field(tokenServer, 'Token API URL'),
-                field(mediaServer, 'LiveKit URL'),
-              ],
-            ),
-            const SizedBox(height: 20),
-            action('Войти', login, icon: Icons.login_rounded),
-          ],
-        );
+  Widget connection() => ListView(
+    padding: const EdgeInsets.all(24),
+    children: [
+      Text(
+        'Хороший день для разговора',
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'Проверяем защищённую связь. Этот прототип ещё не предназначен для личных переписок.',
+      ),
+      const SizedBox(height: 24),
+      field(username, 'Имя пользователя'),
+      field(password, 'Пароль тестового аккаунта', secret: true),
+      field(profile, 'Профиль устройства'),
+      if (kIsWeb)
+        field(
+          vaultPassword,
+          'Отдельная локальная фраза (от 12 символов)',
+          secret: true,
+        ),
+      if (kIsWeb)
+        const Text(
+          'Эта фраза открывает хранилище в данном браузере. Она не отправляется на сервер. При её потере понадобится восстановление истории.',
+        ),
+      ExpansionTile(
+        title: const Text('Подключение к стенду'),
+        children: [
+          field(server, 'Matrix URL'),
+          field(tokenServer, 'Token API URL'),
+          field(mediaServer, 'LiveKit URL'),
+        ],
+      ),
+      const SizedBox(height: 20),
+      action('Войти', login, icon: Icons.login_rounded),
+    ],
+  );
   Widget rooms() => ListView(
     padding: const EdgeInsets.all(20),
     children: [
@@ -435,6 +556,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
         spacing: 8,
         children: [
           action('Устройства', devices, icon: Icons.devices),
+          action(
+            'Проверить устройства',
+            verifyDevices,
+            icon: Icons.verified_user_outlined,
+          ),
+          if (kIsWeb) action('Заблокировать', lock, icon: Icons.lock_outline),
           action('Выйти', logout, icon: Icons.logout),
         ],
       ),

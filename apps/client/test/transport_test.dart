@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voicechat_probe/transport.dart';
-import 'package:voicechat_probe/local_store_web.dart';
 
 void main() {
   test('Remote endpoints require TLS; local lab stays usable', () {
@@ -18,8 +17,5 @@ void main() {
       () => secureEndpoint('ws://example.com', websocket: true),
       throwsArgumentError,
     );
-  });
-  test('Ordinary web login never opens an unprotected database', () {
-    expect(() => openStore('profile'), throwsUnsupportedError);
   });
 }

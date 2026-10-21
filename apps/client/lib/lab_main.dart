@@ -8,6 +8,9 @@ import 'package:vodozemac/vodozemac.dart' as vod;
 import 'matrix_probe.dart';
 import 'call_probe.dart';
 import 'theme.dart';
+import 'local_store.dart';
+import 'lab_storage_stub.dart'
+    if (dart.library.js_interop) 'lab_storage_web.dart';
 
 const runId = String.fromEnvironment('RUN_ID');
 final role =
@@ -90,9 +93,55 @@ Future<Map<String, dynamic>> barrier(String stage) async {
 }
 
 Future<MatrixProbe> login(int index, String profile) async {
-  final probe = await MatrixProbe.open('$runId-$profile', laboratory: true);
+  final probe = await MatrixProbe.open(
+    '$runId-$profile',
+    passphrase: 'lab-vault-$runId-$index',
+  );
   await probe.login(matrixUrl, users[index], passwords[index]);
+  await report('$profile-identity', {
+    'user_id': probe.client.userID,
+    'device_id': probe.client.deviceID,
+    'fingerprint': probe.client.fingerprintKey,
+  });
   return probe;
+}
+
+// Only the laboratory uses this independent fixture channel for fingerprint exchange.
+Future<void> trustPeers(MatrixProbe probe, {bool fresh = false}) async {
+  final profiles = [
+    'alice-web',
+    'bob-android',
+    'carol-web',
+    if (fresh) 'alice-fresh-device',
+  ];
+  for (final profile in profiles) {
+    final identity = await barrier('$profile-identity');
+    await verifyDevice(
+      probe.client,
+      identity['user_id'] as String,
+      identity['device_id'] as String,
+      identity['fingerprint'] as String,
+    );
+  }
+}
+
+Future<void> checkRememberedTrust(MatrixProbe probe) async {
+  await refreshDevices(
+    probe.client,
+    users.map((u) => '@$u:voicechat.local').toSet(),
+  );
+  for (final profile in ['alice-web', 'bob-android', 'carol-web']) {
+    final identity = await barrier('$profile-identity');
+    require(
+      probe
+              .client
+              .userDeviceKeys[identity['user_id']]
+              ?.deviceKeys[identity['device_id']]
+              ?.directVerified ==
+          true,
+      'Verified device trust did not survive locked storage',
+    );
+  }
 }
 
 Future<mx.Event> text(mx.Room room, String body) async {
@@ -119,7 +168,10 @@ CallProbe callFor(mx.Room room) => CallProbe(
   session: runId,
   tokenUrl: tokenUrl,
   livekitUrl: mediaUrl,
-  status: (value) => progress.value = value,
+  status: (value) {
+    progress.value = value;
+    unawaited(report('call_status', {'detail': value}));
+  },
 );
 
 Future<void> android() async {
@@ -131,6 +183,7 @@ Future<void> android() async {
     final roomId = (await barrier('room_created'))['room_id'] as String;
     await bob.client.joinRoom(roomId);
     var room = await bob.room(roomId);
+    await trustPeers(bob);
     await text(room, 'web-to-android-$runId');
     await MatrixProbe.sendText(room, 'android-to-web-$runId');
     await bob.backup();
@@ -140,7 +193,10 @@ Future<void> android() async {
     await report('android_offline');
     await barrier('resume_calls');
     bob = await login(1, 'bob-android');
+    await checkRememberedTrust(bob);
     room = await bob.room(roomId);
+    await trustPeers(bob, fresh: true);
+    await report('android_devices_verified');
     call = callFor(room);
     await call.connect();
     await until(
@@ -168,11 +224,16 @@ Future<void> carol() async {
     final roomId = (await barrier('room_created'))['room_id'] as String;
     await client.client.joinRoom(roomId);
     await client.room(roomId);
+    await trustPeers(client);
     await barrier('close_for_recovery');
     await client.close();
     await report('carol_offline');
     await barrier('resume_calls');
     client = await login(2, 'carol-web');
+    await checkRememberedTrust(client);
+    await report('web_trust_persisted');
+    await trustPeers(client, fresh: true);
+    await report('carol_devices_verified');
     call = callFor(await client.room(roomId));
     await call.connect();
     await until(
@@ -209,6 +270,28 @@ Future<void> web() async {
     await alice.client.updateUserDeviceKeys(
       additionalUsers: users.map((u) => '@$u:voicechat.local').toSet(),
     );
+    var unverifiedRefused = false;
+    try {
+      await MatrixProbe.sendText(room, 'must-not-send');
+    } catch (_) {
+      unverifiedRefused = true;
+    }
+    require(unverifiedRefused, 'Unverified devices received a send');
+    final bobIdentity = await barrier('bob-android-identity');
+    var mismatchRefused = false;
+    try {
+      await verifyDevice(
+        alice.client,
+        userId(1),
+        bobIdentity['device_id'] as String,
+        'wrong-fingerprint',
+      );
+    } catch (_) {
+      mismatchRefused = true;
+    }
+    require(mismatchRefused, 'Mismatched fingerprint trusted');
+    await trustPeers(alice);
+    await report('device_verification_passed');
     final eventId = await MatrixProbe.sendText(room, 'web-to-android-$runId');
     final wire = await alice.client.getOneRoomEvent(roomId, eventId);
     require(
@@ -253,10 +336,39 @@ Future<void> web() async {
     }
     require(rejected, 'Invalid recovery key accepted');
     await alice.restore(recovery);
+    final restoredTimeline = await room.getTimeline();
+    final encrypted = restoredTimeline.events
+        .where((e) => e.type == mx.EventTypes.Encrypted)
+        .toList();
+    final validKeys = <bool>[];
+    for (final event in encrypted) {
+      final id = event.content['session_id'];
+      validKeys.add(
+        id is String &&
+            (await alice.client.encryption!.keyManager.loadInboundGroupSession(
+                  roomId,
+                  id,
+                ))?.isValid ==
+                true,
+      );
+    }
+    await report('restored_state', {
+      'detail': jsonEncode({
+        'encrypted': encrypted.length,
+        'messages': restoredTimeline.events
+            .where((e) => e.type == mx.EventTypes.Message)
+            .length,
+        'valid_keys': validKeys,
+      }),
+    });
+    restoredTimeline.cancelSubscriptions();
     await text(room, 'web-to-android-$runId');
     await text(room, 'android-to-web-$runId');
     await report('history_recovered_without_old_devices');
+    await trustPeers(alice, fresh: true);
     await report('resume_calls');
+    await barrier('android_devices_verified');
+    await barrier('carol_devices_verified');
     aliceCall = callFor(room);
     await aliceCall.connect();
     await until(
@@ -331,6 +443,39 @@ Future<void> web() async {
   }
 }
 
+Future<void> checkWebStorage() async {
+  await checkStorageCache(runId);
+  final name = 'vault-sdk-check-$runId';
+  const phrase = 'separate local test phrase';
+  var database = await openStore(name, passphrase: phrase);
+  await database.transaction(() async {
+    await database.storeClient(
+      homeserverUrl: matrixUrl,
+      token: 'TEST_PRIVATE_TOKEN',
+      userId: '@storage:local',
+      deviceId: 'STORAGE',
+    );
+  });
+  await database.close();
+  await closeStore(name);
+  var rejected = false;
+  try {
+    await openStore(name, passphrase: 'incorrect local phrase');
+  } catch (_) {
+    rejected = true;
+  }
+  require(rejected, 'Wrong vault phrase accepted');
+  database = await openStore(name, passphrase: phrase);
+  require(
+    (await database.getClient(name))?['token'] == 'TEST_PRIVATE_TOKEN',
+    'Vault lost stored token',
+  );
+  await database.close();
+  await closeStore(name);
+  await eraseStore(name);
+  await report('web_storage_roundtrip_passed');
+}
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(
@@ -359,6 +504,7 @@ void main() {
         'Missing disposable fixtures',
       );
       if (role == 'web') {
+        await checkWebStorage();
         await web();
       } else if (role == 'carol') {
         await carol();

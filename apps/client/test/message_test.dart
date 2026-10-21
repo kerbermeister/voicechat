@@ -86,7 +86,55 @@ class TestKeys implements KeyManager {
   }
 }
 
+class TestDevice implements DeviceKeys {
+  @override
+  String get userId => '@user:local';
+  @override
+  String get deviceId => 'DEVICE';
+  @override
+  String get ed25519Key => 'expected-fingerprint';
+  @override
+  bool get blocked => false;
+  @override
+  bool directVerified = false;
+  @override
+  bool get encryptToDevice => directVerified;
+  @override
+  Future<void> setVerified(bool value, [bool sign = true]) async {
+    expect(sign, false);
+    directVerified = value;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
+}
+
 void main() {
+  test(
+    'Unverified device blocks sending; only the matching fingerprint grants trust',
+    () async {
+      final room = TestRoom(true, 'event');
+      final device = TestDevice();
+      room.client.userDeviceKeys[room.client.userID]!.deviceKeys[device
+              .deviceId] =
+          device;
+      await expectLater(MatrixProbe.sendText(room, 'hello'), throwsStateError);
+      expect(room.sent, false);
+      await expectLater(
+        verifyDevice(room.client, device.userId, device.deviceId, 'wrong'),
+        throwsStateError,
+      );
+      expect(device.directVerified, false);
+      await verifyDevice(
+        room.client,
+        device.userId,
+        device.deviceId,
+        'expected-fingerprint',
+      );
+      expect(device.directVerified, true);
+      expect(await MatrixProbe.sendText(room, 'hello'), 'event');
+    },
+  );
   test('Failed server logout preserves the local session', () async {
     final client = TestClient();
     await expectLater(MatrixProbe(client).logout(), throwsA(anything));

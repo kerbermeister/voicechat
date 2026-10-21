@@ -1,0 +1,301 @@
+{
+  "run": "1792585304",
+  "result": "PASS",
+  "encrypted_web_records": 208,
+  "reports": [
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "carol-web-identity",
+      "timestamp": 1792585386
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "carol_ready",
+      "timestamp": 1792585387
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "web_storage_roundtrip_passed",
+      "timestamp": 1792585395
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "alice-web-identity",
+      "timestamp": 1792585397
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "bob-android-identity",
+      "timestamp": 1792585638
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "android_ready",
+      "timestamp": 1792585638
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "room_created",
+      "timestamp": 1792585639
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "device_verification_passed",
+      "timestamp": 1792585640
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "android_message_decrypted",
+      "timestamp": 1792585641
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "cross_platform_text_passed",
+      "timestamp": 1792585641
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "close_for_recovery",
+      "timestamp": 1792585641
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "carol_offline",
+      "timestamp": 1792585641
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "android_offline",
+      "timestamp": 1792585642
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "alice-fresh-device-identity",
+      "timestamp": 1792585643
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "restored_state",
+      "timestamp": 1792585643
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "history_recovered_without_old_devices",
+      "timestamp": 1792585643
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "resume_calls",
+      "timestamp": 1792585643
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "carol-web-identity",
+      "timestamp": 1792585643
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "web_trust_persisted",
+      "timestamp": 1792585643
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "carol_devices_verified",
+      "timestamp": 1792585643
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "bob-android-identity",
+      "timestamp": 1792585643
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "call_status",
+      "timestamp": 1792585644
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "android_devices_verified",
+      "timestamp": 1792585644
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "call_status",
+      "timestamp": 1792585644
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "call_status",
+      "timestamp": 1792585645
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "call_status",
+      "timestamp": 1792585645
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "call_status",
+      "timestamp": 1792585645
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "call_status",
+      "timestamp": 1792585645
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "call_status",
+      "timestamp": 1792585645
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "call_status",
+      "timestamp": 1792585645
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "call_status",
+      "timestamp": 1792585646
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "call_status",
+      "timestamp": 1792585646
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "call_status",
+      "timestamp": 1792585647
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "call_status",
+      "timestamp": 1792585647
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "call_status",
+      "timestamp": 1792585648
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "android_media_decrypted",
+      "timestamp": 1792585648
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "call_status",
+      "timestamp": 1792585649
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "carol_media_decrypted",
+      "timestamp": 1792585649
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "three_participant_media_passed",
+      "timestamp": 1792585650
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "call_status",
+      "timestamp": 1792585653
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "call_status",
+      "timestamp": 1792585654
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "revocation_verified",
+      "timestamp": 1792585654
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "end_calls",
+      "timestamp": 1792585654
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "carol_revocation_closed",
+      "timestamp": 1792585654
+    },
+    {
+      "run": "1792585304",
+      "role": "carol",
+      "stage": "carol_done",
+      "timestamp": 1792585654
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "call_status",
+      "timestamp": 1792585654
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "android_revocation_closed",
+      "timestamp": 1792585655
+    },
+    {
+      "run": "1792585304",
+      "role": "android",
+      "stage": "android_done",
+      "timestamp": 1792585655
+    },
+    {
+      "run": "1792585304",
+      "role": "web",
+      "stage": "web_done",
+      "timestamp": 1792585655
+    }
+  ]
+}
