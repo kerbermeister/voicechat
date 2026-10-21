@@ -4,8 +4,12 @@ import 'package:flutter/services.dart';
 import 'chunked_file.dart';
 
 const _channel = MethodChannel('voicechat/save');
+Future<Directory> _recordingDirectory() async =>
+    Directory((await _channel.invokeMethod<String>('cacheDirectory'))!);
 Future<void> cleanupRecordings() async {
-  await for (final entity in Directory.systemTemp.list(followLinks: false)) {
+  await for (final entity in (await _recordingDirectory()).list(
+    followLinks: false,
+  )) {
     if (entity is File &&
         RegExp(r'^REC[0-9]+\.mp4$').hasMatch(entity.uri.pathSegments.last)) {
       await entity.delete();
@@ -14,7 +18,7 @@ Future<void> cleanupRecordings() async {
 }
 
 Future<void> deleteRecording(String path) async {
-  final root = await Directory.systemTemp.resolveSymbolicLinks();
+  final root = await (await _recordingDirectory()).resolveSymbolicLinks();
   final file = File(path);
   if (!await file.exists()) return;
   final resolved = await file.resolveSymbolicLinks();

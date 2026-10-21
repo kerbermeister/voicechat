@@ -7,6 +7,7 @@ import 'local_store.dart';
 import 'transport.dart';
 import 'user_action_error.dart';
 import 'first_keys.dart';
+import 'contact_service.dart';
 
 /// Matrix session backed by the platform encrypted store.
 class MatrixProbe {
@@ -119,23 +120,34 @@ class MatrixProbe {
     await client.encryption!.keyManager.loadAllKeys();
   }
 
-  Future<String> startDirectChat(String userId) => client.startDirectChat(
-    userId,
-    enableEncryption: true,
-    preset: CreateRoomPreset.privateChat,
-    initialState: [
-      StateEvent(
-        type: 'dev.voicechat.kind',
-        stateKey: '',
-        content: {'kind': 'direct', 'owner': client.userID, 'peer': userId},
-      ),
-      StateEvent(
-        type: 'm.room.history_visibility',
-        stateKey: '',
-        content: {'history_visibility': 'joined'},
-      ),
-    ],
-  );
+  Future<String> startDirectChat(String userId) async {
+    final id = await client.startDirectChat(
+      userId,
+      enableEncryption: true,
+      preset: CreateRoomPreset.privateChat,
+      initialState: [
+        StateEvent(
+          type: 'dev.voicechat.kind',
+          stateKey: '',
+          content: {'kind': 'direct', 'owner': client.userID, 'peer': userId},
+        ),
+        StateEvent(
+          type: 'm.room.history_visibility',
+          stateKey: '',
+          content: {'history_visibility': 'invited'},
+        ),
+      ],
+    );
+    // The room can sync before m.direct; do not expose it as a group or omit the invited peer's keys.
+    final until = DateTime.now().add(const Duration(seconds: 30));
+    while (client.getRoomById(id)?.directChatMatrixID != userId) {
+      if (DateTime.now().isAfter(until)) {
+        throw TimeoutException('Direct chat metadata sync timed out');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return id;
+  }
 
   Future<String> createRoom(
     List<String> invitees, {
@@ -163,13 +175,14 @@ class MatrixProbe {
     final until = DateTime.now().add(const Duration(seconds: 30));
     while (DateTime.now().isBefore(until)) {
       final room = client.getRoomById(id);
-      if (room != null && room.membership == Membership.join) {
-        if (!room.encrypted) throw StateError('Unencrypted room refused');
+      if (room != null &&
+          room.membership == Membership.join &&
+          room.encrypted) {
         return room;
       }
       await Future<void>.delayed(const Duration(milliseconds: 250));
     }
-    throw TimeoutException('Room sync timed out');
+    throw TimeoutException('Encrypted room sync timed out');
   }
 
   static Future<String> sendText(Room room, String text) async {
@@ -244,14 +257,40 @@ Future<List<DeviceKeys>> authorizedDevices(Room room) async {
   if (members == null || !members.containsKey(room.client.userID)) {
     throw StateError('Room access revoked');
   }
-  if (room.isDirectChat && !members.containsKey(room.directChatMatrixID)) {
+  final audience = members.keys.toSet();
+  final peer = room.isDirectChat ? room.directChatMatrixID : null;
+  if (room.isDirectChat && !members.containsKey(peer)) {
+    final accepted =
+        peer != null &&
+        room.historyVisibility == HistoryVisibility.invited &&
+        ContactService.of(room.client)?.acceptsRoom(room.id, peer) == true;
+    if (!accepted ||
+        (await room.client.getRoomStateWithKey(
+              room.id,
+              EventTypes.RoomMember,
+              peer,
+            ))['membership'] !=
+            'invite') {
+      throw UserActionError(
+        'Собеседник ещё не подключился. Сообщение сохранено в очереди.',
+      );
+    }
+    audience.add(peer);
+  }
+  await refreshDevices(room.client, audience);
+  if (audience
+      .where((u) => u != room.client.userID)
+      .any(
+        (u) => room.client.userDeviceKeys[u]!.deviceKeys.values.every(
+          (d) => d.blocked || !d.isValid,
+        ),
+      )) {
     throw UserActionError(
-      'Собеседник ещё не подключился. Сообщение сохранено и будет отправлено после его входа.',
+      'У собеседника ещё нет доступного ключа. Сообщение сохранено до его входа.',
     );
   }
-  await refreshDevices(room.client, members.keys.toSet());
-  await acceptFirstKeys(room.client, members.keys.toSet());
-  final devices = members.keys.expand(
+  await acceptFirstKeys(room.client, audience);
+  final devices = audience.expand(
     (user) => room.client.userDeviceKeys[user]!.deviceKeys.values,
   );
   if (devices.any((device) => !device.blocked && !device.directVerified)) {
@@ -259,7 +298,7 @@ Future<List<DeviceKeys>> authorizedDevices(Room room) async {
       'Сначала откройте «Проверить устройства» и сверьте отпечатки участников.',
     );
   }
-  return members.keys
+  return audience
       .expand(
         (user) =>
             room.client.userDeviceKeys[user]?.deviceKeys.values ??

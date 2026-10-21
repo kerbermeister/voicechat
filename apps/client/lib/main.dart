@@ -12,6 +12,7 @@ import 'app_sounds.dart';
 import 'file_io.dart';
 import 'presence_tracker.dart';
 import 'recording_activity.dart';
+import 'active_capture.dart';
 import 'first_keys.dart';
 import 'history_window.dart';
 import 'contact_service.dart';
@@ -388,10 +389,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
         report('Запрос ожидает подтверждения. Его статус — в приглашениях.');
         return;
       }
-      if (existing.state == 'declined' || existing.state == 'cancelled') {
-        report(
-          'Запрос ${existing.state == 'declined' ? 'отклонён' : 'отменён'}.',
-        );
+      if (existing.state == 'declined') {
+        report('Запрос отклонён.');
         return;
       }
       final room = probe!.client.getRoomById(existing.roomId);
@@ -532,21 +531,28 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (contacts?.hiddenRooms.contains(room.id) == true && room.isDirectChat) {
       throw UserActionError('Сначала дождитесь подтверждения контакта.');
     }
-    focusedEvent = eventId;
     unawaited(presenceTracker?.refresh(room.directChatMatrixID));
     if (room.membership == mx.Membership.invite) await room.join();
-    selected = await probe!.room(room.id);
-    groupsTab = !selected!.isDirectChat;
-    timeline?.cancelSubscriptions();
-    final window = await historyWindow(selected!);
-    completeHistory = eventId == null && window.complete;
-    timeline = await selected!.getTimeline(
+    await stopActiveCapture();
+    final nextRoom = await probe!.room(room.id);
+    final window = await historyWindow(nextRoom);
+    final nextTimeline = await nextRoom.getTimeline(
       limit: eventId == null ? window.limit : mx.Room.defaultHistoryCount,
       eventContextId: eventId,
       onUpdate: () {
         if (mounted) setState(() {});
       },
     );
+    if (!mounted) {
+      nextTimeline.cancelSubscriptions();
+      return;
+    }
+    timeline?.cancelSubscriptions();
+    selected = nextRoom;
+    timeline = nextTimeline;
+    focusedEvent = eventId;
+    groupsTab = !nextRoom.isDirectChat;
+    completeHistory = eventId == null && window.complete;
     await (await SharedPreferences.getInstance()).setString(
       'lastRoom:${profile.text.trim()}',
       room.id,
@@ -610,6 +616,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
 
   Future<void> startCall() async {
     if (selected == null) return;
+    await stopActiveCapture();
     await calls!.start(selected!);
   }
 
@@ -1211,6 +1218,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     onInvitations: invitations,
     onSearch: globalSearch,
     ownAvatar: ownAvatar,
+    ownOnline: online,
     onProfile: () => run(() => profileCard(probe!.client.userID!)),
     contactInvites: contacts?.incomingCount ?? 0,
     onChatMenu: (room, action) => run(() async {
@@ -1292,7 +1300,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
           children: [
             IconButton(
               tooltip: 'Закрыть чат',
-              onPressed: () => setState(() => selected = null),
+              onPressed: () => run(() async {
+                await stopActiveCapture();
+                if (mounted) setState(() => selected = null);
+              }),
               icon: const Icon(Icons.arrow_back_rounded),
             ),
             InkWell(
@@ -1383,10 +1394,19 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (callWindowOpen || calls == null) return;
     callWindowOpen = true;
     try {
+      await stopActiveCapture();
+      if (!mounted) return;
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
         builder: (_) => CallWindow(calls: calls!, audioOutput: audioOutput),
+      );
+    } catch (error) {
+      presentedCall = null;
+      report(
+        error is UserActionError
+            ? error.message
+            : 'Не удалось освободить микрофон или камеру.',
       );
     } finally {
       callWindowOpen = false;
@@ -1401,21 +1421,27 @@ class _ProbeScreenState extends State<ProbeScreen> {
             calls!.active?.isClosed == false ||
             calls!.directInvitations.isNotEmpty ||
             calls!.invitations.isNotEmpty);
-    return SizedBox(
-      height: 36,
+    return AnimatedSize(
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 180),
       child: available
-          ? TextButton.icon(
-              onPressed: showCallWindow,
-              icon: const Icon(Icons.call),
-              label: const Text('Открыть окно звонка'),
+          ? SizedBox(
+              height: 36,
+              child: TextButton.icon(
+                onPressed: showCallWindow,
+                icon: const Icon(Icons.call),
+                label: const Text('Открыть окно звонка'),
+              ),
             )
-          : null,
+          : const SizedBox.shrink(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final keyboardOpen = View.of(context).viewInsets.bottom > 0;
     return Scaffold(
       body: SafeArea(
         child: LayoutBuilder(
@@ -1557,10 +1583,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
                           ),
                           Container(
                             width: double.infinity,
-                            height: 48,
-                            padding: const EdgeInsets.symmetric(
+                            height: keyboardOpen ? 28 : 48,
+                            padding: EdgeInsets.symmetric(
                               horizontal: 20,
-                              vertical: 8,
+                              vertical: keyboardOpen ? 4 : 8,
                             ),
                             decoration: BoxDecoration(
                               border: Border(
@@ -1573,7 +1599,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                             ),
                             child: Text(
                               status,
-                              maxLines: 2,
+                              maxLines: keyboardOpen ? 1 : 2,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(color: colors.onSurfaceVariant),

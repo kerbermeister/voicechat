@@ -6,11 +6,17 @@ import 'first_keys_test.dart' show PinClient, PinDevice;
 class ActivityClient extends PinClient {
   late Room room;
   final peer = PinDevice('@friend:local', 'A', 'key')..directVerified = true;
+  final second = PinDevice('@friend:local', 'B', 'second-key')
+    ..directVerified = true;
   @override
   Room? getRoomById(String id) => id == room.id ? room : null;
   @override
   DeviceKeys? getUserDeviceKeysByCurve25519Key(String key) =>
-      key == peer.curve25519Key ? peer : null;
+      key == peer.curve25519Key
+      ? peer
+      : key == second.curve25519Key
+      ? second
+      : null;
 }
 
 void main() {
@@ -33,11 +39,12 @@ void main() {
         bool encrypted = true,
         int? expiry,
         String? sender,
+        PinDevice? device,
       }) => ToDeviceEvent(
         sender: sender ?? client.peer.userId,
         type: 'dev.voicechat.recording',
         encryptedContent: encrypted
-            ? {'sender_key': client.peer.curve25519Key}
+            ? {'sender_key': (device ?? client.peer).curve25519Key}
             : null,
         content: {
           'room_id': room.id,
@@ -70,6 +77,17 @@ void main() {
       activity.receive(event('video'));
       expect(activity.users(room), {client.peer.userId: 'video'});
       activity.receive(event('stop'));
+      expect(activity.users(room), isEmpty);
+      final base = DateTime.now()
+          .add(const Duration(seconds: 10))
+          .millisecondsSinceEpoch;
+      activity.receive(event('audio', expiry: base + 1));
+      activity.receive(event('video', expiry: base + 2, device: client.second));
+      activity.receive(event('stop', expiry: base + 3));
+      expect(activity.users(room), {client.peer.userId: 'video'});
+      activity.receive(event('audio', expiry: base + 1));
+      expect(activity.users(room), {client.peer.userId: 'video'});
+      activity.receive(event('stop', expiry: base + 4, device: client.second));
       expect(activity.users(room), isEmpty);
       await activity.close();
     },

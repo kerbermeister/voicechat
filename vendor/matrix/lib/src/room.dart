@@ -40,6 +40,9 @@ class Room {
   /// The count of unread notifications.
   int notificationCount;
 
+  /// Total unread messages, including muted rooms (Synapse MSC2654).
+  int? unreadMessageCount;
+
   /// The count of highlighted notifications.
   int highlightCount;
 
@@ -73,6 +76,7 @@ class Room {
     'membership': membership.toString().split('.').last,
     'highlight_count': highlightCount,
     'notification_count': notificationCount,
+    if (unreadMessageCount != null) 'unread_message_count': unreadMessageCount,
     'prev_batch': prev_batch,
     'summary': summary.toJson(),
     'last_event': lastEvent?.toJson(),
@@ -87,6 +91,7 @@ class Room {
         orElse: () => Membership.join,
       ),
       notificationCount: json['notification_count'],
+      unreadMessageCount: json['unread_message_count'],
       highlightCount: json['highlight_count'],
       prev_batch: json['prev_batch'],
       summary: RoomSummary.fromJson(Map<String, dynamic>.from(json['summary'])),
@@ -468,6 +473,7 @@ class Room {
     required this.id,
     this.membership = Membership.join,
     this.notificationCount = 0,
+    this.unreadMessageCount,
     this.highlightCount = 0,
     this.prev_batch,
     required this.client,
@@ -2759,7 +2765,12 @@ class Room {
       client.encryption?.keyManager.getOutboundGroupSession(id) == null,
     );
     users.removeWhere(
-      (user) => ![Membership.invite, Membership.join].contains(user.membership),
+      (user) =>
+          user.membership != Membership.join &&
+          !(user.membership == Membership.invite &&
+              isDirectChat &&
+              historyVisibility == HistoryVisibility.invited &&
+              user.id == directChatMatrixID),
     );
 
     // Safety net: if we have participants we have never fetched the device

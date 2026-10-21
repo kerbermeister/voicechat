@@ -22,6 +22,15 @@ class ListClient implements Client {
 }
 
 void main() {
+  test('A direct chat uses the peer avatar instead of a legacy room avatar', () {
+    final client = ListClient();
+    final room = Room(id: '!dm:local', client: client);
+    client.directChats['@peer:local'] = [room.id];
+    room.states[EventTypes.RoomAvatar] = {'': StrippedStateEvent(type: EventTypes.RoomAvatar, stateKey: '', senderId: client.userID, content: {'url':'mxc://local/old-room'})};
+    expect(roomAvatar(room), isNull);
+    room.states[EventTypes.RoomMember] = {'@peer:local': StrippedStateEvent(type: EventTypes.RoomMember, stateKey: '@peer:local', senderId: '@peer:local', content: {'membership':'join', 'avatar_url':'mxc://local/peer'})};
+    expect(roomAvatar(room), Uri.parse('mxc://local/peer'));
+  });
   testWidgets(
     'People and groups stay separate; preview, unread and presence use real state',
     (tester) async {
@@ -29,7 +38,8 @@ void main() {
       final person = Room(
         id: '!person:local',
         client: client,
-        notificationCount: 2,
+        notificationCount: 0,
+        unreadMessageCount: 3,
       );
       final group = Room(id: '!group:local', client: client);
       for (final (room, name) in [(person, 'Анна'), (group, 'Семья')]) {
@@ -92,7 +102,14 @@ void main() {
       expect(find.text('Семья'), findsNothing);
       expect(find.text('В сети'), findsOneWidget);
       expect(find.text('Вы: До встречи!'), findsOneWidget);
-      expect(find.text('2'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(SegmentedButton<bool>),
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
       await tester.tap(find.text('Группы'));
       await tester.pumpAndSettle();
       expect(find.text('Семья'), findsOneWidget);

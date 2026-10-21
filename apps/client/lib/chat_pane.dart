@@ -19,6 +19,7 @@ import 'video_note.dart';
 import 'call_window.dart';
 import 'history_window.dart';
 import 'recording_activity.dart';
+import 'active_capture.dart';
 
 String? reactionEmoji(mx.Event event) {
   final relation = event.content['m.relates_to'];
@@ -56,8 +57,11 @@ class ChatPane extends StatefulWidget {
 class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   final input = TextEditingController();
   final search = TextEditingController();
+  final searchFocus = FocusNode();
   final scroll = ScrollController();
-  final recorder = AudioRecorder();
+  AudioRecorder recorder = AudioRecorder();
+  Future<void>? voiceOpening;
+  late final Future<void> Function() voiceCancellation = cancelVoiceCapture;
   mx.Event? reply;
   mx.Event? edit;
   bool working = false;
@@ -198,7 +202,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) markRead();
     if (state != AppLifecycleState.resumed && recording) {
-      unawaited(finishRecording(send: false));
+      unawaited(finishRecording());
     }
   }
 
@@ -215,17 +219,19 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   }
 
   Future<void> send() async {
+    final text = input.text;
     if (unsentVoice != null) {
       await sendVoiceDraft();
     } else if (draftFile != null) {
       cancelFile = false;
       setState(() => fileProgress = 0);
+      var caption = text;
       try {
         while (draftFiles.isNotEmpty) {
           await widget.actions.file(
             widget.room,
             draftFile!,
-            input.text,
+            caption,
             reply: reply,
             videoNote: draftIsVideoNote,
             duration: draftVideoDuration,
@@ -235,7 +241,8 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             },
           );
           final sent = draftFiles.removeAt(0);
-          input.clear();
+          caption = '';
+          if (input.text == text) input.clear();
           await sent.release();
         }
       } finally {
@@ -245,20 +252,20 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       await widget.actions.album(
         widget.room,
         List.of(draftPhotos),
-        input.text,
+        text,
         reply: reply,
       );
       draftPhotos.clear();
     } else {
       await widget.actions.text(
         widget.room,
-        input.text,
+        text,
         reply: reply,
         edit: edit?.eventId,
       );
     }
-    input.clear();
-    typing('');
+    if (input.text == text) input.clear();
+    typing(input.text);
     setState(() {
       reply = null;
       edit = null;
@@ -300,6 +307,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     }
     List<PickedFile> sources;
     int? duration;
+    var interrupted = false;
     if (kind == 'note') {
       if (!mounted) return;
       final result = await recordVideoNote(
@@ -312,6 +320,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       );
       sources = [?result?.file];
       duration = result?.duration;
+      interrupted = result?.interrupted ?? false;
     } else {
       sources = await chooseFiles(video: kind == 'video', maxCount: remaining);
     }
@@ -341,7 +350,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       draftIsVideoNote = kind == 'note';
       draftVideoDuration = duration;
     });
-    if (hold) {
+    if (hold && !interrupted) {
       final caption = input.text;
       try {
         input.clear();
@@ -366,7 +375,39 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     setState(() {});
   }
 
+  Future<void> cancelVoiceCapture() async {
+    try {
+      await voiceOpening;
+    } catch (_) {}
+    await finishRecording();
+    if (recordingFailed) {
+      await recorder.dispose();
+      recorder = AudioRecorder();
+      recordingFailed = false;
+      releaseCapture(voiceCancellation);
+    }
+  }
+
   Future<void> startRecording() async {
+    await stopActiveCapture();
+    voiceOpening = () async {
+      try {
+        await openVoiceRecording();
+      } catch (_) {
+        await recorder.dispose();
+        recorder = AudioRecorder();
+        rethrow;
+      }
+    }();
+    registerCapture(voiceCancellation);
+    try {
+      await voiceOpening;
+    } finally {
+      if (!recording) releaseCapture(voiceCancellation);
+    }
+  }
+
+  Future<void> openVoiceRecording() async {
     if (unsentVoice != null ||
         draftFile != null ||
         draftPhotos.isNotEmpty ||
@@ -375,6 +416,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         'Сначала отправьте или удалите текущие вложения и завершите редактирование.',
       );
     }
+    FocusManager.instance.primaryFocus?.unfocus();
     if (!await recorder.hasPermission()) {
       throw UserActionError(
         'Для голосового сообщения разрешите доступ к микрофону.',
@@ -413,10 +455,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         if (!recordingDone!.isCompleted) {
           recordingFailed = true;
           recordingDone!.complete();
-          unawaited(finishRecording(send: false));
-          widget.report(
-            'Запись прервалась. Попробуйте записать сообщение снова.',
-          );
+          unawaited(finishRecording());
         }
       },
     );
@@ -447,10 +486,19 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     recordingMeter?.cancel();
     recordingClock.stop();
     try {
-      await recorder.stop();
-      await recordingDone!.future;
-      final bytes = pcm!.takeBytes();
-      if (send && !recordingFailed && bytes.isNotEmpty) {
+      await recorder.stop().timeout(const Duration(seconds: 10));
+      await recordingDone!.future.timeout(const Duration(seconds: 5));
+    } catch (_) {
+      recordingFailed = true;
+    } finally {
+      try {
+        await recordingStream?.cancel();
+      } catch (_) {
+        recordingFailed = true;
+      }
+      final raw = pcm?.takeBytes() ?? Uint8List(0);
+      final bytes = Uint8List.sublistView(raw, 0, raw.length - raw.length % 2);
+      if (send && bytes.isNotEmpty) {
         unsentVoice = mx.MatrixAudioFile(
           bytes: voiceWav(bytes),
           name: 'Голосовое сообщение.wav',
@@ -460,13 +508,16 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         unsentWave = pcmWaveform(bytes);
         voiceReply = reply;
       }
-    } catch (_) {
-      widget.report(
-        'Не удалось сохранить запись. Она осталась в этом чате: повторите отправку.',
-      );
-    } finally {
+      if (recordingFailed) {
+        widget.report(
+          send && bytes.isNotEmpty
+              ? 'Запись прервалась. Доступная часть сохранена в черновике.'
+              : 'Запись прервалась. Попробуйте записать снова.',
+        );
+      }
       pcm = null;
       stopping = false;
+      if (!recordingFailed) releaseCapture(voiceCancellation);
       if (mounted) {
         setState(() {
           recording = false;
@@ -708,6 +759,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                 else
                   SelectableText(
                     shown.calcUnlocalizedBody(hideReply: true),
+                    semanticsLabel: shown.calcUnlocalizedBody(hideReply: true),
                     style: const TextStyle(fontSize: 16),
                   ),
                 const SizedBox(height: 4),
@@ -745,6 +797,8 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    assert(widget.timeline.room.id == widget.room.id);
+    final keyboardOpen = View.of(context).viewInsets.bottom > 0;
     WidgetsBinding.instance.addPostFrameCallback((_) => markRead());
     var events = visibleMessages(widget.timeline, search.text);
     final focusedIndex = events.indexWhere(
@@ -764,22 +818,24 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     return Column(
       children: [
         widget.header,
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          child: TextField(
-            controller: search,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              prefixIcon: Icon(Icons.search),
-              hintText: 'Поиск по загруженной истории',
-              suffixIcon: IconButton(
-                tooltip: 'Перейти к дате',
-                onPressed: working ? null : () => perform(calendar),
-                icon: const Icon(Icons.calendar_month_outlined),
+        if (!keyboardOpen || searchFocus.hasFocus)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: TextField(
+              controller: search,
+              focusNode: searchFocus,
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                hintText: 'Поиск по загруженной истории',
+                suffixIcon: IconButton(
+                  tooltip: 'Перейти к дате',
+                  onPressed: working ? null : () => perform(calendar),
+                  icon: const Icon(Icons.calendar_month_outlined),
+                ),
               ),
             ),
           ),
-        ),
         if (focusedEvent != null || widget.timeline.canRequestFuture)
           TextButton.icon(
             onPressed: () => widget.onJump?.call(null),
@@ -808,115 +864,133 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             label: const Text('Показать более ранние сообщения'),
           ),
         Expanded(
-          child: events.isEmpty && pending.isEmpty
-              ? const Center(child: Text('Здесь начинается разговор'))
-              : ListView.builder(
-                  controller: scroll,
-                  reverse: true,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  itemCount: events.length + pending.length,
-                  findChildIndexCallback: (key) {
-                    if (key is! ValueKey<String>) return null;
-                    final pendingIndex = pending.indexWhere(
-                      (p) => 'pending:${p['id']}' == key.value,
-                    );
-                    if (pendingIndex >= 0) return pendingIndex;
-                    final index = events.indexWhere(
-                      (e) => e.eventId == key.value,
-                    );
-                    return index < 0 ? null : index + pending.length;
-                  },
-                  itemBuilder: (_, i) {
-                    if (i < pending.length) {
-                      final p = pending[i];
-                      final c = p['content'] as Map;
-                      return Align(
-                        key: ValueKey('pending:${p['id']}'),
-                        alignment: Alignment.centerRight,
-                        child: Card(
-                          child: ListTile(
-                            title: Text(
-                              c.containsKey('bytes')
-                                  ? c['body'] as String
-                                  : c['body'] as String? ?? 'Реакция',
-                            ),
-                            subtitle: Text(
-                              p['error'] as String? ?? 'В очереди отправки',
-                            ),
-                            trailing: PopupMenuButton<String>(
-                              tooltip: 'Действия с очередью',
-                              onSelected: (action) => perform(
-                                () => action == 'retry'
-                                    ? widget.actions.flush()
-                                    : widget.actions.cancel(p['id'] as String),
-                              ),
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
-                                  value: 'retry',
-                                  child: Text('Повторить отправку'),
-                                ),
-                                PopupMenuItem(
-                                  value: 'cancel',
-                                  child: Text('Отменить отправку'),
-                                ),
-                              ],
-                            ),
+          child: LayoutBuilder(
+            builder: (context, bounds) => Stack(
+              children: [
+                Positioned.fill(
+                  bottom: 38,
+                  child: events.isEmpty && pending.isEmpty
+                      ? const Center(child: Text('Здесь начинается разговор'))
+                      : ListView.builder(
+                          controller: scroll,
+                          reverse: true,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
                           ),
-                        ),
-                      );
-                    }
-                    final index = i - pending.length;
-                    final event = events[index];
-                    final startsDay =
-                        index == events.length - 1 ||
-                        !DateUtils.isSameDay(
-                          event.originServerTs.toLocal(),
-                          events[index + 1].originServerTs.toLocal(),
-                        );
-                    return Column(
-                      key: ValueKey(event.eventId),
-                      children: [
-                        if (startsDay)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            child: Chip(
-                              label: Text(
-                                messageDay(
+                          itemCount: events.length + pending.length,
+                          findChildIndexCallback: (key) {
+                            if (key is! ValueKey<String>) return null;
+                            final pendingIndex = pending.indexWhere(
+                              (p) => 'pending:${p['id']}' == key.value,
+                            );
+                            if (pendingIndex >= 0) return pendingIndex;
+                            final index = events.indexWhere(
+                              (e) => e.eventId == key.value,
+                            );
+                            return index < 0 ? null : index + pending.length;
+                          },
+                          itemBuilder: (_, i) {
+                            if (i < pending.length) {
+                              final p = pending[i];
+                              final c = p['content'] as Map;
+                              return Align(
+                                key: ValueKey('pending:${p['id']}'),
+                                alignment: Alignment.centerRight,
+                                child: Card(
+                                  child: ListTile(
+                                    title: Text(
+                                      c.containsKey('bytes')
+                                          ? c['body'] as String
+                                          : c['body'] as String? ?? 'Реакция',
+                                    ),
+                                    subtitle: Text(
+                                      p['error'] as String? ??
+                                          'В очереди отправки',
+                                    ),
+                                    trailing: PopupMenuButton<String>(
+                                      tooltip: 'Действия с очередью',
+                                      onSelected: (action) => perform(
+                                        () => action == 'retry'
+                                            ? widget.actions.flush()
+                                            : widget.actions.cancel(
+                                                p['id'] as String,
+                                              ),
+                                      ),
+                                      itemBuilder: (_) => const [
+                                        PopupMenuItem(
+                                          value: 'retry',
+                                          child: Text('Повторить отправку'),
+                                        ),
+                                        PopupMenuItem(
+                                          value: 'cancel',
+                                          child: Text('Отменить отправку'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            final index = i - pending.length;
+                            final event = events[index];
+                            final startsDay =
+                                index == events.length - 1 ||
+                                !DateUtils.isSameDay(
                                   event.originServerTs.toLocal(),
-                                  DateTime.now(),
-                                ),
-                              ),
-                              visualDensity: VisualDensity.compact,
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.tertiaryContainer,
-                            ),
-                          ),
-                        bubble(event),
-                      ],
-                    );
-                  },
+                                  events[index + 1].originServerTs.toLocal(),
+                                );
+                            return Column(
+                              key: ValueKey(event.eventId),
+                              children: [
+                                if (startsDay)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    child: Chip(
+                                      label: Text(
+                                        messageDay(
+                                          event.originServerTs.toLocal(),
+                                          DateTime.now(),
+                                        ),
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.tertiaryContainer,
+                                    ),
+                                  ),
+                                bubble(event),
+                              ],
+                            );
+                          },
+                        ),
                 ),
-        ),
-        SizedBox(
-          height: 38,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: TypingIndicator(
-                room: widget.room,
-                ownDraft: input.text.isNotEmpty,
-              ),
+                Positioned(
+                  left: 16,
+                  right: 16,
+                  bottom: 0,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: bounds.maxHeight),
+                    child: SingleChildScrollView(
+                      child: Align(
+                        alignment: Alignment.bottomLeft,
+                        child: TypingIndicator(
+                          room: widget.room,
+                          ownDraft: input.text.isNotEmpty,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
         if (draftFiles.isNotEmpty)
           SizedBox(
-            height: 88,
+            height: keyboardOpen ? 64 : 88,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: draftFiles.length,
@@ -973,7 +1047,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
-                  height: 84,
+                  height: keyboardOpen ? 48 : 84,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: draftPhotos.length,
@@ -989,7 +1063,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                             child: Image.memory(
                               draftPhotos[i].bytes,
                               width: 84,
-                              height: 84,
+                              height: keyboardOpen ? 48 : 84,
                               fit: BoxFit.cover,
                               cacheWidth: 170,
                               semanticLabel: 'Прикреплённое фото ${i + 1}',
@@ -1069,7 +1143,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             title: Text(
               'Голосовое · ${mediaTime(Duration(milliseconds: unsentVoice!.duration ?? 0))}',
             ),
-            subtitle: WaveformView(levels: unsentWave ?? [0]),
+            subtitle: keyboardOpen
+                ? null
+                : WaveformView(levels: unsentWave ?? [0]),
             trailing: Wrap(
               children: [
                 IconButton(
@@ -1163,7 +1239,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                       setState(() {});
                     },
                     minLines: 1,
-                    maxLines: 4,
+                    maxLines: keyboardOpen ? 2 : 4,
                     decoration: const InputDecoration(
                       hintText: 'Написать сообщение…',
                     ),
@@ -1232,6 +1308,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    releaseCapture(voiceCancellation);
     RecordingActivity.of(widget.room.client)?.set(widget.room, null);
     heldVideo.value = false;
     heldVideo.dispose();
@@ -1250,6 +1327,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     unawaited(voicePreview.dispose());
     unawaited(widget.room.setTyping(false).catchError((Object _) {}));
     input.dispose();
+    searchFocus.dispose();
     search.dispose();
     scroll.dispose();
     super.dispose();
@@ -1400,6 +1478,7 @@ class _AttachmentViewState extends State<AttachmentView> {
                 padding: const EdgeInsets.only(top: 8),
                 child: SelectableText(
                   caption,
+                  semanticsLabel: caption,
                   style: TextStyle(color: foreground),
                 ),
               ),

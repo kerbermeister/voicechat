@@ -32,3 +32,15 @@ class ContactTests(unittest.TestCase):
             self.assertEqual(two['state'],'accepted')
             with self.assertRaises(ContactError): store.set_policy('@alice:local',1)
             with self.assertRaises(ContactError): store.request('@alice:local','@alice:local','!one:local')
+
+    def test_cancelled_request_can_be_sent_again_without_reviving_old_consent(self):
+        with tempfile.TemporaryDirectory() as root:
+            store = ContactStore(Path(root) / 'contacts.sqlite')
+            store.set_policy('@bob:local', False)
+            first = store.request('@alice:local', '@bob:local', '!one:local')
+            store.decide('@alice:local', first['id'], 'cancel')
+            second = store.request('@alice:local', '@bob:local', '!two:local')
+            self.assertNotEqual(first['id'], second['id'])
+            self.assertEqual(second['state'], 'pending')
+            self.assertEqual(second['room_id'], '!two:local')
+            with self.assertRaises(ContactError): store.decide('@bob:local', first['id'], 'accept')

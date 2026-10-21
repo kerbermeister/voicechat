@@ -129,7 +129,7 @@ class _AlbumViewState extends State<AlbumView> {
         if (caption is String && caption.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: SelectableText(caption),
+            child: SelectableText(caption, semanticsLabel: caption),
           ),
       ],
     );

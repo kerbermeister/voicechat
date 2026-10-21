@@ -3,13 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:voicechat_probe/video_note.dart';
 import 'package:voicechat_probe/picked_file.dart';
+import 'package:voicechat_probe/active_capture.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   testWidgets(
     'Android camera switch, timed circular recording and bounded read',
     (tester) async {
-      ({PickedFile file, int duration})? recorded;
+      ({PickedFile file, int duration, bool interrupted})? recorded;
       await tester.pumpWidget(
         MaterialApp(
           home: Builder(
@@ -57,11 +58,39 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(recorded, isNotNull);
+      expect(recorded!.interrupted, false);
       expect(recorded!.duration, inInclusiveRange(1, 2000));
       expect(recorded!.file.mime, startsWith('video/'));
       expect(recorded!.file.size, greaterThan(32));
       final first = await recorded!.file.read(0, 32);
       expect(first.length, 32);
+      await recorded!.file.release();
+      recorded = null;
+      await tester.tap(find.text('Камера'));
+      await tester.pumpAndSettle();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(seconds: 1)),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Записать'));
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 700)),
+      );
+      var released = false;
+      final release = stopActiveCapture().whenComplete(() => released = true);
+      for (var i = 0; i < 200 && !released; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(released, true);
+      await release;
+      await tester.pumpAndSettle();
+      expect(recorded, isNotNull);
+      expect(recorded!.interrupted, true);
+      expect(recorded!.file.size, greaterThan(32));
       await recorded!.file.release();
     },
   );

@@ -5,6 +5,8 @@ import 'package:matrix/matrix.dart';
 import 'transport.dart';
 import 'user_action_error.dart';
 
+final _services = Expando<ContactService>();
+
 class ContactRequest {
   final String id, sender, recipient, roomId, state;
   ContactRequest.fromJson(Map<String, dynamic> value)
@@ -37,7 +39,16 @@ class ContactService extends ChangeNotifier {
   Future<void>? _refreshing;
   Future<void> _write = Future.value();
   static const _storage = 'dev.voicechat.local.contacts';
-  ContactService(this.client, this.url);
+  ContactService(this.client, this.url) {
+    _services[client] = this;
+  }
+  static ContactService? of(Client client) => _services[client];
+  bool acceptsRoom(String roomId, String peer) => requests.any(
+    (r) =>
+        r.roomId == roomId &&
+        r.peer(client.userID!) == peer &&
+        r.state == 'accepted',
+  );
   Set<String> get acceptedUsers => {
     for (final r in requests)
       if (r.state == 'accepted') r.peer(client.userID!),
@@ -182,6 +193,7 @@ class ContactService extends ChangeNotifier {
 
   Future<void> close() async {
     _closed = true;
+    if (identical(_services[client], this)) _services[client] = null;
     _timer?.cancel();
     await _sync?.cancel();
     try {

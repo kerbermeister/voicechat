@@ -22,7 +22,8 @@ const {chromium} = require('playwright');
     async function fill(input, text) {
       // Flutter activates a text client on pointer focus; allow the semantics edit to commit before blur.
       await input.click(); await page.waitForTimeout(200);
-      await page.keyboard.press('ControlOrMeta+A'); await page.keyboard.insertText(text);
+      await page.keyboard.press('ControlOrMeta+A');
+      if(text) await page.keyboard.insertText(text); else await page.keyboard.press('Backspace');
       await page.waitForTimeout(150); await page.keyboard.press('Tab');
     }
     const field = name => page.getByRole('textbox', {name, exact: true});
@@ -57,7 +58,7 @@ const {chromium} = require('playwright');
     await page.getByRole('menuitem', {name: 'Редактировать', exact: true}).click();
     await fill(page.getByRole('textbox').last(), 'Привет! Сообщение изменено ✨');
     await button('Отправить').click();
-    await page.getByRole('textbox', {name: /изменено/}).waitFor({timeout: 20000});
+    await page.getByRole('group', {name: /изменено/}).waitFor({timeout: 20000});
     await button('Действия с сообщением').first().click();
     await page.getByRole('menuitem', {name: 'Реакция…', exact: true}).click();
     await button('👍').click();
@@ -91,11 +92,13 @@ const {chromium} = require('playwright');
     await button('Прикрепить файл или видео').click();
     await page.getByRole('menuitem', {name:'Файл',exact:true}).click();
     const pdf = Buffer.from('%PDF-1.7\nLocal encrypted attachment test\n');
-    await (await fileChooser).setFiles({name:'test.pdf',mimeType:'application/pdf',buffer:pdf});
+    await (await fileChooser).setFiles(Array.from({length:5},(_,i)=>({name:`test-${i+1}.pdf`,mimeType:'application/pdf',buffer:pdf})));
+    await button('Убрать файл 1').waitFor();
+    assert.equal(await page.getByText('test-5.pdf 0.0 МБ · 5/5',{exact:true}).count(),1);
     await button('Отправить').click();
-    await button('Сохранить файл').waitFor({timeout:30000});
+    await page.getByRole('group',{name:/test-5.pdf.*отправлено/}).waitFor({timeout:30000});
     await page.evaluate(() => { window.savedBytes=[]; window.showSaveFilePicker=async()=>({createWritable:async()=>({write:async bytes=>window.savedBytes.push(...bytes),close:async()=>{},abort:async()=>{window.savedBytes=[]}})}); });
-    await button('Сохранить файл').click();
+    await button('Сохранить файл').first().click();
     await page.waitForFunction(() => window.savedBytes.length > 0);
     assert.deepEqual(Buffer.from(await page.evaluate(()=>window.savedBytes)),pdf);
     await button('Видеокружок · удерживайте для записи').click();
@@ -107,6 +110,18 @@ const {chromium} = require('playwright');
     const pauseVideo=page.getByRole('button',{name:/^Пауза видео/});
     if(await pauseVideo.count()) await pauseVideo.click();
 
+    await button('Поиск по чатам и сообщениям').click();
+    await fill(field('Чат или фраза из сообщения'),'Подпись к голосовому');
+    await page.getByRole('button',{name:/Подпись к голосовому.*Семья/}).click({timeout:30000});
+    await button('Вернуться к новым сообщениям').click();
+    await button('Участники и настройки чата').click();
+    const avatarChooser=page.waitForEvent('filechooser');
+    await button('Аватар').click();
+    await (await avatarChooser).setFiles({name:'avatar.png',mimeType:'image/png',buffer:fs.readFileSync(path.join(root,'apps/client/web/icons/Icon-192.png'))});
+    await page.getByText('Масштаб',{exact:true}).waitFor();
+    await page.getByRole('slider').first().press('ArrowRight');
+    await button('Сохранить').click();
+    await page.getByRole('alertdialog').getByRole('button',{name:'Закрыть',exact:true}).click();
     await page.screenshot({path: path.join(output, 'media-desktop.png')});
     for (let i=0;i<35;i++) {
       await fill(field('Написать сообщение…'), `История ${i}`);
@@ -167,7 +182,7 @@ const {chromium} = require('playwright');
     await page.getByRole('button', {name: /^Выйти/}).click();
     await page.getByRole('alertdialog').getByRole('button', {name: 'Выйти', exact: true}).click();
     await button('Войти').waitFor({timeout: 30000});
-    console.log('PASS: UI login, directory/group, text/image/record/playback, edit/reaction, narrow layout, settings, same-device reload without credentials, people/groups tabs, lock/reload/unlock/logout');
+    console.log('PASS: UI login, directory/group, text/image/record/playback, edit/reaction, narrow layout, settings, same-device reload without credentials, retained expanded history after reload/reopen, people/groups tabs, lock/reload/unlock/logout');
   } catch (error) { if (page) fs.writeFileSync(path.join(output, 'aria.txt'), await page.locator('body').ariaSnapshot()); if (page) fs.writeFileSync(path.join(output, 'semantics.json'), JSON.stringify(await page.locator('[aria-label]').evaluateAll(elements => elements.map(e => ({role: e.getAttribute('role'), label: e.getAttribute('aria-label')}))), null, 2)); await page?.screenshot({path: path.join(output, 'failure.png')}).catch(() => {}); throw error; }
   finally { await browser.close(); }
 })().catch(error => { console.error(error.message); process.exitCode = 1; });

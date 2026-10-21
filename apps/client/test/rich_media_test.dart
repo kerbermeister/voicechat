@@ -31,6 +31,30 @@ class RichClient extends TestClient {
 
 void main() {
   test(
+    'Muted unread message counts remain separate from notification counts and survive local storage',
+    () {
+      final update = JoinedRoomUpdate.fromJson({
+        'org.matrix.msc2654.unread_count': 3,
+        'unread_notifications': {'notification_count': 0, 'highlight_count': 0},
+      });
+      expect(update.unreadNotifications!.notificationCount, 0);
+      expect(JoinedRoomUpdate.fromJson(update.toJson()).unreadMessageCount, 3);
+      final client = RichClient();
+      final room = Room(
+        id: '!muted:local',
+        client: client,
+        notificationCount: 0,
+        unreadMessageCount: update.unreadMessageCount,
+      );
+      final stored = Room.fromJson(room.toJson(), client);
+      expect(stored.notificationCount, 0);
+      expect(stored.unreadMessageCount, 3);
+      final legacy = room.toJson()..remove('unread_message_count');
+      expect(Room.fromJson(legacy, client).unreadMessageCount, isNull);
+    },
+  );
+
+  test(
     'Large file manifest accepts exactly 300 MiB and refuses malformed parts',
     () {
       final descriptor = {
@@ -259,19 +283,64 @@ void main() {
       );
     },
   );
+  testWidgets('Typing lists keep every name while compact rows stay one line', (
+    tester,
+  ) async {
+    final room = Room(id: '!typing:local', client: RichClient());
+    final ids = List.generate(
+      10,
+      (i) => '@participant_with_long_name_$i:local',
+    );
+    room.states[EventTypes.RoomMember] = {
+      for (final id in ids) id: User(id, membership: 'join', room: room),
+    };
+    room.ephemerals['m.typing'] = BasicEvent(
+      type: 'm.typing',
+      content: {'user_ids': ids},
+    );
+    for (final compact in [false, true]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 260,
+                child: TypingIndicator(room: room, compact: compact),
+              ),
+            ),
+          ),
+        ),
+      );
+      final label = tester.widget<Text>(find.text(typingLabel(room, false)));
+      for (final id in ids) {
+        expect(label.data, contains(id));
+      }
+      expect(label.maxLines, compact ? 1 : null);
+      expect(tester.takeException(), isNull);
+    }
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
   test(
     'All seven themes have readable primary text and preserve selected references',
     () {
       expect(AppPalette.values.length, 7);
       for (final palette in AppPalette.values) {
         final colors = palette.theme.colorScheme;
-        final a = colors.primary.computeLuminance(),
-            b = colors.onPrimary.computeLuminance();
-        expect(
-          (a > b ? (a + .05) / (b + .05) : (b + .05) / (a + .05)),
-          greaterThanOrEqualTo(4.5),
-          reason: palette.label,
-        );
+        for (final pair in [
+          (colors.onPrimary, colors.primary),
+          (colors.onPrimaryContainer, colors.primaryContainer),
+          (colors.onSecondaryContainer, colors.secondaryContainer),
+          (colors.onTertiaryContainer, colors.tertiaryContainer),
+          (onlinePresenceColor(colors), colors.surface),
+        ]) {
+          final a = pair.$1.computeLuminance(), b = pair.$2.computeLuminance();
+          expect(
+            (a > b ? (a + .05) / (b + .05) : (b + .05) / (a + .05)),
+            greaterThanOrEqualTo(4.5),
+            reason: palette.label,
+          );
+        }
       }
     },
   );

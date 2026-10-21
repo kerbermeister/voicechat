@@ -20,14 +20,18 @@ class RecordingActivity {
   void notify() => scheduleMicrotask(() {
     if (!_closed) changed();
   });
-  String? own(Room room) => _own[room.id];
-  Map<String, String> users(Room room) => {
-    for (final entry in (_remote[room.id] ?? {}).entries)
-      if (entry.value.kind != 'stop' &&
-          entry.value.expires > DateTime.now().millisecondsSinceEpoch)
-        entry.value.user: entry.value.kind,
-    if (_own[room.id] != null) client.userID!: _own[room.id]!,
-  };
+  Map<String, String> users(Room room) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final active =
+        (_remote[room.id]?.values ?? [])
+            .where((v) => v.kind != 'stop' && v.expires > now)
+            .toList()
+          ..sort((a, b) => a.expires.compareTo(b.expires));
+    return {
+      for (final value in active) value.user: value.kind,
+      if (_own[room.id] != null) client.userID!: _own[room.id]!,
+    };
+  }
 
   void start() {
     _trackers[client] = this;

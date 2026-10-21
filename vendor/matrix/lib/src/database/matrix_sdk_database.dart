@@ -1303,6 +1303,9 @@ class MatrixSdkDatabase extends DatabaseApi with DatabaseFileStorage {
                     roomUpdate.unreadNotifications?.highlightCount ?? 0,
                 notificationCount:
                     roomUpdate.unreadNotifications?.notificationCount ?? 0,
+                unreadMessageCount:
+                    roomUpdate.unreadMessageCount ??
+                    roomUpdate.unreadNotifications?.notificationCount,
                 prev_batch: roomUpdate.timeline?.prevBatch,
                 summary: roomUpdate.summary,
                 lastEvent: lastEvent,
@@ -1331,6 +1334,10 @@ class MatrixSdkDatabase extends DatabaseApi with DatabaseFileStorage {
           notificationCount:
               roomUpdate.unreadNotifications?.notificationCount ??
               currentRoom.notificationCount,
+          unreadMessageCount:
+              roomUpdate.unreadMessageCount ??
+              roomUpdate.unreadNotifications?.notificationCount ??
+              currentRoom.unreadMessageCount,
           prev_batch: roomUpdate.timeline?.prevBatch ?? currentRoom.prev_batch,
           summary: RoomSummary.fromJson(
             currentRoom.summary.toJson()

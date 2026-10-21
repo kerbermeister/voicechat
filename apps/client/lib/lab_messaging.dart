@@ -14,13 +14,17 @@ import 'album_view.dart';
 import 'picked_file.dart';
 import 'chunked_file.dart';
 
+class LabFailure extends StateError {
+  LabFailure(super.message);
+}
+
 // Identical compressed bytes on Android and web, independent of platform zlib.
 Uint8List get testImage => base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAD0lEQVR4nGOoCDjBQCIAAE4EAZEI+d7NAAAAAElFTkSuQmCC',
 );
 Uint8List get testVoice => voiceWav(Uint8List(3200));
 void check(bool condition, String failure) {
-  if (!condition) throw StateError(failure);
+  if (!condition) throw LabFailure(failure);
 }
 
 Future<void> waitCheck(
@@ -33,7 +37,7 @@ Future<void> waitCheck(
     if (await condition()) return;
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
-  throw StateError(failure);
+  throw LabFailure(failure);
 }
 
 Future<void> exerciseMessages(
@@ -62,7 +66,7 @@ Future<void> exerciseMessages(
   try {
     await queue.flush();
     await waitCheck(() async => queue.pending.isEmpty, 'Outbox did not drain');
-    final timeline = await room.getTimeline();
+    final timeline = await room.getTimeline(limit: 1000);
     try {
       await waitCheck(
         () async => visibleMessages(timeline, 'offline-$run').length == 1,
@@ -195,7 +199,7 @@ Future<void> checkAttachments(
   mx.Room room, {
   bool serverCiphertext = false,
 }) async {
-  final timeline = await room.getTimeline();
+  final timeline = await room.getTimeline(limit: 1000);
   try {
     for (final fixture in {
       'test-image.png': testImage,

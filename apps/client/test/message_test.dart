@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:matrix/encryption.dart';
 import 'package:voicechat_probe/matrix_probe.dart';
+import 'package:voicechat_probe/contact_service.dart';
 
 class TestRoom implements Room {
   @override
@@ -120,7 +122,113 @@ class LoggedInClient extends TestClient {
   bool get encryptionEnabled => true;
 }
 
+class OfflinePeer extends TestDevice {
+  @override
+  String get userId => '@peer:local';
+  @override
+  bool get isValid => true;
+}
+
+class OfflineClient extends TestClient {
+  String peerMembership = 'invite';
+  OfflineClient() {
+    userDeviceKeys['@peer:local'] = DeviceKeysList(
+      '@peer:local',
+      this,
+      deviceKeys: {'DEVICE': OfflinePeer()..directVerified = true},
+    );
+  }
+  @override
+  Future<void> updateUserDeviceKeys({Set<String>? additionalUsers}) async {
+    for (final list in userDeviceKeys.values) {
+      list.outdated = false;
+    }
+  }
+
+  @override
+  Future<Map<String, Object?>> getRoomStateWithKey(
+    String roomId,
+    String eventType,
+    String stateKey, {
+    Format? format,
+  }) async => {'membership': peerMembership};
+}
+
+class OfflineRoom extends TestRoom {
+  final _client = OfflineClient();
+  @override
+  OfflineClient get client => _client;
+  @override
+  bool get isDirectChat => true;
+  @override
+  String get directChatMatrixID => '@peer:local';
+  HistoryVisibility visibility = HistoryVisibility.invited;
+  @override
+  HistoryVisibility get historyVisibility => visibility;
+  OfflineRoom() : super(true, 'event');
+}
+
+class SyncClient extends TestClient {
+  late Room syncingRoom;
+  @override
+  Room? getRoomById(String id) => syncingRoom.id == id ? syncingRoom : null;
+}
+
 void main() {
+  test(
+    'An offline invited peer needs explicit contact consent, current membership and a valid device key',
+    () async {
+      final room = OfflineRoom();
+      await expectLater(authorizedDevices(room), throwsStateError);
+      final service = ContactService(room.client, 'http://localhost:8090');
+      addTearDown(service.close);
+      ContactRequest consent(String state) => ContactRequest.fromJson({
+        'id': 'a' * 32,
+        'sender': room.client.userID,
+        'recipient': room.directChatMatrixID,
+        'room_id': room.id,
+        'state': state,
+      });
+      service.requests = [consent('pending')];
+      await expectLater(authorizedDevices(room), throwsStateError);
+      service.requests = [consent('accepted')];
+      expect(
+        (await authorizedDevices(room)).single.userId,
+        room.directChatMatrixID,
+      );
+      room.client.peerMembership = 'leave';
+      await expectLater(authorizedDevices(room), throwsStateError);
+      room.client.peerMembership = 'invite';
+      room.visibility = HistoryVisibility.joined;
+      await expectLater(authorizedDevices(room), throwsStateError);
+      room.visibility = HistoryVisibility.invited;
+      room.client.userDeviceKeys[room.directChatMatrixID]!.deviceKeys.clear();
+      await expectLater(authorizedDevices(room), throwsStateError);
+    },
+  );
+
+  test(
+    'A newly joined room waits for encrypted state before it becomes usable',
+    () async {
+      final client = SyncClient();
+      final room = client.syncingRoom = Room(id: '!sync:local', client: client);
+      final timer = Timer(const Duration(milliseconds: 10), () {
+        room.states[EventTypes.Encryption] = {
+          '': StrippedStateEvent(
+            type: EventTypes.Encryption,
+            stateKey: '',
+            senderId: client.userID,
+            content: {'algorithm': 'm.megolm.v1.aes-sha2'},
+          ),
+        };
+      });
+      addTearDown(timer.cancel);
+      expect(room.encrypted, false);
+      expect(await MatrixProbe(client).room(room.id), same(room));
+      expect(room.encrypted, true);
+    },
+  );
+
   test(
     'An existing profile cannot silently open the wrong account or server',
     () async {

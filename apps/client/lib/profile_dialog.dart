@@ -4,6 +4,7 @@ import 'package:matrix/matrix.dart' as mx;
 import 'contact_service.dart';
 import 'conversation_list.dart';
 import 'presence_tracker.dart';
+import 'theme.dart';
 
 class ProfileDialog extends StatefulWidget {
   final mx.Client client;
@@ -109,7 +110,7 @@ class _ProfileDialogState extends State<ProfileDialog> {
                     Icons.circle,
                     size: 9,
                     color: online
-                        ? const Color(0xFF39835F)
+                        ? onlinePresenceColor(Theme.of(context).colorScheme)
                         : Theme.of(context).colorScheme.outline,
                   ),
                   const SizedBox(width: 6),

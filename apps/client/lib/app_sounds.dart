@@ -38,7 +38,6 @@ class AppSounds {
     events = client.onTimelineEvent.stream.listen((event) {
       if (event.type != mx.EventTypes.Message ||
           event.redacted ||
-          event.room.pushRuleState == mx.PushRuleState.dontNotify ||
           event.senderId == client.userID ||
           event.originServerTs.isBefore(opened) ||
           event.relationshipType == mx.RelationshipTypes.edit ||
@@ -50,6 +49,7 @@ class AppSounds {
         return;
       }
       if (seen.length > 2000) seen.remove(seen.first);
+      if (event.room.pushRuleState == mx.PushRuleState.dontNotify) return;
       unawaited(_play(effect, 'received'));
     });
   }

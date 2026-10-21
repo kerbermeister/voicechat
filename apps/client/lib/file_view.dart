@@ -127,7 +127,10 @@ class _FileViewState extends State<FileView> {
               if ((file!.content['caption'] as String? ?? '').isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: SelectableText(file!.content['caption'] as String),
+                  child: SelectableText(
+                    file!.content['caption'] as String,
+                    semanticsLabel: file!.content['caption'] as String,
+                  ),
                 ),
             ],
           ),

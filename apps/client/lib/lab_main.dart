@@ -45,7 +45,7 @@ final progress = ValueNotifier<String>('Подготовка проверок…
 String userId(int index) => '@${users[index]}:voicechat.local';
 
 void require(bool condition, String message) {
-  if (!condition) throw StateError(message);
+  if (!condition) throw LabFailure(message);
 }
 
 Future<void> report(
@@ -71,7 +71,7 @@ Future<void> until(
     if (await check()) return;
     await Future<void>.delayed(const Duration(milliseconds: 500));
   }
-  throw TimeoutException(failure);
+  throw LabFailure(failure);
 }
 
 Future<Map<String, dynamic>> barrier(String stage) async {
@@ -149,7 +149,7 @@ Future<void> checkRememberedTrust(MatrixProbe probe) async {
 }
 
 Future<mx.Event> text(mx.Room room, String body) async {
-  final timeline = await room.getTimeline();
+  final timeline = await room.getTimeline(limit: 1000);
   mx.Event? found;
   try {
     await until(() async {
@@ -158,6 +158,9 @@ Future<mx.Event> text(mx.Room room, String body) async {
           found = event;
           return true;
         }
+      }
+      if (timeline.canRequestHistory) {
+        await timeline.requestHistory(historyCount: 100);
       }
       return false;
     }, 'Message did not decrypt: $body');
@@ -633,7 +636,9 @@ void main() {
       }
     } catch (error, stack) {
       // Never send credentials, recovery keys or SDK exception payloads to logs.
-      debugPrint('LAB FAILED: ${error.runtimeType}\n$stack');
+      debugPrint(
+        'LAB FAILED: ${error is LabFailure ? error.message : error.runtimeType}\n$stack',
+      );
       await report('failed', {'detail': error.runtimeType.toString()});
     }
   }());

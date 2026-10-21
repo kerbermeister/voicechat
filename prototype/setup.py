@@ -54,6 +54,8 @@ media_store_path: /data/media_store
 signing_key_path: /data/voicechat.signing.key
 registration_shared_secret: "{s['registration']}"
 macaroon_secret_key: "{s['macaroon']}"
+experimental_features:
+  msc2654_enabled: true
 enable_registration: true
 registrations_require_3pid: [email]
 enable_registration_without_verification: false

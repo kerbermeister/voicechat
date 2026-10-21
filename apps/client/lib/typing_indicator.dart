@@ -129,11 +129,16 @@ class _TypingIndicatorState extends State<TypingIndicator> {
                   ),
                   const SizedBox(width: 5),
                   Flexible(
-                    child: Text(
-                      label,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelSmall?.copyWith(color: colors.primary),
+                    child: Tooltip(
+                      message: label,
+                      child: Text(
+                        label,
+                        maxLines: widget.compact ? 1 : null,
+                        overflow: widget.compact ? TextOverflow.ellipsis : null,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.labelSmall?.copyWith(color: colors.primary),
+                      ),
                     ),
                   ),
                 ],

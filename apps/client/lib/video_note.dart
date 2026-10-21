@@ -4,18 +4,23 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'picked_file.dart';
 import 'file_io.dart';
+import 'active_capture.dart';
 
-Future<({PickedFile file, int duration})?> recordVideoNote(
+Future<({PickedFile file, int duration, bool interrupted})?> recordVideoNote(
   BuildContext context,
   int maxSeconds, {
   ValueNotifier<bool>? held,
   void Function(bool)? onRecording,
-}) => showDialog<({PickedFile file, int duration})>(
-  context: context,
-  barrierDismissible: false,
-  builder: (_) =>
-      _Recorder(maxSeconds: maxSeconds, held: held, onRecording: onRecording),
-);
+}) async {
+  await stopActiveCapture();
+  if (!context.mounted) return null;
+  return showDialog<({PickedFile file, int duration, bool interrupted})>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) =>
+        _Recorder(maxSeconds: maxSeconds, held: held, onRecording: onRecording),
+  );
+}
 
 class _Recorder extends StatefulWidget {
   final int maxSeconds;
@@ -29,22 +34,28 @@ class _Recorder extends StatefulWidget {
 class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
   List<CameraDescription> cameras = [];
   CameraController? camera;
+  Future<void>? cameraDisposal;
   bool busy = false;
   String? error;
   final clock = Stopwatch();
   Timer? timer;
   int index = 0;
+  late final Future<void> initializing;
+  late final Future<void> Function() captureCancellation = cancelForCall;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.held?.addListener(releaseHold);
-    init();
+    initializing = init();
+    registerCapture(captureCancellation);
   }
 
   Future<void> init() async {
+    if (mounted) setState(() => error = null);
     try {
-      cameras = await availableCameras();
+      cameras = await availableCameras().timeout(const Duration(seconds: 10));
+      if (!mounted) return;
       index = cameras.indexWhere(
         (c) => c.lensDirection == CameraLensDirection.front,
       );
@@ -59,7 +70,9 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
       }
     } catch (_) {
       if (mounted) {
-        setState(() => error = 'Разрешите доступ к камере и микрофону.');
+        setState(
+          () => error = 'Камера не ответила. Проверьте разрешения и повторите.',
+        );
       }
     }
   }
@@ -72,7 +85,18 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
       enableAudio: true,
     );
     camera = next;
-    await next.initialize();
+    try {
+      await next.initialize().timeout(const Duration(seconds: 30));
+    } catch (_) {
+      if (identical(camera, next)) camera = null;
+      unawaited(
+        next
+            .dispose()
+            .timeout(const Duration(seconds: 5))
+            .catchError((Object _) {}),
+      );
+      rethrow;
+    }
     if (mounted) {
       setState(() {});
     } else {
@@ -80,8 +104,40 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> closeCamera() async {
+    final previous = camera;
+    if (previous == null) {
+      await cameraDisposal;
+      return;
+    }
+    camera = null;
+    if (mounted) {
+      setState(() {});
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    await (cameraDisposal = previous.dispose());
+  }
+
+  Future<void> cancelForCall() async {
+    await initializing;
+    while (busy && mounted) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    if (!mounted) {
+      await cameraDisposal;
+      return;
+    }
+    if (clock.isRunning) {
+      await finish(interrupted: true);
+      await closeCamera();
+    } else {
+      await closeCamera();
+      if (mounted) Navigator.pop(context);
+    }
+  }
+
   void releaseHold() {
-    if (widget.held?.value == false && clock.isRunning && !busy) {
+    if (mounted && widget.held?.value == false && clock.isRunning && !busy) {
       unawaited(finish());
     }
   }
@@ -92,17 +148,21 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
     final next = (index + 1) % cameras.length;
     try {
       if (clock.isRunning) {
-        await camera!.setDescription(cameras[next]);
+        await camera!
+            .setDescription(cameras[next])
+            .timeout(const Duration(seconds: 15));
         index = next;
       } else {
-        await camera?.dispose();
+        await closeCamera().timeout(const Duration(seconds: 5));
+        if (!mounted) return;
         index = next;
         await open();
       }
     } catch (_) {
       if (mounted) {
         setState(
-          () => error = 'Камера не переключилась. Текущая запись сохранена.',
+          () => error =
+              'Не удалось переключить камеру. Повторите или отмените запись.',
         );
       }
     } finally {
@@ -114,7 +174,8 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
   Future<void> start() async {
     setState(() => busy = true);
     try {
-      await camera!.startVideoRecording();
+      await camera!.startVideoRecording().timeout(const Duration(seconds: 15));
+      if (!mounted) return;
       clock.start();
       widget.onRecording?.call(true);
       timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
@@ -129,14 +190,16 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> finish({bool discard = false}) async {
+  Future<void> finish({bool discard = false, bool interrupted = false}) async {
     if (busy) return;
     setState(() => busy = true);
     timer?.cancel();
     clock.stop();
     widget.onRecording?.call(false);
     try {
-      final recorded = await camera!.stopVideoRecording();
+      final recorded = await camera!.stopVideoRecording().timeout(
+        const Duration(seconds: 15),
+      );
       final size = await recorded.length();
       if (discard || !mounted) {
         await deleteRecording(recorded.path);
@@ -162,6 +225,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
       if (mounted) {
         Navigator.pop(context, (
           file: source,
+          interrupted: interrupted,
           duration: clock.elapsedMilliseconds.clamp(
             1,
             widget.maxSeconds * 1000,
@@ -181,7 +245,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive && clock.isRunning) {
-      finish(discard: true);
+      finish(interrupted: true);
     }
   }
 
@@ -219,12 +283,17 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
     actions: [
       TextButton(
         onPressed: busy
-            ? null
+            ? () => Navigator.pop(context)
             : () => clock.isRunning
                   ? finish(discard: true)
                   : Navigator.pop(context),
         child: const Text('Отмена'),
       ),
+      if (error != null && !clock.isRunning)
+        TextButton(
+          onPressed: busy ? null : init,
+          child: const Text('Повторить'),
+        ),
       if (cameras.length > 1)
         IconButton(
           tooltip: 'Переключить камеру',
@@ -241,11 +310,21 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
   );
   @override
   void dispose() {
+    releaseCapture(captureCancellation);
+    clock.stop();
     widget.onRecording?.call(false);
     WidgetsBinding.instance.removeObserver(this);
     widget.held?.removeListener(releaseHold);
     timer?.cancel();
-    camera?.dispose();
+    if (camera != null) {
+      cameraDisposal = camera!.dispose();
+      camera = null;
+    }
+    unawaited(
+      cameraDisposal
+          ?.timeout(const Duration(seconds: 5))
+          .catchError((Object _) {}),
+    );
     super.dispose();
   }
 }

@@ -33,6 +33,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/save")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "cacheDirectory" -> result.success(cacheDir.canonicalPath)
                     "begin" -> {
                         if (saveResult != null) { result.error("busy", "Save picker is open", null); return@setMethodCallHandler }
                         saveResult = result

@@ -55,6 +55,9 @@ class ContactStore:
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
             existing = db.execute('SELECT * FROM contacts WHERE pair=?', (pair,)).fetchone()
+            if existing and existing['state'] == 'cancelled':
+                db.execute('DELETE FROM contacts WHERE pair=?', (pair,))
+                existing = None
             if existing:
                 if existing['state'] == 'accepted' and existing['room_id'] != room:
                     db.execute('UPDATE contacts SET sender=?,recipient=?,room_id=?,updated=? WHERE pair=?', (sender,recipient,room,now,pair))

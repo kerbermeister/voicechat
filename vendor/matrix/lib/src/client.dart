@@ -2581,6 +2581,8 @@ class Client extends MatrixApi {
       await database.storePresence(newPresence.senderId, cachedPresence);
     }
     for (final newAccountData in sync.accountData ?? <BasicEvent>[]) {
+      // Local trust pins and the outbox must never be replaced by server data.
+      if (newAccountData.type.startsWith('dev.voicechat.local.')) continue;
       await database.storeAccountData(
         newAccountData.type,
         newAccountData.content,
@@ -3055,6 +3057,9 @@ class Client extends MatrixApi {
                       chatUpdate.unreadNotifications?.highlightCount ?? 0,
                   notificationCount:
                       chatUpdate.unreadNotifications?.notificationCount ?? 0,
+                  unreadMessageCount:
+                      chatUpdate.unreadMessageCount ??
+                      chatUpdate.unreadNotifications?.notificationCount,
                   summary: chatUpdate.summary,
                   client: this,
                 )
@@ -3106,6 +3111,12 @@ class Client extends MatrixApi {
       }
       rooms[roomIndex].membership = membership;
 
+      if (chatUpdate.unreadMessageCount != null ||
+          chatUpdate.unreadNotifications != null) {
+        rooms[roomIndex].unreadMessageCount =
+            chatUpdate.unreadMessageCount ??
+            chatUpdate.unreadNotifications?.notificationCount;
+      }
       if (chatUpdate.unreadNotifications != null) {
         rooms[roomIndex].notificationCount =
             chatUpdate.unreadNotifications?.notificationCount ?? 0;

@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'typing_indicator.dart';
 import 'avatar_image.dart';
+import 'theme.dart';
 
 Uri? roomAvatar(mx.Room room) {
   final value =
-      room.getState(mx.EventTypes.RoomAvatar)?.content['url'] ??
-      (room.directChatMatrixID != null
+      room.directChatMatrixID != null
           ? room
                 .getState(mx.EventTypes.RoomMember, room.directChatMatrixID!)
                 ?.content['avatar_url']
-          : null);
+          : room.getState(mx.EventTypes.RoomAvatar)?.content['url'];
   if (value is! String) return null;
   final uri = Uri.tryParse(value);
   return uri?.scheme == 'mxc' ? uri : null;
@@ -128,7 +128,7 @@ class PersonAvatar extends StatelessWidget {
                 width: 13,
                 height: 13,
                 decoration: BoxDecoration(
-                  color: online ? const Color(0xFF39835F) : colors.outline,
+                  color: online ? onlinePresenceColor(colors) : colors.outline,
                   shape: BoxShape.circle,
                   border: Border.all(color: colors.surface, width: 2),
                 ),
@@ -150,6 +150,7 @@ class ConversationList extends StatefulWidget {
   final VoidCallback? onInvitations;
   final VoidCallback? onSearch;
   final Uri? ownAvatar;
+  final bool ownOnline;
   final VoidCallback? onProfile;
   final void Function(mx.Room, String)? onChatMenu;
   final int contactInvites;
@@ -167,6 +168,7 @@ class ConversationList extends StatefulWidget {
     this.onInvitations,
     this.onSearch,
     this.ownAvatar,
+    this.ownOnline = false,
     this.onProfile,
     this.onChatMenu,
     this.contactInvites = 0,
@@ -206,7 +208,9 @@ class _ConversationListState extends State<ConversationList> {
     final invites =
         widget.contactInvites +
         widget.client.rooms
-            .where((r) => r.membership == mx.Membership.invite)
+            .where(
+              (r) => r.membership == mx.Membership.invite && !r.isDirectChat,
+            )
             .length;
     int unread(bool groups) => widget.client.rooms
         .where(
@@ -214,7 +218,7 @@ class _ConversationListState extends State<ConversationList> {
               r.membership == mx.Membership.join &&
               !widget.hiddenDirectRooms.contains(r.id) &&
               r.isDirectChat != groups &&
-              r.notificationCount > 0,
+              (r.unreadMessageCount ?? r.notificationCount) > 0,
         )
         .length;
     Widget tab(String label, int count) => Row(
@@ -309,6 +313,7 @@ class _ConversationListState extends State<ConversationList> {
                       name: name,
                       client: widget.client,
                       url: widget.ownAvatar,
+                      online: widget.ownOnline,
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -437,6 +442,9 @@ class _ConversationListState extends State<ConversationList> {
                             ),
                             itemBuilder: (_, index) {
                               final room = rooms[index];
+                              final messageCount =
+                                  room.unreadMessageCount ??
+                                  room.notificationCount;
                               final selected = room.id == widget.selected?.id;
                               final presence = roomPresence(room);
                               final name = roomDisplayName(room);
@@ -513,8 +521,7 @@ class _ConversationListState extends State<ConversationList> {
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
-                                              fontWeight:
-                                                  room.notificationCount > 0
+                                              fontWeight: messageCount > 0
                                                   ? FontWeight.w700
                                                   : FontWeight.w500,
                                             ),
@@ -543,7 +550,9 @@ class _ConversationListState extends State<ConversationList> {
                                           style: theme.textTheme.labelSmall
                                               ?.copyWith(
                                                 color: presence == 'В сети'
-                                                    ? const Color(0xFF39835F)
+                                                    ? onlinePresenceColor(
+                                                        colors,
+                                                      )
                                                     : colors.onSurfaceVariant,
                                               ),
                                         ),
@@ -564,15 +573,14 @@ class _ConversationListState extends State<ConversationList> {
                                                       .bodySmall
                                                       ?.copyWith(
                                                         fontWeight:
-                                                            room.notificationCount >
-                                                                0
+                                                            messageCount > 0
                                                             ? FontWeight.w600
                                                             : FontWeight.w400,
                                                       ),
                                                 ),
                                               ),
                                             ),
-                                            if (room.notificationCount > 0)
+                                            if (messageCount > 0)
                                               Container(
                                                 width: 28,
                                                 height: 28,
@@ -582,15 +590,13 @@ class _ConversationListState extends State<ConversationList> {
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: Text(
-                                                  room.notificationCount > 999
+                                                  messageCount > 999
                                                       ? '999+'
-                                                      : '${room.notificationCount}',
+                                                      : '$messageCount',
                                                   style: TextStyle(
                                                     color: colors.onPrimary,
                                                     fontWeight: FontWeight.w700,
-                                                    fontSize:
-                                                        room.notificationCount >
-                                                            99
+                                                    fontSize: messageCount > 99
                                                         ? 10
                                                         : 12,
                                                   ),

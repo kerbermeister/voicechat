@@ -152,6 +152,7 @@ class JoinedRoomUpdate extends SyncRoomUpdate {
   List<BasicEvent>? ephemeral;
   List<BasicEvent>? accountData;
   UnreadNotificationCounts? unreadNotifications;
+  int? unreadMessageCount;
 
   JoinedRoomUpdate({
     this.summary,
@@ -160,10 +161,12 @@ class JoinedRoomUpdate extends SyncRoomUpdate {
     this.ephemeral,
     this.accountData,
     this.unreadNotifications,
+    this.unreadMessageCount,
   });
 
   JoinedRoomUpdate.fromJson(Map<String, Object?> json)
-    : summary = json.tryGetFromJson('summary', RoomSummary.fromJson),
+    : unreadMessageCount = json.tryGet<int>('org.matrix.msc2654.unread_count'),
+      summary = json.tryGetFromJson('summary', RoomSummary.fromJson),
       state = json
           .tryGetMap<String, List<Object?>>('state')?['events']
           ?.map((i) => MatrixEvent.fromJson(i as Map<String, Object?>))
@@ -203,6 +206,8 @@ class JoinedRoomUpdate extends SyncRoomUpdate {
         'events': accountData!.map((i) => i.toJson()).toList(),
       };
     }
+    if (unreadMessageCount != null)
+      data['org.matrix.msc2654.unread_count'] = unreadMessageCount;
     if (unreadNotifications != null) {
       data['unread_notifications'] = unreadNotifications!.toJson();
     }
