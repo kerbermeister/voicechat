@@ -313,104 +313,133 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         margin: const EdgeInsets.symmetric(vertical: 5),
         padding: const EdgeInsets.fromLTRB(14, 8, 6, 10),
         decoration: BoxDecoration(
-          color: own ? colors.primaryContainer : colors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(20),
+          color: own ? colors.primary : colors.surfaceContainerLowest,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(24),
+            topRight: const Radius.circular(24),
+            bottomLeft: Radius.circular(own ? 24 : 6),
+            bottomRight: Radius.circular(own ? 6 : 24),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: colors.primary.withValues(alpha: .035),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
+        child: DefaultTextStyle.merge(
+          style: TextStyle(color: own ? colors.onPrimary : colors.onSurface),
+          child: IconTheme.merge(
+            data: IconThemeData(
+              color: own ? colors.onPrimary : colors.onSurfaceVariant,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Flexible(
-                  child: Text(
-                    own ? 'Вы' : event.senderId,
-                    style: Theme.of(context).textTheme.labelSmall,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        own ? 'Вы' : event.senderId,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: own
+                              ? colors.onPrimary.withValues(alpha: .8)
+                              : colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    if (!event.redacted &&
+                        event.type != mx.EventTypes.Encrypted)
+                      PopupMenuButton<String>(
+                        tooltip: 'Действия с сообщением',
+                        onSelected: (action) =>
+                            perform(() => eventAction(event, action)),
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(
+                            value: 'reply',
+                            child: Text('Ответить'),
+                          ),
+                          if (own && shown.messageType == mx.MessageTypes.Text)
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Text('Редактировать'),
+                            ),
+                          if (event.canRedact)
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: Text('Удалить'),
+                            ),
+                          ...chatEmoji.map(
+                            (emoji) =>
+                                PopupMenuItem(value: emoji, child: Text(emoji)),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+                if (event.inReplyToEventId() != null)
+                  FutureBuilder<mx.Event?>(
+                    future: event.getReplyEvent(widget.timeline),
+                    builder: (_, snapshot) => Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          left: BorderSide(color: colors.primary, width: 3),
+                        ),
+                      ),
+                      child: Text(
+                        snapshot.data?.redacted == true
+                            ? 'Удалённое сообщение'
+                            : snapshot.data
+                                      ?.getDisplayEvent(widget.timeline)
+                                      .body ??
+                                  'Ответ на сообщение',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                if (event.redacted)
+                  const Text('Сообщение удалено')
+                else if (event.type == mx.EventTypes.Encrypted)
+                  const Text('Нет ключа. Восстановите историю.')
+                else if ({
+                  mx.MessageTypes.Image,
+                  mx.MessageTypes.Audio,
+                }.contains(shown.messageType))
+                  AttachmentView(key: ValueKey(shown.eventId), event: shown)
+                else
+                  SelectableText(
+                    shown.calcUnlocalizedBody(hideReply: true),
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                const SizedBox(height: 4),
+                Text(
+                  '${TimeOfDay.fromDateTime(event.originServerTs.toLocal()).format(context)}${shown.eventId != event.eventId ? ' · изменено' : ''}${own ? (messageIsRead(event, widget.timeline) ? ' · прочитано' : ' · отправлено') : ''}',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: own
+                        ? colors.onPrimary.withValues(alpha: .8)
+                        : colors.onSurfaceVariant,
                   ),
                 ),
-                if (!event.redacted && event.type != mx.EventTypes.Encrypted)
-                  PopupMenuButton<String>(
-                    tooltip: 'Действия с сообщением',
-                    onSelected: (action) =>
-                        perform(() => eventAction(event, action)),
-                    itemBuilder: (_) => [
-                      const PopupMenuItem(
-                        value: 'reply',
-                        child: Text('Ответить'),
-                      ),
-                      if (own && shown.messageType == mx.MessageTypes.Text)
-                        const PopupMenuItem(
-                          value: 'edit',
-                          child: Text('Редактировать'),
-                        ),
-                      if (event.canRedact)
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Удалить'),
-                        ),
-                      ...chatEmoji.map(
-                        (emoji) =>
-                            PopupMenuItem(value: emoji, child: Text(emoji)),
-                      ),
-                    ],
+                if (reactions.isNotEmpty)
+                  Wrap(
+                    spacing: 4,
+                    children: reactions.entries
+                        .map(
+                          (r) => ActionChip(
+                            label: Text('${r.key} ${r.value}'),
+                            onPressed: () => perform(() => react(event, r.key)),
+                          ),
+                        )
+                        .toList(),
                   ),
               ],
             ),
-            if (event.inReplyToEventId() != null)
-              FutureBuilder<mx.Event?>(
-                future: event.getReplyEvent(widget.timeline),
-                builder: (_, snapshot) => Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      left: BorderSide(color: colors.primary, width: 3),
-                    ),
-                  ),
-                  child: Text(
-                    snapshot.data?.redacted == true
-                        ? 'Удалённое сообщение'
-                        : snapshot.data
-                                  ?.getDisplayEvent(widget.timeline)
-                                  .body ??
-                              'Ответ на сообщение',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-            if (event.redacted)
-              const Text('Сообщение удалено')
-            else if (event.type == mx.EventTypes.Encrypted)
-              const Text('Нет ключа. Восстановите историю.')
-            else if ({
-              mx.MessageTypes.Image,
-              mx.MessageTypes.Audio,
-            }.contains(shown.messageType))
-              AttachmentView(key: ValueKey(shown.eventId), event: shown)
-            else
-              SelectableText(
-                shown.calcUnlocalizedBody(hideReply: true),
-                style: const TextStyle(fontSize: 16),
-              ),
-            const SizedBox(height: 4),
-            Text(
-              '${TimeOfDay.fromDateTime(event.originServerTs.toLocal()).format(context)}${shown.eventId != event.eventId ? ' · изменено' : ''}${own ? (messageIsRead(event, widget.timeline) ? ' · прочитано' : ' · отправлено') : ''}',
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
-            if (reactions.isNotEmpty)
-              Wrap(
-                spacing: 4,
-                children: reactions.entries
-                    .map(
-                      (r) => ActionChip(
-                        label: Text('${r.key} ${r.value}'),
-                        onPressed: () => perform(() => react(event, r.key)),
-                      ),
-                    )
-                    .toList(),
-              ),
-          ],
+          ),
         ),
       ),
     );
@@ -551,8 +580,13 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             ),
           )
         else
-          Padding(
-            padding: const EdgeInsets.all(12),
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLowest,
+              borderRadius: BorderRadius.circular(26),
+            ),
             child: Row(
               children: [
                 IconButton(
@@ -680,6 +714,11 @@ class _AttachmentViewState extends State<AttachmentView> {
             onPressed: play,
             icon: Icon(playing ? Icons.pause_circle : Icons.play_circle),
           ),
+          Icon(
+            Icons.graphic_eq_rounded,
+            color: Theme.of(context).colorScheme.tertiary,
+          ),
+          const SizedBox(width: 8),
           Flexible(
             child: Text(
               'Голосовое сообщение · ${((widget.event.infoMap['duration'] as num? ?? 0) / 1000).round()} с',

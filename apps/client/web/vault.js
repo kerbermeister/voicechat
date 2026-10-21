@@ -38,9 +38,11 @@
     if (!value) throw new Error('Vault is locked');
     return value;
   }
-  async function open(name, password) {
+  async function open(name, password, remember = false) {
     if (!isSecureContext || !crypto.subtle || !navigator.locks || !indexedDB.databases) throw new Error('Secure context and a modern browser are required');
-    if (password.length < 12 || password.length > 1024) throw new Error('Use a separate passphrase of 12–1024 characters');
+    const resuming = password === null;
+    const resumeName = `voicechat.unlock:${name}`;
+    if (!resuming && (typeof password !== 'string' || password.length < 12 || password.length > 1024)) throw new Error('Use a separate passphrase of 12–1024 characters');
     let release;
     const held = new Promise(resolve => { release = resolve; });
     let acquired;
@@ -61,8 +63,19 @@
       if (!header && databases.some(d => d.name === `${name}.encrypted`)) throw new Error('Vault header is missing; restore history instead of overwriting data');
       const salt = header ? unb64(header.salt) : bytes(16);
       if (salt.length !== 16 || (header && header.v !== 1)) throw new Error('Unsupported vault format');
-      const material = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveKey']);
-      const key = await crypto.subtle.deriveKey({name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 600000}, material, {name: 'AES-GCM', length: 256}, false, ['encrypt', 'decrypt']);
+      let raw;
+      if (resuming) {
+        const saved = sessionStorage.getItem(resumeName);
+        if (!header || !saved) throw new Error('Unlock the vault with your local passphrase');
+        raw = unb64(saved);
+      } else {
+        const material = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
+        raw = new Uint8Array(await crypto.subtle.deriveBits({name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 600000}, material, 256));
+      }
+      if (raw.length !== 32) throw new Error('Invalid session key');
+      const key = await crypto.subtle.importKey('raw', raw, {name: 'AES-GCM'}, false, ['encrypt', 'decrypt']);
+      const resumeKey = remember ? b64(raw) : null;
+      raw.fill(0);
       if (header) {
         if (await unseal(key, name, 'meta', 'header', header.check) !== 'voicechat-vault-v1') throw new Error('Invalid vault check');
       } else {
@@ -72,8 +85,12 @@
         txn.objectStore('meta').put(header, 'header');
         await done;
       }
+      // Opt-in tab session only: never persist the account password or vault passphrase.
+      if (remember) sessionStorage.setItem(resumeName, resumeKey);
+      else sessionStorage.removeItem(resumeName);
       sessions.set(name, {key, release, lockTask});
     } catch (error) {
+      if (resuming) sessionStorage.removeItem(resumeName);
       release();
       await lockTask;
       throw error;
@@ -82,6 +99,7 @@
     }
   }
   async function close(name) {
+    sessionStorage.removeItem(`voicechat.unlock:${name}`);
     const value = sessions.get(name);
     if (!value) return;
     sessions.delete(name);
@@ -90,9 +108,12 @@
   }
   globalThis.voicechatVault = Object.freeze({
     open, close,
+    readAccount: () => sessionStorage.getItem('voicechat.account'),
+    writeAccount: value => value === null ? sessionStorage.removeItem('voicechat.account') : sessionStorage.setItem('voicechat.account', value),
     encrypt: (name, store, id, text) => seal(session(name).key, name, store, id, text),
     decrypt: (name, store, id, envelope) => unseal(session(name).key, name, store, id, envelope),
     async erase(name) {
+      sessionStorage.removeItem(`voicechat.unlock:${name}`);
       if (sessions.has(name)) throw new Error('Close the vault before erasing');
       await navigator.locks.request(`voicechat:${name}`, {ifAvailable: true}, async lock => {
         if (!lock) throw new Error('Profile in use');

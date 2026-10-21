@@ -4,7 +4,13 @@ import 'package:matrix/matrix.dart' as mx;
 class PeoplePicker extends StatefulWidget {
   final mx.Client client;
   final bool multiple;
-  const PeoplePicker({super.key, required this.client, this.multiple = false});
+  final String? title;
+  const PeoplePicker({
+    super.key,
+    required this.client,
+    this.multiple = false,
+    this.title,
+  });
   @override
   State<PeoplePicker> createState() => _PeoplePickerState();
 }
@@ -60,7 +66,10 @@ class _PeoplePickerState extends State<PeoplePicker> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: Text(widget.multiple ? 'Добавить участников' : 'Новая переписка'),
+    title: Text(
+      widget.title ??
+          (widget.multiple ? 'Добавить участников' : 'Найти человека'),
+    ),
     content: SizedBox(
       width: 480,
       height: 400,

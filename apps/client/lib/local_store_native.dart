@@ -4,11 +4,18 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:matrix/matrix.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart' as sql;
 
+String? readTabAccount() => null;
+void writeTabAccount(String? value) {}
+
 const vault = FlutterSecureStorage(
   aOptions: AndroidOptions(resetOnError: false),
 );
 
-Future<MatrixSdkDatabase> openStore(String name, {String? passphrase}) async {
+Future<MatrixSdkDatabase> openStore(
+  String name, {
+  String? passphrase,
+  bool remember = false,
+}) async {
   final root = await sql.getDatabasesPath();
   if (await sql.databaseExists('$root/$name.db')) {
     // Never silently abandon or delete an unencrypted prototype history.

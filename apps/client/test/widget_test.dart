@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,6 +25,36 @@ void main() {
       expect(
         (await SharedPreferences.getInstance()).getString('palette'),
         'midnight',
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'Saved profile restores account and connection without asking for account password',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'lastAccount': jsonEncode({
+          'username': '@anna:local',
+          'profile': 'annas-browser',
+          'server': 'http://localhost:8008',
+          'tokenServer': 'http://localhost:8090',
+          'mediaServer': 'ws://localhost:7880',
+        }),
+      });
+      await tester.pumpWidget(const VoiceChatApp());
+      await tester.pumpAndSettle();
+      expect(find.text('@anna:local'), findsOneWidget);
+      expect(find.text('Открыть переписку'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Пароль аккаунта'), findsNothing);
+      await tester.tap(find.text('Параметры подключения'));
+      await tester.pumpAndSettle();
+      final fields = tester
+          .widgetList<TextField>(find.byType(TextField))
+          .toList();
+      expect(fields.any((f) => f.controller?.text == 'annas-browser'), true);
+      expect(
+        fields.any((f) => f.controller?.text == 'http://localhost:8008'),
+        true,
       );
       expect(tester.takeException(), isNull);
     },

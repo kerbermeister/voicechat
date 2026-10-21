@@ -3,8 +3,20 @@ import 'dart:js_interop';
 import 'package:matrix/matrix.dart';
 import 'user_action_error.dart';
 
+@JS('voicechatVault.readAccount')
+external JSString? _readAccount();
+@JS('voicechatVault.writeAccount')
+external void _writeAccount(JSString? value);
+
+String? readTabAccount() => _readAccount()?.toDart;
+void writeTabAccount(String? value) => _writeAccount(value?.toJS);
+
 @JS('voicechatVault.open')
-external JSPromise<JSAny?> _open(JSString name, JSString password);
+external JSPromise<JSAny?> _open(
+  JSString name,
+  JSString? password,
+  JSBoolean remember,
+);
 @JS('voicechatVault.close')
 external JSPromise<JSAny?> _close(JSString name);
 @JS('voicechatVault.erase')
@@ -55,12 +67,13 @@ class WebVaultCodec implements DatabaseCodec {
   }
 }
 
-Future<MatrixSdkDatabase> openStore(String name, {String? passphrase}) async {
-  if (passphrase == null) {
-    throw ArgumentError('Local vault passphrase required');
-  }
+Future<MatrixSdkDatabase> openStore(
+  String name, {
+  String? passphrase,
+  bool remember = false,
+}) async {
   try {
-    await _open(name.toJS, passphrase.toJS).toDart;
+    await _open(name.toJS, passphrase?.toJS, remember.toJS).toDart;
   } catch (_) {
     throw UserActionError(
       'Не удалось открыть веб-хранилище. Проверьте локальную фразу (от 12 символов), закройте другие вкладки этого профиля. Старые незашифрованные профили требуют восстановления. Данные не сброшены.',

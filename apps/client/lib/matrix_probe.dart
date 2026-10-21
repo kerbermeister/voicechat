@@ -13,11 +13,19 @@ class MatrixProbe {
   final Client client;
   MatrixProbe(this.client);
 
-  static Future<MatrixProbe> open(String profile, {String? passphrase}) async {
+  static Future<MatrixProbe> open(
+    String profile, {
+    String? passphrase,
+    bool remember = false,
+  }) async {
     _cryptoInit ??= vod.init();
     await _cryptoInit;
     final name = 'voicechat_probe_${Uri.encodeComponent(profile)}';
-    final db = await openStore(name, passphrase: passphrase);
+    final db = await openStore(
+      name,
+      passphrase: passphrase,
+      remember: remember,
+    );
     final client = Client(
       name,
       database: db,

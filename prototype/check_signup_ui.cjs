@@ -1,12 +1,14 @@
 // Verify the real registration screen, including the SDK's UIA flow, against local Mailpit.
 const crypto = require('node:crypto');
+const path = require('node:path');
 const {execFileSync} = require('node:child_process');
 const {chromium} = require('playwright');
 
 (async () => {
   const browser = await chromium.launch({executablePath: process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true});
+  let page;
   try {
-    const page = await browser.newPage({viewport: {width: 1100, height: 900}});
+    page = await browser.newPage({viewport: {width: 1100, height: 900}});
     const button = name => page.getByRole('button', {name, exact: true});
     async function fill(name, value) {
       await page.getByRole('textbox', {name, exact: true}).click(); await page.waitForTimeout(200);
@@ -19,6 +21,7 @@ const {chromium} = require('playwright');
     const username = 'signup' + Date.now();
     const email = username + '@example.test';
     const password = crypto.randomBytes(24).toString('base64url');
+    await page.getByText('Параметры подключения', {exact: true}).click();
     await fill('Профиль устройства', username);
     await fill('Отдельная локальная фраза (от 12 символов)', 'separate signup UI test passphrase');
     await button('Создать аккаунт').click();
@@ -33,10 +36,11 @@ const {chromium} = require('playwright');
     // Reuse the same local email/form verification helper as the backend acceptance test.
     execFileSync('python3', ['-c', 'import sys; from check_registration import validate_email; validate_email(sys.argv[1])', email], {cwd: __dirname, stdio: 'pipe'});
     await button('Почта подтверждена · создать аккаунт').click();
-    await button('Создать группу').waitFor({timeout: 60000});
-    await button('Выйти').click();
+    await button('Настройки').waitFor({timeout: 60000});
+    await button('Настройки').click();
+    await page.getByRole('button', {name: /^Выйти/}).click();
     await page.getByRole('alertdialog').getByRole('button', {name: 'Выйти', exact: true}).click();
     await button('Войти').waitFor({timeout: 30000});
     console.log('PASS: registration UI, confirmed email, SDK login, profile and logout');
-  } finally { await browser.close(); }
+  } catch (error) { await page?.screenshot({path: path.join(__dirname, '../.prototype/ui/signup-failure.png')}).catch(() => {}); throw error; } finally { await browser.close(); }
 })().catch(error => { console.error(error.message); process.exitCode = 1; });
