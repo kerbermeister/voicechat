@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "photo_max_count": 24,
+  "photo_scale": 0.5,
+  "photo_jpeg_quality": 85,
+  "photo_max_bytes": 10485760,
+  "photo_max_pixels": 24000000,
+  "text_max_length": 16000,
+  "voice_max_seconds": 180,
+  "video_note_max_seconds": 60,
+  "video_max_bytes": 314572800,
+  "file_max_bytes": 314572800
+}

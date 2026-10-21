@@ -7,6 +7,7 @@ abstract interface class VoiceCall {
   bool get muted;
   bool get isClosed;
   List<String> get participants;
+  Duration get duration;
   Future<void> mute(bool muted);
   Future<void> close();
 }

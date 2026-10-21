@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:sqflite/sqflite.dart' as plain;
@@ -23,8 +24,11 @@ void main() {
         userId: '@test:example.invalid',
         deviceId: 'TEST',
       );
+      final part = Uint8List(4 * 1024 * 1024)
+        ..fillRange(0, 4 * 1024 * 1024, 73);
+      await writeBlob(name, 'part/0', part);
       await db.close();
-      final bytes = await File(path).readAsBytes();
+      var bytes = await File(path).readAsBytes();
       expect(utf8.decode(bytes, allowMalformed: true), isNot(contains(marker)));
       expect(
         utf8.decode(bytes.take(16).toList(), allowMalformed: true),
@@ -59,7 +63,11 @@ void main() {
       await copy.delete();
       final reopened = await openStore(name);
       expect((await reopened.getClient(name))!['token'], marker);
+      expect(await readBlob(name, 'part/0'), part);
+      await deleteBlob(name, 'part/0');
+      expect(await readBlob(name, 'part/0'), isNull);
       await reopened.close();
+      bytes = await File(path).readAsBytes();
       final key = await vault.read(key: keyName);
       await vault.write(key: keyName, value: 'incorrect-stored-key');
       await expectLater(openStore(name), throwsA(anything));

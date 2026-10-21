@@ -14,7 +14,7 @@ class WelcomePanel extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color.lerp(colors.primary, Colors.white, .2)!,
+            Color.lerp(colors.primary, colors.secondary, .3)!,
             colors.primary,
           ],
         ),

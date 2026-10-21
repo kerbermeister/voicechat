@@ -22,9 +22,12 @@ dependencies:
   vodozemac: ^0.9.0
   sqflite_sqlcipher: ^3.4.1
   flutter_secure_storage: ^11.2.0
+  image: ^4.12.0
   record: ^7.1.2
   audioplayers: ^6.8.1
   flutter_webrtc: ^1.6.2+hotfix.4
+  camera: ^0.12.1
+  video_player: ^2.14.1
 
 dev_dependencies:
   flutter_test:
@@ -37,3 +40,5 @@ dev_dependencies:
 flutter:
 
   uses-material-design: true
+  assets:
+    - assets/sounds/

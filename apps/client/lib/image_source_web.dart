@@ -1,42 +1,60 @@
 import 'dart:async';
 import 'dart:js_interop';
+import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart';
 import 'package:web/web.dart' as web;
-import 'chat_actions.dart';
+import 'media_policy.dart';
+import 'photo_processing.dart';
+import 'user_action_error.dart';
 
-Future<MatrixFile?> chooseImage() {
-  final done = Completer<MatrixFile?>();
+Future<List<MatrixImageFile>> chooseImages(MediaPolicy policy, int remaining) {
+  final done = Completer<List<MatrixImageFile>>();
   final input = web.HTMLInputElement()
     ..type = 'file'
-    ..accept = 'image/*';
+    ..accept = 'image/*'
+    ..multiple = true;
   input.style.display = 'none';
-  void cancel(web.Event _) {
-    input.remove();
-    if (!done.isCompleted) done.complete();
-  }
-
-  input.addEventListener('cancel', cancel.toJS);
+  input.addEventListener(
+    'cancel',
+    ((web.Event _) {
+      input.remove();
+      if (!done.isCompleted) done.complete([]);
+    }).toJS,
+  );
   input.addEventListener(
     'change',
     ((web.Event _) {
       unawaited(() async {
         try {
-          final file = input.files?.item(0);
-          if (file == null) {
-            if (!done.isCompleted) done.complete();
+          final files = input.files;
+          if (files == null) {
+            done.complete([]);
             return;
           }
-          if (file.size <= 0 || file.size > maxAttachmentBytes) {
-            throw StateError('Image exceeds 10 MB');
-          }
-          final bytes = (await file.arrayBuffer().toDart).toDart.asUint8List();
-          if (!done.isCompleted) {
-            done.complete(
-              MatrixFile.fromMimeType(bytes: bytes, name: file.name),
+          if (files.length > remaining) {
+            throw UserActionError(
+              'Можно прикрепить ещё $remaining фото; максимум ${policy.photoMaxCount}.',
             );
           }
+          final photos = <MatrixImageFile>[];
+          for (var i = 0; i < files.length; i++) {
+            final file = files.item(i)!;
+            if (file.size <= 0 || file.size > policy.photoMaxBytes) {
+              throw UserActionError('Фотография превышает допустимый размер.');
+            }
+            final bytes = (await file.arrayBuffer().toDart).toDart
+                .asUint8List();
+            await Future<void>.delayed(const Duration(milliseconds: 16));
+            photos.add(
+              await compute(
+                (_) => compressPhoto(bytes, file.name, policy),
+                null,
+              ),
+            );
+          }
+          done.complete(photos);
         } catch (error, stack) {
-          if (!done.isCompleted) done.completeError(error, stack);
+          done.completeError(error, stack);
         } finally {
           input.remove();
         }

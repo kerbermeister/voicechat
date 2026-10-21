@@ -1,7 +1,28 @@
 import 'dart:convert';
 import 'dart:js_interop';
+import 'dart:typed_data';
 import 'package:matrix/matrix.dart';
 import 'user_action_error.dart';
+
+@JS('voicechatVault.writeBlob')
+external JSPromise<JSAny?> _writeBlob(
+  JSString name,
+  JSString id,
+  JSUint8Array bytes,
+);
+@JS('voicechatVault.readBlob')
+external JSPromise<JSUint8Array?> _readBlob(JSString name, JSString id);
+@JS('voicechatVault.deleteBlob')
+external JSPromise<JSAny?> _deleteBlob(JSString name, JSString id);
+Future<void> writeBlob(String name, String id, Uint8List bytes) async {
+  await _writeBlob(name.toJS, id.toJS, bytes.toJS).toDart;
+}
+
+Future<Uint8List?> readBlob(String name, String id) async =>
+    (await _readBlob(name.toJS, id.toJS).toDart)?.toDart;
+Future<void> deleteBlob(String name, String id) async {
+  await _deleteBlob(name.toJS, id.toJS).toDart;
+}
 
 @JS('voicechatVault.readAccount')
 external JSString? _readAccount();

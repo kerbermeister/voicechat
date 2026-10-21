@@ -16,9 +16,13 @@ class DirectCall implements VoiceCall {
   Set<String>? _devices;
   bool _checking = false;
   bool _closed = false;
+  final _clock = Stopwatch();
+  @override
+  Duration get duration => _clock.elapsed;
   DirectCall(this.call, this.changed, this.report) {
     _subscriptions.add(
       call.onCallStateChanged.stream.listen((_) {
+        if (call.state == mx.CallState.kConnected) _clock.start();
         changed();
         if (isClosed) unawaited(close());
       }),
@@ -159,6 +163,7 @@ class DirectCall implements VoiceCall {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    _clock.stop();
     _authorizationTimer?.cancel();
     for (final subscription in _subscriptions) {
       await subscription.cancel();

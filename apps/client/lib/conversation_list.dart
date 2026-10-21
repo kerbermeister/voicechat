@@ -1,9 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
+import 'typing_indicator.dart';
+import 'avatar_image.dart';
+
+Uri? roomAvatar(mx.Room room) {
+  final value =
+      room.getState(mx.EventTypes.RoomAvatar)?.content['url'] ??
+      (room.directChatMatrixID != null
+          ? room
+                .getState(mx.EventTypes.RoomMember, room.directChatMatrixID!)
+                ?.content['avatar_url']
+          : null);
+  if (value is! String) return null;
+  final uri = Uri.tryParse(value);
+  return uri?.scheme == 'mxc' ? uri : null;
+}
 
 String roomPresence(mx.Room room) {
   if (!room.isDirectChat) {
-    return '${room.summary.mJoinedMemberCount ?? 0} участников';
+    return 'Вступили: ${room.summary.mJoinedMemberCount ?? '—'} · приглашены: ${room.summary.mInvitedMemberCount ?? '—'}';
   }
   // Render the latest sync snapshot without network requests from build().
   // ignore: deprecated_member_use
@@ -25,6 +40,11 @@ String lastMessage(mx.Room room) {
   if (event.type == mx.EventTypes.Encrypted) return 'Зашифрованное сообщение';
   final text = switch (event.messageType) {
     mx.MessageTypes.Audio => '♫ Голосовое сообщение',
+    'dev.voicechat.album' =>
+      event.content['caption'] is String &&
+              (event.content['caption'] as String).isNotEmpty
+          ? '▧ ${event.content['caption']}'
+          : '▧ Фотографии',
     mx.MessageTypes.Image => '▧ Изображение',
     _ => event.calcUnlocalizedBody(hideReply: true),
   };
@@ -33,12 +53,16 @@ String lastMessage(mx.Room room) {
 
 class PersonAvatar extends StatelessWidget {
   final String name;
+  final mx.Client? client;
+  final Uri? url;
   final bool group;
   final bool online;
   final double size;
   const PersonAvatar({
     super.key,
     required this.name,
+    this.client,
+    this.url,
     this.group = false,
     this.online = false,
     this.size = 48,
@@ -64,7 +88,17 @@ class PersonAvatar extends StatelessWidget {
               borderRadius: BorderRadius.circular(size * .32),
             ),
             alignment: Alignment.center,
-            child: group
+            child: client != null && url != null
+                ? ClipOval(
+                    child: AvatarImage(
+                      client: client!,
+                      url: url!,
+                      fallback: Icon(
+                        group ? Icons.group_outlined : Icons.person_outline,
+                      ),
+                    ),
+                  )
+                : group
                 ? Icon(Icons.group_outlined, color: colors.onSurfaceVariant)
                 : Text(
                     name.isEmpty ? '?' : name.characters.first.toUpperCase(),
@@ -102,6 +136,9 @@ class ConversationList extends StatefulWidget {
   final VoidCallback onNewPerson;
   final VoidCallback onNewGroup;
   final VoidCallback onSettings;
+  final VoidCallback? onInvitations;
+  final VoidCallback? onSearch;
+  final Uri? ownAvatar;
   final bool groups;
   final ValueChanged<bool> onTabChanged;
   const ConversationList({
@@ -112,6 +149,9 @@ class ConversationList extends StatefulWidget {
     required this.onNewPerson,
     required this.onNewGroup,
     required this.onSettings,
+    this.onInvitations,
+    this.onSearch,
+    this.ownAvatar,
     required this.groups,
     required this.onTabChanged,
   });
@@ -130,8 +170,7 @@ class _ConversationListState extends State<ConversationList> {
         widget.client.rooms
             .where(
               (r) =>
-                  (r.membership == mx.Membership.join ||
-                      r.membership == mx.Membership.invite) &&
+                  (r.membership == mx.Membership.join) &&
                   r.isDirectChat != groups &&
                   r.getLocalizedDisplayname().toLowerCase().contains(
                     query.toLowerCase(),
@@ -143,6 +182,27 @@ class _ConversationListState extends State<ConversationList> {
               a.lastEvent?.originServerTs ?? DateTime(1970),
             ),
           );
+    final invites = widget.client.rooms
+        .where((r) => r.membership == mx.Membership.invite)
+        .length;
+    int unread(bool groups) => widget.client.rooms
+        .where(
+          (r) =>
+              r.membership == mx.Membership.join &&
+              r.isDirectChat != groups &&
+              r.notificationCount > 0,
+        )
+        .length;
+    Widget tab(String label, int count) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(label),
+        if (count > 0) ...[
+          const SizedBox(width: 6),
+          Badge(label: Text('$count')),
+        ],
+      ],
+    );
     final name = widget.client.userID!.split(':').first.substring(1);
     return Column(
       children: [
@@ -153,7 +213,7 @@ class _ConversationListState extends State<ConversationList> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Color.lerp(colors.primary, Colors.white, .22)!,
+                Color.lerp(colors.primary, colors.secondary, .3)!,
                 colors.primary,
               ],
             ),
@@ -165,16 +225,48 @@ class _ConversationListState extends State<ConversationList> {
                 children: [
                   Icon(Icons.graphic_eq_rounded, color: colors.onPrimary),
                   const SizedBox(width: 8),
-                  Text(
-                    'VoiceChat',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: colors.onPrimary,
-                      fontWeight: FontWeight.w700,
+                  Expanded(
+                    child: Text(
+                      'VoiceChat',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: colors.onPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Приглашения',
+                    constraints: const BoxConstraints(
+                      minWidth: 40,
+                      minHeight: 40,
+                    ),
+                    padding: EdgeInsets.zero,
+                    onPressed: widget.onInvitations,
+                    icon: Badge(
+                      isLabelVisible: invites > 0,
+                      label: Text('$invites'),
+                      child: Icon(Icons.mail_outline, color: colors.onPrimary),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Поиск по чатам и сообщениям',
+                    constraints: const BoxConstraints(
+                      minWidth: 40,
+                      minHeight: 40,
+                    ),
+                    padding: EdgeInsets.zero,
+                    onPressed: widget.onSearch,
+                    icon: const Icon(Icons.manage_search),
+                  ),
                   IconButton(
                     tooltip: 'Настройки',
+                    constraints: const BoxConstraints(
+                      minWidth: 40,
+                      minHeight: 40,
+                    ),
+                    padding: EdgeInsets.zero,
                     onPressed: widget.onSettings,
                     icon: Icon(
                       Icons.settings_outlined,
@@ -186,7 +278,11 @@ class _ConversationListState extends State<ConversationList> {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  PersonAvatar(name: name),
+                  PersonAvatar(
+                    name: name,
+                    client: widget.client,
+                    url: widget.ownAvatar,
+                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
@@ -232,16 +328,16 @@ class _ConversationListState extends State<ConversationList> {
                   width: double.infinity,
                   child: SegmentedButton<bool>(
                     showSelectedIcon: false,
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: false,
-                        label: Text('Люди'),
-                        icon: Icon(Icons.person_outline),
+                        label: tab('Люди', unread(false)),
+                        icon: const Icon(Icons.person_outline),
                       ),
                       ButtonSegment(
                         value: true,
-                        label: Text('Группы'),
-                        icon: Icon(Icons.group_outlined),
+                        label: tab('Группы', unread(true)),
+                        icon: const Icon(Icons.group_outlined),
                       ),
                     ],
                     selected: {groups},
@@ -254,7 +350,7 @@ class _ConversationListState extends State<ConversationList> {
                   onChanged: (value) => setState(() => query = value),
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.search_rounded, size: 20),
-                    hintText: 'Поиск в ваших чатах',
+                    hintText: 'Поиск чатов по имени',
                     isDense: true,
                   ),
                 ),
@@ -341,6 +437,8 @@ class _ConversationListState extends State<ConversationList> {
                                     selected: selected,
                                     leading: PersonAvatar(
                                       name: name,
+                                      client: widget.client,
+                                      url: roomAvatar(room),
                                       group: groups,
                                       online: presence == 'В сети',
                                     ),
@@ -387,12 +485,17 @@ class _ConversationListState extends State<ConversationList> {
                                         Row(
                                           children: [
                                             Expanded(
-                                              child: Text(
-                                                lastMessage(room),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style:
-                                                    theme.textTheme.bodySmall,
+                                              child: TypingIndicator(
+                                                room: room,
+                                                compact: true,
+                                                fallback: Text(
+                                                  lastMessage(room),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style:
+                                                      theme.textTheme.bodySmall,
+                                                ),
                                               ),
                                             ),
                                             if (room.notificationCount > 0)

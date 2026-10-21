@@ -8,9 +8,18 @@ import 'package:matrix/matrix.dart' as mx;
 import 'chat_actions.dart';
 import 'matrix_probe.dart';
 import 'voice_recording.dart';
+import 'photo_processing.dart';
+import 'media_policy.dart';
+import 'album_view.dart';
+import 'picked_file.dart';
+import 'chunked_file.dart';
+import 'package:image/image.dart' as img;
 
-Uint8List get testImage => base64Decode(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aNioAAAAASUVORK5CYII=',
+Uint8List get testImage => Uint8List.fromList(
+  img.encodePng(
+    img.Image(width: 4, height: 4, numChannels: 3)
+      ..setPixelRgb(0, 0, 120, 80, 200),
+  ),
 );
 Uint8List get testVoice => voiceWav(Uint8List(3200));
 void check(bool condition, String failure) {
@@ -19,9 +28,9 @@ void check(bool condition, String failure) {
 
 Future<void> waitCheck(
   Future<bool> Function() condition,
-  String failure,
+  String failure, {int seconds = 60}
 ) async {
-  final end = DateTime.now().add(const Duration(seconds: 60));
+  final end = DateTime.now().add(Duration(seconds: seconds));
   while (DateTime.now().isBefore(end)) {
     if (await condition()) return;
     await Future<void>.delayed(const Duration(milliseconds: 200));
@@ -148,6 +157,25 @@ Future<void> exerciseMessages(
         () async => queue.pending.isEmpty,
         'Attachments did not send',
       );
+      final photo = compressPhoto(testImage, 'album.png', const MediaPolicy());
+      await queue.album(room, [photo, photo], 'album-$run');
+      await waitCheck(() async => queue.pending.isEmpty, 'Album did not send');
+      await queue.file(
+        room,
+        PickedFile(
+          name: 'large-300MiB.bin',
+          mime: 'application/octet-stream',
+          size: 314572800,
+          read: (start, end) async => largePart(start, end),
+          release: () async {},
+        ),
+        'large-file-$run',
+      );
+      await waitCheck(
+        () async => queue.pending.isEmpty,
+        'Large file did not send',
+        seconds: 300,
+      );
       await checkAttachments(room, serverCiphertext: true);
     } finally {
       timeline.cancelSubscriptions();
@@ -155,6 +183,14 @@ Future<void> exerciseMessages(
   } finally {
     await queue.close();
   }
+}
+
+Uint8List largePart(int start, int end) {
+  final bytes = Uint8List(end - start)
+    ..fillRange(0, end - start, (start ~/ fileChunkBytes) % 251);
+  bytes[0] = 123;
+  bytes[bytes.length - 1] = 234;
+  return bytes;
 }
 
 Future<void> checkAttachments(
@@ -197,6 +233,73 @@ Future<void> checkAttachments(
           'Server stored plaintext media',
         );
       }
+    }
+    await waitCheck(
+      () async =>
+          timeline.events.any((e) => e.messageType == 'dev.voicechat.album'),
+      'Album missing',
+    );
+    final album = timeline.events.firstWhere(
+      (e) => e.messageType == 'dev.voicechat.album',
+    );
+    final photos = albumPhotos(album);
+    check(photos.length == 2, 'Album split or lost photos');
+    final expected = compressPhoto(
+      testImage,
+      'album.png',
+      const MediaPolicy(),
+    ).bytes;
+    for (final photo in photos) {
+      check(
+        base64Encode(await loadPhoto(photo)) == base64Encode(expected),
+        'Album photo decryption mismatch',
+      );
+      if (serverCiphertext) {
+        final mxc = photo.attachmentMxcUrl!;
+        final response = await room.client.httpClient.get(
+          room.client.homeserver!.resolve(
+            '_matrix/client/v1/media/download/${mxc.host}${mxc.path}',
+          ),
+          headers: {'Authorization': 'Bearer ${room.client.accessToken}'},
+        );
+        check(
+          response.statusCode == 200 &&
+              base64Encode(response.bodyBytes) != base64Encode(expected),
+          'Plaintext album on server',
+        );
+        final wire = await room.client.getOneRoomEvent(room.id, album.eventId);
+        check(wire.type == mx.EventTypes.Encrypted, 'Plaintext album event');
+      }
+    }
+    await waitCheck(
+      () async => timeline.events.any((e) => e.body == 'large-300MiB.bin'),
+      'Large file missing',
+    );
+    final event = timeline.events.firstWhere(
+      (e) => e.body == 'large-300MiB.bin',
+    );
+    final file = ChunkedFile(room.client, event.content);
+    check(
+      file.size == 314572800 && file.parts.length == 75,
+      'Large file manifest mismatch',
+    );
+    for (var i = 0; i < file.parts.length; i++) {
+      final bytes = await file.part(i);
+      check(
+        bytes.length == fileChunkBytes &&
+            bytes[0] == 123 &&
+            bytes.last == 234 &&
+            bytes.skip(1).take(bytes.length - 2).every((b) => b == i % 251),
+        'Large file decryption mismatch',
+      );
+    }
+    file.clear();
+    if (serverCiphertext) {
+      final wire = await room.client.getOneRoomEvent(room.id, event.eventId);
+      check(
+        wire.type == mx.EventTypes.Encrypted,
+        'Plaintext large file manifest',
+      );
     }
   } finally {
     timeline.cancelSubscriptions();

@@ -6,6 +6,10 @@ import 'package:voicechat_probe/theme.dart';
 
 class ListClient implements Client {
   @override
+  bool get autoRequestProfileForMissingUsers => false;
+  @override
+  bool get getDisplayNameAndAvatarFromPrevContent => false;
+  @override
   String get userID => '@me:local';
   @override
   final rooms = <Room>[];

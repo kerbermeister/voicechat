@@ -44,6 +44,9 @@ class CallProbe implements VoiceCall {
   bool get isClosed => _closed;
   bool _sharing = false;
   bool _closed = false;
+  final _clock = Stopwatch();
+  @override
+  Duration get duration => _clock.elapsed;
 
   String get identity => '${chat.client.userID}/${chat.client.deviceID}';
   CallProbe({
@@ -98,6 +101,7 @@ class CallProbe implements VoiceCall {
     _events!.on<lk.TrackE2EEStateEvent>((event) {
       if (event.participant.identity == identity) return;
       if (event.state == lk.E2EEState.kOk) {
+        _clock.start();
         decryptedAudioFrom.add(event.participant.identity);
         connection = 'Защищённое аудио';
         status('Получено E2EE-аудио: ${decryptedAudioFrom.length}');
@@ -243,6 +247,7 @@ class CallProbe implements VoiceCall {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    _clock.stop();
     _resend?.cancel();
     await _messages?.cancel();
     await _events?.dispose();

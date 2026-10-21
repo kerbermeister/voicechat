@@ -7,7 +7,8 @@
   const bytes = n => crypto.getRandomValues(new Uint8Array(n));
   const b64 = data => {
     let result = '';
-    for (const byte of new Uint8Array(data)) result += String.fromCharCode(byte);
+    const view = new Uint8Array(data);
+    for (let offset = 0; offset < view.length; offset += 32768) result += String.fromCharCode(...view.subarray(offset, offset + 32768));
     return btoa(result);
   };
   const unb64 = data => Uint8Array.from(atob(data), c => c.charCodeAt(0));
@@ -38,6 +39,19 @@
     if (!value) throw new Error('Vault is locked');
     return value;
   }
+  async function blobStore(name, mode, action) {
+    session(name);
+    const req = indexedDB.open(`${name}.blobs`, 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('chunks');
+    const db = await request(req);
+    try {
+      const txn = db.transaction('chunks', mode);
+      const done = completed(txn);
+      const result = await request(action(txn.objectStore('chunks')));
+      await done;
+      return result;
+    } finally { db.close(); }
+  }
   async function open(name, password, remember = false) {
     if (!isSecureContext || !crypto.subtle || !navigator.locks || !indexedDB.databases) throw new Error('Secure context and a modern browser are required');
     const resuming = password === null;
@@ -60,7 +74,7 @@
       req.onupgradeneeded = () => req.result.createObjectStore('meta');
       db = await request(req);
       let header = await request(db.transaction('meta').objectStore('meta').get('header'));
-      if (!header && databases.some(d => d.name === `${name}.encrypted`)) throw new Error('Vault header is missing; restore history instead of overwriting data');
+      if (!header && databases.some(d => d.name === `${name}.encrypted` || d.name === `${name}.blobs`)) throw new Error('Vault header is missing; restore history instead of overwriting data');
       const salt = header ? unb64(header.salt) : bytes(16);
       if (salt.length !== 16 || (header && header.v !== 1)) throw new Error('Unsupported vault format');
       let raw;
@@ -108,6 +122,16 @@
   }
   globalThis.voicechatVault = Object.freeze({
     open, close,
+    async writeBlob(name, id, data) {
+      if (!(data instanceof Uint8Array) || data.length > 4 * 1024 * 1024) throw new Error('Invalid chunk');
+      const envelope = await seal(session(name).key, name, 'blobs', id, b64(data));
+      await blobStore(name, 'readwrite', store => store.put(envelope, id));
+    },
+    async readBlob(name, id) {
+      const envelope = await blobStore(name, 'readonly', store => store.get(id));
+      return envelope === undefined ? null : unb64(await unseal(session(name).key, name, 'blobs', id, envelope));
+    },
+    deleteBlob: (name, id) => blobStore(name, 'readwrite', store => store.delete(id)),
     readAccount: () => sessionStorage.getItem('voicechat.account'),
     writeAccount: value => value === null ? sessionStorage.removeItem('voicechat.account') : sessionStorage.setItem('voicechat.account', value),
     encrypt: (name, store, id, text) => seal(session(name).key, name, store, id, text),
@@ -118,6 +142,7 @@
       await navigator.locks.request(`voicechat:${name}`, {ifAvailable: true}, async lock => {
         if (!lock) throw new Error('Profile in use');
         await request(indexedDB.deleteDatabase(`${name}.encrypted`));
+        await request(indexedDB.deleteDatabase(`${name}.blobs`));
         await request(indexedDB.deleteDatabase(`${name}.vault`));
       });
     },

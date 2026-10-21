@@ -26,6 +26,11 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
   final invitations = <String, CallInvitation>{};
   final declined = <String>{};
   VoiceCall? active;
+  Room? dialingRoom;
+  String? dialError;
+  bool starting = false;
+  int _dialGeneration = 0;
+  final _recordedEnds = <String>{};
   late final VoIP voip;
   final directInvitations = <DirectCall>[];
   final _directCalls = <String, DirectCall>{};
@@ -85,7 +90,12 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
     _refresh();
   }
 
-  Future<void> _signal(Room room, String id, String action) async {
+  Future<void> _signal(
+    Room room,
+    String id,
+    String action, {
+    Duration? duration,
+  }) async {
     await authorizedDevices(room).timeout(const Duration(seconds: 8));
     await room.client.encryption!.keyManager.clearOrUseOutboundGroupSession(
       room.id,
@@ -100,70 +110,107 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
           : 'Звонок завершён',
       'action': action,
       'session': id,
+      if (duration != null && duration > Duration.zero)
+        'duration_ms': duration.inMilliseconds,
     });
   }
 
   Future<void> start(Room room, {CallInvitation? invitation}) async {
+    if (starting) throw UserActionError('Вызов уже запускается.');
     if (active != null && !active!.isClosed) {
       throw UserActionError('Сначала завершите текущий звонок.');
     }
-    if (room.isDirectChat && invitation == null) {
-      final devices = await authorizedDevices(room);
-      final users = devices
-          .map((d) => d.userId)
-          .where((u) => u != client.userID)
-          .toSet();
-      if (users.length != 1) {
-        throw UserActionError(
-          'Для личного звонка нужен один собеседник, вступивший в чат.',
-        );
-      }
-      final session = await voip.inviteToCall(
-        room,
-        CallType.kVoice,
-        userId: users.single,
-      );
-      active = _directCalls[session.callId]!;
-      await (active! as DirectCall).authorize();
-      (active! as DirectCall).monitor();
-      _refresh();
-      return;
-    }
-    final id =
-        invitation?.session ??
-        List.generate(
-          32,
-          (_) => Random.secure().nextInt(16).toRadixString(16),
-        ).join();
-    final call = CallProbe(
-      chat: room,
-      session: id,
-      tokenUrl: tokenUrl,
-      livekitUrl: mediaUrl,
-      status: report,
-      changed: _refresh,
-    );
-    active = call;
+    starting = true;
+    dialingRoom = room;
+    dialError = null;
+    final generation = ++_dialGeneration;
     _refresh();
     try {
-      await call.connect();
-      if (invitation == null) {
-        await _signal(room, id, 'invite');
+      if (room.isDirectChat && invitation == null) {
+        final devices = await authorizedDevices(room);
+        final users = devices
+            .map((d) => d.userId)
+            .where((u) => u != client.userID)
+            .toSet();
+        if (users.length != 1) {
+          throw UserActionError(
+            'Для личного звонка нужен один собеседник, вступивший в чат.',
+          );
+        }
+        if (generation != _dialGeneration || _closed) return;
+        final session = await voip.inviteToCall(
+          room,
+          CallType.kVoice,
+          userId: users.single,
+        );
+        active = _directCalls[session.callId]!;
+        if (generation != _dialGeneration || _closed) {
+          await active!.close();
+          return;
+        }
+        await (active! as DirectCall).authorize();
+        (active! as DirectCall).monitor();
         _ringTimeout?.cancel();
+        final call = active!;
         _ringTimeout = Timer(const Duration(seconds: 45), () {
           if (active == call &&
               !call.isClosed &&
-              call.participants.length == 1) {
+              call.duration == Duration.zero) {
             unawaited(end());
-            report('Нет ответа. Звонок завершён.');
+            report('Нет ответа.');
           }
         });
+        _refresh();
+        return;
       }
-      invitations.remove(id);
-    } catch (_) {
-      await call.close();
+      final id =
+          invitation?.session ??
+          List.generate(
+            32,
+            (_) => Random.secure().nextInt(16).toRadixString(16),
+          ).join();
+      final call = CallProbe(
+        chat: room,
+        session: id,
+        tokenUrl: tokenUrl,
+        livekitUrl: mediaUrl,
+        status: report,
+        changed: _refresh,
+      );
+      active = call;
+      _refresh();
+      try {
+        await call.connect();
+        if (generation != _dialGeneration || _closed) {
+          await call.close();
+          return;
+        }
+        if (invitation == null) {
+          await _signal(room, id, 'invite');
+          _ringTimeout?.cancel();
+          _ringTimeout = Timer(const Duration(seconds: 45), () {
+            if (active == call &&
+                !call.isClosed &&
+                call.participants.length == 1) {
+              unawaited(end());
+              report('Нет ответа. Звонок завершён.');
+            }
+          });
+        }
+        invitations.remove(id);
+      } catch (_) {
+        await call.close();
+        rethrow;
+      } finally {
+        _refresh();
+      }
+    } catch (error) {
+      dialError = error is UserActionError
+          ? error.message
+          : 'Не удалось начать звонок. Проверьте сеть, микрофон и проверку устройств.';
       rethrow;
     } finally {
+      starting = false;
       _refresh();
     }
   }
@@ -176,16 +223,45 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
   }
 
   Future<void> end() async {
+    _dialGeneration++;
+    dialingRoom = null;
+    dialError = null;
     final call = active;
-    if (call == null) return;
+    if (call == null) {
+      _refresh();
+      return;
+    }
     _ringTimeout?.cancel();
     await call.close(); // Release microphone even if signalling is offline.
     _refresh();
-    if (call is DirectCall) return;
+    if (call is DirectCall) {
+      await _recordDirectEnd(call);
+      return;
+    }
     try {
-      await _signal(call.chat, call.session, 'end');
+      await _signal(call.chat, call.session, 'end', duration: call.duration);
     } catch (_) {
       report('Вы вышли из звонка. Сеть недоступна для уведомления участников.');
+    }
+  }
+
+  Future<void> _recordDirectEnd(DirectCall call) async {
+    if (call.call.direction != CallDirection.kOutgoing ||
+        !_recordedEnds.add(call.session)) {
+      return;
+    }
+    try {
+      await authorizedDevices(call.chat).timeout(const Duration(seconds: 8));
+      await call.chat.sendEvent({
+        'msgtype': 'dev.voicechat.call_summary',
+        'body': call.duration == Duration.zero
+            ? 'Нет ответа / вызов завершён'
+            : 'Звонок завершён',
+        'duration_ms': call.duration.inMilliseconds,
+        'session': call.session,
+      }, txid: 'call-end-${call.session}');
+    } catch (_) {
+      report('Звонок завершён. Событие не удалось записать в историю.');
     }
   }
 
@@ -290,6 +366,8 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
   Future<void> handleCallEnded(CallSession session) async {
     directInvitations.removeWhere((c) => c.session == session.callId);
     await _directCalls[session.callId]?.close();
+    final call = _directCalls[session.callId];
+    if (call != null) await _recordDirectEnd(call);
     _refresh();
   }
 

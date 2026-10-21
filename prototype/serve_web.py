@@ -2,8 +2,13 @@
 """Serve the built probe with SharedArrayBuffer headers required by vodozemac."""
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import argparse
 
-root = Path(__file__).resolve().parents[1] / 'apps/client/build/web'
+parser = argparse.ArgumentParser()
+parser.add_argument('--port', type=int, default=7357)
+parser.add_argument('--directory', type=Path, default=Path(__file__).resolve().parents[1] / 'apps/client/build/web')
+options = parser.parse_args()
+root = options.directory.resolve()
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs): super().__init__(*args, directory=str(root), **kwargs)
     def end_headers(self):
@@ -13,5 +18,5 @@ class Handler(SimpleHTTPRequestHandler):
         super().end_headers()
     def log_message(self, *_): pass
 
-print('Probe web: http://localhost:7357', flush=True)
-ThreadingHTTPServer(('127.0.0.1', 7357), Handler).serve_forever()
+print(f'Probe web: http://localhost:{options.port}', flush=True)
+ThreadingHTTPServer(('127.0.0.1', options.port), Handler).serve_forever()

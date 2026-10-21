@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:math';
 
 /// PCM16 mono, 16 kHz; the recorder streams into memory, never a plaintext file.
 Uint8List voiceWav(Uint8List pcm) {
@@ -24,4 +25,24 @@ Uint8List voiceWav(Uint8List pcm) {
   header.setUint32(40, pcm.length, Endian.little);
   bytes.setRange(44, bytes.length, pcm);
   return bytes;
+}
+
+/// Quantized RMS of real PCM16 samples; zeros represent silence, not decorative noise.
+List<int> pcmWaveform(Uint8List pcm, {int bins = 64}) {
+  if (pcm.length.isOdd || bins < 1 || bins > 128) {
+    throw ArgumentError('Invalid PCM waveform');
+  }
+  final samples = pcm.length ~/ 2;
+  if (samples == 0) return List.filled(bins, 0);
+  final data = ByteData.sublistView(pcm);
+  return List.generate(bins, (bin) {
+    final start = bin * samples ~/ bins;
+    final end = ((bin + 1) * samples ~/ bins).clamp(start + 1, samples);
+    var sum = 0.0;
+    for (var i = start; i < end; i++) {
+      final sample = data.getInt16(i * 2, Endian.little) / 32768;
+      sum += sample * sample;
+    }
+    return (sqrt(sum / (end - start)) * 1024).round().clamp(0, 1024);
+  });
 }

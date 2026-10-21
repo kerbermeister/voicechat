@@ -29,7 +29,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json')
         self.send_header('Cache-Control', 'no-store')
         origin = self.headers.get('Origin', '')
-        if origin in ('http://localhost:7357', 'http://127.0.0.1:7357'):
+        if origin in ('http://localhost:7357', 'http://127.0.0.1:7357',
+                      'http://localhost:7358', 'http://127.0.0.1:7358'):
             self.send_header('Access-Control-Allow-Origin', origin)
         self.send_header('Access-Control-Allow-Headers', 'Authorization,Content-Type')
         self.send_header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
@@ -37,6 +38,12 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(body).encode())
     def do_OPTIONS(self): self.reply(204, {})
     def do_GET(self):
+        if self.path == '/config':
+            try:
+                from client_policy import load_policy
+                return self.reply(200, load_policy())
+            except (OSError, ValueError, TypeError):
+                return self.reply(503, {'error': 'invalid_policy'})
         if self.path == '/reports': return self.reply(200, reports)
         self.reply(404, {'error': 'not_found'})
     def do_POST(self):

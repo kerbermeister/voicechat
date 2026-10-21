@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:matrix/matrix.dart';
 import 'package:sqflite_sqlcipher/sqflite.dart' as sql;
@@ -10,6 +11,33 @@ void writeTabAccount(String? value) {}
 const vault = FlutterSecureStorage(
   aOptions: AndroidOptions(resetOnError: false),
 );
+final _databases = <String, sql.Database>{};
+
+Future<void> writeBlob(String name, String id, Uint8List bytes) async {
+  await _databases[name]!.insert('voicechat_blobs', {
+    'id': id,
+    'data': bytes,
+  }, conflictAlgorithm: sql.ConflictAlgorithm.replace);
+}
+
+Future<Uint8List?> readBlob(String name, String id) async {
+  final rows = await _databases[name]!.query(
+    'voicechat_blobs',
+    columns: ['data'],
+    where: 'id = ?',
+    whereArgs: [id],
+    limit: 1,
+  );
+  return rows.isEmpty ? null : rows.single['data'] as Uint8List;
+}
+
+Future<void> deleteBlob(String name, String id) async {
+  await _databases[name]!.delete(
+    'voicechat_blobs',
+    where: 'id = ?',
+    whereArgs: [id],
+  );
+}
 
 Future<MatrixSdkDatabase> openStore(
   String name, {
@@ -52,6 +80,10 @@ Future<MatrixSdkDatabase> openStore(
   try {
     final cipher = await database.rawQuery('PRAGMA cipher_version');
     if (cipher.isEmpty) throw StateError('SQLCipher unavailable');
+    await database.execute(
+      'CREATE TABLE IF NOT EXISTS voicechat_blobs (id TEXT PRIMARY KEY, data BLOB NOT NULL)',
+    );
+    _databases[name] = database;
     return await MatrixSdkDatabase.init(
       name,
       database: database,
@@ -68,4 +100,6 @@ Future<void> eraseStore(String name) async {
   await sql.deleteDatabase('${await sql.getDatabasesPath()}/$name.secure.db');
 }
 
-Future<void> closeStore(String name) async {}
+Future<void> closeStore(String name) async {
+  _databases.remove(name);
+}
