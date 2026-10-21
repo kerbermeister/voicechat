@@ -3,10 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'call_probe.dart';
+import 'voice_call.dart';
+import 'call_controller.dart';
+import 'chat_actions.dart';
+import 'chat_pane.dart';
+import 'people_picker.dart';
+import 'registration_screen.dart';
+import 'package:livekit_client/livekit_client.dart' as lk;
 import 'matrix_probe.dart';
 import 'theme.dart';
 import 'user_action_error.dart';
+import 'transport.dart';
 
 void main() => runApp(const VoiceChatApp());
 
@@ -45,7 +52,7 @@ class _VoiceChatAppState extends State<VoiceChatApp> {
   @override
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
-    title: 'VoiceChat · прототип',
+    title: 'VoiceChat',
     theme: palette.theme,
     home: ProbeScreen(palette: palette, onPalette: setPalette),
   );
@@ -71,18 +78,17 @@ class _ProbeScreenState extends State<ProbeScreen> {
   final password = TextEditingController();
   final vaultPassword = TextEditingController();
   final profile = TextEditingController(text: 'device-1');
-  final invites = TextEditingController(
-    text: '@bob:voicechat.local, @carol:voicechat.local',
-  );
-  final message = TextEditingController();
-  final session = TextEditingController(text: 'lab-1');
   MatrixProbe? probe;
   mx.Room? selected;
   mx.Timeline? timeline;
   StreamSubscription<dynamic>? sync;
-  CallProbe? call;
+  CallController? calls;
+  ChatActions? actions;
+  StreamSubscription<mx.SyncStatusUpdate>? connectionStatus;
+  bool online = true;
+  VoiceCall? get call => calls?.active;
   bool busy = false;
-  String status = 'Тестовый стенд · только одноразовые аккаунты';
+  String status = 'Локальный стенд · тестовые данные';
 
   Future<void> run(Future<void> Function() action) async {
     if (busy) return;
@@ -117,13 +123,209 @@ class _ProbeScreenState extends State<ProbeScreen> {
       await next.close();
       rethrow;
     }
+    await connected(next);
+  }
+
+  Future<void> connected(MatrixProbe next) async {
     password.clear();
     vaultPassword.clear();
     probe = next;
+    username.text = next.client.userID!;
+    actions = ChatActions(next.client);
+    await actions!.open();
+    calls = CallController(
+      next.client,
+      tokenServer.text.trim(),
+      mediaServer.text.trim(),
+      report,
+    );
+    calls!.addListener(() {
+      if (mounted) setState(() {});
+    });
     sync = next.client.onSync.stream.listen((_) {
       if (mounted) setState(() {});
     });
-    report('Подключено. Настройте или восстановите ключи перед общением.');
+    connectionStatus = next.client.onSyncStatus.stream.listen((value) {
+      if (mounted) setState(() => online = value.status != mx.SyncStatus.error);
+    });
+    report(
+      'Подключено. Создайте или восстановите ключ восстановления в настройках.',
+    );
+  }
+
+  Future<void> registration({bool reset = false}) async {
+    final next = await MatrixProbe.open(
+      profile.text.trim(),
+      passphrase: kIsWeb ? vaultPassword.text : null,
+    );
+    var adopted = false;
+    try {
+      if (next.client.isLogged()) {
+        throw UserActionError(
+          'Этот локальный профиль уже связан с аккаунтом. Используйте другое имя профиля для регистрации.',
+        );
+      }
+      await next.client.checkHomeserver(
+        secureEndpoint(server.text.trim()),
+        checkWellKnown: false,
+      );
+      if (!mounted) return;
+      final completed = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              RegistrationScreen(client: next.client, resetPassword: reset),
+        ),
+      );
+      if (completed == true && !reset) {
+        await connected(next);
+        adopted = true;
+      }
+      if (completed == true && reset) {
+        report('Пароль изменён. Войдите снова и восстановите историю ключом.');
+      }
+    } finally {
+      if (!adopted) await next.close();
+    }
+  }
+
+  Future<String?> askText(String title, {String initial = ''}) async {
+    final input = TextEditingController(text: initial);
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: TextField(controller: input, autofocus: true),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, input.text.trim()),
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+    input.dispose();
+    return value;
+  }
+
+  Future<void> newChat({bool group = false}) async {
+    final people = await showDialog<List<String>>(
+      context: context,
+      builder: (_) => PeoplePicker(client: probe!.client, multiple: group),
+    );
+    if (people == null || people.isEmpty) return;
+    String id;
+    if (group) {
+      final name = await askText('Название группы');
+      if (name == null || name.isEmpty) return;
+      id = await probe!.createRoom(people, name: name);
+    } else {
+      id = await probe!.startDirectChat(people.single);
+    }
+    await select(await probe!.room(id));
+  }
+
+  Future<void> roomSettings() async {
+    final room = selected!;
+    final members = await room.requestParticipants();
+    if (!mounted) return;
+    final action = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(room.getLocalizedDisplayname()),
+        content: SizedBox(
+          width: 450,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Участники и приглашения'),
+                ...members
+                    .where(
+                      (u) =>
+                          u.membership == mx.Membership.join ||
+                          u.membership == mx.Membership.invite,
+                    )
+                    .map(
+                      (user) => ListTile(
+                        title: Text(user.displayName ?? user.id),
+                        subtitle: Text('${user.id} · ${user.membership}'),
+                        trailing: room.canKick && user.id != room.client.userID
+                            ? IconButton(
+                                tooltip: 'Исключить участника',
+                                onPressed: () =>
+                                    Navigator.pop(context, 'kick:${user.id}'),
+                                icon: const Icon(Icons.person_remove_outlined),
+                              )
+                            : null,
+                      ),
+                    ),
+                if (room.canInvite)
+                  TextButton.icon(
+                    onPressed: () => Navigator.pop(context, 'invite'),
+                    icon: const Icon(Icons.person_add_alt),
+                    label: const Text('Пригласить'),
+                  ),
+                if (room.canChangeStateEvent(mx.EventTypes.RoomName))
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, 'rename'),
+                    child: const Text('Изменить название'),
+                  ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, 'leave'),
+                  child: const Text('Покинуть чат'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
+    if (action == 'invite' && mounted) {
+      final users = await showDialog<List<String>>(
+        context: context,
+        builder: (_) => PeoplePicker(client: room.client, multiple: true),
+      );
+      for (final user in users ?? <String>[]) {
+        await room.invite(user);
+      }
+    } else if (action == 'rename') {
+      final name = await askText(
+        'Название',
+        initial: room.getLocalizedDisplayname(),
+      );
+      if (name != null && name.isNotEmpty) await room.setName(name);
+    } else if (action == 'leave' || action?.startsWith('kick:') == true) {
+      final confirmed = await askText(
+        action == 'leave'
+            ? 'Введите ДА, чтобы покинуть чат'
+            : 'Введите ДА, чтобы исключить участника',
+      );
+      if (confirmed != 'ДА') return;
+      await calls?.end();
+      if (action == 'leave') {
+        await room.leave();
+        timeline?.cancelSubscriptions();
+        if (mounted) {
+          setState(() {
+            selected = null;
+            timeline = null;
+          });
+        }
+      } else {
+        await room.kick(action!.substring(5));
+      }
+    }
   }
 
   Future<void> select(mx.Room room) async {
@@ -193,16 +395,23 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> startCall() async {
-    if ((call != null && !call!.isClosed) || selected == null) return;
-    final next = CallProbe(
-      chat: selected!,
-      session: session.text.trim(),
-      tokenUrl: tokenServer.text.trim(),
-      livekitUrl: mediaServer.text.trim(),
-      status: report,
+    if (selected == null) return;
+    await calls!.start(selected!);
+  }
+
+  Future<void> audioOutput() async {
+    if (!kIsWeb) {
+      await lk.AudioManager.instance.setSpeakerOutputPreferred(
+        !lk.AudioManager.instance.isSpeakerOutputPreferred,
+      );
+      report(
+        'Переключён динамик/обычный аудиомаршрут. Гарнитурой управляет система.',
+      );
+      return;
+    }
+    report(
+      'В браузере аудиовыход выбирается в настройках браузера или операционной системы.',
     );
-    await next.connect();
-    setState(() => call = next);
   }
 
   Future<String?> askPassword() async {
@@ -236,18 +445,31 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> lock() async {
-    await call?.close();
-    await sync?.cancel();
-    timeline?.cancelSubscriptions();
-    await probe!.close();
-    if (!mounted) return;
-    setState(() {
-      probe = null;
-      selected = null;
-      timeline = null;
-      call = null;
-    });
-    message.clear();
+    probe!.client.httpClient
+        .close(); // Abort network operations before closing local keys.
+    try {
+      await Future.wait([
+        if (calls != null) calls!.close(),
+        if (actions != null) actions!.close(),
+      ]);
+    } finally {
+      await connectionStatus?.cancel();
+      await sync?.cancel();
+      timeline?.cancelSubscriptions();
+      try {
+        await probe!.close();
+      } finally {
+        if (mounted) {
+          setState(() {
+            probe = null;
+            selected = null;
+            timeline = null;
+            calls = null;
+            actions = null;
+          });
+        }
+      }
+    }
     report('Хранилище заблокировано. Для открытия введите локальную фразу.');
   }
 
@@ -421,8 +643,17 @@ class _ProbeScreenState extends State<ProbeScreen> {
       ),
     );
     if (confirmed != true) return;
-    await call?.close();
+    await calls?.end();
+    if (actions!.pending.isNotEmpty) {
+      throw UserActionError(
+        'В очереди есть неотправленные сообщения. Отправьте или отмените их перед выходом.',
+      );
+    }
+    await probe!.backup();
     await probe!.logout();
+    await calls?.close();
+    await actions?.close();
+    await connectionStatus?.cancel();
     await sync?.cancel();
     timeline?.cancelSubscriptions();
     if (!mounted) return;
@@ -430,7 +661,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
       probe = null;
       selected = null;
       timeline = null;
-      call = null;
+      calls = null;
+      actions = null;
     });
     report('Вы вышли из аккаунта');
   }
@@ -439,7 +671,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
   void dispose() {
     unawaited(sync?.cancel());
     timeline?.cancelSubscriptions();
-    unawaited(call?.close());
+    unawaited(calls?.close());
+    unawaited(actions?.close());
+    unawaited(connectionStatus?.cancel());
     unawaited(probe?.close());
     for (final c in [
       server,
@@ -449,9 +683,6 @@ class _ProbeScreenState extends State<ProbeScreen> {
       password,
       profile,
       vaultPassword,
-      invites,
-      message,
-      session,
     ]) {
       c.dispose();
     }
@@ -489,7 +720,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       ),
       const SizedBox(height: 24),
       field(username, 'Имя пользователя'),
-      field(password, 'Пароль тестового аккаунта', secret: true),
+      field(password, 'Пароль аккаунта', secret: true),
       field(profile, 'Профиль устройства'),
       if (kIsWeb)
         field(
@@ -499,7 +730,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
         ),
       if (kIsWeb)
         const Text(
-          'Эта фраза открывает хранилище в данном браузере. Она не отправляется на сервер. При её потере понадобится восстановление истории.',
+          'Первый вход в этот профиль: придумайте свою отдельную фразу и сохраните её. Повторный вход: введите ту же фразу. Для alice/bob/carol готовой локальной фразы нет. Она защищает данные браузера и не отправляется на сервер.',
         ),
       ExpansionTile(
         title: const Text('Подключение к стенду'),
@@ -511,46 +742,77 @@ class _ProbeScreenState extends State<ProbeScreen> {
       ),
       const SizedBox(height: 20),
       action('Войти', login, icon: Icons.login_rounded),
+      const SizedBox(height: 8),
+      action(
+        'Создать аккаунт',
+        () => registration(),
+        icon: Icons.person_add_outlined,
+      ),
+      TextButton(
+        onPressed: busy ? null : () => run(() => registration(reset: true)),
+        child: const Text('Забыли пароль?'),
+      ),
     ],
   );
   Widget rooms() => ListView(
     padding: const EdgeInsets.all(20),
     children: [
       Text('Ваши разговоры', style: Theme.of(context).textTheme.titleLarge),
+      SelectableText(
+        probe!.client.userID!,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
       const SizedBox(height: 12),
-      ...probe!.client.rooms.map(
-        (r) => Card(
-          child: ListTile(
-            leading: CircleAvatar(
-              child: Icon(
-                r.membership == mx.Membership.invite
-                    ? Icons.mail_outline
-                    : Icons.forum_outlined,
+      ...probe!.client.rooms
+          .where(
+            (r) =>
+                r.membership == mx.Membership.join ||
+                r.membership == mx.Membership.invite,
+          )
+          .map(
+            (r) => Card(
+              child: ListTile(
+                leading: CircleAvatar(
+                  child: Icon(
+                    r.membership == mx.Membership.invite
+                        ? Icons.mail_outline
+                        : Icons.forum_outlined,
+                  ),
+                ),
+                title: Text(r.getLocalizedDisplayname()),
+                subtitle: Text(
+                  r.membership == mx.Membership.invite
+                      ? 'Приглашение · нажмите, чтобы войти'
+                      : 'Зашифрованная комната',
+                ),
+                selected: r.id == selected?.id,
+                trailing: r.notificationCount > 0
+                    ? Badge(
+                        label: Text('${r.notificationCount}'),
+                        child: const Icon(Icons.mark_chat_unread_outlined),
+                      )
+                    : null,
+                onTap: busy ? null : () => run(() => select(r)),
               ),
             ),
-            title: Text(r.getLocalizedDisplayname()),
-            subtitle: Text(
-              r.membership == mx.Membership.invite
-                  ? 'Приглашение · нажмите, чтобы войти'
-                  : 'Зашифрованная комната',
-            ),
-            selected: r.id == selected?.id,
-            onTap: busy ? null : () => run(() => select(r)),
           ),
-        ),
-      ),
       const SizedBox(height: 16),
-      field(invites, 'Кого пригласить (Matrix ID через запятую)'),
-      action('Создать круг', () async {
-        final id = await probe!.createRoom(
-          invites.text
-              .split(',')
-              .map((e) => e.trim())
-              .where((e) => e.isNotEmpty)
-              .toList(),
-        );
-        await select(await probe!.room(id));
-      }, icon: Icons.add_rounded),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          action(
+            'Найти человека',
+            () => newChat(),
+            icon: Icons.person_search_outlined,
+          ),
+          action(
+            'Создать группу',
+            () => newChat(group: true),
+            icon: Icons.group_add_outlined,
+          ),
+        ],
+      ),
       const SizedBox(height: 24),
       Wrap(
         spacing: 8,
@@ -588,157 +850,155 @@ class _ProbeScreenState extends State<ProbeScreen> {
     ],
   );
   Widget conversation() {
-    final colors = Theme.of(context).colorScheme;
-    if (selected == null) {
+    final room = selected;
+    if (room == null || timeline == null) {
       return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Text('Найдите собеседника или выберите разговор'),
+      );
+    }
+    return ChatPane(
+      key: ValueKey(room.id),
+      room: room,
+      timeline: timeline!,
+      actions: actions!,
+      report: report,
+      header: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 0),
+        child: Row(
           children: [
-            Icon(Icons.forum_outlined, size: 56),
-            SizedBox(height: 20),
-            Text('Начните с тёплого круга'),
-            SizedBox(height: 8),
-            Text('Выберите или создайте зашифрованную комнату'),
+            Expanded(
+              child: Text(
+                room.getLocalizedDisplayname(),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Проверить устройства',
+              onPressed: busy ? null : () => run(verifyDevices),
+              icon: const Icon(Icons.verified_user_outlined),
+            ),
+            IconButton(
+              tooltip: 'Участники и настройки чата',
+              onPressed: busy ? null : () => run(roomSettings),
+              icon: const Icon(Icons.group_outlined),
+            ),
+            IconButton(
+              tooltip: 'Голосовой звонок',
+              onPressed: busy || (call != null && !call!.isClosed)
+                  ? null
+                  : () => run(startCall),
+              icon: const Icon(Icons.call_outlined),
+            ),
+            IconButton(
+              tooltip: 'Закрыть чат',
+              onPressed: () => setState(() {
+                selected = null;
+              }),
+              icon: const Icon(Icons.close),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget callBanner() {
+    final current = call;
+    if (current != null && !current.isClosed) {
+      return Material(
+        color: Theme.of(context).colorScheme.secondaryContainer,
+        child: ListTile(
+          title: Text(
+            '${current.chat.getLocalizedDisplayname()} · ${current.connection}',
+          ),
+          subtitle: Text(
+            'Участники: ${current.participants.map((p) => p.split('/').first).join(', ')}',
+          ),
+          trailing: Wrap(
+            children: [
+              IconButton(
+                tooltip: current.muted
+                    ? 'Включить микрофон'
+                    : 'Выключить микрофон',
+                onPressed: () => run(() => current.mute(!current.muted)),
+                icon: Icon(current.muted ? Icons.mic_off : Icons.mic),
+              ),
+              IconButton(
+                tooltip: 'Аудиовыход',
+                onPressed: () => run(audioOutput),
+                icon: const Icon(Icons.speaker),
+              ),
+              IconButton(
+                tooltip: 'Завершить звонок',
+                onPressed: () => run(calls!.end),
+                icon: const Icon(Icons.call_end, color: Colors.red),
+              ),
+            ],
+          ),
         ),
       );
     }
-    final events =
-        timeline?.events
-            .where(
-              (e) =>
-                  e.type == mx.EventTypes.Message ||
-                  e.type == mx.EventTypes.Encrypted,
-            )
-            .toList() ??
-        [];
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: colors.secondaryContainer,
-            borderRadius: BorderRadius.circular(28),
+    if (calls?.directInvitations.isNotEmpty ?? false) {
+      final incoming = calls!.directInvitations.first;
+      return Material(
+        color: Theme.of(context).colorScheme.secondaryContainer,
+        child: ListTile(
+          title: Text(
+            'Личный звонок · ${incoming.chat.getLocalizedDisplayname()}',
           ),
-          child: Column(
+          subtitle: const Text('Защищённый WebRTC'),
+          trailing: Wrap(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      selected!.getLocalizedDisplayname(),
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Закрыть чат',
-                    onPressed: call == null || call!.isClosed
-                        ? () => setState(() {
-                            selected = null;
-                          })
-                        : null,
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 150,
-                    child: TextField(
-                      controller: session,
-                      decoration: const InputDecoration(
-                        labelText: 'Сеанс звонка',
-                      ),
-                    ),
-                  ),
-                  (call == null || call!.isClosed)
-                      ? action(
-                          'Позвонить',
-                          startCall,
-                          icon: Icons.call_outlined,
-                        )
-                      : action('Завершить', () async {
-                          await call!.close();
-                          setState(() => call = null);
-                          report('Звонок завершён');
-                        }, icon: Icons.call_end),
-                ],
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            reverse: true,
-            padding: const EdgeInsets.all(20),
-            itemCount: events.length,
-            itemBuilder: (context, i) {
-              final event = events[i];
-              final own = event.senderId == probe!.client.userID;
-              return Align(
-                alignment: own ? Alignment.centerRight : Alignment.centerLeft,
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: own ? colors.primary : colors.surfaceContainerLowest,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(22),
-                      topRight: const Radius.circular(22),
-                      bottomLeft: Radius.circular(own ? 22 : 6),
-                      bottomRight: Radius.circular(own ? 6 : 22),
-                    ),
-                  ),
-                  child: Text(
-                    event.type == mx.EventTypes.Encrypted
-                        ? 'Нет ключа для этого сообщения'
-                        : event.body,
-                    style: TextStyle(
-                      color: own ? colors.onPrimary : colors.onSurface,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: message,
-                  decoration: const InputDecoration(hintText: 'Написать…'),
-                  minLines: 1,
-                  maxLines: 4,
-                ),
-              ),
-              const SizedBox(width: 12),
-              IconButton.filled(
-                tooltip: 'Отправить',
+              IconButton(
+                tooltip: 'Отклонить',
                 onPressed: busy
                     ? null
-                    : () => run(() async {
-                        if (message.text.trim().isEmpty) return;
-                        await MatrixProbe.sendText(
-                          selected!,
-                          message.text.trim(),
-                        );
-                        message.clear();
-                      }),
-                icon: const Icon(Icons.arrow_upward_rounded),
+                    : () => run(() => calls!.declineDirect(incoming)),
+                icon: const Icon(Icons.call_end, color: Colors.red),
+              ),
+              IconButton(
+                tooltip: 'Принять',
+                onPressed: busy
+                    ? null
+                    : () => run(() => calls!.acceptDirect(incoming)),
+                icon: const Icon(Icons.call, color: Colors.green),
               ),
             ],
           ),
         ),
-      ],
+      );
+    }
+    if (calls?.invitations.isEmpty ?? true) return const SizedBox.shrink();
+    final invitation = calls!.invitations.values.first;
+    return Material(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      child: ListTile(
+        title: Text(
+          'Входящий звонок · ${invitation.room.getLocalizedDisplayname()}',
+        ),
+        subtitle: Text(invitation.sender),
+        trailing: Wrap(
+          children: [
+            IconButton(
+              tooltip: 'Отклонить',
+              onPressed: busy
+                  ? null
+                  : () => run(() => calls!.decline(invitation)),
+              icon: const Icon(Icons.call_end, color: Colors.red),
+            ),
+            IconButton(
+              tooltip: 'Принять',
+              onPressed: busy
+                  ? null
+                  : () => run(
+                      () =>
+                          calls!.start(invitation.room, invitation: invitation),
+                    ),
+              icon: const Icon(Icons.call, color: Colors.green),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -785,32 +1045,43 @@ class _ProbeScreenState extends State<ProbeScreen> {
               ),
             ),
             if (busy) const LinearProgressIndicator(),
+            if (probe != null) callBanner(),
+            if (probe != null && !online)
+              const Padding(
+                padding: EdgeInsets.all(8),
+                child: Text(
+                  'Нет связи · сообщения сохраняются в зашифрованной очереди',
+                ),
+              ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               child: Text(status, style: Theme.of(context).textTheme.bodySmall),
             ),
             Expanded(
-              child: LayoutBuilder(
-                builder: (context, box) {
-                  if (probe == null) {
-                    return Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 520),
-                        child: connection(),
-                      ),
+              child: AbsorbPointer(
+                absorbing: busy,
+                child: LayoutBuilder(
+                  builder: (context, box) {
+                    if (probe == null) {
+                      return Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 520),
+                          child: connection(),
+                        ),
+                      );
+                    }
+                    if (box.maxWidth < 800) {
+                      return selected == null ? rooms() : conversation();
+                    }
+                    return Row(
+                      children: [
+                        SizedBox(width: 350, child: rooms()),
+                        const VerticalDivider(width: 1),
+                        Expanded(child: conversation()),
+                      ],
                     );
-                  }
-                  if (box.maxWidth < 800) {
-                    return selected == null ? rooms() : conversation();
-                  }
-                  return Row(
-                    children: [
-                      SizedBox(width: 350, child: rooms()),
-                      const VerticalDivider(width: 1),
-                      Expanded(child: conversation()),
-                    ],
-                  );
-                },
+                  },
+                ),
               ),
             ),
           ],

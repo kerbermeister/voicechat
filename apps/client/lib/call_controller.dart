@@ -1,0 +1,305 @@
+import 'dart:async';
+import 'dart:math';
+import 'package:flutter/foundation.dart';
+import 'package:matrix/matrix.dart';
+import 'call_probe.dart';
+import 'direct_call.dart';
+import 'voice_call.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
+import 'matrix_probe.dart';
+import 'user_action_error.dart';
+
+class CallInvitation {
+  final Room room;
+  final String session;
+  final String sender;
+  final DateTime created;
+  CallInvitation(this.room, this.session, this.sender, this.created);
+}
+
+/// Foreground invitations are encrypted Matrix messages; push/control service is a separate milestone.
+class CallController extends ChangeNotifier implements WebRTCDelegate {
+  final Client client;
+  final String tokenUrl;
+  final String mediaUrl;
+  final void Function(String) report;
+  final invitations = <String, CallInvitation>{};
+  final declined = <String>{};
+  VoiceCall? active;
+  late final VoIP voip;
+  final directInvitations = <DirectCall>[];
+  final _directCalls = <String, DirectCall>{};
+  StreamSubscription<Event>? _events;
+  Timer? _expiry;
+  Timer? _ringTimeout;
+  bool _closed = false;
+  CallController(this.client, this.tokenUrl, this.mediaUrl, this.report) {
+    voip = VoIP(client, this);
+    _events = client.onTimelineEvent.stream.listen(receive);
+    _expiry = Timer.periodic(const Duration(seconds: 5), (_) {
+      invitations.removeWhere(
+        (_, call) => DateTime.now().difference(call.created).inMinutes >= 10,
+      );
+      _refresh();
+    });
+  }
+  void _refresh() {
+    if (!_closed) notifyListeners();
+  }
+
+  void receive(Event event) {
+    final content = event.content;
+    if (!event.room.encrypted ||
+        event.redacted ||
+        content['msgtype'] != 'dev.voicechat.call') {
+      return;
+    }
+    final id = content['session'];
+    if (id is! String || !RegExp(r'^[a-z0-9]{32}$').hasMatch(id)) return;
+    final age = DateTime.now().difference(event.originServerTs);
+    if (age.isNegative || age.inMinutes >= 10) return;
+    if (content['action'] == 'invite' &&
+        event.senderId != client.userID &&
+        !declined.contains(id)) {
+      invitations[id] = CallInvitation(
+        event.room,
+        id,
+        event.senderId,
+        event.originServerTs,
+      );
+    } else if (content['action'] == 'decline' &&
+        active?.session == id &&
+        event.room.isDirectChat &&
+        event.senderId != client.userID) {
+      unawaited(active!.close());
+      report('Собеседник отклонил вызов.');
+    } else if (content['action'] == 'end') {
+      // Only the initiating user can cancel their invitation.
+      if (invitations[id]?.sender == event.senderId) invitations.remove(id);
+      if (active?.session == id &&
+          event.room.isDirectChat &&
+          event.senderId != client.userID) {
+        unawaited(active!.close());
+      }
+    }
+    _refresh();
+  }
+
+  Future<void> _signal(Room room, String id, String action) async {
+    await authorizedDevices(room).timeout(const Duration(seconds: 8));
+    await room.client.encryption!.keyManager.clearOrUseOutboundGroupSession(
+      room.id,
+      wipe: true,
+    );
+    await room.sendEvent({
+      'msgtype': 'dev.voicechat.call',
+      'body': action == 'invite'
+          ? 'Голосовой звонок'
+          : action == 'decline'
+          ? 'Вызов отклонён'
+          : 'Звонок завершён',
+      'action': action,
+      'session': id,
+    });
+  }
+
+  Future<void> start(Room room, {CallInvitation? invitation}) async {
+    if (active != null && !active!.isClosed) {
+      throw UserActionError('Сначала завершите текущий звонок.');
+    }
+    if (room.isDirectChat && invitation == null) {
+      final devices = await authorizedDevices(room);
+      final users = devices
+          .map((d) => d.userId)
+          .where((u) => u != client.userID)
+          .toSet();
+      if (users.length != 1) {
+        throw UserActionError(
+          'Для личного звонка нужен один собеседник, вступивший в чат.',
+        );
+      }
+      final session = await voip.inviteToCall(
+        room,
+        CallType.kVoice,
+        userId: users.single,
+      );
+      active = _directCalls[session.callId]!;
+      await (active! as DirectCall).authorize();
+      (active! as DirectCall).monitor();
+      _refresh();
+      return;
+    }
+    final id =
+        invitation?.session ??
+        List.generate(
+          32,
+          (_) => Random.secure().nextInt(16).toRadixString(16),
+        ).join();
+    final call = CallProbe(
+      chat: room,
+      session: id,
+      tokenUrl: tokenUrl,
+      livekitUrl: mediaUrl,
+      status: report,
+      changed: _refresh,
+    );
+    active = call;
+    _refresh();
+    try {
+      await call.connect();
+      if (invitation == null) {
+        await _signal(room, id, 'invite');
+        _ringTimeout?.cancel();
+        _ringTimeout = Timer(const Duration(seconds: 45), () {
+          if (active == call &&
+              !call.isClosed &&
+              call.participants.length == 1) {
+            unawaited(end());
+            report('Нет ответа. Звонок завершён.');
+          }
+        });
+      }
+      invitations.remove(id);
+    } catch (_) {
+      await call.close();
+      rethrow;
+    } finally {
+      _refresh();
+    }
+  }
+
+  Future<void> decline(CallInvitation invitation) async {
+    declined.add(invitation.session);
+    invitations.remove(invitation.session);
+    _refresh();
+    await _signal(invitation.room, invitation.session, 'decline');
+  }
+
+  Future<void> end() async {
+    final call = active;
+    if (call == null) return;
+    _ringTimeout?.cancel();
+    await call.close(); // Release microphone even if signalling is offline.
+    _refresh();
+    if (call is DirectCall) return;
+    try {
+      await _signal(call.chat, call.session, 'end');
+    } catch (_) {
+      report('Вы вышли из звонка. Сеть недоступна для уведомления участников.');
+    }
+  }
+
+  Future<void> close() async {
+    if (_closed) return;
+    _closed = true;
+    _expiry?.cancel();
+    _ringTimeout?.cancel();
+    mediaDevices.ondevicechange =
+        null; // Release the SDK callback retaining this client after lock/logout.
+    await _events?.cancel();
+    await active?.close();
+    for (final call in _directCalls.values) {
+      await call.close();
+    }
+    dispose();
+  }
+
+  Future<void> acceptDirect(DirectCall call) async {
+    if (active != null && !active!.isClosed) {
+      throw UserActionError('Сначала завершите текущий звонок.');
+    }
+    await call.answer();
+    active = call;
+    directInvitations.remove(call);
+    _refresh();
+  }
+
+  Future<void> declineDirect(DirectCall call) async {
+    await call.close();
+    directInvitations.remove(call);
+    _refresh();
+  }
+
+  @override
+  get mediaDevices => rtc.navigator.mediaDevices;
+  @override
+  Future<rtc.RTCPeerConnection> createPeerConnection(
+    Map<String, dynamic> configuration, [
+    Map<String, dynamic> constraints = const {},
+  ]) {
+    // shortcut: force TURN in loopback tests; real deployments use ICE's direct-first policy.
+    if (const {
+      'localhost',
+      '127.0.0.1',
+      '::1',
+    }.contains(client.homeserver?.host)) {
+      configuration = {...configuration, 'iceTransportPolicy': 'relay'};
+    }
+    return rtc.createPeerConnection(configuration, constraints);
+  }
+
+  @override
+  bool get isWeb => kIsWeb;
+  @override
+  bool get canHandleNewCall => !_closed && (active == null || active!.isClosed);
+  @override
+  EncryptionKeyProvider? get keyProvider => null;
+  @override
+  Future<void> playRingtone() async {}
+  @override
+  Future<void> stopRingtone() async {}
+  @override
+  Future<void> registerListeners(CallSession session) async {
+    if (session.type != CallType.kVoice) {
+      await session.hangup(reason: CallErrorCode.userBusy);
+      report('В этой версии доступны только голосовые звонки.');
+      return;
+    }
+    final call = DirectCall(session, _refresh, report);
+    _directCalls[session.callId] = call;
+    if (session.direction == CallDirection.kIncoming) {
+      try {
+        await call.authorize().timeout(const Duration(seconds: 8));
+      } catch (_) {
+        await call.close();
+        report('Входящий вызов отклонён: устройства не проверены.');
+      }
+    }
+  }
+
+  @override
+  Future<void> handleNewCall(CallSession session) async {
+    final call = _directCalls[session.callId]!;
+    if (_closed ||
+        (!canHandleNewCall && active != call) ||
+        !session.room.encrypted ||
+        !session.room.isDirectChat) {
+      await call.close();
+      return;
+    }
+    if (call.isClosed || _closed) return;
+    if (session.direction == CallDirection.kIncoming) {
+      directInvitations.add(call);
+    } else {
+      active = call;
+    }
+    _refresh();
+  }
+
+  @override
+  Future<void> handleCallEnded(CallSession session) async {
+    directInvitations.removeWhere((c) => c.session == session.callId);
+    await _directCalls[session.callId]?.close();
+    _refresh();
+  }
+
+  @override
+  Future<void> handleMissedCall(CallSession session) async {
+    report('Пропущенный звонок');
+  }
+
+  @override
+  Future<void> handleNewGroupCall(GroupCallSession groupCall) async {}
+  @override
+  Future<void> handleGroupCallEnded(GroupCallSession groupCall) async {}
+}

@@ -7,15 +7,28 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:matrix/matrix.dart' as mx;
 import 'matrix_probe.dart';
 import 'transport.dart';
+import 'voice_call.dart';
 
 /// Exercises sender-specific E2EE keys delivered through encrypted Matrix
 /// to-device events. Authorization changes end the call; no seamless rekey yet.
-class CallProbe {
+class CallProbe implements VoiceCall {
+  @override
   final mx.Room chat;
+  @override
   final String session;
   final String tokenUrl;
   final String livekitUrl;
   final void Function(String) status;
+  final void Function()? changed;
+  @override
+  String connection = 'Подключение';
+  @override
+  bool muted = false;
+  @override
+  List<String> get participants => [
+    identity,
+    ...?media?.remoteParticipants.keys,
+  ];
   lk.Room? media;
   lk.BaseKeyProvider? _keys;
   StreamSubscription<mx.ToDeviceEvent>? _messages;
@@ -27,6 +40,7 @@ class CallProbe {
   final Set<String> decryptedAudioFrom = {};
   final Set<String> failedAudioFrom = {};
   Set<String>? _authorization;
+  @override
   bool get isClosed => _closed;
   bool _sharing = false;
   bool _closed = false;
@@ -38,6 +52,7 @@ class CallProbe {
     required this.tokenUrl,
     required this.livekitUrl,
     required this.status,
+    this.changed,
   });
 
   Future<void> connect({bool microphone = true}) async {
@@ -64,11 +79,29 @@ class CallProbe {
       ),
     );
     _events = media!.createListener();
+    _events!.on<lk.ParticipantConnectedEvent>((_) => changed?.call());
+    _events!.on<lk.ParticipantDisconnectedEvent>((_) => changed?.call());
+    _events!.on<lk.RoomReconnectingEvent>((_) {
+      connection = 'Восстанавливаем соединение';
+      status(connection);
+      changed?.call();
+    });
+    _events!.on<lk.RoomReconnectedEvent>((_) {
+      connection = 'Соединение восстановлено';
+      status(connection);
+      changed?.call();
+    });
+    _events!.on<lk.RoomDisconnectedEvent>((_) {
+      connection = 'Звонок завершён';
+      changed?.call();
+    });
     _events!.on<lk.TrackE2EEStateEvent>((event) {
       if (event.participant.identity == identity) return;
       if (event.state == lk.E2EEState.kOk) {
         decryptedAudioFrom.add(event.participant.identity);
+        connection = 'Защищённое аудио';
         status('Получено E2EE-аудио: ${decryptedAudioFrom.length}');
+        changed?.call();
       } else if (event.state == lk.E2EEState.kDecryptionFailed ||
           event.state == lk.E2EEState.kMissingKey) {
         failedAudioFrom.add(event.participant.identity);
@@ -110,7 +143,9 @@ class CallProbe {
       });
       if (_closed) throw StateError('Call closed during authorization');
       if (microphone) await media!.localParticipant!.setMicrophoneEnabled(true);
-      status('E2EE включено · ждём подтверждения медиапотоков');
+      connection = 'E2EE включено · ждём медиапотоки';
+      status(connection);
+      changed?.call();
     } catch (_) {
       await close();
       rethrow;
@@ -197,9 +232,14 @@ class CallProbe {
     await _keys!.setRawKey(key, participantId: data['identity'] as String);
   }
 
-  Future<void> mute(bool muted) async =>
-      media?.localParticipant?.setMicrophoneEnabled(!muted);
+  @override
+  Future<void> mute(bool value) async {
+    await media?.localParticipant?.setMicrophoneEnabled(!value);
+    muted = value;
+    changed?.call();
+  }
 
+  @override
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
@@ -210,5 +250,7 @@ class CallProbe {
     await media?.dispose();
     _senderKey.fillRange(0, _senderKey.length, 0);
     media = null;
+    connection = 'Звонок завершён';
+    changed?.call();
   }
 }

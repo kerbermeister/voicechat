@@ -26,6 +26,18 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
+  turn:
+    image: coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3
+    command: ['-c', '/etc/coturn/turnserver.conf']
+    ports:
+      - '127.0.0.1:3478:3478/tcp'
+      - '127.0.0.1:49160-49200:49160-49200/udp'
+    volumes: ['../.prototype/turnserver.conf:/etc/coturn/turnserver.conf:ro']
+  mailpit:
+    image: axllent/mailpit@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+    ports: ['127.0.0.1:8025:8025']
+    environment:
+      MP_MAX_MESSAGES: '100'
   livekit:
     image: livekit/livekit-server@sha256:89ca9ce0791e18d6e03bf6e2c49ceb27e1c754eae8bd50c989386c1a5963791a
     command: ['--config', '/etc/livekit.yaml']

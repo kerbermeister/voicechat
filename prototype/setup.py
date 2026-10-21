@@ -10,9 +10,13 @@ out.mkdir(mode=0o700, exist_ok=True)
 secret_file = out / 'secrets.json'
 if not secret_file.exists():
     secret_file.write_text(json.dumps({k: secrets.token_hex(32) for k in
-        ['postgres', 'registration', 'macaroon', 'livekit']}, indent=2))
+        ['postgres', 'registration', 'macaroon', 'livekit', 'turn']}, indent=2))
     secret_file.chmod(0o600)
 s = json.loads(secret_file.read_text())
+if 'turn' not in s:
+    s['turn'] = secrets.token_hex(32)
+    secret_file.write_text(json.dumps(s, indent=2))
+    secret_file.chmod(0o600)
 (out / 'postgres.env').write_text(f'POSTGRES_PASSWORD={s["postgres"]}\nPOSTGRES_USER=synapse\nPOSTGRES_DB=synapse\nPOSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C\n')
 (out / 'homeserver.yaml').write_text(f'''server_name: voicechat.local
 public_baseurl: http://localhost:8008/
@@ -38,7 +42,22 @@ media_store_path: /data/media_store
 signing_key_path: /data/voicechat.signing.key
 registration_shared_secret: "{s['registration']}"
 macaroon_secret_key: "{s['macaroon']}"
-enable_registration: false
+enable_registration: true
+registrations_require_3pid: [email]
+enable_registration_without_verification: false
+email:
+  smtp_host: mailpit
+  smtp_port: 1025
+  require_transport_security: false
+  enable_tls: false
+  notif_from: 'VoiceChat <noreply@voicechat.local>'
+  app_name: VoiceChat
+user_directory:
+  search_all_users: true
+turn_uris: ['turn:localhost:3478?transport=tcp']
+turn_shared_secret: "{s['turn']}"
+turn_user_lifetime: 1h
+turn_allow_guests: false
 report_stats: false
 trusted_key_servers: []
 federation_domain_whitelist: []
@@ -66,6 +85,21 @@ keys:
   prototype: "{s['livekit']}"
 room:
   max_participants: 10
+''')
+(out / 'turnserver.conf').write_text(f'''listening-port=3478
+fingerprint
+use-auth-secret
+static-auth-secret={s['turn']}
+realm=voicechat.local
+listening-ip=0.0.0.0
+relay-ip=0.0.0.0
+min-port=49160
+max-port=49200
+cli=off
+no-tls
+no-multicast-peers
+# Loopback is intentional for this private, loopback-published laboratory only.
+allow-loopback-peers
 ''')
 for p in out.glob('*'):
     if p.is_file(): p.chmod(0o600)

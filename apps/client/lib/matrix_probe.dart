@@ -38,7 +38,16 @@ class MatrixProbe {
   }
 
   Future<void> login(String server, String username, String password) async {
-    if (!client.isLogged()) {
+    if (client.isLogged()) {
+      final requested = username.trim();
+      final localpart = client.userID!.split(':').first.substring(1);
+      if ((requested != client.userID && requested != localpart) ||
+          client.homeserver!.origin != secureEndpoint(server).origin) {
+        throw UserActionError(
+          'Этот локальный профиль уже открыт для ${client.userID}. Для другого аккаунта укажите другое имя профиля.',
+        );
+      }
+    } else {
       await client.checkHomeserver(
         secureEndpoint(server),
         checkWellKnown: false,
@@ -101,8 +110,25 @@ class MatrixProbe {
     await client.encryption!.keyManager.loadAllKeys();
   }
 
-  Future<String> createRoom(List<String> invitees) => client.createRoom(
-    name: 'Тёплый круг · прототип',
+  Future<String> startDirectChat(String userId) => client.startDirectChat(
+    userId,
+    enableEncryption: true,
+    preset: CreateRoomPreset.privateChat,
+    initialState: [
+      StateEvent(
+        type: 'm.room.history_visibility',
+        stateKey: '',
+        content: {'history_visibility': 'joined'},
+      ),
+    ],
+  );
+
+  Future<String> createRoom(
+    List<String> invitees, {
+    String name = 'Тёплый круг',
+  }) => client.createRoom(
+    name: name,
+    powerLevelContentOverride: {'invite': 50, 'kick': 50, 'ban': 50},
     preset: CreateRoomPreset.privateChat,
     invite: invitees,
     initialState: [

@@ -7,8 +7,12 @@ import 'package:matrix/matrix.dart' as mx;
 import 'package:vodozemac/vodozemac.dart' as vod;
 import 'matrix_probe.dart';
 import 'call_probe.dart';
+import 'call_controller.dart';
+import 'direct_call.dart';
 import 'theme.dart';
 import 'local_store.dart';
+import 'lab_messaging.dart';
+import 'lab_recording.dart';
 import 'lab_storage_stub.dart'
     if (dart.library.js_interop) 'lab_storage_web.dart';
 
@@ -163,21 +167,19 @@ Future<mx.Event> text(mx.Room room, String body) async {
   }
 }
 
-CallProbe callFor(mx.Room room) => CallProbe(
-  chat: room,
-  session: runId,
-  tokenUrl: tokenUrl,
-  livekitUrl: mediaUrl,
-  status: (value) {
-    progress.value = value;
-    unawaited(report('call_status', {'detail': value}));
-  },
-);
+CallController controllerFor(mx.Client client) =>
+    CallController(client, tokenUrl, mediaUrl, (value) {
+      progress.value = value;
+      unawaited(report('call_status', {'detail': value}));
+    });
 
 Future<void> android() async {
   var bob = await login(1, 'bob-android');
   CallProbe? call;
+  CallController? controller;
   try {
+    await checkRecording();
+    await report('android_recording_playback_passed');
     await bob.initializeRecovery(passwords[1]);
     await report('android_ready');
     final roomId = (await barrier('room_created'))['room_id'] as String;
@@ -188,6 +190,24 @@ Future<void> android() async {
     await MatrixProbe.sendText(room, 'android-to-web-$runId');
     await bob.backup();
     await report('android_message_decrypted');
+    await barrier('core_messages_passed');
+    await checkAttachments(room);
+    final rich = await room.getTimeline();
+    require(
+      rich.events.any((e) => e.getDisplayEvent(rich).body == 'edited-$runId'),
+      'Android edit missing',
+    );
+    require(
+      rich.events.any((e) => e.inReplyToEventId() != null),
+      'Android reply missing',
+    );
+    require(rich.events.any((e) => e.redacted), 'Android redaction missing');
+    await rich.setReadMarker(eventId: rich.events.first.eventId, public: true);
+    rich.cancelSubscriptions();
+    await room.setTyping(true, timeout: 15000);
+    await report('android_attachments_passed');
+    await barrier('presence_receipts_passed');
+    await room.setTyping(false);
     await barrier('close_for_recovery');
     await bob.close();
     await report('android_offline');
@@ -196,9 +216,46 @@ Future<void> android() async {
     await checkRememberedTrust(bob);
     room = await bob.room(roomId);
     await trustPeers(bob, fresh: true);
+    controller = controllerFor(bob.client);
     await report('android_devices_verified');
-    call = callFor(room);
-    await call.connect();
+    final directRoomId =
+        (await barrier('direct_room_created'))['room_id'] as String;
+    await until(
+      () async => bob.client.getRoomById(directRoomId) != null,
+      'Direct invite missing',
+    );
+    await bob.client.getRoomById(directRoomId)!.join(waitForSync: true);
+    await report('direct_room_joined');
+    await until(
+      () async => controller!.directInvitations.isNotEmpty,
+      'Direct call did not ring',
+    );
+    require(
+      controller.directInvitations.first.call.localUserMediaStream == null,
+      'Incoming call opened microphone before acceptance',
+    );
+    await controller.acceptDirect(controller.directInvitations.first);
+    final direct = controller.active! as DirectCall;
+    await until(
+      () async =>
+          await direct.receivedAudioPackets() > 0 &&
+          await direct.hasSecureRelay(),
+      'Android TURN audio/DTLS missing',
+    );
+    await report('android_direct_media_passed');
+    await barrier('end_direct_call');
+    await controller.end();
+    await report('android_direct_ended');
+    await until(
+      () async => controller!.invitations.isNotEmpty,
+      'Android incoming call missing',
+    );
+    await controller.start(
+      room,
+      invitation: controller.invitations.values.first,
+    );
+    call = controller.active! as CallProbe;
+    await report('android_invite_accepted');
     await until(
       () async => call!.decryptedAudioFrom.length >= 2,
       'Android did not decrypt two remote audio tracks',
@@ -210,6 +267,7 @@ Future<void> android() async {
     await report('android_revocation_closed');
     await report('android_done');
   } finally {
+    await controller?.close();
     await call?.close();
     await bob.close();
   }
@@ -218,6 +276,7 @@ Future<void> android() async {
 Future<void> carol() async {
   var client = await login(2, 'carol-web');
   CallProbe? call;
+  CallController? controller;
   try {
     await client.initializeRecovery(passwords[2]);
     await report('carol_ready');
@@ -233,9 +292,18 @@ Future<void> carol() async {
     await checkRememberedTrust(client);
     await report('web_trust_persisted');
     await trustPeers(client, fresh: true);
+    controller = controllerFor(client.client);
     await report('carol_devices_verified');
-    call = callFor(await client.room(roomId));
-    await call.connect();
+    await until(
+      () async => controller!.invitations.isNotEmpty,
+      'Carol incoming call missing',
+    );
+    await controller.start(
+      await client.room(roomId),
+      invitation: controller.invitations.values.first,
+    );
+    call = controller.active! as CallProbe;
+    await report('carol_invite_accepted');
     await until(
       () async => call!.decryptedAudioFrom.length >= 2,
       'Carol did not decrypt two remote audio tracks',
@@ -247,6 +315,7 @@ Future<void> carol() async {
     await report('carol_revocation_closed');
     await report('carol_done');
   } finally {
+    await controller?.close();
     await call?.close();
     await client.close();
   }
@@ -255,7 +324,10 @@ Future<void> carol() async {
 Future<void> web() async {
   var alice = await login(0, 'alice-web');
   CallProbe? aliceCall;
+  CallController? controller;
   try {
+    await checkRecording();
+    await report('web_recording_playback_passed');
     final recovery = await alice.initializeRecovery(passwords[0]);
     await barrier('carol_ready');
     await barrier('android_ready');
@@ -304,6 +376,22 @@ Future<void> web() async {
     );
     await text(room, 'android-to-web-$runId');
     await report('cross_platform_text_passed', {'event_id': eventId});
+    await exerciseMessages(alice, room, runId);
+    await report('core_messages_passed');
+    await barrier('android_attachments_passed');
+    await waitCheck(
+      () async => room.typingUsers.any((u) => u.id == userId(1)),
+      'Typing did not arrive',
+    );
+    final receipts = await room.getTimeline();
+    await waitCheck(
+      () async => receipts.events.any(
+        (e) => e.receipts.any((r) => r.user.id == userId(1)),
+      ),
+      'Read receipt missing',
+    );
+    receipts.cancelSubscriptions();
+    await report('presence_receipts_passed');
     await report('close_for_recovery');
     await barrier('android_offline');
     await barrier('carol_offline');
@@ -364,13 +452,44 @@ Future<void> web() async {
     restoredTimeline.cancelSubscriptions();
     await text(room, 'web-to-android-$runId');
     await text(room, 'android-to-web-$runId');
+    await checkAttachments(room);
+    await report('rich_history_recovered');
     await report('history_recovered_without_old_devices');
     await trustPeers(alice, fresh: true);
     await report('resume_calls');
     await barrier('android_devices_verified');
     await barrier('carol_devices_verified');
-    aliceCall = callFor(room);
-    await aliceCall.connect();
+    controller = controllerFor(alice.client);
+    final directRoomId = await alice.startDirectChat(userId(1));
+    final privacy = await alice.client.getRoomStateWithKey(
+      directRoomId,
+      'm.room.history_visibility',
+      '',
+    );
+    require(
+      privacy['history_visibility'] == 'joined',
+      'Direct chat history policy is not private',
+    );
+    await report('direct_room_created', {'room_id': directRoomId});
+    await barrier('direct_room_joined');
+    await controller.start(await alice.room(directRoomId));
+    final direct = controller.active! as DirectCall;
+    await until(
+      () async =>
+          await direct.receivedAudioPackets() > 0 &&
+          await direct.hasSecureRelay(),
+      'Web TURN audio/DTLS missing',
+    );
+    await barrier('android_direct_media_passed');
+    await report('direct_turn_passed');
+    await report('end_direct_call');
+    await controller.end();
+    await barrier('android_direct_ended');
+    await controller.start(room);
+    aliceCall = controller.active! as CallProbe;
+    await barrier('android_invite_accepted');
+    await barrier('carol_invite_accepted');
+    await report('foreground_invites_passed');
     await until(
       () async => aliceCall!.decryptedAudioFrom.length >= 2,
       'Web clients did not decrypt remote audio tracks',
@@ -438,6 +557,7 @@ Future<void> web() async {
     await barrier('carol_done');
     await report('web_done');
   } finally {
+    await controller?.close();
     await aliceCall?.close();
     await alice.close();
   }

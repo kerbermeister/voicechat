@@ -248,19 +248,7 @@ class CallSession {
     }
     await pc!.setRemoteDescription(offer);
 
-    /// only add local stream if it is not a group call.
-    if (!isGroupCall) {
-      final stream = await _getUserMedia(type);
-      if (stream != null) {
-        await addLocalStream(stream, SDPStreamMetadataPurpose.Usermedia);
-      } else {
-        // we don't have a localstream, call probably crashed
-        // for sanity
-        if (state == CallState.kEnded) {
-          return;
-        }
-      }
-    }
+    // Capture starts only after the user accepts; an invite must not open the microphone.
 
     setCallState(CallState.kRinging);
 
@@ -867,6 +855,11 @@ class CallSession {
     await voip.delegate.stopRingtone();
 
     if (direction == CallDirection.kIncoming) {
+      if (!isGroupCall && localUserMediaStream == null) {
+        final stream = await _getUserMedia(type);
+        if (stream == null || callHasEnded) return;
+        await addLocalStream(stream, SDPStreamMetadataPurpose.Usermedia);
+      }
       setCallState(CallState.kCreateAnswer);
 
       final answer = await pc!.createAnswer({});
@@ -1506,12 +1499,9 @@ class CallSession {
       'version': version,
       'lifetime': lifetime,
       'offer': {'sdp': sdp, 'type': type},
-      'invitee':
-          ?remoteUserId, // TODO: rename this to invitee_user_id? breaks spec though
+      'invitee': ?remoteUserId, // TODO: rename this to invitee_user_id? breaks spec though
       'invitee_device_id': ?remoteDeviceId,
-      if (remoteDeviceId != null)
-        'device_id': client
-            .deviceID!, // Having a remoteDeviceId means you are doing to-device events, so you want to send your deviceId too
+      if (remoteDeviceId != null) 'device_id': client.deviceID!, // Having a remoteDeviceId means you are doing to-device events, so you want to send your deviceId too
       if (capabilities != null) 'capabilities': capabilities.toJson(),
       if (metadata != null) sdpStreamMetadataKey: metadata.toJson(),
     };

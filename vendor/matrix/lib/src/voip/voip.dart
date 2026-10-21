@@ -35,9 +35,6 @@ class VoIP {
   /// uses unprotected state keys for group call member events.
   final bool useUnprotectedPerDeviceStateKeys;
 
-  /// cached turn creds
-  TurnServerCredentials? _turnServerCredentials;
-
   Map<VoipId, CallSession> get calls => _calls;
   final Map<VoipId, CallSession> _calls = {};
 
@@ -549,6 +546,9 @@ class VoIP {
       onIncomingCallSetup.add(newCall);
     }
 
+    // A delegate may reject an untrusted caller before creating a peer connection.
+    if (newCall.callHasEnded) return;
+
     await newCall.initWithInvite(
       callType,
       offer,
@@ -935,27 +935,20 @@ class VoIP {
   }
 
   Future<List<Map<String, dynamic>>> getIceServers() async {
-    if (_turnServerCredentials == null) {
-      try {
-        _turnServerCredentials = await client.getTurnServer();
-      } catch (e) {
-        Logs().v('[VOIP] getTurnServerCredentials error => $e');
-      }
-    }
-
-    if (_turnServerCredentials == null) {
+    try {
+      // TURN credentials expire; fetch them for each call instead of retaining them indefinitely.
+      final credentials = await client.getTurnServer();
+      return [
+        {
+          'username': credentials.username,
+          'credential': credentials.password,
+          'urls': credentials.uris.map((uri) => uri.toString()).toList(),
+        },
+      ];
+    } catch (e) {
+      Logs().v('[VOIP] getTurnServerCredentials error => $e');
       return [];
     }
-
-    return [
-      {
-        'username': _turnServerCredentials!.username,
-        'credential': _turnServerCredentials!.password,
-        'urls': _turnServerCredentials!.uris
-            .map((uri) => uri.toString())
-            .toList(),
-      },
-    ];
   }
 
   /// Make a P2P call to room

@@ -109,7 +109,32 @@ class TestDevice implements DeviceKeys {
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
 
+class LoggedInClient extends TestClient {
+  @override
+  bool isLogged() => true;
+  @override
+  Future<SyncUpdate> get firstSyncReceived async => SyncUpdate(nextBatch: '');
+  @override
+  bool get encryptionEnabled => true;
+}
+
 void main() {
+  test(
+    'An existing profile cannot silently open the wrong account or server',
+    () async {
+      final probe = MatrixProbe(LoggedInClient());
+      await expectLater(
+        probe.login('https://example.invalid', 'other', ''),
+        throwsStateError,
+      );
+      await expectLater(
+        probe.login('https://other.invalid', 'user', ''),
+        throwsStateError,
+      );
+      await probe.login('https://example.invalid', 'user', '');
+    },
+  );
+
   test(
     'Unverified device blocks sending; only the matching fingerprint grants trust',
     () async {
