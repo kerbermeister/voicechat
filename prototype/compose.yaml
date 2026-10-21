@@ -1,0 +1,40 @@
+name: voicechat-prototype
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    env_file: ../.prototype/postgres.env
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U synapse']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  synapse-data:
+    image: matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0
+    user: '0:0'
+    entrypoint: ['chown', '991:991', '/data']
+    volumes: ['synapse:/data']
+  synapse:
+    image: matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0
+    ports: ['127.0.0.1:8008:8008']
+    volumes:
+      - ../.prototype/homeserver.yaml:/data/homeserver.yaml:ro
+      - synapse:/data
+    depends_on:
+      synapse-data:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+  livekit:
+    image: livekit/livekit-server@sha256:89ca9ce0791e18d6e03bf6e2c49ceb27e1c754eae8bd50c989386c1a5963791a
+    command: ['--config', '/etc/livekit.yaml']
+    ports:
+      - '127.0.0.1:7880:7880'
+      - '127.0.0.1:7881:7881'
+      - '127.0.0.1:50100-50200:50100-50200/udp'
+    volumes:
+      - ../.prototype/livekit.yaml:/etc/livekit.yaml:ro
+volumes:
+  postgres:
+  synapse:

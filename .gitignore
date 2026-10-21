@@ -13,3 +13,8 @@ node_modules/
 build/
 dist/
 coverage/
+.prototype/
+*.log
+apps/client/web/pkg/
+apps/client/web/e2ee.worker.dart.js*
+__pycache__/

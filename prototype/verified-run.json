@@ -1,0 +1,91 @@
+{
+  "date": "2026-10-21",
+  "run": "1792581328",
+  "events": [
+    {
+      "role": "android",
+      "stage": "android_ready",
+      "timestamp": 1792581370
+    },
+    {
+      "role": "carol",
+      "stage": "carol_ready",
+      "timestamp": 1792581376
+    },
+    {
+      "role": "web",
+      "stage": "room_created",
+      "timestamp": 1792581377
+    },
+    {
+      "role": "android",
+      "stage": "android_message_decrypted",
+      "timestamp": 1792581379
+    },
+    {
+      "role": "web",
+      "stage": "cross_platform_text_passed",
+      "timestamp": 1792581379
+    },
+    {
+      "role": "web",
+      "stage": "close_for_recovery",
+      "timestamp": 1792581379
+    },
+    {
+      "role": "android",
+      "stage": "android_offline",
+      "timestamp": 1792581379
+    },
+    {
+      "role": "carol",
+      "stage": "carol_offline",
+      "timestamp": 1792581379
+    },
+    {
+      "role": "web",
+      "stage": "history_recovered_without_old_devices",
+      "timestamp": 1792581381
+    },
+    {
+      "role": "web",
+      "stage": "resume_calls",
+      "timestamp": 1792581381
+    },
+    {
+      "role": "android",
+      "stage": "android_media_decrypted",
+      "timestamp": 1792581385
+    },
+    {
+      "role": "carol",
+      "stage": "carol_media_decrypted",
+      "timestamp": 1792581386
+    },
+    {
+      "role": "web",
+      "stage": "three_participant_media_passed",
+      "timestamp": 1792581386
+    },
+    {
+      "role": "web",
+      "stage": "end_calls",
+      "timestamp": 1792581386
+    },
+    {
+      "role": "carol",
+      "stage": "carol_done",
+      "timestamp": 1792581387
+    },
+    {
+      "role": "android",
+      "stage": "android_done",
+      "timestamp": 1792581387
+    },
+    {
+      "role": "web",
+      "stage": "web_done",
+      "timestamp": 1792581387
+    }
+  ]
+}
