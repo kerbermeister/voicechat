@@ -1,0 +1,15 @@
+.DS_Store
+.idea/
+.env
+.env.*
+!.env.example
+secrets/
+*.jks
+*.keystore
+*.p12
+*.pem
+node_modules/
+.dart_tool/
+build/
+dist/
+coverage/
