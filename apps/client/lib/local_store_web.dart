@@ -4,6 +4,12 @@ import 'dart:typed_data';
 import 'package:matrix/matrix.dart';
 import 'user_action_error.dart';
 
+@JS('voicechatVault.usage')
+external JSPromise<JSNumber> _usage(JSString name);
+Future<int> storeUsage(String name) async =>
+    (await _usage(name.toJS).toDart).toDartInt;
+Future<void> compactStore(String name) async {}
+
 @JS('voicechatVault.writeBlob')
 external JSPromise<JSAny?> _writeBlob(
   JSString name,

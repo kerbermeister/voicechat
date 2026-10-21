@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart';
 import 'transport.dart';
 import 'user_action_error.dart';
+import 'group_invitations.dart';
 
 final _services = Expando<ContactService>();
 
@@ -34,11 +35,13 @@ class ContactService extends ChangeNotifier {
   bool available = false;
   bool _closed = false;
   List<ContactRequest> requests = [];
+  List<GroupInvitation> groups = [];
   Timer? _timer;
   StreamSubscription<dynamic>? _sync;
   Future<void>? _refreshing;
   Future<void> _write = Future.value();
   static const _storage = 'dev.voicechat.local.contacts';
+  static const _groupStorage = 'dev.voicechat.local.groupInvitations';
   ContactService(this.client, this.url) {
     _services[client] = this;
   }
@@ -81,8 +84,18 @@ class ContactService extends ChangeNotifier {
   }
 
   Future<void> open() async {
-    final cache = (await client.database.getAccountData())[_storage]?.content;
+    final saved = await client.database.getAccountData();
+    final cache = saved[_storage]?.content;
     if (cache != null) _adopt(cache);
+    final items = saved[_groupStorage]?.content['items'];
+    if (items is List && items.length <= 5000) {
+      groups = items
+          .map(
+            (v) =>
+                GroupInvitation.fromJson(Map<String, dynamic>.from(v as Map)),
+          )
+          .toList();
+    }
     await refresh();
     _timer = Timer.periodic(const Duration(seconds: 10), (_) => refresh());
     _sync = client.onSync.stream.listen((_) => unawaited(refresh()));
@@ -119,6 +132,15 @@ class ContactService extends ChangeNotifier {
   Future<void> _refresh() async {
     if (_closed) return;
     try {
+      final observed = groupInvitations(client, groups);
+      final items = observed.map((v) => v.toJson()).toList();
+      if (jsonEncode(items) !=
+          jsonEncode(groups.map((v) => v.toJson()).toList())) {
+        await (_write = client.database.storeAccountData(_groupStorage, {
+          'items': items,
+        }));
+        groups = observed;
+      }
       final data = await _api('/contacts');
       if (_closed) return;
       final previous = {'allow_direct': allowDirect, 'requests': requests};
@@ -136,13 +158,11 @@ class ContactService extends ChangeNotifier {
         (r) => r.state == 'accepted' && r.recipient == client.userID,
       )) {
         final room = client.getRoomById(request.roomId);
-        if (room?.membership == Membership.invite &&
-            room
-                    ?.getState(EventTypes.RoomMember, client.userID!)
-                    ?.content['is_direct'] ==
-                true) {
+        if (room?.membership == Membership.invite) {
           try {
-            await room!.join();
+            // Consent names this private room; old reinvites can omit is_direct.
+            await room!.addToDirectChat(request.peer(client.userID!));
+            await room.join();
           } catch (_) {
             /* Retry on next sync; consent remains durable. */
           }
@@ -189,6 +209,11 @@ class ContactService extends ChangeNotifier {
     await _api('/contacts', {'action': 'policy', 'allow_direct': value});
     await _refreshing;
     await refresh();
+    if (!available || allowDirect != value) {
+      throw UserActionError(
+        'Не удалось подтвердить сохранение настройки. Повторите после восстановления связи.',
+      );
+    }
   }
 
   Future<void> close() async {

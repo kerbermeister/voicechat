@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 import 'package:flutter/services.dart';
 import 'chunked_file.dart';
+import 'picked_file.dart';
 
 const _channel = MethodChannel('voicechat/save');
 Future<Directory> _recordingDirectory() async =>
@@ -56,6 +57,17 @@ Future<void> saveFile(
 
 Future<({String url, Future<void> Function() close})> videoSource(
   ChunkedFile file,
+) => _videoSource(file.size, file.mime, file.range, file.clear);
+
+Future<({String url, Future<void> Function() close})> draftVideoSource(
+  PickedFile file,
+) => _videoSource(file.size, file.mime, file.range, () {});
+
+Future<({String url, Future<void> Function() close})> _videoSource(
+  int size,
+  String mime,
+  Stream<List<int>> Function(int, int) rangeBytes,
+  void Function() clear,
 ) async {
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   final random = Random.secure();
@@ -71,7 +83,7 @@ Future<({String url, Future<void> Function() close})> videoSource(
         response.statusCode = 404;
         return;
       }
-      var start = 0, end = file.size;
+      var start = 0, end = size;
       final range = request.headers.value(HttpHeaders.rangeHeader);
       if (range != null) {
         final match = RegExp(r'^bytes=(\d+)-(\d*)$').firstMatch(range);
@@ -81,24 +93,24 @@ Future<({String url, Future<void> Function() close})> videoSource(
         }
         start = int.parse(match[1]!);
         if (match[2]!.isNotEmpty) {
-          end = (int.parse(match[2]!) + 1).clamp(0, file.size);
+          end = (int.parse(match[2]!) + 1).clamp(0, size);
         }
-        if (start >= end || start >= file.size) {
+        if (start >= end || start >= size) {
           response.statusCode = 416;
           return;
         }
         response.statusCode = 206;
         response.headers.set(
           HttpHeaders.contentRangeHeader,
-          'bytes $start-${end - 1}/${file.size}',
+          'bytes $start-${end - 1}/$size',
         );
       }
-      response.headers.set(HttpHeaders.contentTypeHeader, file.mime);
+      response.headers.set(HttpHeaders.contentTypeHeader, mime);
       response.headers.set(HttpHeaders.acceptRangesHeader, 'bytes');
       response.headers.set(HttpHeaders.cacheControlHeader, 'no-store');
       response.contentLength = end - start;
       if (request.method == 'GET') {
-        await response.addStream(file.range(start, end));
+        await response.addStream(rangeBytes(start, end));
       }
     } catch (_) {
       response.statusCode = 500;
@@ -110,7 +122,7 @@ Future<({String url, Future<void> Function() close})> videoSource(
     url: 'http://127.0.0.1:${server.port}/$nonce',
     close: () async {
       await server.close(force: true);
-      file.clear();
+      clear();
     },
   );
 }

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:matrix/matrix.dart';
+// ignore: implementation_imports
+import 'package:matrix/src/utils/cached_stream_controller.dart';
 import 'package:voicechat_probe/album_view.dart';
 import 'package:voicechat_probe/avatar_editor.dart';
 import 'package:voicechat_probe/chunked_file.dart';
@@ -14,13 +16,21 @@ import 'package:voicechat_probe/media_policy.dart';
 import 'package:voicechat_probe/photo_processing.dart';
 import 'package:voicechat_probe/photo_viewer.dart';
 import 'package:voicechat_probe/room_members_dialog.dart';
+import 'package:voicechat_probe/conversation_list.dart';
 import 'package:voicechat_probe/theme.dart';
 import 'package:voicechat_probe/typing_indicator.dart';
 import 'package:voicechat_probe/voice_recording.dart';
-import 'chat_actions_test.dart' show OutboxDatabase, OutboxRoom;
+import 'chat_actions_test.dart' show OutboxDatabase, OutboxRoom, OutboxTimeline;
 import 'message_test.dart' show TestClient;
 
 class RichClient extends TestClient {
+  final presenceEvents = CachedStreamController<CachedPresence>();
+  @override
+  CachedStreamController<CachedPresence> get onPresenceChanged =>
+      presenceEvents;
+  final presenceCache = <String, CachedPresence>{};
+  @override
+  Map<String, CachedPresence> get presences => presenceCache;
   @override
   final directChats = <String, List<String>>{};
   @override
@@ -30,6 +40,53 @@ class RichClient extends TestClient {
 }
 
 void main() {
+  test(
+    'Group join events appear once as history entries, not profile changes or direct chat events',
+    () {
+      final client = RichClient();
+      final room = Room(id: '!members:local', client: client);
+      Event member(String id, String membership, {String? previous}) =>
+          Event.fromJson({
+            'event_id': id,
+            'type': EventTypes.RoomMember,
+            'sender': '@alice:local',
+            'state_key': '@alice:local',
+            'origin_server_ts': 1700000000000,
+            'content': {'membership': membership, 'displayname': 'Элис'},
+            if (previous != null)
+              'unsigned': {
+                'prev_content': {'membership': previous},
+              },
+          }, room);
+      final joined = member(r'$joined', 'join', previous: 'invite');
+      final renamed = member(r'$renamed', 'join', previous: 'join');
+      final invite = member(r'$invited', 'invite');
+      expect(visibleMessages(OutboxTimeline([joined, renamed, invite]), ''), [
+        joined,
+      ]);
+      client.directChats['@alice:local'] = [room.id];
+      expect(isGroupJoin(joined), false);
+    },
+  );
+  test('History and search results include audio, file and album captions', () {
+    final room = Room(id: '!search:local', client: RichClient());
+    for (final key in ['caption', 'dev.voicechat.caption']) {
+      final event = Event.fromJson({
+        'event_id': r'$attachment',
+        'sender': '@user:local',
+        'type': EventTypes.Message,
+        'origin_server_ts': 1700000000000,
+        'content': {
+          'msgtype': MessageTypes.Audio,
+          'body': 'voice.wav',
+          key: 'Нужная подпись',
+        },
+      }, room);
+      final timeline = OutboxTimeline([event]);
+      expect(messageSearchText(event), contains('Нужная подпись'));
+      expect(visibleMessages(timeline, 'нужная подпись'), [event]);
+    }
+  });
   test(
     'Muted unread message counts remain separate from notification counts and survive local storage',
     () {
@@ -281,6 +338,11 @@ void main() {
         typingLabel(room, false),
         'Вы печатаете · @alice:local, @bob:local печатают',
       );
+      expect(typingLabel(room, false, ownOnly: true), 'Вы печатаете');
+      expect(
+        typingLabel(room, false, ownOnly: false),
+        '@alice:local, @bob:local печатают',
+      );
     },
   );
   testWidgets('Typing lists keep every name while compact rows stay one line', (
@@ -421,7 +483,15 @@ void main() {
   testWidgets('Member tabs separate one joined and two invited users', (
     tester,
   ) async {
-    final room = Room(id: '!group:local', client: RichClient());
+    final client = RichClient();
+    client.presences[client.userID] = CachedPresence(
+      PresenceType.online,
+      0,
+      null,
+      true,
+      client.userID,
+    );
+    final room = Room(id: '!group:local', client: client);
     room.states[EventTypes.RoomPowerLevels] = {
       '': StrippedStateEvent(
         type: EventTypes.RoomPowerLevels,
@@ -458,6 +528,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Вступили · 1'), findsOneWidget);
     expect(find.text('Приглашены · 2'), findsOneWidget);
+    expect(
+      tester.widget<PersonAvatar>(find.byType(PersonAvatar).first).online,
+      true,
+    );
+    final offline = CachedPresence(
+      PresenceType.offline,
+      1000,
+      null,
+      false,
+      client.userID,
+    );
+    client.presences[client.userID] = offline;
+    client.onPresenceChanged.add(offline);
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<PersonAvatar>(find.byType(PersonAvatar).first).online,
+      false,
+    );
+    expect(find.textContaining('Не в сети · Это вы'), findsOneWidget);
+
     await tester.tap(find.text('Приглашены · 2'));
     await tester.pumpAndSettle();
     expect(find.textContaining('@alice:local'), findsWidgets);

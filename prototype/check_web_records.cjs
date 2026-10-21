@@ -7,7 +7,7 @@ const {chromium} = require('playwright');
   const run = JSON.parse(fs.readFileSync(path.join(__dirname, '../.prototype/web.json'))).RUN_ID;
   const browser = await chromium.connectOverCDP(process.env.CDP_URL || 'http://localhost:9223');
   try {
-    const page = browser.contexts()[0].pages().find(p => p.url() === 'http://localhost:7357/');
+    const page = browser.contexts()[0].pages().find(p => p.url() === 'http://localhost:7358/');
     assert(page, 'Laboratory web tab required');
     const counts = await page.evaluate(async run => {
       const request = r => new Promise((resolve,reject) => {r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});

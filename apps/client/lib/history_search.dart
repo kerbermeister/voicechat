@@ -79,9 +79,7 @@ class _HistorySearchState extends State<_HistorySearch> {
             .where(
               (e) =>
                   query.isNotEmpty &&
-                  '${e.shown.calcUnlocalizedBody(hideReply: true)} ${e.shown.content['caption'] ?? ''} ${e.shown.content['dev.voicechat.caption'] ?? ''}'
-                      .toLowerCase()
-                      .contains(query),
+                  messageSearchText(e.shown).toLowerCase().contains(query),
             )
             .toList()
           ..sort(
@@ -139,7 +137,7 @@ class _HistorySearchState extends State<_HistorySearch> {
                         for (final event in foundMessages.take(200))
                           ListTile(
                             title: Text(
-                              event.shown.calcUnlocalizedBody(hideReply: true),
+                              messageSearchText(event.shown),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),

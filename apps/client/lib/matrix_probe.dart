@@ -241,7 +241,7 @@ class MatrixProbe {
 /// Refresh authorization from the server, never infer revocation from a cache.
 Future<List<DeviceKeys>> authorizedDevices(Room room) async {
   await room.client.getTokenOwner();
-  await room.requestParticipants(
+  final participants = await room.requestParticipants(
     const [
       Membership.join,
       Membership.invite,
@@ -259,21 +259,57 @@ Future<List<DeviceKeys>> authorizedDevices(Room room) async {
   }
   final audience = members.keys.toSet();
   final peer = room.isDirectChat ? room.directChatMatrixID : null;
-  if (room.isDirectChat && !members.containsKey(peer)) {
-    final accepted =
-        peer != null &&
-        room.historyVisibility == HistoryVisibility.invited &&
-        ContactService.of(room.client)?.acceptsRoom(room.id, peer) == true;
-    if (!accepted ||
-        (await room.client.getRoomStateWithKey(
-              room.id,
-              EventTypes.RoomMember,
-              peer,
-            ))['membership'] !=
-            'invite') {
+  if (peer != null &&
+      participants.any(
+        (user) =>
+            [Membership.join, Membership.invite].contains(user.membership) &&
+            user.id != room.client.userID &&
+            user.id != peer,
+      )) {
+    throw UserActionError(
+      'В личном диалоге обнаружен посторонний участник. Отправка остановлена.',
+    );
+  }
+  if (peer != null && !members.containsKey(peer)) {
+    if ((await room.client.getRoomStateWithKey(
+          room.id,
+          EventTypes.RoomMember,
+          peer,
+        ))['membership'] !=
+        'invite') {
       throw UserActionError(
-        'Собеседник ещё не подключился. Сообщение сохранено в очереди.',
+        'У собеседника больше нет доступа к этому диалогу.',
       );
+    }
+    final contacts = ContactService.of(room.client);
+    if (contacts?.acceptsRoom(room.id, peer) != true &&
+        contacts?.available == true) {
+      if (room.getState('dev.voicechat.kind') == null) {
+        await room.client.setRoomStateWithKey(room.id, 'dev.voicechat.kind', '', {
+          'kind': 'direct', 'owner': room.client.userID, 'peer': peer,
+        });
+      }
+      await contacts!.request(peer, room.id);
+    }
+    if (contacts?.acceptsRoom(room.id, peer) != true) {
+      throw UserActionError(
+        'Для этого диалога пока нет подтверждённого доступа. Проверьте приглашения и соединение с сервисом контактов.',
+      );
+    }
+    if (room.historyVisibility != HistoryVisibility.invited) {
+      if (!room.canChangeHistoryVisibility) {
+        throw UserActionError(
+          'Не удалось обновить доступ к истории старого диалога. Требуется разрешение создателя.',
+        );
+      }
+      await room.setHistoryVisibility(HistoryVisibility.invited);
+      final until = DateTime.now().add(const Duration(seconds: 5));
+      while (room.historyVisibility != HistoryVisibility.invited) {
+        if (DateTime.now().isAfter(until)) {
+          throw TimeoutException('Direct history settings sync timed out');
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
     }
     audience.add(peer);
   }

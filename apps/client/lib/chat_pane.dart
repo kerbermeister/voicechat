@@ -8,6 +8,8 @@ import 'waveform_view.dart';
 import 'emoji_picker.dart';
 import 'typing_indicator.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
+import 'package:flutter/services.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:record/record.dart';
 import 'chat_actions.dart';
@@ -20,6 +22,8 @@ import 'call_window.dart';
 import 'history_window.dart';
 import 'recording_activity.dart';
 import 'active_capture.dart';
+import 'link_preview.dart';
+import 'link_cards.dart';
 
 String? reactionEmoji(mx.Event event) {
   final relation = event.content['m.relates_to'];
@@ -58,6 +62,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   final input = TextEditingController();
   final search = TextEditingController();
   final searchFocus = FocusNode();
+  late final composerFocus = FocusNode(onKeyEvent: composerKey);
   final scroll = ScrollController();
   AudioRecorder recorder = AudioRecorder();
   Future<void>? voiceOpening;
@@ -76,6 +81,8 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   StreamSubscription<Uint8List>? recordingStream;
   final draftPhotos = <mx.MatrixImageFile>[];
   final draftFiles = <PickedFile>[];
+  final linkPreviews = <Uri, LinkPreview>{};
+  bool loadingPreview = false;
   final heldVideo = ValueNotifier(false);
   PickedFile? get draftFile => draftFiles.firstOrNull;
   int? draftVideoDuration;
@@ -156,6 +163,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       initialDate: DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
+      helpText: 'Дата переписки',
+      confirmText: 'Перейти',
+      cancelText: 'Отмена',
     );
     if (date == null) return;
     final result = await widget.room.client.getEventByTimestamp(
@@ -218,6 +228,42 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     }
   }
 
+  KeyEventResult composerKey(FocusNode node, KeyEvent event) {
+    if (!kIsWeb ||
+        !{
+          TargetPlatform.macOS,
+          TargetPlatform.windows,
+          TargetPlatform.linux,
+        }.contains(defaultTargetPlatform) ||
+        event is! KeyDownEvent ||
+        !{
+          LogicalKeyboardKey.enter,
+          LogicalKeyboardKey.numpadEnter,
+        }.contains(event.logicalKey) ||
+        !input.value.composing.isCollapsed) {
+      return KeyEventResult.ignored;
+    }
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isMetaPressed) {
+      final selection = input.selection;
+      final start = selection.isValid ? selection.start : input.text.length;
+      final end = selection.isValid ? selection.end : start;
+      input.value = TextEditingValue(
+        text: input.text.replaceRange(start, end, '\n'),
+        selection: TextSelection.collapsed(offset: start + 1),
+      );
+      typing(input.text);
+      setState(() {});
+    } else if (!keyboard.isControlPressed &&
+        !keyboard.isAltPressed &&
+        !keyboard.isShiftPressed) {
+      unawaited(perform(send));
+    } else {
+      return KeyEventResult.ignored;
+    }
+    return KeyEventResult.handled;
+  }
+
   Future<void> send() async {
     final text = input.text;
     if (unsentVoice != null) {
@@ -262,9 +308,13 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         text,
         reply: reply,
         edit: edit?.eventId,
+        previews: linkPreviews.values.toList(),
       );
     }
-    if (input.text == text) input.clear();
+    if (input.text == text) {
+      input.clear();
+      linkPreviews.clear();
+    }
     typing(input.text);
     setState(() {
       reply = null;
@@ -625,6 +675,27 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   }
 
   Widget bubble(mx.Event event) {
+    if (isGroupJoin(event)) {
+      final displayName = event.content['displayname'];
+      final name = displayName is String && displayName.isNotEmpty
+          ? displayName
+          : event.stateKey!;
+      final text = event.stateKey == widget.room.client.userID
+          ? 'Вы вступили в группу'
+          : '$name вступил(а) в группу';
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Center(
+          child: Chip(
+            avatar: const Icon(Icons.person_add_alt_1_outlined, size: 18),
+            label: Text(
+              '$text · ${TimeOfDay.fromDateTime(event.originServerTs.toLocal()).format(context)}',
+            ),
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+          ),
+        ),
+      );
+    }
     final own = event.senderId == widget.room.client.userID;
     final shown = event.getDisplayEvent(widget.timeline);
     final colors = Theme.of(context).colorScheme;
@@ -757,10 +828,14 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                 }.contains(shown.messageType))
                   AttachmentView(key: ValueKey(shown.eventId), event: shown)
                 else
-                  SelectableText(
-                    shown.calcUnlocalizedBody(hideReply: true),
-                    semanticsLabel: shown.calcUnlocalizedBody(hideReply: true),
-                    style: const TextStyle(fontSize: 16),
+                  LinkedText(
+                    text: shown.calcUnlocalizedBody(hideReply: true),
+                    style: TextStyle(fontSize: shown.onlyEmotes ? 30 : 18),
+                  ),
+                if (!event.redacted && event.type != mx.EventTypes.Encrypted)
+                  LinkCards(
+                    text: messageSearchText(shown),
+                    previews: shown.content['dev.voicechat.links'],
                   ),
                 const SizedBox(height: 4),
                 Text(
@@ -974,12 +1049,26 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   child: ConstrainedBox(
                     constraints: BoxConstraints(maxHeight: bounds.maxHeight),
                     child: SingleChildScrollView(
-                      child: Align(
-                        alignment: Alignment.bottomLeft,
-                        child: TypingIndicator(
-                          room: widget.room,
-                          ownDraft: input.text.isNotEmpty,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TypingIndicator(
+                              room: widget.room,
+                              ownOnly: false,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TypingIndicator(
+                              room: widget.room,
+                              ownDraft: input.text.isNotEmpty,
+                              ownOnly: true,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -988,6 +1077,56 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             ),
           ),
         ),
+        if (draftFiles.isEmpty &&
+            draftPhotos.isEmpty &&
+            unsentVoice == null &&
+            widget.actions.policyUrl != null &&
+            messageLinks(input.text).isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 8,
+              children: [
+                for (final url in messageLinks(input.text))
+                  TextButton.icon(
+                    onPressed: loadingPreview
+                        ? null
+                        : () => perform(() async {
+                            setState(() => loadingPreview = true);
+                            try {
+                              final preview = await LinkPreview.fetch(
+                                widget.room.client,
+                                widget.actions.policyUrl!,
+                                url,
+                              );
+                              if (mounted) {
+                                setState(() => linkPreviews[url] = preview);
+                              }
+                            } finally {
+                              if (mounted) {
+                                setState(() => loadingPreview = false);
+                              }
+                            }
+                          }),
+                    icon: Icon(
+                      linkPreviews.containsKey(url)
+                          ? Icons.check_circle_outline
+                          : Icons.link,
+                      size: 18,
+                    ),
+                    label: Text(
+                      linkPreviews.containsKey(url)
+                          ? 'Превью добавлено · ${url.host}'
+                          : 'Добавить превью · ${url.host}',
+                    ),
+                  ),
+                const Text(
+                  'Сервис превью получит ссылку. Карточка будет зашифрована вместе с сообщением.',
+                  style: TextStyle(fontSize: 11),
+                ),
+              ],
+            ),
+          ),
         if (draftFiles.isNotEmpty)
           SizedBox(
             height: keyboardOpen ? 64 : 88,
@@ -998,11 +1137,27 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
               itemBuilder: (_, i) => SizedBox(
                 width: 260,
                 child: ListTile(
-                  leading: Icon(
-                    draftIsVideoNote
-                        ? Icons.video_camera_front
-                        : Icons.attach_file,
-                  ),
+                  onTap: draftFiles[i].mime.startsWith('video/')
+                      ? () => showDialog<void>(
+                          context: context,
+                          builder: (_) => MessageVideo.draft(
+                            file: draftFiles[i],
+                            videoNote: draftIsVideoNote,
+                            thumbnail: false,
+                          ),
+                        )
+                      : null,
+                  leading: draftFiles[i].mime.startsWith('video/')
+                      ? MessageVideo.draft(
+                          key: ObjectKey(draftFiles[i]),
+                          file: draftFiles[i],
+                          videoNote: draftIsVideoNote,
+                        )
+                      : Icon(
+                          draftIsVideoNote
+                              ? Icons.video_camera_front
+                              : Icons.attach_file,
+                        ),
                   title: Text(
                     draftFiles[i].name,
                     maxLines: 1,
@@ -1234,8 +1389,11 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                 final field = Expanded(
                   child: TextField(
                     controller: input,
+                    focusNode: composerFocus,
                     onChanged: (value) {
                       typing(value);
+                      final urls = messageLinks(value);
+                      linkPreviews.removeWhere((url, _) => !urls.contains(url));
                       setState(() {});
                     },
                     minLines: 1,
@@ -1328,6 +1486,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     unawaited(widget.room.setTyping(false).catchError((Object _) {}));
     input.dispose();
     searchFocus.dispose();
+    composerFocus.dispose();
     search.dispose();
     scroll.dispose();
     super.dispose();

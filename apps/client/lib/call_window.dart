@@ -150,6 +150,7 @@ class _CallWindowState extends State<CallWindow> {
                           name: user.displayName ?? user.id,
                           client: calls.client,
                           url: user.avatarUrl,
+                          online: present,
                         ),
                         title: Text(user.displayName ?? user.id),
                         subtitle: Text(

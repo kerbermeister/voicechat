@@ -8,6 +8,7 @@ import 'media_policy.dart';
 import 'transport.dart';
 import 'local_store.dart';
 import 'picked_file.dart';
+import 'link_preview.dart';
 
 const maxAttachmentBytes = 10 * 1024 * 1024;
 
@@ -267,6 +268,7 @@ class ChatActions extends ChangeNotifier {
     String text, {
     Event? reply,
     String? edit,
+    List<LinkPreview> previews = const [],
   }) async {
     await refreshPolicy();
     text = text.trim();
@@ -275,12 +277,27 @@ class ChatActions extends ChangeNotifier {
         'Введите текст до ${policy.textMaxLength} символов.',
       );
     }
-    await enqueue(
-      room,
-      {'msgtype': MessageTypes.Text, 'body': text},
-      reply: reply,
-      edit: edit,
-    );
+    final cards = previews
+        .where((p) => messageLinks(text).contains(p.url))
+        .take(3)
+        .map((p) => p.toJson())
+        .toList();
+    final content = {
+      'msgtype': MessageTypes.Text,
+      'body': text,
+      if (cards.isNotEmpty) 'dev.voicechat.links': cards,
+    };
+    // Leave room for encryption and reply/edit relations in Matrix's 64 KiB event.
+    for (final card in cards.reversed) {
+      if (utf8.encode(jsonEncode(content)).length <= 43000) break;
+      card.remove('image');
+    }
+    if (utf8.encode(jsonEncode(content)).length > 43000) {
+      throw UserActionError(
+        'Текст слишком большой для одного зашифрованного сообщения. Сократите его или разделите на несколько сообщений.',
+      );
+    }
+    await enqueue(room, content, reply: reply, edit: edit);
   }
 
   Future<void> attachment(
@@ -578,12 +595,27 @@ Map<String, dynamic> encryptedDescriptor(EncryptedFile encrypted) => {
   'hashes': {'sha256': encrypted.sha256},
 };
 
+String messageSearchText(Event event) => <String>{
+  event.calcUnlocalizedBody(hideReply: true),
+  for (final key in ['caption', 'dev.voicechat.caption'])
+    if (event.content[key] is String) event.content[key] as String,
+}.where((text) => text.isNotEmpty).join(' · ');
+
+bool isGroupJoin(Event event) =>
+    !event.room.isDirectChat &&
+    event.type == EventTypes.RoomMember &&
+    !event.redacted &&
+    event.stateKey?.isValidMatrixIdStrict() == true &&
+    event.content['membership'] == 'join' &&
+    event.prevContent?['membership'] != 'join';
+
 List<Event> visibleMessages(Timeline timeline, String query) {
   final search = query.trim().toLowerCase();
   return timeline.events
       .where(
         (event) =>
-            (event.type == EventTypes.Message ||
+            (isGroupJoin(event) ||
+                event.type == EventTypes.Message ||
                 event.type == EventTypes.Encrypted &&
                     event.messageType == MessageTypes.BadEncrypted) &&
             event.relationshipType != RelationshipTypes.edit &&
@@ -593,11 +625,9 @@ List<Event> visibleMessages(Timeline timeline, String query) {
         (event) =>
             search.isEmpty ||
             (!event.redacted &&
-                event
-                    .getDisplayEvent(timeline)
-                    .calcUnlocalizedBody(hideReply: true)
-                    .toLowerCase()
-                    .contains(search)),
+                messageSearchText(
+                  event.getDisplayEvent(timeline),
+                ).toLowerCase().contains(search)),
       )
       .toList();
 }

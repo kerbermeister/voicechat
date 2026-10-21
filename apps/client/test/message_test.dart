@@ -163,6 +163,26 @@ class OfflineRoom extends TestRoom {
   @override
   String get directChatMatrixID => '@peer:local';
   HistoryVisibility visibility = HistoryVisibility.invited;
+  bool canMigrate = true;
+  bool intruder = false;
+  @override
+  Future<List<User>> requestParticipants([
+    List<Membership> membershipFilter = const [
+      Membership.join,
+      Membership.invite,
+      Membership.knock,
+    ],
+    bool suppressWarning = false,
+    bool? cache,
+    bool enforceFetchFromServer = false,
+  ]) async => [
+    if (intruder) User('@intruder:local', membership: 'join', room: this),
+  ];
+  @override
+  bool get canChangeHistoryVisibility => canMigrate;
+  @override
+  Future<void> setHistoryVisibility(HistoryVisibility value) async =>
+      visibility = value;
   @override
   HistoryVisibility get historyVisibility => visibility;
   OfflineRoom() : super(true, 'event');
@@ -196,12 +216,21 @@ void main() {
         (await authorizedDevices(room)).single.userId,
         room.directChatMatrixID,
       );
+      room.intruder = true;
+      await expectLater(authorizedDevices(room), throwsStateError);
+      room.intruder = false;
       room.client.peerMembership = 'leave';
       await expectLater(authorizedDevices(room), throwsStateError);
       room.client.peerMembership = 'invite';
       room.visibility = HistoryVisibility.joined;
+      room.canMigrate = false;
       await expectLater(authorizedDevices(room), throwsStateError);
-      room.visibility = HistoryVisibility.invited;
+      room.canMigrate = true;
+      expect(
+        (await authorizedDevices(room)).single.userId,
+        room.directChatMatrixID,
+      );
+      expect(room.visibility, HistoryVisibility.invited);
       room.client.userDeviceKeys[room.directChatMatrixID]!.deviceKeys.clear();
       await expectLater(authorizedDevices(room), throwsStateError);
     },

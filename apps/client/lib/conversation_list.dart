@@ -3,14 +3,14 @@ import 'package:matrix/matrix.dart' as mx;
 import 'typing_indicator.dart';
 import 'avatar_image.dart';
 import 'theme.dart';
+import 'presence_tracker.dart';
 
 Uri? roomAvatar(mx.Room room) {
-  final value =
-      room.directChatMatrixID != null
-          ? room
-                .getState(mx.EventTypes.RoomMember, room.directChatMatrixID!)
-                ?.content['avatar_url']
-          : room.getState(mx.EventTypes.RoomAvatar)?.content['url'];
+  final value = room.directChatMatrixID != null
+      ? room
+            .getState(mx.EventTypes.RoomMember, room.directChatMatrixID!)
+            ?.content['avatar_url']
+      : room.getState(mx.EventTypes.RoomAvatar)?.content['url'];
   if (value is! String) return null;
   final uri = Uri.tryParse(value);
   return uri?.scheme == 'mxc' ? uri : null;
@@ -33,12 +33,7 @@ String roomPresence(mx.Room room) {
   }
   // Render the latest sync snapshot without network requests from build().
   // ignore: deprecated_member_use
-  return switch (room.client.presences[room.directChatMatrixID]?.presence) {
-    mx.PresenceType.online => 'В сети',
-    mx.PresenceType.unavailable => 'Отошёл',
-    mx.PresenceType.offline => 'Не в сети',
-    _ => 'Статус недоступен',
-  };
+  return presenceLabel(room.client.presences[room.directChatMatrixID]);
 }
 
 String lastMessage(mx.Room room) {
@@ -125,12 +120,16 @@ class PersonAvatar extends StatelessWidget {
               right: 0,
               bottom: 0,
               child: Container(
-                width: 13,
-                height: 13,
+                width: 17,
+                height: 17,
                 decoration: BoxDecoration(
-                  color: online ? onlinePresenceColor(colors) : colors.outline,
+                  color: colors.surface,
                   shape: BoxShape.circle,
-                  border: Border.all(color: colors.surface, width: 2),
+                ),
+                child: Icon(
+                  online ? Icons.circle : Icons.radio_button_unchecked,
+                  size: 13,
+                  color: online ? onlinePresenceColor(colors) : colors.outline,
                 ),
               ),
             ),

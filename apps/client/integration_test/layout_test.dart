@@ -119,6 +119,13 @@ void main() {
     expect(tester.getSize(field).width, greaterThan(100));
     expect(tester.takeException(), isNull);
     await screenshot('composer');
+    await tester.tap(find.byTooltip('Отправить'));
+    await tester.enterText(field, 'Следующий черновик');
+    await waitFor(find.text('Подпись к новому сообщению'));
+    expect(
+      tester.widget<TextField>(field).controller!.text,
+      'Следующий черновик',
+    );
     FocusManager.instance.primaryFocus?.unfocus();
     await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
     tester.view.resetViewInsets();
@@ -140,8 +147,14 @@ void main() {
     await tester.tap(find.byType(PersonAvatar).first);
     await waitFor(find.text('Мой профиль'));
     await screenshot('profile');
+    expect(find.byType(SwitchListTile), findsNothing);
+    await tester.tap(find.text('Закрыть').last);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byTooltip('Настройки'));
+    await waitFor(find.byType(SwitchListTile));
     await tester.ensureVisible(find.byType(SwitchListTile));
     await tester.pump(const Duration(milliseconds: 400));
+    await screenshot('privacy-settings');
     await tester.tap(find.byType(SwitchListTile));
     await waitFor(
       find.byWidgetPredicate(

@@ -17,9 +17,12 @@ const {chromium} = require('playwright');
     const name = `vault-test-${Date.now()}`;
     const password = 'independent local test passphrase';
     await page.evaluate(([n,p]) => voicechatVault.open(n,p), [name,password]);
+    const initialUsage = await page.evaluate(n => voicechatVault.usage(n), name);
+    assert(initialUsage > 0);
     await page.evaluate(async n => {
       const input = new Uint8Array(4 * 1024 * 1024); input.fill(73); input[0] = 82;
       await voicechatVault.writeBlob(n, 'part/0', input);
+      if (await voicechatVault.usage(n) <= input.length) throw new Error('Storage usage omitted encrypted blobs');
       const output = await voicechatVault.readBlob(n, 'part/0');
       if (output.length !== input.length || output[0] !== 82 || output[output.length - 1] !== 73) throw new Error('Chunk round trip failed');
       const req = indexedDB.open(`${n}.blobs`);

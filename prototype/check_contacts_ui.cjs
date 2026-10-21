@@ -6,9 +6,9 @@ const path = require('node:path');
 const {chromium} = require('playwright');
 const root = path.join(__dirname, '..');
 
-async function request(base, route, body, token) {
+async function request(base, route, body, token, method = body ? 'POST' : 'GET') {
   const response = await fetch(base + route, {
-    method: body ? 'POST' : 'GET',
+    method,
     headers: {'Content-Type':'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {})},
     ...(body ? {body:JSON.stringify(body)} : {}),
   });
@@ -49,6 +49,15 @@ async function register(role) {
     const button=(page,name)=>page.getByRole('button',{name,exact:true});
     async function login(account) {
       const context=await browser.newContext({permissions:['microphone','camera'],viewport:{width:1280,height:900}});
+      await context.addInitScript(()=>{
+        window.soundPlays=[];
+        const play=HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play=function(...args){
+          const result=play.apply(this,args);
+          if(this.src.includes('/sounds/')) result.then(()=>window.soundPlays.push({src:this.src,audio:this}),()=>{});
+          return result;
+        };
+      });
       const page=await context.newPage(); pages.push(page);
       await page.goto('http://localhost:7357/');
       await page.locator('flt-semantics-placeholder').evaluate(el=>el.click());
@@ -81,6 +90,8 @@ async function register(role) {
     const text='Первое сообщение после согласия';
     await fill(a,'Написать сообщение…',text); await button(a,'Отправить').click();
     await b.getByRole('group',{name:new RegExp(text)}).waitFor({timeout:30000});
+    await a.waitForFunction(()=>window.soundPlays.some(p=>p.src.includes('sent.wav')));
+    await b.waitForFunction(()=>window.soundPlays.some(p=>p.src.includes('received.wav')));
     await fill(b,'Написать сообщение…','Ответ с другого устройства'); await button(b,'Отправить').click();
     await button(a,'Действия с сообщением').nth(1).waitFor({timeout:30000});
     await button(a,'Участники и настройки чата').click();
@@ -99,8 +110,10 @@ async function register(role) {
     await a.getByText('Согласие на группу',{exact:true}).waitFor();
     await b.getByRole('button',{name:/Приглашения/}).click();
     await b.getByRole('tab',{name:'Группы',exact:true}).click();
+    await b.getByText(/Ожидает ответа/).waitFor();
     await button(b,'Принять').click();
     await button(b,'Принять').waitFor({state:'hidden',timeout:30000});
+    await b.getByText(/Принято/).waitFor({timeout:30000});
     let joined=[];
     for(let i=0;i<30;i++) {
       joined=(await request('http://localhost:8008','/_matrix/client/v3/joined_rooms',undefined,bob.access_token)).joined_rooms;
@@ -113,6 +126,7 @@ async function register(role) {
     await a.getByText('Люди',{exact:true}).click();
     await a.getByRole('button',{name:new RegExp(bob.username)}).getByRole('button',{name:'Действия с чатом',exact:true}).click();
     await a.getByRole('menuitem',{name:'Отключить уведомления',exact:true}).click();
+    const receivedBeforeMute=await a.evaluate(()=>window.soundPlays.filter(p=>p.src.includes('received.wav')).length);
     for(const message of ['Тихое сообщение один','Тихое сообщение два']) {
       await fill(b,'Написать сообщение…',message); await button(b,'Отправить').click();
       await b.getByRole('group',{name:new RegExp(message)}).waitFor({timeout:30000});
@@ -125,6 +139,7 @@ async function register(role) {
       await a.waitForTimeout(300);
     }
     assert(/\s2$/.test(label),'Muted room did not keep its unread message count');
+    assert.equal(await a.evaluate(()=>window.soundPlays.filter(p=>p.src.includes('received.wav')).length),receivedBeforeMute,'Muted messages must not play received sound');
     await a.getByRole('button',{name:/^Люди\s+1$/}).waitFor();
     await row.click();
     for(let i=0;i<60;i++) {
@@ -168,15 +183,38 @@ async function register(role) {
     await c.getByRole('button',{name:new RegExp(alice.username)}).click({timeout:60000});
     await c.getByRole('group',{name:new RegExp(offlineText)}).waitFor({timeout:60000});
     await c.goto('about:blank');
+    const roomPath=`/_matrix/client/v3/rooms/${encodeURIComponent(offlineRoom)}`;
+    await request('http://localhost:8008',`${roomPath}/leave`,{},charlie.access_token);
+    await request('http://localhost:8008',`${roomPath}/invite`,{user_id:charlie.user_id},alice.access_token);
+    await request('http://localhost:8008',`${roomPath}/state/m.room.history_visibility`,{history_visibility:'joined'},alice.access_token,'PUT');
+    await a.waitForTimeout(1000);
+    const legacyText='Офлайн-доставка после обновления старого диалога';
+    await fill(a,'Написать сообщение…',legacyText); await button(a,'Отправить').click();
+    let migrated=false;
+    for(let i=0;i<120;i++) {
+      const state=await request('http://localhost:8008',`${roomPath}/state/m.room.history_visibility`,undefined,alice.access_token);
+      wire=await request('http://localhost:8008',`${roomPath}/messages?dir=b&limit=15`,undefined,alice.access_token);
+      migrated=state.history_visibility==='invited' && wire.chunk.filter(e=>e.type==='m.room.encrypted').length>=2;
+      if(migrated) break;
+      await a.waitForTimeout(500);
+    }
+    assert(migrated,'Legacy joined history did not migrate and deliver encrypted offline');
+    await c.goto('http://localhost:7357/');
+    await c.locator('flt-semantics-placeholder').evaluate(el=>el.click());
+    await c.getByRole('button',{name:new RegExp(alice.username)}).click({timeout:60000});
+    await c.getByRole('group',{name:new RegExp(legacyText)}).waitFor({timeout:60000});
+    await c.goto('about:blank');
     await button(a,'Голосовой звонок').click();
     await button(a,'Завершить').waitFor({timeout:30000});
+    await a.waitForFunction(()=>window.soundPlays.some(p=>p.src.includes('ringback.wav')));
     await a.waitForTimeout(1500);
     assert(await button(a,'Завершить').isVisible(),'Offline outgoing call disappeared');
     await button(a,'Завершить').click();
+    await a.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringback.wav')).every(p=>p.audio.paused));
     await button(a,'Закрыть').click();
     fs.mkdirSync(path.join(root,'.prototype/ui'),{recursive:true});
     await a.screenshot({path:path.join(root,'.prototype/ui/contacts.png')});
-    console.log('PASS: private consent, two-browser E2EE replies, direct profile/rights, explicit group invitation acceptance, muted unread message/chat counts, read receipts and first offline direct message');
+    console.log('PASS: private consent, two-browser E2EE replies, direct profile/rights, explicit group invitation acceptance, muted unread message/chat counts, read receipts first/legacy offline direct messages and persistent outgoing call window');
   } catch (error) {
     fs.mkdirSync(path.join(root,'.prototype/ui'),{recursive:true});
     for(let i=0;i<pages.length;i++) await pages[i].screenshot({path:path.join(root,`.prototype/ui/consent-failure-${i}.png`)});

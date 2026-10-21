@@ -30,6 +30,17 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        flutterEngine.platformViewsController.registry.registerViewFactory("voicechat/youtube", YouTubeFactory())
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/links")
+            .setMethodCallHandler { call, result ->
+                val uri = (call.arguments as? String)?.let(Uri::parse)
+                if (call.method != "open" || uri == null || uri.scheme !in listOf("http", "https") || uri.host.isNullOrEmpty() || uri.userInfo != null) {
+                    result.error("invalid", "Invalid link", null)
+                } else try {
+                    startActivity(Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE))
+                    result.success(null)
+                } catch (_: Exception) { result.error("open", "Cannot open browser", null) }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/save")
             .setMethodCallHandler { call, result ->
                 when (call.method) {

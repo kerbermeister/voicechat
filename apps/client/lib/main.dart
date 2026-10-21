@@ -17,6 +17,8 @@ import 'first_keys.dart';
 import 'history_window.dart';
 import 'contact_service.dart';
 import 'invitations_dialog.dart';
+import 'storage_policy.dart';
+import 'storage_dialog.dart';
 import 'profile_dialog.dart';
 import 'conversation_list.dart';
 import 'room_members_dialog.dart';
@@ -118,6 +120,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   PresenceTracker? presenceTracker;
   RecordingActivity? recordingActivity;
   ContactService? contacts;
+  StoragePolicy? storagePolicy;
   ChatActions? actions;
   StreamSubscription<mx.SyncStatusUpdate>? connectionStatus;
   bool online = true;
@@ -250,6 +253,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
       if (mounted) setState(() {});
     });
     await contacts!.open();
+    storagePolicy = StoragePolicy(next.client, () => selected?.id);
+    await storagePolicy!.open();
     presenceTracker = PresenceTracker(next.client, () {
       if (mounted) setState(() {});
     });
@@ -462,6 +467,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       return;
     }
     final members = await room.requestParticipants();
+    unawaited(presenceTracker?.refresh());
     if (!mounted) return;
     final action =
         chosenAction ??
@@ -674,6 +680,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
         if (sounds != null) sounds!.close(),
         if (presenceTracker != null) presenceTracker!.close(),
         if (contacts != null) contacts!.close(),
+        if (storagePolicy != null) storagePolicy!.close(),
         if (recordingActivity != null) recordingActivity!.close(),
         if (actions != null) actions!.close(),
       ]);
@@ -681,6 +688,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       await connectionStatus?.cancel();
       await sync?.cancel();
       timeline?.cancelSubscriptions();
+      storagePolicy = null;
       try {
         await probe!.close();
       } finally {
@@ -874,8 +882,15 @@ class _ProbeScreenState extends State<ProbeScreen> {
         'В очереди есть неотправленные сообщения. Отправьте или отмените их перед выходом.',
       );
     }
-    await probe!.backup();
-    await probe!.logout();
+    await storagePolicy?.close();
+    storagePolicy = null;
+    try {
+      await probe!.logout();
+    } catch (_) {
+      storagePolicy = StoragePolicy(probe!.client, () => selected?.id);
+      await storagePolicy!.open();
+      rethrow;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('lastAccount');
     await prefs.remove('lastRoom:${profile.text.trim()}');
@@ -912,7 +927,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
     unawaited(recordingActivity?.close());
     unawaited(actions?.close());
     unawaited(connectionStatus?.cancel());
-    unawaited(probe?.close());
+    unawaited(() async {
+      await storagePolicy?.close();
+      await probe?.close();
+    }());
     for (final c in [
       server,
       tokenServer,
@@ -1063,9 +1081,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> settings() async {
+    var privacyBusy = false;
+    String? privacyError;
     final chosen = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         title: const Text('Настройки'),
         content: SizedBox(
           width: 460,
@@ -1080,6 +1101,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                     name: username.text.replaceFirst('@', ''),
                     client: probe!.client,
                     url: ownAvatar,
+                    online: online,
                   ),
                   title: Text(probe!.client.userID!),
                   subtitle: Text('Устройство: ${probe!.client.deviceID}'),
@@ -1089,7 +1111,51 @@ class _ProbeScreenState extends State<ProbeScreen> {
                   title: const Text('Изменить аватар'),
                   onTap: () => Navigator.pop(dialogContext, 'avatar'),
                 ),
+                if (contacts != null)
+                  StatefulBuilder(
+                    builder: (context, update) => Column(
+                      children: [
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text(
+                            'Мне могут писать без подтверждения',
+                          ),
+                          subtitle: const Text(
+                            'Если выключить, новые собеседники сначала отправляют запрос',
+                          ),
+                          value: contacts!.allowDirect,
+                          onChanged: privacyBusy || !contacts!.available
+                              ? null
+                              : (value) async {
+                                  update(() {
+                                    privacyBusy = true;
+                                    privacyError = null;
+                                  });
+                                  try {
+                                    await contacts!.setAllowDirect(value);
+                                  } catch (_) {
+                                    privacyError =
+                                        'Не удалось сохранить настройку. Проверьте соединение и повторите.';
+                                  } finally {
+                                    if (context.mounted) {
+                                      update(() => privacyBusy = false);
+                                    }
+                                  }
+                                },
+                        ),
+                        if (privacyError != null) Text(privacyError!),
+                      ],
+                    ),
+                  ),
                 const Divider(height: 28),
+                ListTile(
+                  leading: const Icon(Icons.storage_outlined),
+                  title: const Text('Локальное хранилище'),
+                  subtitle: const Text(
+                    'Объём, лимит и очистка старой локальной истории',
+                  ),
+                  onTap: () => Navigator.pop(dialogContext, 'storage'),
+                ),
                 Row(
                   children: [
                     const Expanded(child: Text('Цветовая схема')),
@@ -1184,6 +1250,14 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (chosen == null || !mounted) return;
     await run(() async {
       switch (chosen) {
+        case 'storage':
+          await storagePolicy!.check();
+          if (mounted) {
+            await showDialog<void>(
+              context: context,
+              builder: (_) => StorageDialog(policy: storagePolicy!),
+            );
+          }
         case 'sounds':
           await sounds!.setEnabled(!sounds!.enabled);
           sounds!.updateCall(calls!);

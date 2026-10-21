@@ -8,6 +8,8 @@ import time
 import threading
 import sqlite3
 from contacts import ContactStore, ContactError
+from link_preview import preview
+import http.client
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -21,6 +23,9 @@ reports = []
 report_lock = threading.Lock()
 _contacts = None
 _contacts_lock = threading.Lock()
+_preview_slots = threading.BoundedSemaphore(4)
+_preview_calls = {}
+_preview_lock = threading.Lock()
 
 def contact_store():
     global _contacts
@@ -76,7 +81,9 @@ class Handler(BaseHTTPRequestHandler):
         state = self.matrix('rooms/' + urllib.parse.quote(room, safe='') + '/state')
         members = {e['state_key']: e['content'].get('membership') for e in state if e['type'] == 'm.room.member' and e['content'].get('membership') in ('invite', 'join')}
         encrypted = any(e['type'] == 'm.room.encryption' and e['content'].get('algorithm') == 'm.megolm.v1.aes-sha2' for e in state)
-        if not encrypted or members.get(user) != 'join' or set(members) != {user, target}:
+        direct = any(e['type'] == 'dev.voicechat.kind' and e['content'].get('kind') == 'direct' and
+                     {e['content'].get('owner'), e['content'].get('peer')} == {user, target} for e in state)
+        if not encrypted or not direct or members.get(user) != 'join' or set(members) != {user, target}:
             raise ContactError('invalid_direct_room')
         return self.reply(200, store.request(user, target, room))
     def reply(self, status, body):
@@ -119,6 +126,30 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/reports': return self.reply(200, reports)
         self.reply(404, {'error': 'not_found'})
     def do_POST(self):
+        if self.path == '/link-preview':
+            try:
+                user = self.matrix('account/whoami')['user_id']
+                size = int(self.headers.get('Content-Length', '0'))
+                if not 0 < size <= 4096: return self.reply(400, {'error': 'invalid_size'})
+                body = json.loads(self.rfile.read(size))
+                if not isinstance(body, dict) or set(body) != {'url'}:
+                    return self.reply(400, {'error': 'invalid_request'})
+                now = time.monotonic()
+                with _preview_lock:
+                    for key in list(_preview_calls):
+                        if _preview_calls[key][-1] < now - 60: del _preview_calls[key]
+                    recent = [t for t in _preview_calls.get(user, []) if t > now - 60]
+                    if len(recent) >= 10: return self.reply(429, {'error': 'rate_limit'})
+                    _preview_calls[user] = [*recent, now]
+                if not _preview_slots.acquire(blocking=False):
+                    return self.reply(429, {'error': 'busy'})
+                try:
+                    return self.reply(200, preview(body['url']))
+                finally:
+                    _preview_slots.release()
+            except (ContactError, urllib.error.HTTPError): return self.reply(401, {'error': 'unauthorized'})
+            except (OSError, ValueError, KeyError, TypeError, http.client.HTTPException):
+                return self.reply(400, {'error': 'preview_unavailable'})
         if self.path == '/contacts':
             try: return self.contact_post()
             except ContactError as error: return self.reply(403, {'error': str(error)})

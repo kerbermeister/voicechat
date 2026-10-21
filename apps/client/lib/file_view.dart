@@ -3,6 +3,8 @@ import 'package:matrix/matrix.dart' as mx;
 import 'package:video_player/video_player.dart';
 import 'chunked_file.dart';
 import 'file_io.dart';
+import 'picked_file.dart';
+import 'link_platform.dart';
 
 class FileView extends StatefulWidget {
   final mx.Event event;
@@ -148,9 +150,35 @@ class _FileViewState extends State<FileView> {
 }
 
 class MessageVideo extends StatefulWidget {
-  final ChunkedFile file;
+  final ChunkedFile? file;
+  final PickedFile? draft;
+  final Uri? remote;
   final bool inline;
-  const MessageVideo({super.key, required this.file, this.inline = false});
+  final bool thumbnail;
+  final bool draftVideoNote;
+  const MessageVideo({super.key, required this.file, this.inline = false})
+    : draft = null,
+      remote = null,
+      thumbnail = false,
+      draftVideoNote = false;
+  const MessageVideo.draft({
+    super.key,
+    required PickedFile file,
+    required bool videoNote,
+    this.thumbnail = true,
+  }) : file = null,
+       draft = file,
+       remote = null,
+       inline = false,
+       draftVideoNote = videoNote;
+  const MessageVideo.remote({super.key, required Uri url})
+    : file = null,
+      draft = null,
+      remote = url,
+      inline = false,
+      thumbnail = false,
+      draftVideoNote = false;
+  bool get videoNote => file?.videoNote ?? draftVideoNote;
   @override
   State<MessageVideo> createState() => _MessageVideoState();
 }
@@ -173,7 +201,17 @@ class _MessageVideoState extends State<MessageVideo> {
       error = null;
     });
     try {
-      final source = await videoSource(widget.file);
+      if (widget.remote != null &&
+          (!['https', 'http'].contains(widget.remote!.scheme) ||
+              widget.remote!.host.isEmpty ||
+              widget.remote!.userInfo.isNotEmpty)) {
+        throw const FormatException('Invalid video URL');
+      }
+      final source = widget.remote != null
+          ? (url: widget.remote.toString(), close: () async {})
+          : widget.draft == null
+          ? await videoSource(widget.file!)
+          : await draftVideoSource(widget.draft!);
       if (!mounted) {
         await source.close();
         return;
@@ -184,7 +222,7 @@ class _MessageVideoState extends State<MessageVideo> {
       await next.initialize();
       if (!mounted) return;
       next.addListener(refresh);
-      await next.play();
+      if (!widget.thumbnail) await next.play();
       refresh();
     } catch (_) {
       await player?.dispose();
@@ -209,6 +247,67 @@ class _MessageVideoState extends State<MessageVideo> {
   Widget build(BuildContext context) {
     final value = player?.value;
     final ready = value?.isInitialized == true;
+    if (widget.thumbnail) {
+      final duration = value?.duration.inSeconds ?? 0;
+      return Semantics(
+        label:
+            'Предпросмотр видео · ${duration ~/ 60}:${(duration % 60).toString().padLeft(2, '0')}',
+        button: true,
+        child: InkWell(
+          onTap: () => showDialog<void>(
+            context: context,
+            builder: (_) => MessageVideo.draft(
+              file: widget.draft!,
+              videoNote: widget.videoNote,
+              thumbnail: false,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(widget.videoNote ? 40 : 10),
+            child: SizedBox(
+              width: 72,
+              height: 56,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (ready)
+                    FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: value!.size.width,
+                        height: value.size.height,
+                        child: VideoPlayer(player!),
+                      ),
+                    )
+                  else
+                    ColoredBox(
+                      color: Theme.of(context).colorScheme.secondaryContainer,
+                      child: Icon(
+                        error == null
+                            ? Icons.movie_outlined
+                            : Icons.error_outline,
+                      ),
+                    ),
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: ColoredBox(
+                      color: Colors.black54,
+                      child: Text(
+                        '${duration ~/ 60}:${(duration % 60).toString().padLeft(2, '0')}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     final fraction = ready && value!.duration.inMilliseconds > 0
         ? value.position.inMilliseconds / value.duration.inMilliseconds
         : 0.0;
@@ -235,7 +334,7 @@ class _MessageVideoState extends State<MessageVideo> {
                       style: const TextStyle(color: Colors.white),
                     ),
                   )
-                : widget.file.videoNote
+                : widget.videoNote
                 ? AspectRatio(
                     aspectRatio: 1,
                     child: Stack(
@@ -277,7 +376,7 @@ class _MessageVideoState extends State<MessageVideo> {
                   )
                 : const Center(child: CircularProgressIndicator()),
           ),
-          if (ready && !widget.file.videoNote)
+          if (ready && !widget.videoNote)
             VideoProgressIndicator(
               player!,
               allowScrubbing: true,
@@ -301,6 +400,23 @@ class _MessageVideoState extends State<MessageVideo> {
                   : Icons.play_circle_outline,
             ),
           ),
+          if (widget.remote != null)
+            TextButton(
+              onPressed: () async {
+                try {
+                  await openLink(widget.remote!);
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Не удалось открыть браузер.'),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Открыть оригинал'),
+            ),
         ],
       ),
     );

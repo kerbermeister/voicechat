@@ -122,6 +122,32 @@
   }
   globalThis.voicechatVault = Object.freeze({
     open, close,
+    async usage(name) {
+      session(name);
+      let bytes = 0;
+      const existing = new Set((await indexedDB.databases()).map(db => db.name));
+      for (const suffix of ['encrypted', 'blobs', 'vault']) {
+        const databaseName = `${name}.${suffix}`;
+        if (!existing.has(databaseName)) continue;
+        const db = await request(indexedDB.open(databaseName));
+        try {
+          for (const store of db.objectStoreNames) {
+            await new Promise((resolve, reject) => {
+              const cursor = db.transaction(store).objectStore(store).openCursor();
+              cursor.onerror = () => reject(cursor.error);
+              cursor.onsuccess = () => {
+                const item = cursor.result;
+                if (!item) { resolve(); return; }
+                // UTF-16 payload estimate, one bounded encrypted record at a time.
+                bytes += 2 * (String(item.key).length + JSON.stringify(item.value).length);
+                item.continue();
+              };
+            });
+          }
+        } finally { db.close(); }
+      }
+      return bytes;
+    },
     async writeBlob(name, id, data) {
       if (!(data instanceof Uint8Array) || data.length > 4 * 1024 * 1024) throw new Error('Invalid chunk');
       const envelope = await seal(session(name).key, name, 'blobs', id, b64(data));

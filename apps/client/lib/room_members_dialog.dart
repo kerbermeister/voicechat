@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'conversation_list.dart';
+import 'presence_tracker.dart';
 
 class RoomMembersDialog extends StatelessWidget {
   final mx.Room room;
@@ -11,7 +12,12 @@ class RoomMembersDialog extends StatelessWidget {
     required this.members,
   });
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => StreamBuilder<mx.CachedPresence>(
+    stream: room.client.onPresenceChanged.stream,
+    builder: (_, snapshot) => dialog(context),
+  );
+
+  Widget dialog(BuildContext context) {
     final joined = members
         .where((u) => u.membership == mx.Membership.join)
         .toList();
@@ -25,6 +31,8 @@ class RoomMembersDialog extends StatelessWidget {
             separatorBuilder: (_, _) => const Divider(height: 16),
             itemBuilder: (_, i) {
               final user = users[i];
+              // ignore: deprecated_member_use
+              final presence = room.client.presences[user.id];
               return ListTile(
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 4,
@@ -34,18 +42,28 @@ class RoomMembersDialog extends StatelessWidget {
                   name: user.displayName ?? user.id,
                   client: room.client,
                   url: user.avatarUrl,
+                  online: presence?.presence == mx.PresenceType.online,
                 ),
                 onTap: () => Navigator.pop(context, 'profile:${user.id}'),
                 title: Text(
                   user.displayName ?? user.id,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
-                subtitle: Text(
-                  '${user.id}\n${user.membership == mx.Membership.invite
-                      ? 'Ожидаем принятия приглашения'
-                      : user.id == room.client.userID
-                      ? 'Это вы'
-                      : 'Вступил в группу'}',
+                subtitle: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user.id, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      '${presenceLabel(presence)}${user.membership == mx.Membership.invite
+                          ? ' · Приглашён'
+                          : user.id == room.client.userID
+                          ? ' · Это вы'
+                          : ''}',
+                    ),
+                  ],
                 ),
                 isThreeLine: true,
                 trailing:
@@ -67,6 +85,7 @@ class RoomMembersDialog extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         title: Text(room.getLocalizedDisplayname()),
         content: SizedBox(
           width: 480,
@@ -74,6 +93,9 @@ class RoomMembersDialog extends StatelessWidget {
           child: Column(
             children: [
               TabBar(
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                labelPadding: const EdgeInsets.symmetric(horizontal: 12),
                 tabs: [
                   Tab(text: 'Вступили · ${joined.length}'),
                   Tab(text: 'Приглашены · ${invited.length}'),

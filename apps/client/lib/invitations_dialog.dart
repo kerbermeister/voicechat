@@ -1,8 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'contact_service.dart';
-import 'conversation_list.dart';
 import 'user_action_error.dart';
+import 'theme.dart';
+
+class InvitationStateBadge extends StatelessWidget {
+  final String state;
+  const InvitationStateBadge({super.key, required this.state});
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final (label, icon, background, foreground) = switch (state) {
+      'accepted' => (
+        'Принято',
+        Icons.check_circle_outline,
+        onlinePresenceColor(colors).withValues(alpha: .12),
+        onlinePresenceColor(colors),
+      ),
+      'declined' => (
+        'Отклонено',
+        Icons.highlight_off,
+        colors.errorContainer,
+        colors.onErrorContainer,
+      ),
+      'cancelled' => (
+        'Отменено',
+        Icons.block,
+        colors.surfaceContainerHighest,
+        colors.onSurfaceVariant,
+      ),
+      _ => (
+        'Ожидает ответа',
+        Icons.schedule,
+        colors.secondaryContainer,
+        colors.onSecondaryContainer,
+      ),
+    };
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: foreground),
+          const SizedBox(width: 5),
+          Text(label, style: TextStyle(color: foreground, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+}
 
 class InvitationsDialog extends StatefulWidget {
   final ContactService contacts;
@@ -35,21 +86,7 @@ class _InvitationsDialogState extends State<InvitationsDialog> {
     builder: (_, _) {
       final service = widget.contacts;
       final client = service.client;
-      final groups = client.rooms
-          .where(
-            (r) =>
-                !r.isDirectChat &&
-                (r.membership == mx.Membership.invite ||
-                    r.getParticipants().any(
-                      (u) =>
-                          u.membership == mx.Membership.invite &&
-                          r
-                                  .getState(mx.EventTypes.RoomMember, u.id)
-                                  ?.senderId ==
-                              client.userID,
-                    )),
-          )
-          .toList();
+      final groups = service.groups.reversed.toList();
       Widget buttons(VoidCallback accept, VoidCallback decline) => Wrap(
         children: [
           TextButton(
@@ -98,19 +135,22 @@ class _InvitationsDialogState extends State<InvitationsDialog> {
                                 final request = service.requests[i];
                                 final incoming =
                                     request.recipient == client.userID;
-                                final state = switch (request.state) {
-                                  'accepted' => 'Принято',
-                                  'declined' => 'Отклонено',
-                                  'cancelled' => 'Отменено',
-                                  _ => 'Ожидает ответа',
-                                };
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     ListTile(
                                       title: Text(request.peer(client.userID!)),
-                                      subtitle: Text(
-                                        '${incoming ? "Входящее" : "Исходящее"} · $state',
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            incoming ? 'Входящее' : 'Исходящее',
+                                          ),
+                                          InvitationStateBadge(
+                                            state: request.state,
+                                          ),
+                                        ],
                                       ),
                                     ),
                                     if (request.state == 'pending')
@@ -154,28 +194,43 @@ class _InvitationsDialogState extends State<InvitationsDialog> {
                               itemCount: groups.length,
                               separatorBuilder: (_, _) => const Divider(),
                               itemBuilder: (_, i) {
-                                final room = groups[i];
+                                final invitation = groups[i];
+                                final room = client.getRoomById(
+                                  invitation.roomId,
+                                );
                                 final incoming =
-                                    room.membership == mx.Membership.invite;
+                                    invitation.userId == client.userID;
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     ListTile(
-                                      title: Text(roomDisplayName(room)),
-                                      subtitle: Text(
-                                        incoming
-                                            ? 'Входящее · ${room.getState(mx.EventTypes.RoomMember, client.userID!)?.senderId ?? ""}'
-                                            : 'Исходящие · ${room.getParticipants().where((u) => u.membership == mx.Membership.invite).map((u) => u.displayName ?? u.id).join(", ")}',
+                                      title: Text(invitation.name),
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            incoming
+                                                ? 'Входящее · ${invitation.inviter}'
+                                                : 'Исходящее · ${invitation.userId}',
+                                          ),
+                                          InvitationStateBadge(
+                                            state: invitation.state,
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    if (incoming)
+                                    if (incoming &&
+                                        invitation.state == 'pending' &&
+                                        room?.membership ==
+                                            mx.Membership.invite)
                                       buttons(
                                         () => act(() async {
-                                          await room.join();
+                                          await room!.join();
                                           await service.refresh();
                                         }),
                                         () => act(() async {
-                                          await room.leave();
+                                          await room!.leave();
                                           await service.refresh();
                                         }),
                                       ),

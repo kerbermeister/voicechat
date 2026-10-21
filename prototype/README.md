@@ -114,7 +114,10 @@ node prototype/check_web_records.cjs
 
 ```sh
 python3 prototype/check_registration.py
+# For repeated UI runs, avoid exhausting the separate email verification rate limit:
+python3 prototype/prepare_ui.py
 node prototype/check_ui.cjs
+node prototype/check_contacts_ui.cjs
 node prototype/check_signup_ui.cjs
 ```
 

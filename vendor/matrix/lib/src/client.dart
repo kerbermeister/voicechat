@@ -3385,7 +3385,18 @@ class Client extends MatrixApi {
   /// instance and then updated on member changes or sync device changes.
   Set<String>? _trackedUserIds;
 
-  Future<void> updateUserDeviceKeys({Set<String>? additionalUsers}) async {
+  Future<void> _deviceKeyUpdates = Future.value();
+
+  Future<void> updateUserDeviceKeys({Set<String>? additionalUsers}) {
+    final users = additionalUsers == null
+        ? null
+        : Set<String>.of(additionalUsers);
+    return _deviceKeyUpdates = _deviceKeyUpdates
+        .catchError((Object _) {})
+        .then((_) => _updateUserDeviceKeys(additionalUsers: users));
+  }
+
+  Future<void> _updateUserDeviceKeys({Set<String>? additionalUsers}) async {
     try {
       final database = this.database;
       if (!isLogged()) return;

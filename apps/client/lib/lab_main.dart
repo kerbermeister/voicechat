@@ -470,7 +470,7 @@ Future<void> web() async {
       '',
     );
     require(
-      privacy['history_visibility'] == 'joined',
+      privacy['history_visibility'] == 'invited',
       'Direct chat history policy is not private',
     );
     await report('direct_room_created', {'room_id': directRoomId});

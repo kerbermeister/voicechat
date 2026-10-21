@@ -6,7 +6,7 @@ import unittest
 import urllib.error
 import urllib.request
 import tempfile
-from contacts import ContactStore
+from contacts import ContactStore, ContactError
 from unittest.mock import patch
 from http.server import ThreadingHTTPServer
 import token_server
@@ -46,7 +46,8 @@ class AdmissionTests(unittest.TestCase):
             store.set_policy('@bob:local', False)
             member = lambda user: {'type': 'm.room.member', 'state_key': user,
                                   'content': {'membership': 'join' if user == '@alice:local' else 'invite'}}
-            state = [member('@alice:local'), member('@bob:local'),
+            marker = {'type': 'dev.voicechat.kind', 'content': {'kind': 'direct', 'owner': '@alice:local', 'peer': '@bob:local'}}
+            state = [member('@alice:local'), member('@bob:local'), marker,
                      {'type': 'm.room.encryption', 'content': {'algorithm': 'm.megolm.v1.aes-sha2'}}]
             caller = '@alice:local'
             def matrix(handler, path):
@@ -65,6 +66,9 @@ class AdmissionTests(unittest.TestCase):
                 self.assertEqual(self.request(decision, path='/contacts')[0], 200)
                 self.assertTrue(store.accepted('@alice:local', '@bob:local'))
                 caller = '@alice:local'
+                state.remove(marker)
+                self.assertEqual(self.request(request, path='/contacts')[0], 403, 'Two-person groups must not bypass group invitation consent')
+                state.insert(0, marker)
                 state.append(member('@eve:local'))
                 self.assertEqual(self.request(request, path='/contacts')[0], 403)
                 state.pop()
@@ -78,6 +82,18 @@ class AdmissionTests(unittest.TestCase):
             {'stage': 'ok'},
         ]:
             self.assertEqual(self.request(body, path='/report')[0], 400)
+
+    def test_previews_require_identity_and_are_rate_limited(self):
+        token_server._preview_calls.clear()
+        def identity(handler, path):
+            if handler.headers.get('Authorization') != 'Bearer test': raise ContactError('unauthorized')
+            return {'user_id': '@preview:local'}
+        with patch.object(token_server.Handler, 'matrix', identity), patch.object(token_server, 'preview', return_value={'url': 'https://example.com', 'title': 'Title', 'description': ''}) as preview:
+            self.assertEqual(self.request({'url': 'https://example.com'}, '', '/link-preview')[0], 401)
+            self.assertEqual(self.request({'url': 'https://example.com', 'extra': True}, path='/link-preview')[0], 400)
+            for _ in range(10): self.assertEqual(self.request({'url': 'https://example.com'}, path='/link-preview')[0], 200)
+            self.assertEqual(self.request({'url': 'https://example.com'}, path='/link-preview')[0], 429)
+            self.assertEqual(preview.call_count, 10)
 
     def test_public_fingerprint_report(self):
         with patch('pathlib.Path.write_text'), patch('pathlib.Path.chmod'):

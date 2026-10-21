@@ -22,15 +22,59 @@ class ListClient implements Client {
 }
 
 void main() {
-  test('A direct chat uses the peer avatar instead of a legacy room avatar', () {
-    final client = ListClient();
-    final room = Room(id: '!dm:local', client: client);
-    client.directChats['@peer:local'] = [room.id];
-    room.states[EventTypes.RoomAvatar] = {'': StrippedStateEvent(type: EventTypes.RoomAvatar, stateKey: '', senderId: client.userID, content: {'url':'mxc://local/old-room'})};
-    expect(roomAvatar(room), isNull);
-    room.states[EventTypes.RoomMember] = {'@peer:local': StrippedStateEvent(type: EventTypes.RoomMember, stateKey: '@peer:local', senderId: '@peer:local', content: {'membership':'join', 'avatar_url':'mxc://local/peer'})};
-    expect(roomAvatar(room), Uri.parse('mxc://local/peer'));
-  });
+  testWidgets(
+    'Presence uses a larger filled online dot and a hollow offline ring in every theme',
+    (tester) async {
+      for (final palette in AppPalette.values) {
+        for (final online in [true, false]) {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: palette.theme,
+              home: Scaffold(
+                body: PersonAvatar(name: 'Анна', online: online),
+              ),
+            ),
+          );
+          final icon = find.byIcon(
+            online ? Icons.circle : Icons.radio_button_unchecked,
+          );
+          expect(icon, findsOneWidget);
+          expect(tester.widget<Icon>(icon).size, 13);
+          final badge = find
+              .ancestor(of: icon, matching: find.byType(Container))
+              .first;
+          expect(tester.getSize(badge), const Size(17, 17));
+          expect(tester.takeException(), isNull);
+        }
+      }
+    },
+  );
+  test(
+    'A direct chat uses the peer avatar instead of a legacy room avatar',
+    () {
+      final client = ListClient();
+      final room = Room(id: '!dm:local', client: client);
+      client.directChats['@peer:local'] = [room.id];
+      room.states[EventTypes.RoomAvatar] = {
+        '': StrippedStateEvent(
+          type: EventTypes.RoomAvatar,
+          stateKey: '',
+          senderId: client.userID,
+          content: {'url': 'mxc://local/old-room'},
+        ),
+      };
+      expect(roomAvatar(room), isNull);
+      room.states[EventTypes.RoomMember] = {
+        '@peer:local': StrippedStateEvent(
+          type: EventTypes.RoomMember,
+          stateKey: '@peer:local',
+          senderId: '@peer:local',
+          content: {'membership': 'join', 'avatar_url': 'mxc://local/peer'},
+        ),
+      };
+      expect(roomAvatar(room), Uri.parse('mxc://local/peer'));
+    },
+  );
   testWidgets(
     'People and groups stay separate; preview, unread and presence use real state',
     (tester) async {

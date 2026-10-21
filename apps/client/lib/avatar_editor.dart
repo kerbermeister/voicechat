@@ -30,7 +30,10 @@ Uint8List cropAvatar(Uint8List bytes, double zoom, double x, double y) {
 }
 
 Future<MatrixFile?> editAvatar(BuildContext context) async {
-  final photos = await chooseImages(const MediaPolicy(photoMaxCount: 1), 1);
+  final photos = await chooseImages(
+    const MediaPolicy(photoMaxCount: 1, photoScale: 1),
+    1,
+  );
   if (photos.isEmpty || !context.mounted) return null;
   final bytes = await showDialog<Uint8List>(
     context: context,

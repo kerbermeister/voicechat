@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:js_interop';
 import 'chunked_file.dart';
+import 'picked_file.dart';
 
 @JS('voicechatFiles.beginSave')
 external JSPromise<JSString?> _beginSave(JSString name);
@@ -77,14 +78,25 @@ Future<void> saveFile(
 
 Future<({String url, Future<void> Function() close})> videoSource(
   ChunkedFile file,
+) => _videoSource(file.name, file.mime, file.size, file.range);
+
+Future<({String url, Future<void> Function() close})> draftVideoSource(
+  PickedFile file,
+) => _videoSource(file.name, file.mime, file.size, file.range);
+
+Future<({String url, Future<void> Function() close})> _videoSource(
+  String name,
+  String mime,
+  int size,
+  Stream<Uint8List> Function(int, int) range,
 ) async {
   final url = (await _stream(
-    file.name.toJS,
-    file.mime.toJS,
-    file.size.toJS,
+    name.toJS,
+    mime.toJS,
+    size.toJS,
     ((JSNumber from, JSNumber to) => (() async {
       final builder = BytesBuilder(copy: false);
-      await for (final block in file.range(from.toDartInt, to.toDartInt)) {
+      await for (final block in range(from.toDartInt, to.toDartInt)) {
         builder.add(block);
       }
       return builder.takeBytes().toJS;

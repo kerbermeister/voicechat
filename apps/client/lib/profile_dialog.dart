@@ -25,7 +25,6 @@ class ProfileDialog extends StatefulWidget {
 class _ProfileDialogState extends State<ProfileDialog> {
   mx.Profile? profile;
   bool? openMessages;
-  bool busy = false;
   String? error;
   StreamSubscription<mx.CachedPresence>? presence;
   bool get own => widget.userId == widget.client.userID;
@@ -53,38 +52,19 @@ class _ProfileDialogState extends State<ProfileDialog> {
     refresh();
   }
 
-  Future<void> privacy(bool value) async {
-    setState(() {
-      busy = true;
-      error = null;
-    });
-    try {
-      await widget.contacts.setAllowDirect(value);
-    } catch (_) {
-      error =
-          'Не удалось сохранить настройку. Повторите после восстановления связи.';
-    } finally {
-      if (mounted) setState(() => busy = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     // ignore: deprecated_member_use
     final current = widget.client.presences[widget.userId];
     final online = current?.presence == mx.PresenceType.online;
-    final status = switch (current?.presence) {
-      mx.PresenceType.online => 'В сети',
-      mx.PresenceType.offline => 'Не в сети',
-      mx.PresenceType.unavailable => 'Отошёл',
-      _ => 'Статус недоступен',
-    };
+    final status = presenceLabel(current);
     final name =
         profile?.displayName ?? widget.userId.split(':').first.substring(1);
     final contact = widget.contacts.requests
         .where((r) => r.peer(widget.client.userID!) == widget.userId)
         .firstOrNull;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       title: Text(own ? 'Мой профиль' : 'Профиль'),
       content: SizedBox(
         width: 420,
@@ -107,8 +87,8 @@ class _ProfileDialogState extends State<ProfileDialog> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.circle,
-                    size: 9,
+                    online ? Icons.circle : Icons.radio_button_unchecked,
+                    size: 14,
                     color: online
                         ? onlinePresenceColor(Theme.of(context).colorScheme)
                         : Theme.of(context).colorScheme.outline,
@@ -124,15 +104,6 @@ class _ProfileDialogState extends State<ProfileDialog> {
                     lastSeen(current, DateTime.now()),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-              if (own)
-                SwitchListTile(
-                  title: const Text('Мне могут писать без подтверждения'),
-                  subtitle: const Text(
-                    'Если выключить, новые собеседники сначала отправляют запрос',
-                  ),
-                  value: widget.contacts.allowDirect,
-                  onChanged: busy ? null : privacy,
                 ),
               if (!own && contact?.state == 'pending')
                 const Text('Запрос ожидает подтверждения'),
@@ -152,7 +123,7 @@ class _ProfileDialogState extends State<ProfileDialog> {
           ),
         if (!own && contact?.state != 'pending' && contact?.state != 'declined')
           FilledButton(
-            onPressed: busy || !widget.contacts.available
+            onPressed: !widget.contacts.available
                 ? null
                 : () => Navigator.pop(context, 'contact'),
             child: Text(

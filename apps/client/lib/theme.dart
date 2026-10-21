@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 Color onlinePresenceColor(ColorScheme colors) =>
     colors.brightness == Brightness.dark
-    ? const Color(0xFF8ED8AD)
-    : const Color(0xFF246340);
+    ? const Color(0xFF42E67A)
+    : const Color(0xFF007A38);
 
 enum AppPalette {
   lavender,

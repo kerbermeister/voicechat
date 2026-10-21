@@ -15,4 +15,19 @@ class PickedFile {
     required this.read,
     required this.release,
   });
+
+  Stream<Uint8List> range(int start, int end) async* {
+    if (start < 0 || end < start || end > size) {
+      throw RangeError('Invalid file range');
+    }
+    for (var offset = start; offset < end;) {
+      final next = (offset + fileChunkBytes).clamp(offset, end);
+      final bytes = await read(offset, next);
+      if (bytes.length != next - offset) {
+        throw StateError('Incomplete file read');
+      }
+      yield bytes;
+      offset = next;
+    }
+  }
 }

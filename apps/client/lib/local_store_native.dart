@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:matrix/matrix.dart';
@@ -12,6 +13,22 @@ const vault = FlutterSecureStorage(
   aOptions: AndroidOptions(resetOnError: false),
 );
 final _databases = <String, sql.Database>{};
+
+Future<int> storeUsage(String name) async {
+  final path = _databases[name]!.path;
+  var bytes = 0;
+  for (final suffix in ['', '-wal', '-shm']) {
+    final file = File('$path$suffix');
+    if (await file.exists()) bytes += await file.length();
+  }
+  return bytes;
+}
+
+Future<void> compactStore(String name) async {
+  final database = _databases[name]!;
+  await database.rawQuery('PRAGMA wal_checkpoint(TRUNCATE)');
+  await database.execute('VACUUM');
+}
 
 Future<void> writeBlob(String name, String id, Uint8List bytes) async {
   await _databases[name]!.insert('voicechat_blobs', {
