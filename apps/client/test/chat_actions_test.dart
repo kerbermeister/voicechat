@@ -6,9 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:matrix/matrix.dart';
+// ignore: implementation_imports
+import 'package:matrix/src/utils/cached_stream_controller.dart';
 import 'package:voicechat_probe/chat_actions.dart';
 import 'package:voicechat_probe/call_controller.dart';
 import 'package:voicechat_probe/voice_recording.dart';
+import 'message_test.dart' show TestClient;
 
 class OutboxDatabase implements MatrixSdkDatabase {
   final values = <String, Map<String, Object?>>{};
@@ -65,6 +68,16 @@ class VideoSession implements CallSession {
   @override
   CallType get type => CallType.kVideo;
   @override
+  CallDirection get direction => CallDirection.kOutgoing;
+  @override
+  String get callId => 'video-test';
+  @override
+  CallState get state => CallState.kInviteSent;
+  @override
+  final onCallStateChanged = CachedStreamController<CallState>();
+  @override
+  final onStreamAdd = CachedStreamController<WrappedMediaStream>();
+  @override
   Future<void> hangup({
     required CallErrorCode reason,
     bool shouldEmit = true,
@@ -74,6 +87,50 @@ class VideoSession implements CallSession {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class IndependentQueueClient extends Client {
+  int attempts = 0;
+  late final room = OutboxRoom(this);
+  IndependentQueueClient(super.clientName, {required super.database});
+  @override
+  Room? getRoomById(String id) => room;
+  @override
+  Future<TokenOwnerInfo> getTokenOwner() async {
+    attempts++;
+    throw StateError('Authorization unavailable');
+  }
+}
+
+class SendingQueueClient extends TestClient {
+  @override
+  final database = OutboxDatabase();
+  final roomsById = <String, SendingQueueRoom>{};
+  @override
+  Room? getRoomById(String id) => roomsById[id];
+}
+
+class SendingQueueRoom extends OutboxRoom {
+  final String roomId;
+  final Completer<String?>? gate;
+  final sent = <String>[];
+  SendingQueueRoom(super.client, this.roomId, {this.gate});
+  @override
+  String get id => roomId;
+  @override
+  dynamic noSuchMethod(Invocation invocation) {
+    if (invocation.memberName == #requestParticipants) {
+      return Future.value(<User>[]);
+    }
+    if (invocation.memberName == #sendEvent ||
+        invocation.memberName == #sendFileEvent) {
+      sent.add(invocation.namedArguments[#txid] as String);
+      return sent.length == 1 && gate != null
+          ? gate!.future
+          : Future<String?>.value('event-${sent.length}');
+    }
+    return super.noSuchMethod(invocation);
+  }
 }
 
 class RotatingTurnClient extends Client {
@@ -117,6 +174,82 @@ void main() {
       logLevel: Level.error,
     );
   });
+  test(
+    'Slow uploads do not block other chats; messages in one chat stay ordered',
+    () async {
+      final client = SendingQueueClient();
+      final actions = ChatActions(client);
+      final gates = [Completer<String?>(), Completer<String?>()];
+      Map<String, dynamic> item(String id, String room, {bool audio = false}) =>
+          {
+            'id': id,
+            'room': room,
+            'type': EventTypes.Message,
+            'created': 0,
+            'content': audio
+                ? {
+                    'msgtype': MessageTypes.Audio,
+                    'body': 'voice.wav',
+                    'mime': 'audio/wav',
+                    'bytes': base64Encode(Uint8List(16)),
+                  }
+                : {'msgtype': MessageTypes.Text, 'body': id},
+          };
+      for (var i = 0; i < 2; i++) {
+        final id = '!slow$i:local';
+        client.roomsById[id] = SendingQueueRoom(client, id, gate: gates[i]);
+        actions.pending.add(item('upload$i', id, audio: true));
+      }
+      actions.pending.add(item('after-upload', '!slow0:local'));
+      client.roomsById['!fast:local'] = SendingQueueRoom(client, '!fast:local');
+      actions.pending.add(item('fast', '!fast:local'));
+      final sending = actions.flush();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(client.roomsById['!fast:local']!.sent, ['fast']);
+      expect(client.roomsById['!slow0:local']!.sent, ['upload0']);
+      client.roomsById['!new:local'] = SendingQueueRoom(client, '!new:local');
+      actions.pending.add(item('new', '!new:local'));
+      await actions.flush();
+      expect(client.roomsById['!new:local']!.sent, ['new']);
+      for (final gate in gates) {
+        gate.complete('upload-event');
+      }
+      await sending;
+      expect(client.roomsById['!slow0:local']!.sent, [
+        'upload0',
+        'after-upload',
+      ]);
+      expect(actions.pending, isEmpty);
+      await actions.close();
+    },
+  );
+  test(
+    'A blocked chat preserves its order without blocking other chats',
+    () async {
+      final independent = IndependentQueueClient(
+        'independent',
+        database: database,
+      );
+      final actions = ChatActions(independent);
+      for (final (id, room) in [
+        ('one', '!a:local'),
+        ('two', '!a:local'),
+        ('three', '!b:local'),
+      ]) {
+        actions.pending.add({
+          'id': id,
+          'room': room,
+          'content': {'body': id},
+        });
+      }
+      await actions.flush();
+      expect(independent.attempts, 2);
+      expect(actions.pending.map((p) => p['id']), ['one', 'two', 'three']);
+      expect(actions.pending[1]['error'], isNull);
+      expect(actions.pending[2]['error'], isNotNull);
+      await actions.close();
+    },
+  );
   test(
     'Offline queue survives restart with the same transaction ID; cancellation persists',
     () async {
@@ -248,7 +381,7 @@ void main() {
     await calls.close();
   });
   test(
-    'Video offers are refused before creating media or requesting the camera',
+    'Registering a video offer does not request the camera before acceptance',
     () async {
       final calls = CallController(
         client,
@@ -258,7 +391,7 @@ void main() {
       );
       final video = VideoSession();
       await calls.registerListeners(video);
-      expect(video.rejected, true);
+      expect(video.rejected, false);
       expect(calls.active, isNull);
       await calls.close();
     },

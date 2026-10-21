@@ -10,6 +10,7 @@ import 'package:voicechat_probe/matrix_probe.dart';
 import 'package:voicechat_probe/first_keys.dart';
 import 'package:voicechat_probe/conversation_list.dart';
 import 'package:voicechat_probe/chat_actions.dart';
+import 'package:voicechat_probe/file_view.dart';
 import 'package:voicechat_probe/lab_messaging.dart' show testImage, testVoice;
 
 void main() {
@@ -136,6 +137,25 @@ void main() {
     await screenshot('emoji');
     await tester.tap(find.text('😀').first);
     await tester.pump(const Duration(milliseconds: 400));
+    final draft = tester.widget<TextField>(field).controller!.text;
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byTooltip('Видеокружок · удерживайте для записи')),
+    );
+    await tester.pump(const Duration(milliseconds: 700));
+    await waitFor(find.text('Прикрепить'));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(seconds: 2)),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    await screenshot('held-video-note');
+    await gesture.up();
+    await waitFor(
+      find.byWidgetPredicate(
+        (w) => w is MessageVideo && w.file != null && w.videoNote,
+      ),
+    );
+    expect(tester.widget<TextField>(field).controller!.text, draft);
+    expect(tester.takeException(), isNull);
     await tester.tap(find.byTooltip('Участники и настройки чата'));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Вступили · 1'), findsOneWidget);
@@ -191,6 +211,36 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.text('Информация'));
     await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('Закрыть').last);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('Мобильная проверка').first);
+    await waitFor(field);
+    await tester.enterText(
+      field,
+      'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+    );
+    await tester.tap(find.byTooltip('Отправить'));
+    await waitFor(find.text('Смотреть видео'));
+    FocusManager.instance.primaryFocus?.unfocus();
+    await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.ensureVisible(find.text('Смотреть видео'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('Смотреть видео'));
+    await waitFor(find.byType(AndroidView));
+    await screenshot('embedded-video');
+    await tester.tap(find.byTooltip('Закрыть видео'));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(AndroidView), findsNothing);
+    await tester.tap(find.byTooltip('Закрыть чат'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byTooltip('Настройки'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.ensureVisible(find.text('Локальное хранилище'));
+    await tester.tap(find.text('Локальное хранилище'));
+    await waitFor(find.byType(DropdownButtonFormField<int>));
+    await screenshot('storage');
     await tester.tap(find.text('Закрыть').last);
     await tester.pump(const Duration(milliseconds: 400));
     expect(tester.takeException(), isNull);

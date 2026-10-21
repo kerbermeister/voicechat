@@ -41,8 +41,9 @@ class GroupInvitation {
 
 List<GroupInvitation> groupInvitations(
   Client client,
-  List<GroupInvitation> previous,
-) {
+  List<GroupInvitation> previous, {
+  Iterable<({String roomId, StrippedStateEvent state})> updates = const [],
+}) {
   final entries = {
     for (final item in previous) '${item.roomId}\u0000${item.userId}': item,
   };
@@ -67,21 +68,26 @@ List<GroupInvitation> groupInvitations(
           room.getLocalizedDisplayname(),
           'pending',
         );
-      } else if (old != null && old.state == 'pending') {
-        final state = switch (membership) {
-          'join' => 'accepted',
-          'leave' || 'ban' => event.senderId == user ? 'declined' : 'cancelled',
-          _ => 'pending',
-        };
-        entries[key] = GroupInvitation(
-          room.id,
-          user,
-          old.inviter,
-          old.name,
-          state,
-        );
+      } else if (old != null) {
+        entries[key] = _outcome(old, event);
       }
     }
   }
+  // Left rooms can be absent from client.rooms by the time sync is announced.
+  for (final update in updates) {
+    final key = '${update.roomId}\u0000${update.state.stateKey}';
+    final old = entries[key];
+    if (old != null) entries[key] = _outcome(old, update.state);
+  }
   return entries.values.toList();
+}
+
+GroupInvitation _outcome(GroupInvitation old, StrippedStateEvent event) {
+  if (old.state != 'pending') return old;
+  final state = switch (event.content['membership']) {
+    'join' => 'accepted',
+    'leave' || 'ban' => event.senderId == old.userId ? 'declined' : 'cancelled',
+    _ => 'pending',
+  };
+  return GroupInvitation(old.roomId, old.userId, old.inviter, old.name, state);
 }

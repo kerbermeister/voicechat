@@ -38,6 +38,8 @@ class ContactService extends ChangeNotifier {
   List<GroupInvitation> groups = [];
   Timer? _timer;
   StreamSubscription<dynamic>? _sync;
+  StreamSubscription<dynamic>? _members;
+  final _groupEvents = <String, ({String roomId, StrippedStateEvent state})>{};
   Future<void>? _refreshing;
   Future<void> _write = Future.value();
   static const _storage = 'dev.voicechat.local.contacts';
@@ -99,6 +101,11 @@ class ContactService extends ChangeNotifier {
     await refresh();
     _timer = Timer.periodic(const Duration(seconds: 10), (_) => refresh());
     _sync = client.onSync.stream.listen((_) => unawaited(refresh()));
+    _members = client.onRoomState.stream.listen((update) {
+      if (update.state.type != EventTypes.RoomMember) return;
+      _groupEvents['${update.roomId}\u0000${update.state.stateKey}'] = update;
+      unawaited(refresh());
+    });
   }
 
   Future<Map<String, dynamic>> _api(
@@ -132,7 +139,12 @@ class ContactService extends ChangeNotifier {
   Future<void> _refresh() async {
     if (_closed) return;
     try {
-      final observed = groupInvitations(client, groups);
+      final updates = Map.of(_groupEvents);
+      final observed = groupInvitations(
+        client,
+        groups,
+        updates: updates.values,
+      );
       final items = observed.map((v) => v.toJson()).toList();
       if (jsonEncode(items) !=
           jsonEncode(groups.map((v) => v.toJson()).toList())) {
@@ -140,6 +152,11 @@ class ContactService extends ChangeNotifier {
           'items': items,
         }));
         groups = observed;
+      }
+      for (final entry in updates.entries) {
+        if (_groupEvents[entry.key] == entry.value) {
+          _groupEvents.remove(entry.key);
+        }
       }
       final data = await _api('/contacts');
       if (_closed) return;
@@ -221,6 +238,7 @@ class ContactService extends ChangeNotifier {
     if (identical(_services[client], this)) _services[client] = null;
     _timer?.cancel();
     await _sync?.cancel();
+    await _members?.cancel();
     try {
       await _write;
     } finally {

@@ -9,6 +9,7 @@ import 'transport.dart';
 import 'local_store.dart';
 import 'picked_file.dart';
 import 'link_preview.dart';
+import 'call_event.dart';
 
 const maxAttachmentBytes = 10 * 1024 * 1024;
 
@@ -24,11 +25,11 @@ class ChatActions extends ChangeNotifier {
   final List<Map<String, dynamic>> pending = [];
   StreamSubscription<dynamic>? _sync;
   Timer? _retry;
-  bool _sending = false;
+  final _sending = <String, bool>{};
   bool _closed = false;
   final _preparing = <String>{};
-  String? _activeItem;
-  String? _publishing;
+  final _activeItems = <String, String>{};
+  final _publishing = <String, String>{};
   Future<void> _writes = Future.value();
   ChatActions(this.client, {this.policyUrl, this.onSent});
   static const _storageKey = 'dev.voicechat.local.outbox';
@@ -420,12 +421,53 @@ class ChatActions extends ChangeNotifier {
   }
 
   Future<void> flush() async {
-    if (_closed || _sending || pending.isEmpty) return;
-    _sending = true;
+    final attempted = <String>{};
+    while (!_closed) {
+      final heads = <String, Map<String, dynamic>>{};
+      for (final item in pending) {
+        heads.putIfAbsent(item['room'] as String, () => item);
+      }
+      final jobs = <Future<void>>[];
+      for (final entry in heads.entries) {
+        if (_sending.containsKey(entry.key) ||
+            attempted.contains(entry.key) ||
+            entry.value['preparing'] == true) {
+          continue;
+        }
+        if (!_reserveSending(entry.key, entry.value)) continue;
+        attempted.add(entry.key);
+        jobs.add(_flushRoom(entry.key));
+      }
+      if (jobs.isEmpty) return;
+      await Future.wait(jobs);
+    }
+  }
+
+  bool _reserveSending(String roomId, Map<String, dynamic> item) {
+    final content = item['content'] as Map;
+    final media =
+        content.containsKey('bytes') ||
+        [
+          'dev.voicechat.file',
+          'dev.voicechat.album',
+        ].contains(content['msgtype']);
+    if (_sending[roomId] == media) return true;
+    // Bound upload memory while reserving independent capacity for text.
+    if (_sending.values.where((value) => value == media).length >=
+        (media ? 2 : 3)) {
+      return false;
+    }
+    _sending[roomId] = media;
+    return true;
+  }
+
+  Future<void> _flushRoom(String roomId) async {
     try {
-      for (final item in pending.toList()) {
-        if (_closed) break;
-        if (!pending.contains(item)) continue;
+      while (!_closed) {
+        final item = pending
+            .where((item) => item['room'] == roomId)
+            .firstOrNull;
+        if (item == null) break;
         if (item['cancelled'] == true && !_preparing.contains(item['id'])) {
           pending.remove(item);
           await _save();
@@ -433,7 +475,8 @@ class ChatActions extends ChangeNotifier {
           continue;
         }
         if (item['preparing'] == true) break;
-        _activeItem = item['id'] as String;
+        if (!_reserveSending(roomId, item)) break;
+        _activeItems[roomId] = item['id'] as String;
         try {
           final room = client.getRoomById(item['room'] as String);
           if (room == null || !room.encrypted) {
@@ -467,7 +510,7 @@ class ChatActions extends ChangeNotifier {
           }
           String? id;
           if (item['cancelled'] == true) throw StateError('Cancelled');
-          _publishing = item['id'] as String;
+          _publishing[roomId] = item['id'] as String;
           if (content.containsKey('bytes')) {
             final bytes = base64Decode(content['bytes'] as String);
             final file = content['msgtype'] == MessageTypes.Audio
@@ -517,7 +560,7 @@ class ChatActions extends ChangeNotifier {
           }
           await _deleteParts(item);
         } catch (error) {
-          _publishing = null;
+          _publishing.remove(roomId);
           if (_closed) break;
           if (item['cancelled'] == true) {
             pending.remove(item);
@@ -529,30 +572,30 @@ class ChatActions extends ChangeNotifier {
               ? error.message
               : 'Нет подтверждения отправки. Повторим при восстановлении связи.';
           await _save();
-          break; // Preserve ordering and the transaction ID on retries.
+          break; // Retry this chat later; unrelated chats continue independently.
         }
-        _publishing = null;
+        _publishing.remove(roomId);
         if (!_closed) notifyListeners();
       }
     } catch (_) {
       // Preserve the durable item if storage or network fails during a retry.
     } finally {
-      _sending = false;
-      _activeItem = null;
-      _publishing = null;
+      _sending.remove(roomId);
+      _activeItems.remove(roomId);
+      _publishing.remove(roomId);
       if (!_closed) notifyListeners();
     }
   }
 
   Future<void> cancel(String id) async {
-    if (_publishing == id) {
+    if (_publishing.containsValue(id)) {
       throw UserActionError(
         'Сервер уже принимает сообщение. После отправки его можно удалить.',
       );
     }
     final index = pending.indexWhere((item) => item['id'] == id);
     if (index < 0) return;
-    if (_activeItem == id || _preparing.contains(id)) {
+    if (_activeItems.containsValue(id) || _preparing.contains(id)) {
       pending[index]['cancelled'] = true;
       await _save();
       notifyListeners();
@@ -596,6 +639,7 @@ Map<String, dynamic> encryptedDescriptor(EncryptedFile encrypted) => {
 };
 
 String messageSearchText(Event event) => <String>{
+  if (event.type == EventTypes.CallInvite) callEventLabel(event),
   event.calcUnlocalizedBody(hideReply: true),
   for (final key in ['caption', 'dev.voicechat.caption'])
     if (event.content[key] is String) event.content[key] as String,
@@ -616,6 +660,7 @@ List<Event> visibleMessages(Timeline timeline, String query) {
         (event) =>
             (isGroupJoin(event) ||
                 event.type == EventTypes.Message ||
+                event.type == EventTypes.CallInvite ||
                 event.type == EventTypes.Encrypted &&
                     event.messageType == MessageTypes.BadEncrypted) &&
             event.relationshipType != RelationshipTypes.edit &&

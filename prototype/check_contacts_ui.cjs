@@ -5,6 +5,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const {chromium} = require('playwright');
 const root = path.join(__dirname, '..');
+const video = process.env.VOICECHAT_VIDEO_TEST === '1';
+const callButton = video ? 'Видеозвонок' : 'Голосовой звонок';
+fs.mkdirSync(path.join(root,'.prototype/ui'),{recursive:true});
 
 async function request(base, route, body, token, method = body ? 'POST' : 'GET') {
   const response = await fetch(base + route, {
@@ -47,9 +50,88 @@ async function register(role) {
       await page.keyboard.press('Tab');
     };
     const button=(page,name)=>page.getByRole('button',{name,exact:true});
+    async function waitForAnnouncement(page, text) {
+      for(let i=0;i<100;i++) {
+        if((await page.locator('body').ariaSnapshot()).includes(text)) return;
+        await page.waitForTimeout(200);
+      }
+      assert.fail('Expected interface text is not announced: '+text);
+    }
+    async function videoFrames(page) {
+      await page.bringToFront();
+      for(let i=0;i<100;i++) {
+        const ready=await page.locator('video').evaluateAll(nodes=>nodes.filter(v=>v.getBoundingClientRect().width>1 && v.getBoundingClientRect().height>1 && v.videoWidth>0 && v.videoHeight>0 && v.readyState>=2 && v.srcObject?.getVideoTracks().some(t=>t.readyState==='live' && t.enabled)).length);
+        if(ready>=2) {
+          const fresh=await page.locator('video').evaluateAll(nodes=>Promise.all(nodes.filter(v=>v.getBoundingClientRect().width>1 && v.getBoundingClientRect().height>1).map(v=>new Promise(resolve=>{
+            const timeout=setTimeout(()=>resolve(false),5000);
+            v.requestVideoFrameCallback(()=>{clearTimeout(timeout);resolve(true);});
+          }))));
+          assert(fresh.length>=2 && fresh.every(Boolean),'Both visible videos must deliver a new decoded frame');
+          return;
+        }
+        await page.waitForTimeout(200);
+      }
+      assert.fail('Local and remote video must both decode frames');
+    }
+    async function toggleCamera(page) {
+      for (const label of ['Выключить камеру','Включить камеру']) {
+        const control=button(page,label);
+        await control.waitFor();
+        for(let i=0;i<100 && !await control.isEnabled();i++) await page.waitForTimeout(100);
+        const box=await control.boundingBox();
+        await page.mouse.click(box.x+box.width/2,box.y+box.height/2);
+        await page.mouse.move(5,5);
+        await button(page,label==='Выключить камеру' ? 'Включить камеру' : 'Выключить камеру').waitFor();
+        if(label==='Выключить камеру') {
+          await page.waitForFunction(()=>window.callPeers.every(pc=>pc.getSenders().every(s=>s.track?.kind!=='video' || s.track.readyState==='ended' || !s.track.enabled)));
+        }
+      }
+      for(let i=0;i<100 && !await button(page,'Выключить камеру').isEnabled();i++) await page.waitForTimeout(100);
+    }
+    async function qualityCheck(sender, receiver) {
+      await sender.bringToFront();
+      await button(sender,'Авто').click();
+      fs.writeFileSync(path.join(root,'.prototype/ui/quality-menu.txt'),await sender.locator('body').ariaSnapshot());
+      await sender.screenshot({path:path.join(root,'.prototype/ui/quality-menu.png')});
+      await sender.getByText('Низкое',{exact:true}).last().click();
+      await sender.mouse.move(5,5);
+      await button(sender,'Низкое').waitFor();
+      await sender.waitForFunction(()=>{
+        const senders=window.callPeers.flatMap(pc=>pc.getSenders()).filter(s=>s.track?.kind==='video' && s.track.readyState==='live');
+        return senders.length && senders.every(s=>s.getParameters().encodings?.every(e=>e.maxBitrate<=150000 && e.maxFramerate<=15));
+      });
+      await receiver.waitForFunction(()=>{
+        const ids=window.callPeers.flatMap(pc=>pc.getReceivers()).filter(r=>r.track.kind==='video' && r.track.readyState==='live').map(r=>r.track.id);
+        function videos(root) { return [...root.querySelectorAll('video'), ...[...root.querySelectorAll('*')].filter(el=>el.shadowRoot).flatMap(el=>videos(el.shadowRoot))]; }
+        return videos(document).some(v=>ids.includes(v.srcObject?.getVideoTracks()[0]?.id) && v.videoWidth>0 && v.videoWidth<=320 && v.videoHeight<=180);
+      });
+      await sender.bringToFront();
+      await button(sender,'Низкое').click();
+      await sender.getByText('Авто',{exact:true}).last().click();
+      await sender.mouse.move(5,5);
+      await button(sender,'Авто').waitFor();
+      await videoFrames(sender); await videoFrames(receiver);
+    }
+    async function createGroup(page, name, peer) {
+      await page.getByText('Группы',{exact:true}).click();
+      await button(page,'Создать группу').click();
+      await fill(page,'Поиск пользователей',peer.username); await button(page,'Найти').click();
+      await page.getByRole('checkbox',{name:`${peer.username} ${peer.user_id}`,exact:true}).click();
+      await button(page,'Добавить').click();
+      const input=page.getByRole('alertdialog').getByRole('textbox');
+      await input.click(); await page.waitForTimeout(200); await page.keyboard.insertText(name); await page.keyboard.press('Tab');
+      await button(page,'Сохранить').click();
+      await page.getByText(name,{exact:true}).waitFor();
+    }
     async function login(account) {
       const context=await browser.newContext({permissions:['microphone','camera'],viewport:{width:1280,height:900}});
       await context.addInitScript(()=>{
+        window.callPeers=[];
+        window.RTCPeerConnection=new Proxy(window.RTCPeerConnection,{construct(target,args){
+          const connection=Reflect.construct(target,args);
+          window.callPeers.push(connection);
+          return connection;
+        }});
         window.soundPlays=[];
         const play=HTMLMediaElement.prototype.play;
         HTMLMediaElement.prototype.play=function(...args){
@@ -59,6 +141,10 @@ async function register(role) {
         };
       });
       const page=await context.newPage(); pages.push(page);
+      page.on('console', message=>{
+        const text=message.text();
+        if(text.includes('onCallHangup') || text.includes('hangup res =>') || text.includes('hangup error =>')) console.log('Call diagnostic:',text.split('=>')[0]);
+      });
       await page.goto('http://localhost:7357/');
       await page.locator('flt-semantics-placeholder').evaluate(el=>el.click());
       await fill(page,'Имя пользователя',account.username);
@@ -99,21 +185,13 @@ async function register(role) {
     assert.equal(await button(a,'Покинуть чат').count(),0);
     assert.equal(await button(a,'Изменить название').count(),0);
     await button(a,'Закрыть').click();
-    await a.getByText('Группы',{exact:true}).click();
-    await button(a,'Создать группу').click();
-    await fill(a,'Поиск пользователей',bob.username); await button(a,'Найти').click();
-    await a.getByRole('checkbox',{name:`${bob.username} ${bob.user_id}`,exact:true}).click();
-    await button(a,'Добавить').click();
-    const name=a.getByRole('alertdialog').getByRole('textbox');
-    await name.click(); await a.keyboard.insertText('Согласие на группу'); await a.keyboard.press('Tab');
-    await button(a,'Сохранить').click();
-    await a.getByText('Согласие на группу',{exact:true}).waitFor();
+    await createGroup(a,'Согласие на группу',bob);
     await b.getByRole('button',{name:/Приглашения/}).click();
     await b.getByRole('tab',{name:'Группы',exact:true}).click();
-    await b.getByText(/Ожидает ответа/).waitFor();
+    await waitForAnnouncement(b,'Ожидает ответа');
     await button(b,'Принять').click();
     await button(b,'Принять').waitFor({state:'hidden',timeout:30000});
-    await b.getByText(/Принято/).waitFor({timeout:30000});
+    await waitForAnnouncement(b,'Принято');
     let joined=[];
     for(let i=0;i<30;i++) {
       joined=(await request('http://localhost:8008','/_matrix/client/v3/joined_rooms',undefined,bob.access_token)).joined_rooms;
@@ -123,6 +201,22 @@ async function register(role) {
     assert.equal(joined.length,2,'Group acceptance did not join the room');
     await button(b,'Закрыть').click();
     await a.getByRole('button',{name:/Согласие на группу[\s\S]*Вступили: 2/}).waitFor({timeout:30000});
+    assert((await a.locator('body').ariaSnapshot()).includes('вступил'),'Joined member event must appear in group history');
+    await createGroup(a,'Отклонённая группа',bob);
+    await b.getByRole('button',{name:/Приглашения/}).click();
+    await b.getByRole('tab',{name:'Группы',exact:true}).click();
+    await button(b,'Отклонить').click();
+    await waitForAnnouncement(b,'Отклонено');
+    await button(b,'Закрыть').click();
+    await b.reload();
+    await b.locator('flt-semantics-placeholder').evaluate(el=>el.click());
+    await button(b,'Найти человека').waitFor({timeout:60000});
+    await b.getByRole('button',{name:/Приглашения/}).click();
+    await b.getByRole('tab',{name:'Группы',exact:true}).click();
+    await waitForAnnouncement(b,'Отклонено');
+    await waitForAnnouncement(b,'Принято');
+    await button(b,'Закрыть').click();
+    assert.equal(await b.evaluate(()=>window.soundPlays.filter(p=>p.src.includes('received.wav')).length),0,'Reloaded history must not replay received sounds');
     await a.getByText('Люди',{exact:true}).click();
     await a.getByRole('button',{name:new RegExp(bob.username)}).getByRole('button',{name:'Действия с чатом',exact:true}).click();
     await a.getByRole('menuitem',{name:'Отключить уведомления',exact:true}).click();
@@ -148,6 +242,48 @@ async function register(role) {
       await a.waitForTimeout(300);
     }
     assert(!/\s2$/.test(label),'Read receipt did not clear the count');
+    await button(a,callButton).click();
+    await button(b,'Принять').waitFor({timeout:30000});
+    await b.waitForFunction(()=>window.soundPlays.some(p=>p.src.includes('ringtone.wav')));
+    await button(b,'Принять').click();
+    await waitForAnnouncement(a,video ? 'защищённое видео' : 'защищённое аудио');
+    await waitForAnnouncement(b,video ? 'защищённое видео' : 'защищённое аудио');
+    if(video) {
+      await videoFrames(a); await videoFrames(b);
+      await toggleCamera(a);
+      await videoFrames(a);
+      await qualityCheck(a,b);
+      await a.screenshot({path:path.join(root,'.prototype/ui/direct-video.png')});
+    }
+    await b.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringtone.wav')).every(p=>p.audio.paused));
+    await a.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringback.wav')).every(p=>p.audio.paused));
+    await a.waitForTimeout(2200);
+    console.log('Checking direct-call termination');
+    await button(a,'Завершить').click();
+    await button(a,'Закрыть').click();
+    await button(b,'Закрыть').click();
+    console.log('Checking answered group-call timeout');
+    await a.getByText('Группы',{exact:true}).click();
+    await a.getByRole('button',{name:/Согласие на группу/}).click();
+    await button(a,callButton).click();
+    await button(b,'Принять').waitFor({timeout:30000});
+    await button(b,'Принять').click();
+    await waitForAnnouncement(a,video ? 'Защищённое видео' : 'Защищённое аудио');
+    await waitForAnnouncement(b,video ? 'Защищённое видео' : 'Защищённое аудио');
+    if(video) {
+      await videoFrames(a); await videoFrames(b);
+      await toggleCamera(a);
+      await videoFrames(a);
+      await qualityCheck(a,b);
+      await a.screenshot({path:path.join(root,'.prototype/ui/group-video.png')});
+    }
+    await button(b,'Завершить').click();
+    await button(b,'Закрыть').click();
+    await a.waitForTimeout(46000);
+    assert(await button(a,'Завершить').isVisible(),'An answered group call must not time out after another participant leaves');
+    await button(a,'Завершить').click();
+    await button(a,'Закрыть').click();
+    await a.getByText('Люди',{exact:true}).click();
     const c=await login(charlie);
     for(let i=0;i<60;i++) {
       const keys=await request('http://localhost:8008','/_matrix/client/v3/keys/query',{device_keys:{[charlie.user_id]:[]}},alice.access_token);
@@ -209,7 +345,7 @@ async function register(role) {
     await a.waitForFunction(()=>window.soundPlays.some(p=>p.src.includes('ringback.wav')));
     await a.waitForTimeout(1500);
     assert(await button(a,'Завершить').isVisible(),'Offline outgoing call disappeared');
-    await button(a,'Завершить').click();
+    await button(a,'Завершить').waitFor({state:'hidden',timeout:55000});
     await a.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringback.wav')).every(p=>p.audio.paused));
     await button(a,'Закрыть').click();
     fs.mkdirSync(path.join(root,'.prototype/ui'),{recursive:true});
@@ -218,7 +354,7 @@ async function register(role) {
   } catch (error) {
     fs.mkdirSync(path.join(root,'.prototype/ui'),{recursive:true});
     for(let i=0;i<pages.length;i++) await pages[i].screenshot({path:path.join(root,`.prototype/ui/consent-failure-${i}.png`)});
-    if(pages[1] && await pages[1].getByRole('button',{name:'Действия с сообщением',exact:true}).count()) fs.writeFileSync(path.join(root,'.prototype/ui/consent-accessibility.txt'),await pages[1].locator('body').ariaSnapshot());
+    if(pages[1] && !await pages[1].getByRole('textbox',{name:'Пароль аккаунта',exact:true}).count()) fs.writeFileSync(path.join(root,'.prototype/ui/consent-accessibility.txt'),await pages[1].locator('body').ariaSnapshot());
     throw error;
   } finally { await browser.close(); }
-})().catch(error=>{console.error(error.message);process.exitCode=1;});
+})().catch(error=>{console.error(error.stack);process.exitCode=1;});

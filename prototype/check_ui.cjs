@@ -42,6 +42,31 @@ const {chromium} = require('playwright');
     await fill(field('Поиск пользователей'), 'bob'); await button('Найти').click();
     await page.getByRole('checkbox', {name: 'bob @bob:voicechat.local', exact: true}).click();
     await button('Отправить').waitFor({timeout: 30000});
+    const offlineDemoText='Сообщение подготовленному демо-получателю офлайн';
+    await fill(field('Написать сообщение…'),offlineDemoText);
+    await button('Отправить').click();
+    await button('Действия с сообщением').first().waitFor({timeout:30000});
+    async function matrix(route, body, token) {
+      const response=await fetch('http://localhost:8008/_matrix/client/v3/'+route, {
+        method:body ? 'POST' : 'GET',headers:{'Content-Type':'application/json',...(token ? {Authorization:`Bearer ${token}`} : {})},
+        ...(body ? {body:JSON.stringify(body)} : {}),
+      });
+      assert.equal(response.status,200,route);
+      return response.json();
+    }
+    const session=await matrix('login',{type:'m.login.password',user:account.username,password:account.password});
+    try {
+      let delivered=false;
+      for(const room of (await matrix('joined_rooms',undefined,session.access_token)).joined_rooms) {
+        const prefix='rooms/'+encodeURIComponent(room)+'/';
+        const state=await matrix(prefix+'state',undefined,session.access_token);
+        if(!state.some(e=>e.type==='m.room.member' && e.state_key==='@bob:voicechat.local' && ['invite','join'].includes(e.content.membership))) continue;
+        const history=await matrix(prefix+'messages?dir=b&limit=10',undefined,session.access_token);
+        assert(!JSON.stringify(history).includes(offlineDemoText),'Demo message plaintext leaked');
+        delivered=history.chunk.some(e=>e.type==='m.room.encrypted');
+      }
+      assert(delivered,'Message to offline demo Bob must be on the server, not stuck in a local queue');
+    } finally { await matrix('logout',{},session.access_token); }
     await page.getByText('Группы', {exact: true}).click();
     await button('Создать группу').click();
     await fill(field('Поиск пользователей'), 'bob'); await button('Найти').click();

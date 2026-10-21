@@ -3,6 +3,10 @@ import 'package:integration_test/integration_test.dart';
 import 'package:voicechat_probe/chat_actions.dart';
 import 'package:voicechat_probe/matrix_probe.dart';
 import 'package:voicechat_probe/storage_policy.dart';
+import 'package:voicechat_probe/picked_file.dart';
+import 'package:voicechat_probe/local_store.dart';
+import 'package:voicechat_probe/user_action_error.dart';
+import 'dart:typed_data';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +38,30 @@ void main() {
             await Future<void>.delayed(const Duration(milliseconds: 100));
           }
           expect(actions.pending, isEmpty);
+          var cancel = false;
+          String? fileId;
+          await expectLater(
+            actions.file(
+              room,
+              PickedFile(
+                name: 'cancel.bin',
+                mime: 'application/octet-stream',
+                size: 3 * fileChunkBytes,
+                read: (from, to) async => Uint8List(to - from),
+                release: () async {},
+              ),
+              '',
+              cancelled: () => cancel,
+              progress: (_) {
+                fileId = actions.pending.last['id'] as String;
+                cancel = true;
+              },
+            ),
+            throwsA(isA<UserActionError>()),
+          );
+          expect(actions.pending, isEmpty);
+          expect(fileId, isNotNull);
+          expect(await readBlob(probe.client.clientName, '$fileId/0'), isNull);
           final fingerprint = probe.client.fingerprintKey;
           final oldIds = await probe.client.database.getEventIdList(room);
           expect(oldIds.length, greaterThan(30));

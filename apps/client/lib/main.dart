@@ -620,10 +620,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
     report('Ключи восстановлены. Откройте чат для загрузки истории.');
   }
 
-  Future<void> startCall() async {
+  Future<void> startCall({bool video = false}) async {
     if (selected == null) return;
     await stopActiveCapture();
-    await calls!.start(selected!);
+    await calls!.start(selected!, video: video);
   }
 
   Future<void> audioOutput() async {
@@ -1410,6 +1410,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
                   const SizedBox(height: 3),
                   Text(
                     roomPresence(room),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   if (room.isDirectChat &&
@@ -1419,6 +1421,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
                       ).isNotEmpty)
                     Text(
                       lastSeen(_roomPresenceSnapshot(room), DateTime.now()),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                 ],
@@ -1429,13 +1433,33 @@ class _ProbeScreenState extends State<ProbeScreen> {
               onPressed: busy ? null : () => run(() => roomSettings()),
               icon: const Icon(Icons.more_horiz_rounded),
             ),
-            IconButton.filledTonal(
-              tooltip: 'Голосовой звонок',
-              onPressed: busy || (call != null && !call!.isClosed)
-                  ? null
-                  : () => run(startCall),
-              icon: const Icon(Icons.call_outlined),
-            ),
+            if (MediaQuery.sizeOf(context).width < 500)
+              PopupMenuButton<bool>(
+                tooltip: 'Позвонить',
+                enabled: !busy && (call == null || call!.isClosed),
+                icon: const Icon(Icons.call_outlined),
+                onSelected: (video) => run(() => startCall(video: video)),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: false, child: Text('Голосовой звонок')),
+                  PopupMenuItem(value: true, child: Text('Видеозвонок')),
+                ],
+              )
+            else ...[
+              IconButton.filledTonal(
+                tooltip: 'Видеозвонок',
+                onPressed: busy || (call != null && !call!.isClosed)
+                    ? null
+                    : () => run(() => startCall(video: true)),
+                icon: const Icon(Icons.videocam_outlined),
+              ),
+              IconButton.filledTonal(
+                tooltip: 'Голосовой звонок',
+                onPressed: busy || (call != null && !call!.isClosed)
+                    ? null
+                    : () => run(() => startCall()),
+                icon: const Icon(Icons.call_outlined),
+              ),
+            ],
           ],
         ),
       ),

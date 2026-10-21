@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:matrix/matrix.dart';
 import 'call_probe.dart';
 import 'direct_call.dart';
@@ -14,11 +15,20 @@ class CallInvitation {
   final String session;
   final String sender;
   final DateTime created;
-  CallInvitation(this.room, this.session, this.sender, this.created);
+  final bool video;
+  CallInvitation(
+    this.room,
+    this.session,
+    this.sender,
+    this.created, {
+    this.video = false,
+  });
 }
 
 /// Foreground invitations are encrypted Matrix messages; push/control service is a separate milestone.
-class CallController extends ChangeNotifier implements WebRTCDelegate {
+class CallController extends ChangeNotifier
+    with WidgetsBindingObserver
+    implements WebRTCDelegate {
   final Client client;
   final String tokenUrl;
   final String mediaUrl;
@@ -38,7 +48,10 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
   Timer? _expiry;
   Timer? _ringTimeout;
   bool _closed = false;
+  String? _resumeCamera;
+  Future<void> _cameraLifecycle = Future.value();
   CallController(this.client, this.tokenUrl, this.mediaUrl, this.report) {
+    WidgetsBinding.instance.addObserver(this);
     voip = VoIP(client, this);
     _events = client.onTimelineEvent.stream.listen(receive);
     _expiry = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -48,6 +61,34 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
       _refresh();
     });
   }
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (kIsWeb || _closed) return;
+    final call = active;
+    if (call == null || call.isClosed || !call.video) return;
+    if (state == AppLifecycleState.inactive && call.cameraEnabled) {
+      _resumeCamera = call.session;
+      _cameraLifecycle = _cameraLifecycle
+          .catchError((Object _) {})
+          .then((_) => call.camera(false));
+    } else if (state == AppLifecycleState.resumed &&
+        _resumeCamera == call.session) {
+      _resumeCamera = null;
+      _cameraLifecycle = _cameraLifecycle.catchError((Object _) {}).then((
+        _,
+      ) async {
+        if (active == call && !call.isClosed) await call.camera(true);
+      });
+    }
+    unawaited(
+      _cameraLifecycle.catchError((Object _) {
+        report(
+          'Не удалось переключить камеру после возврата. Включите её кнопкой звонка.',
+        );
+      }),
+    );
+  }
+
   void _refresh() {
     if (!_closed) notifyListeners();
   }
@@ -71,6 +112,7 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
         id,
         event.senderId,
         event.originServerTs,
+        video: content['video'] == true,
       );
     } else if (content['action'] == 'decline' &&
         active?.session == id &&
@@ -95,6 +137,7 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
     String id,
     String action, {
     Duration? duration,
+    bool video = false,
   }) async {
     await authorizedDevices(room).timeout(const Duration(seconds: 8));
     await room.client.encryption!.keyManager.clearOrUseOutboundGroupSession(
@@ -104,10 +147,15 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
     await room.sendEvent({
       'msgtype': 'dev.voicechat.call',
       'body': action == 'invite'
-          ? 'Голосовой звонок'
+          ? video
+                ? 'Видеозвонок'
+                : 'Голосовой звонок'
           : action == 'decline'
           ? 'Вызов отклонён'
+          : video
+          ? 'Видеозвонок завершён'
           : 'Звонок завершён',
+      'video': video,
       'action': action,
       'session': id,
       if (duration != null && duration > Duration.zero)
@@ -115,7 +163,12 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
     });
   }
 
-  Future<void> start(Room room, {CallInvitation? invitation}) async {
+  Future<void> start(
+    Room room, {
+    CallInvitation? invitation,
+    bool video = false,
+  }) async {
+    video = invitation?.video ?? video;
     if (starting) throw UserActionError('Вызов уже запускается.');
     if (active != null && !active!.isClosed) {
       throw UserActionError('Сначала завершите текущий звонок.');
@@ -140,7 +193,7 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
         if (generation != _dialGeneration || _closed) return;
         final session = await voip.inviteToCall(
           room,
-          CallType.kVoice,
+          video ? CallType.kVideo : CallType.kVoice,
           userId: users.single,
         );
         active = _directCalls[session.callId]!;
@@ -150,6 +203,7 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
         }
         await (active! as DirectCall).authorize();
         (active! as DirectCall).monitor();
+        if (video) await active!.setVideoQuality(active!.videoQuality);
         _ringTimeout?.cancel();
         final call = active!;
         _ringTimeout = Timer(const Duration(seconds: 45), () {
@@ -176,6 +230,7 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
         livekitUrl: mediaUrl,
         status: report,
         changed: _refresh,
+        video: video,
       );
       active = call;
       _refresh();
@@ -186,12 +241,13 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
           return;
         }
         if (invitation == null) {
-          await _signal(room, id, 'invite');
+          await _signal(room, id, 'invite', video: video);
           _ringTimeout?.cancel();
           _ringTimeout = Timer(const Duration(seconds: 45), () {
             if (active == call &&
                 !call.isClosed &&
-                call.participants.length == 1) {
+                call.participants.length == 1 &&
+                call.duration == Duration.zero) {
               unawaited(end());
               report('Нет ответа. Звонок завершён.');
             }
@@ -205,6 +261,7 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
         _refresh();
       }
     } catch (error) {
+      if (generation == _dialGeneration) await active?.close();
       dialError = error is UserActionError
           ? error.message
           : 'Не удалось начать звонок. Проверьте сеть, микрофон и проверку устройств.';
@@ -219,7 +276,12 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
     declined.add(invitation.session);
     invitations.remove(invitation.session);
     _refresh();
-    await _signal(invitation.room, invitation.session, 'decline');
+    await _signal(
+      invitation.room,
+      invitation.session,
+      'decline',
+      video: invitation.video,
+    );
   }
 
   Future<void> end() async {
@@ -239,7 +301,13 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
       return;
     }
     try {
-      await _signal(call.chat, call.session, 'end', duration: call.duration);
+      await _signal(
+        call.chat,
+        call.session,
+        'end',
+        duration: call.duration,
+        video: call.video,
+      );
     } catch (_) {
       report('Вы вышли из звонка. Сеть недоступна для уведомления участников.');
     }
@@ -256,7 +324,10 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
         'msgtype': 'dev.voicechat.call_summary',
         'body': call.duration == Duration.zero
             ? 'Нет ответа / вызов завершён'
+            : call.video
+            ? 'Видеозвонок завершён'
             : 'Звонок завершён',
+        'video': call.video,
         'duration_ms': call.duration.inMilliseconds,
         'session': call.session,
       }, txid: 'call-end-${call.session}');
@@ -268,6 +339,7 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    WidgetsBinding.instance.removeObserver(this);
     _expiry?.cancel();
     _ringTimeout?.cancel();
     mediaDevices.ondevicechange =
@@ -326,11 +398,6 @@ class CallController extends ChangeNotifier implements WebRTCDelegate {
   Future<void> stopRingtone() async {}
   @override
   Future<void> registerListeners(CallSession session) async {
-    if (session.type != CallType.kVoice) {
-      await session.hangup(reason: CallErrorCode.userBusy);
-      report('В этой версии доступны только голосовые звонки.');
-      return;
-    }
     final call = DirectCall(session, _refresh, report);
     _directCalls[session.callId] = call;
     if (session.direction == CallDirection.kIncoming) {

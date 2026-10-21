@@ -4,6 +4,9 @@ import 'package:matrix/matrix.dart' as mx;
 import 'call_controller.dart';
 import 'direct_call.dart';
 import 'conversation_list.dart';
+import 'call_quality.dart';
+import 'call_video_grid.dart';
+import 'call_event.dart';
 
 class CallWindow extends StatefulWidget {
   final CallController calls;
@@ -83,11 +86,20 @@ class _CallWindowState extends State<CallWindow> {
                       ? 'Входящий звонок'
                       : 'Звонок завершён'));
     final colors = Theme.of(context).colorScheme;
+    final video = current?.video ?? direct?.video ?? group?.video ?? false;
     return AlertDialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       title: Row(
         children: [
           Expanded(
-            child: Text(room?.getLocalizedDisplayname() ?? 'Голосовой звонок'),
+            child: Text(
+              room?.getLocalizedDisplayname() ??
+                  (video ? 'Видеозвонок' : 'Голосовой звонок'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           IconButton(
             tooltip: 'Свернуть звонок',
@@ -97,12 +109,12 @@ class _CallWindowState extends State<CallWindow> {
         ],
       ),
       content: SizedBox(
-        width: 500,
-        height: 360,
+        width: video ? 850 : 500,
+        height: video ? MediaQuery.sizeOf(context).height * .65 : 360,
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(18),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: colors.primaryContainer,
                 borderRadius: BorderRadius.circular(24),
@@ -123,112 +135,193 @@ class _CallWindowState extends State<CallWindow> {
               ),
             ),
             const SizedBox(height: 12),
-            Text(
-              '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
-            ),
             if (error != null) Text(error!),
-            Expanded(
-              child: FutureBuilder<List<mx.User>>(
-                future: members,
-                builder: (_, snapshot) {
-                  final people = (snapshot.data ?? <mx.User>[])
-                      .where(
-                        (u) => [
-                          mx.Membership.join,
-                          mx.Membership.invite,
-                        ].contains(u.membership),
-                      )
-                      .toList();
-                  return ListView.separated(
-                    itemCount: people.length,
-                    separatorBuilder: (_, _) => const Divider(height: 1),
-                    itemBuilder: (_, i) {
-                      final user = people[i];
-                      final present = connected.contains(user.id);
-                      return ListTile(
-                        leading: PersonAvatar(
-                          name: user.displayName ?? user.id,
-                          client: calls.client,
-                          url: user.avatarUrl,
-                          online: present,
-                        ),
-                        title: Text(user.displayName ?? user.id),
-                        subtitle: Text(
-                          present
-                              ? 'В звонке'
-                              : user.membership == mx.Membership.invite
-                              ? 'Ещё не вступил в чат'
-                              : current == null && !calls.starting
-                              ? 'Не подключён'
-                              : 'Ждём подключения',
-                        ),
-                        trailing: present
-                            ? const Icon(Icons.graphic_eq)
-                            : const Icon(Icons.more_horiz),
-                      );
-                    },
-                  );
-                },
+            if (current != null)
+              Wrap(
+                spacing: 12,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
+                  ),
+                  Text(
+                    current.quality.label,
+                    style: TextStyle(
+                      color:
+                          current.quality == CallQuality.poor ||
+                              current.quality == CallQuality.lost
+                          ? colors.error
+                          : colors.onSurfaceVariant,
+                    ),
+                  ),
+                  if (video)
+                    DropdownButton<VideoQuality>(
+                      value: current.videoQuality,
+                      hint: const Text('Качество видео'),
+                      items: [
+                        for (final quality in VideoQuality.values)
+                          DropdownMenuItem(
+                            value: quality,
+                            child: Text(quality.label),
+                          ),
+                      ],
+                      onChanged: busy
+                          ? null
+                          : (value) {
+                              if (value != null) {
+                                perform(() => current.setVideoQuality(value));
+                              }
+                            },
+                    ),
+                ],
               ),
-            ),
+            if (video && current != null)
+              Expanded(child: CallVideoGrid(call: current))
+            else
+              Expanded(
+                child: FutureBuilder<List<mx.User>>(
+                  future: members,
+                  builder: (_, snapshot) {
+                    final people = (snapshot.data ?? <mx.User>[])
+                        .where(
+                          (u) => [
+                            mx.Membership.join,
+                            mx.Membership.invite,
+                          ].contains(u.membership),
+                        )
+                        .toList();
+                    return ListView.separated(
+                      itemCount: people.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (_, i) {
+                        final user = people[i];
+                        final present = connected.contains(user.id);
+                        return ListTile(
+                          leading: PersonAvatar(
+                            name: user.displayName ?? user.id,
+                            client: calls.client,
+                            url: user.avatarUrl,
+                            online: present,
+                          ),
+                          title: Text(user.displayName ?? user.id),
+                          subtitle: Text(
+                            present
+                                ? 'В звонке'
+                                : user.membership == mx.Membership.invite
+                                ? 'Ещё не вступил в чат'
+                                : current == null && !calls.starting
+                                ? 'Не подключён'
+                                : 'Ждём подключения',
+                          ),
+                          trailing: present
+                              ? const Icon(Icons.graphic_eq)
+                              : const Icon(Icons.more_horiz),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
           ],
         ),
       ),
       actions: [
-        if (current != null) ...[
-          IconButton(
-            tooltip: current.muted ? 'Включить микрофон' : 'Выключить микрофон',
-            onPressed: busy
-                ? null
-                : () => perform(() => current.mute(!current.muted)),
-            icon: Icon(current.muted ? Icons.mic_off : Icons.mic),
+        SizedBox(
+          width: (MediaQuery.sizeOf(context).width - 80)
+              .clamp(100, 850)
+              .toDouble(),
+          child: Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 4,
+            children: [
+              if (current != null) ...[
+                if (video) ...[
+                  IconButton(
+                    tooltip: current.cameraEnabled
+                        ? 'Выключить камеру'
+                        : 'Включить камеру',
+                    onPressed: busy
+                        ? null
+                        : () => perform(
+                            () => current.camera(!current.cameraEnabled),
+                          ),
+                    icon: Icon(
+                      current.cameraEnabled
+                          ? Icons.videocam
+                          : Icons.videocam_off,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Переключить камеру',
+                    onPressed: busy || !current.cameraEnabled
+                        ? null
+                        : () => perform(current.switchCamera),
+                    icon: const Icon(Icons.cameraswitch_outlined),
+                  ),
+                ],
+                IconButton(
+                  tooltip: current.muted
+                      ? 'Включить микрофон'
+                      : 'Выключить микрофон',
+                  onPressed: busy
+                      ? null
+                      : () => perform(() => current.mute(!current.muted)),
+                  icon: Icon(current.muted ? Icons.mic_off : Icons.mic),
+                ),
+                IconButton(
+                  tooltip: 'Аудиовыход',
+                  onPressed: busy ? null : () => perform(widget.audioOutput),
+                  icon: const Icon(Icons.speaker_outlined),
+                ),
+              ],
+              if (current == null && !calls.starting && direct != null) ...[
+                TextButton(
+                  onPressed: busy
+                      ? null
+                      : () => perform(() => calls.declineDirect(direct)),
+                  child: const Text('Отклонить'),
+                ),
+                FilledButton(
+                  onPressed: busy
+                      ? null
+                      : () => perform(() => calls.acceptDirect(direct)),
+                  child: const Text('Принять'),
+                ),
+              ] else if (current == null &&
+                  !calls.starting &&
+                  group != null) ...[
+                TextButton(
+                  onPressed: busy
+                      ? null
+                      : () => perform(() => calls.decline(group)),
+                  child: const Text('Отклонить'),
+                ),
+                FilledButton(
+                  onPressed: busy
+                      ? null
+                      : () => perform(
+                          () => calls.start(group.room, invitation: group),
+                        ),
+                  child: const Text('Принять'),
+                ),
+              ] else if (current != null || calls.starting)
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: colors.error,
+                    foregroundColor: colors.onError,
+                  ),
+                  onPressed: busy ? null : () => perform(calls.end),
+                  icon: const Icon(Icons.call_end),
+                  label: const Text('Завершить'),
+                )
+              else
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Закрыть'),
+                ),
+            ],
           ),
-          IconButton(
-            tooltip: 'Аудиовыход',
-            onPressed: busy ? null : () => perform(widget.audioOutput),
-            icon: const Icon(Icons.speaker_outlined),
-          ),
-        ],
-        if (current == null && !calls.starting && direct != null) ...[
-          TextButton(
-            onPressed: busy
-                ? null
-                : () => perform(() => calls.declineDirect(direct)),
-            child: const Text('Отклонить'),
-          ),
-          FilledButton(
-            onPressed: busy
-                ? null
-                : () => perform(() => calls.acceptDirect(direct)),
-            child: const Text('Принять'),
-          ),
-        ] else if (current == null && !calls.starting && group != null) ...[
-          TextButton(
-            onPressed: busy ? null : () => perform(() => calls.decline(group)),
-            child: const Text('Отклонить'),
-          ),
-          FilledButton(
-            onPressed: busy
-                ? null
-                : () =>
-                      perform(() => calls.start(group.room, invitation: group)),
-            child: const Text('Принять'),
-          ),
-        ] else if (current != null || calls.starting)
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: colors.error,
-              foregroundColor: colors.onError,
-            ),
-            onPressed: busy ? null : () => perform(calls.end),
-            icon: const Icon(Icons.call_end),
-            label: const Text('Завершить'),
-          )
-        else
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
-          ),
+        ),
       ],
     );
   }
@@ -261,7 +354,10 @@ class CallEventCard extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            event.content['action'] == 'invite'
+            isVideoCallEvent(event)
+                ? Icons.videocam_outlined
+                : event.content['action'] == 'invite' ||
+                      event.type == mx.EventTypes.CallInvite
                 ? Icons.call_outlined
                 : Icons.call_end_outlined,
             color: colors.onSecondaryContainer,
@@ -269,7 +365,7 @@ class CallEventCard extends StatelessWidget {
           const SizedBox(width: 10),
           Flexible(
             child: Text(
-              '${event.body}${seconds == null ? '' : ' · ${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}'}',
+              '${callEventLabel(event)}${seconds == null ? '' : ' · ${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}'}',
               style: TextStyle(color: colors.onSecondaryContainer),
             ),
           ),

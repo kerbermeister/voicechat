@@ -238,6 +238,18 @@ class MatrixProbe {
   }
 }
 
+class CallAccessChanged implements Exception {}
+
+bool callAccessDenied(Object error) =>
+    error is CallAccessChanged ||
+    error is UserActionError ||
+    error is MatrixException &&
+        [
+          'M_UNKNOWN_TOKEN',
+          'M_FORBIDDEN',
+          'M_MISSING_TOKEN',
+        ].contains(error.errcode);
+
 /// Refresh authorization from the server, never infer revocation from a cache.
 Future<List<DeviceKeys>> authorizedDevices(Room room) async {
   await room.client.getTokenOwner();
@@ -255,7 +267,7 @@ Future<List<DeviceKeys>> authorizedDevices(Room room) async {
   );
   final members = await room.client.getJoinedMembersByRoom(room.id);
   if (members == null || !members.containsKey(room.client.userID)) {
-    throw StateError('Room access revoked');
+    throw CallAccessChanged();
   }
   final audience = members.keys.toSet();
   final peer = room.isDirectChat ? room.directChatMatrixID : null;
@@ -285,9 +297,12 @@ Future<List<DeviceKeys>> authorizedDevices(Room room) async {
     if (contacts?.acceptsRoom(room.id, peer) != true &&
         contacts?.available == true) {
       if (room.getState('dev.voicechat.kind') == null) {
-        await room.client.setRoomStateWithKey(room.id, 'dev.voicechat.kind', '', {
-          'kind': 'direct', 'owner': room.client.userID, 'peer': peer,
-        });
+        await room.client.setRoomStateWithKey(
+          room.id,
+          'dev.voicechat.kind',
+          '',
+          {'kind': 'direct', 'owner': room.client.userID, 'peer': peer},
+        );
       }
       await contacts!.request(peer, room.id);
     }

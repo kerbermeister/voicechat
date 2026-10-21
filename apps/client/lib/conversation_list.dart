@@ -4,6 +4,7 @@ import 'typing_indicator.dart';
 import 'avatar_image.dart';
 import 'theme.dart';
 import 'presence_tracker.dart';
+import 'call_event.dart';
 
 Uri? roomAvatar(mx.Room room) {
   final value = room.directChatMatrixID != null
@@ -44,7 +45,11 @@ String lastMessage(mx.Room room) {
   if (event == null) return 'Начните разговор';
   if (event.redacted) return 'Сообщение удалено';
   if (event.type == mx.EventTypes.Encrypted) return 'Зашифрованное сообщение';
+  if (event.type == mx.EventTypes.CallInvite) {
+    return callEventLabel(event);
+  }
   final text = switch (event.messageType) {
+    'dev.voicechat.call' || 'dev.voicechat.call_summary' => event.body,
     mx.MessageTypes.Audio => '♫ Голосовое сообщение',
     'dev.voicechat.album' =>
       event.content['caption'] is String &&

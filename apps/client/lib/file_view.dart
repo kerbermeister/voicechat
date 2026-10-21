@@ -265,7 +265,7 @@ class _MessageVideoState extends State<MessageVideo> {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(widget.videoNote ? 40 : 10),
             child: SizedBox(
-              width: 72,
+              width: widget.videoNote ? 56 : 72,
               height: 56,
               child: Stack(
                 fit: StackFit.expand,

@@ -181,6 +181,9 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(size))
             room = body['room_id']
             session = body['session']
+            video = body.get('video', False)
+            if type(video) is not bool or set(body) - {'room_id', 'session', 'video'}:
+                return self.reply(400, {'error': 'invalid_call_mode'})
             if not isinstance(room, str) or not room.startswith('!') or len(room) > 255:
                 return self.reply(400, {'error': 'invalid_room'})
             if not isinstance(session, str) or not 1 <= len(session) <= 64:
@@ -203,7 +206,8 @@ class Handler(BaseHTTPRequestHandler):
             token = jwt({'iss': 'prototype', 'sub': identity, 'nbf': now - 5, 'exp': now + 60,
                          'video': {'roomJoin': True, 'room': media_room,
                                    'canPublish': True, 'canSubscribe': True,
-                                   'canPublishData': True, 'canPublishSources': ['microphone']}})
+                                   'canPublishData': True,
+                                   'canPublishSources': ['microphone', 'camera'] if video else ['microphone']}})
             self.reply(200, {'token': token, 'identity': identity})
         except urllib.error.HTTPError as e:
             self.reply(401 if e.code == 401 else 403, {'error': 'matrix_denied'})

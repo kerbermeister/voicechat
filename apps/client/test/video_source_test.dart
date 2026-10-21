@@ -40,6 +40,23 @@ void main() {
         expect(denied.statusCode, 404);
         await denied.drain<void>();
         await expectLater(file.range(-1, 10).drain<void>(), throwsRangeError);
+        final interrupted = await client.getUrl(Uri.parse(source.url));
+        interrupted.headers.set('Range', 'bytes=0-12582911');
+        await (await interrupted.close()).first;
+        client.close(force: true);
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        final retry = HttpClient();
+        try {
+          final request = await retry.getUrl(Uri.parse(source.url));
+          request.headers.set('Range', 'bytes=0-7');
+          final response = await request.close();
+          expect(
+            await response.expand((bytes) => bytes).toList(),
+            List.filled(8, 42),
+          );
+        } finally {
+          retry.close(force: true);
+        }
       } finally {
         client.close(force: true);
         await source.close();

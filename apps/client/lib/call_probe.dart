@@ -8,6 +8,18 @@ import 'package:matrix/matrix.dart' as mx;
 import 'matrix_probe.dart';
 import 'transport.dart';
 import 'voice_call.dart';
+import 'call_quality.dart';
+
+bool allowsCallMedia(
+  lk.EncryptionType encryption,
+  lk.TrackSource source,
+  String mime, {
+  required bool video,
+}) =>
+    encryption == lk.EncryptionType.kGcm &&
+    !mime.toLowerCase().contains('av1') &&
+    (source == lk.TrackSource.microphone ||
+        video && source == lk.TrackSource.camera);
 
 /// Exercises sender-specific E2EE keys delivered through encrypted Matrix
 /// to-device events. Authorization changes end the call; no seamless rekey yet.
@@ -20,6 +32,25 @@ class CallProbe implements VoiceCall {
   final String livekitUrl;
   final void Function(String) status;
   final void Function()? changed;
+  @override
+  final bool video;
+  @override
+  VideoQuality videoQuality = VideoQuality.auto;
+  @override
+  bool cameraEnabled = false;
+  @override
+  CallQuality get quality =>
+      switch (media?.localParticipant?.connectionQuality) {
+        lk.ConnectionQuality.excellent => CallQuality.excellent,
+        lk.ConnectionQuality.good => CallQuality.good,
+        lk.ConnectionQuality.poor => CallQuality.poor,
+        lk.ConnectionQuality.lost => CallQuality.lost,
+        _ => CallQuality.unknown,
+      };
+  lk.CameraPosition _cameraPosition = lk.CameraPosition.front;
+  final Set<String> decryptedVideoFrom = {};
+  final Set<String> decryptedVideoTracks = {};
+  Set<String> _allowedParticipants = {};
   @override
   String connection = 'Подключение';
   @override
@@ -44,6 +75,7 @@ class CallProbe implements VoiceCall {
   bool get isClosed => _closed;
   bool _sharing = false;
   bool _closed = false;
+  DateTime _authorizedAt = DateTime.now();
   final _clock = Stopwatch();
   @override
   Duration get duration => _clock.elapsed;
@@ -56,6 +88,7 @@ class CallProbe implements VoiceCall {
     required this.livekitUrl,
     required this.status,
     this.changed,
+    this.video = false,
   });
 
   Future<void> connect({bool microphone = true}) async {
@@ -79,11 +112,38 @@ class CallProbe implements VoiceCall {
     media = lk.Room(
       roomOptions: lk.RoomOptions(
         encryption: lk.E2EEOptions(keyProvider: _keys!),
+        adaptiveStream: true,
+        dynacast: true,
       ),
     );
     _events = media!.createListener();
     _events!.on<lk.ParticipantConnectedEvent>((_) => changed?.call());
     _events!.on<lk.ParticipantDisconnectedEvent>((_) => changed?.call());
+    _events!.on<lk.ParticipantConnectionQualityUpdatedEvent>(
+      (_) => changed?.call(),
+    );
+    _events!.on<lk.TrackSubscribedEvent>((event) {
+      if (!allowsCallMedia(
+        event.publication.encryptionType,
+        event.publication.source,
+        event.publication.mimeType,
+        video: video,
+      )) {
+        unawaited(close());
+        status('Поток без поддерживаемой E2EE-защиты отклонён');
+      } else {
+        changed?.call();
+      }
+    });
+    _events!.on<lk.TrackPublishedEvent>(
+      (event) => _subscribe(event.participant.identity, event.publication),
+    );
+    _events!.on<lk.TrackUnsubscribedEvent>((event) {
+      decryptedVideoTracks.remove(event.publication.sid);
+      changed?.call();
+    });
+    _events!.on<lk.TrackMutedEvent>((_) => changed?.call());
+    _events!.on<lk.TrackUnmutedEvent>((_) => changed?.call());
     _events!.on<lk.RoomReconnectingEvent>((_) {
       connection = 'Восстанавливаем соединение';
       status(connection);
@@ -97,30 +157,44 @@ class CallProbe implements VoiceCall {
     _events!.on<lk.RoomDisconnectedEvent>((_) {
       connection = 'Звонок завершён';
       changed?.call();
+      unawaited(close());
     });
     _events!.on<lk.TrackE2EEStateEvent>((event) {
       if (event.participant.identity == identity) return;
       if (event.state == lk.E2EEState.kOk) {
         _clock.start();
-        decryptedAudioFrom.add(event.participant.identity);
-        connection = 'Защищённое аудио';
+        if (event.publication.kind == lk.TrackType.VIDEO) {
+          decryptedVideoFrom.add(event.participant.identity);
+          decryptedVideoTracks.add(event.publication.sid);
+        } else {
+          decryptedAudioFrom.add(event.participant.identity);
+        }
+        connection = video ? 'Защищённое видео' : 'Защищённое аудио';
         status('Получено E2EE-аудио: ${decryptedAudioFrom.length}');
         changed?.call();
       } else if (event.state == lk.E2EEState.kDecryptionFailed ||
           event.state == lk.E2EEState.kMissingKey) {
+        decryptedVideoTracks.remove(event.publication.sid);
         failedAudioFrom.add(event.participant.identity);
         status('Ожидаем правильный ключ участника');
       }
     });
     try {
-      final response = await http.post(
-        Uri.parse('$tokenUrl/token'),
-        headers: {
-          'Authorization': 'Bearer ${chat.client.accessToken}',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'room_id': chat.id, 'session': session}),
-      );
+      await shareKey().timeout(const Duration(seconds: 8));
+      final response = await http
+          .post(
+            Uri.parse('$tokenUrl/token'),
+            headers: {
+              'Authorization': 'Bearer ${chat.client.accessToken}',
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode({
+              'room_id': chat.id,
+              'session': session,
+              'video': video,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) {
         throw StateError('Call admission denied (${response.statusCode})');
       }
@@ -128,16 +202,32 @@ class CallProbe implements VoiceCall {
       if (data['identity'] != identity) {
         throw StateError('Wrong media identity');
       }
-      await media!.connect(livekitUrl, data['token'] as String);
+      await media!.connect(
+        livekitUrl,
+        data['token'] as String,
+        connectOptions: const lk.ConnectOptions(autoSubscribe: false),
+      );
       if (media!.e2eeManager == null) {
         throw StateError('E2EE unavailable; refusing microphone');
+      }
+      for (final participant in media!.remoteParticipants.values) {
+        for (final publication in participant.trackPublications.values) {
+          _subscribe(participant.identity, publication);
+        }
       }
       await shareKey().timeout(const Duration(seconds: 5));
       _resend = Timer.periodic(const Duration(seconds: 3), (_) {
         unawaited(
           shareKey().timeout(const Duration(seconds: 5)).catchError((
-            Object _,
+            Object error,
           ) async {
+            if (!callAccessDenied(error) &&
+                DateTime.now().difference(_authorizedAt) <
+                    const Duration(seconds: 15)) {
+              connection = 'Восстанавливаем соединение';
+              changed?.call();
+              return;
+            }
             await close();
             status(
               'Звонок завершён: доступ изменён или не удалось его проверить',
@@ -147,6 +237,7 @@ class CallProbe implements VoiceCall {
       });
       if (_closed) throw StateError('Call closed during authorization');
       if (microphone) await media!.localParticipant!.setMicrophoneEnabled(true);
+      if (video) await camera(true);
       connection = 'E2EE включено · ждём медиапотоки';
       status(connection);
       changed?.call();
@@ -154,6 +245,26 @@ class CallProbe implements VoiceCall {
       await close();
       rethrow;
     }
+  }
+
+  void _subscribe(String identity, lk.RemoteTrackPublication publication) {
+    if (_closed || !_allowedParticipants.contains(identity)) return;
+    if (!allowsCallMedia(
+      publication.encryptionType,
+      publication.source,
+      publication.mimeType,
+      video: video,
+    )) {
+      unawaited(close());
+      status('Поток без поддерживаемой E2EE-защиты отклонён');
+      return;
+    }
+    unawaited(
+      publication.subscribe().catchError((Object _) async {
+        await close();
+        status('Не удалось безопасно подключить медиапоток');
+      }),
+    );
   }
 
   Future<void> shareKey() async {
@@ -172,9 +283,13 @@ class CallProbe implements VoiceCall {
           (_authorization!.length != current.length ||
               !_authorization!.containsAll(current))) {
         // shortcut: end the call; replace with coordinated epochs before seamless rekey.
-        throw StateError('Call authorization changed');
+        throw CallAccessChanged();
       }
       _authorization = current;
+      _allowedParticipants = authorized
+          .map((d) => '${d.userId}/${d.deviceId}')
+          .toSet();
+      _authorizedAt = DateTime.now();
       final devices = authorized
           .where(
             (d) => media!.remoteParticipants.containsKey(
@@ -243,11 +358,76 @@ class CallProbe implements VoiceCall {
     changed?.call();
   }
 
+  lk.CameraCaptureOptions get _cameraOptions => lk.CameraCaptureOptions(
+    cameraPosition: _cameraPosition,
+    maxFrameRate: videoQuality.fps.toDouble(),
+    params: lk.VideoParameters(
+      dimensions: lk.VideoDimensions(videoQuality.width, videoQuality.height),
+      encoding: lk.VideoEncoding(
+        maxBitrate: videoQuality.bitrate,
+        maxFramerate: videoQuality.fps,
+      ),
+    ),
+  );
+
+  @override
+  Future<void> camera(bool enabled) async {
+    if (!video || _closed || enabled == cameraEnabled) return;
+    final participant = media!.localParticipant!;
+    if (enabled) {
+      final track = await lk.LocalVideoTrack.createCameraTrack(_cameraOptions);
+      try {
+        if (_closed) throw StateError('Call ended during camera permission');
+        await participant.publishVideoTrack(
+          track,
+          publishOptions: lk.VideoPublishOptions(
+            videoEncoding: _cameraOptions.params.encoding,
+            simulcast: videoQuality == VideoQuality.auto,
+          ),
+        );
+      } catch (_) {
+        await track.stop();
+        await track.dispose();
+        rethrow;
+      }
+    } else {
+      for (final publication in participant.videoTrackPublications.toList()) {
+        await participant.removePublishedTrack(publication.sid);
+      }
+    }
+    cameraEnabled = enabled;
+    changed?.call();
+  }
+
+  @override
+  Future<void> switchCamera() async {
+    if (!cameraEnabled || _closed) return;
+    final next = _cameraPosition == lk.CameraPosition.front
+        ? lk.CameraPosition.back
+        : lk.CameraPosition.front;
+    final track = media!.localParticipant!.videoTrackPublications.first.track;
+    if (track is! lk.LocalVideoTrack) return;
+    await track.setCameraPosition(next);
+    _cameraPosition = next;
+    changed?.call();
+  }
+
+  @override
+  Future<void> setVideoQuality(VideoQuality value) async {
+    if (_closed || !video || value == videoQuality) return;
+    final enabled = cameraEnabled;
+    if (enabled) await camera(false);
+    videoQuality = value;
+    if (enabled) await camera(true);
+    changed?.call();
+  }
+
   @override
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
     _clock.stop();
+    cameraEnabled = false;
     _resend?.cancel();
     await _messages?.cancel();
     await _events?.dispose();

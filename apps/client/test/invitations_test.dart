@@ -49,6 +49,21 @@ void main() {
     expect(groupInvitations(client, entries).single.state, 'declined');
     member('leave', '@owner:local');
     expect(groupInvitations(client, entries).single.state, 'cancelled');
+    client.rooms.clear();
+    expect(
+      groupInvitations(
+        client,
+        entries,
+        updates: [
+          (
+            roomId: room.id,
+            state: room.states[EventTypes.RoomMember]![client.userID]!,
+          ),
+        ],
+      ).single.state,
+      'cancelled',
+    );
+    client.rooms.add(room);
     room.states['dev.voicechat.kind'] = {
       '': Event(
         type: 'dev.voicechat.kind',

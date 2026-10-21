@@ -813,10 +813,11 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   const Text('Сообщение удалено')
                 else if (event.type == mx.EventTypes.Encrypted)
                   const Text('Нет ключа. Восстановите историю.')
-                else if ([
-                  'dev.voicechat.call',
-                  'dev.voicechat.call_summary',
-                ].contains(shown.messageType))
+                else if (shown.type == mx.EventTypes.CallInvite ||
+                    [
+                      'dev.voicechat.call',
+                      'dev.voicechat.call_summary',
+                    ].contains(shown.messageType))
                   CallEventCard(event: shown)
                 else if (shown.messageType == 'dev.voicechat.album')
                   AlbumView(key: ValueKey(shown.eventId), event: shown)
@@ -980,8 +981,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                                           : c['body'] as String? ?? 'Реакция',
                                     ),
                                     subtitle: Text(
-                                      p['error'] as String? ??
-                                          'В очереди отправки',
+                                      p['error'] as String? ?? 'Отправляется…',
                                     ),
                                     trailing: PopupMenuButton<String>(
                                       tooltip: 'Действия с очередью',

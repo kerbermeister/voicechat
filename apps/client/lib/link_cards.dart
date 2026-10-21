@@ -165,6 +165,7 @@ class LinkCards extends StatelessWidget {
                                             alignment: Alignment.centerRight,
                                             child: IconButton(
                                               tooltip: 'Закрыть видео',
+                                              color: colors.onSurface,
                                               onPressed: () =>
                                                   Navigator.pop(context),
                                               icon: const Icon(Icons.close),

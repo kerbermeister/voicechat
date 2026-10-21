@@ -39,6 +39,8 @@ class AdmissionTests(unittest.TestCase):
         self.assertEqual(self.request({'room_id': '!room:local', 'session': 'test'}, '')[0], 401)
         self.assertEqual(self.request({'room_id': {}, 'session': 'test'})[0], 400)
         self.assertEqual(self.request({'room_id': '!room:local', 'session': ''})[0], 400)
+        for mode in ('true', 1, None, {}):
+            self.assertEqual(self.request({'room_id': '!room:local', 'session': 'test', 'video': mode})[0], 400)
 
     def test_contact_consent_uses_authenticated_user_and_real_encrypted_pair(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -103,10 +105,11 @@ class AdmissionTests(unittest.TestCase):
 
     def test_membership_encryption_and_grant(self):
         original = urllib.request.urlopen
-        for membership, algorithm, expected in [
-            ('leave', 'm.megolm.v1.aes-sha2', 403),
-            ('join', 'plaintext', 403),
-            ('join', 'm.megolm.v1.aes-sha2', 200),
+        for membership, algorithm, video, expected in [
+            ('leave', 'm.megolm.v1.aes-sha2', True, 403),
+            ('join', 'plaintext', True, 403),
+            ('join', 'm.megolm.v1.aes-sha2', False, 200),
+            ('join', 'm.megolm.v1.aes-sha2', True, 200),
         ]:
             def upstream(request, *args, **kwargs):
                 if ':8008/' not in request.full_url:
@@ -119,7 +122,7 @@ class AdmissionTests(unittest.TestCase):
                     data = {'algorithm': algorithm}
                 return io.BytesIO(json.dumps(data).encode())
             with patch('urllib.request.urlopen', side_effect=upstream):
-                status, body = self.request({'room_id': '!room:local', 'session': 'test'})
+                status, body = self.request({'room_id': '!room:local', 'session': 'test', 'video': video})
             self.assertEqual(status, expected)
             if status == 200:
                 import base64
@@ -127,7 +130,7 @@ class AdmissionTests(unittest.TestCase):
                 grant = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))
                 self.assertEqual(grant['sub'], '@alice:local/DEVICE')
                 self.assertEqual(grant['exp'] - grant['nbf'], 65)
-                self.assertEqual(grant['video']['canPublishSources'], ['microphone'])
+                self.assertEqual(grant['video']['canPublishSources'], ['microphone', 'camera'] if video else ['microphone'])
                 self.assertNotIn('key', grant)
 
 

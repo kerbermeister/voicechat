@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:matrix/matrix.dart' as mx;
 import 'matrix_probe.dart';
 import 'voice_call.dart';
+import 'call_quality.dart';
 
 /// Matrix authenticates SDP/ICE; WebRTC supplies DTLS-SRTP end to end, including over TURN.
 class DirectCall implements VoiceCall {
@@ -11,11 +13,25 @@ class DirectCall implements VoiceCall {
   final void Function() changed;
   final void Function(String) report;
   final _renderers = <rtc.RTCVideoRenderer>[];
+  rtc.RTCVideoRenderer? localVideo;
+  rtc.RTCVideoRenderer? remoteVideo;
+  rtc.RTCRtpSender? _cameraSender;
+  String? _cameraDevice;
+  final _statistics = CallStatistics();
+  @override
+  VideoQuality videoQuality = VideoQuality.auto;
+  @override
+  CallQuality quality = CallQuality.unknown;
+  @override
+  bool get video => call.type == mx.CallType.kVideo;
+  @override
+  bool get cameraEnabled => video && !call.isLocalVideoMuted;
   final _subscriptions = <StreamSubscription<dynamic>>[];
   Timer? _authorizationTimer;
   Set<String>? _devices;
   bool _checking = false;
   bool _closed = false;
+  DateTime _authorizedAt = DateTime.now();
   final _clock = Stopwatch();
   @override
   Duration get duration => _clock.elapsed;
@@ -29,7 +45,7 @@ class DirectCall implements VoiceCall {
     );
     _subscriptions.add(
       call.onStreamAdd.stream.listen((stream) {
-        if (stream.isLocal()) return;
+        if (stream.isLocal() && !video) return;
         unawaited(_render(stream));
       }),
     );
@@ -51,14 +67,17 @@ class DirectCall implements VoiceCall {
     if (call.remoteUserId != null) call.remoteUserId!,
   ];
   @override
-  String get connection => switch (call.state) {
-    mx.CallState.kConnected => 'WebRTC · защищённое аудио',
-    mx.CallState.kRinging || mx.CallState.kInviteSent => 'Ожидаем ответ',
-    mx.CallState.kEnded || mx.CallState.kEnding => 'Звонок завершён',
-    _ => 'Подключение WebRTC',
-  };
+  String get connection => quality == CallQuality.lost && !isClosed
+      ? 'Восстанавливаем соединение WebRTC'
+      : switch (call.state) {
+          mx.CallState.kConnected =>
+            video ? 'WebRTC · защищённое видео' : 'WebRTC · защищённое аудио',
+          mx.CallState.kRinging || mx.CallState.kInviteSent => 'Ожидаем ответ',
+          mx.CallState.kEnded || mx.CallState.kEnding => 'Звонок завершён',
+          _ => 'Подключение WebRTC',
+        };
   Future<void> _render(mx.WrappedMediaStream stream) async {
-    if (!kIsWeb) {
+    if (!kIsWeb && !video) {
       return; // Native WebRTC renders audio itself; web needs a media element.
     }
     final renderer = rtc.RTCVideoRenderer();
@@ -69,8 +88,16 @@ class DirectCall implements VoiceCall {
         return;
       }
       renderer.srcObject = stream.stream;
-      renderer.muted = false;
+      renderer.muted = stream.isLocal();
       _renderers.add(renderer);
+      if (video) {
+        if (stream.isLocal()) {
+          localVideo = renderer;
+        } else {
+          remoteVideo = renderer;
+        }
+        changed();
+      }
     } catch (_) {
       await renderer.dispose();
       await close();
@@ -87,9 +114,10 @@ class DirectCall implements VoiceCall {
     if (_devices != null &&
         (_devices!.length != devices.length ||
             !_devices!.containsAll(devices))) {
-      throw StateError('Call authorization changed');
+      throw CallAccessChanged();
     }
     _devices = devices;
+    _authorizedAt = DateTime.now();
   }
 
   void monitor() {
@@ -98,8 +126,23 @@ class DirectCall implements VoiceCall {
       _checking = true;
       unawaited(
         authorize()
+            .then((_) async {
+              try {
+                quality = _statistics.read(await call.pc?.getStats() ?? []);
+              } catch (_) {
+                quality = CallQuality.unknown;
+              }
+              changed();
+            })
             .timeout(const Duration(seconds: 5))
-            .catchError((Object _) async {
+            .catchError((Object error) async {
+              quality = CallQuality.lost;
+              if (!callAccessDenied(error) &&
+                  DateTime.now().difference(_authorizedAt) <
+                      const Duration(seconds: 15)) {
+                changed();
+                return;
+              }
               await close();
               report(
                 'Звонок завершён: доступ изменён или не удалось его проверить.',
@@ -113,6 +156,7 @@ class DirectCall implements VoiceCall {
   Future<void> answer() async {
     await authorize();
     await call.answer();
+    if (video) await setVideoQuality(videoQuality);
     monitor();
     changed();
   }
@@ -120,6 +164,98 @@ class DirectCall implements VoiceCall {
   @override
   Future<void> mute(bool value) async {
     await call.setMicrophoneMuted(value);
+    changed();
+  }
+
+  @override
+  Future<void> camera(bool enabled) async {
+    if (!video || isClosed || enabled == cameraEnabled) return;
+    final stream = call.localUserMediaStream?.stream;
+    if (stream == null) throw StateError('Camera stream unavailable');
+    final senders = await call.pc!.getSenders();
+    _cameraSender ??= senders
+        .where((s) => s.track?.kind == 'video')
+        .firstOrNull;
+    if (_cameraSender == null) throw StateError('Camera sender unavailable');
+    if (!enabled) {
+      await call.setLocalVideoMuted(true);
+      await _cameraSender!.replaceTrack(null);
+      for (final track in stream.getVideoTracks()) {
+        await stream.removeTrack(track);
+        await track.stop();
+      }
+    } else {
+      final capture = await rtc.navigator.mediaDevices.getUserMedia({
+        'audio': false,
+        'video': {
+          if (_cameraDevice != null) 'deviceId': _cameraDevice,
+          'width': videoQuality.width,
+          'height': videoQuality.height,
+          'frameRate': videoQuality.fps,
+        },
+      });
+      try {
+        if (isClosed) throw StateError('Call ended during camera permission');
+        final track = capture.getVideoTracks().single;
+        await stream.addTrack(track);
+        await _cameraSender!.replaceTrack(track);
+        await call.setLocalVideoMuted(false);
+        await setVideoQuality(videoQuality);
+      } catch (_) {
+        call.localUserMediaStream?.setVideoMuted(true);
+        await _cameraSender!.replaceTrack(null);
+        for (final track in capture.getTracks()) {
+          await stream.removeTrack(track);
+          await track.stop();
+        }
+        rethrow;
+      } finally {
+        for (final track in capture.getTracks()) {
+          await capture.removeTrack(track);
+        }
+        await capture.dispose();
+      }
+    }
+    localVideo?.srcObject = stream;
+    changed();
+  }
+
+  @override
+  Future<void> switchCamera() async {
+    if (!cameraEnabled) return;
+    final cameras = (await rtc.navigator.mediaDevices.enumerateDevices())
+        .where((d) => d.kind == 'videoinput')
+        .toList();
+    if (cameras.length < 2) return;
+    final track = call.localUserMediaStream!.stream!.getVideoTracks().single;
+    final current = _cameraDevice ?? track.getSettings()['deviceId'];
+    final index = cameras.indexWhere((d) => d.deviceId == current);
+    final next = cameras[(index + 1) % cameras.length].deviceId;
+    await camera(false);
+    _cameraDevice = next;
+    await camera(true);
+  }
+
+  @override
+  Future<void> setVideoQuality(VideoQuality value) async {
+    if (!video || isClosed) return;
+    for (final sender in await call.pc?.getSenders() ?? <rtc.RTCRtpSender>[]) {
+      if (sender.track?.kind != 'video') continue;
+      final parameters = sender.parameters;
+      for (final encoding in parameters.encodings ?? <rtc.RTCRtpEncoding>[]) {
+        encoding.maxBitrate = value.bitrate;
+        encoding.maxFramerate = value.fps;
+        final width = sender.track!.getSettings()['width'] as num? ?? 1280;
+        final height = sender.track!.getSettings()['height'] as num? ?? 720;
+        encoding.scaleResolutionDownBy = math
+            .max(1, math.max(width / value.width, height / value.height))
+            .toDouble();
+      }
+      if (!await sender.setParameters(parameters)) {
+        throw StateError('Video quality was not applied');
+      }
+    }
+    videoQuality = value;
     changed();
   }
 

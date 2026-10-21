@@ -6,7 +6,9 @@ import 'picked_file.dart';
 import 'file_io.dart';
 import 'active_capture.dart';
 
-Future<({PickedFile file, int duration, bool interrupted})?> recordVideoNote(
+typedef VideoNoteResult = ({PickedFile file, int duration, bool interrupted});
+
+Future<VideoNoteResult?> recordVideoNote(
   BuildContext context,
   int maxSeconds, {
   ValueNotifier<bool>? held,
@@ -14,7 +16,36 @@ Future<({PickedFile file, int duration, bool interrupted})?> recordVideoNote(
 }) async {
   await stopActiveCapture();
   if (!context.mounted) return null;
-  return showDialog<({PickedFile file, int duration, bool interrupted})>(
+  if (held != null) {
+    // A Navigator route cancels the original pointer; an overlay preserves hold/release.
+    final completed = Completer<VideoNoteResult?>();
+    late final OverlayEntry overlay;
+    overlay = OverlayEntry(
+      builder: (_) => Stack(
+        children: [
+          const ModalBarrier(dismissible: false, color: Colors.black54),
+          FocusScope(
+            autofocus: true,
+            child: _Recorder(
+              maxSeconds: maxSeconds,
+              held: held,
+              onRecording: onRecording,
+              onComplete: (result) {
+                if (completed.isCompleted) return;
+                overlay.remove();
+                overlay.dispose();
+                completed.complete(result);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+    FocusScope.of(context).unfocus();
+    Overlay.of(context).insert(overlay);
+    return completed.future;
+  }
+  return showDialog<VideoNoteResult>(
     context: context,
     barrierDismissible: false,
     builder: (_) =>
@@ -26,7 +57,13 @@ class _Recorder extends StatefulWidget {
   final int maxSeconds;
   final ValueNotifier<bool>? held;
   final void Function(bool)? onRecording;
-  const _Recorder({required this.maxSeconds, this.held, this.onRecording});
+  final void Function(VideoNoteResult?)? onComplete;
+  const _Recorder({
+    required this.maxSeconds,
+    this.held,
+    this.onRecording,
+    this.onComplete,
+  });
   @override
   State<_Recorder> createState() => _RecorderState();
 }
@@ -36,12 +73,23 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
   CameraController? camera;
   Future<void>? cameraDisposal;
   bool busy = false;
+  bool _completed = false;
   String? error;
   final clock = Stopwatch();
   Timer? timer;
   int index = 0;
   late final Future<void> initializing;
   late final Future<void> Function() captureCancellation = cancelForCall;
+  void complete([VideoNoteResult? result]) {
+    if (!mounted || _completed) return;
+    _completed = true;
+    if (widget.onComplete != null) {
+      widget.onComplete!(result);
+    } else {
+      Navigator.pop(context, result);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -65,10 +113,14 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
         if (widget.held!.value) {
           await start();
         } else {
-          Navigator.pop(context);
+          complete();
         }
       }
     } catch (_) {
+      if (widget.held?.value == false) {
+        complete();
+        return;
+      }
       if (mounted) {
         setState(
           () => error = 'Камера не ответила. Проверьте разрешения и повторите.',
@@ -132,7 +184,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
       await closeCamera();
     } else {
       await closeCamera();
-      if (mounted) Navigator.pop(context);
+      complete();
     }
   }
 
@@ -203,7 +255,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
       final size = await recorded.length();
       if (discard || !mounted) {
         await deleteRecording(recorded.path);
-        if (mounted) Navigator.pop(context);
+        complete();
         return;
       }
       final source = PickedFile(
@@ -223,7 +275,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
         release: () => deleteRecording(recorded.path),
       );
       if (mounted) {
-        Navigator.pop(context, (
+        complete((
           file: source,
           interrupted: interrupted,
           duration: clock.elapsedMilliseconds.clamp(
@@ -283,10 +335,8 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
     actions: [
       TextButton(
         onPressed: busy
-            ? () => Navigator.pop(context)
-            : () => clock.isRunning
-                  ? finish(discard: true)
-                  : Navigator.pop(context),
+            ? () => complete()
+            : () => clock.isRunning ? finish(discard: true) : complete(),
         child: const Text('Отмена'),
       ),
       if (error != null && !clock.isRunning)

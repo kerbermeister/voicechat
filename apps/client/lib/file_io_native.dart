@@ -113,9 +113,17 @@ Future<({String url, Future<void> Function() close})> _videoSource(
         await response.addStream(rangeBytes(start, end));
       }
     } catch (_) {
-      response.statusCode = 500;
+      try {
+        response.statusCode = 500;
+      } catch (_) {
+        /* A seeking/closing player may already have disconnected. */
+      }
     } finally {
-      await response.close();
+      try {
+        await response.close();
+      } catch (_) {
+        /* The cancelled range no longer has a response consumer. */
+      }
     }
   });
   return (
