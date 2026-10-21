@@ -1,18 +1,25 @@
 import 'dart:async';
+import 'recording_activity.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 
 String typingLabel(mx.Room room, bool ownDraft) {
+  final recording =
+      RecordingActivity.of(room.client)?.users(room) ?? <String, String>{};
   final users = room.typingUsers;
   final others = users
-      .where((u) => u.id != room.client.userID)
+      .where((u) => u.id != room.client.userID && !recording.containsKey(u.id))
       .map((u) => u.displayName ?? u.id)
       .toList();
-  final own = ownDraft || users.any((u) => u.id == room.client.userID);
+  final own =
+      !recording.containsKey(room.client.userID) &&
+      (ownDraft || users.any((u) => u.id == room.client.userID));
   return [
     if (own) 'Вы печатаете',
     if (others.isNotEmpty)
       '${others.join(', ')} ${others.length > 1 ? 'печатают' : 'печатает'}',
+    for (final entry in recording.entries)
+      '${entry.key == room.client.userID ? "Вы" : room.unsafeGetUserFromMemoryOrFallback(entry.key).displayName ?? entry.key} ${entry.key == room.client.userID ? "записываете" : "записывает"} ${entry.value == "audio" ? "голосовое" : "видеокружок"}',
   ].join(' · ');
 }
 
@@ -70,6 +77,10 @@ class _TypingIndicatorState extends State<TypingIndicator> {
         : const Duration(milliseconds: 180);
     return AnimatedSwitcher(
       duration: duration,
+      layoutBuilder: (current, previous) => Stack(
+        alignment: Alignment.centerLeft,
+        children: [...previous, ?current],
+      ),
       child: label.isEmpty
           ? widget.fallback
           : Container(

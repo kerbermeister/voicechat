@@ -18,8 +18,11 @@ services:
   synapse:
     image: matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0
     ports: ['127.0.0.1:8008:8008']
+    environment:
+      PYTHONPATH: /modules
     volumes:
       - ../.prototype/homeserver.yaml:/data/homeserver.yaml:ro
+      - ./voicechat_policy.py:/modules/voicechat_policy.py:ro
       - synapse:/data
     depends_on:
       synapse-data:

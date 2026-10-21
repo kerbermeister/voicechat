@@ -6,6 +6,7 @@ import 'package:matrix/encryption.dart';
 import 'local_store.dart';
 import 'transport.dart';
 import 'user_action_error.dart';
+import 'first_keys.dart';
 
 /// Matrix session backed by the platform encrypted store.
 class MatrixProbe {
@@ -124,6 +125,11 @@ class MatrixProbe {
     preset: CreateRoomPreset.privateChat,
     initialState: [
       StateEvent(
+        type: 'dev.voicechat.kind',
+        stateKey: '',
+        content: {'kind': 'direct', 'owner': client.userID, 'peer': userId},
+      ),
+      StateEvent(
         type: 'm.room.history_visibility',
         stateKey: '',
         content: {'history_visibility': 'joined'},
@@ -238,7 +244,13 @@ Future<List<DeviceKeys>> authorizedDevices(Room room) async {
   if (members == null || !members.containsKey(room.client.userID)) {
     throw StateError('Room access revoked');
   }
+  if (room.isDirectChat && !members.containsKey(room.directChatMatrixID)) {
+    throw UserActionError(
+      'Собеседник ещё не подключился. Сообщение сохранено и будет отправлено после его входа.',
+    );
+  }
   await refreshDevices(room.client, members.keys.toSet());
+  await acceptFirstKeys(room.client, members.keys.toSet());
   final devices = members.keys.expand(
     (user) => room.client.userDeviceKeys[user]!.deviceKeys.values,
   );
@@ -284,5 +296,6 @@ Future<void> verifyDevice(
       'Отпечаток не совпал или устройство недоступно. Доверие не изменено.',
     );
   }
+  await pinManuallyVerifiedDevice(client, device);
   await device.setVerified(true, false);
 }

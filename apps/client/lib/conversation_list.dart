@@ -16,6 +16,17 @@ Uri? roomAvatar(mx.Room room) {
   return uri?.scheme == 'mxc' ? uri : null;
 }
 
+String roomDisplayName(mx.Room room) {
+  if (!room.isDirectChat) return room.getLocalizedDisplayname();
+  final user = room.directChatMatrixID;
+  final name = user == null
+      ? null
+      : room.getState(mx.EventTypes.RoomMember, user)?.content['displayname'];
+  return name is String && name.isNotEmpty
+      ? name
+      : user?.split(':').first.replaceFirst('@', '') ?? 'Личный чат';
+}
+
 String roomPresence(mx.Room room) {
   if (!room.isDirectChat) {
     return 'Вступили: ${room.summary.mJoinedMemberCount ?? '—'} · приглашены: ${room.summary.mInvitedMemberCount ?? '—'}';
@@ -26,7 +37,7 @@ String roomPresence(mx.Room room) {
     mx.PresenceType.online => 'В сети',
     mx.PresenceType.unavailable => 'Отошёл',
     mx.PresenceType.offline => 'Не в сети',
-    _ => 'Статус неизвестен',
+    _ => 'Статус недоступен',
   };
 }
 
@@ -109,7 +120,7 @@ class PersonAvatar extends StatelessWidget {
                     ),
                   ),
           ),
-          if (online)
+          if (!group)
             Positioned(
               right: 0,
               bottom: 0,
@@ -117,7 +128,7 @@ class PersonAvatar extends StatelessWidget {
                 width: 13,
                 height: 13,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF39835F),
+                  color: online ? const Color(0xFF39835F) : colors.outline,
                   shape: BoxShape.circle,
                   border: Border.all(color: colors.surface, width: 2),
                 ),
@@ -139,6 +150,10 @@ class ConversationList extends StatefulWidget {
   final VoidCallback? onInvitations;
   final VoidCallback? onSearch;
   final Uri? ownAvatar;
+  final VoidCallback? onProfile;
+  final void Function(mx.Room, String)? onChatMenu;
+  final int contactInvites;
+  final Set<String> hiddenDirectRooms;
   final bool groups;
   final ValueChanged<bool> onTabChanged;
   const ConversationList({
@@ -152,6 +167,10 @@ class ConversationList extends StatefulWidget {
     this.onInvitations,
     this.onSearch,
     this.ownAvatar,
+    this.onProfile,
+    this.onChatMenu,
+    this.contactInvites = 0,
+    this.hiddenDirectRooms = const {},
     required this.groups,
     required this.onTabChanged,
   });
@@ -171,10 +190,12 @@ class _ConversationListState extends State<ConversationList> {
             .where(
               (r) =>
                   (r.membership == mx.Membership.join) &&
+                  (!r.isDirectChat ||
+                      !widget.hiddenDirectRooms.contains(r.id)) &&
                   r.isDirectChat != groups &&
-                  r.getLocalizedDisplayname().toLowerCase().contains(
-                    query.toLowerCase(),
-                  ),
+                  roomDisplayName(
+                    r,
+                  ).toLowerCase().contains(query.toLowerCase()),
             )
             .toList()
           ..sort(
@@ -182,13 +203,16 @@ class _ConversationListState extends State<ConversationList> {
               a.lastEvent?.originServerTs ?? DateTime(1970),
             ),
           );
-    final invites = widget.client.rooms
-        .where((r) => r.membership == mx.Membership.invite)
-        .length;
+    final invites =
+        widget.contactInvites +
+        widget.client.rooms
+            .where((r) => r.membership == mx.Membership.invite)
+            .length;
     int unread(bool groups) => widget.client.rooms
         .where(
           (r) =>
               r.membership == mx.Membership.join &&
+              !widget.hiddenDirectRooms.contains(r.id) &&
               r.isDirectChat != groups &&
               r.notificationCount > 0,
         )
@@ -258,7 +282,7 @@ class _ConversationListState extends State<ConversationList> {
                     ),
                     padding: EdgeInsets.zero,
                     onPressed: widget.onSearch,
-                    icon: const Icon(Icons.manage_search),
+                    icon: Icon(Icons.manage_search, color: colors.onPrimary),
                   ),
                   IconButton(
                     tooltip: 'Настройки',
@@ -278,10 +302,14 @@ class _ConversationListState extends State<ConversationList> {
               const SizedBox(height: 24),
               Row(
                 children: [
-                  PersonAvatar(
-                    name: name,
-                    client: widget.client,
-                    url: widget.ownAvatar,
+                  InkWell(
+                    onTap: widget.onProfile,
+                    borderRadius: BorderRadius.circular(24),
+                    child: PersonAvatar(
+                      name: name,
+                      client: widget.client,
+                      url: widget.ownAvatar,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -411,7 +439,7 @@ class _ConversationListState extends State<ConversationList> {
                               final room = rooms[index];
                               final selected = room.id == widget.selected?.id;
                               final presence = roomPresence(room);
-                              final name = room.getLocalizedDisplayname();
+                              final name = roomDisplayName(room);
                               final time = room.lastEvent?.originServerTs
                                   .toLocal();
                               return AnimatedContainer(
@@ -435,6 +463,41 @@ class _ConversationListState extends State<ConversationList> {
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     selected: selected,
+                                    trailing: widget.onChatMenu == null
+                                        ? null
+                                        : PopupMenuButton<String>(
+                                            tooltip: 'Действия с чатом',
+                                            onSelected: (action) =>
+                                                widget.onChatMenu!(
+                                                  room,
+                                                  action,
+                                                ),
+                                            itemBuilder: (_) => [
+                                              const PopupMenuItem(
+                                                value: 'info',
+                                                child: Text('Информация'),
+                                              ),
+                                              PopupMenuItem(
+                                                value: 'mute',
+                                                child: Text(
+                                                  room.pushRuleState ==
+                                                          mx
+                                                              .PushRuleState
+                                                              .dontNotify
+                                                      ? 'Включить уведомления'
+                                                      : 'Отключить уведомления',
+                                                ),
+                                              ),
+                                              if (!room.isDirectChat)
+                                                const PopupMenuItem(
+                                                  value: 'leave',
+                                                  child: Text(
+                                                    'Покинуть группу',
+                                                  ),
+                                                ),
+                                            ],
+                                            icon: const Icon(Icons.more_horiz),
+                                          ),
                                     leading: PersonAvatar(
                                       name: name,
                                       client: widget.client,
@@ -449,8 +512,11 @@ class _ConversationListState extends State<ConversationList> {
                                             name,
                                             maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
+                                            style: TextStyle(
+                                              fontWeight:
+                                                  room.notificationCount > 0
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
                                             ),
                                           ),
                                         ),
@@ -493,15 +559,41 @@ class _ConversationListState extends State<ConversationList> {
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,
-                                                  style:
-                                                      theme.textTheme.bodySmall,
+                                                  style: theme
+                                                      .textTheme
+                                                      .bodySmall
+                                                      ?.copyWith(
+                                                        fontWeight:
+                                                            room.notificationCount >
+                                                                0
+                                                            ? FontWeight.w600
+                                                            : FontWeight.w400,
+                                                      ),
                                                 ),
                                               ),
                                             ),
                                             if (room.notificationCount > 0)
-                                              Badge(
-                                                label: Text(
-                                                  '${room.notificationCount}',
+                                              Container(
+                                                width: 28,
+                                                height: 28,
+                                                alignment: Alignment.center,
+                                                decoration: BoxDecoration(
+                                                  color: colors.primary,
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Text(
+                                                  room.notificationCount > 999
+                                                      ? '999+'
+                                                      : '${room.notificationCount}',
+                                                  style: TextStyle(
+                                                    color: colors.onPrimary,
+                                                    fontWeight: FontWeight.w700,
+                                                    fontSize:
+                                                        room.notificationCount >
+                                                            99
+                                                        ? 10
+                                                        : 12,
+                                                  ),
                                                 ),
                                               ),
                                           ],

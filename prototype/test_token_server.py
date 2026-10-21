@@ -5,6 +5,8 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+import tempfile
+from contacts import ContactStore
 from unittest.mock import patch
 from http.server import ThreadingHTTPServer
 import token_server
@@ -37,6 +39,37 @@ class AdmissionTests(unittest.TestCase):
         self.assertEqual(self.request({'room_id': '!room:local', 'session': 'test'}, '')[0], 401)
         self.assertEqual(self.request({'room_id': {}, 'session': 'test'})[0], 400)
         self.assertEqual(self.request({'room_id': '!room:local', 'session': ''})[0], 400)
+
+    def test_contact_consent_uses_authenticated_user_and_real_encrypted_pair(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = ContactStore(directory + '/contacts.sqlite')
+            store.set_policy('@bob:local', False)
+            member = lambda user: {'type': 'm.room.member', 'state_key': user,
+                                  'content': {'membership': 'join' if user == '@alice:local' else 'invite'}}
+            state = [member('@alice:local'), member('@bob:local'),
+                     {'type': 'm.room.encryption', 'content': {'algorithm': 'm.megolm.v1.aes-sha2'}}]
+            caller = '@alice:local'
+            def matrix(handler, path):
+                return {'user_id': caller} if path == 'account/whoami' else state
+            with patch.object(token_server, '_contacts', store), patch.object(token_server.Handler, 'matrix', matrix):
+                request = {'action': 'request', 'recipient': '@bob:local', 'room_id': '!pair:local'}
+                status, body = self.request(request, path='/contacts')
+                self.assertEqual(status, 200)
+                self.assertEqual(body['state'], 'pending')
+                self.assertFalse(store.accepted('@alice:local', '@bob:local'))
+                decision = {'action': 'accept', 'id': body['id']}
+                self.assertEqual(self.request(decision, path='/contacts')[0], 403)
+                caller = '@eve:local'
+                self.assertEqual(self.request(decision, path='/contacts')[0], 403)
+                caller = '@bob:local'
+                self.assertEqual(self.request(decision, path='/contacts')[0], 200)
+                self.assertTrue(store.accepted('@alice:local', '@bob:local'))
+                caller = '@alice:local'
+                state.append(member('@eve:local'))
+                self.assertEqual(self.request(request, path='/contacts')[0], 403)
+                state.pop()
+                state[-1]['content']['algorithm'] = 'plaintext'
+                self.assertEqual(self.request(request, path='/contacts')[0], 403)
 
     def test_report_rejects_unknown_fields_and_non_strings(self):
         for body in [

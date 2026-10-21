@@ -22,6 +22,8 @@ import 'message_test.dart' show TestClient;
 
 class RichClient extends TestClient {
   @override
+  final directChats = <String, List<String>>{};
+  @override
   bool get autoRequestProfileForMissingUsers => false;
   @override
   bool get getDisplayNameAndAvatarFromPrevContent => false;

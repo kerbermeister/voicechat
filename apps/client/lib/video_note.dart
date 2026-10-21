@@ -7,16 +7,21 @@ import 'file_io.dart';
 
 Future<({PickedFile file, int duration})?> recordVideoNote(
   BuildContext context,
-  int maxSeconds,
-) => showDialog<({PickedFile file, int duration})>(
+  int maxSeconds, {
+  ValueNotifier<bool>? held,
+  void Function(bool)? onRecording,
+}) => showDialog<({PickedFile file, int duration})>(
   context: context,
   barrierDismissible: false,
-  builder: (_) => _Recorder(maxSeconds: maxSeconds),
+  builder: (_) =>
+      _Recorder(maxSeconds: maxSeconds, held: held, onRecording: onRecording),
 );
 
 class _Recorder extends StatefulWidget {
   final int maxSeconds;
-  const _Recorder({required this.maxSeconds});
+  final ValueNotifier<bool>? held;
+  final void Function(bool)? onRecording;
+  const _Recorder({required this.maxSeconds, this.held, this.onRecording});
   @override
   State<_Recorder> createState() => _RecorderState();
 }
@@ -33,6 +38,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.held?.addListener(releaseHold);
     init();
   }
 
@@ -44,6 +50,13 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
       );
       if (index < 0) index = 0;
       await open();
+      if (mounted && widget.held != null) {
+        if (widget.held!.value) {
+          await start();
+        } else {
+          Navigator.pop(context);
+        }
+      }
     } catch (_) {
       if (mounted) {
         setState(() => error = 'Разрешите доступ к камере и микрофону.');
@@ -67,17 +80,34 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
     }
   }
 
+  void releaseHold() {
+    if (widget.held?.value == false && clock.isRunning && !busy) {
+      unawaited(finish());
+    }
+  }
+
   Future<void> switchCamera() async {
-    if (busy || clock.isRunning) return;
+    if (busy) return;
     setState(() => busy = true);
+    final next = (index + 1) % cameras.length;
     try {
-      await camera?.dispose();
-      index = (index + 1) % cameras.length;
-      await open();
+      if (clock.isRunning) {
+        await camera!.setDescription(cameras[next]);
+        index = next;
+      } else {
+        await camera?.dispose();
+        index = next;
+        await open();
+      }
     } catch (_) {
-      if (mounted) setState(() => error = 'Не удалось переключить камеру');
+      if (mounted) {
+        setState(
+          () => error = 'Камера не переключилась. Текущая запись сохранена.',
+        );
+      }
     } finally {
       if (mounted) setState(() => busy = false);
+      releaseHold();
     }
   }
 
@@ -86,6 +116,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
     try {
       await camera!.startVideoRecording();
       clock.start();
+      widget.onRecording?.call(true);
       timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
         if (mounted) setState(() {});
         if (clock.elapsed.inSeconds >= widget.maxSeconds && !busy) finish();
@@ -94,6 +125,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
       if (mounted) setState(() => error = 'Не удалось начать запись');
     } finally {
       if (mounted) setState(() => busy = false);
+      releaseHold();
     }
   }
 
@@ -102,6 +134,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
     setState(() => busy = true);
     timer?.cancel();
     clock.stop();
+    widget.onRecording?.call(false);
     try {
       final recorded = await camera!.stopVideoRecording();
       final size = await recorded.length();
@@ -192,7 +225,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
                   : Navigator.pop(context),
         child: const Text('Отмена'),
       ),
-      if (cameras.length > 1 && !clock.isRunning)
+      if (cameras.length > 1)
         IconButton(
           tooltip: 'Переключить камеру',
           onPressed: busy ? null : switchCamera,
@@ -208,7 +241,9 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
   );
   @override
   void dispose() {
+    widget.onRecording?.call(false);
     WidgetsBinding.instance.removeObserver(this);
+    widget.held?.removeListener(releaseHold);
     timer?.cancel();
     camera?.dispose();
     super.dispose();

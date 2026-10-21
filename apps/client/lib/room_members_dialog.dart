@@ -35,6 +35,7 @@ class RoomMembersDialog extends StatelessWidget {
                   client: room.client,
                   url: user.avatarUrl,
                 ),
+                onTap: () => Navigator.pop(context, 'profile:${user.id}'),
                 title: Text(
                   user.displayName ?? user.id,
                   style: const TextStyle(fontWeight: FontWeight.w600),
@@ -47,7 +48,10 @@ class RoomMembersDialog extends StatelessWidget {
                       : 'Вступил в группу'}',
                 ),
                 isThreeLine: true,
-                trailing: room.canKick && user.id != room.client.userID
+                trailing:
+                    !room.isDirectChat &&
+                        room.canKick &&
+                        user.id != room.client.userID
                     ? IconButton(
                         tooltip: user.membership == mx.Membership.invite
                             ? 'Отменить приглашение'
@@ -88,27 +92,30 @@ class RoomMembersDialog extends StatelessWidget {
           ),
         ),
         actions: [
-          if (room.canChangeStateEvent(mx.EventTypes.RoomAvatar))
+          if (!room.isDirectChat &&
+              room.canChangeStateEvent(mx.EventTypes.RoomAvatar))
             TextButton.icon(
               onPressed: () => Navigator.pop(context, 'avatar'),
               icon: const Icon(Icons.add_a_photo_outlined),
               label: const Text('Аватар'),
             ),
-          if (room.canInvite)
+          if (!room.isDirectChat && room.canInvite)
             TextButton.icon(
               onPressed: () => Navigator.pop(context, 'invite'),
               icon: const Icon(Icons.person_add_alt),
               label: const Text('Пригласить'),
             ),
-          if (room.canChangeStateEvent(mx.EventTypes.RoomName))
+          if (!room.isDirectChat &&
+              room.canChangeStateEvent(mx.EventTypes.RoomName))
             TextButton(
               onPressed: () => Navigator.pop(context, 'rename'),
               child: const Text('Изменить название'),
             ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'leave'),
-            child: const Text('Покинуть чат'),
-          ),
+          if (!room.isDirectChat)
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'leave'),
+              child: const Text('Покинуть чат'),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Закрыть'),

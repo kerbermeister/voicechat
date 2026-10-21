@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Create fresh disposable users and ignored dart-define fixtures per test run."""
+from itertools import combinations
+from contacts import ContactStore
 import hashlib
 import hmac
 import json
@@ -24,6 +26,10 @@ for role in ['alice', 'bob', 'carol']:
     with urllib.request.urlopen(req, timeout=10) as response: json.load(response)
     config[role.upper() + '_USER'] = name
     config[role.upper() + '_PASSWORD'] = password
+# Disposable laboratory users explicitly consent to one another for this test.
+store = ContactStore()
+for first, second in combinations(['alice', 'bob', 'carol'], 2):
+    store.request(f'@{first}{run}:voicechat.local', f'@{second}{run}:voicechat.local', f'!fixture-{run}-{first}-{second}:voicechat.local')
 for role in ['web', 'android']:
     path = root / (role + '.json')
     path.write_text(json.dumps({**config, 'ROLE': role}, indent=2))

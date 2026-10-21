@@ -17,6 +17,8 @@ import 'file_source.dart';
 import 'file_view.dart';
 import 'video_note.dart';
 import 'call_window.dart';
+import 'history_window.dart';
+import 'recording_activity.dart';
 
 String? reactionEmoji(mx.Event event) {
   final relation = event.content['m.relates_to'];
@@ -34,6 +36,7 @@ class ChatPane extends StatefulWidget {
   final Widget header;
   final void Function(String) report;
   final String? initialEventId;
+  final bool completeHistory;
   final Future<void> Function(String?)? onJump;
   const ChatPane({
     super.key,
@@ -43,6 +46,7 @@ class ChatPane extends StatefulWidget {
     required this.header,
     required this.report,
     this.initialEventId,
+    this.completeHistory = false,
     this.onJump,
   });
   @override
@@ -67,12 +71,15 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   Completer<void>? recordingDone;
   StreamSubscription<Uint8List>? recordingStream;
   final draftPhotos = <mx.MatrixImageFile>[];
-  PickedFile? draftFile;
+  final draftFiles = <PickedFile>[];
+  final heldVideo = ValueNotifier(false);
+  PickedFile? get draftFile => draftFiles.firstOrNull;
   int? draftVideoDuration;
   bool draftIsVideoNote = false;
   double? fileProgress;
   bool cancelFile = false;
   String? focusedEvent;
+  bool completeHistory = false;
   mx.MatrixAudioFile? unsentVoice;
   List<int>? unsentWave;
   mx.Event? voiceReply;
@@ -87,6 +94,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     focusedEvent = widget.initialEventId;
+    completeHistory = widget.completeHistory;
     WidgetsBinding.instance.addObserver(this);
     widget.actions.addListener(refresh);
     voicePreview.onPlayerComplete.listen((_) {
@@ -213,20 +221,23 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       cancelFile = false;
       setState(() => fileProgress = 0);
       try {
-        await widget.actions.file(
-          widget.room,
-          draftFile!,
-          input.text,
-          reply: reply,
-          videoNote: draftIsVideoNote,
-          duration: draftVideoDuration,
-          cancelled: () => cancelFile || !mounted,
-          progress: (p) {
-            if (mounted) setState(() => fileProgress = p);
-          },
-        );
-        await draftFile!.release();
-        draftFile = null;
+        while (draftFiles.isNotEmpty) {
+          await widget.actions.file(
+            widget.room,
+            draftFile!,
+            input.text,
+            reply: reply,
+            videoNote: draftIsVideoNote,
+            duration: draftVideoDuration,
+            cancelled: () => cancelFile || !mounted,
+            progress: (p) {
+              if (mounted) setState(() => fileProgress = p);
+            },
+          );
+          final sent = draftFiles.removeAt(0);
+          input.clear();
+          await sent.release();
+        }
       } finally {
         if (mounted) setState(() => fileProgress = null);
       }
@@ -273,42 +284,72 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     if (mounted) setState(() => draftPhotos.addAll(photos));
   }
 
-  Future<void> attachFile(String kind) async {
-    if (draftPhotos.isNotEmpty || draftFile != null || unsentVoice != null) {
+  Future<void> attachFile(String kind, {bool hold = false}) async {
+    if (draftPhotos.isNotEmpty ||
+        unsentVoice != null ||
+        draftIsVideoNote && draftFile != null ||
+        kind == 'note' && draftFile != null) {
       throw UserActionError('Сначала отправьте или удалите текущие вложения.');
     }
     await widget.actions.refreshPolicy();
-    PickedFile? source;
+    final remaining = widget.actions.policy.fileMaxCount - draftFiles.length;
+    if (remaining <= 0) {
+      throw UserActionError(
+        'Максимум ${widget.actions.policy.fileMaxCount} файлов.',
+      );
+    }
+    List<PickedFile> sources;
     int? duration;
     if (kind == 'note') {
       if (!mounted) return;
       final result = await recordVideoNote(
         context,
         widget.actions.policy.videoNoteMaxSeconds,
+        held: hold ? heldVideo : null,
+        onRecording: (value) => RecordingActivity.of(
+          widget.room.client,
+        )?.set(widget.room, value ? 'video' : null),
       );
-      source = result?.file;
+      sources = [?result?.file];
       duration = result?.duration;
     } else {
-      source = await chooseFile(video: kind == 'video');
+      sources = await chooseFiles(video: kind == 'video', maxCount: remaining);
     }
-    if (source == null) return;
-    final limit = source.mime.startsWith('video/')
-        ? widget.actions.policy.videoMaxBytes
-        : widget.actions.policy.fileMaxBytes;
-    if (!mounted || source.size <= 0 || source.size > limit) {
-      await source.release();
+    if (sources.isEmpty) return;
+    if (!mounted ||
+        sources.length > remaining ||
+        sources.any(
+          (source) =>
+              source.size <= 0 ||
+              source.size >
+                  (source.mime.startsWith('video/')
+                      ? widget.actions.policy.videoMaxBytes
+                      : widget.actions.policy.fileMaxBytes),
+        )) {
+      for (final source in sources) {
+        await source.release();
+      }
       if (mounted) {
         throw UserActionError(
-          'Файл должен быть не больше ${(limit / 1048576).floor()} МБ.',
+          'Проверьте количество и размер файлов: максимум ${widget.actions.policy.fileMaxCount}, до ${(widget.actions.policy.fileMaxBytes / 1048576).floor()} МБ каждый.',
         );
       }
       return;
     }
     setState(() {
-      draftFile = source;
+      draftFiles.addAll(sources);
       draftIsVideoNote = kind == 'note';
       draftVideoDuration = duration;
     });
+    if (hold) {
+      final caption = input.text;
+      try {
+        input.clear();
+        await send();
+      } finally {
+        if (mounted) input.text = caption;
+      }
+    }
   }
 
   Future<void> emoji() async {
@@ -392,12 +433,16 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         if (liveLevels.length > 48) liveLevels.removeAt(0);
       });
     });
-    if (mounted) setState(() => recording = true);
+    if (mounted) {
+      setState(() => recording = true);
+      RecordingActivity.of(widget.room.client)?.set(widget.room, 'audio');
+    }
   }
 
   Future<void> finishRecording({bool send = true}) async {
     if (!recording || stopping) return;
     stopping = true;
+    RecordingActivity.of(widget.room.client)?.set(widget.room, null);
     recordingLimit?.cancel();
     recordingMeter?.cancel();
     recordingClock.stop();
@@ -741,17 +786,26 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             icon: const Icon(Icons.arrow_downward),
             label: const Text('Вернуться к новым сообщениям'),
           ),
-        if (widget.timeline.canRequestHistory)
+        if (widget.timeline.canRequestHistory &&
+            !completeHistory &&
+            !historyComplete(widget.timeline))
           TextButton.icon(
             onPressed: working
                 ? null
-                : () => perform(
-                    () => widget.timeline.requestHistory(historyCount: 100),
-                  ),
+                : () => perform(() async {
+                    await widget.timeline.requestHistory(historyCount: 100);
+                    if (widget.initialEventId == null) {
+                      await rememberHistory(widget.timeline);
+                    }
+                    if (mounted) {
+                      setState(
+                        () =>
+                            completeHistory = historyComplete(widget.timeline),
+                      );
+                    }
+                  }),
             icon: const Icon(Icons.history),
-            label: const Text(
-              'Загрузить более ранние сообщения · поиск пока неполный',
-            ),
+            label: const Text('Показать более ранние сообщения'),
           ),
         Expanded(
           child: events.isEmpty && pending.isEmpty
@@ -860,32 +914,46 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             ),
           ),
         ),
-        if (draftFile != null)
-          ListTile(
-            leading: Icon(
-              draftIsVideoNote ? Icons.video_camera_front : Icons.attach_file,
-            ),
-            title: Text(
-              draftFile!.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: fileProgress == null
-                ? Text(
-                    '${(draftFile!.size / 1048576).toStringAsFixed(1)} МБ · готово к отправке',
-                  )
-                : LinearProgressIndicator(value: fileProgress),
-            trailing: IconButton(
-              tooltip: 'Убрать файл',
-              icon: const Icon(Icons.close),
-              onPressed: () async {
-                if (fileProgress != null) {
-                  setState(() => cancelFile = true);
-                  return;
-                }
-                await draftFile!.release();
-                if (mounted) setState(() => draftFile = null);
-              },
+        if (draftFiles.isNotEmpty)
+          SizedBox(
+            height: 88,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: draftFiles.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
+              itemBuilder: (_, i) => SizedBox(
+                width: 260,
+                child: ListTile(
+                  leading: Icon(
+                    draftIsVideoNote
+                        ? Icons.video_camera_front
+                        : Icons.attach_file,
+                  ),
+                  title: Text(
+                    draftFiles[i].name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: fileProgress != null && i == 0
+                      ? LinearProgressIndicator(value: fileProgress)
+                      : Text(
+                          '${(draftFiles[i].size / 1048576).toStringAsFixed(1)} МБ · ${i + 1}/${widget.actions.policy.fileMaxCount}',
+                        ),
+                  trailing: IconButton(
+                    tooltip: 'Убрать файл ${i + 1}',
+                    icon: const Icon(Icons.close),
+                    onPressed: () async {
+                      if (fileProgress != null) {
+                        setState(() => cancelFile = true);
+                        return;
+                      }
+                      final source = draftFiles.removeAt(i);
+                      await source.release();
+                      if (mounted) setState(() {});
+                    },
+                  ),
+                ),
+              ),
             ),
           ),
         if (draftPhotos.isNotEmpty)
@@ -1083,7 +1151,6 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   icon: const Icon(Icons.attach_file),
                   onSelected: (kind) => perform(() => attachFile(kind)),
                   itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'note', child: Text('Видеокружок')),
                     PopupMenuItem(value: 'video', child: Text('Видеофайл')),
                     PopupMenuItem(value: 'file', child: Text('Файл')),
                   ],
@@ -1107,6 +1174,22 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   onPressed: working ? null : () => perform(startRecording),
                   icon: const Icon(Icons.mic_none),
                 );
+                final video = GestureDetector(
+                  onLongPressStart: (_) {
+                    if (working) return;
+                    heldVideo.value = true;
+                    unawaited(perform(() => attachFile('note', hold: true)));
+                  },
+                  onLongPressEnd: (_) => heldVideo.value = false,
+                  onLongPressCancel: () => heldVideo.value = false,
+                  child: IconButton(
+                    tooltip: 'Видеокружок · удерживайте для записи',
+                    onPressed: working
+                        ? null
+                        : () => perform(() => attachFile('note')),
+                    icon: const Icon(Icons.videocam_outlined),
+                  ),
+                );
                 final sendButton = IconButton.filled(
                   tooltip: 'Отправить',
                   onPressed: working ? null : () => perform(send),
@@ -1122,6 +1205,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                               photo,
                               files,
                               voice,
+                              video,
                               const Spacer(),
                               sendButton,
                             ],
@@ -1135,6 +1219,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                           files,
                           field,
                           voice,
+                          video,
                           sendButton,
                         ],
                       );
@@ -1147,8 +1232,15 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    RecordingActivity.of(widget.room.client)?.set(widget.room, null);
+    heldVideo.value = false;
+    heldVideo.dispose();
     cancelFile = true;
-    if (fileProgress == null) unawaited(draftFile?.release());
+    if (fileProgress == null) {
+      for (final source in draftFiles) {
+        unawaited(source.release());
+      }
+    }
     WidgetsBinding.instance.removeObserver(this);
     widget.actions.removeListener(refresh);
     recordingLimit?.cancel();
@@ -1261,7 +1353,14 @@ class _AttachmentViewState extends State<AttachmentView> {
                 IconButton.filledTonal(
                   tooltip: playing ? 'Приостановить' : 'Прослушать',
                   onPressed: play,
-                  icon: Icon(playing ? Icons.pause : Icons.play_arrow),
+                  style: IconButton.styleFrom(
+                    backgroundColor: accent.withValues(alpha: .16),
+                    foregroundColor: foreground,
+                  ),
+                  icon: Icon(
+                    playing ? Icons.pause : Icons.play_arrow,
+                    color: foreground,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(

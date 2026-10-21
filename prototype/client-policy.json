@@ -9,5 +9,6 @@
   "voice_max_seconds": 180,
   "video_note_max_seconds": 60,
   "video_max_bytes": 314572800,
-  "file_max_bytes": 314572800
+  "file_max_bytes": 314572800,
+  "file_max_count": 5
 }

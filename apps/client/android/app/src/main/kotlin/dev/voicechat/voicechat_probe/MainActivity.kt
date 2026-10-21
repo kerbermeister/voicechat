@@ -18,6 +18,7 @@ class MainActivity : FlutterActivity() {
     private var maxImageCount = 24
     private var selectedImages = emptySet<String>()
     private var fileResult: MethodChannel.Result? = null
+    private var maxFileCount = 5
     private val selectedFiles = mutableSetOf<String>()
     private var saveResult: MethodChannel.Result? = null
     private val saves = mutableMapOf<String, Pair<Uri, OutputStream>>()
@@ -69,10 +70,13 @@ class MainActivity : FlutterActivity() {
                 when (call.method) {
                     "choose" -> {
                         if (fileResult != null) { result.error("busy", "Picker is open", null); return@setMethodCallHandler }
+                        maxFileCount = call.argument<Int>("max_count") ?: 5
+                        if (maxFileCount !in 1..20) { result.error("invalid", "Invalid file count", null); return@setMethodCallHandler }
                         fileResult = result
                         try {
                             startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).apply {
                                 type = if (call.argument<Boolean>("video") == true) "video/*" else "*/*"
+                                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
                                 addCategory(Intent.CATEGORY_OPENABLE)
                             }, 7502)
                         } catch (_: Exception) { fileResult = null; result.error("picker", "Cannot open files", null) }
@@ -152,19 +156,22 @@ class MainActivity : FlutterActivity() {
         if (requestCode == 7502) {
             val result = fileResult ?: return
             fileResult = null
-            val uri = data?.data
-            if (resultCode != RESULT_OK || uri == null) { result.success(null); return }
+            if (resultCode != RESULT_OK || data == null) { result.success(null); return }
             try {
-                require(uri.scheme == "content")
-                var name = "file"
-                var size = -1L
-                contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { cursor ->
-                    if (cursor.moveToFirst()) { name = cursor.getString(0) ?: name; size = cursor.getLong(1) }
+                val uris = data.clipData?.let { clip -> (0 until clip.itemCount).map { clip.getItemAt(it).uri } } ?: listOfNotNull(data.data)
+                require(uris.size in 1..maxFileCount && uris.all { it.scheme == "content" })
+                val files = uris.map { uri ->
+                    var name = "file"
+                    var size = -1L
+                    contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) { name = cursor.getString(0) ?: name; size = cursor.getLong(1) }
+                    }
+                    require(size in 1..(300L * 1024 * 1024))
+                    mapOf("uri" to uri.toString(), "name" to name, "size" to size, "mime" to (contentResolver.getType(uri) ?: "application/octet-stream"))
                 }
-                require(size in 1..(300L * 1024 * 1024))
-                selectedFiles.add(uri.toString())
-                result.success(mapOf("uri" to uri.toString(), "name" to name, "size" to size, "mime" to (contentResolver.getType(uri) ?: "application/octet-stream")))
-            } catch (_: Exception) { result.error("invalid", "File unavailable or larger than 300 MB", null) }
+                selectedFiles.addAll(uris.map { it.toString() })
+                result.success(files)
+            } catch (_: Exception) { result.error("invalid", "Invalid file count, unavailable file or larger than 300 MB", null) }
             return
         }
         if (requestCode != imageRequest) { super.onActivityResult(requestCode, resultCode, data); return }

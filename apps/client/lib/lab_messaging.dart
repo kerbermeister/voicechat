@@ -13,13 +13,10 @@ import 'media_policy.dart';
 import 'album_view.dart';
 import 'picked_file.dart';
 import 'chunked_file.dart';
-import 'package:image/image.dart' as img;
 
-Uint8List get testImage => Uint8List.fromList(
-  img.encodePng(
-    img.Image(width: 4, height: 4, numChannels: 3)
-      ..setPixelRgb(0, 0, 120, 80, 200),
-  ),
+// Identical compressed bytes on Android and web, independent of platform zlib.
+Uint8List get testImage => base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAD0lEQVR4nGOoCDjBQCIAAE4EAZEI+d7NAAAAAElFTkSuQmCC',
 );
 Uint8List get testVoice => voiceWav(Uint8List(3200));
 void check(bool condition, String failure) {
@@ -28,8 +25,9 @@ void check(bool condition, String failure) {
 
 Future<void> waitCheck(
   Future<bool> Function() condition,
-  String failure, {int seconds = 60}
-) async {
+  String failure, {
+  int seconds = 60,
+}) async {
   final end = DateTime.now().add(Duration(seconds: seconds));
   while (DateTime.now().isBefore(end)) {
     if (await condition()) return;

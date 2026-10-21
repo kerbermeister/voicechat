@@ -8,6 +8,7 @@ BOUNDS = {
     'photo_max_pixels': (int, 1, 24_000_000), 'text_max_length': (int, 1, 16000),
     'voice_max_seconds': (int, 1, 180), 'video_note_max_seconds': (int, 1, 600),
     'video_max_bytes': (int, 1, 300 * 1024 * 1024), 'file_max_bytes': (int, 1, 300 * 1024 * 1024),
+    'file_max_count': (int, 1, 20),
 }
 
 

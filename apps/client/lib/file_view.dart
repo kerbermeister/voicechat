@@ -55,71 +55,83 @@ class _FileViewState extends State<FileView> {
   Widget build(BuildContext context) {
     if (file == null) return Text(error!);
     final video = file!.mime.startsWith('video/');
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(file!.videoNote ? 32 : 16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (file!.videoNote)
-            SizedBox(
-              width: 240,
-              height: 280,
-              child: MessageVideo(file: file!, inline: true),
-            ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+    final foreground = Theme.of(context).colorScheme.onSecondaryContainer;
+    return DefaultTextStyle.merge(
+      style: TextStyle(color: foreground),
+      child: IconTheme(
+        data: IconThemeData(color: foreground),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(file!.videoNote ? 32 : 16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                file!.videoNote
-                    ? Icons.video_camera_front
-                    : video
-                    ? Icons.movie_outlined
-                    : Icons.insert_drive_file_outlined,
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  file!.videoNote ? 'Видеокружок' : file!.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+              if (file!.videoNote)
+                SizedBox(
+                  width: 240,
+                  height: 280,
+                  child: MessageVideo(file: file!, inline: true),
                 ),
-              ),
-              if (video && !file!.videoNote)
-                IconButton(
-                  tooltip: 'Смотреть видео',
-                  icon: const Icon(Icons.play_circle_outline),
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (_) => MessageVideo(file: file!),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    file!.videoNote
+                        ? Icons.video_camera_front
+                        : video
+                        ? Icons.movie_outlined
+                        : Icons.insert_drive_file_outlined,
                   ),
-                ),
-              IconButton(
-                tooltip: busy ? 'Отменить загрузку файла' : 'Сохранить файл',
-                icon: Icon(busy ? Icons.close : Icons.download),
-                onPressed: busy ? () => setState(() => cancelled = true) : save,
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      file!.videoNote ? 'Видеокружок' : file!.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (video && !file!.videoNote)
+                    IconButton(
+                      tooltip: 'Смотреть видео',
+                      icon: const Icon(Icons.play_circle_outline),
+                      onPressed: () => showDialog<void>(
+                        context: context,
+                        builder: (_) => MessageVideo(file: file!),
+                      ),
+                    ),
+                  IconButton(
+                    color: foreground,
+                    tooltip: busy
+                        ? 'Отменить загрузку файла'
+                        : 'Сохранить файл',
+                    icon: Icon(busy ? Icons.close : Icons.download),
+                    onPressed: busy
+                        ? () => setState(() => cancelled = true)
+                        : save,
+                  ),
+                ],
               ),
+              Text(
+                '${(file!.size / 1048576).toStringAsFixed(1)} МБ · ${file!.mime}',
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+              if (busy) LinearProgressIndicator(value: progress),
+              if (error != null)
+                Text(
+                  error!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              if ((file!.content['caption'] as String? ?? '').isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: SelectableText(file!.content['caption'] as String),
+                ),
             ],
           ),
-          Text(
-            '${(file!.size / 1048576).toStringAsFixed(1)} МБ · ${file!.mime}',
-            style: Theme.of(context).textTheme.labelSmall,
-          ),
-          if (busy) LinearProgressIndicator(value: progress),
-          if (error != null)
-            Text(
-              error!,
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          if ((file!.content['caption'] as String? ?? '').isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: SelectableText(file!.content['caption'] as String),
-            ),
-        ],
+        ),
       ),
     );
   }

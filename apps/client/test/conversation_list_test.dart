@@ -49,6 +49,14 @@ void main() {
           'content': {'msgtype': MessageTypes.Text, 'body': 'До встречи!'},
         }, room);
       }
+      person.states[EventTypes.RoomMember] = {
+        '@anna:local': StrippedStateEvent(
+          type: EventTypes.RoomMember,
+          senderId: '@anna:local',
+          stateKey: '@anna:local',
+          content: {'membership': 'join', 'displayname': 'Анна'},
+        ),
+      };
       client.rooms.addAll([person, group]);
       client.directChats['@anna:local'] = [person.id];
       client.presences['@anna:local'] = CachedPresence(

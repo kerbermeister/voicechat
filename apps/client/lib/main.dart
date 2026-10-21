@@ -10,6 +10,13 @@ import 'history_search.dart';
 import 'call_window.dart';
 import 'app_sounds.dart';
 import 'file_io.dart';
+import 'presence_tracker.dart';
+import 'recording_activity.dart';
+import 'first_keys.dart';
+import 'history_window.dart';
+import 'contact_service.dart';
+import 'invitations_dialog.dart';
+import 'profile_dialog.dart';
 import 'conversation_list.dart';
 import 'room_members_dialog.dart';
 import 'welcome_panel.dart';
@@ -24,6 +31,10 @@ import 'local_store.dart';
 import 'theme.dart';
 import 'user_action_error.dart';
 import 'transport.dart';
+
+mx.CachedPresence? _roomPresenceSnapshot(mx.Room room) =>
+    // ignore: deprecated_member_use
+    room.client.presences[room.directChatMatrixID];
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -103,6 +114,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
   CallController? calls;
   AppSounds? sounds;
   Uri? ownAvatar;
+  PresenceTracker? presenceTracker;
+  RecordingActivity? recordingActivity;
+  ContactService? contacts;
   ChatActions? actions;
   StreamSubscription<mx.SyncStatusUpdate>? connectionStatus;
   bool online = true;
@@ -223,12 +237,25 @@ class _ProbeScreenState extends State<ProbeScreen> {
     password.clear();
     vaultPassword.clear();
     probe = next;
+    enableFirstContactTrust(next.client);
     try {
       ownAvatar = (await next.client.fetchOwnProfile()).avatarUrl;
     } catch (_) {
       ownAvatar = null;
     }
     username.text = next.client.userID!;
+    contacts = ContactService(next.client, tokenServer.text.trim());
+    contacts!.addListener(() {
+      if (mounted) setState(() {});
+    });
+    await contacts!.open();
+    presenceTracker = PresenceTracker(next.client, () {
+      if (mounted) setState(() {});
+    });
+    presenceTracker!.start();
+    recordingActivity = RecordingActivity(next.client, () {
+      if (mounted) setState(() {});
+    })..start();
     sounds = AppSounds(next.client);
     await sounds!.open();
     actions = ChatActions(
@@ -331,6 +358,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       builder: (_) => PeoplePicker(
         client: probe!.client,
         multiple: group,
+        allowedUsers: group ? contacts!.acceptedUsers : null,
         title: group ? 'Новая группа' : 'Найти человека',
       ),
     );
@@ -341,130 +369,143 @@ class _ProbeScreenState extends State<ProbeScreen> {
       if (name == null || name.isEmpty) return;
       id = await probe!.createRoom(people, name: name);
     } else {
-      id = await probe!.startDirectChat(people.single);
+      await connectContact(people.single);
+      return;
     }
     await select(await probe!.room(id));
   }
 
-  Future<void> invitations() async {
-    final rooms = probe!.client.rooms
-        .where((r) => r.membership == mx.Membership.invite)
-        .toList();
-    final result = await showDialog<(mx.Room, bool)>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Приглашения · ${rooms.length}'),
-        content: SizedBox(
-          width: 480,
-          height: 350,
-          child: rooms.isEmpty
-              ? const Center(child: Text('Пока нет приглашений'))
-              : ListView.separated(
-                  itemCount: rooms.length,
-                  separatorBuilder: (_, _) => const Divider(height: 20),
-                  itemBuilder: (_, i) {
-                    final room = rooms[i];
-                    final inviter = room
-                        .getState(
-                          mx.EventTypes.RoomMember,
-                          probe!.client.userID!,
-                        )
-                        ?.senderId;
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: PersonAvatar(
-                            name: room.getLocalizedDisplayname(),
-                            group: !room.isDirectChat,
-                          ),
-                          title: Text(
-                            room.getLocalizedDisplayname(),
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            'Пригласил: ${inviter ?? 'неизвестно'}',
-                          ),
-                        ),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            FilledButton.tonal(
-                              onPressed: () =>
-                                  Navigator.pop(dialogContext, (room, true)),
-                              child: const Text('Принять'),
-                            ),
-                            TextButton(
-                              onPressed: () =>
-                                  Navigator.pop(dialogContext, (room, false)),
-                              child: const Text('Отклонить'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Закрыть'),
-          ),
-        ],
-      ),
-    );
-    if (result == null || !mounted) return;
-    await run(() async {
-      if (result.$2) {
-        await select(result.$1);
-      } else {
-        await result.$1.leave();
-        report('Приглашение отклонено.');
+  Future<void> connectContact(String user) async {
+    await contacts!.refresh();
+    if (!contacts!.available) {
+      throw UserActionError('Для нового контакта требуется связь с сервером.');
+    }
+    final existing = contacts!.requests
+        .where((r) => r.peer(probe!.client.userID!) == user)
+        .firstOrNull;
+    if (existing != null) {
+      if (existing.state == 'pending') {
+        report('Запрос ожидает подтверждения. Его статус — в приглашениях.');
+        return;
       }
-    });
+      if (existing.state == 'declined' || existing.state == 'cancelled') {
+        report(
+          'Запрос ${existing.state == 'declined' ? 'отклонён' : 'отменён'}.',
+        );
+        return;
+      }
+      final room = probe!.client.getRoomById(existing.roomId);
+      if (room?.membership == mx.Membership.join) {
+        await select(room!);
+        return;
+      }
+    }
+    final id = await probe!.startDirectChat(user);
+    final request = await contacts!.request(user, id);
+    if (request.state == 'accepted') {
+      await select(await probe!.room(request.roomId));
+    } else {
+      report(
+        'Приглашение отправлено. После подтверждения собеседник появится в «Люди».',
+      );
+    }
   }
 
-  Future<void> roomSettings() async {
-    final room = selected!;
+  Future<void> profileCard(String user) async {
+    await presenceTracker?.refresh(user);
+    if (!mounted) return;
+    final result = await showDialog<String>(
+      context: context,
+      builder: (_) => ProfileDialog(
+        client: probe!.client,
+        contacts: contacts!,
+        userId: user,
+        ownAvatar: ownAvatar,
+      ),
+    );
+    if (result == 'contact') await connectContact(user);
+    if (result == 'avatar') {
+      await changeAvatar();
+      if (mounted) await profileCard(user);
+    }
+  }
+
+  Future<void> changeAvatar() async {
+    final file = await editAvatar(context);
+    if (file == null) return;
+    final url = await probe!.client.uploadContent(
+      file.bytes,
+      filename: file.name,
+      contentType: file.mimeType,
+    );
+    await probe!.client.setProfileField(probe!.client.userID!, 'avatar_url', {
+      'avatar_url': url.toString(),
+    });
+    if (mounted) setState(() => ownAvatar = url);
+  }
+
+  Future<void> invitations() async {
+    final service = contacts;
+    if (service == null) return;
+    await service.refresh();
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (_) => InvitationsDialog(contacts: service),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> roomSettings([mx.Room? target, String? chosenAction]) async {
+    final room = target ?? selected!;
+    if (room.isDirectChat) {
+      await profileCard(room.directChatMatrixID!);
+      return;
+    }
     final members = await room.requestParticipants();
     if (!mounted) return;
-    final action = await showDialog<String>(
-      context: context,
-      builder: (_) => RoomMembersDialog(room: room, members: members),
-    );
-    if (action == 'invite' && mounted) {
+    final action =
+        chosenAction ??
+        await showDialog<String>(
+          context: context,
+          builder: (_) => RoomMembersDialog(room: room, members: members),
+        );
+    if (action?.startsWith('profile:') == true && mounted) {
+      await profileCard(action!.substring(8));
+    } else if (action == 'invite' && !room.isDirectChat && mounted) {
       final users = await showDialog<List<String>>(
         context: context,
-        builder: (_) => PeoplePicker(client: room.client, multiple: true),
+        builder: (_) => PeoplePicker(
+          client: room.client,
+          multiple: true,
+          allowedUsers: contacts!.acceptedUsers,
+        ),
       );
       for (final user in users ?? <String>[]) {
         await room.invite(user);
       }
-    } else if (action == 'avatar') {
+    } else if (action == 'avatar' && !room.isDirectChat) {
       if (!room.canChangeStateEvent(mx.EventTypes.RoomAvatar)) {
         throw UserActionError('Недостаточно прав для изменения аватара.');
       }
       if (!mounted) return;
       final file = await editAvatar(context);
       if (file != null) await room.setAvatar(file);
-    } else if (action == 'rename') {
-      final name = await askText(
-        'Название',
-        initial: room.getLocalizedDisplayname(),
-      );
+    } else if (action == 'rename' && !room.isDirectChat) {
+      final name = await askText('Название', initial: roomDisplayName(room));
       if (name != null && name.isNotEmpty) await room.setName(name);
-    } else if (action == 'leave' || action?.startsWith('kick:') == true) {
+    } else if (!room.isDirectChat &&
+        (action == 'leave' || action?.startsWith('kick:') == true)) {
       final confirmed = await askText(
         action == 'leave'
             ? 'Введите ДА, чтобы покинуть чат'
             : 'Введите ДА, чтобы исключить участника',
       );
       if (confirmed != 'ДА') return;
-      await calls?.end();
+      if (calls?.active?.chat.id == room.id) await calls?.end();
       if (action == 'leave') {
         await room.leave();
+        if (selected?.id != room.id) return;
         timeline?.cancelSubscriptions();
         if (mounted) {
           setState(() {
@@ -479,6 +520,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   String? focusedEvent;
+  bool completeHistory = false;
   Future<void> globalSearch() async {
     final result = await searchHistory(context, probe!.client);
     if (result != null) {
@@ -487,12 +529,19 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> select(mx.Room room, {String? eventId}) async {
+    if (contacts?.hiddenRooms.contains(room.id) == true && room.isDirectChat) {
+      throw UserActionError('Сначала дождитесь подтверждения контакта.');
+    }
     focusedEvent = eventId;
+    unawaited(presenceTracker?.refresh(room.directChatMatrixID));
     if (room.membership == mx.Membership.invite) await room.join();
     selected = await probe!.room(room.id);
     groupsTab = !selected!.isDirectChat;
     timeline?.cancelSubscriptions();
+    final window = await historyWindow(selected!);
+    completeHistory = eventId == null && window.complete;
     timeline = await selected!.getTimeline(
+      limit: eventId == null ? window.limit : mx.Room.defaultHistoryCount,
       eventContextId: eventId,
       onUpdate: () {
         if (mounted) setState(() {});
@@ -616,6 +665,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
       await Future.wait([
         if (calls != null) calls!.close(),
         if (sounds != null) sounds!.close(),
+        if (presenceTracker != null) presenceTracker!.close(),
+        if (contacts != null) contacts!.close(),
+        if (recordingActivity != null) recordingActivity!.close(),
         if (actions != null) actions!.close(),
       ]);
     } finally {
@@ -824,6 +876,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
     savedAccount = false;
     await calls?.close();
     await sounds?.close();
+    await presenceTracker?.close();
+    await contacts?.close();
+    await recordingActivity?.close();
     await actions?.close();
     await connectionStatus?.cancel();
     await sync?.cancel();
@@ -845,6 +900,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
     timeline?.cancelSubscriptions();
     unawaited(calls?.close());
     unawaited(sounds?.close());
+    unawaited(presenceTracker?.close());
+    unawaited(contacts?.close());
+    unawaited(recordingActivity?.close());
     unawaited(actions?.close());
     unawaited(connectionStatus?.cancel());
     unawaited(probe?.close());
@@ -1123,20 +1181,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
           await sounds!.setEnabled(!sounds!.enabled);
           sounds!.updateCall(calls!);
         case 'avatar':
-          final file = await editAvatar(context);
-          if (file != null) {
-            final url = await probe!.client.uploadContent(
-              file.bytes,
-              filename: file.name,
-              contentType: file.mimeType,
-            );
-            await probe!.client.setProfileField(
-              probe!.client.userID!,
-              'avatar_url',
-              {'avatar_url': url.toString()},
-            );
-            ownAvatar = url;
-          }
+          await changeAvatar();
         case 'devices':
           await devices();
         case 'verify':
@@ -1166,6 +1211,22 @@ class _ProbeScreenState extends State<ProbeScreen> {
     onInvitations: invitations,
     onSearch: globalSearch,
     ownAvatar: ownAvatar,
+    onProfile: () => run(() => profileCard(probe!.client.userID!)),
+    contactInvites: contacts?.incomingCount ?? 0,
+    onChatMenu: (room, action) => run(() async {
+      if (action == 'mute') {
+        await room.setPushRuleState(
+          room.pushRuleState == mx.PushRuleState.dontNotify
+              ? mx.PushRuleState.notify
+              : mx.PushRuleState.dontNotify,
+        );
+      } else if (action == 'info' && room.isDirectChat) {
+        await profileCard(room.directChatMatrixID!);
+      } else {
+        await roomSettings(room, action == 'leave' ? 'leave' : null);
+      }
+    }),
+    hiddenDirectRooms: contacts?.hiddenRooms ?? {},
     groups: groupsTab,
     onTabChanged: (value) => setState(() => groupsTab = value),
   );
@@ -1220,6 +1281,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       actions: actions!,
       report: report,
       initialEventId: focusedEvent,
+      completeHistory: completeHistory,
       onJump: (event) => run(() => select(room, eventId: event)),
       header: Container(
         padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
@@ -1233,12 +1295,19 @@ class _ProbeScreenState extends State<ProbeScreen> {
               onPressed: () => setState(() => selected = null),
               icon: const Icon(Icons.arrow_back_rounded),
             ),
-            PersonAvatar(
-              name: room.getLocalizedDisplayname(),
-              client: room.client,
-              url: roomAvatar(room),
-              group: !room.isDirectChat,
-              size: 42,
+            InkWell(
+              borderRadius: BorderRadius.circular(24),
+              onTap: room.isDirectChat
+                  ? () => run(() => profileCard(room.directChatMatrixID!))
+                  : () => run(() => roomSettings()),
+              child: PersonAvatar(
+                name: roomDisplayName(room),
+                client: room.client,
+                url: roomAvatar(room),
+                group: !room.isDirectChat,
+                online: roomPresence(room) == 'В сети',
+                size: 42,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1246,7 +1315,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    room.getLocalizedDisplayname(),
+                    roomDisplayName(room),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -1258,12 +1327,21 @@ class _ProbeScreenState extends State<ProbeScreen> {
                     roomPresence(room),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
+                  if (room.isDirectChat &&
+                      lastSeen(
+                        _roomPresenceSnapshot(room),
+                        DateTime.now(),
+                      ).isNotEmpty)
+                    Text(
+                      lastSeen(_roomPresenceSnapshot(room), DateTime.now()),
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
                 ],
               ),
             ),
             IconButton(
               tooltip: 'Участники и настройки чата',
-              onPressed: busy ? null : () => run(roomSettings),
+              onPressed: busy ? null : () => run(() => roomSettings()),
               icon: const Icon(Icons.more_horiz_rounded),
             ),
             IconButton.filledTonal(

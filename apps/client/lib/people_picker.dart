@@ -5,11 +5,13 @@ class PeoplePicker extends StatefulWidget {
   final mx.Client client;
   final bool multiple;
   final String? title;
+  final Set<String>? allowedUsers;
   const PeoplePicker({
     super.key,
     required this.client,
     this.multiple = false,
     this.title,
+    this.allowedUsers,
   });
   @override
   State<PeoplePicker> createState() => _PeoplePickerState();
@@ -46,7 +48,12 @@ class _PeoplePickerState extends State<PeoplePicker> {
       if (mounted) {
         setState(() {
           results = profiles
-              .where((p) => p.userId != widget.client.userID)
+              .where(
+                (p) =>
+                    p.userId != widget.client.userID &&
+                    (widget.allowedUsers == null ||
+                        widget.allowedUsers!.contains(p.userId)),
+              )
               .toList();
           status = results.isEmpty
               ? 'Никого не найдено'

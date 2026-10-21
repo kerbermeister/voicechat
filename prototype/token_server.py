@@ -6,15 +6,27 @@ import hmac
 import json
 import time
 import threading
+import sqlite3
+from contacts import ContactStore, ContactError
 import urllib.error
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-secret = json.loads((Path(__file__).resolve().parents[1] / '.prototype/secrets.json').read_text())['livekit']
+_secrets = json.loads((Path(__file__).resolve().parents[1] / '.prototype/secrets.json').read_text())
+secret = _secrets['livekit']
+policy_secret = _secrets['policy']
 reports = []
 report_lock = threading.Lock()
+_contacts = None
+_contacts_lock = threading.Lock()
+
+def contact_store():
+    global _contacts
+    with _contacts_lock:
+        if _contacts is None: _contacts = ContactStore()
+    return _contacts
 
 def jwt(payload):
     def enc(v):
@@ -24,9 +36,54 @@ def jwt(payload):
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_): pass
+    def matrix(self, path):
+        auth = self.headers.get('Authorization', '')
+        if not auth.startswith('Bearer ') or len(auth) > 8192:
+            raise ContactError('unauthorized')
+        req = urllib.request.Request('http://127.0.0.1:8008/_matrix/client/v3/' + path,
+                                     headers={'Authorization': auth})
+        with urllib.request.urlopen(req, timeout=10) as response: return json.load(response)
+    def contact_get(self):
+        user = self.matrix('account/whoami')['user_id']
+        store = contact_store()
+        if self.path == '/contacts':
+            return self.reply(200, {'allow_direct': store.policy(user), 'requests': store.list(user)})
+        query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+        target = query.get('user_id', [])
+        if len(target) != 1: raise ContactError('invalid_user')
+        ContactStore.pair(user, target[0])
+        return self.reply(200, {'allow_direct': store.policy(target[0])})
+    def contact_post(self):
+        user = self.matrix('account/whoami')['user_id']
+        size = int(self.headers.get('Content-Length', '0'))
+        if not 0 < size <= 4096: raise ContactError('invalid_size')
+        body = json.loads(self.rfile.read(size))
+        if not isinstance(body, dict): raise ContactError('invalid_request')
+        store = contact_store()
+        action = body.get('action')
+        if action == 'policy' and set(body) == {'action', 'allow_direct'}:
+            store.set_policy(user, body['allow_direct'])
+            return self.reply(200, {'ok': True})
+        if action in ('accept', 'decline', 'cancel') and set(body) == {'action', 'id'}:
+            if not isinstance(body['id'], str) or len(body['id']) != 32: raise ContactError('invalid_id')
+            state = store.decide(user, body['id'], action)
+            return self.reply(200, {'state': state})
+        if action != 'request' or set(body) != {'action', 'recipient', 'room_id'}:
+            raise ContactError('invalid_request')
+        target, room = body['recipient'], body['room_id']
+        ContactStore.pair(user, target)
+        if not isinstance(room, str) or not room.startswith('!') or len(room) > 255: raise ContactError('invalid_room')
+        state = self.matrix('rooms/' + urllib.parse.quote(room, safe='') + '/state')
+        members = {e['state_key']: e['content'].get('membership') for e in state if e['type'] == 'm.room.member' and e['content'].get('membership') in ('invite', 'join')}
+        encrypted = any(e['type'] == 'm.room.encryption' and e['content'].get('algorithm') == 'm.megolm.v1.aes-sha2' for e in state)
+        if not encrypted or members.get(user) != 'join' or set(members) != {user, target}:
+            raise ContactError('invalid_direct_room')
+        return self.reply(200, store.request(user, target, room))
     def reply(self, status, body):
+        encoded = b'' if status == 204 else json.dumps(body).encode()
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
+        self.send_header('Content-Length', str(len(encoded)))
         self.send_header('Cache-Control', 'no-store')
         origin = self.headers.get('Origin', '')
         if origin in ('http://localhost:7357', 'http://127.0.0.1:7357',
@@ -35,9 +92,24 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', 'Authorization,Content-Type')
         self.send_header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
         self.end_headers()
-        self.wfile.write(json.dumps(body).encode())
+        self.wfile.write(encoded)
     def do_OPTIONS(self): self.reply(204, {})
     def do_GET(self):
+        if self.path.startswith('/internal/contact-authorized?'):
+            if not hmac.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + policy_secret):
+                return self.reply(403, {'error': 'forbidden'})
+            try:
+                query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                if set(query) != {'inviter', 'invitee'} or any(len(v) != 1 for v in query.values()):
+                    raise ContactError('invalid_users')
+                return self.reply(200, {'accepted': contact_store().accepted(query['inviter'][0], query['invitee'][0])})
+            except (ContactError, OSError, sqlite3.Error):
+                return self.reply(403, {'error': 'forbidden'})
+        if self.path == '/contacts' or self.path.startswith('/contact-policy?'):
+            try: return self.contact_get()
+            except ContactError as error: return self.reply(403, {'error': str(error)})
+            except urllib.error.HTTPError: return self.reply(401, {'error': 'matrix_denied'})
+            except (OSError, ValueError, KeyError, TypeError, sqlite3.Error): return self.reply(503, {'error': 'contacts_unavailable'})
         if self.path == '/config':
             try:
                 from client_policy import load_policy
@@ -47,6 +119,11 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/reports': return self.reply(200, reports)
         self.reply(404, {'error': 'not_found'})
     def do_POST(self):
+        if self.path == '/contacts':
+            try: return self.contact_post()
+            except ContactError as error: return self.reply(403, {'error': str(error)})
+            except urllib.error.HTTPError: return self.reply(401, {'error': 'matrix_denied'})
+            except (OSError, ValueError, KeyError, TypeError, sqlite3.Error): return self.reply(503, {'error': 'contacts_unavailable'})
         if self.path == '/report':
             try:
                 size = int(self.headers.get('Content-Length', '0'))

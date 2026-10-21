@@ -8,6 +8,8 @@ import 'package:voicechat_probe/matrix_probe.dart';
 class TestRoom implements Room {
   @override
   final bool encrypted;
+  @override
+  bool get isDirectChat => false;
   final String? result;
   bool sent = false;
   @override

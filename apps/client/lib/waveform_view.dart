@@ -1,6 +1,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 
+// Display a useful -60..-6 dB range; silence stays flat and no signal is invented.
+double waveLevel(int rms) => rms <= 0
+    ? 0
+    : ((20 * log(rms.clamp(1, 1024) / 1024) / ln10 + 60) / 54).clamp(0, 1);
+
 class WaveformView extends StatelessWidget {
   final List<int> levels;
   final double progress;
@@ -37,11 +42,10 @@ class _WavePainter extends CustomPainter {
     final upper = Path()..moveTo(0, size.height / 2);
     final lower = Path()..moveTo(0, size.height / 2);
     for (var i = 0; i < levels.length; i++) {
-      final amplitude =
-          (sqrt(levels[i].clamp(0, 1024) / 1024) * (size.height / 2 - 2)).clamp(
-            1.0,
-            size.height / 2,
-          );
+      final amplitude = (waveLevel(levels[i]) * (size.height / 2 - 2)).clamp(
+        1.0,
+        size.height / 2,
+      );
       final x = step * (i + 1);
       upper.quadraticBezierTo(
         x - step / 2,

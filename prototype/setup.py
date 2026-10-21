@@ -2,17 +2,24 @@
 """Generate local-only configuration. Never reuse these accounts for production."""
 import json
 import secrets
+from contacts import ContactStore
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 out = ROOT / '.prototype'
 out.mkdir(mode=0o700, exist_ok=True)
+ContactStore()
+(out / "contacts").chmod(0o700)
 secret_file = out / 'secrets.json'
 if not secret_file.exists():
     secret_file.write_text(json.dumps({k: secrets.token_hex(32) for k in
-        ['postgres', 'registration', 'macaroon', 'livekit', 'turn']}, indent=2))
+        ['postgres', 'registration', 'macaroon', 'livekit', 'turn', 'policy']}, indent=2))
     secret_file.chmod(0o600)
 s = json.loads(secret_file.read_text())
+if 'policy' not in s:
+    s['policy'] = secrets.token_hex(32)
+    secret_file.write_text(json.dumps(s, indent=2))
+    secret_file.chmod(0o600)
 if 'turn' not in s:
     s['turn'] = secrets.token_hex(32)
     secret_file.write_text(json.dumps(s, indent=2))
@@ -21,6 +28,11 @@ if 'turn' not in s:
 (out / 'homeserver.yaml').write_text(f'''server_name: voicechat.local
 public_baseurl: http://localhost:8008/
 pid_file: /data/homeserver.pid
+modules:
+  - module: voicechat_policy.ContactPolicy
+    config:
+      url: http://host.docker.internal:8090/internal/contact-authorized
+      secret: "{s['policy']}"
 listeners:
   - port: 8008
     type: http
