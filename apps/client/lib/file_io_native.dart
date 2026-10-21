@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/services.dart';
@@ -77,6 +78,10 @@ Future<({String url, Future<void> Function() close})> _videoSource(
   ).join();
   server.listen((request) async {
     final response = request.response;
+    // An aborted response reports errors through done as well as addStream/close.
+    unawaited(
+      response.done.then<void>((_) {}, onError: (Object _, StackTrace __) {}),
+    );
     try {
       if (request.uri.path != '/$nonce' ||
           !['GET', 'HEAD'].contains(request.method)) {

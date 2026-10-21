@@ -1,27 +1,38 @@
 package dev.voicechat.voicechat_probe
 
 import android.content.Intent
+import android.content.Context
+import android.os.Build
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.view.WindowManager
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
 import java.util.UUID
 
 class MainActivity : FlutterActivity() {
-    private var imageResult: MethodChannel.Result? = null
-    private val imageRequest = 7501
-    private var maxImageCount = 24
-    private var selectedImages = emptySet<String>()
-    private var fileResult: MethodChannel.Result? = null
-    private var maxFileCount = 5
-    private val selectedFiles = mutableSetOf<String>()
-    private var saveResult: MethodChannel.Result? = null
-    private val saves = mutableMapOf<String, Pair<Uri, OutputStream>>()
+    // The call engine can outlive its window; selected media handles must outlive it too.
+    companion object {
+        const val ENGINE_ID = "voicechat-call-engine"
+        private var imageResult: MethodChannel.Result? = null
+        private val imageRequest = 7501
+        private var maxImageCount = 24
+        private var selectedImages = emptySet<String>()
+        private var fileResult: MethodChannel.Result? = null
+        private var maxFileCount = 5
+        private val selectedFiles = mutableSetOf<String>()
+        private var saveResult: MethodChannel.Result? = null
+        private val saves = mutableMapOf<String, Pair<Uri, OutputStream>>()
+
+    }
+
+    override fun provideFlutterEngine(context: Context): FlutterEngine? = FlutterEngineCache.getInstance().get(ENGINE_ID)
+    override fun shouldDestroyEngineWithHost(): Boolean = !CallService.running
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,8 +40,24 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        val first = FlutterEngineCache.getInstance().get(ENGINE_ID) == null
         super.configureFlutterEngine(flutterEngine)
-        flutterEngine.platformViewsController.registry.registerViewFactory("voicechat/youtube", YouTubeFactory())
+        FlutterEngineCache.getInstance().put(ENGINE_ID, flutterEngine)
+        if (first) {
+            flutterEngine.platformViewsController.registry.registerViewFactory("voicechat/youtube", YouTubeFactory())
+            val app = applicationContext
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/calls").setMethodCallHandler { call, result ->
+                val active = call.arguments as? Boolean
+                if (call.method != "active" || active == null) { result.error("invalid", "Invalid call state", null); return@setMethodCallHandler }
+                try {
+                    val service = Intent(app, CallService::class.java)
+                    if (active) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) app.startForegroundService(service) else app.startService(service)
+                    } else app.stopService(service)
+                    result.success(null)
+                } catch (_: Exception) { result.error("background", "Cannot maintain the call in background", null) }
+            }
+        }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/links")
             .setMethodCallHandler { call, result ->
                 val uri = (call.arguments as? String)?.let(Uri::parse)
@@ -149,6 +176,22 @@ class MainActivity : FlutterActivity() {
                     result.error("unavailable", "Cannot open image picker", null)
                 }
             }
+    }
+
+    override fun onDestroy() {
+        imageResult?.success(null); imageResult = null
+        fileResult?.success(null); fileResult = null
+        saveResult?.success(null); saveResult = null
+        if (!CallService.running) {
+            FlutterEngineCache.getInstance().remove(ENGINE_ID)
+            selectedImages = emptySet()
+            selectedFiles.clear()
+            for ((uri, output) in saves.values) {
+                try { output.close(); android.provider.DocumentsContract.deleteDocument(contentResolver, uri) } catch (_: Exception) { }
+            }
+            saves.clear()
+        }
+        super.onDestroy()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

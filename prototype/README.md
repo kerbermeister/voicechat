@@ -54,14 +54,14 @@ adb reverse tcp:7881 tcp:7881
 adb reverse tcp:3478 tcp:3478
 python3 prototype/prepare_run.py
 cd apps/client
-flutter build web --target lib/lab_main.dart --dart-define-from-file=../../.prototype/web.json
+flutter build web --target lib/lab_main.dart --dart-define-from-file=../../.prototype/web.json --output=../../.prototype/lab-web
 flutter build apk --debug --target lib/lab_main.dart --dart-define-from-file=../../.prototype/android.json --target-platform android-arm64
 adb install -r build/app/outputs/flutter-apk/app-debug.apk
 adb shell pm grant dev.voicechat.voicechat_probe android.permission.RECORD_AUDIO
 adb shell am start -n dev.voicechat.voicechat_probe/.MainActivity
 ```
 
-Открыть две отдельные вкладки `http://localhost:7357/` и `http://localhost:7357/?role=carol` в Chrome с доступом к микрофону (для автоматического запуска: `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required`). Затем из корня:
+Лабораторный web запускать отдельно: `python3 prototype/serve_web.py --port 7358 --directory .prototype/lab-web`. Открыть две вкладки `http://localhost:7358/` и `http://localhost:7358/?role=carol` в Chrome с доступом к микрофону (для автоматического запуска: `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream --autoplay-policy=no-user-gesture-required`). Порт 7357 остаётся обычным приложением. Затем из корня:
 
 ```sh
 python3 prototype/check_reports.py
@@ -70,6 +70,10 @@ python3 prototype/check_reports.py
 Сценарий проверяет двустороннюю расшифровку текста Android ↔ web и отсутствие текста в серверном событии; останавливает старые клиенты; входит новым устройством; отвергает неверный recovery key и восстанавливает оба сообщения правильным ключом. Проверяются также офлайн-очередь, правки/ответы/реакции/удаление, файлы, typing/receipts, запись/воспроизведение и личный WebRTC через TURN с подтверждённым DTLS и входящими аудиопакетами. Затем три участника (Android + два web-клиента в отдельных вкладках) должны получить подтверждение расшифровки каждого удалённого аудиопотока через событие cryptor `kOk`. До отправки проверяются отказ непроверенным устройствам, несовпадающий отпечаток и сохранение доверия при повторном открытии профиля. Одного успешного подключения к SFU недостаточно для PASS. Затем сценарий проверяет отзыв старого устройства: неверный пароль отклоняется, правильный отзывает токен, все три клиента завершают звонок, старый ключ не расшифровывает новое сообщение, а оставшиеся участники его получают.
 
 Каждый повтор начинается с `prepare_run.py` и пересборки **обоих** клиентов. Не распространять лабораторные сборки: в них вкомпилированы одноразовые тестовые пароли. Обычные сборки используют `lib/main.dart` без define-файлов.
+
+Отдельный быстрый прогон видео использует те же свежие fixtures, но target `lib/lab_video_main.dart` для обеих платформ; проверять через `python3 prototype/check_video_reports.py`. Он требует реальные `framesDecoded`, успешные крипторы каждого удалённого потока, TURN/DTLS в личном вызове, переключение/выключение камеры Android и получение 180p с возвратом Auto. Для камеры также выдать тестовому APK `android.permission.CAMERA` до запуска.
+
+Сетевой UI-прогон: `VOICECHAT_VIDEO_TEST=1 VOICECHAT_NETWORK_TEST=1 node prototype/check_contacts_ui.cjs`. Используется [глобальная эмуляция WebRTC Chrome DevTools](https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-emulateNetworkConditionsByRule): ограничения пропускной способности/12% потерь, затем восстановление и отдельный короткий HTTP-offline. Это эмуляция, не поездка между реальными Wi-Fi/мобильными сетями.
 
 ## Автоматизация
 
@@ -126,3 +130,9 @@ node prototype/check_signup_ui.cjs
 Для каждого повторения создаётся свежий одноразовый аккаунт: закрытие браузера после неудачного UI-теста не заменяет отзыв устройства. Сценарий использует семантическое дерево Flutter, проверяет каталог/группу, текст/изображение/микрофон/плеер, правку/реакцию, настройки, узкую компоновку, lock/unlock/logout. Снимки и снимок ошибки остаются в `.prototype/ui/` (вне Git). В репозитории сохранены только выбранные снимки с тестовыми данными в `docs/design/screenshots/`.
 
 В новом интерфейсе перед тестовым вводом имени профиля раскройте «Параметры подключения». Устройства, ключи истории, темы, блокировка и выход находятся в «Настройки». Для тестов снова нужен свежий аккаунт после неуспешного прогона, оставившего Matrix-устройство.
+
+## Видеосвязь и плохая сеть
+
+`VOICECHAT_VIDEO_TEST=1 node prototype/check_contacts_ui.cjs` проверяет реальные кадры личного и группового видео, выключение камеры и ограничения Low/Auto. Для сетевой приёмки сначала собрать одноразовый диагностический образ `docker build -t voicechat-netem:test -f prototype/netem.Dockerfile .`, затем запустить с дополнительным `VOICECHAT_NETWORK_TEST=1`. Проверка временно ограничивает **только локальные** контейнеры TURN/SFU через `NET_ADMIN`: 384 кбит/с общего egress, 8% потерь, задержка 60 мс. Обычное завершение и ошибки снимают qdisc в `finally`; принудительное убийство процесса требует вручную удалить `tc qdisc del dev eth0 root` в том же сетевом namespace. Не запускать этот сценарий на стенде с чужими активными звонками.
+
+Для сквозного видеопрогона создать свежие fixtures `python3 prototype/prepare_run.py`, собрать `lib/lab_video_main.dart` для web в `.prototype/lab-web` и Android с соответствующими `.prototype/web.json`/`android.json`. Web обслуживается на 7358, обычный клиент 7357 не заменяется лабораторным. Запустить `node prototype/check_video_web.cjs`, установить APK на emulator-5554 с CAMERA/RECORD_AUDIO и проверить `python3 prototype/check_video_reports.py`. Определение `--dart-define=BACKGROUND_TEST=true` на обеих сборках дополнительно проверяет Home/пересоздание Activity, непрерывные аудиопакеты и возврат камеры; web-драйвер сам восстанавливает `always_finish_activities=0`. Публичные результаты сохраняются без секретов, лабораторные APK с fixture-аккаунтами не распространяются.

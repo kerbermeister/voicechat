@@ -3,9 +3,11 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const {execFileSync} = require('node:child_process');
 const {chromium} = require('playwright');
 const root = path.join(__dirname, '..');
 const video = process.env.VOICECHAT_VIDEO_TEST === '1';
+const network = process.env.VOICECHAT_NETWORK_TEST === '1';
 const callButton = video ? 'Видеозвонок' : 'Голосовой звонок';
 fs.mkdirSync(path.join(root,'.prototype/ui'),{recursive:true});
 
@@ -93,7 +95,7 @@ async function register(role) {
       await button(sender,'Авто').click();
       fs.writeFileSync(path.join(root,'.prototype/ui/quality-menu.txt'),await sender.locator('body').ariaSnapshot());
       await sender.screenshot({path:path.join(root,'.prototype/ui/quality-menu.png')});
-      await sender.getByText('Низкое',{exact:true}).last().click();
+      await sender.getByRole('menuitem',{name:'Низкое',exact:true}).click();
       await sender.mouse.move(5,5);
       await button(sender,'Низкое').waitFor();
       await sender.waitForFunction(()=>{
@@ -107,10 +109,69 @@ async function register(role) {
       });
       await sender.bringToFront();
       await button(sender,'Низкое').click();
-      await sender.getByText('Авто',{exact:true}).last().click();
+      await sender.getByRole('menuitem',{name:'Авто',exact:true}).click();
       await sender.mouse.move(5,5);
       await button(sender,'Авто').waitFor();
       await videoFrames(sender); await videoFrames(receiver);
+    }
+    async function networkCheck(sender, receiver, transport) {
+      const resultPath=path.join(root,`.prototype/video-network-${transport}.json`);
+      fs.rmSync(resultPath,{force:true});
+      async function sample() {
+        const inbound=transport==='group';
+        return (inbound ? receiver : sender).evaluate(async inbound=>{
+          const rows=[];
+          for(const pc of window.callPeers.filter(pc=>pc.connectionState!=='closed')) {
+            for(const stat of (await pc.getStats()).values()) {
+              if(stat.type===(inbound ? 'inbound-rtp' : 'outbound-rtp') && stat.kind==='video') rows.push({id:stat.id,bytes:inbound ? stat.bytesReceived : stat.bytesSent,frames:inbound ? stat.framesDecoded : stat.framesEncoded,width:stat.frameWidth ?? 0,height:stat.frameHeight ?? 0,reason:stat.qualityLimitationReason ?? ''});
+            }
+          }
+          return {at:performance.now(),rows};
+        },inbound);
+      }
+      await sender.waitForTimeout(8000);
+      const before=await sample();
+      await sender.waitForTimeout(3000);
+      const normal=await sample();
+      const container=execFileSync('docker',['compose','-f',path.join(root,'prototype/compose.yaml'),'ps','-q',transport==='direct' ? 'turn' : 'livekit'],{encoding:'utf8',timeout:15000}).trim();
+      assert(/^[a-f0-9]{64}$/.test(container),'Own local media container required');
+      const tc=(...args)=>execFileSync('docker',['run','--rm','--cap-add','NET_ADMIN','--network','container:'+container,'voicechat-netem:test',...args],{encoding:'utf8',timeout:15000});
+      let shaped=false;
+      let constrained, reduced;
+      try {
+        tc('qdisc','add','dev','eth0','root','netem','delay','60ms','loss','8%','limit','40','rate','384kbit');
+        shaped=true;
+        assert(tc('qdisc','show','dev','eth0').includes('netem'),'Container network shaping was not installed');
+        await sender.waitForTimeout(15000);
+        constrained=await sample();
+        await sender.waitForTimeout(3000);
+        reduced=await sample();
+        assert(await button(sender,'Завершить').isVisible(),'Call ended during packet loss');
+      } finally {
+        if(shaped) tc('qdisc','del','dev','eth0','root');
+      }
+      function rate(first,last,key) {
+        return last.rows.reduce((sum,row)=>{
+          const previous=first.rows.find(p=>p.id===row.id);
+          return sum+(previous ? Math.max(0,row[key]-previous[key]) : 0);
+        },0)/((last.at-first.at)/1000);
+      }
+      const baselineBitrate=rate(before,normal,'bytes')*8;
+      const constrainedBitrate=rate(constrained,reduced,'bytes')*8;
+      const resized=reduced.rows.some(row=>normal.rows.some(previous=>previous.id===row.id && (row.width<previous.width || row.height<previous.height)));
+      const baselineFps=rate(before,normal,'frames'), constrainedFps=rate(constrained,reduced,'frames');
+      const adapted=resized || constrainedBitrate<baselineBitrate*.8 || constrainedFps<baselineFps*.8;
+      const metrics={result:adapted ? 'ADAPTED' : 'FAIL',transport,emulator:'Docker media container egress netem',egress_limit_kbit:384,baseline_bitrate:Math.round(baselineBitrate),constrained_bitrate:Math.round(constrainedBitrate),baseline_fps:baselineFps,constrained_fps:constrainedFps,resized,normal:normal.rows,reduced:reduced.rows,packet_loss_percent:8,http_outage_seconds:4};
+      fs.writeFileSync(resultPath,JSON.stringify(metrics));
+      assert(adapted,'Auto did not reduce video load under constrained WebRTC bandwidth');
+      await videoFrames(sender); await videoFrames(receiver);
+      await sender.context().setOffline(true);
+      await sender.waitForTimeout(4000);
+      await sender.context().setOffline(false);
+      await videoFrames(sender); await videoFrames(receiver);
+      assert(await button(sender,'Авто').isVisible(),'Network recovery lost the selected Auto mode');
+      fs.writeFileSync(resultPath,JSON.stringify({...metrics,result:'PASS'}));
+      console.log(`PASS: ${transport} WebRTC adaptation and network recovery`);
     }
     async function createGroup(page, name, peer) {
       await page.getByText('Группы',{exact:true}).click();
@@ -253,6 +314,7 @@ async function register(role) {
       await toggleCamera(a);
       await videoFrames(a);
       await qualityCheck(a,b);
+      if(network) await networkCheck(a,b,'direct');
       await a.screenshot({path:path.join(root,'.prototype/ui/direct-video.png')});
     }
     await b.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringtone.wav')).every(p=>p.audio.paused));
@@ -275,6 +337,7 @@ async function register(role) {
       await toggleCamera(a);
       await videoFrames(a);
       await qualityCheck(a,b);
+      if(network) await networkCheck(a,b,'group');
       await a.screenshot({path:path.join(root,'.prototype/ui/group-video.png')});
     }
     await button(b,'Завершить').click();

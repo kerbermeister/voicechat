@@ -6,6 +6,39 @@ import 'package:voicechat_probe/picked_file.dart';
 
 void main() {
   test(
+    'A removed draft fails its range without an unhandled server error',
+    () async {
+      final source = await draftVideoSource(
+        PickedFile(
+          name: 'removed.mp4',
+          mime: 'video/mp4',
+          size: 100,
+          read: (_, _) async {
+            await Future<void>.delayed(const Duration(milliseconds: 30));
+            throw const FileSystemException('Draft was removed');
+          },
+          release: () async {},
+        ),
+      );
+      final client = HttpClient();
+      try {
+        try {
+          final response = await (await client.getUrl(
+            Uri.parse(source.url),
+          )).close();
+          await response.drain<void>();
+          expect(response.statusCode, 500);
+        } on HttpException {
+          // A response whose headers were already sent is terminated instead.
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      } finally {
+        client.close(force: true);
+        await source.close();
+      }
+    },
+  );
+  test(
     'Draft video ranges are bounded and closing preview keeps the draft',
     () async {
       var released = false;

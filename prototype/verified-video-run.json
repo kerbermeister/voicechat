@@ -1,0 +1,216 @@
+{
+  "run": "1792621388",
+  "result": "PASS",
+  "reports": [
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "alice-web-identity",
+      "timestamp": 1792621531
+    },
+    {
+      "run": "1792621388",
+      "role": "carol",
+      "stage": "carol-web-identity",
+      "timestamp": 1792621531
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_room_created",
+      "timestamp": 1792621532
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "bob-android-identity",
+      "timestamp": 1792621537
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_joined_0",
+      "timestamp": 1792621537
+    },
+    {
+      "run": "1792621388",
+      "role": "carol",
+      "stage": "video_joined_2",
+      "timestamp": 1792621537
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_joined_1",
+      "timestamp": 1792621538
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_direct_room",
+      "timestamp": 1792621538
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_direct_joined",
+      "timestamp": 1792621538
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_direct_diagnostics",
+      "timestamp": 1792621541
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_direct_frames_0",
+      "timestamp": 1792621541
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_direct_diagnostics",
+      "timestamp": 1792621542
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_direct_frames_1",
+      "timestamp": 1792621542
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_direct_ended",
+      "timestamp": 1792621542
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_group_frames_1",
+      "timestamp": 1792621549
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_group_frames_0",
+      "timestamp": 1792621550
+    },
+    {
+      "run": "1792621388",
+      "role": "carol",
+      "stage": "video_group_frames_2",
+      "timestamp": 1792621551
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_background_ready",
+      "timestamp": 1792621551
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_background_audio_1",
+      "timestamp": 1792621557
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_background_audio_0",
+      "timestamp": 1792621558
+    },
+    {
+      "run": "1792621388",
+      "role": "carol",
+      "stage": "video_background_audio_2",
+      "timestamp": 1792621558
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_background_returned",
+      "timestamp": 1792621559
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_android_camera_switched",
+      "timestamp": 1792621560
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_camera_frames_1",
+      "timestamp": 1792621560
+    },
+    {
+      "run": "1792621388",
+      "role": "carol",
+      "stage": "video_camera_frames_2",
+      "timestamp": 1792621561
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_camera_frames_0",
+      "timestamp": 1792621562
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_low_selected",
+      "timestamp": 1792621562
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_low_decoded_android",
+      "timestamp": 1792621562
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_auto_restored",
+      "timestamp": 1792621562
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_passed_0",
+      "timestamp": 1792621562
+    },
+    {
+      "run": "1792621388",
+      "role": "carol",
+      "stage": "video_passed_2",
+      "timestamp": 1792621562
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_passed_1",
+      "timestamp": 1792621565
+    },
+    {
+      "run": "1792621388",
+      "role": "web",
+      "stage": "video_done_0",
+      "timestamp": 1792621566
+    },
+    {
+      "run": "1792621388",
+      "role": "carol",
+      "stage": "video_done_2",
+      "timestamp": 1792621566
+    },
+    {
+      "run": "1792621388",
+      "role": "android",
+      "stage": "video_done_1",
+      "timestamp": 1792621567
+    }
+  ]
+}

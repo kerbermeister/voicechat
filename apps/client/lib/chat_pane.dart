@@ -289,6 +289,10 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
           final sent = draftFiles.removeAt(0);
           caption = '';
           if (input.text == text) input.clear();
+          if (mounted) {
+            setState(() {});
+            await WidgetsBinding.instance.endOfFrame;
+          }
           await sent.release();
         }
       } finally {
@@ -1416,12 +1420,19 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   },
                   onLongPressEnd: (_) => heldVideo.value = false,
                   onLongPressCancel: () => heldVideo.value = false,
-                  child: IconButton(
-                    tooltip: 'Видеокружок · удерживайте для записи',
-                    onPressed: working
-                        ? null
-                        : () => perform(() => attachFile('note')),
-                    icon: const Icon(Icons.videocam_outlined),
+                  child: Tooltip(
+                    message: 'Видеокружок · удерживайте для записи',
+                    triggerMode: TooltipTriggerMode.manual,
+                    excludeFromSemantics: true,
+                    child: IconButton(
+                      onPressed: working
+                          ? null
+                          : () => perform(() => attachFile('note')),
+                      icon: const Icon(
+                        Icons.videocam_outlined,
+                        semanticLabel: 'Видеокружок · удерживайте для записи',
+                      ),
+                    ),
                   ),
                 );
                 final sendButton = IconButton.filled(

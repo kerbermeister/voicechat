@@ -117,6 +117,7 @@ class CallProbe implements VoiceCall {
       ),
     );
     _events = media!.createListener();
+    _events!.on<lk.LocalTrackPublishedEvent>((_) => changed?.call());
     _events!.on<lk.ParticipantConnectedEvent>((_) => changed?.call());
     _events!.on<lk.ParticipantDisconnectedEvent>((_) => changed?.call());
     _events!.on<lk.ParticipantConnectionQualityUpdatedEvent>(

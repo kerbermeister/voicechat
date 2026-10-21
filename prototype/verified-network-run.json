@@ -1,0 +1,32 @@
+{
+  "result": "PASS",
+  "timestamp": 1792622281,
+  "measurements": [
+    {
+      "result": "PASS",
+      "transport": "direct",
+      "emulator": "Docker media container egress netem",
+      "egress_limit_kbit": 384,
+      "baseline_bitrate": 679113,
+      "constrained_bitrate": 83934,
+      "baseline_fps": 19.922269943547754,
+      "constrained_fps": 7.6559865654018475,
+      "resized": true,
+      "packet_loss_percent": 8,
+      "http_outage_seconds": 4
+    },
+    {
+      "result": "PASS",
+      "transport": "group",
+      "emulator": "Docker media container egress netem",
+      "egress_limit_kbit": 384,
+      "baseline_bitrate": 337067,
+      "constrained_bitrate": 73628,
+      "baseline_fps": 19.584867204634193,
+      "constrained_fps": 3.9960173027422305,
+      "resized": true,
+      "packet_loss_percent": 8,
+      "http_outage_seconds": 4
+    }
+  ]
+}

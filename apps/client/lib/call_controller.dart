@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:matrix/matrix.dart';
 import 'call_probe.dart';
@@ -50,8 +51,26 @@ class CallController extends ChangeNotifier
   bool _closed = false;
   String? _resumeCamera;
   Future<void> _cameraLifecycle = Future.value();
+  static const _nativeCalls = MethodChannel('voicechat/calls');
+  Future<void>? _backgroundUpdate;
+  bool _backgroundActive = false;
+  bool get _android =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   CallController(this.client, this.tokenUrl, this.mediaUrl, this.report) {
     WidgetsBinding.instance.addObserver(this);
+    if (_android) {
+      _nativeCalls.setMethodCallHandler((call) async {
+        if (call.method == 'end') {
+          await end();
+        } else if (call.method == 'backgroundUnavailable') {
+          report(
+            'Фоновый режим звонка недоступен. Оставьте приложение открытым.',
+          );
+        } else {
+          throw MissingPluginException();
+        }
+      });
+    }
     voip = VoIP(client, this);
     _events = client.onTimelineEvent.stream.listen(receive);
     _expiry = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -90,6 +109,39 @@ class CallController extends ChangeNotifier
   }
 
   void _refresh() {
+    if (_android) {
+      final call = active;
+      final microphone = switch (call) {
+        DirectCall() =>
+          call.call.localUserMediaStream?.stream?.getAudioTracks().isNotEmpty ??
+              false,
+        CallProbe() =>
+          call.media?.localParticipant?.audioTrackPublications.any(
+                (publication) => publication.track != null,
+              ) ??
+              false,
+        _ => false,
+      };
+      final keepAlive =
+          !_closed &&
+          call != null &&
+          !call.isClosed &&
+          (_backgroundActive || microphone);
+      if (keepAlive != _backgroundActive) {
+        _backgroundActive = keepAlive;
+        _backgroundUpdate = (_backgroundUpdate ?? Future<void>.value()).then((
+          _,
+        ) async {
+          try {
+            await _nativeCalls.invokeMethod<void>('active', keepAlive);
+          } catch (_) {
+            report(
+              'Фоновый режим звонка недоступен. Оставьте приложение открытым.',
+            );
+          }
+        });
+      }
+    }
     if (!_closed) notifyListeners();
   }
 
@@ -349,6 +401,9 @@ class CallController extends ChangeNotifier
     for (final call in _directCalls.values) {
       await call.close();
     }
+    _refresh();
+    if (_backgroundUpdate != null) await _backgroundUpdate;
+    if (_android) _nativeCalls.setMethodCallHandler(null);
     dispose();
   }
 
@@ -356,8 +411,13 @@ class CallController extends ChangeNotifier
     if (active != null && !active!.isClosed) {
       throw UserActionError('Сначала завершите текущий звонок.');
     }
-    await call.answer();
     active = call;
+    try {
+      await call.answer();
+    } catch (_) {
+      await call.close();
+      rethrow;
+    }
     directInvitations.remove(call);
     _refresh();
   }

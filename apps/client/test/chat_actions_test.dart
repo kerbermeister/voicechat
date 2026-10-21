@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:matrix/matrix.dart';
@@ -87,6 +88,39 @@ class VideoSession implements CallSession {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class BackgroundStream implements WrappedMediaStream {
+  @override
+  final stream = BackgroundMediaStream();
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class BackgroundMediaStream implements rtc.MediaStream {
+  @override
+  List<rtc.MediaStreamTrack> getAudioTracks() => [BackgroundAudioTrack()];
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class BackgroundAudioTrack implements rtc.MediaStreamTrack {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class BackgroundRoom extends OutboxRoom {
+  BackgroundRoom(super.client);
+  @override
+  bool get isDirectChat => true;
+}
+
+class BackgroundSession extends VideoSession {
+  @override
+  final Room room;
+  BackgroundSession(this.room);
+  @override
+  WrappedMediaStream? localUserMediaStream;
 }
 
 class IndependentQueueClient extends Client {
@@ -380,6 +414,41 @@ void main() {
     expect(turnClient.requests, 2);
     await calls.close();
   });
+  test(
+    'Android background service starts only after microphone capture and stops on close',
+    () async {
+      const channel = MethodChannel('voicechat/calls');
+      final updates = <bool>[];
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+            expect(call.method, 'active');
+            updates.add(call.arguments as bool);
+            return null;
+          });
+      final calls = CallController(
+        client,
+        'http://localhost:8090',
+        'ws://localhost:7880',
+        (_) {},
+      );
+      final session = BackgroundSession(BackgroundRoom(client));
+      await calls.registerListeners(session);
+      await calls.handleNewCall(session);
+      await Future<void>.delayed(Duration.zero);
+      expect(updates, isEmpty);
+      session.localUserMediaStream = BackgroundStream();
+      session.onCallStateChanged.add(CallState.kConnected);
+      await Future<void>.delayed(Duration.zero);
+      expect(updates, [true]);
+      session.onCallStateChanged.add(CallState.kConnected);
+      await Future<void>.delayed(Duration.zero);
+      expect(updates, [true]);
+      await calls.close();
+      expect(updates, [true, false]);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null);
+    },
+  );
   test(
     'Registering a video offer does not request the camera before acceptance',
     () async {

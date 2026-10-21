@@ -45,6 +45,7 @@ class DirectCall implements VoiceCall {
     );
     _subscriptions.add(
       call.onStreamAdd.stream.listen((stream) {
+        changed();
         if (stream.isLocal() && !video) return;
         unawaited(_render(stream));
       }),
@@ -88,7 +89,8 @@ class DirectCall implements VoiceCall {
         return;
       }
       renderer.srcObject = stream.stream;
-      renderer.muted = stream.isLocal();
+      // Native muting controls the microphone and rejects remote streams; web muting only silences preview playback.
+      if (kIsWeb) renderer.muted = stream.isLocal();
       _renderers.add(renderer);
       if (video) {
         if (stream.isLocal()) {

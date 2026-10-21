@@ -10,6 +10,7 @@ import 'package:voicechat_probe/matrix_probe.dart';
 import 'package:voicechat_probe/first_keys.dart';
 import 'package:voicechat_probe/conversation_list.dart';
 import 'package:voicechat_probe/chat_actions.dart';
+import 'package:voicechat_probe/chat_pane.dart' show AttachmentView;
 import 'package:voicechat_probe/file_view.dart';
 import 'package:voicechat_probe/lab_messaging.dart' show testImage, testVoice;
 
@@ -57,7 +58,11 @@ void main() {
     while (actions.pending.isNotEmpty && DateTime.now().isBefore(end)) {
       await Future<void>.delayed(const Duration(milliseconds: 200));
     }
-    expect(actions.pending, isEmpty);
+    expect(
+      actions.pending.isEmpty,
+      true,
+      reason: 'Initial encrypted messages did not send',
+    );
     await actions.close();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
@@ -138,10 +143,48 @@ void main() {
     await tester.tap(find.text('😀').first);
     await tester.pump(const Duration(milliseconds: 400));
     final draft = tester.widget<TextField>(field).controller!.text;
+    final controller = tester.widget<TextField>(field).controller;
+    final audio = find.byWidgetPredicate(
+      (w) =>
+          w is AttachmentView && w.event.messageType == mx.MessageTypes.Audio,
+    );
+    await tester.ensureVisible(audio);
+    final audioState = tester.state(audio);
+    await tester.tap(find.byTooltip('Действия с сообщением').first);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.text('Реакция…'));
+    await waitFor(find.text('👍'));
+    await tester.tap(find.text('👍').first);
+    final reaction = find.widgetWithText(ActionChip, '👍 1');
+    await waitFor(reaction);
+    expect(identical(tester.state(audio), audioState), true);
+    expect(
+      identical(tester.widget<TextField>(field).controller, controller),
+      true,
+    );
+    expect(controller!.text, draft);
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        FakeAccessibilityFeatures(disableAnimations: true);
+    await tester.ensureVisible(reaction);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(reaction);
+    for (var i = 0; i < 300 && reaction.evaluate().isNotEmpty; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pump();
+    }
+    expect(reaction, findsNothing);
+    expect(identical(tester.state(audio), audioState), true);
+    expect(controller.text, draft);
+    tester.platformDispatcher.clearAccessibilityFeaturesTestValue();
+    expect(tester.takeException(), isNull);
+    await screenshot('before-held-video-note');
     final gesture = await tester.startGesture(
       tester.getCenter(find.byTooltip('Видеокружок · удерживайте для записи')),
     );
     await tester.pump(const Duration(milliseconds: 700));
+    await screenshot('starting-held-video-note');
     await waitFor(find.text('Прикрепить'));
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(seconds: 2)),
