@@ -1,0 +1,106 @@
+{
+  "date": "2026-10-21",
+  "run": "1792582584",
+  "events": [
+    {
+      "role": "android",
+      "stage": "android_ready",
+      "timestamp": 1792582734
+    },
+    {
+      "role": "carol",
+      "stage": "carol_ready",
+      "timestamp": 1792582748
+    },
+    {
+      "role": "web",
+      "stage": "room_created",
+      "timestamp": 1792582749
+    },
+    {
+      "role": "android",
+      "stage": "android_message_decrypted",
+      "timestamp": 1792582751
+    },
+    {
+      "role": "web",
+      "stage": "cross_platform_text_passed",
+      "timestamp": 1792582751
+    },
+    {
+      "role": "web",
+      "stage": "close_for_recovery",
+      "timestamp": 1792582751
+    },
+    {
+      "role": "android",
+      "stage": "android_offline",
+      "timestamp": 1792582751
+    },
+    {
+      "role": "carol",
+      "stage": "carol_offline",
+      "timestamp": 1792582751
+    },
+    {
+      "role": "web",
+      "stage": "history_recovered_without_old_devices",
+      "timestamp": 1792582753
+    },
+    {
+      "role": "web",
+      "stage": "resume_calls",
+      "timestamp": 1792582753
+    },
+    {
+      "role": "android",
+      "stage": "android_media_decrypted",
+      "timestamp": 1792582757
+    },
+    {
+      "role": "carol",
+      "stage": "carol_media_decrypted",
+      "timestamp": 1792582759
+    },
+    {
+      "role": "web",
+      "stage": "three_participant_media_passed",
+      "timestamp": 1792582759
+    },
+    {
+      "role": "web",
+      "stage": "revocation_verified",
+      "timestamp": 1792582763
+    },
+    {
+      "role": "web",
+      "stage": "end_calls",
+      "timestamp": 1792582763
+    },
+    {
+      "role": "carol",
+      "stage": "carol_revocation_closed",
+      "timestamp": 1792582763
+    },
+    {
+      "role": "carol",
+      "stage": "carol_done",
+      "timestamp": 1792582763
+    },
+    {
+      "role": "android",
+      "stage": "android_revocation_closed",
+      "timestamp": 1792582763
+    },
+    {
+      "role": "android",
+      "stage": "android_done",
+      "timestamp": 1792582763
+    },
+    {
+      "role": "web",
+      "stage": "web_done",
+      "timestamp": 1792582763
+    }
+  ]
+}

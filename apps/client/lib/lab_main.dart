@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart' as mx;
+import 'package:vodozemac/vodozemac.dart' as vod;
 import 'matrix_probe.dart';
 import 'call_probe.dart';
 import 'theme.dart';
@@ -89,7 +90,7 @@ Future<Map<String, dynamic>> barrier(String stage) async {
 }
 
 Future<MatrixProbe> login(int index, String profile) async {
-  final probe = await MatrixProbe.open('$runId-$profile');
+  final probe = await MatrixProbe.open('$runId-$profile', laboratory: true);
   await probe.login(matrixUrl, users[index], passwords[index]);
   return probe;
 }
@@ -125,7 +126,7 @@ Future<void> android() async {
   var bob = await login(1, 'bob-android');
   CallProbe? call;
   try {
-    await bob.initializeRecovery();
+    await bob.initializeRecovery(passwords[1]);
     await report('android_ready');
     final roomId = (await barrier('room_created'))['room_id'] as String;
     await bob.client.joinRoom(roomId);
@@ -148,6 +149,9 @@ Future<void> android() async {
     );
     await report('android_media_decrypted');
     await barrier('end_calls');
+    await until(() async => call!.isClosed, 'Android call survived revocation');
+    await text(room, 'after-revocation-$runId');
+    await report('android_revocation_closed');
     await report('android_done');
   } finally {
     await call?.close();
@@ -159,7 +163,7 @@ Future<void> carol() async {
   var client = await login(2, 'carol-web');
   CallProbe? call;
   try {
-    await client.initializeRecovery();
+    await client.initializeRecovery(passwords[2]);
     await report('carol_ready');
     final roomId = (await barrier('room_created'))['room_id'] as String;
     await client.client.joinRoom(roomId);
@@ -177,6 +181,9 @@ Future<void> carol() async {
     );
     await report('carol_media_decrypted');
     await barrier('end_calls');
+    await until(() async => call!.isClosed, 'Carol call survived revocation');
+    await text(await client.room(roomId), 'after-revocation-$runId');
+    await report('carol_revocation_closed');
     await report('carol_done');
   } finally {
     await call?.close();
@@ -188,7 +195,7 @@ Future<void> web() async {
   var alice = await login(0, 'alice-web');
   CallProbe? aliceCall;
   try {
-    final recovery = await alice.initializeRecovery();
+    final recovery = await alice.initializeRecovery(passwords[0]);
     await barrier('carol_ready');
     await barrier('android_ready');
     final roomId = await alice.createRoom([userId(1), userId(2)]);
@@ -218,6 +225,13 @@ Future<void> web() async {
     await barrier('android_offline');
     await barrier('carol_offline');
     await alice.backup();
+    final oldDevice = alice.client.deviceID!;
+    final oldToken = alice.client.accessToken!;
+    final oldSession =
+        (await alice.client.encryption!.keyManager.loadInboundGroupSession(
+          roomId,
+          wire.content['session_id'] as String,
+        ))!.inboundGroupSession!.exportAtFirstKnownIndex();
     await alice.close();
     alice = await login(0, 'alice-fresh-device');
     room = await alice.room(roomId);
@@ -252,6 +266,61 @@ Future<void> web() async {
     await barrier('android_media_decrypted');
     await barrier('carol_media_decrypted');
     await report('three_participant_media_passed');
+    var wrongPasswordRejected = false;
+    try {
+      await alice
+          .revokeDevice(oldDevice, 'incorrect-test-password')
+          .timeout(const Duration(seconds: 15));
+    } catch (error) {
+      if (error is TimeoutException) rethrow;
+      wrongPasswordRejected = true;
+    }
+    require(wrongPasswordRejected, 'Wrong password authorized revocation');
+    final stillAuthorized = await http.get(
+      Uri.parse('$matrixUrl/_matrix/client/v3/account/whoami'),
+      headers: {'Authorization': 'Bearer $oldToken'},
+    );
+    require(
+      stillAuthorized.statusCode == 200,
+      'Failed revocation deleted device',
+    );
+    await alice.revokeDevice(oldDevice, passwords[0]);
+    final denied = await http.get(
+      Uri.parse('$matrixUrl/_matrix/client/v3/account/whoami'),
+      headers: {'Authorization': 'Bearer $oldToken'},
+    );
+    require(denied.statusCode == 401, 'Revoked token still works');
+    final admission = await http.post(
+      Uri.parse('$tokenUrl/token'),
+      headers: {
+        'Authorization': 'Bearer $oldToken',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'room_id': roomId, 'session': runId}),
+    );
+    require(
+      admission.statusCode == 401,
+      'Revoked token obtained media admission',
+    );
+    await until(
+      () async => aliceCall!.isClosed,
+      'Alice call survived revocation',
+    );
+    final nextId = await MatrixProbe.sendText(room, 'after-revocation-$runId');
+    final next = await alice.client.getOneRoomEvent(roomId, nextId);
+    require(
+      next.content['session_id'] != wire.content['session_id'],
+      'Megolm session reused',
+    );
+    var refused = false;
+    final retained = vod.InboundGroupSession.import(oldSession);
+    try {
+      retained.decrypt(next.content['ciphertext'] as String);
+    } catch (_) {
+      refused = true;
+    }
+    require(refused, 'Retained old key decrypted post-revocation message');
+    await report('revocation_verified');
     await report('end_calls');
     await barrier('android_done');
     await barrier('carol_done');

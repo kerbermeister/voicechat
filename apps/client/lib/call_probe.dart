@@ -5,9 +5,11 @@ import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:matrix/matrix.dart' as mx;
+import 'matrix_probe.dart';
+import 'transport.dart';
 
 /// Exercises sender-specific E2EE keys delivered through encrypted Matrix
-/// to-device events. No production admission/revocation protocol is claimed.
+/// to-device events. Authorization changes end the call; no seamless rekey yet.
 class CallProbe {
   final mx.Room chat;
   final String session;
@@ -24,6 +26,8 @@ class CallProbe {
   );
   final Set<String> decryptedAudioFrom = {};
   final Set<String> failedAudioFrom = {};
+  Set<String>? _authorization;
+  bool get isClosed => _closed;
   bool _sharing = false;
   bool _closed = false;
 
@@ -40,6 +44,8 @@ class CallProbe {
     if (!chat.encrypted) {
       throw StateError('Call requires an encrypted Matrix room');
     }
+    secureEndpoint(tokenUrl);
+    secureEndpoint(livekitUrl, websocket: true);
     _keys = await lk.BaseKeyProvider.create(
       sharedKey: false,
       discardFrameWhenCryptorNotReady: true,
@@ -89,14 +95,20 @@ class CallProbe {
       if (media!.e2eeManager == null) {
         throw StateError('E2EE unavailable; refusing microphone');
       }
-      await shareKey();
+      await shareKey().timeout(const Duration(seconds: 5));
       _resend = Timer.periodic(const Duration(seconds: 3), (_) {
         unawaited(
-          shareKey().catchError((Object _) {
-            status('Обмен ключами временно недоступен');
+          shareKey().timeout(const Duration(seconds: 5)).catchError((
+            Object _,
+          ) async {
+            await close();
+            status(
+              'Звонок завершён: доступ изменён или не удалось его проверить',
+            );
           }),
         );
       });
+      if (_closed) throw StateError('Call closed during authorization');
       if (microphone) await media!.localParticipant!.setMicrophoneEnabled(true);
       status('E2EE включено · ждём подтверждения медиапотоков');
     } catch (_) {
@@ -109,21 +121,26 @@ class CallProbe {
     if (_sharing || _closed) return;
     _sharing = true;
     try {
-      final members = await chat.requestParticipants([mx.Membership.join]);
-      final users = members.map((m) => m.id).toSet();
-      await chat.client.updateUserDeviceKeys(additionalUsers: users);
-      final devices = (await chat.getUserDeviceKeys())
-          .where(
+      final authorized = await authorizedDevices(chat);
+      if (_closed) return;
+      final current = authorized
+          .map(
             (d) =>
-                users.contains(d.userId) &&
-                (media?.remoteParticipants.containsKey(
-                      '${d.userId}/${d.deviceId}',
-                    ) ??
-                    false) &&
-                d.encryptToDevice &&
-                !d.blocked &&
-                !(d.userId == chat.client.userID &&
-                    d.deviceId == chat.client.deviceID),
+                '${d.userId}/${d.deviceId}/${d.curve25519Key}/${d.ed25519Key}',
+          )
+          .toSet();
+      if (_authorization != null &&
+          (_authorization!.length != current.length ||
+              !_authorization!.containsAll(current))) {
+        // shortcut: end the call; replace with coordinated epochs before seamless rekey.
+        throw StateError('Call authorization changed');
+      }
+      _authorization = current;
+      final devices = authorized
+          .where(
+            (d) => media!.remoteParticipants.containsKey(
+              '${d.userId}/${d.deviceId}',
+            ),
           )
           .toList();
       await chat.client
@@ -173,8 +190,8 @@ class CallProbe {
         data['identity'] != '${device.userId}/${device.deviceId}') {
       return;
     }
-    final members = await chat.requestParticipants([mx.Membership.join]);
-    if (!members.any((m) => m.id == event.sender)) return;
+    final members = await chat.client.getJoinedMembersByRoom(chat.id);
+    if (_closed || !(members?.containsKey(event.sender) ?? false)) return;
     final key = base64Decode(data['key'] as String);
     if (key.length != 32) return;
     await _keys!.setRawKey(key, participantId: data['identity'] as String);
@@ -184,6 +201,7 @@ class CallProbe {
       media?.localParticipant?.setMicrophoneEnabled(!muted);
 
   Future<void> close() async {
+    if (_closed) return;
     _closed = true;
     _resend?.cancel();
     await _messages?.cancel();

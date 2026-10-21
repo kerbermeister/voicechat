@@ -3,24 +3,23 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
 import 'package:matrix/encryption.dart';
-import 'package:sqflite/sqflite.dart' as sql;
+import 'local_store.dart';
+import 'transport.dart';
 
-/// Disposable-account laboratory. Persistent crypto storage is NOT hardened yet.
+/// Matrix session backed by the platform store; web is laboratory-only.
 class MatrixProbe {
   static Future<void>? _cryptoInit;
   final Client client;
-  StreamSubscription<UiaRequest>? _uia;
-  MatrixProbe._(this.client);
+  MatrixProbe(this.client);
 
-  static Future<MatrixProbe> open(String profile) async {
+  static Future<MatrixProbe> open(
+    String profile, {
+    bool laboratory = false,
+  }) async {
     _cryptoInit ??= vod.init();
     await _cryptoInit;
     final name = 'voicechat_probe_${Uri.encodeComponent(profile)}';
-    final db = await MatrixSdkDatabase.init(
-      name,
-      database: kIsWeb ? null : await sql.openDatabase('$name.db'),
-      sqfliteFactory: kIsWeb ? null : sql.databaseFactory,
-    );
+    final db = await openStore(name, laboratory: laboratory);
     final client = Client(
       name,
       database: db,
@@ -28,29 +27,15 @@ class MatrixProbe {
       logLevel: Level.error,
     );
     await client.init();
-    return MatrixProbe._(client);
+    return MatrixProbe(client);
   }
 
   Future<void> login(String server, String username, String password) async {
-    _uia = client.onUiaRequest.stream.listen((request) {
-      if (request.nextStages.contains(AuthenticationTypes.password)) {
-        unawaited(
-          request.completeStage(
-            AuthenticationPassword(
-              session: request.session,
-              password: password,
-              identifier: AuthenticationUserIdentifier(
-                user: client.userID ?? username,
-              ),
-            ),
-          ),
-        );
-      } else {
-        request.cancel(Exception('Unsupported authentication stage'));
-      }
-    });
     if (!client.isLogged()) {
-      await client.checkHomeserver(Uri.parse(server));
+      await client.checkHomeserver(
+        secureEndpoint(server),
+        checkWellKnown: false,
+      );
       await client.login(
         LoginType.mLoginPassword,
         identifier: AuthenticationUserIdentifier(user: username),
@@ -62,14 +47,46 @@ class MatrixProbe {
     if (!client.encryptionEnabled) throw StateError('E2EE unavailable');
   }
 
-  Future<String> initializeRecovery() async {
+  Future<T> authenticate<T>(
+    String password,
+    Future<T> Function() action,
+  ) async {
+    final attempted = <UiaRequest>{};
+    final subscription = client.onUiaRequest.stream.listen((request) {
+      if (request.state != UiaRequestState.waitForUser) return;
+      if (!attempted.add(request)) {
+        request.cancel(Exception('Authentication failed'));
+        return;
+      }
+      if (request.nextStages.contains(AuthenticationTypes.password)) {
+        unawaited(
+          request.completeStage(
+            AuthenticationPassword(
+              session: request.session,
+              password: password,
+              identifier: AuthenticationUserIdentifier(user: client.userID!),
+            ),
+          ),
+        );
+      } else {
+        request.cancel(Exception('Unsupported authentication stage'));
+      }
+    });
+    try {
+      return await action();
+    } finally {
+      await subscription.cancel();
+    }
+  }
+
+  Future<String> initializeRecovery(String password) async {
     final state = await client.getCryptoIdentityState();
     if (state.initialized) {
       throw StateError(
         'Identity already exists. Restore it; do not overwrite.',
       );
     }
-    return client.initCryptoIdentity();
+    return authenticate(password, client.initCryptoIdentity);
   }
 
   Future<void> restore(String recoveryKey) async {
@@ -110,16 +127,87 @@ class MatrixProbe {
 
   static Future<String> sendText(Room room, String text) async {
     if (!room.encrypted) throw StateError('E2EE required');
+    await authorizedDevices(room).timeout(const Duration(seconds: 5));
+    // shortcut: rotate every send; optimize when SDK handles device revocation.
+    await room.client.encryption!.keyManager.clearOrUseOutboundGroupSession(
+      room.id,
+      wipe: true,
+    );
     final id = await room.sendTextEvent(text, parseCommands: false);
     if (id == null) throw StateError('Message was not sent');
     return id;
   }
 
+  Future<void> revokeDevice(String deviceId, String password) async {
+    if (deviceId == client.deviceID) {
+      throw StateError('Use logout for this device');
+    }
+    await authenticate(
+      password,
+      () => client.uiaRequestBackground(
+        (auth) => client.deleteDevice(deviceId, auth: auth),
+      ),
+    );
+    if ((await client.getDevices())!.any((d) => d.deviceId == deviceId)) {
+      throw StateError('Device revocation was not confirmed');
+    }
+  }
+
   Future<void> backup() =>
       client.encryption!.keyManager.uploadInboundGroupSessions();
 
+  Future<void> logout() async {
+    await backup();
+    // Client.logout clears local history even when the server request fails.
+    await MatrixApi(
+      homeserver: client.homeserver,
+      accessToken: client.accessToken,
+      httpClient: client.httpClient,
+    ).logout();
+    await client.clear(reason: SessionClearReason.logout);
+    await close();
+    await eraseStore(client.clientName);
+  }
+
   Future<void> close() async {
-    await _uia?.cancel();
     await client.dispose();
   }
+}
+
+/// Refresh authorization from the server, never infer revocation from a cache.
+Future<List<DeviceKeys>> authorizedDevices(Room room) async {
+  await room.client.getTokenOwner();
+  await room.requestParticipants(
+    const [
+      Membership.join,
+      Membership.invite,
+      Membership.leave,
+      Membership.ban,
+      Membership.knock,
+    ],
+    true,
+    true,
+    true,
+  );
+  final members = await room.client.getJoinedMembersByRoom(room.id);
+  if (members == null || !members.containsKey(room.client.userID)) {
+    throw StateError('Room access revoked');
+  }
+  for (final user in members.keys) {
+    room.client.userDeviceKeys[user]?.outdated = true;
+  }
+  await room.client.updateUserDeviceKeys(additionalUsers: members.keys.toSet());
+  if (members.keys.any(
+    (user) => room.client.userDeviceKeys[user]?.outdated != false,
+  )) {
+    throw StateError('Device authorization refresh failed');
+  }
+  return members.keys
+      .expand(
+        (user) =>
+            room.client.userDeviceKeys[user]?.deviceKeys.values ??
+            <DeviceKeys>[],
+      )
+      .where((device) => device.encryptToDevice && !device.blocked)
+      .toList();
 }

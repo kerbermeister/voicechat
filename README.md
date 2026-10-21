@@ -4,6 +4,7 @@
 
 Основной стек согласован: Flutter, Matrix/Synapse, PostgreSQL, WebRTC и LiveKit с E2EE. Добавлен локальный Flutter-прототип для проверки E2EE; это ещё не готовый MVP. Развёртывание планируется на одном VPS через Docker Compose и GitHub Actions.
 
+- [Итерация 1: защита локальных ключей и отзыв устройств](docs/iterations/01-local-keys-and-revocation.md) — Android SQLCipher/Keystore, отзыв сессий и остановка звонков при изменении доступа. Обычный веб-вход временно отключён до защищённого vault.
 - [Требования v0.3](docs/requirements.md)
 - [Выбранные технологии](docs/technology-proposal.md)
 - [Основной визуальный референс: Lavender Soft](docs/design/README.md) — направление стиля для дальнейшего дизайна, не буквальная спецификация экранов.

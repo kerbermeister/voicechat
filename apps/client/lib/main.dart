@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'call_probe.dart';
@@ -110,6 +111,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       await next.close();
       rethrow;
     }
+    password.clear();
     probe = next;
     sync = next.client.onSync.stream.listen((_) {
       if (mounted) setState(() {});
@@ -130,7 +132,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> setupRecovery() async {
-    final key = await probe!.initializeRecovery();
+    final secret = await askPassword();
+    if (secret == null) return;
+    final key = await probe!.initializeRecovery(secret);
     if (!mounted) return;
     await showDialog<void>(
       context: context,
@@ -182,7 +186,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> startCall() async {
-    if (call != null || selected == null) return;
+    if ((call != null && !call!.isClosed) || selected == null) return;
     final next = CallProbe(
       chat: selected!,
       session: session.text.trim(),
@@ -192,6 +196,124 @@ class _ProbeScreenState extends State<ProbeScreen> {
     );
     await next.connect();
     setState(() => call = next);
+  }
+
+  Future<String?> askPassword() async {
+    final input = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Подтвердите паролем аккаунта'),
+        content: TextField(
+          controller: input,
+          obscureText: true,
+          enableSuggestions: false,
+          autocorrect: false,
+          decoration: const InputDecoration(labelText: 'Пароль'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, input.text),
+            child: const Text('Подтвердить'),
+          ),
+        ],
+      ),
+    );
+    input.clear();
+    input.dispose();
+    return value;
+  }
+
+  Future<void> devices() async {
+    final items = await probe!.client.getDevices();
+    if (!mounted) return;
+    final device = await showDialog<mx.Device>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Устройства аккаунта'),
+        content: SizedBox(
+          width: 420,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const Text(
+                'Отзыв завершает сеанс. Уже полученные сообщения и скопированные ключи удалить удалённо нельзя.',
+              ),
+              ...?items?.map(
+                (device) => ListTile(
+                  title: Text(device.displayName ?? device.deviceId),
+                  subtitle: Text(
+                    device.deviceId == probe!.client.deviceID
+                        ? 'Это устройство'
+                        : device.deviceId,
+                  ),
+                  trailing: device.deviceId == probe!.client.deviceID
+                      ? null
+                      : IconButton(
+                          tooltip: 'Отозвать доступ',
+                          icon: const Icon(Icons.no_accounts_outlined),
+                          onPressed: () => Navigator.pop(context, device),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
+    if (device == null) return;
+    final secret = await askPassword();
+    if (secret == null) return;
+    await call?.close();
+    await probe!.revokeDevice(device.deviceId, secret);
+    report(
+      'Доступ устройства отозван. Старую скопированную историю это не удаляет.',
+    );
+  }
+
+  Future<void> logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Выйти и удалить локальные ключи?'),
+        content: const Text(
+          'Для возвращения истории потребуется ключ восстановления или другое устройство. Убедитесь, что сохранили ключ.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Выйти'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await call?.close();
+    await probe!.logout();
+    await sync?.cancel();
+    timeline?.cancelSubscriptions();
+    if (!mounted) return;
+    setState(() {
+      probe = null;
+      selected = null;
+      timeline = null;
+      call = null;
+    });
+    report('Вы вышли из аккаунта');
   }
 
   @override
@@ -234,33 +356,42 @@ class _ProbeScreenState extends State<ProbeScreen> {
     icon: Icon(icon, size: 18),
     label: Text(label),
   );
-  Widget connection() => ListView(
-    padding: const EdgeInsets.all(24),
-    children: [
-      Text(
-        'Хороший день для разговора',
-        style: Theme.of(context).textTheme.headlineSmall,
-      ),
-      const SizedBox(height: 8),
-      const Text(
-        'Проверяем защищённую связь. Этот прототип ещё не предназначен для личных переписок.',
-      ),
-      const SizedBox(height: 24),
-      field(username, 'Имя пользователя'),
-      field(password, 'Пароль тестового аккаунта', secret: true),
-      field(profile, 'Профиль устройства'),
-      ExpansionTile(
-        title: const Text('Подключение к стенду'),
-        children: [
-          field(server, 'Matrix URL'),
-          field(tokenServer, 'Token API URL'),
-          field(mediaServer, 'LiveKit URL'),
-        ],
-      ),
-      const SizedBox(height: 20),
-      action('Войти', login, icon: Icons.login_rounded),
-    ],
-  );
+  Widget connection() => kIsWeb
+      ? const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'Защищённое браузерное хранилище ещё не готово. Вход в этой версии отключён; используйте Android.',
+            ),
+          ),
+        )
+      : ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            Text(
+              'Хороший день для разговора',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Проверяем защищённую связь. Этот прототип ещё не предназначен для личных переписок.',
+            ),
+            const SizedBox(height: 24),
+            field(username, 'Имя пользователя'),
+            field(password, 'Пароль тестового аккаунта', secret: true),
+            field(profile, 'Профиль устройства'),
+            ExpansionTile(
+              title: const Text('Подключение к стенду'),
+              children: [
+                field(server, 'Matrix URL'),
+                field(tokenServer, 'Token API URL'),
+                field(mediaServer, 'LiveKit URL'),
+              ],
+            ),
+            const SizedBox(height: 20),
+            action('Войти', login, icon: Icons.login_rounded),
+          ],
+        );
   Widget rooms() => ListView(
     padding: const EdgeInsets.all(20),
     children: [
@@ -300,6 +431,14 @@ class _ProbeScreenState extends State<ProbeScreen> {
         await select(await probe!.room(id));
       }, icon: Icons.add_rounded),
       const SizedBox(height: 24),
+      Wrap(
+        spacing: 8,
+        children: [
+          action('Устройства', devices, icon: Icons.devices),
+          action('Выйти', logout, icon: Icons.logout),
+        ],
+      ),
+      const SizedBox(height: 16),
       Text('Доступ к истории', style: Theme.of(context).textTheme.titleMedium),
       const SizedBox(height: 12),
       Wrap(
@@ -366,7 +505,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                   ),
                   IconButton(
                     tooltip: 'Закрыть чат',
-                    onPressed: call == null
+                    onPressed: call == null || call!.isClosed
                         ? () => setState(() {
                             selected = null;
                           })
@@ -390,7 +529,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                       ),
                     ),
                   ),
-                  call == null
+                  (call == null || call!.isClosed)
                       ? action(
                           'Позвонить',
                           startCall,
