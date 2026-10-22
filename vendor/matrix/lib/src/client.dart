@@ -3763,7 +3763,7 @@ class Client extends MatrixApi {
     bool onlyVerified = false,
   }) async {
     final encryption = this.encryption;
-    if (!encryptionEnabled || encryption == null) return;
+    if (!encryptionEnabled || encryption == null || deviceKeys.isEmpty) return;
     // Don't send this message to blocked devices, and if specified onlyVerified
     // then only send it to verified devices
     if (deviceKeys.isNotEmpty) {

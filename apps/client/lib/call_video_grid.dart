@@ -42,8 +42,24 @@ class CallVideoGrid extends StatelessWidget {
             group.decryptedVideoTracks.contains(publication?.sid);
         tiles.add((
           identity: participant.identity,
-          video: trusted && track is lk.VideoTrack
-              ? lk.VideoTrackRenderer(track, fit: lk.VideoViewFit.contain)
+          video: track is lk.VideoTrack
+              ? Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    // Adaptive stream needs a mounted view before it can deliver E2EE frames.
+                    lk.VideoTrackRenderer(track, fit: lk.VideoViewFit.contain),
+                    if (!trusted)
+                      const ColoredBox(
+                        color: Colors.black,
+                        child: Center(
+                          child: Icon(
+                            Icons.lock_outline,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ),
+                  ],
+                )
               : null,
         ));
       }

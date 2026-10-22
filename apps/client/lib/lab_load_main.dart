@@ -23,6 +23,7 @@ String user(int peer) => '@${accounts[peer]['username']}:voicechat.local';
 Future<void> frames(CallProbe call) async {
   await lab.until(
     () async {
+      lab.require(!call.isClosed, 'Call closed during decoder acceptance');
       final peers = call.media?.remoteParticipants.values.toList() ?? [];
       if (peers.length != 9) return false;
       for (final peer in peers) {
@@ -32,7 +33,9 @@ Future<void> frames(CallProbe call) async {
             !call.decryptedAudioFrom.contains(peer.identity)) {
           return false;
         }
-        final stats = await video.track!.receiver!.getStats();
+        final stats = await video.track!.receiver!.getStats().timeout(
+          const Duration(seconds: 5),
+        );
         if (!stats.any(
           (s) =>
               s.type == 'inbound-rtp' &&
@@ -60,6 +63,7 @@ Future<void> exercise() async {
     passphrase: 'disposable-load-vault-${lab.runId}-$index',
   );
   CallProbe? call;
+  var passed = false;
   try {
     await probe.login(
       lab.matrixUrl,
@@ -99,7 +103,9 @@ Future<void> exercise() async {
       tokenUrl: lab.tokenUrl,
       livekitUrl: lab.mediaUrl,
       video: true,
-      status: (_) {},
+      status: (message) {
+        debugPrint('LOAD PHASE: peer $index: $message');
+      },
       changed: () => revision.value++,
     )..videoQuality = VideoQuality.low;
     if (index == 10) {
@@ -162,11 +168,21 @@ Future<void> exercise() async {
     for (var peer = 0; peer < 11; peer++) {
       await lab.barrier('load_passed_$peer');
     }
+    passed = true;
   } finally {
-    await call?.close();
-    visible = null;
-    revision.value++;
-    await probe.close();
+    try {
+      await call?.close();
+    } catch (_) {
+      if (passed) rethrow;
+    } finally {
+      visible = null;
+      revision.value++;
+      try {
+        await probe.close();
+      } catch (_) {
+        if (passed) rethrow;
+      }
+    }
   }
   await lab.report('load_done_$index');
 }
@@ -202,6 +218,8 @@ void main() {
         lk.ConnectException(:final reason, :final statusCode) =>
           'livekit_connect_${reason.name}_$statusCode',
         lk.TimeoutException() => 'livekit_timeout',
+        TimeoutException(:final duration) =>
+          'application_timeout_${duration?.inSeconds}',
         lk.MediaConnectException() => 'livekit_media_connect',
         lk.LiveKitE2EEException() => 'livekit_e2ee',
         _ => error.runtimeType.toString(),

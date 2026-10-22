@@ -71,9 +71,11 @@ class CallProbe implements VoiceCall {
   final Set<String> decryptedAudioFrom = {};
   final Set<String> failedAudioFrom = {};
   Set<String>? _authorization;
+  Set<String> _keyRecipients = {};
+  DateTime? _keySharedAt;
   @override
   bool get isClosed => _closed;
-  bool _sharing = false;
+  Future<void>? _sharing;
   bool _closed = false;
   Future<void>? _closing;
   DateTime _authorizedAt = DateTime.now();
@@ -99,6 +101,9 @@ class CallProbe implements VoiceCall {
     secureEndpoint(tokenUrl);
     secureEndpoint(livekitUrl, websocket: true);
     try {
+      connection = 'Готовим защиту звонка';
+      status(connection);
+      changed?.call();
       _keys = await lk.BaseKeyProvider.create(
         sharedKey: false,
         discardFrameWhenCryptorNotReady: true,
@@ -182,6 +187,9 @@ class CallProbe implements VoiceCall {
           status('Ожидаем правильный ключ участника');
         }
       });
+      connection = 'Проверяем доступ к звонку';
+      status(connection);
+      changed?.call();
       await shareKey().timeout(const Duration(seconds: 8));
       final response = await http
           .post(
@@ -204,6 +212,9 @@ class CallProbe implements VoiceCall {
       if (data['identity'] != identity) {
         throw StateError('Wrong media identity');
       }
+      connection = 'Подключаем медиа';
+      status(connection);
+      changed?.call();
       await media!.connect(
         livekitUrl,
         data['token'] as String,
@@ -217,35 +228,43 @@ class CallProbe implements VoiceCall {
           _subscribe(participant.identity, publication);
         }
       }
-      await shareKey().timeout(const Duration(seconds: 5));
+      // A first join establishes up to nine Olm sessions before opening the microphone.
+      await shareKey().timeout(const Duration(seconds: 15));
       _resend = Timer.periodic(const Duration(seconds: 3), (_) {
         unawaited(
-          shareKey().timeout(const Duration(seconds: 5)).catchError((
-            Object error,
-          ) async {
-            if (!callAccessDenied(error) &&
-                DateTime.now().difference(_authorizedAt) <
-                    const Duration(seconds: 15)) {
-              connection = 'Восстанавливаем соединение';
-              changed?.call();
-              return;
-            }
-            await close();
-            status(
-              'Звонок завершён: доступ изменён или не удалось его проверить',
-            );
-          }),
+          shareKey(force: false).timeout(const Duration(seconds: 5)).catchError(
+            (Object error) async {
+              if (!callAccessDenied(error) &&
+                  DateTime.now().difference(_authorizedAt) <
+                      const Duration(seconds: 15)) {
+                connection = 'Восстанавливаем соединение';
+                changed?.call();
+                return;
+              }
+              await close();
+              status(
+                'Звонок завершён: доступ изменён или не удалось его проверить',
+              );
+            },
+          ),
         );
       });
       if (_closed) throw StateError('Call closed during authorization');
+      connection = 'Включаем медиа';
+      status(connection);
+      changed?.call();
       if (microphone) await media!.localParticipant!.setMicrophoneEnabled(true);
       if (video) await camera(true);
       connection = 'E2EE включено · ждём медиапотоки';
       status(connection);
       changed?.call();
-    } catch (_) {
-      await close();
-      rethrow;
+    } catch (error, stack) {
+      try {
+        await close();
+      } catch (_) {
+        status('Ресурсы звонка закрыты с ошибкой');
+      }
+      Error.throwWithStackTrace(error, stack);
     }
   }
 
@@ -269,50 +288,59 @@ class CallProbe implements VoiceCall {
     );
   }
 
-  Future<void> shareKey() async {
-    if (_sharing || _closed) return;
-    _sharing = true;
-    try {
-      final authorized = await authorizedDevices(chat);
-      if (_closed) return;
-      final current = authorized
-          .map(
-            (d) =>
-                '${d.userId}/${d.deviceId}/${d.curve25519Key}/${d.ed25519Key}',
-          )
-          .toSet();
-      if (_authorization != null &&
-          (_authorization!.length != current.length ||
-              !_authorization!.containsAll(current))) {
-        // shortcut: end the call; replace with coordinated epochs before seamless rekey.
-        throw CallAccessChanged();
-      }
-      _authorization = current;
-      _allowedParticipants = authorized
-          .map((d) => '${d.userId}/${d.deviceId}')
-          .toSet();
-      _authorizedAt = DateTime.now();
-      final devices = authorized
-          .where(
-            (d) => media!.remoteParticipants.containsKey(
-              '${d.userId}/${d.deviceId}',
-            ),
-          )
-          .toList();
-      await chat.client
-          .sendToDeviceEncrypted(devices, 'dev.voicechat.probe.media_key', {
-            'room_id': chat.id,
-            'session': session,
-            'identity': identity,
-            'sender_device': chat.client.deviceID,
-            'expires_at': DateTime.now()
-                .add(const Duration(seconds: 20))
-                .millisecondsSinceEpoch,
-            'key': base64Encode(_senderKey),
-          });
-    } finally {
-      _sharing = false;
+  Future<void> shareKey({bool force = true}) {
+    if (_closed) return Future.value();
+    return _sharing ??= _shareKey(force).whenComplete(() => _sharing = null);
+  }
+
+  Future<void> _shareKey(bool force) async {
+    final authorized = await authorizedDevices(chat);
+    if (_closed) return;
+    final current = authorized
+        .map(
+          (d) => '${d.userId}/${d.deviceId}/${d.curve25519Key}/${d.ed25519Key}',
+        )
+        .toSet();
+    if (_authorization != null &&
+        (_authorization!.length != current.length ||
+            !_authorization!.containsAll(current))) {
+      // shortcut: end the call; replace with coordinated epochs before seamless rekey.
+      throw CallAccessChanged();
     }
+    _authorization = current;
+    _allowedParticipants = authorized
+        .map((d) => '${d.userId}/${d.deviceId}')
+        .toSet();
+    _authorizedAt = DateTime.now();
+    final devices = authorized
+        .where(
+          (d) => media!.remoteParticipants.containsKey(
+            '${d.userId}/${d.deviceId}',
+          ),
+        )
+        .toList();
+    final recipients = devices.map((d) => '${d.userId}/${d.deviceId}').toSet();
+    // Keep access checks frequent without re-encrypting identical keys every poll.
+    if (!force &&
+        _keySharedAt != null &&
+        DateTime.now().difference(_keySharedAt!) < const Duration(seconds: 9) &&
+        recipients.length == _keyRecipients.length &&
+        recipients.containsAll(_keyRecipients)) {
+      return;
+    }
+    await chat.client
+        .sendToDeviceEncrypted(devices, 'dev.voicechat.probe.media_key', {
+          'room_id': chat.id,
+          'session': session,
+          'identity': identity,
+          'sender_device': chat.client.deviceID,
+          'expires_at': DateTime.now()
+              .add(const Duration(seconds: 20))
+              .millisecondsSinceEpoch,
+          'key': base64Encode(_senderKey),
+        });
+    _keyRecipients = recipients;
+    _keySharedAt = DateTime.now();
   }
 
   Future<void> _receive(mx.ToDeviceEvent event) async {
@@ -439,7 +467,10 @@ class CallProbe implements VoiceCall {
       ]);
     } finally {
       try {
-        await media?.disconnect();
+        // A never-connected SDK room cannot emit the disconnect acknowledgement it waits for.
+        if (media?.connectionState != lk.ConnectionState.disconnected) {
+          await media?.disconnect();
+        }
       } finally {
         try {
           await media?.dispose();

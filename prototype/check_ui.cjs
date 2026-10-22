@@ -44,7 +44,14 @@ const {chromium} = require('playwright');
     await button('Отправить').waitFor({timeout: 30000});
     const offlineDemoText='Сообщение подготовленному демо-получателю офлайн';
     await fill(field('Написать сообщение…'),offlineDemoText);
+    const offlineStarted = Date.now();
+    const sentOffline = page.waitForResponse(response => response.request().method()==='PUT' && /\/send\/m\.room\.encrypted\//.test(new URL(response.url()).pathname), {timeout:30000});
     await button('Отправить').click();
+    const offlineResponse = await sentOffline;
+    assert.equal(offlineResponse.status(),200,'Offline recipient must not prevent server delivery');
+    const offlineEvent = (await offlineResponse.json()).event_id;
+    assert.equal(typeof offlineEvent,'string');
+    console.log(`Offline demo message acknowledged by server in ${Date.now()-offlineStarted} ms`);
     await button('Действия с сообщением').first().waitFor({timeout:30000});
     async function matrix(route, body, token) {
       const response=await fetch('http://localhost:8008/_matrix/client/v3/'+route, {
@@ -63,7 +70,7 @@ const {chromium} = require('playwright');
         if(!state.some(e=>e.type==='m.room.member' && e.state_key==='@bob:voicechat.local' && ['invite','join'].includes(e.content.membership))) continue;
         const history=await matrix(prefix+'messages?dir=b&limit=10',undefined,session.access_token);
         assert(!JSON.stringify(history).includes(offlineDemoText),'Demo message plaintext leaked');
-        delivered=history.chunk.some(e=>e.type==='m.room.encrypted');
+        delivered=history.chunk.some(e=>e.event_id===offlineEvent && e.type==='m.room.encrypted');
       }
       assert(delivered,'Message to offline demo Bob must be on the server, not stuck in a local queue');
     } finally { await matrix('logout',{},session.access_token); }

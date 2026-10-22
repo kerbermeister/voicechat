@@ -14,11 +14,18 @@ const crypto = require('node:crypto');
   try {
     let capProved=false;
     for(let peer=0;peer<11;peer++) {
-      const context=await browser.newContext({permissions:['camera','microphone'],viewport:{width:1280,height:1600}});
+      const context=await browser.newContext({permissions:['camera','microphone'],viewport:{width:1024,height:1000}});
       const page=await context.newPage();
-      page.on('console',message=>{if(message.text().startsWith('LOAD STACK:')) console.log(message.text());});
+      let traceMatrix=peer===10;
+      page.on('request',request=>{
+        const url=new URL(request.url());
+        if(peer===10 && traceMatrix && url.port==='8008') console.log('Matrix request: '+url.pathname);
+      });
+      page.on('console',message=>{if(message.text().startsWith('LOAD STACK:') || message.text().startsWith('LOAD PHASE:')) console.log(message.text());});
       page.on('response',response=>{
-        if(new URL(response.url()).pathname==='/token') console.log(`Peer ${peer}: admission HTTP ${response.status()}`);
+        const url=new URL(response.url());
+        if(url.pathname==='/token') {console.log(`Peer ${peer}: admission HTTP ${response.status()}`);traceMatrix=true;}
+        if(peer===10 && traceMatrix && url.port==='8008') console.log(`Matrix response ${response.status()}: ${url.pathname}`);
       });
       page.on('websocket',()=>console.log(`Peer ${peer}: media signaling opened`));
       await page.goto(`http://localhost:7358/?peer=${peer}`);

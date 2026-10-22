@@ -1986,18 +1986,24 @@ class Room {
     }
 
     final matrixEvents = await client.getMembersByRoom(id);
-    final users =
-        matrixEvents
-            ?.map((e) => Event.fromMatrixEvent(e, this).asUser)
-            .toList() ??
-        [];
+    final events =
+        matrixEvents?.map((e) => Event.fromMatrixEvent(e, this)).toList() ?? [];
+    final users = events.map((event) => event.asUser).toList();
 
     if (cache) {
-      for (final user in users) {
-        setState(user); // at *least* cache this in-memory
+      for (final event in events) {
+        final previous = getState(EventTypes.RoomMember, event.stateKey ?? '');
+        if (event.eventId.isNotEmpty &&
+            previous is MatrixEvent &&
+            previous.eventId == event.eventId) {
+          continue;
+        }
+        setState(
+          event,
+        ); // retain the event id; repeated authorization must not rewrite unchanged state
         await client.database.storeEventUpdate(
           id,
-          user,
+          event,
           EventUpdateType.state,
           client,
         );
