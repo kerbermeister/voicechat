@@ -58,6 +58,18 @@ class ContactService extends ChangeNotifier {
     for (final r in requests)
       if (r.state == 'accepted') r.peer(client.userID!),
   };
+  Future<GetPresenceResponse> presence(String userId) async {
+    if (!acceptedUsers.contains(userId)) {
+      throw UserActionError('Контакт не принят.');
+    }
+    final query = Uri(queryParameters: {'user_id': userId}).query;
+    final data = await _api('/presence?$query');
+    if (!['online', 'offline', 'unavailable'].contains(data['presence'])) {
+      throw const FormatException('Invalid contact presence');
+    }
+    return GetPresenceResponse.fromJson(data);
+  }
+
   Set<String> get hiddenRooms => {
     for (final r in requests)
       if (r.state != 'accepted') r.roomId,

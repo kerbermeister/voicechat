@@ -3,6 +3,7 @@
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from urllib.parse import urlparse, unquote
 
@@ -23,4 +24,5 @@ if actual != commit: raise SystemExit('Unexpected vodozemac checkout; refusing b
 subprocess.run(['flutter_rust_bridge_codegen', 'build-web', '--dart-root', 'dart',
                 '--rust-root', str(checkout / 'rust'), '--release'], cwd=checkout, check=True)
 shutil.copytree(checkout / 'dart/web/pkg', app / 'web/pkg', dirs_exist_ok=True)
+subprocess.run([sys.executable, str(root / 'prototype/build_qr_assets.py')], check=True)
 print('Web crypto assets built. They are generated, not committed.')

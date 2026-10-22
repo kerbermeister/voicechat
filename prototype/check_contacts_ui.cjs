@@ -6,6 +6,7 @@ const path = require('node:path');
 const {execFileSync} = require('node:child_process');
 const {chromium} = require('playwright');
 const root = path.join(__dirname, '..');
+const webUrl=process.env.VOICECHAT_UI_URL || 'http://localhost:7357/';
 const video = process.env.VOICECHAT_VIDEO_TEST === '1';
 const network = process.env.VOICECHAT_NETWORK_TEST === '1';
 const callButton = video ? 'Видеозвонок' : 'Голосовой звонок';
@@ -39,6 +40,7 @@ async function register(role) {
   await request('http://localhost:8090','/contacts',{action:'policy',allow_direct:false},bob.access_token);
   const browser = await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']});
   const pages=[];
+  let sensitiveVerification=false;
   try {
     const fill = async (page, name, value) => {
       await page.bringToFront();
@@ -187,6 +189,18 @@ async function register(role) {
     async function login(account) {
       const context=await browser.newContext({permissions:['microphone','camera'],viewport:{width:1280,height:900}});
       await context.addInitScript(()=>{
+        const capture=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+        navigator.mediaDevices.getUserMedia=async constraints=>{
+          if(!constraints.video || !window.qrCameraImage) return capture(constraints);
+          const image=new Image();image.src=window.qrCameraImage;await image.decode();
+          const canvas=document.createElement('canvas');canvas.width=canvas.height=512;
+          const context=canvas.getContext('2d');
+          const draw=()=>{context.fillStyle='white';context.fillRect(0,0,512,512);context.drawImage(image,0,0,512,512);};
+          draw();const timer=setInterval(draw,100),stream=canvas.captureStream(10);
+          const track=stream.getVideoTracks()[0],stop=track.stop.bind(track);
+          track.stop=()=>{clearInterval(timer);context.clearRect(0,0,512,512);image.src='';stop();};
+          return stream;
+        };
         window.callPeers=[];
         window.RTCPeerConnection=new Proxy(window.RTCPeerConnection,{construct(target,args){
           const connection=Reflect.construct(target,args);
@@ -206,7 +220,7 @@ async function register(role) {
         const text=message.text();
         if(text.includes('onCallHangup') || text.includes('hangup res =>') || text.includes('hangup error =>')) console.log('Call diagnostic:',text.split('=>')[0]);
       });
-      await page.goto('http://localhost:7357/');
+      await page.goto(webUrl);
       await page.locator('flt-semantics-placeholder').evaluate(el=>el.click());
       await fill(page,'Имя пользователя',account.username);
       await fill(page,'Пароль аккаунта',account.password);
@@ -246,6 +260,66 @@ async function register(role) {
     assert.equal(await button(a,'Покинуть чат').count(),0);
     assert.equal(await button(a,'Изменить название').count(),0);
     await button(a,'Закрыть').click();
+    const escapedBob=bob.user_id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    sensitiveVerification=true;
+    async function startVerification() {
+      await button(a,'Настройки').click();
+      await a.getByRole('button',{name:/^Проверить устройства/}).click();
+      await a.getByRole('button',{name:new RegExp(escapedBob+' /')}).first().click();
+      await button(b,'Открыть').click({timeout:30000});
+      await button(b,'Принять проверку').click();
+      await button(a,'Совпадают').waitFor({timeout:30000});
+      await button(b,'Совпадают').waitFor({timeout:30000});
+    }
+    await startVerification();
+    await button(a,'Не совпадают').click();
+    await a.getByText('Коды не совпали. Устройство не подтверждено.',{exact:true}).waitFor();
+    await b.getByText('Коды не совпали. Устройство не подтверждено.',{exact:true}).waitFor();
+    await button(a,'Закрыть').click(); await button(b,'Закрыть').click();
+    await startVerification();
+    const codes=async page=>{
+      const match=(await page.getByRole('alertdialog').ariaSnapshot()).match(/\d{4}\s+\d{4}\s+\d{4}/);
+      assert(match,'SAS must display three numerical codes');
+      return match[0].replace(/\s+/g,' ');
+    };
+    assert((await codes(a))===(await codes(b)),'Independent SAS codes differ');
+    await button(a,'Совпадают').click();
+    await button(b,'Совпадают').click();
+    await a.getByText('Устройство подтверждено',{exact:true}).waitFor({timeout:30000});
+    await b.getByText('Устройство подтверждено',{exact:true}).waitFor({timeout:30000});
+    await button(a,'Закрыть').click(); await button(b,'Закрыть').click();
+    await button(a,'Настройки').click(); await a.getByRole('button',{name:/^Проверить устройства/}).click();
+    await a.getByRole('button',{name:/Подтверждено независимой сверкой/}).waitFor();
+    await button(a,'Закрыть').click();
+    if(process.env.VOICECHAT_QR_TEST==='1') {
+      console.log('PASS: two-browser SAS; preparing cross-signing for QR');
+      for(const [page,account] of [[a,alice],[b,bob]]) {
+        await button(page,'Настройки').click();
+        await page.getByRole('button',{name:/^Создать ключ/}).click();
+        await fill(page,'Пароль',account.password);await button(page,'Подтвердить').click();
+        await button(page,'Я сохранил ключ').click({timeout:30000});
+      }
+      await button(a,'Настройки').click();await a.getByRole('button',{name:/^Проверить устройства/}).click();
+      await a.getByRole('button',{name:new RegExp(escapedBob+' /')}).first().click();
+      await button(b,'Открыть').click({timeout:30000});await button(b,'Принять проверку').click();
+      await a.waitForTimeout(1000);
+      console.log('QR controls:',JSON.stringify({scan:await button(a,'Сканировать QR').count(),sas:await button(a,'Совпадают').count(),label:(await a.locator('body').ariaSnapshot()).includes('QR для текущей проверки устройства')}));
+      const code=a.getByText('QR для текущей проверки устройства',{exact:false});
+      await code.waitFor();
+      const box=await code.boundingBox();assert(box && box.width>100 && box.height>100,'Visible QR required');
+      const png=await a.screenshot({clip:box});
+      await b.evaluate(data=>window.qrCameraImage=data,'data:image/png;base64,'+png.toString('base64'));
+      await button(b,'Сканировать QR').click();
+      await a.getByText('Другое устройство сообщает об успешном сканировании.',{exact:false}).waitFor({timeout:30000});
+      await button(a,'Вижу успешное сканирование').click();
+      for(const page of [a,b]) {
+        await page.getByText('Устройство подтверждено',{exact:true}).waitFor({timeout:30000});
+        await button(page,'Закрыть').click();
+      }
+      await b.evaluate(()=>window.qrCameraImage=null);
+      console.log('PASS: two-browser standard binary Matrix QR, camera decoding and bilateral confirmation');
+    }
+    sensitiveVerification=false;
     await createGroup(a,'Согласие на группу',bob);
     await b.getByRole('button',{name:/Приглашения/}).click();
     await b.getByRole('tab',{name:'Группы',exact:true}).click();
@@ -377,7 +451,7 @@ async function register(role) {
     }
     assert(wire.chunk.some(e=>e.type==='m.room.encrypted'),'First offline message must reach encrypted server history');
     assert(!JSON.stringify(wire).includes(offlineText),'Plaintext leaked to server');
-    await c.goto('http://localhost:7357/');
+    await c.goto(webUrl);
     await c.locator('flt-semantics-placeholder').evaluate(el=>el.click());
     await c.getByRole('button',{name:new RegExp(alice.username)}).click({timeout:60000});
     await c.getByRole('group',{name:new RegExp(offlineText)}).waitFor({timeout:60000});
@@ -398,7 +472,7 @@ async function register(role) {
       await a.waitForTimeout(500);
     }
     assert(migrated,'Legacy joined history did not migrate and deliver encrypted offline');
-    await c.goto('http://localhost:7357/');
+    await c.goto(webUrl);
     await c.locator('flt-semantics-placeholder').evaluate(el=>el.click());
     await c.getByRole('button',{name:new RegExp(alice.username)}).click({timeout:60000});
     await c.getByRole('group',{name:new RegExp(legacyText)}).waitFor({timeout:60000});
@@ -416,8 +490,10 @@ async function register(role) {
     console.log('PASS: private consent, two-browser E2EE replies, direct profile/rights, explicit group invitation acceptance, muted unread message/chat counts, read receipts first/legacy offline direct messages and persistent outgoing call window');
   } catch (error) {
     fs.mkdirSync(path.join(root,'.prototype/ui'),{recursive:true});
-    for(let i=0;i<pages.length;i++) await pages[i].screenshot({path:path.join(root,`.prototype/ui/consent-failure-${i}.png`)});
-    if(pages[1] && !await pages[1].getByRole('textbox',{name:'Пароль аккаунта',exact:true}).count()) fs.writeFileSync(path.join(root,'.prototype/ui/consent-accessibility.txt'),await pages[1].locator('body').ariaSnapshot());
+    if(!sensitiveVerification) {
+      for(let i=0;i<pages.length;i++) await pages[i].screenshot({path:path.join(root,`.prototype/ui/consent-failure-${i}.png`)});
+      if(pages[1] && !await pages[1].getByRole('textbox',{name:'Пароль аккаунта',exact:true}).count()) fs.writeFileSync(path.join(root,'.prototype/ui/consent-accessibility.txt'),await pages[1].locator('body').ariaSnapshot());
+    }
     throw error;
   } finally { await browser.close(); }
 })().catch(error=>{console.error(error.stack);process.exitCode=1;});

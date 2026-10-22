@@ -17,4 +17,6 @@ coverage/
 *.log
 apps/client/web/pkg/
 apps/client/web/e2ee.worker.dart.js*
+apps/client/web/zxing/
+apps/client/web/zxing.js
 __pycache__/

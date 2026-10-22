@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:matrix/matrix.dart';
+import 'contact_service.dart';
 
 class PresenceTracker {
   final Client client;
@@ -10,6 +11,22 @@ class PresenceTracker {
   final _pending = <String>{};
   bool _closed = false;
   PresenceTracker(this.client, this.changed);
+  Future<GetPresenceResponse> _presence(String userId) async {
+    try {
+      return await client
+          .getPresence(userId)
+          .timeout(const Duration(seconds: 5));
+    } on MatrixException catch (error) {
+      final contacts = ContactService.of(client);
+      if (error.response?.statusCode != 403 ||
+          contacts == null ||
+          !contacts.acceptedUsers.contains(userId)) {
+        rethrow;
+      }
+      return contacts.presence(userId);
+    }
+  }
+
   void start() {
     client.syncPresence = PresenceType.online;
     _events = client.onPresenceChanged.stream.listen((_) {
@@ -40,9 +57,7 @@ class PresenceTracker {
         // ignore: deprecated_member_use
         final previous = client.presences[user];
         try {
-          final response = await client
-              .getPresence(user)
-              .timeout(const Duration(seconds: 5));
+          final response = await _presence(user);
           final presence = CachedPresence.fromPresenceResponse(response, user);
           if (_closed) return;
           // A newer sync update wins over an older in-flight HTTP response.

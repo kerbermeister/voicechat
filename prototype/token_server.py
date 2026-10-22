@@ -39,6 +39,17 @@ def jwt(payload):
     data = enc({'alg': 'HS256', 'typ': 'JWT'}) + b'.' + enc(payload)
     return (data + b'.' + base64.urlsafe_b64encode(hmac.new(secret.encode(), data, hashlib.sha256).digest()).rstrip(b'=')).decode()
 
+def contact_presence(target):
+    url = 'http://127.0.0.1:8008/_synapse/client/voicechat/presence?' + urllib.parse.urlencode({'user_id': target})
+    request = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + policy_secret})
+    with urllib.request.urlopen(request, timeout=5) as response: data = response.read(4097)
+    if len(data) > 4096: raise ValueError('Presence response too large')
+    return json.loads(data)
+
+class ControlServer(ThreadingHTTPServer):
+    # Simultaneous call admission/report bursts exceed the stdlib's five pending connections.
+    request_queue_size = 64
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_): pass
     def matrix(self, path):
@@ -102,6 +113,19 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
     def do_OPTIONS(self): self.reply(204, {})
     def do_GET(self):
+        if self.path.startswith('/presence?'):
+            try:
+                user = self.matrix('account/whoami')['user_id']
+                query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                if set(query) != {'user_id'} or len(query['user_id']) != 1: raise ContactError('invalid_user')
+                target = query['user_id'][0]
+                if not contact_store().accepted(user, target): raise ContactError('not_accepted')
+                body = contact_presence(target)
+                if not isinstance(body, dict) or body.get('presence') not in ('online', 'offline', 'unavailable'): raise ValueError('Invalid presence')
+                return self.reply(200, body)
+            except ContactError: return self.reply(403, {'error': 'forbidden'})
+            except urllib.error.HTTPError as error: return self.reply(401 if error.code == 401 else 503, {'error': 'presence_unavailable'})
+            except (OSError, ValueError, KeyError, TypeError, sqlite3.Error): return self.reply(503, {'error': 'presence_unavailable'})
         if self.path.startswith('/internal/contact-authorized?'):
             if not hmac.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + policy_secret):
                 return self.reply(403, {'error': 'forbidden'})
@@ -206,7 +230,7 @@ class Handler(BaseHTTPRequestHandler):
             token = jwt({'iss': 'prototype', 'sub': identity, 'nbf': now - 5, 'exp': now + 60,
                          'video': {'roomJoin': True, 'room': media_room,
                                    'canPublish': True, 'canSubscribe': True,
-                                   'canPublishData': True,
+                                   'canPublishData': False,
                                    'canPublishSources': ['microphone', 'camera'] if video else ['microphone']}})
             self.reply(200, {'token': token, 'identity': identity})
         except urllib.error.HTTPError as e:
@@ -218,4 +242,4 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == '__main__':
     print('Prototype token issuer: http://127.0.0.1:8090 (local test accounts only)', flush=True)
-    ThreadingHTTPServer(('127.0.0.1', 8090), Handler).serve_forever()
+    ControlServer(('127.0.0.1', 8090), Handler).serve_forever()

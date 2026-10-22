@@ -346,7 +346,7 @@ Future<List<DeviceKeys>> authorizedDevices(Room room) async {
   );
   if (devices.any((device) => !device.blocked && !device.directVerified)) {
     throw UserActionError(
-      'Сначала откройте «Проверить устройства» и сверьте отпечатки участников.',
+      'Подтвердите новые устройства в «Проверить устройства».',
     );
   }
   return audience

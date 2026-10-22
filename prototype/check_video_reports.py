@@ -16,6 +16,10 @@ while time.monotonic() < deadline:
     stages = {r['stage'] for r in reports}
     if 'video_background_ready' in stages:
         required |= {'video_background_returned', *(f'video_background_audio_{i}' for i in range(3))}
+    if 'video_sas_owner_0' in stages:
+        required |= {'video_sas_done_0', 'video_sas_done_1'}
+    if 'video_qr_owner_0' in stages:
+        required |= {'video_qr_done_0', 'video_qr_done_1', 'video_qr_scanned_1'}
     if 'failed' in stages:
         raise SystemExit('FAIL: video acceptance reported a failed assertion')
     if required <= stages:

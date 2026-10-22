@@ -1,8 +1,14 @@
 """Synapse invitation policy; the control API owns the consent database."""
 import logging
+import hmac
 from collections.abc import Mapping
 from synapse.module_api import NOT_SPAM
 from synapse.api.errors import Codes
+from synapse.api.errors import SynapseError
+from synapse.http.server import DirectServeJsonResource
+from synapse.http.servlet import parse_string
+from synapse.handlers.presence import format_user_presence_state
+from synapse.types import UserID
 
 KIND = 'dev.voicechat.kind'
 
@@ -11,6 +17,7 @@ class ContactPolicy:
         self.api = api
         self.url = config['url']
         self.secret = config['secret']
+        api.register_web_resource('/_synapse/client/voicechat/presence', ContactPresence(self))
         api.register_spam_checker_callbacks(user_may_invite=self.user_may_invite,
                                            user_may_send_state_event=self.user_may_send_state_event)
     @staticmethod
@@ -48,3 +55,18 @@ class ContactPolicy:
             members = {key for (kind,key), event in state.items() if kind == 'm.room.member' and event.content.get('membership') in ('join','invite')}
             if not members <= pair: return Codes.FORBIDDEN
         return NOT_SPAM
+
+class ContactPresence(DirectServeJsonResource):
+    isLeaf = True
+    def __init__(self, policy):
+        super().__init__()
+        self.policy = policy
+    async def _async_render_GET(self, request):
+        if not hmac.compare_digest((request.getHeader('Authorization') or '').encode(), ('Bearer ' + self.policy.secret).encode()):
+            raise SynapseError(403, 'Forbidden')
+        target = UserID.from_string(parse_string(request, 'user_id', required=True, encoding='utf-8'))
+        # Synapse's public presence API requires a shared joined room; accepted contacts can precede it.
+        hs = self.policy.api._hs
+        if not hs.is_mine(target): raise SynapseError(403, 'Local contacts only')
+        state = await hs.get_presence_handler().get_state(target)
+        return 200, format_user_presence_state(state, hs.get_clock().time_msec())

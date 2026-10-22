@@ -34,6 +34,9 @@ import 'local_store.dart';
 import 'theme.dart';
 import 'user_action_error.dart';
 import 'transport.dart';
+import 'device_verification.dart';
+import 'device_verification_dialog.dart';
+import 'package:matrix/encryption.dart' as crypto;
 
 mx.CachedPresence? _roomPresenceSnapshot(mx.Room room) =>
     // ignore: deprecated_member_use
@@ -122,6 +125,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   ContactService? contacts;
   StoragePolicy? storagePolicy;
   ChatActions? actions;
+  DeviceVerifications? verifications;
   StreamSubscription<mx.SyncStatusUpdate>? connectionStatus;
   bool online = true;
   bool restoringSession = true;
@@ -242,6 +246,30 @@ class _ProbeScreenState extends State<ProbeScreen> {
     vaultPassword.clear();
     probe = next;
     enableFirstContactTrust(next.client);
+    verifications = DeviceVerifications(next.client, () {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Получен запрос проверки устройства'),
+          action: SnackBarAction(
+            label: 'Открыть',
+            onPressed: () {
+              final owner = verifications;
+              if (owner != null && owner.pending.isNotEmpty) {
+                unawaited(
+                  showDeviceVerification(
+                    context,
+                    owner,
+                    owner.pending.first,
+                    call: call,
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      );
+    });
     try {
       ownAvatar = (await next.client.fetchOwnProfile()).avatarUrl;
     } catch (_) {
@@ -677,6 +705,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     try {
       await Future.wait([
         if (calls != null) calls!.close(),
+        if (verifications != null) verifications!.close(),
         if (sounds != null) sounds!.close(),
         if (presenceTracker != null) presenceTracker!.close(),
         if (contacts != null) contacts!.close(),
@@ -698,6 +727,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
             selected = null;
             timeline = null;
             calls = null;
+            verifications = null;
             actions = null;
           });
         }
@@ -715,8 +745,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
     final devices = users
         .expand((user) => client.userDeviceKeys[user]!.deviceKeys.values)
         .toList();
+    final independent = await independentlyVerifiedDevices(client, devices);
     if (!mounted) return;
-    final chosen = await showDialog<mx.DeviceKeys>(
+    final chosen = await showDialog<Object>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Проверка личности устройств'),
@@ -732,22 +763,58 @@ class _ProbeScreenState extends State<ProbeScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Сверьте отпечаток лично или по независимому доверенному каналу. Для устройств собеседника сначала откройте его чат. Проверка взаимная: повторите её на втором устройстве.',
+                  'Выберите устройство и сравните коды на обоих экранах лично или по независимому каналу. Автоматически закреплённый ключ ещё не означает независимую проверку.',
                 ),
+                for (final request in verifications!.pending)
+                  ListTile(
+                    title: Text('Продолжить проверку ${request.userId}'),
+                    onTap: () => Navigator.pop(context, request),
+                  ),
                 ...devices.map(
                   (device) => ListTile(
                     title: Text('${device.userId} / ${device.deviceId}'),
                     subtitle: Text(
-                      device.directVerified
-                          ? 'Проверено на этом устройстве'
+                      device.userId == client.userID &&
+                              device.deviceId == client.deviceID
+                          ? 'Это устройство'
+                          : independent.contains(device)
+                          ? 'Подтверждено независимой сверкой'
+                          : device.directVerified
+                          ? 'Ключ закреплён без отметки независимой сверки'
                           : 'Не проверено',
                     ),
-                    trailing: Icon(
-                      device.directVerified
-                          ? Icons.verified_user
-                          : Icons.help_outline,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          independent.contains(device)
+                              ? Icons.verified_user
+                              : device.directVerified
+                              ? Icons.lock_outline
+                              : Icons.help_outline,
+                        ),
+                        if (!device.blocked &&
+                            !(device.userId == client.userID &&
+                                device.deviceId == client.deviceID))
+                          PopupMenuButton<String>(
+                            tooltip: 'Способ проверки',
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: 'manual',
+                                child: Text('Сверить полный отпечаток'),
+                              ),
+                            ],
+                            onSelected: (_) => Navigator.pop(context, (
+                              device: device,
+                              manual: true,
+                            )),
+                          ),
+                      ],
                     ),
-                    onTap: device.blocked
+                    onTap:
+                        device.blocked ||
+                            device.userId == client.userID &&
+                                device.deviceId == client.deviceID
                         ? null
                         : () => Navigator.pop(context, device),
                   ),
@@ -765,6 +832,21 @@ class _ProbeScreenState extends State<ProbeScreen> {
       ),
     );
     if (chosen == null || !mounted) return;
+    if (chosen case (device: final mx.DeviceKeys device, manual: true)) {
+      await verifyFingerprint(device);
+      return;
+    }
+    final owner = verifications!;
+    final request = chosen is crypto.KeyVerification
+        ? chosen
+        : await owner.start(chosen as mx.DeviceKeys);
+    if (mounted) {
+      await showDeviceVerification(context, owner, request, call: call);
+    }
+  }
+
+  Future<void> verifyFingerprint(mx.DeviceKeys chosen) async {
+    final client = probe!.client;
     final input = TextEditingController();
     final fingerprint = await showDialog<String>(
       context: context,
@@ -921,6 +1003,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     unawaited(sync?.cancel());
     timeline?.cancelSubscriptions();
     unawaited(calls?.close());
+    unawaited(verifications?.close());
     unawaited(sounds?.close());
     unawaited(presenceTracker?.close());
     unawaited(contacts?.close());
@@ -1194,7 +1277,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                 ListTile(
                   leading: const Icon(Icons.verified_user_outlined),
                   title: const Text('Проверить устройства'),
-                  subtitle: const Text('Сверка отпечатков для выбранного чата'),
+                  subtitle: const Text('Независимая сверка устройств и ключей'),
                   onTap: () => Navigator.pop(dialogContext, 'verify'),
                 ),
                 const Divider(height: 24),

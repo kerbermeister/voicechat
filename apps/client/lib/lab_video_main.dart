@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'call_controller.dart';
 import 'call_probe.dart';
@@ -12,9 +13,12 @@ import 'voice_call.dart';
 import 'lab_main.dart' as lab;
 import 'lab_messaging.dart' show LabFailure;
 import 'theme.dart';
+import 'lab_verification.dart';
 
 VoiceCall? visibleCall;
 final revision = ValueNotifier(0);
+final navigatorKey = GlobalKey<NavigatorState>();
+SemanticsHandle? probeSemantics;
 void redraw() => revision.value++;
 
 bool decoded(List<rtc.StatsReport> reports, {bool low = false}) => reports.any(
@@ -210,6 +214,9 @@ Future<void> exercise() async {
     for (var peer = 0; peer < 3; peer++) {
       await lab.barrier('video_joined_$peer');
     }
+    if (const bool.fromEnvironment('VERIFY_TEST')) {
+      await verifyLabDevices(probe, index, navigatorKey.currentContext!);
+    }
     if (index == 0) {
       final roomId = await probe.startDirectChat(lab.userId(1));
       await lab.report('video_direct_room', {'room_id': roomId});
@@ -322,8 +329,13 @@ Future<void> exercise() async {
 }
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (const bool.fromEnvironment('VERIFY_TEST')) {
+    probeSemantics = SemanticsBinding.instance.ensureSemantics();
+  }
   runApp(
     MaterialApp(
+      navigatorKey: navigatorKey,
       theme: AppPalette.lavender.theme,
       home: Scaffold(
         body: SafeArea(

@@ -75,6 +75,7 @@ class CallProbe implements VoiceCall {
   bool get isClosed => _closed;
   bool _sharing = false;
   bool _closed = false;
+  Future<void>? _closing;
   DateTime _authorizedAt = DateTime.now();
   final _clock = Stopwatch();
   @override
@@ -97,90 +98,90 @@ class CallProbe implements VoiceCall {
     }
     secureEndpoint(tokenUrl);
     secureEndpoint(livekitUrl, websocket: true);
-    _keys = await lk.BaseKeyProvider.create(
-      sharedKey: false,
-      discardFrameWhenCryptorNotReady: true,
-    );
-    await _keys!.setRawKey(_senderKey, participantId: identity);
-    _messages = chat.client.onToDeviceEvent.stream.listen((event) {
-      unawaited(
-        _receive(event).catchError((Object _) {
-          status('Ключ участника отклонён');
-        }),
-      );
-    });
-    media = lk.Room(
-      roomOptions: lk.RoomOptions(
-        encryption: lk.E2EEOptions(keyProvider: _keys!),
-        adaptiveStream: true,
-        dynacast: true,
-      ),
-    );
-    _events = media!.createListener();
-    _events!.on<lk.LocalTrackPublishedEvent>((_) => changed?.call());
-    _events!.on<lk.ParticipantConnectedEvent>((_) => changed?.call());
-    _events!.on<lk.ParticipantDisconnectedEvent>((_) => changed?.call());
-    _events!.on<lk.ParticipantConnectionQualityUpdatedEvent>(
-      (_) => changed?.call(),
-    );
-    _events!.on<lk.TrackSubscribedEvent>((event) {
-      if (!allowsCallMedia(
-        event.publication.encryptionType,
-        event.publication.source,
-        event.publication.mimeType,
-        video: video,
-      )) {
-        unawaited(close());
-        status('Поток без поддерживаемой E2EE-защиты отклонён');
-      } else {
-        changed?.call();
-      }
-    });
-    _events!.on<lk.TrackPublishedEvent>(
-      (event) => _subscribe(event.participant.identity, event.publication),
-    );
-    _events!.on<lk.TrackUnsubscribedEvent>((event) {
-      decryptedVideoTracks.remove(event.publication.sid);
-      changed?.call();
-    });
-    _events!.on<lk.TrackMutedEvent>((_) => changed?.call());
-    _events!.on<lk.TrackUnmutedEvent>((_) => changed?.call());
-    _events!.on<lk.RoomReconnectingEvent>((_) {
-      connection = 'Восстанавливаем соединение';
-      status(connection);
-      changed?.call();
-    });
-    _events!.on<lk.RoomReconnectedEvent>((_) {
-      connection = 'Соединение восстановлено';
-      status(connection);
-      changed?.call();
-    });
-    _events!.on<lk.RoomDisconnectedEvent>((_) {
-      connection = 'Звонок завершён';
-      changed?.call();
-      unawaited(close());
-    });
-    _events!.on<lk.TrackE2EEStateEvent>((event) {
-      if (event.participant.identity == identity) return;
-      if (event.state == lk.E2EEState.kOk) {
-        _clock.start();
-        if (event.publication.kind == lk.TrackType.VIDEO) {
-          decryptedVideoFrom.add(event.participant.identity);
-          decryptedVideoTracks.add(event.publication.sid);
-        } else {
-          decryptedAudioFrom.add(event.participant.identity);
-        }
-        connection = video ? 'Защищённое видео' : 'Защищённое аудио';
-        status('Получено E2EE-аудио: ${decryptedAudioFrom.length}');
-        changed?.call();
-      } else if (event.state == lk.E2EEState.kDecryptionFailed ||
-          event.state == lk.E2EEState.kMissingKey) {
-        decryptedVideoTracks.remove(event.publication.sid);
-        failedAudioFrom.add(event.participant.identity);
-        status('Ожидаем правильный ключ участника');
-      }
-    });
     try {
+      _keys = await lk.BaseKeyProvider.create(
+        sharedKey: false,
+        discardFrameWhenCryptorNotReady: true,
+      );
+      await _keys!.setRawKey(_senderKey, participantId: identity);
+      _messages = chat.client.onToDeviceEvent.stream.listen((event) {
+        unawaited(
+          _receive(event).catchError((Object _) {
+            status('Ключ участника отклонён');
+          }),
+        );
+      });
+      media = lk.Room(
+        roomOptions: lk.RoomOptions(
+          encryption: lk.E2EEOptions(keyProvider: _keys!),
+          adaptiveStream: true,
+          dynacast: true,
+        ),
+      );
+      _events = media!.createListener();
+      _events!.on<lk.LocalTrackPublishedEvent>((_) => changed?.call());
+      _events!.on<lk.ParticipantConnectedEvent>((_) => changed?.call());
+      _events!.on<lk.ParticipantDisconnectedEvent>((_) => changed?.call());
+      _events!.on<lk.ParticipantConnectionQualityUpdatedEvent>(
+        (_) => changed?.call(),
+      );
+      _events!.on<lk.TrackSubscribedEvent>((event) {
+        if (!allowsCallMedia(
+          event.publication.encryptionType,
+          event.publication.source,
+          event.publication.mimeType,
+          video: video,
+        )) {
+          unawaited(close());
+          status('Поток без поддерживаемой E2EE-защиты отклонён');
+        } else {
+          changed?.call();
+        }
+      });
+      _events!.on<lk.TrackPublishedEvent>(
+        (event) => _subscribe(event.participant.identity, event.publication),
+      );
+      _events!.on<lk.TrackUnsubscribedEvent>((event) {
+        decryptedVideoTracks.remove(event.publication.sid);
+        changed?.call();
+      });
+      _events!.on<lk.TrackMutedEvent>((_) => changed?.call());
+      _events!.on<lk.TrackUnmutedEvent>((_) => changed?.call());
+      _events!.on<lk.RoomReconnectingEvent>((_) {
+        connection = 'Восстанавливаем соединение';
+        status(connection);
+        changed?.call();
+      });
+      _events!.on<lk.RoomReconnectedEvent>((_) {
+        connection = 'Соединение восстановлено';
+        status(connection);
+        changed?.call();
+      });
+      _events!.on<lk.RoomDisconnectedEvent>((_) {
+        connection = 'Звонок завершён';
+        changed?.call();
+        unawaited(close());
+      });
+      _events!.on<lk.TrackE2EEStateEvent>((event) {
+        if (event.participant.identity == identity) return;
+        if (event.state == lk.E2EEState.kOk) {
+          _clock.start();
+          if (event.publication.kind == lk.TrackType.VIDEO) {
+            decryptedVideoFrom.add(event.participant.identity);
+            decryptedVideoTracks.add(event.publication.sid);
+          } else {
+            decryptedAudioFrom.add(event.participant.identity);
+          }
+          connection = video ? 'Защищённое видео' : 'Защищённое аудио';
+          status('Получено E2EE-аудио: ${decryptedAudioFrom.length}');
+          changed?.call();
+        } else if (event.state == lk.E2EEState.kDecryptionFailed ||
+            event.state == lk.E2EEState.kMissingKey) {
+          decryptedVideoTracks.remove(event.publication.sid);
+          failedAudioFrom.add(event.participant.identity);
+          status('Ожидаем правильный ключ участника');
+        }
+      });
       await shareKey().timeout(const Duration(seconds: 8));
       final response = await http
           .post(
@@ -424,19 +425,37 @@ class CallProbe implements VoiceCall {
   }
 
   @override
-  Future<void> close() async {
-    if (_closed) return;
+  Future<void> close() => _closing ??= _close();
+
+  Future<void> _close() async {
     _closed = true;
     _clock.stop();
     cameraEnabled = false;
     _resend?.cancel();
-    await _messages?.cancel();
-    await _events?.dispose();
-    await media?.disconnect();
-    await media?.dispose();
-    _senderKey.fillRange(0, _senderKey.length, 0);
-    media = null;
-    connection = 'Звонок завершён';
-    changed?.call();
+    try {
+      await Future.wait([
+        _messages?.cancel() ?? Future.value(),
+        _events?.dispose() ?? Future.value(),
+      ]);
+    } finally {
+      try {
+        await media?.disconnect();
+      } finally {
+        try {
+          await media?.dispose();
+        } finally {
+          try {
+            // The provider belongs to this call; Room disposes cryptors, not the provider.
+            await _keys?.keyProvider.dispose();
+          } finally {
+            _keys = null;
+            _senderKey.fillRange(0, _senderKey.length, 0);
+            media = null;
+            connection = 'Звонок завершён';
+            changed?.call();
+          }
+        }
+      }
+    }
   }
 }

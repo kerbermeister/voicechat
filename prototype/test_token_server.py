@@ -8,14 +8,13 @@ import urllib.request
 import tempfile
 from contacts import ContactStore, ContactError
 from unittest.mock import patch
-from http.server import ThreadingHTTPServer
 import token_server
 
 
 class AdmissionTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.server = ThreadingHTTPServer(('127.0.0.1', 0), token_server.Handler)
+        cls.server = token_server.ControlServer(('127.0.0.1', 0), token_server.Handler)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
 
@@ -25,10 +24,10 @@ class AdmissionTests(unittest.TestCase):
         cls.server.server_close()
         cls.thread.join()
 
-    def request(self, body, auth='Bearer test', path='/token'):
+    def request(self, body=None, auth='Bearer test', path='/token'):
         request = urllib.request.Request(
             f'http://127.0.0.1:{self.server.server_port}{path}',
-            json.dumps(body).encode(), {'Authorization': auth})
+            None if body is None else json.dumps(body).encode(), {'Authorization': auth})
         try:
             with urllib.request.urlopen(request) as response:
                 return response.status, json.load(response)
@@ -41,6 +40,30 @@ class AdmissionTests(unittest.TestCase):
         self.assertEqual(self.request({'room_id': '!room:local', 'session': ''})[0], 400)
         for mode in ('true', 1, None, {}):
             self.assertEqual(self.request({'room_id': '!room:local', 'session': 'test', 'video': mode})[0], 400)
+
+    def test_presence_is_limited_to_authenticated_accepted_contacts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = ContactStore(directory + '/contacts.sqlite')
+            store.request('@alice:local', '@bob:local', '!pair:local')
+            store.set_policy('@pending:local', False)
+            store.request('@alice:local', '@pending:local', '!pending:local')
+            def identity(handler, path):
+                if handler.headers.get('Authorization') != 'Bearer test': raise ContactError('unauthorized')
+                return {'user_id': '@alice:local'}
+            with patch.object(token_server, '_contacts', store), patch.object(token_server.Handler, 'matrix', identity), patch.object(token_server, 'contact_presence', return_value={'presence': 'offline', 'last_active_ago': 45000}) as fetch:
+                path = '/presence?user_id=%40bob%3Alocal'
+                self.assertEqual(self.request(path=path), (200, {'presence': 'offline', 'last_active_ago': 45000}))
+                for target in ('%40eve%3Alocal', '%40pending%3Alocal', '%40alice%3Alocal'):
+                    self.assertEqual(self.request(path='/presence?user_id=' + target)[0], 403)
+                self.assertEqual(self.request(auth='', path=path)[0], 403)
+                self.assertEqual(fetch.call_count, 1)
+                fetch.side_effect = OSError('offline')
+                self.assertEqual(self.request(path=path)[0], 503)
+                fetch.side_effect = None
+                fetch.return_value = {'presence': 'invented'}
+                self.assertEqual(self.request(path=path)[0], 503)
+                fetch.return_value = []
+                self.assertEqual(self.request(path=path)[0], 503)
 
     def test_contact_consent_uses_authenticated_user_and_real_encrypted_pair(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -131,6 +154,8 @@ class AdmissionTests(unittest.TestCase):
                 self.assertEqual(grant['sub'], '@alice:local/DEVICE')
                 self.assertEqual(grant['exp'] - grant['nbf'], 65)
                 self.assertEqual(grant['video']['canPublishSources'], ['microphone', 'camera'] if video else ['microphone'])
+                self.assertFalse(grant['video']['canPublishData'])
+                self.assertNotIn('roomAdmin', grant['video'])
                 self.assertNotIn('key', grant)
 
 

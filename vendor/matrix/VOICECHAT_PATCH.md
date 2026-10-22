@@ -15,7 +15,9 @@ Changes relative to upstream:
 
 - `voip/voip.dart`: honor a call ended by the delegate during listener registration, before creating the incoming peer connection. Fetch TURN credentials per call instead of caching expiring credentials indefinitely.
 - `voip/call_session.dart`: defer incoming direct-call microphone capture until `answer()`. Ringing alone must never open the microphone. The Android/web direct-call scenario asserts this before acceptance.
+- `key_verification.dart`: expose the keys actually authenticated by SAS/QR so the application can pin the exact proven device instead of treating a pre-existing TOFU flag as evidence. Redact verification payloads from logs. Cancellation fences further processing before waiting for its network message, and periodic cleanup cannot extend the original ten-minute deadline. No change to the SAS/QR cryptographic calculations or message formats; regression checks are in `apps/client/test/device_verification_test.dart`.
+- `key_verification.dart`: validate both QR keys against the selected mode/user, not only the second key. Reject malformed transaction lengths, unknown modes/versions, foreign requests, blocked keys and completed requests before granting trust. The standard Matrix binary format is unchanged; boundary checks are in `apps/client/test/device_qr_test.dart`.
 
-No changes to Olm, Megolm, signatures, verification algorithms or wire protocols. Codec implementation and Web Crypto are in the application. Record keys and store names remain visible; values are encrypted.
+No changes to Olm, Megolm, signatures, SAS calculations or wire protocols. QR input validation is corrected as described above. Codec implementation and Web Crypto are in the application. Record keys and store names remain visible; values are encrypted.
 
 Before updating the dependency, compare these files against the pinned upstream, reapply only required changes, then run the browser vault tests, Android storage test and full Android/web E2EE scenario. Prefer removing this patch when upstream offers an equivalent supported codec interface.

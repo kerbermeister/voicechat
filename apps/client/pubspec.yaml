@@ -28,6 +28,8 @@ dependencies:
   flutter_webrtc: ^1.6.2+hotfix.4
   camera: ^0.12.1
   video_player: ^2.14.1
+  mobile_scanner: ^7.4.2
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

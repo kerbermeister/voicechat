@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import secrets
+import sys
 import time
 import urllib.request
 from pathlib import Path
@@ -15,8 +16,11 @@ secret = json.loads((root / 'secrets.json').read_text())['registration']
 run = str(int(time.time()))
 config = {'RUN_ID': run, 'MATRIX_URL': 'http://localhost:8008',
           'TOKEN_URL': 'http://localhost:8090', 'LIVEKIT_URL': 'ws://localhost:7880'}
+if sys.argv[1:] not in ([], ['--load']): raise SystemExit('Usage: prepare_run.py [--load]')
+roles = [f'load{i}' for i in range(11)] if '--load' in sys.argv else ['alice', 'bob', 'carol']
+accounts = []
 url = 'http://127.0.0.1:8008/_synapse/admin/v1/register'
-for role in ['alice', 'bob', 'carol']:
+for role in roles:
     name, password = role + run, secrets.token_urlsafe(24)
     nonce = json.load(urllib.request.urlopen(url, timeout=10))['nonce']
     msg = '\0'.join([nonce, name, password, 'notadmin']).encode()
@@ -26,9 +30,11 @@ for role in ['alice', 'bob', 'carol']:
     with urllib.request.urlopen(req, timeout=10) as response: json.load(response)
     config[role.upper() + '_USER'] = name
     config[role.upper() + '_PASSWORD'] = password
+    accounts.append({'username': name, 'password': password})
+if '--load' in sys.argv: config['LOAD_ACCOUNTS'] = json.dumps(accounts)
 # Disposable laboratory users explicitly consent to one another for this test.
 store = ContactStore()
-for first, second in combinations(['alice', 'bob', 'carol'], 2):
+for first, second in combinations(roles, 2):
     store.request(f'@{first}{run}:voicechat.local', f'@{second}{run}:voicechat.local', f'!fixture-{run}-{first}-{second}:voicechat.local')
 for role in ['web', 'android']:
     path = root / (role + '.json')

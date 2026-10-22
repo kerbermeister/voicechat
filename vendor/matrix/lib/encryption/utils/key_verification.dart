@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:canonical_json/canonical_json.dart';
+import 'package:collection/collection.dart';
 import 'package:typed_data/typed_data.dart';
 import 'package:vodozemac/vodozemac.dart' as vod;
 
@@ -212,8 +213,11 @@ class KeyVerification {
   Map<String, dynamic>? startPayload;
   String? _nextAction;
   List<SignableKey> _verifiedDevices = [];
+  List<SignableKey> get verifiedKeys => List.unmodifiable(_verifiedDevices);
 
   DateTime lastActivity;
+  DateTime _createdAt = DateTime.now();
+  DateTime get createdAt => _createdAt;
   String? lastStep;
 
   KeyVerificationState state = KeyVerificationState.waitingAccept;
@@ -283,6 +287,7 @@ class KeyVerification {
     String type, {
     Uint8List? qrDataRawBytes,
   }) async {
+    if (!(await verifyActivity())) return;
     var qrChecksOut = false;
     if (possibleMethods.contains(type)) {
       if (qrDataRawBytes != null) {
@@ -360,7 +365,7 @@ class KeyVerification {
       await Future.delayed(Duration(milliseconds: 50));
     }
     _handlePayloadLock = true;
-    Logs().i('[Key Verification] Received type $type: $payload');
+    Logs().i('[Key Verification] Received type $type');
     try {
       var thisLastStep = lastStep;
       switch (type) {
@@ -372,6 +377,7 @@ class KeyVerification {
           final verifyTime = DateTime.fromMillisecondsSinceEpoch(
             payload['timestamp'],
           );
+          if (verifyTime.isBefore(_createdAt)) _createdAt = verifyTime;
           if (now.subtract(Duration(minutes: 10)).isAfter(verifyTime) ||
               now.add(Duration(minutes: 5)).isBefore(verifyTime)) {
             // if the request is more than 20min in the past we just silently fail it
@@ -684,6 +690,7 @@ class KeyVerification {
   /// call this to confirm that your other device has shown a shield and is in
   /// `done` state.
   Future<void> acceptQRScanConfirmation() async {
+    if (!(await verifyActivity())) return;
     if (_method is _KeyVerificationMethodQRReciprocate &&
         state == KeyVerificationState.confirmQRScan) {
       await (_method as _KeyVerificationMethodQRReciprocate)
@@ -692,6 +699,7 @@ class KeyVerification {
   }
 
   Future<void> acceptSas() async {
+    if (!(await verifyActivity())) return;
     if (_method is _KeyVerificationMethodSas) {
       await (_method as _KeyVerificationMethodSas).acceptSas();
     }
@@ -760,6 +768,7 @@ class KeyVerification {
     Map<String, String> keys,
     Future<bool> Function(String, SignableKey) verifier,
   ) async {
+    if (canceled) return;
     _verifiedDevices = <SignableKey>[];
 
     final userDeviceKey = client.userDeviceKeys[userId];
@@ -781,6 +790,7 @@ class KeyVerification {
       }
     }
     // okay, we reached this far, so all the devices are verified!
+    if (canceled) return;
     var verifiedMasterKey = false;
     final wasUnknownSession = client.isUnknownSession;
     for (final key in _verifiedDevices) {
@@ -822,6 +832,8 @@ class KeyVerification {
 
   /// shower is true only for reciprocated verifications (shower side)
   Future<void> verifyKeysQR(SignableKey key, {bool shower = true}) async {
+    if (canceled) return;
+    _verifiedDevices = [key];
     var verifiedMasterKey = false;
     final wasUnknownSession = client.isUnknownSession;
 
@@ -871,7 +883,9 @@ class KeyVerification {
   }
 
   Future<bool> verifyActivity() async {
-    if (lastActivity.add(Duration(minutes: 10)).isAfter(DateTime.now())) {
+    if (isDone) return false;
+    if (_createdAt.add(Duration(minutes: 10)).isAfter(DateTime.now()) &&
+        lastActivity.add(Duration(minutes: 10)).isAfter(DateTime.now())) {
       lastActivity = DateTime.now();
       return true;
     }
@@ -894,15 +908,16 @@ class KeyVerification {
   }
 
   Future<void> cancel([String code = 'm.unknown', bool quiet = false]) async {
+    if (canceled) return;
+    canceled = true;
+    canceledCode = code;
+    setState(KeyVerificationState.error);
     if (!quiet && (deviceId != null || room != null)) {
       await send(EventTypes.KeyVerificationCancel, {
         'reason': code,
         'code': code,
       });
     }
-    canceled = true;
-    canceledCode = code;
-    setState(KeyVerificationState.error);
   }
 
   void makePayload(Map<String, dynamic> payload) {
@@ -921,7 +936,7 @@ class KeyVerification {
 
   Future<void> send(String type, Map<String, dynamic> payload) async {
     makePayload(payload);
-    Logs().i('[Key Verification] Sending type $type: $payload');
+    Logs().i('[Key Verification] Sending type $type');
     if (room != null) {
       Logs().i('[Key Verification] Sending to $userId in room ${room!.id}...');
       if ({EventTypes.KeyVerificationRequest}.contains(type)) {
@@ -989,21 +1004,26 @@ class KeyVerification {
 
   Future<bool> verifyQrData(Uint8List qrDataRawBytes) async {
     final data = qrDataRawBytes;
-    // hardcoded stuff + 2 keys + secret
-    if (data.length < 10 + 32 + 32 + 8 + utf8.encode(transactionId!).length) {
+    if (!(await verifyActivity()) ||
+        transactionId == null ||
+        data.length < 82 ||
+        data.length > 4096 ||
+        !ListEquality<int>().equals(data.sublist(0, 6), ascii.encode(prefix)) ||
+        data[6] != version)
       return false;
-    }
-    if (data[6] != version) return false;
-    final remoteQrMode = QRMode.values.singleWhere(
-      (mode) => mode.code == data[7],
-    );
-    if (ascii.decode(data.sublist(0, 6)) != prefix) return false;
-    if (data[6] != version) return false;
-    final tmpBuf = Uint8List.fromList([data[8], data[9]]);
-    final encodedTxnLen = ByteData.view(tmpBuf.buffer).getUint16(0);
-    if (utf8.decode(data.sublist(10, 10 + encodedTxnLen)) != transactionId) {
+    final remoteQrMode = QRMode.values
+        .where((mode) => mode.code == data[7])
+        .firstOrNull;
+    if (remoteQrMode == null) return false;
+    final encodedTxnLen = data[8] * 256 + data[9];
+    final keyOffset = 10 + encodedTxnLen;
+    if (encodedTxnLen == 0 ||
+        data.length < keyOffset + 72 ||
+        !ListEquality<int>().equals(
+          data.sublist(10, keyOffset),
+          utf8.encode(transactionId!),
+        ))
       return false;
-    }
     final keys = client.userDeviceKeys;
 
     final ownKeys = keys[client.userID];
@@ -1013,12 +1033,21 @@ class KeyVerification {
     final ownOtherDeviceKey = ownKeys?.getKey(deviceId!);
     final otherUserMasterKey = otherUserKeys?.masterKey;
 
+    final firstKey = encodeBase64Unpadded(
+      data.sublist(keyOffset, keyOffset + 32),
+    );
     final secondKey = encodeBase64Unpadded(
-      data.sublist(10 + encodedTxnLen + 32, 10 + encodedTxnLen + 32 + 32),
+      data.sublist(keyOffset + 32, keyOffset + 64),
     );
     final randomSharedSecret = encodeBase64Unpadded(
-      data.sublist(10 + encodedTxnLen + 32 + 32),
+      data.sublist(keyOffset + 64),
     );
+    bool matches(SignableKey? key, String value) =>
+        key != null &&
+        (key is DeviceKeys && key.isValid ||
+            key is CrossSigningKey && key.isValid) &&
+        !key.blocked &&
+        key.ed25519Key == value;
 
     /// `request.randomSharedSecretForQRCode` is overwritten below to send with `sendStart`
     if ({
@@ -1034,25 +1063,30 @@ class KeyVerification {
     }
 
     if (remoteQrMode == QRMode.verifyOtherUser &&
+        userId != client.userID &&
         otherUserMasterKey != null &&
         ownMasterKey != null) {
-      if (secondKey == ownMasterKey.ed25519Key) {
+      if (matches(otherUserMasterKey, firstKey) &&
+          matches(ownMasterKey, secondKey)) {
         randomSharedSecretForQRCode = randomSharedSecret;
         await verifyKeysQR(otherUserMasterKey, shower: false);
         return true;
       }
     } else if (remoteQrMode == QRMode.verifySelfTrusted &&
+        userId == client.userID &&
         ownMasterKey != null &&
         ownDeviceKey != null) {
-      if (secondKey == ownDeviceKey.ed25519Key) {
+      if (matches(ownMasterKey, firstKey) && matches(ownDeviceKey, secondKey)) {
         randomSharedSecretForQRCode = randomSharedSecret;
         await verifyKeysQR(ownMasterKey, shower: false);
         return true;
       }
     } else if (remoteQrMode == QRMode.verifySelfUntrusted &&
+        userId == client.userID &&
         ownOtherDeviceKey != null &&
         ownMasterKey != null) {
-      if (secondKey == ownMasterKey.ed25519Key) {
+      if (matches(ownOtherDeviceKey, firstKey) &&
+          matches(ownMasterKey, secondKey)) {
         randomSharedSecretForQRCode = randomSharedSecret;
         await verifyKeysQR(ownOtherDeviceKey, shower: false);
         return true;

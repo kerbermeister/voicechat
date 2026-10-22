@@ -88,9 +88,9 @@ Future<void> _accept(Client client, Set<String> users) async {
     for (final device in client.userDeviceKeys[user]!.deviceKeys.values) {
       if (!device.blocked &&
           device.isValid &&
+          !approve.contains(device) &&
           master != null &&
-          device.hasValidSignatureChain(onlyValidateUserIds: {user}) &&
-          !approve.contains(device)) {
+          device.hasValidSignatureChain(onlyValidateUserIds: {user})) {
         (pin['devices'] as Map)[device.deviceId] = _fingerprint(device);
         approve.add(device);
       }
@@ -102,7 +102,18 @@ Future<void> _accept(Client client, Set<String> users) async {
   }
 }
 
-Future<void> pinManuallyVerifiedDevice(Client client, DeviceKeys device) async {
+Future<void> pinManuallyVerifiedDevice(
+  Client client,
+  DeviceKeys device, {
+  CrossSigningKey? master,
+}) async {
+  if (master != null &&
+      (master.userId != device.userId ||
+          !master.usage.contains('master') ||
+          !master.isValid ||
+          master.blocked)) {
+    throw StateError('Invalid independently verified master key');
+  }
   if (_enabled[client] != true) return;
   await (_writes[client] = (_writes[client] ?? Future.value())
       .catchError((Object _) {})
@@ -113,7 +124,26 @@ Future<void> pinManuallyVerifiedDevice(Client client, DeviceKeys device) async {
             users[device.userId] ??
             <String, dynamic>{'devices': <String, dynamic>{}};
         (pin['devices'] as Map)[device.deviceId] = _fingerprint(device);
+        (pin.putIfAbsent('verified', () => <String, dynamic>{})
+            as Map)[device.deviceId] = _fingerprint(
+          device,
+        );
+        if (master != null) pin['master'] = master.publicKey;
         users[device.userId] = pin;
         await client.database.storeAccountData(_storage, pins);
       }));
+}
+
+Future<Set<DeviceKeys>> independentlyVerifiedDevices(
+  Client client,
+  Iterable<DeviceKeys> devices,
+) async {
+  final pins = (await _load(client))['users'] as Map;
+  return devices
+      .where(
+        (device) =>
+            pins[device.userId]?['verified']?[device.deviceId] ==
+            _fingerprint(device),
+      )
+      .toSet();
 }
