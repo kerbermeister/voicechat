@@ -73,7 +73,7 @@ jobs:
               value[name]=os.environ['IMAGE_REPOSITORY']+'/'+name+'@'+digest
           open('release.json','w').write(json.dumps(value))
           PY
-          tar --exclude=infra/runtime --exclude=infra/__pycache__ -czf /tmp/release.tar.gz infra prototype/voicechat_policy.py release.json
+          tar --exclude=infra/runtime --exclude=infra/__pycache__ -czf /tmp/release.tar.gz infra prototype/voicechat_policy.py prototype/client_policy.py release.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: release-${{ github.sha }}

@@ -1,0 +1,12 @@
+{
+  "date": "2026-10-22",
+  "result": "PASS",
+  "scope": "text-only web, three isolated contexts",
+  "muted_person_and_group_icons_persist": true,
+  "unmute_persists": true,
+  "unread_messages_per_room": 2,
+  "unread_chat_count_per_tab": 1,
+  "reading_on_another_device_clears_counts": true,
+  "calls_started": false,
+  "microphone_started": false
+}

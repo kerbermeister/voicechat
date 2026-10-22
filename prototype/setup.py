@@ -27,6 +27,7 @@ if 'turn' not in s:
 (out / 'postgres.env').write_text(f'POSTGRES_PASSWORD={s["postgres"]}\nPOSTGRES_USER=synapse\nPOSTGRES_DB=synapse\nPOSTGRES_INITDB_ARGS=--encoding=UTF8 --locale=C\n')
 (out / 'homeserver.yaml').write_text(f'''server_name: voicechat.local
 public_baseurl: http://localhost:8008/
+enable_ephemeral_messages: true
 pid_file: /data/homeserver.pid
 modules:
   - module: voicechat_policy.ContactPolicy

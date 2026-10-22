@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'chat_actions.dart';
+import 'temporary_message.dart';
 
 Future<({mx.Room room, String? event})?> searchHistory(
   BuildContext context,
@@ -18,6 +20,7 @@ class _HistorySearch extends StatefulWidget {
 }
 
 class _HistorySearchState extends State<_HistorySearch> {
+  Timer? expiration;
   final input = TextEditingController();
   final messages = <({mx.Event event, mx.Event shown})>[];
   bool busy = false;
@@ -60,8 +63,28 @@ class _HistorySearchState extends State<_HistorySearch> {
         setState(() => error = 'Часть локальной истории недоступна.');
       }
     } finally {
-      if (mounted) setState(() => busy = false);
+      if (mounted) {
+        setState(() => busy = false);
+        scheduleExpiration();
+      }
     }
+  }
+
+  void scheduleExpiration() {
+    expiration?.cancel();
+    final deadlines =
+        messages
+            .map((m) => messageExpiry(m.event))
+            .whereType<DateTime>()
+            .where((date) => date.isAfter(DateTime.now()))
+            .toList()
+          ..sort();
+    if (deadlines.isEmpty) return;
+    expiration = Timer(deadlines.first.difference(DateTime.now()), () {
+      if (!mounted) return;
+      setState(() {});
+      scheduleExpiration();
+    });
   }
 
   @override
@@ -79,6 +102,7 @@ class _HistorySearchState extends State<_HistorySearch> {
             .where(
               (e) =>
                   query.isNotEmpty &&
+                  !messageExpired(e.event) &&
                   messageSearchText(e.shown).toLowerCase().contains(query),
             )
             .toList()
@@ -175,6 +199,7 @@ class _HistorySearchState extends State<_HistorySearch> {
 
   @override
   void dispose() {
+    expiration?.cancel();
     input.dispose();
     super.dispose();
   }

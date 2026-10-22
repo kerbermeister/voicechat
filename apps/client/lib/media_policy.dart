@@ -10,6 +10,7 @@ class MediaPolicy {
   final int videoMaxBytes;
   final int fileMaxBytes;
   final int fileMaxCount;
+  final int temporaryMinSeconds, temporaryMaxSeconds, temporaryStepSeconds;
   const MediaPolicy({
     this.photoMaxCount = 24,
     this.photoScale = .5,
@@ -22,6 +23,9 @@ class MediaPolicy {
     this.videoMaxBytes = 314572800,
     this.fileMaxBytes = 314572800,
     this.fileMaxCount = 5,
+    this.temporaryMinSeconds = 10,
+    this.temporaryMaxSeconds = 600,
+    this.temporaryStepSeconds = 10,
   });
 
   factory MediaPolicy.fromJson(Map<String, dynamic> data) {
@@ -40,6 +44,18 @@ class MediaPolicy {
     if (scale is! num || !scale.isFinite || scale < .05 || scale > 1) {
       throw const FormatException('Invalid photo scale');
     }
+    final low = data.containsKey('temporary_min_seconds')
+        ? limit('temporary_min_seconds', 86400)
+        : 10;
+    final high = data.containsKey('temporary_max_seconds')
+        ? limit('temporary_max_seconds', 86400)
+        : 600;
+    final step = data.containsKey('temporary_step_seconds')
+        ? limit('temporary_step_seconds', 86400)
+        : 10;
+    if (low > high || (high - low) % step != 0) {
+      throw const FormatException('Invalid temporary message interval');
+    }
     return MediaPolicy(
       photoMaxCount: limit('photo_max_count', 64),
       photoScale: scale.toDouble(),
@@ -54,6 +70,9 @@ class MediaPolicy {
       fileMaxCount: data.containsKey('file_max_count')
           ? limit('file_max_count', 20)
           : 5,
+      temporaryMinSeconds: low,
+      temporaryMaxSeconds: high,
+      temporaryStepSeconds: step,
     );
   }
 
@@ -70,5 +89,8 @@ class MediaPolicy {
     'video_max_bytes': videoMaxBytes,
     'file_max_bytes': fileMaxBytes,
     'file_max_count': fileMaxCount,
+    'temporary_min_seconds': temporaryMinSeconds,
+    'temporary_max_seconds': temporaryMaxSeconds,
+    'temporary_step_seconds': temporaryStepSeconds,
   };
 }

@@ -12,6 +12,7 @@ const apiUrl=process.env.VOICECHAT_API_URL || 'http://localhost:8090';
 const secretsFile=process.env.VOICECHAT_SECRETS_FILE || path.join(root,'.prototype/secrets.json');
 const video = process.env.VOICECHAT_VIDEO_TEST === '1';
 const network = process.env.VOICECHAT_NETWORK_TEST === '1';
+const textOnly = process.env.VOICECHAT_TEXT_ONLY === '1';
 const callButton = video ? 'Видеозвонок' : 'Голосовой звонок';
 fs.mkdirSync(path.join(root,'.prototype/ui'),{recursive:true});
 
@@ -41,7 +42,7 @@ async function register(role) {
 (async () => {
   const alice = await register('alice'), bob = await register('bob'), charlie = await register('charlie');
   await request(apiUrl,'/contacts',{action:'policy',allow_direct:false},bob.access_token);
-  const browser = await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']});
+  const browser = await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:textOnly ? ['--mute-audio','--autoplay-policy=no-user-gesture-required'] : ['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']});
   const pages=[];
   let sensitiveVerification=false;
   try {
@@ -190,7 +191,7 @@ async function register(role) {
       await page.getByText(name,{exact:true}).waitFor();
     }
     async function login(account) {
-      const context=await browser.newContext({permissions:['microphone','camera'],viewport:{width:1280,height:900}});
+      const context=await browser.newContext({permissions:textOnly ? [] : ['microphone','camera'],viewport:{width:1280,height:900}});
       await context.addInitScript(()=>{
         const capture=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia=async constraints=>{
@@ -235,10 +236,22 @@ async function register(role) {
       return page;
     }
     const a=await login(alice), b=await login(bob);
+    if(process.env.VOICECHAT_LINKS_ONLY==='1') {
+      await request(matrixUrl,'/_matrix/client/v3/createRoom',{name:'Ссылки · приёмка',initial_state:[
+        {type:'m.room.encryption',state_key:'',content:{algorithm:'m.megolm.v1.aes-sha2'}},
+      ]},alice.access_token);
+      await a.bringToFront();
+      await a.getByRole('button',{name:/^Группы(?: \d+)?$/}).click();
+      await a.getByRole('button',{name:/^Ссылки · приёмка /}).click();
+      await a.setViewportSize({width:390,height:844});
+      if(process.env.VOICECHAT_SKIP_LINKS!=='1') await require('./check_link_cards.cjs')({page:a,fill,button,waitForAnnouncement,root});
+      console.log('PASS: focused link playback');
+      return;
+    }
     await button(a,'Найти человека').click();
     await fill(a,'Поиск пользователей',bob.username); await button(a,'Найти').click();
     await a.getByRole('checkbox',{name:`${bob.username} ${bob.user_id}`,exact:true}).click();
-    await a.getByText('Приглашение отправлено. После подтверждения собеседник появится в «Люди».',{exact:true}).waitFor();
+    await waitForAnnouncement(a,'Приглашение отправлено. После подтверждения собеседник появится в «Люди».');
     await a.waitForTimeout(350);
     await a.getByRole('button',{name:/Приглашения/}).click();
     await button(a,'Отменить запрос').waitFor({timeout:30000});
@@ -263,66 +276,68 @@ async function register(role) {
     assert.equal(await button(a,'Покинуть чат').count(),0);
     assert.equal(await button(a,'Изменить название').count(),0);
     await button(a,'Закрыть').click();
-    const escapedBob=bob.user_id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-    sensitiveVerification=true;
-    async function startVerification() {
-      await button(a,'Настройки').click();
-      await a.getByRole('button',{name:/^Проверить устройства/}).click();
-      await a.getByRole('button',{name:new RegExp(escapedBob+' /')}).first().click();
-      await button(b,'Открыть').click({timeout:30000});
-      await button(b,'Принять проверку').click();
-      await button(a,'Совпадают').waitFor({timeout:30000});
-      await button(b,'Совпадают').waitFor({timeout:30000});
-    }
-    await startVerification();
-    await button(a,'Не совпадают').click();
-    await a.getByText('Коды не совпали. Устройство не подтверждено.',{exact:true}).waitFor();
-    await b.getByText('Коды не совпали. Устройство не подтверждено.',{exact:true}).waitFor();
-    await button(a,'Закрыть').click(); await button(b,'Закрыть').click();
-    await startVerification();
-    const codes=async page=>{
-      const match=(await page.getByRole('alertdialog').ariaSnapshot()).match(/\d{4}\s+\d{4}\s+\d{4}/);
-      assert(match,'SAS must display three numerical codes');
-      return match[0].replace(/\s+/g,' ');
-    };
-    assert((await codes(a))===(await codes(b)),'Independent SAS codes differ');
-    await button(a,'Совпадают').click();
-    await button(b,'Совпадают').click();
-    await a.getByText('Устройство подтверждено',{exact:true}).waitFor({timeout:30000});
-    await b.getByText('Устройство подтверждено',{exact:true}).waitFor({timeout:30000});
-    await button(a,'Закрыть').click(); await button(b,'Закрыть').click();
-    await button(a,'Настройки').click(); await a.getByRole('button',{name:/^Проверить устройства/}).click();
-    await a.getByRole('button',{name:/Подтверждено независимой сверкой/}).waitFor();
-    await button(a,'Закрыть').click();
-    if(process.env.VOICECHAT_QR_TEST==='1') {
-      console.log('PASS: two-browser SAS; preparing cross-signing for QR');
-      for(const [page,account] of [[a,alice],[b,bob]]) {
-        await button(page,'Настройки').click();
-        await page.getByRole('button',{name:/^Создать ключ/}).click();
-        await fill(page,'Пароль',account.password);await button(page,'Подтвердить').click();
-        await button(page,'Я сохранил ключ').click({timeout:30000});
+    if(!textOnly) {
+      const escapedBob=bob.user_id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      sensitiveVerification=true;
+      async function startVerification() {
+        await button(a,'Настройки').click();
+        await a.getByRole('button',{name:/^Проверить устройства/}).click();
+        await a.getByRole('button',{name:new RegExp(escapedBob+' /')}).first().click();
+        await button(b,'Открыть').click({timeout:30000});
+        await button(b,'Принять проверку').click();
+        await button(a,'Совпадают').waitFor({timeout:30000});
+        await button(b,'Совпадают').waitFor({timeout:30000});
       }
-      await button(a,'Настройки').click();await a.getByRole('button',{name:/^Проверить устройства/}).click();
-      await a.getByRole('button',{name:new RegExp(escapedBob+' /')}).first().click();
-      await button(b,'Открыть').click({timeout:30000});await button(b,'Принять проверку').click();
-      await a.waitForTimeout(1000);
-      console.log('QR controls:',JSON.stringify({scan:await button(a,'Сканировать QR').count(),sas:await button(a,'Совпадают').count(),label:(await a.locator('body').ariaSnapshot()).includes('QR для текущей проверки устройства')}));
-      const code=a.getByText('QR для текущей проверки устройства',{exact:false});
-      await code.waitFor();
-      const box=await code.boundingBox();assert(box && box.width>100 && box.height>100,'Visible QR required');
-      const png=await a.screenshot({clip:box});
-      await b.evaluate(data=>window.qrCameraImage=data,'data:image/png;base64,'+png.toString('base64'));
-      await button(b,'Сканировать QR').click();
-      await a.getByText('Другое устройство сообщает об успешном сканировании.',{exact:false}).waitFor({timeout:30000});
-      await button(a,'Вижу успешное сканирование').click();
-      for(const page of [a,b]) {
-        await page.getByText('Устройство подтверждено',{exact:true}).waitFor({timeout:30000});
-        await button(page,'Закрыть').click();
+      await startVerification();
+      await button(a,'Не совпадают').click();
+      await a.getByText('Коды не совпали. Устройство не подтверждено.',{exact:true}).waitFor();
+      await b.getByText('Коды не совпали. Устройство не подтверждено.',{exact:true}).waitFor();
+      await button(a,'Закрыть').click(); await button(b,'Закрыть').click();
+      await startVerification();
+      const codes=async page=>{
+        const match=(await page.getByRole('alertdialog').ariaSnapshot()).match(/\d{4}\s+\d{4}\s+\d{4}/);
+        assert(match,'SAS must display three numerical codes');
+        return match[0].replace(/\s+/g,' ');
+      };
+      assert((await codes(a))===(await codes(b)),'Independent SAS codes differ');
+      await button(a,'Совпадают').click();
+      await button(b,'Совпадают').click();
+      await a.getByText('Устройство подтверждено',{exact:true}).waitFor({timeout:30000});
+      await b.getByText('Устройство подтверждено',{exact:true}).waitFor({timeout:30000});
+      await button(a,'Закрыть').click(); await button(b,'Закрыть').click();
+      await button(a,'Настройки').click(); await a.getByRole('button',{name:/^Проверить устройства/}).click();
+      await a.getByRole('button',{name:/Подтверждено независимой сверкой/}).waitFor();
+      await button(a,'Закрыть').click();
+      if(process.env.VOICECHAT_QR_TEST==='1') {
+        console.log('PASS: two-browser SAS; preparing cross-signing for QR');
+        for(const [page,account] of [[a,alice],[b,bob]]) {
+          await button(page,'Настройки').click();
+          await page.getByRole('button',{name:/^Создать ключ/}).click();
+          await fill(page,'Пароль',account.password);await button(page,'Подтвердить').click();
+          await button(page,'Я сохранил ключ').click({timeout:30000});
+        }
+        await button(a,'Настройки').click();await a.getByRole('button',{name:/^Проверить устройства/}).click();
+        await a.getByRole('button',{name:new RegExp(escapedBob+' /')}).first().click();
+        await button(b,'Открыть').click({timeout:30000});await button(b,'Принять проверку').click();
+        await a.waitForTimeout(1000);
+        console.log('QR controls:',JSON.stringify({scan:await button(a,'Сканировать QR').count(),sas:await button(a,'Совпадают').count(),label:(await a.locator('body').ariaSnapshot()).includes('QR для текущей проверки устройства')}));
+        const code=a.getByText('QR для текущей проверки устройства',{exact:false});
+        await code.waitFor();
+        const box=await code.boundingBox();assert(box && box.width>100 && box.height>100,'Visible QR required');
+        const png=await a.screenshot({clip:box});
+        await b.evaluate(data=>window.qrCameraImage=data,'data:image/png;base64,'+png.toString('base64'));
+        await button(b,'Сканировать QR').click();
+        await a.getByText('Другое устройство сообщает об успешном сканировании.',{exact:false}).waitFor({timeout:30000});
+        await button(a,'Вижу успешное сканирование').click();
+        for(const page of [a,b]) {
+          await page.getByText('Устройство подтверждено',{exact:true}).waitFor({timeout:30000});
+          await button(page,'Закрыть').click();
+        }
+        await b.evaluate(()=>window.qrCameraImage=null);
+        console.log('PASS: two-browser standard binary Matrix QR, camera decoding and bilateral confirmation');
       }
-      await b.evaluate(()=>window.qrCameraImage=null);
-      console.log('PASS: two-browser standard binary Matrix QR, camera decoding and bilateral confirmation');
+      sensitiveVerification=false;
     }
-    sensitiveVerification=false;
     await createGroup(a,'Согласие на группу',bob);
     await b.getByRole('button',{name:/Приглашения/}).click();
     await b.getByRole('tab',{name:'Группы',exact:true}).click();
@@ -380,6 +395,120 @@ async function register(role) {
       await a.waitForTimeout(300);
     }
     assert(!/\s2$/.test(label),'Read receipt did not clear the count');
+    if(textOnly) {
+      const escape = text => text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      const people = page => page.getByRole('button',{name:/^Люди(?: \d+)?$/});
+      const groups = page => page.getByRole('button',{name:/^Группы(?: \d+)?$/});
+      const person = page => page.getByRole('button',{name:new RegExp(bob.username)});
+      const group = page => page.getByRole('button',{name:/Согласие на группу /});
+      async function assertMute(page,row,muted) {
+        let visible;
+        for(let i=0;i<100;i++) {
+          visible=(await row.getAttribute('aria-label')||'').includes('Уведомления отключены');
+          if(visible===muted) break;
+          await page.waitForTimeout(100);
+        }
+        assert.equal(visible,muted,'The mute icon must be included in the accessible chat row');
+        await row.getByRole('button',{name:'Действия с чатом',exact:true}).click();
+        await page.getByRole('menuitem',{name:muted?'Включить уведомления':'Отключить уведомления',exact:true}).waitFor();
+        await page.keyboard.press('Escape');
+        await page.mouse.click(10,10);
+        await page.getByRole('menuitem').first().waitFor({state:'hidden'});
+      }
+      async function reload(page) {
+        await page.reload();
+        await page.locator('flt-semantics-placeholder').evaluate(el=>el.click());
+        await page.getByRole('button',{name:/^Настройки(?: Настройки)?$/}).or(page.getByRole('textbox',{name:'Написать сообщение…',exact:true})).first().waitFor({timeout:60000});
+      }
+      async function toggle(page,row,enabled) {
+        await row.getByRole('button',{name:'Действия с чатом',exact:true}).click();
+        await page.getByRole('menuitem',{name:enabled?'Включить уведомления':'Отключить уведомления',exact:true}).click();
+        await page.mouse.move(2,2);
+        await assertMute(page,row,!enabled);
+      }
+      await assertMute(a,person(a),true);
+      await reload(a); await people(a).click();
+      await assertMute(a,person(a),true);
+      await a.screenshot({path:path.join(root,'.prototype/ui/chat-list-muted-person.png')});
+      await button(a,'Закрыть чат').click();
+      for(const text of ['Непрочитанное личное один','Непрочитанное личное два']) {
+        await fill(b,'Написать сообщение…',text); await button(b,'Отправить').click();
+        await b.getByRole('group',{name:new RegExp(escape(text))}).waitFor();
+      }
+      await a.getByRole('button',{name:new RegExp(escape(bob.username)+'[\\s\\S]*\\s2$')}).waitFor();
+      await a.getByRole('button',{name:/^Люди 1$/}).waitFor();
+      await groups(b).click(); await group(b).click();
+      await b.getByText('Согласие на группу',{exact:true}).waitFor();
+      for(const text of ['Непрочитанное групповое один','Непрочитанное групповое два']) {
+        await fill(b,'Написать сообщение…',text); await button(b,'Отправить').click();
+        await b.getByRole('group',{name:new RegExp(escape(text))}).waitFor();
+      }
+      await a.getByRole('button',{name:/^Группы 1$/}).waitFor();
+      await groups(a).click();
+      await a.getByRole('button',{name:/^Согласие на группу [\s\S]*\s2$/}).waitFor();
+      await toggle(a,group(a),false);
+      await reload(a); await groups(a).click();
+      await assertMute(a,group(a),true);
+      await a.screenshot({path:path.join(root,'.prototype/ui/chat-list-muted-group.png')});
+      const second = await login(alice);
+      await second.bringToFront();
+      await people(second).click(); await person(second).click();
+      await second.waitForTimeout(700); await a.bringToFront();
+      await a.getByRole('button',{name:/^Люди$/}).waitFor();
+      await second.bringToFront();
+      await groups(second).click(); await group(second).click();
+      await second.waitForTimeout(700); await a.bringToFront();
+      await a.getByRole('button',{name:/^Группы$/}).waitFor();
+      assert(!/\s2$/.test(await group(a).getAttribute('aria-label')||''),'Reading on another device must clear group unread');
+      await toggle(a,group(a),true);
+      await people(a).click(); await toggle(a,person(a),true);
+      await reload(a); await people(a).click();
+      await assertMute(a,person(a),false);
+      await groups(a).click(); await assertMute(a,group(a),false);
+      await a.screenshot({path:path.join(root,'.prototype/ui/chat-list-text.png')});
+      fs.writeFileSync(path.join(root,'prototype/verified-chat-list-run.json'),JSON.stringify({
+        date:'2026-10-22',result:'PASS',scope:'text-only web, three isolated contexts',
+        muted_person_and_group_icons_persist:true,unmute_persists:true,
+        unread_messages_per_room:2,unread_chat_count_per_tab:1,
+        reading_on_another_device_clears_counts:true,calls_started:false,microphone_started:false,
+      },null,2)+'\n');
+      await group(a).click();
+      await a.setViewportSize({width:390,height:844});
+      if(process.env.VOICECHAT_SKIP_LINKS!=='1') await require('./check_link_cards.cjs')({page:a,fill,button,waitForAnnouncement,root});
+      if(process.env.VOICECHAT_TEMPORARY_TEST==='1') {
+        await a.getByRole('button',{name:/^Временное сообщение/}).click();
+        await a.getByText('Исчезнет через 10 с',{exact:true}).waitFor();
+        const apply=await button(a,'Применить').boundingBox();
+        assert(apply,'Visible Apply button required');
+        await a.mouse.click(apply.x+apply.width/2,apply.y+apply.height/2);
+        await a.getByRole('button',{name:/^Временное сообщение · 10 с/}).waitFor();
+        const temporaryText='Временный секрет '+Date.now();
+        await fill(a,'Написать сообщение…',temporaryText); await button(a,'Отправить').click();
+        await waitForAnnouncement(a,temporaryText);
+        await waitForAnnouncement(a,'Исчезнет через');
+        await a.screenshot({path:path.join(root,'.prototype/ui/temporary-message.png')});
+        await b.bringToFront();
+        await b.getByRole('group',{name:new RegExp(escape(temporaryText))}).waitFor({timeout:6000});
+        await a.bringToFront();
+        await a.getByRole('group',{name:new RegExp(escape(temporaryText))}).waitFor({state:'hidden',timeout:13000});
+        await b.bringToFront();
+        await b.getByRole('group',{name:new RegExp(escape(temporaryText))}).waitFor({state:'hidden',timeout:5000});
+        await a.bringToFront(); await reload(a);
+        if(await button(a,'Закрыть чат').count()) await button(a,'Закрыть чат').click();
+        await groups(a).click(); await group(a).click();
+        await a.getByRole('textbox',{name:'Написать сообщение…',exact:true}).waitFor();
+        assert.equal(await a.getByRole('group',{name:new RegExp(escape(temporaryText))}).count(),0);
+        await fill(a,'Поиск по загруженной истории',temporaryText);
+        assert.equal(await a.getByRole('group',{name:new RegExp(escape(temporaryText))}).count(),0);
+        fs.writeFileSync(path.join(root,'prototype/verified-temporary-ui-run.json'),JSON.stringify({
+          run:Math.floor(Date.now()/1000),result:'PASS',scope:'real E2EE between two web clients; 390px sender',
+          temporary_body_decrypted_by_recipient:true,expires_after_ten_seconds:true,
+          expired_body_hidden_on_both_clients:true,reload_and_local_search_hide_expired_body:true,
+        },null,2)+'\n');
+      }
+      console.log('PASS: chat list and requested acceptance scenarios; no calls or microphone');
+      return;
+    }
     await button(a,callButton).click();
     await button(b,'Принять').waitFor({timeout:30000});
     await b.waitForFunction(()=>window.soundPlays.some(p=>p.src.includes('ringtone.wav')));

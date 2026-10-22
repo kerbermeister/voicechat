@@ -7,6 +7,7 @@ import urllib.error
 import urllib.request
 import tempfile
 from contacts import ContactStore, ContactError
+from call_control import CallStore
 from unittest.mock import patch, Mock
 import token_server
 
@@ -169,6 +170,33 @@ class AdmissionTests(unittest.TestCase):
                 self.assertFalse(grant['video']['canPublishData'])
                 self.assertNotIn('roomAdmin', grant['video'])
                 self.assertNotIn('key', grant)
+
+    def test_matrix_outage_does_not_renew_a_lease_or_disguise_itself_as_revocation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            now = [1000.]
+            media = Mock()
+            store = CallStore(directory + '/calls.sqlite', media, lambda: now[0])
+            who = {'user_id': '@alice:local', 'device_id': 'DEVICE'}
+            try:
+                store.admission('!room:local', 'test', False, who, 'curve', 'ed')
+            except ValueError as error:
+                self.assertEqual(str(error), 'generation_settling')
+            now[0] += 1
+            grant = store.admission('!room:local', 'test', False, who, 'curve', 'ed')
+            expires = store.roster('!room:local', 'test')[0]['expires']
+            body = {'room_id': '!room:local', 'session': 'test', 'lease_id': grant['lease_id']}
+            for code, expected in ((401, 401), (403, 403), (429, 503), (500, 503), (503, 503)):
+                error = urllib.error.HTTPError('http://matrix.invalid', code, 'unavailable', {}, None)
+                with patch.object(token_server.Handler, 'matrix', side_effect=error), \
+                     patch.object(token_server, 'call_store', return_value=store):
+                    status, response = self.request(body)
+                self.assertEqual(status, expected)
+                self.assertEqual(response['error'], 'upstream_unavailable' if expected == 503 else 'matrix_denied')
+                self.assertEqual(store.roster('!room:local', 'test')[0]['expires'], expires)
+            now[0] = expires + 1
+            store.sweep()
+            self.assertEqual(store.roster('!room:local', 'test'), [])
+            media.assert_called_with('DeleteRoom', {'room': grant['generation']})
 
 
 if __name__ == '__main__':

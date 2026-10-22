@@ -3094,6 +3094,9 @@ class Client extends MatrixApi {
     else if (found &&
         chatUpdate is JoinedRoomUpdate &&
         (rooms[roomIndex].membership != membership ||
+            (chatUpdate.unreadMessageCount != null &&
+                rooms[roomIndex].unreadMessageCount !=
+                    chatUpdate.unreadMessageCount) ||
             rooms[roomIndex].notificationCount !=
                 (chatUpdate.unreadNotifications?.notificationCount ?? 0) ||
             rooms[roomIndex].highlightCount !=

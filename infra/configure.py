@@ -28,7 +28,7 @@ def main():
         smtp.update(smtp_user=base64.b64decode(env['SMTP_USER_B64'],validate=True).decode(),
                     smtp_pass=base64.b64decode(env['SMTP_PASSWORD_B64'],validate=True).decode())
     synapse={
-        'server_name':name,'public_baseurl':env['PUBLIC_URL']+'/',
+        'server_name':name,'public_baseurl':env['PUBLIC_URL']+'/', 'enable_ephemeral_messages':True,
         'modules':[{'module':'voicechat_policy.ContactPolicy','config':{'url':'http://control:8090/internal/contact-authorized','secret':env['POLICY_SECRET']}}],
         'listeners':[{'port':8008,'type':'http','tls':False,'bind_addresses':['0.0.0.0'],
                       'x_forwarded':True,'resources':[{'names':['client'],'compress':False}]}],

@@ -1231,6 +1231,12 @@ class Room {
           )
         : content;
 
+    // The server needs the duration to expire ciphertext; the plaintext stays encrypted.
+    if (mustEncrypt && content.containsKey('dev.voicechat.ttl_seconds')) {
+      sendMessageContent['dev.voicechat.ttl_seconds'] =
+          content['dev.voicechat.ttl_seconds'];
+    }
+
     return await client.sendMessage(
       id,
       sendMessageContent.containsKey('ciphertext')
@@ -1287,13 +1293,18 @@ class Room {
     }
 
     if (inReplyTo != null) {
+      final temporary = inReplyTo.content.containsKey(
+        'dev.voicechat.ttl_seconds',
+      );
       var replyText =
-          '<${inReplyTo.senderId}> ${_stripBodyFallback(inReplyTo.body)}';
+          '<${inReplyTo.senderId}> ${temporary ? 'Временное сообщение' : _stripBodyFallback(inReplyTo.body)}';
       replyText = replyText.split('\n').map((line) => '> $line').join('\n');
       content['format'] = 'org.matrix.custom.html';
       // be sure that we strip any previous reply fallbacks
       final replyHtml =
-          (inReplyTo.formattedText.isNotEmpty
+          (temporary
+                  ? 'Временное сообщение'
+                  : inReplyTo.formattedText.isNotEmpty
                   ? inReplyTo.formattedText
                   : htmlEscape.convert(inReplyTo.body).replaceAll('\n', '<br>'))
               .replaceAll(

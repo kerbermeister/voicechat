@@ -1,0 +1,19 @@
+{
+  "run": 1792676842,
+  "result": "PASS",
+  "scope": "real SFU signaling and lease expiry; Matrix outage injected at isolated authorizer boundary; no media decryption claim",
+  "measurements": [
+    {
+      "fault": "no-renewal",
+      "disconnect_ms": 30389,
+      "unexpired_replay_rejected": true,
+      "media_capture_requests": 0
+    },
+    {
+      "fault": "matrix-outage",
+      "disconnect_ms": 30095,
+      "unexpired_replay_rejected": true,
+      "media_capture_requests": 0
+    }
+  ]
+}

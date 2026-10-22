@@ -5,6 +5,7 @@ import 'package:matrix/encryption.dart';
 import 'first_keys.dart';
 import 'matrix_probe.dart';
 import 'user_action_error.dart';
+import 'temporary_message.dart';
 
 class HistoryRecovery extends ChangeNotifier {
   final Client client;
@@ -139,6 +140,7 @@ class HistoryRecovery extends ChangeNotifier {
 Future<int> requestMissingHistory(Timeline timeline) async {
   final sessions = <String>{};
   for (final event in timeline.events.toList()) {
+    if (messageExpired(event) || emptyEncryptedEvent(event)) continue;
     if (event.type != EventTypes.Encrypted ||
         event.messageType != MessageTypes.BadEncrypted ||
         event.content['can_request_session'] != true) {

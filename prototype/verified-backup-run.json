@@ -1,0 +1,11 @@
+{
+  "run": "1792675695",
+  "result": "PASS",
+  "encrypted_repository_checked": true,
+  "scope": "snapshot and isolated database restore; not full application recovery",
+  "synapse_signing_and_config_match": true,
+  "control_state_restored": true,
+  "control_sqlite_integrity_checked": true,
+  "postgres_restore_counts_match": true,
+  "database_only": true
+}

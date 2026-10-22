@@ -10,6 +10,7 @@ import 'local_store.dart';
 import 'picked_file.dart';
 import 'link_preview.dart';
 import 'call_event.dart';
+import 'temporary_message.dart';
 
 const maxAttachmentBytes = 10 * 1024 * 1024;
 
@@ -112,6 +113,7 @@ class ChatActions extends ChangeNotifier {
     Event? reply,
     String? edit,
     bool preparing = false,
+    int? ttlSeconds,
   }) async {
     if (_closed) {
       throw UserActionError('Хранилище закрывается. Повторите после входа.');
@@ -124,10 +126,21 @@ class ChatActions extends ChangeNotifier {
     if (pending.length >= 100) {
       throw UserActionError('В очереди уже 100 сообщений. Дождитесь отправки.');
     }
+    if (ttlSeconds != null &&
+        (ttlSeconds < policy.temporaryMinSeconds ||
+            ttlSeconds > policy.temporaryMaxSeconds ||
+            (ttlSeconds - policy.temporaryMinSeconds) %
+                    policy.temporaryStepSeconds !=
+                0)) {
+      throw UserActionError('Выберите допустимый срок временного сообщения.');
+    }
     final item = <String, dynamic>{
       'id': client.generateUniqueTransactionId(),
       'room': room.id,
-      'content': content,
+      'content': {
+        ...content,
+        if (ttlSeconds != null) 'dev.voicechat.ttl_seconds': ttlSeconds,
+      },
       'type': type,
       'created': DateTime.now().millisecondsSinceEpoch,
       if (reply != null) 'reply': reply.eventId,
@@ -155,6 +168,7 @@ class ChatActions extends ChangeNotifier {
     int? duration,
     void Function(double)? progress,
     bool Function()? cancelled,
+    int? ttlSeconds,
   }) async {
     await refreshPolicy();
     final video = source.mime.startsWith('video/');
@@ -184,6 +198,7 @@ class ChatActions extends ChangeNotifier {
       },
       reply: reply,
       preparing: true,
+      ttlSeconds: ttlSeconds,
     );
     final item = pending.firstWhere((i) => i['id'] == id);
     _preparing.add(id);
@@ -270,6 +285,7 @@ class ChatActions extends ChangeNotifier {
     Event? reply,
     String? edit,
     List<LinkPreview> previews = const [],
+    int? ttlSeconds,
   }) async {
     await refreshPolicy();
     text = text.trim();
@@ -298,7 +314,13 @@ class ChatActions extends ChangeNotifier {
         'Текст слишком большой для одного зашифрованного сообщения. Сократите его или разделите на несколько сообщений.',
       );
     }
-    await enqueue(room, content, reply: reply, edit: edit);
+    await enqueue(
+      room,
+      content,
+      reply: reply,
+      edit: edit,
+      ttlSeconds: ttlSeconds,
+    );
   }
 
   Future<void> attachment(
@@ -307,6 +329,7 @@ class ChatActions extends ChangeNotifier {
     Event? reply,
     List<int>? waveform,
     String caption = '',
+    int? ttlSeconds,
   }) async {
     if (caption.trim().length > policy.textMaxLength) {
       throw UserActionError('Подпись слишком длинная.');
@@ -327,15 +350,20 @@ class ChatActions extends ChangeNotifier {
         'Поддерживаются изображения и голосовые сообщения.',
       );
     }
-    await enqueue(room, {
-      'msgtype': file.msgType,
-      'body': file.name,
-      'bytes': base64Encode(file.bytes),
-      'mime': file.mimeType,
-      if (file is MatrixAudioFile) 'duration': file.duration,
-      if (waveform != null) 'dev.voicechat.waveform': waveform,
-      if (caption.trim().isNotEmpty) 'dev.voicechat.caption': caption.trim(),
-    }, reply: reply);
+    await enqueue(
+      room,
+      {
+        'msgtype': file.msgType,
+        'body': file.name,
+        'bytes': base64Encode(file.bytes),
+        'mime': file.mimeType,
+        if (file is MatrixAudioFile) 'duration': file.duration,
+        if (waveform != null) 'dev.voicechat.waveform': waveform,
+        if (caption.trim().isNotEmpty) 'dev.voicechat.caption': caption.trim(),
+      },
+      reply: reply,
+      ttlSeconds: ttlSeconds,
+    );
   }
 
   Future<void> album(
@@ -343,6 +371,7 @@ class ChatActions extends ChangeNotifier {
     List<MatrixImageFile> photos,
     String caption, {
     Event? reply,
+    int? ttlSeconds,
   }) async {
     await refreshPolicy();
     if (photos.isEmpty ||
@@ -358,22 +387,27 @@ class ChatActions extends ChangeNotifier {
     )) {
       throw UserActionError('Фотография превышает допустимый размер.');
     }
-    await enqueue(room, {
-      'msgtype': 'dev.voicechat.album',
-      'body': caption.trim().isEmpty
-          ? 'Фотографии · ${photos.length}'
-          : caption.trim(),
-      'caption': caption.trim(),
-      'images': photos
-          .map(
-            (p) => {
-              'bytes': base64Encode(p.bytes),
-              'body': p.name,
-              'info': p.info,
-            },
-          )
-          .toList(),
-    }, reply: reply);
+    await enqueue(
+      room,
+      {
+        'msgtype': 'dev.voicechat.album',
+        'body': caption.trim().isEmpty
+            ? 'Фотографии · ${photos.length}'
+            : caption.trim(),
+        'caption': caption.trim(),
+        'images': photos
+            .map(
+              (p) => {
+                'bytes': base64Encode(p.bytes),
+                'body': p.name,
+                'info': p.info,
+              },
+            )
+            .toList(),
+      },
+      reply: reply,
+      ttlSeconds: ttlSeconds,
+    );
   }
 
   Future<void> _uploadAlbum(Map<String, dynamic> item, Room room) async {
@@ -541,6 +575,9 @@ class ChatActions extends ChangeNotifier {
               txid: item['id'] as String,
               inReplyTo: reply,
               extraContent: {
+                if (content.containsKey('dev.voicechat.ttl_seconds'))
+                  'dev.voicechat.ttl_seconds':
+                      content['dev.voicechat.ttl_seconds'],
                 if (content.containsKey('dev.voicechat.waveform'))
                   'dev.voicechat.waveform': content['dev.voicechat.waveform'],
                 if (content.containsKey('dev.voicechat.caption'))
@@ -649,12 +686,14 @@ Map<String, dynamic> encryptedDescriptor(EncryptedFile encrypted) => {
   'hashes': {'sha256': encrypted.sha256},
 };
 
-String messageSearchText(Event event) => <String>{
-  if (event.type == EventTypes.CallInvite) callEventLabel(event),
-  event.calcUnlocalizedBody(hideReply: true),
-  for (final key in ['caption', 'dev.voicechat.caption'])
-    if (event.content[key] is String) event.content[key] as String,
-}.where((text) => text.isNotEmpty).join(' · ');
+String messageSearchText(Event event) => messageExpired(event)
+    ? ''
+    : <String>{
+        if (event.type == EventTypes.CallInvite) callEventLabel(event),
+        event.calcUnlocalizedBody(hideReply: true),
+        for (final key in ['caption', 'dev.voicechat.caption'])
+          if (event.content[key] is String) event.content[key] as String,
+      }.where((text) => text.isNotEmpty).join(' · ');
 
 bool isGroupJoin(Event event) =>
     !event.room.isDirectChat &&
@@ -664,9 +703,23 @@ bool isGroupJoin(Event event) =>
     event.content['membership'] == 'join' &&
     event.prevContent?['membership'] != 'join';
 
-List<Event> visibleMessages(Timeline timeline, String query) {
+List<Event> visibleMessages(
+  Timeline timeline,
+  String query, {
+  bool includeExpiring = false,
+}) {
   final search = query.trim().toLowerCase();
   return timeline.events
+      .where((event) => !emptyEncryptedEvent(event))
+      .where(
+        (event) =>
+            !messageExpired(event) ||
+            (includeExpiring &&
+                search.isEmpty &&
+                messageExpiry(event)!
+                    .add(const Duration(milliseconds: 1250))
+                    .isAfter(DateTime.now())),
+      )
       .where(
         (event) =>
             (isGroupJoin(event) ||

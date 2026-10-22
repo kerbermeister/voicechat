@@ -1,0 +1,10 @@
+{
+  "run": 1792678693,
+  "result": "PASS",
+  "scope": "real Synapse expiry of opaque test ciphertext; not client E2EE",
+  "invalid_durations_rejected": true,
+  "server_clock_used": true,
+  "expired_ciphertext_unavailable": true,
+  "editing_does_not_extend_expiry": true,
+  "ordinary_messages_and_edits_unchanged": true
+}

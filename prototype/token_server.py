@@ -311,7 +311,9 @@ class Handler(BaseHTTPRequestHandler):
         except CallError as error:
             self.reply(error.status, {'error': str(error)})
         except urllib.error.HTTPError as e:
-            self.reply(401 if e.code == 401 else 403, {'error': 'matrix_denied'})
+            temporary = e.code == 429 or e.code >= 500
+            self.reply(503 if temporary else 401 if e.code == 401 else 403,
+                       {'error': 'upstream_unavailable' if temporary else 'matrix_denied'})
         except (KeyError, ValueError, TypeError):
             self.reply(400, {'error': 'invalid_request'})
         except Exception:

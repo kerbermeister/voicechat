@@ -44,6 +44,7 @@ String lastMessage(mx.Room room) {
   final event = room.lastEvent;
   if (event == null) return 'Начните разговор';
   if (event.redacted) return 'Сообщение удалено';
+  if (event.content.containsKey('dev.voicechat.ttl_seconds')) return 'Временное сообщение';
   if (event.type == mx.EventTypes.Encrypted) return 'Зашифрованное сообщение';
   if (event.type == mx.EventTypes.CallInvite) {
     return callEventLabel(event);

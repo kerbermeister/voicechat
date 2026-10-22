@@ -30,6 +30,7 @@ services:
     volumes:
       - synapse:/data
       - ../prototype/voicechat_policy.py:/modules/voicechat_policy.py:ro
+      - ../prototype/client_policy.py:/modules/client_policy.py:ro
     depends_on:
       configure: {condition: service_completed_successfully}
       postgres: {condition: service_healthy}

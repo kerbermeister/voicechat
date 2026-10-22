@@ -23,6 +23,7 @@ services:
     volumes:
       - ../.prototype/homeserver.yaml:/data/homeserver.yaml:ro
       - ./voicechat_policy.py:/modules/voicechat_policy.py:ro
+      - ./client_policy.py:/modules/client_policy.py:ro
       - synapse:/data
     depends_on:
       synapse-data:

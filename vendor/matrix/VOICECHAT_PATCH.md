@@ -8,6 +8,10 @@ The `lib/`, `pubspec.yaml`, README and LICENSE are vendored from that package. T
 
 Changes relative to upstream:
 
+- `room.dart`: copy the requested temporary duration into the encrypted envelope for server-side expiry; body and attachments remain encrypted. Reply fallbacks reference a temporary message without copying its plaintext into a permanent reply. `temporary_message_test.dart` verifies the reply path; real Synapse expiry is checked separately.
+
+- `client.dart`: apply count-only MSC2654 unread updates to in-memory rooms, including zero after reading on another device while muted. Persistence alone left the visible badge stale. Regression: `apps/client/test/unread_sync_test.dart`.
+
 - `database_codec.dart`: optional asynchronous record codec and a distinct integrity error.
 - `matrix_sdk_database.dart`, `sqflite_box.dart`, `matrix.dart`: forward/export the codec; native SQLCipher behavior is unchanged.
 - `indexeddb_box.dart`: authenticate/decrypt all value reads and encrypt all value writes before starting IndexedDB transactions. Cached values stay in memory. Await write commits; handle nested transactions, aborts and invalidate caches after transaction failures. Prevent an asynchronous read/decode from overwriting a newer cached mutation; replay cache mutations in write order for delete/clear followed by put.

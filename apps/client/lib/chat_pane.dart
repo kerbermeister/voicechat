@@ -25,6 +25,7 @@ import 'active_capture.dart';
 import 'link_preview.dart';
 import 'link_cards.dart';
 import 'history_recovery.dart';
+import 'temporary_message.dart';
 
 String? reactionEmoji(mx.Event event) {
   final relation = event.content['m.relates_to'];
@@ -69,6 +70,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   Future<void>? voiceOpening;
   late final Future<void> Function() voiceCancellation = cancelVoiceCapture;
   mx.Event? reply;
+  int? temporarySeconds;
   mx.Event? edit;
   bool working = false;
   bool recording = false;
@@ -282,6 +284,11 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   }
 
   Future<void> send() async {
+    if (edit != null && messageExpired(edit!)) {
+      throw UserActionError(
+        'Временное сообщение уже исчезло. Отправьте новое сообщение.',
+      );
+    }
     final text = input.text;
     if (unsentVoice != null) {
       await sendVoiceDraft();
@@ -296,6 +303,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             draftFile!,
             caption,
             reply: reply,
+            ttlSeconds: temporarySeconds,
             videoNote: draftIsVideoNote,
             duration: draftVideoDuration,
             cancelled: () => cancelFile || !mounted,
@@ -320,6 +328,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         widget.room,
         List.of(draftPhotos),
         text,
+        ttlSeconds: temporarySeconds,
         reply: reply,
       );
       draftPhotos.clear();
@@ -330,17 +339,77 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         reply: reply,
         edit: edit?.eventId,
         previews: linkPreviews.values.toList(),
+        ttlSeconds: edit == null
+            ? temporarySeconds
+            : edit!.content['dev.voicechat.ttl_seconds'] as int?,
       );
     }
     if (input.text == text) {
       input.clear();
       linkPreviews.clear();
+      temporarySeconds = null;
     }
     typing(input.text);
     setState(() {
       reply = null;
       edit = null;
     });
+  }
+
+  Future<void> chooseTemporaryDuration() async {
+    await widget.actions.refreshPolicy();
+    if (!mounted) return;
+    final policy = widget.actions.policy;
+    final low = policy.temporaryMinSeconds, high = policy.temporaryMaxSeconds;
+    final step = policy.temporaryStepSeconds;
+    var selected = temporarySeconds ?? low;
+    if (selected < low || selected > high || (selected - low) % step != 0) {
+      selected = low;
+    }
+    final chosen = await showDialog<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, update) => AlertDialog(
+          title: const Text('Временное сообщение'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Исчезнет через $selected с'),
+              Slider(
+                min: low.toDouble(),
+                max: high.toDouble(),
+                value: selected.toDouble(),
+                divisions: high == low ? null : (high - low) ~/ step,
+                label: '$selected с',
+                onChanged: high == low
+                    ? null
+                    : (value) => update(
+                        () => selected =
+                            low + ((value - low) / step).round() * step,
+                      ),
+              ),
+              Text(
+                'От $low до $high с · шаг $step с. Срок начинается после отправки на сервер. Полученные копии и снимки экрана не удаляются.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 0),
+              child: const Text('Без таймера'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, selected),
+              child: const Text('Применить'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (mounted && chosen != null) {
+      setState(() => temporarySeconds = chosen == 0 ? null : chosen);
+    }
   }
 
   Future<void> image() async {
@@ -606,6 +675,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       file,
       reply: voiceReply,
       waveform: unsentWave,
+      ttlSeconds: temporarySeconds,
       caption: input.text,
     );
     await voicePreview.stop();
@@ -734,204 +804,211 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   reaction.senderId,
       );
     }
-    return Align(
-      alignment: own ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 520),
-        margin: const EdgeInsets.symmetric(vertical: 5),
-        padding: const EdgeInsets.fromLTRB(14, 8, 6, 10),
-        decoration: BoxDecoration(
-          color: own ? colors.primary : colors.surfaceContainerLowest,
-          border: event.eventId == focusedEvent
-              ? Border.all(color: colors.tertiary, width: 3)
-              : null,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(24),
-            topRight: const Radius.circular(24),
-            bottomLeft: Radius.circular(own ? 24 : 6),
-            bottomRight: Radius.circular(own ? 6 : 24),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: colors.primary.withValues(alpha: .035),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
+    final content = Container(
+      constraints: const BoxConstraints(maxWidth: 520),
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.fromLTRB(14, 8, 6, 10),
+      decoration: BoxDecoration(
+        color: own ? colors.primary : colors.surfaceContainerLowest,
+        border: event.eventId == focusedEvent
+            ? Border.all(color: colors.tertiary, width: 3)
+            : null,
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(24),
+          topRight: const Radius.circular(24),
+          bottomLeft: Radius.circular(own ? 24 : 6),
+          bottomRight: Radius.circular(own ? 6 : 24),
         ),
-        child: DefaultTextStyle.merge(
-          style: TextStyle(color: own ? colors.onPrimary : colors.onSurface),
-          child: IconTheme.merge(
-            data: IconThemeData(
-              color: own ? colors.onPrimary : colors.onSurfaceVariant,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        own ? 'Вы' : event.senderId,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: own
-                              ? colors.onPrimary.withValues(alpha: .8)
-                              : colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                    if (!event.redacted &&
-                        event.type != mx.EventTypes.Encrypted)
-                      PopupMenuButton<String>(
-                        tooltip: 'Действия с сообщением',
-                        onSelected: (action) =>
-                            perform(() => eventAction(event, action)),
-                        itemBuilder: (_) => [
-                          const PopupMenuItem(
-                            value: 'reply',
-                            child: Text('Ответить'),
-                          ),
-                          if (own && shown.messageType == mx.MessageTypes.Text)
-                            const PopupMenuItem(
-                              value: 'edit',
-                              child: Text('Редактировать'),
-                            ),
-                          if (event.canRedact)
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: Text('Удалить'),
-                            ),
-                          const PopupMenuItem(
-                            value: 'react',
-                            child: Text('Реакция…'),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-                if (event.inReplyToEventId() != null)
-                  FutureBuilder<mx.Event?>(
-                    future: event.getReplyEvent(widget.timeline),
-                    builder: (_, snapshot) => Semantics(
-                      button: true,
-                      label: 'Перейти к исходному сообщению',
-                      child: InkWell(
-                        onTap: widget.onJump == null
-                            ? null
-                            : () => perform(
-                                () => widget.onJump!(event.inReplyToEventId()),
-                              ),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(10),
-                          margin: const EdgeInsets.only(bottom: 6),
-                          decoration: BoxDecoration(
-                            color: colors.primaryContainer,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border(
-                              left: BorderSide(color: colors.primary, width: 4),
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                snapshot
-                                        .data
-                                        ?.senderFromMemoryOrFallback
-                                        .displayName ??
-                                    'Цитата',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: colors.onPrimaryContainer,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                snapshot.data?.redacted == true
-                                    ? 'Удалённое сообщение'
-                                    : snapshot.data
-                                              ?.getDisplayEvent(widget.timeline)
-                                              .body ??
-                                          'Загрузка исходного сообщения…',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: colors.onPrimaryContainer,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+        boxShadow: [
+          BoxShadow(
+            color: colors.primary.withValues(alpha: .035),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: DefaultTextStyle.merge(
+        style: TextStyle(color: own ? colors.onPrimary : colors.onSurface),
+        child: IconTheme.merge(
+          data: IconThemeData(
+            color: own ? colors.onPrimary : colors.onSurfaceVariant,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      own ? 'Вы' : event.senderId,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: own
+                            ? colors.onPrimary.withValues(alpha: .8)
+                            : colors.onSurfaceVariant,
                       ),
                     ),
                   ),
-                if (event.redacted)
-                  const Text('Сообщение удалено')
-                else if (event.type == mx.EventTypes.Encrypted)
-                  const Text(
-                    'Ключ этого сообщения недоступен на данном устройстве. Для доступа к истории нужно прежнее устройство или ключ восстановления.',
-                  )
-                else if (shown.type == mx.EventTypes.CallInvite ||
-                    [
-                      'dev.voicechat.call',
-                      'dev.voicechat.call_summary',
-                    ].contains(shown.messageType))
-                  CallEventCard(event: shown)
-                else if (shown.messageType == 'dev.voicechat.album')
-                  AlbumView(key: ValueKey(shown.eventId), event: shown)
-                else if (shown.messageType == 'dev.voicechat.file')
-                  FileView(key: ValueKey(shown.eventId), event: shown)
-                else if ({
-                  mx.MessageTypes.Image,
-                  mx.MessageTypes.Audio,
-                }.contains(shown.messageType))
-                  AttachmentView(key: ValueKey(shown.eventId), event: shown)
-                else
-                  LinkedText(
-                    text: shown.calcUnlocalizedBody(hideReply: true),
-                    style: TextStyle(fontSize: shown.onlyEmotes ? 30 : 18),
-                  ),
-                if (!event.redacted && event.type != mx.EventTypes.Encrypted)
-                  LinkCards(
-                    text: messageSearchText(shown),
-                    previews: shown.content['dev.voicechat.links'],
-                  ),
-                const SizedBox(height: 4),
-                Text(
-                  '${TimeOfDay.fromDateTime(event.originServerTs.toLocal()).format(context)}${shown.eventId != event.eventId ? ' · изменено' : ''}${own ? (messageIsRead(event, widget.timeline) ? ' · прочитано' : ' · отправлено') : ''}',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: own
-                        ? colors.onPrimary.withValues(alpha: .8)
-                        : colors.onSurfaceVariant,
+                  if (!event.redacted && event.type != mx.EventTypes.Encrypted)
+                    PopupMenuButton<String>(
+                      tooltip: 'Действия с сообщением',
+                      onSelected: (action) =>
+                          perform(() => eventAction(event, action)),
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(
+                          value: 'reply',
+                          child: Text('Ответить'),
+                        ),
+                        if (own && shown.messageType == mx.MessageTypes.Text)
+                          const PopupMenuItem(
+                            value: 'edit',
+                            child: Text('Редактировать'),
+                          ),
+                        if (event.canRedact)
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Text('Удалить'),
+                          ),
+                        const PopupMenuItem(
+                          value: 'react',
+                          child: Text('Реакция…'),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+              if (event.inReplyToEventId() != null)
+                FutureBuilder<mx.Event?>(
+                  future: event.getReplyEvent(widget.timeline),
+                  builder: (_, snapshot) => Semantics(
+                    button: true,
+                    label: 'Перейти к исходному сообщению',
+                    child: InkWell(
+                      onTap: widget.onJump == null
+                          ? null
+                          : () => perform(
+                              () => widget.onJump!(event.inReplyToEventId()),
+                            ),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.only(bottom: 6),
+                        decoration: BoxDecoration(
+                          color: colors.primaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border(
+                            left: BorderSide(color: colors.primary, width: 4),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              snapshot
+                                      .data
+                                      ?.senderFromMemoryOrFallback
+                                      .displayName ??
+                                  'Цитата',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: colors.onPrimaryContainer,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              snapshot.data != null &&
+                                      messageExpiry(snapshot.data!) != null
+                                  ? 'Временное сообщение'
+                                  : snapshot.data?.redacted == true
+                                  ? 'Удалённое сообщение'
+                                  : snapshot.data
+                                            ?.getDisplayEvent(widget.timeline)
+                                            .body ??
+                                        'Загрузка исходного сообщения…',
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: colors.onPrimaryContainer,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                if (reactions.isNotEmpty)
-                  Wrap(
-                    spacing: 4,
-                    children: reactions.entries
-                        .map(
-                          (r) => Tooltip(
-                            message: r.value.join('\n'),
-                            child: ActionChip(
-                              label: Text('${r.key} ${r.value.length}'),
-                              onPressed: () =>
-                                  perform(() => react(event, r.key)),
-                            ),
+              if (event.redacted)
+                const Text('Сообщение удалено')
+              else if (event.type == mx.EventTypes.Encrypted)
+                const Text(
+                  'Ключ этого сообщения недоступен на данном устройстве. Для доступа к истории нужно прежнее устройство или ключ восстановления.',
+                )
+              else if (shown.type == mx.EventTypes.CallInvite ||
+                  [
+                    'dev.voicechat.call',
+                    'dev.voicechat.call_summary',
+                  ].contains(shown.messageType))
+                CallEventCard(event: shown)
+              else if (shown.messageType == 'dev.voicechat.album')
+                AlbumView(key: ValueKey(shown.eventId), event: shown)
+              else if (shown.messageType == 'dev.voicechat.file')
+                FileView(key: ValueKey(shown.eventId), event: shown)
+              else if ({
+                mx.MessageTypes.Image,
+                mx.MessageTypes.Audio,
+              }.contains(shown.messageType))
+                AttachmentView(key: ValueKey(shown.eventId), event: shown)
+              else
+                LinkedText(
+                  text: shown.calcUnlocalizedBody(hideReply: true),
+                  style: TextStyle(fontSize: shown.onlyEmotes ? 30 : 18),
+                ),
+              if (!event.redacted && event.type != mx.EventTypes.Encrypted)
+                LinkCards(
+                  text: messageSearchText(shown),
+                  previews: shown.content['dev.voicechat.links'],
+                ),
+              const SizedBox(height: 4),
+              Text(
+                '${TimeOfDay.fromDateTime(event.originServerTs.toLocal()).format(context)}${shown.eventId != event.eventId ? ' · изменено' : ''}${own ? (messageIsRead(event, widget.timeline) ? ' · прочитано' : ' · отправлено') : ''}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: own
+                      ? colors.onPrimary.withValues(alpha: .8)
+                      : colors.onSurfaceVariant,
+                ),
+              ),
+              if (reactions.isNotEmpty)
+                Wrap(
+                  spacing: 4,
+                  children: reactions.entries
+                      .map(
+                        (r) => Tooltip(
+                          message: r.value.join('\n'),
+                          child: ActionChip(
+                            label: Text('${r.key} ${r.value.length}'),
+                            onPressed: () => perform(() => react(event, r.key)),
                           ),
-                        )
-                        .toList(),
-                  ),
-              ],
-            ),
+                        ),
+                      )
+                      .toList(),
+                ),
+            ],
           ),
         ),
       ),
+    );
+    return Align(
+      alignment: own ? Alignment.centerRight : Alignment.centerLeft,
+      child: messageExpiry(event) == null
+          ? content
+          : ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 526),
+              child: TemporaryMessage(event: event, child: content),
+            ),
     );
   }
 
@@ -940,7 +1017,11 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     assert(widget.timeline.room.id == widget.room.id);
     final keyboardOpen = View.of(context).viewInsets.bottom > 0;
     WidgetsBinding.instance.addPostFrameCallback((_) => markRead());
-    final events = visibleMessages(widget.timeline, search.text);
+    final events = visibleMessages(
+      widget.timeline,
+      search.text,
+      includeExpiring: true,
+    );
     final focusedIndex = events.indexWhere(
       (event) => event.eventId == focusedEvent,
     );
@@ -1366,7 +1447,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             leading: Icon(edit == null ? Icons.reply : Icons.edit),
             title: Text(edit == null ? 'Ответ' : 'Редактирование'),
             subtitle: Text(
-              (reply ?? edit)!.getDisplayEvent(widget.timeline).body,
+              messageExpiry((reply ?? edit)!) != null
+                  ? 'Временное сообщение'
+                  : (reply ?? edit)!.getDisplayEvent(widget.timeline).body,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -1553,6 +1636,22 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   onPressed: working ? null : () => perform(send),
                   icon: const Icon(Icons.arrow_upward),
                 );
+                final temporary = IconButton(
+                  tooltip: temporarySeconds == null
+                      ? 'Временное сообщение'
+                      : 'Временное сообщение · $temporarySeconds с',
+                  color: temporarySeconds == null
+                      ? null
+                      : Theme.of(context).colorScheme.tertiary,
+                  onPressed: working || edit != null
+                      ? null
+                      : chooseTemporaryDuration,
+                  icon: Icon(
+                    temporarySeconds == null
+                        ? Icons.timer_outlined
+                        : Icons.timer,
+                  ),
+                );
                 return box.maxWidth < 500
                     ? Column(
                         mainAxisSize: MainAxisSize.min,
@@ -1562,6 +1661,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                             children: [
                               photo,
                               files,
+                              temporary,
                               voice,
                               video,
                               const Spacer(),
@@ -1575,6 +1675,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                           photo,
                           emojiButton,
                           files,
+                          temporary,
                           field,
                           voice,
                           video,

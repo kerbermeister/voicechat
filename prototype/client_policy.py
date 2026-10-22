@@ -9,6 +9,9 @@ BOUNDS = {
     'voice_max_seconds': (int, 1, 180), 'video_note_max_seconds': (int, 1, 600),
     'video_max_bytes': (int, 1, 300 * 1024 * 1024), 'file_max_bytes': (int, 1, 300 * 1024 * 1024),
     'file_max_count': (int, 1, 20),
+    'temporary_min_seconds': (int, 1, 86400),
+    'temporary_max_seconds': (int, 1, 86400),
+    'temporary_step_seconds': (int, 1, 86400),
 }
 
 
@@ -20,4 +23,25 @@ def load_policy(path=Path(__file__).with_name('client-policy.json')):
         value = data[name]
         if isinstance(value, bool) or not isinstance(value, kind) or not low <= value <= high:
             raise ValueError('Invalid limit: ' + name)
+    low, high, step = (data['temporary_' + key + '_seconds'] for key in ('min', 'max', 'step'))
+    if low > high or (high - low) % step:
+        raise ValueError('Invalid temporary message interval')
     return data
+
+
+def expiry_content(content, policy, now_ms, original_deadline=None):
+    """Only the server clock decides when a newly accepted event expires."""
+    if 'dev.voicechat.ttl_seconds' not in content:
+        if 'org.matrix.self_destruct_after' in content:
+            raise ValueError('A temporary duration is required')
+        return None
+    ttl = content['dev.voicechat.ttl_seconds']
+    low, high, step = (policy['temporary_' + key + '_seconds'] for key in ('min', 'max', 'step'))
+    if type(ttl) is not int or not low <= ttl <= high or (ttl - low) % step:
+        raise ValueError('Invalid temporary message duration')
+    deadline = now_ms + ttl * 1000
+    if original_deadline is not None:
+        if type(original_deadline) is not int or original_deadline <= now_ms:
+            raise ValueError('Original message expired')
+        deadline = min(deadline, original_deadline)
+    return {**content, 'org.matrix.self_destruct_after': deadline}

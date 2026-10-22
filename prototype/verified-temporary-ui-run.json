@@ -1,0 +1,9 @@
+{
+  "run": 1792681127,
+  "result": "PASS",
+  "scope": "real E2EE between two web clients; 390px sender",
+  "temporary_body_decrypted_by_recipient": true,
+  "expires_after_ten_seconds": true,
+  "expired_body_hidden_on_both_clients": true,
+  "reload_and_local_search_hide_expired_body": true
+}
