@@ -1,0 +1,99 @@
+name: voicechat
+services:
+  configure:
+    image: python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36
+    entrypoint: [python3, /configure.py]
+    env_file: runtime/stand.env
+    volumes:
+      - ./configure.py:/configure.py:ro
+      - synapse:/matrix
+      - media-config:/media
+      - turn-config:/turn
+  postgres:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_USER: synapse
+      POSTGRES_DB: synapse
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Bootstrap first}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C
+    volumes: [postgres:/var/lib/postgresql/data]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U synapse]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  synapse:
+    image: matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0
+    environment: {PYTHONPATH: /modules}
+    ports: ['127.0.0.1:8088:8008']
+    volumes:
+      - synapse:/data
+      - ../prototype/voicechat_policy.py:/modules/voicechat_policy.py:ro
+    depends_on:
+      configure: {condition: service_completed_successfully}
+      postgres: {condition: service_healthy}
+    restart: unless-stopped
+  control:
+    image: ${CONTROL_IMAGE:?Build or pull the control image}
+    environment:
+      VOICECHAT_LIVEKIT_SECRET: ${LIVEKIT_SECRET:?}
+      VOICECHAT_POLICY_SECRET: ${POLICY_SECRET:?}
+      VOICECHAT_MATRIX_INTERNAL: http://synapse:8008
+      VOICECHAT_ORIGINS: ${PUBLIC_URL:?}
+    volumes: [control:/work/.prototype, media-config:/config:ro]
+    ports:
+      - '${BIND}:7981:7981/tcp'
+      - '${BIND}:50300-50400:50300-50400/udp'
+    depends_on:
+      configure: {condition: service_completed_successfully}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: [/tmp]
+    healthcheck:
+      test: [CMD, python3, -c, 'import urllib.request;urllib.request.urlopen("http://127.0.0.1:8090/health",timeout=2)']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  turn:
+    image: coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3
+    user: '10001:10001'
+    command: [-c, /config/turnserver.conf]
+    volumes: [turn-config:/config:ro]
+    ports:
+      - '${BIND}:3488:3488/tcp'
+      - '${BIND}:3488:3488/udp'
+      - '${BIND}:49300-49400:49300-49400/udp'
+    depends_on:
+      configure: {condition: service_completed_successfully}
+    restart: unless-stopped
+    cap_drop: [ALL]
+    # The upstream binary requires its file capability even on an unprivileged port.
+    cap_add: [NET_BIND_SERVICE]
+  web:
+    image: ${WEB_IMAGE:?Build or pull the web image}
+    environment: {SITE: '${SITE:?}'}
+    ports: ['${BIND}:${HTTP_PORT}:80', '${BIND}:${HTTPS_PORT}:443']
+    volumes: [certificates:/data, caddy-config:/config]
+    restart: unless-stopped
+    depends_on: [synapse, control]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8080/health']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  mailpit:
+    image: axllent/mailpit@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+    profiles: [local]
+    ports: ['127.0.0.1:8125:8025']
+    restart: unless-stopped
+volumes:
+  postgres:
+  synapse:
+  control:
+  media-config:
+  turn-config:
+  certificates:
+  caddy-config:

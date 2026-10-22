@@ -1,0 +1,103 @@
+name: Build and deploy
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+concurrency:
+  group: voicechat-deploy
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+      DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Validate public deployment configuration
+        run: |
+          test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER" && test -n "$DEPLOY_ROOT"
+          python3 infra/client_config.py "$PUBLIC_URL" /tmp/client.json
+          python3 -c 'import json; assert json.load(open("/tmp/client.json"))["MATRIX_URL"].startswith("https://")'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.47.7'
+          channel: stable
+          cache: true
+      - name: Test server and client
+        run: |
+          python3 prototype/setup.py
+          python3 -m unittest discover -s prototype -p 'test_*.py'
+          cd apps/client
+          flutter pub get --enforce-lockfile
+          flutter analyze
+          flutter test
+      - name: Install locked crypto build tools
+        run: |
+          rustup toolchain install nightly --component rust-src
+          rustup target add wasm32-unknown-unknown
+          cargo install --locked flutter_rust_bridge_codegen --version 2.13.0
+          cargo install --locked wasm-pack --version 0.15.0
+          cargo install --locked wasm-bindgen-cli --version 0.2.100
+      - name: Build ordinary web application
+        run: |
+          python3 prototype/build_web_assets.py
+          cd apps/client
+          flutter build web --release --no-web-resources-cdn --target lib/main.dart --dart-define-from-file /tmp/client.json
+          cd ../..
+          mkdir -p .prototype/web-image
+          cp -R apps/client/build/web .prototype/web-image/web
+          cp infra/Caddyfile .prototype/web-image/Caddyfile
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Build immutable images and release manifest
+        env:
+          REGISTRY_TOKEN: ${{ github.token }}
+          REGISTRY_USER: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
+          repository="ghcr.io/${REPOSITORY,,}"
+          docker buildx build --platform linux/amd64,linux/arm64 -f infra/control.Dockerfile -t "$repository/control:$GITHUB_SHA" --push --metadata-file /tmp/control-image.json .
+          docker buildx build --platform linux/amd64,linux/arm64 -f infra/web.Dockerfile -t "$repository/web:$GITHUB_SHA" --push --metadata-file /tmp/web-image.json .prototype/web-image
+          export IMAGE_REPOSITORY="$repository"
+          python3 - <<'PY'
+          import json,os
+          value={'commit':os.environ['GITHUB_SHA'],'schema':1,'origin':os.environ['PUBLIC_URL']}
+          for name in ('control','web'):
+              digest=json.load(open('/tmp/'+name+'-image.json'))['containerimage.digest']
+              value[name]=os.environ['IMAGE_REPOSITORY']+'/'+name+'@'+digest
+          open('release.json','w').write(json.dumps(value))
+          PY
+          tar --exclude=infra/runtime --exclude=infra/__pycache__ -czf /tmp/release.tar.gz infra prototype/voicechat_policy.py release.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: release-${{ github.sha }}
+          path: /tmp/release.tar.gz
+          retention-days: 30
+      - name: Deploy using pinned host identity
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          python3 - <<'PY'
+          import os,re,shlex,subprocess
+          host,user,root=(os.environ[k] for k in ('DEPLOY_HOST','DEPLOY_USER','DEPLOY_ROOT'))
+          if not re.fullmatch(r'[a-zA-Z0-9.-]+',host) or not re.fullmatch(r'[a-z_][a-z0-9_-]*',user): raise SystemExit('Invalid SSH target')
+          if not re.fullmatch(r'/[a-zA-Z0-9/_-]+',root) or '..' in root.split('/'): raise SystemExit('Invalid persistent root')
+          destination=root+'/releases/'+os.environ['GITHUB_SHA']
+          target=user+'@'+host
+          ssh=['ssh','-o','StrictHostKeyChecking=yes','-o','BatchMode=yes',target]
+          subprocess.run([*ssh,'mkdir -p '+shlex.quote(destination)],check=True)
+          subprocess.run(['scp','-o','StrictHostKeyChecking=yes','-o','BatchMode=yes','/tmp/release.tar.gz',target+':'+destination+'/release.tar.gz'],check=True)
+          command='cd '+shlex.quote(destination)+' && tar -xzf release.tar.gz && python3 infra/deploy.py --root '+shlex.quote(root)+' --release '+shlex.quote(destination)
+          subprocess.run([*ssh,command],check=True)
+          PY

@@ -25,7 +25,7 @@ def main():
     fixture = Path(fixture).resolve()
     if not fixture.is_relative_to(root / '.prototype'): raise SystemExit('Use an ignored fixture under .prototype')
     values = credentials(json.loads(fixture.read_text()))
-    process = subprocess.Popen(['flutter','build','web','--release','--target='+target,
+    process = subprocess.Popen(['flutter','build','web','--release','--no-web-resources-cdn','--target='+target,
         '--dart-define-from-file='+str(fixture),'--output='+str(Path(output).resolve())],
         cwd=app, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     for line in process.stdout:

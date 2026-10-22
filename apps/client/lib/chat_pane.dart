@@ -157,6 +157,22 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     );
   }
 
+  bool loadingFuture = false;
+  Future<void> loadFuture() async {
+    if (loadingFuture || !widget.timeline.canRequestFuture) return;
+    loadingFuture = true;
+    try {
+      await widget.timeline.requestFuture(historyCount: 100);
+    } catch (_) {
+      widget.report(
+        'Не удалось загрузить более новые сообщения. Повторите прокрутку при восстановлении связи.',
+      );
+    } finally {
+      loadingFuture = false;
+      if (mounted) setState(() {});
+    }
+  }
+
   Future<void> calendar() async {
     final date = await showDatePicker(
       context: context,
@@ -923,11 +939,10 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     assert(widget.timeline.room.id == widget.room.id);
     final keyboardOpen = View.of(context).viewInsets.bottom > 0;
     WidgetsBinding.instance.addPostFrameCallback((_) => markRead());
-    var events = visibleMessages(widget.timeline, search.text);
+    final events = visibleMessages(widget.timeline, search.text);
     final focusedIndex = events.indexWhere(
       (event) => event.eventId == focusedEvent,
     );
-    if (focusedIndex >= 0) events = events.sublist(focusedIndex);
     final pending = widget.actions.pending
         .where(
           (p) =>
@@ -938,6 +953,84 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         .toList()
         .reversed
         .toList();
+    int? childIndex(Key key) {
+      if (key is! ValueKey<String>) return null;
+      final pendingIndex = pending.indexWhere(
+        (p) => 'pending:${p['id']}' == key.value,
+      );
+      if (pendingIndex >= 0) return pendingIndex;
+      final index = events.indexWhere((e) => e.eventId == key.value);
+      return index < 0 ? null : index + pending.length;
+    }
+
+    Widget buildItem(BuildContext _, int i) {
+      if (i < pending.length) {
+        final p = pending[i];
+        final c = p['content'] as Map;
+        return Align(
+          key: ValueKey('pending:${p['id']}'),
+          alignment: Alignment.centerRight,
+          child: Card(
+            child: ListTile(
+              title: Text(
+                c.containsKey('bytes')
+                    ? c['body'] as String
+                    : c['body'] as String? ?? 'Реакция',
+              ),
+              subtitle: Text(widget.actions.pendingStatus(p)),
+              trailing: PopupMenuButton<String>(
+                tooltip: 'Действия с очередью',
+                onSelected: (action) => perform(
+                  () => action == 'retry'
+                      ? widget.actions.flush()
+                      : widget.actions.cancel(p['id'] as String),
+                ),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'retry',
+                    child: Text('Повторить отправку'),
+                  ),
+                  PopupMenuItem(
+                    value: 'cancel',
+                    child: Text('Отменить отправку'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+      final index = i - pending.length;
+      final event = events[index];
+      final startsDay =
+          index == events.length - 1 ||
+          !DateUtils.isSameDay(
+            event.originServerTs.toLocal(),
+            events[index + 1].originServerTs.toLocal(),
+          );
+      return Column(
+        key: ValueKey(event.eventId),
+        children: [
+          if (startsDay)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              child: Chip(
+                label: Text(
+                  messageDay(event.originServerTs.toLocal(), DateTime.now()),
+                ),
+                visualDensity: VisualDensity.compact,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.tertiaryContainer,
+              ),
+            ),
+          bubble(event),
+        ],
+      );
+    }
+
+    final pivot = focusedIndex < 0 ? 0 : pending.length + focusedIndex;
+    const anchor = ValueKey('history-anchor');
     return Column(
       children: [
         widget.header,
@@ -994,99 +1087,58 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   bottom: 38,
                   child: events.isEmpty && pending.isEmpty
                       ? const Center(child: Text('Здесь начинается разговор'))
-                      : ListView.builder(
-                          controller: scroll,
-                          reverse: true,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          itemCount: events.length + pending.length,
-                          findChildIndexCallback: (key) {
-                            if (key is! ValueKey<String>) return null;
-                            final pendingIndex = pending.indexWhere(
-                              (p) => 'pending:${p['id']}' == key.value,
-                            );
-                            if (pendingIndex >= 0) return pendingIndex;
-                            final index = events.indexWhere(
-                              (e) => e.eventId == key.value,
-                            );
-                            return index < 0 ? null : index + pending.length;
+                      : NotificationListener<ScrollEndNotification>(
+                          onNotification: (notification) {
+                            if (notification.depth == 0 &&
+                                notification.metrics.extentBefore < 240 &&
+                                focusedEvent != null &&
+                                widget.timeline.canRequestFuture) {
+                              unawaited(loadFuture());
+                            }
+                            return false;
                           },
-                          itemBuilder: (_, i) {
-                            if (i < pending.length) {
-                              final p = pending[i];
-                              final c = p['content'] as Map;
-                              return Align(
-                                key: ValueKey('pending:${p['id']}'),
-                                alignment: Alignment.centerRight,
-                                child: Card(
-                                  child: ListTile(
-                                    title: Text(
-                                      c.containsKey('bytes')
-                                          ? c['body'] as String
-                                          : c['body'] as String? ?? 'Реакция',
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: CustomScrollView(
+                              controller: scroll,
+                              reverse: true,
+                              center: anchor,
+                              slivers: [
+                                if (pivot > 0)
+                                  SliverList(
+                                    delegate: SliverChildBuilderDelegate(
+                                      (context, i) =>
+                                          buildItem(context, pivot - 1 - i),
+                                      childCount: pivot,
+                                      findChildIndexCallback: (key) {
+                                        final i = childIndex(key);
+                                        return i != null && i < pivot
+                                            ? pivot - 1 - i
+                                            : null;
+                                      },
                                     ),
-                                    subtitle: Text(
-                                      widget.actions.pendingStatus(p),
-                                    ),
-                                    trailing: PopupMenuButton<String>(
-                                      tooltip: 'Действия с очередью',
-                                      onSelected: (action) => perform(
-                                        () => action == 'retry'
-                                            ? widget.actions.flush()
-                                            : widget.actions.cancel(
-                                                p['id'] as String,
-                                              ),
-                                      ),
-                                      itemBuilder: (_) => const [
-                                        PopupMenuItem(
-                                          value: 'retry',
-                                          child: Text('Повторить отправку'),
-                                        ),
-                                        PopupMenuItem(
-                                          value: 'cancel',
-                                          child: Text('Отменить отправку'),
-                                        ),
-                                      ],
-                                    ),
+                                  ),
+                                SliverList(
+                                  key: anchor,
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, i) =>
+                                        buildItem(context, pivot + i),
+                                    childCount:
+                                        events.length + pending.length - pivot,
+                                    findChildIndexCallback: (key) {
+                                      final i = childIndex(key);
+                                      return i != null && i >= pivot
+                                          ? i - pivot
+                                          : null;
+                                    },
                                   ),
                                 ),
-                              );
-                            }
-                            final index = i - pending.length;
-                            final event = events[index];
-                            final startsDay =
-                                index == events.length - 1 ||
-                                !DateUtils.isSameDay(
-                                  event.originServerTs.toLocal(),
-                                  events[index + 1].originServerTs.toLocal(),
-                                );
-                            return Column(
-                              key: ValueKey(event.eventId),
-                              children: [
-                                if (startsDay)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    child: Chip(
-                                      label: Text(
-                                        messageDay(
-                                          event.originServerTs.toLocal(),
-                                          DateTime.now(),
-                                        ),
-                                      ),
-                                      visualDensity: VisualDensity.compact,
-                                      backgroundColor: Theme.of(
-                                        context,
-                                      ).colorScheme.tertiaryContainer,
-                                    ),
-                                  ),
-                                bubble(event),
                               ],
-                            );
-                          },
+                            ),
+                          ),
                         ),
                 ),
                 Positioned(

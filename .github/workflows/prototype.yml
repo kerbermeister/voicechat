@@ -6,8 +6,8 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: '3.47.7'
           channel: stable
@@ -20,3 +20,20 @@ jobs:
         working-directory: apps/client
       - run: flutter test
         working-directory: apps/client
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build ordinary Android preview
+        env:
+          PUBLIC_URL: ${{ vars.PUBLIC_URL || 'http://localhost:7360' }}
+          CARGO_BUILD_JOBS: '2'
+        run: |
+          python3 infra/client_config.py "$PUBLIC_URL" /tmp/client.json
+          cd apps/client
+          flutter build apk --debug --target lib/main.dart --dart-define-from-file /tmp/client.json
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: voicechat-android-debug
+          path: apps/client/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14

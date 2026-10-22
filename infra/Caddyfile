@@ -1,0 +1,39 @@
+{
+    admin off
+}
+{$SITE} {
+    encode zstd gzip
+    header {
+        Cross-Origin-Opener-Policy same-origin
+        Cross-Origin-Embedder-Policy require-corp
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+    request_body {
+        max_size 350MB
+    }
+    @private path /_synapse/admin/* /_synapse/client/voicechat/* /api/internal/* /api/report /api/reports
+    route {
+    respond @private 404
+    handle /_matrix/* {
+        reverse_proxy synapse:8008
+    }
+    handle /_synapse/client/* {
+        reverse_proxy synapse:8008
+    }
+    handle_path /api/* {
+        reverse_proxy control:8090
+    }
+    handle /rtc* {
+        reverse_proxy control:7880
+    }
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+    }
+}
+:8080 {
+    respond /health 200
+}

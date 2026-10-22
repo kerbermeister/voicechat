@@ -1,0 +1,12 @@
+**
+!infra/
+!infra/**
+!prototype/
+!prototype/*.py
+!prototype/client-policy.json
+!apps/
+!apps/client/
+!apps/client/build/
+!apps/client/build/web/
+!apps/client/build/web/**
+infra/runtime/

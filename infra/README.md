@@ -1,0 +1,68 @@
+# Один сервер: Docker и GitHub Actions
+
+Это отдельное развёртывание. Оно **не переносит автоматически** данные прежнего `.prototype`-стенда. Не переключайте существующий аккаунт на пустую новую базу. Идентичность Matrix (`server_name`, signing key), PostgreSQL, media и control/contacts должны переноситься согласованно; для существующего стенда миграция ещё требует отдельной приёмки.
+
+## Проверенный локальный запуск
+
+Из корня репозитория:
+
+```sh
+python3 infra/bootstrap.py
+python3 infra/client_config.py http://localhost:7360 .prototype/deploy-client.json
+cd apps/client
+flutter pub get --enforce-lockfile
+# После установки закреплённых Rust/wasm-инструментов, как в deploy.yml:
+python3 ../../prototype/build_web_assets.py
+flutter build web --release --no-web-resources-cdn --target lib/main.dart --dart-define-from-file ../../.prototype/deploy-client.json
+cd ../..
+mkdir -p .prototype/web-image
+cp -R apps/client/build/web .prototype/web-image/web
+cp infra/Caddyfile .prototype/web-image/Caddyfile
+docker build -f infra/control.Dockerfile -t voicechat-control:local .
+docker build -f infra/web.Dockerfile -t voicechat-web:local .prototype/web-image
+docker compose -f infra/compose.yaml --env-file infra/runtime/stand.env up -d --wait
+```
+
+После сборки последняя команда поднимает весь стенд. Веб: http://localhost:7360, Mailpit: http://localhost:8125. Старый стенд :7357/:8008 не затрагивается. Стенд новый: зарегистрируйте тестовый аккаунт через Mailpit. Лабораторные учётные записи не вшиваются в обычную сборку.
+
+`bootstrap.py` создаёт секреты один раз, каталог 0700 и env 0600. Повторный вызов ничего не сбрасывает. `configure` хранит неизменяемый server_name в томе и отказывается менять его поверх данных. Docker-тома сохраняют PostgreSQL, ключ подписи Matrix, медиа, согласия контактов и leases. Никогда не выполняйте `down -v` при обновлении.
+
+Caddy обслуживает web, `/_matrix`, `/api` и `/rtc` на одном origin. Административные и внутренние API, лабораторные отчёты закрыты на внешнем адресе. Служебный Matrix-порт 8088 доступен только loopback хоста для локальных проверок/администрирования. API и SFU работают одним непривилегированным контейнером под supervisor: падение/неисправность авторизатора завершает и SFU. Это обрывает звонки при обслуживании; бесшовный рестарт не обещается.
+
+## Подготовка VPS и Actions
+
+Нужен Linux VPS с Docker Compose, Python 3 и свободным местом под медиа/резервные копии. На хосте один экземпляр проекта Compose `voicechat`. DNS указывает на публичный IPv4 VPS. Порты: TCP 80/443 (Caddy), TCP 7981 и UDP 50300–50400 (SFU), TCP/UDP 3488 и UDP 49300–49400 (TURN). Сетевой план требует проверки с реального телефона и сети; TURN через TLS/443 пока не настроен.
+
+В постоянном каталоге, например `/srv/voicechat`, создайте `runtime/stand.env` с помощью **однократного** bootstrap:
+
+```sh
+SMTP_HOST=smtp.example.com SMTP_PORT=587 SMTP_USER=voicechat SMTP_PASSWORD='...' \
+python3 infra/bootstrap.py --url https://chat.example.com --ip 203.0.113.10 --server-name chat.example.com
+```
+
+Адрес в примере замените реальным публичным IPv4 (документальный `203.0.113.10` намеренно не проходит проверку). Полученный `infra/runtime` разместите как `/srv/voicechat/runtime` с сохранением прав; не добавляйте в Git. Секреты SMTP вводятся в окружении на VPS, не в workflow. Пароль SMTP в env кодируется base64 только для сохранности спецсимволов, это не дополнительное шифрование. Публичный URL и server_name выберите до регистрации пользователей.
+
+В GitHub нужны remote этого репозитория и environment `production`:
+
+- Variables: `PUBLIC_URL`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_ROOT` (например `/srv/voicechat`).
+- Secrets: `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` с независимо проверенным ключом SSH-хоста. Host verification не отключается.
+- VPS должен иметь право pull этих образов GHCR; для private registry настройте отдельный read-only credential на VPS. GitHub token из job туда не копируется.
+
+`prototype.yml` запускает серверные/Flutter-проверки и выпускает **debug APK** обычного приложения. Публичные URL берутся из `PUBLIC_URL`; без него APK предназначен для локального Docker-стенда :7360 (на эмуляторе нужны adb reverse). Это не подписанный production-релиз Android: стабильный release-keystore и отдельная release-подпись ещё не настроены.
+
+`deploy.yml` запускается вручную: проверки, локальные crypto/QR assets без CDN, обычный web, multiarch amd64/arm64 Docker-образы. Все внешние Actions и базовые образы закреплены SHA/digest. Release manifest содержит commit, публичный origin, версию совместимости схемы и **image digests**, не плавающие tags. Артефакт release не содержит runtime/секретов. SSH доставляет его в отдельный `releases/<commit>`; старый каталог не перезаписывается. Сборка/deploy на GitHub и реальный VPS в этой среде пока не запускались: remote, домен и SSH-доступы не заданы.
+
+## Обновление, backup и откат
+
+`deploy.py` блокирует параллельный deploy через flock, проверяет manifest/origin, скачивает образы **до** остановки, останавливает пишущие сервисы и создаёт согласованный snapshot: `pg_dump --format=custom`, Synapse signing/config/media, control SQLite и runtime-секреты. Обычный copy живого PostgreSQL-тома не используется. Snapshot шифрует закреплённый Restic, затем выполняется `restic check`; только после этого стартуют новые сервисы с ожиданием healthchecks.
+
+Пароль Restic хранится отдельно от репозитория backup в `runtime/backup-password` (0600). Его нужно сохранить **вне VPS**; без него backup не расшифровать. Сами копии по умолчанию остаются на этом VPS и не защищают от его потери: внешнее хранилище ещё не подключено. Скрипт не перезаписывает пропавший пароль поверх существующего backup-репозитория и не удаляет прежние snapshots автоматически.
+
+При ошибке backup/update запускаются предыдущие совместимые образы из `current.json`; manifest не продвигается. Данные автоматически не откатываются к старому snapshot, чтобы не потерять новые записи. Смена Synapse/PostgreSQL/schema требует отдельного плана миграции; значение `schema: 1` допустимо только для совместимых обновлений этого набора. Успешный deploy сохраняет `previous.json`; для совместимого ручного отката запустите прежний release снова:
+
+```sh
+python3 /srv/voicechat/releases/PREVIOUS_COMMIT/infra/deploy.py \
+  --root /srv/voicechat --release /srv/voicechat/releases/PREVIOUS_COMMIT
+```
+
+Восстановление проверяйте в отдельном каталоге/проекте Compose с отключённой реальной почтой/push. Через официальный Restic восстановите snapshot, проверьте signing key и конфиги, восстановите dump в пустой PostgreSQL, файлы — в новые тома, затем проверьте вход/историю/файлы/звонок. Не восстанавливайте поверх работающих пользовательских данных. Полная аварийная приёмка восстановления ещё не завершена; наличие backup не означает принятую процедуру восстановления.
