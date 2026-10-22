@@ -1,0 +1,23 @@
+{
+  "date": "2026-10-22",
+  "result": "PASS",
+  "scope": "local demo preparation and internal-browser text acceptance",
+  "users": 15,
+  "open_contact_policies": 10,
+  "approval_contact_policies": 5,
+  "main_account": "demo_alice",
+  "main_accepted_contacts": 4,
+  "groups": 3,
+  "main_joined_groups": 2,
+  "main_pending_group_invitations": 1,
+  "encrypted_sample_messages": 11,
+  "history_backups_checked": 15,
+  "new_browser_recovery_and_readable_messages": true,
+  "reload_preserved_login_and_messages": true,
+  "people_and_group_invitations_visible_separately": true,
+  "unadded_users_found_in_search": ["demo_galina", "demo_hugo"],
+  "repeat_preserved_rooms_messages_and_recovery_keys": true,
+  "user_chrome_used_for_demo_acceptance": false,
+  "heavy_tests_or_builds_run": false,
+  "not_checked": ["Android", "calls", "physical devices", "external deployment"]
+}
