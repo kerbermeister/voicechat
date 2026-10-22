@@ -24,6 +24,7 @@ import 'recording_activity.dart';
 import 'active_capture.dart';
 import 'link_preview.dart';
 import 'link_cards.dart';
+import 'history_recovery.dart';
 
 String? reactionEmoji(mx.Event event) {
   final relation = event.content['m.relates_to'];
@@ -1057,6 +1058,23 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             onPressed: () => widget.onJump?.call(null),
             icon: const Icon(Icons.arrow_downward),
             label: const Text('Вернуться к новым сообщениям'),
+          ),
+        if (widget.timeline.events.any(
+          (event) =>
+              event.type == mx.EventTypes.Encrypted &&
+              event.content['can_request_session'] == true,
+        ))
+          TextButton.icon(
+            onPressed: working
+                ? null
+                : () => perform(() async {
+                    final count = await requestMissingHistory(widget.timeline);
+                    widget.report(
+                      'Запрошены ключи: $count. На прежнем устройстве или у собеседника откройте «Настройки → Запросы истории». Для передачи нужна независимая сверка устройства.',
+                    );
+                  }),
+            icon: const Icon(Icons.key_outlined),
+            label: const Text('Запросить недоступные ключи истории'),
           ),
         if (widget.timeline.canRequestHistory &&
             !completeHistory &&

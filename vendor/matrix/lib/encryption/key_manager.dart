@@ -831,6 +831,7 @@ class KeyManager {
       outgoingShareRequests[request.requestId] = request;
     } catch (e, s) {
       Logs().e('[Key Manager] Sending key verification request failed', e, s);
+      rethrow;
     }
   }
 
@@ -1224,7 +1225,7 @@ class RoomKeyRequest extends ToDeviceEvent {
       room.id,
       request.sessionId,
     );
-    if (session?.inboundGroupSession == null) {
+    if (request.canceled || session?.inboundGroupSession == null) {
       Logs().v("[KeyManager] Not forwarding key we don't have");
       return;
     }

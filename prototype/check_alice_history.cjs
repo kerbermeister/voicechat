@@ -28,7 +28,7 @@ async function request(route,body,token) {
       for(const event of result.chunk) {
         if(event.type!=='m.room.encrypted' || event.sender!==alice.user_id || event.origin_server_ts>=cutoff) continue;
         const sid=event.content.session_id;
-        if(typeof sid==='string') {sessions.set(sid,room);events.push({room,sid,ciphertext:event.content.ciphertext});}
+        if(typeof sid==='string') {sessions.set(sid,room);events.push({room,sid,id:event.event_id,ciphertext:event.content.ciphertext});}
       }
     }
   } finally {await request('logout',{},alice.access_token);}
@@ -82,7 +82,8 @@ async function request(route,body,token) {
             if(JSON.parse(plaintext[0]).room_id!==event.room) throw new Error('Decrypted room mismatch');
             decryptedEvents++;
           }
-          return {retained:true,storedSessions:keys.length,matchingOldSessions:matches.length,decryptedEvents};
+          return {retained:true,storedSessions:keys.length,matchingOldSessions:matches.length,decryptedEvents,
+            matchingSessions:matches.map(sid=>({session:sid,room:events.find(e=>e.sid===sid).room,events:events.filter(e=>e.sid===sid).map(e=>e.id)}))};
         } finally {db?.close();await voicechatVault.close(name);}
       },{profile:vault.profile,phrase:vault.phrase,role,wanted:[...sessions.keys()],events});
       profiles.push({role,...result});
@@ -92,5 +93,5 @@ async function request(route,body,token) {
     serverBackupExists:backup!==null,profiles};
   const destination=path.join(privateRoot,'alice-history-audit.json');
   fs.writeFileSync(destination,JSON.stringify(report,null,2)+'\n',{mode:0o600});
-  console.log(JSON.stringify(report));
+  console.log(JSON.stringify({...report,profiles:profiles.map(({matchingSessions,...counts})=>counts)}));
 })().catch(error=>{console.error('History audit failed: '+error.name);process.exitCode=1;});

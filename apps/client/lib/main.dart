@@ -36,6 +36,8 @@ import 'user_action_error.dart';
 import 'transport.dart';
 import 'device_verification.dart';
 import 'device_verification_dialog.dart';
+import 'history_recovery.dart';
+import 'history_recovery_dialog.dart';
 import 'package:matrix/encryption.dart' as crypto;
 
 mx.CachedPresence? _roomPresenceSnapshot(mx.Room room) =>
@@ -141,6 +143,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   StoragePolicy? storagePolicy;
   ChatActions? actions;
   DeviceVerifications? verifications;
+  HistoryRecovery? historyRecovery;
   StreamSubscription<mx.SyncStatusUpdate>? connectionStatus;
   bool online = true;
   bool restoringSession = true;
@@ -268,6 +271,13 @@ class _ProbeScreenState extends State<ProbeScreen> {
     vaultPassword.clear();
     probe = next;
     enableFirstContactTrust(next.client);
+    historyRecovery = HistoryRecovery(next.client, () {
+      if (mounted) {
+        report(
+          'Получен запрос ключей. Откройте «Настройки → Запросы истории».',
+        );
+      }
+    });
     verifications = DeviceVerifications(next.client, () {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -730,6 +740,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       await Future.wait([
         if (calls != null) calls!.close(),
         if (verifications != null) verifications!.close(),
+        if (historyRecovery != null) historyRecovery!.close(),
         if (sounds != null) sounds!.close(),
         if (presenceTracker != null) presenceTracker!.close(),
         if (contacts != null) contacts!.close(),
@@ -752,6 +763,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
             timeline = null;
             calls = null;
             verifications = null;
+            historyRecovery = null;
             actions = null;
           });
         }
@@ -770,6 +782,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
         .expand((user) => client.userDeviceKeys[user]!.deviceKeys.values)
         .toList();
     final independent = await independentlyVerifiedDevices(client, devices);
+    final ownIdentity =
+        'Это устройство: ${client.userID} / ${client.deviceID}\nВаш отпечаток:\n${client.fingerprintKey}';
     if (!mounted) return;
     final chosen = await showDialog<Object>(
       context: context,
@@ -782,8 +796,11 @@ class _ProbeScreenState extends State<ProbeScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SelectableText(
-                  'Это устройство: ${client.userID} / ${client.deviceID}\nВаш отпечаток:\n${client.fingerprintKey}',
+                Semantics(
+                  container: true,
+                  label: ownIdentity,
+                  excludeSemantics: true,
+                  child: SelectableText(ownIdentity),
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -869,7 +886,18 @@ class _ProbeScreenState extends State<ProbeScreen> {
     }
   }
 
-  Future<void> verifyFingerprint(mx.DeviceKeys chosen) async {
+  Future<void> historyRequests() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => HistoryRecoveryDialog(
+        owner: historyRecovery!,
+        verify: verifyFingerprint,
+      ),
+    );
+  }
+
+  Future<bool> verifyFingerprint(mx.DeviceKeys chosen) async {
     final client = probe!.client;
     final input = TextEditingController();
     final fingerprint = await showDialog<String>(
@@ -903,9 +931,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
       ),
     );
     input.dispose();
-    if (fingerprint == null) return;
+    if (fingerprint == null) return false;
     await verifyDevice(client, chosen.userId, chosen.deviceId!, fingerprint);
     report('Отпечаток совпал. Устройство проверено локально.');
+    return true;
   }
 
   Future<void> devices() async {
@@ -1004,6 +1033,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     savedAccount = false;
     await calls?.close();
     await sounds?.close();
+    await historyRecovery?.close();
     await presenceTracker?.close();
     await contacts?.close();
     await recordingActivity?.close();
@@ -1028,6 +1058,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     timeline?.cancelSubscriptions();
     unawaited(calls?.close());
     unawaited(verifications?.close());
+    unawaited(historyRecovery?.close());
     unawaited(sounds?.close());
     unawaited(presenceTracker?.close());
     unawaited(contacts?.close());
@@ -1320,6 +1351,14 @@ class _ProbeScreenState extends State<ProbeScreen> {
                   onTap: () => Navigator.pop(dialogContext, 'restore'),
                 ),
                 ListTile(
+                  leading: const Icon(Icons.swap_horiz_rounded),
+                  title: const Text('Запросы истории'),
+                  subtitle: Text(
+                    'Ожидают: ${historyRecovery?.pending.length ?? 0}',
+                  ),
+                  onTap: () => Navigator.pop(dialogContext, 'historyRequests'),
+                ),
+                ListTile(
                   leading: const Icon(Icons.cloud_upload_outlined),
                   title: const Text('Обновить backup'),
                   onTap: () => Navigator.pop(dialogContext, 'backup'),
@@ -1355,6 +1394,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
       ),
     );
     if (chosen == null || !mounted) return;
+    if (chosen == 'historyRequests') {
+      await historyRequests();
+      return;
+    }
     await run(() async {
       switch (chosen) {
         case 'storage':

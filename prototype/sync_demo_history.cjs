@@ -27,7 +27,7 @@ async function retainedIdentity({profile, phrase}) {
   } finally {db?.close(); if (phrase) await voicechatVault.close(name);}
 }
 
-(async () => {
+async function withRetainedBob(action) {
   assert.equal(account.username, 'bob');
   assert.equal(vault.profile, 'demo-bob');
   const context = await chromium.launchPersistentContext(path.join(root, 'demo-devices/bob'), {
@@ -70,5 +70,10 @@ async function retainedIdentity({profile, phrase}) {
     await page.waitForTimeout(2000);
     assert.equal(await page.evaluate(retainedIdentity, {profile: vault.profile}), identity);
     console.log(JSON.stringify({retainedDeviceReused: true, receivedToDeviceEvents: sync.to_device?.events?.length ?? 0}));
+    if (action) await action(page);
   } finally {await context.close();}
-})().catch(error => {console.error('Demo history sync failed at ' + step + ': ' + error.name); process.exitCode = 1;});
+}
+module.exports = withRetainedBob;
+if (require.main === module) withRetainedBob().catch(error => {
+  console.error('Demo history sync failed at ' + step + ': ' + error.name); process.exitCode = 1;
+});
