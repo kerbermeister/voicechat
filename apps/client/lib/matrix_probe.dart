@@ -116,8 +116,22 @@ class MatrixProbe {
   }
 
   Future<void> restore(String recoveryKey) async {
+    await requireHistoryBackup();
     await client.restoreCryptoIdentity(recoveryKey.trim());
     await client.encryption!.keyManager.loadAllKeys();
+  }
+
+  Future<void> requireHistoryBackup() async {
+    try {
+      await client.getRoomKeysVersionCurrent();
+    } on MatrixException catch (error) {
+      if (error.error != MatrixError.M_NOT_FOUND) rethrow;
+      throw UserActionError(
+        'На сервере нет резервной копии ключей этого аккаунта. '
+        'Для старой истории нужно устройство, на котором она открывалась. '
+        'Новый ключ восстановления не расшифрует старые сообщения без их ключей.',
+      );
+    }
   }
 
   Future<String> startDirectChat(String userId) async {
@@ -213,8 +227,19 @@ class MatrixProbe {
     }
   }
 
-  Future<void> backup() =>
-      client.encryption!.keyManager.uploadInboundGroupSessions();
+  Future<bool> backup() async {
+    final manager = client.encryption!.keyManager;
+    if (!await manager.isCached()) return false;
+    await requireHistoryBackup();
+    await manager.uploadInboundGroupSessions();
+    // The SDK catches upload errors internally; remaining keys must not be reported as backed up.
+    if ((await client.database.getInboundGroupSessionsToUpload()).isNotEmpty) {
+      throw UserActionError(
+        'Не все ключи сохранены в резервной копии. Локальные ключи сохранены; повторите попытку позже.',
+      );
+    }
+    return true;
+  }
 
   Future<void> logout() async {
     await backup();

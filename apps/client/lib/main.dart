@@ -640,6 +640,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> restore() async {
+    await probe!.requireHistoryBackup();
+    if (!mounted) return;
     final input = TextEditingController();
     final value = await showDialog<String>(
       context: context,
@@ -1377,8 +1379,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
         case 'restore':
           await restore();
         case 'backup':
-          await probe!.backup();
-          report('Резервная копия ключей обновлена.');
+          final backedUp = await probe!.backup();
+          report(
+            backedUp
+                ? 'Резервная копия ключей обновлена.'
+                : 'Резервное копирование не настроено на этом устройстве. Создайте ключ восстановления или откройте существующий ключ.',
+          );
         case 'lock':
           await lock();
         case 'logout':

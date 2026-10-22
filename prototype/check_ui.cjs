@@ -71,6 +71,7 @@ const {chromium} = require('playwright');
         const history=await matrix(prefix+'messages?dir=b&limit=10',undefined,session.access_token);
         assert(!JSON.stringify(history).includes(offlineDemoText),'Demo message plaintext leaked');
         delivered=history.chunk.some(e=>e.event_id===offlineEvent && e.type==='m.room.encrypted');
+        if(delivered) break;
       }
       assert(delivered,'Message to offline demo Bob must be on the server, not stuck in a local queue');
     } finally { await matrix('logout',{},session.access_token); }
@@ -118,11 +119,22 @@ const {chromium} = require('playwright');
     await button('Вернуться к новым сообщениям').waitFor({timeout:30000});
     await page.getByRole('group',{name:/Привет! Сообщение изменено/}).first().waitFor();
     await page.mouse.move(1000,500); await page.mouse.wheel(0,1200);
-    await page.getByRole('group',{name:/Ответ с выделенной цитатой/}).first().waitFor({timeout:15000});
+    await page.getByRole('button',{name:/Перейти к исходному сообщению.*Ответ с выделенной цитатой/}).first().waitFor({timeout:15000});
+    await page.screenshot({path:path.join(output,'quote-scroll.png')});
     console.log('PASS: newer reply stays reachable by scrolling after jumping to its original');
     await button('Вернуться к новым сообщениям').click();
     await button('Вернуться к новым сообщениям').waitFor({state:'hidden'});
     console.log('PASS: themed reply quote navigates to its original message context');
+    await button('Настройки').click();
+    await page.getByText('Восстановить', {exact:true}).click();
+    await page.getByText(/На сервере нет резервной копии ключей этого аккаунта/).waitFor();
+    assert.equal(await field('Ваш ключ восстановления').count(),0,'Do not ask for a recovery key when no backup exists');
+    await button('Настройки').click();
+    await page.getByText('Обновить backup', {exact:true}).click();
+    await page.getByText(/Резервное копирование не настроено на этом устройстве/).waitFor();
+    assert.equal(await page.getByText('Резервная копия ключей обновлена.',{exact:true}).count(),0);
+    console.log('PASS: unavailable history backup is explained and never reported as updated');
+    if(process.env.VOICECHAT_QUOTE_ONLY==='1') return;
 
     const chooser = page.waitForEvent('filechooser');
     await button('Отправить изображение').click();
