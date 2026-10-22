@@ -18,7 +18,7 @@ fs.mkdirSync(path.join(root,'.prototype/ui'),{recursive:true});
 
 async function request(base, route, body, token, method = body ? 'POST' : 'GET') {
   const response = await fetch(base + route, {
-    method,
+    method, signal:AbortSignal.timeout(15000),
     headers: {'Content-Type':'application/json', ...(token ? {Authorization:`Bearer ${token}`} : {})},
     ...(body ? {body:JSON.stringify(body)} : {}),
   });
@@ -43,6 +43,7 @@ async function register(role) {
   const alice = await register('alice'), bob = await register('bob'), charlie = await register('charlie');
   await request(apiUrl,'/contacts',{action:'policy',allow_direct:false},bob.access_token);
   const browser = await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:textOnly ? ['--mute-audio','--autoplay-policy=no-user-gesture-required'] : ['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']});
+  const deadline=process.env.VOICECHAT_LINKS_ONLY==='1' ? setTimeout(()=>{console.error('Focused links deadline exceeded'); browser.close().catch(()=>{});},90000) : process.env.VOICECHAT_SCHEDULE_TEST==='1' ? setTimeout(()=>{console.error('Scheduled UI deadline exceeded'); browser.close().catch(()=>{});},360000) : null;
   const pages=[];
   let sensitiveVerification=false;
   try {
@@ -237,6 +238,8 @@ async function register(role) {
     }
     const a=await login(alice), b=await login(bob);
     if(process.env.VOICECHAT_LINKS_ONLY==='1') {
+      a.setDefaultTimeout(15000);
+      console.log('Links: create isolated encrypted room');
       await request(matrixUrl,'/_matrix/client/v3/createRoom',{name:'Ссылки · приёмка',initial_state:[
         {type:'m.room.encryption',state_key:'',content:{algorithm:'m.megolm.v1.aes-sha2'}},
       ]},alice.access_token);
@@ -276,6 +279,10 @@ async function register(role) {
     assert.equal(await button(a,'Покинуть чат').count(),0);
     assert.equal(await button(a,'Изменить название').count(),0);
     await button(a,'Закрыть').click();
+    if(process.env.VOICECHAT_SCHEDULE_TEST==='1') {
+      await require('./check_scheduled_ui.cjs')({a,b,alice,bob,request,fill,button,waitForAnnouncement,root,matrixUrl,apiUrl});
+      return;
+    }
     if(!textOnly) {
       const escapedBob=bob.user_id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
       sensitiveVerification=true;
@@ -623,9 +630,18 @@ async function register(role) {
   } catch (error) {
     fs.mkdirSync(path.join(root,'.prototype/ui'),{recursive:true});
     if(!sensitiveVerification) {
-      for(let i=0;i<pages.length;i++) await pages[i].screenshot({path:path.join(root,`.prototype/ui/consent-failure-${i}.png`)});
+      for(let i=0;i<pages.length;i++) if(!pages[i].isClosed()) {
+        await pages[i].screenshot({path:path.join(root,`.prototype/ui/consent-failure-${i}.png`)});
+        if(!await pages[i].getByRole('textbox',{name:'Пароль аккаунта',exact:true}).count()) fs.writeFileSync(path.join(root,`.prototype/ui/consent-accessibility-${i}.txt`),await pages[i].locator('body').ariaSnapshot());
+      }
       if(pages[1] && !await pages[1].getByRole('textbox',{name:'Пароль аккаунта',exact:true}).count()) fs.writeFileSync(path.join(root,'.prototype/ui/consent-accessibility.txt'),await pages[1].locator('body').ariaSnapshot());
     }
     throw error;
-  } finally { await browser.close(); }
+  } finally {
+    if(deadline) clearTimeout(deadline);
+    await browser.close();
+    if(process.env.VOICECHAT_SCHEDULE_TEST==='1') {
+      for(const account of [alice,bob,charlie]) await request(matrixUrl,'/_matrix/client/v3/account/deactivate',{auth:{type:'m.login.password',identifier:{type:'m.id.user',user:account.user_id},password:account.password},erase:true},account.access_token).catch(()=>{});
+    }
+  }
 })().catch(error=>{console.error(error.stack);process.exitCode=1;});

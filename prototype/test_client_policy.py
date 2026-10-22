@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from client_policy import load_policy, expiry_content
 
@@ -11,12 +12,25 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(defaults['photo_max_count'], 24)
         self.assertEqual(defaults['photo_scale'], .5)
         self.assertEqual(defaults['video_max_bytes'], 300 * 1024 * 1024)
+        self.assertEqual(defaults['schedule_max_seconds'], 48 * 3600)
         with tempfile.TemporaryDirectory() as root:
             path = Path(root) / 'policy.json'
             for change in [{'photo_max_count': 0}, {'photo_scale': float('nan')}, {'photo_scale': True}, {'photo_jpeg_quality': 101}, {'video_max_bytes': 400 * 1024 * 1024}, {'version': True}, {'unrecognized': 1}]:
                 with self.subTest(change=change):
                     path.write_text(json.dumps({**defaults, **change}))
                     with self.assertRaises(ValueError): load_policy(path)
+
+    def test_runtime_policy_is_reloaded_and_invalid_changes_fail_closed(self):
+        defaults = load_policy()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'client-policy.json'
+            with patch.dict('os.environ', {'VOICECHAT_CLIENT_POLICY': str(path)}):
+                path.write_text(json.dumps({**defaults, 'schedule_max_seconds':3600}))
+                self.assertEqual(load_policy()['schedule_max_seconds'], 3600)
+                path.write_text(json.dumps({**defaults, 'schedule_max_seconds':7200}))
+                self.assertEqual(load_policy()['schedule_max_seconds'], 7200)
+                path.write_text(json.dumps({**defaults, 'schedule_max_seconds':True}))
+                with self.assertRaises(ValueError): load_policy()
 
     def test_temporary_duration_is_validated_and_expiry_uses_server_clock(self):
         policy = load_policy()

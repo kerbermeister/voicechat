@@ -329,9 +329,13 @@ class _MessageVideoState extends State<MessageVideo> {
           Expanded(
             child: error != null
                 ? Center(
-                    child: Text(
-                      error!,
-                      style: const TextStyle(color: Colors.white),
+                    child: Semantics(
+                      container: true,
+                      liveRegion: true,
+                      child: Text(
+                        error!,
+                        style: const TextStyle(color: Colors.white),
+                      ),
                     ),
                   )
                 : widget.videoNote

@@ -1,0 +1,11 @@
+{
+  "run": 1792683596,
+  "result": "PASS",
+  "scope": "web 390px; decoded local WebM fixture; denied YouTube embed fixture",
+  "no_video_requests_before_action": true,
+  "direct_webm_frames_decoded": true,
+  "broken_video_fallback": true,
+  "network_failure_fallback": true,
+  "youtube_fallback_and_cleanup": true,
+  "unsupported_link_has_no_inline_player": true
+}

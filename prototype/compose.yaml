@@ -20,10 +20,16 @@ services:
     ports: ['127.0.0.1:8008:8008']
     environment:
       PYTHONPATH: /modules
+    healthcheck:
+      test: [CMD, python, -c, 'import urllib.request;urllib.request.urlopen("http://127.0.0.1:8008/_matrix/client/versions",timeout=2)']
+      interval: 2s
+      timeout: 3s
+      retries: 30
     volumes:
       - ../.prototype/homeserver.yaml:/data/homeserver.yaml:ro
       - ./voicechat_policy.py:/modules/voicechat_policy.py:ro
       - ./client_policy.py:/modules/client_policy.py:ro
+      - ./scheduled_messages.py:/modules/scheduled_messages.py:ro
       - synapse:/data
     depends_on:
       synapse-data:

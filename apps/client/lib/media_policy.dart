@@ -1,4 +1,5 @@
 class MediaPolicy {
+  final int scheduleMaxSeconds;
   final int photoMaxCount;
   final double photoScale;
   final int photoJpegQuality;
@@ -12,6 +13,7 @@ class MediaPolicy {
   final int fileMaxCount;
   final int temporaryMinSeconds, temporaryMaxSeconds, temporaryStepSeconds;
   const MediaPolicy({
+    this.scheduleMaxSeconds = 172800,
     this.photoMaxCount = 24,
     this.photoScale = .5,
     this.photoJpegQuality = 85,
@@ -57,6 +59,9 @@ class MediaPolicy {
       throw const FormatException('Invalid temporary message interval');
     }
     return MediaPolicy(
+      scheduleMaxSeconds: data.containsKey('schedule_max_seconds')
+          ? limit('schedule_max_seconds', 31536000)
+          : 172800,
       photoMaxCount: limit('photo_max_count', 64),
       photoScale: scale.toDouble(),
       photoJpegQuality: limit('photo_jpeg_quality', 100),
@@ -78,6 +83,7 @@ class MediaPolicy {
 
   Map<String, dynamic> toJson() => {
     'version': 1,
+    'schedule_max_seconds': scheduleMaxSeconds,
     'photo_max_count': photoMaxCount,
     'photo_scale': photoScale,
     'photo_jpeg_quality': photoJpegQuality,

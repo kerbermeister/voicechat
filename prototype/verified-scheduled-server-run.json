@@ -1,0 +1,15 @@
+{
+  "run": 1792687474,
+  "result": "PASS",
+  "scope": "real Matrix/Synapse publication of opaque fixture; not client E2EE",
+  "no_publication_before_due": true,
+  "limit_48_hours_enforced": true,
+  "plaintext_envelope_rejected": true,
+  "cancel_clears_ciphertext": true,
+  "cancellation_before_lost_create_reply_blocks_late_create": true,
+  "idempotent_replay": true,
+  "published_payload_cleared": true,
+  "ttl_starts_at_publication": true,
+  "changed_keys_block_publication": true,
+  "revoked_device_blocked": true
+}

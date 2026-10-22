@@ -10,6 +10,7 @@ import sqlite3
 import os
 from contacts import ContactStore, ContactError
 from call_control import CallStore, CallError
+from scheduled_messages import ScheduledStore, ScheduleError, audience_digest, scheduled_audience, validate_envelope
 from link_preview import preview
 import http.client
 import urllib.error
@@ -36,6 +37,38 @@ _preview_lock = threading.Lock()
 _calls = None
 _calls_lock = threading.Lock()
 _call_failure = threading.Event()
+_scheduled = None
+_scheduled_lock = threading.Lock()
+
+
+def publish_scheduled(job):
+    request = urllib.request.Request(matrix_url + '/_synapse/client/voicechat/scheduled-publish',
+        json.dumps({key: job[key] for key in ('id', 'user_id', 'device_id', 'room_id', 'payload', 'audience')}).encode(),
+        {'Authorization': 'Bearer ' + policy_secret, 'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response: return json.load(response)['event_id']
+    except urllib.error.HTTPError as error:
+        data = json.loads(error.read(4096))
+        code = data.get('error', 'publication_denied')
+        if not isinstance(code, str) or len(code) > 64: code = 'publication_denied'
+        raise ScheduleError(code, 503 if error.code == 403 and code == 'Forbidden' else error.code) from None
+
+
+def scheduled_store():
+    global _scheduled
+    with _scheduled_lock:
+        if _scheduled is None:
+            _scheduled = ScheduledStore(Path(__file__).resolve().parents[1] / '.prototype/scheduled/messages.sqlite', publish_scheduled)
+            def watch():
+                while True:
+                    time.sleep(1)
+                    try:
+                        while _scheduled.advance(): pass
+                    except Exception:
+                        # Keep the durable job for the next sweep; never log its ciphertext.
+                        pass
+            threading.Thread(target=watch, daemon=True, name='scheduled-messages').start()
+    return _scheduled
 
 def media_api(method, body):
     now = int(time.time())
@@ -101,6 +134,66 @@ class Handler(BaseHTTPRequestHandler):
                                      None if body is None else json.dumps(body).encode(),
                                      headers={'Authorization': auth, 'Content-Type': 'application/json'})
         with urllib.request.urlopen(req, timeout=10) as response: return json.load(response)
+    def scheduled_request(self):
+        try:
+            who = self.matrix('account/whoami')
+            user, device = who['user_id'], who.get('device_id')
+            if not isinstance(device, str) or not device: raise ScheduleError('device_required', 403)
+            store = scheduled_store()
+            if self.command == 'GET':
+                query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query, keep_blank_values=True)
+                if not query: return self.reply(200, {'messages': store.list(user)})
+                if set(query) != {'id'} or len(query['id']) != 1 or len(query['id'][0]) != 64: raise ScheduleError('invalid_request')
+                return self.reply(200, store.get(user, query['id'][0]))
+            size = int(self.headers.get('Content-Length', '0'))
+            if not 0 < size <= 131072: raise ScheduleError('invalid_size')
+            body = json.loads(self.rfile.read(size))
+            if not isinstance(body, dict): raise ScheduleError('invalid_request')
+            if body.get('action') == 'withdraw' and set(body) == {'action', 'transaction', 'room_id'}:
+                store.withdraw(user, device, body['transaction'], body['room_id'])
+                return self.reply(200, {'ok': True})
+            if body.get('action') == 'cancel' and set(body) == {'action', 'id'}:
+                if not isinstance(body['id'], str) or len(body['id']) != 64: raise ScheduleError('invalid_id')
+                store.cancel(user, body['id'])
+                return self.reply(200, {'ok': True})
+            if body.get('action') != 'create' or set(body) != {'action', 'transaction', 'room_id', 'due', 'payload', 'audience'}:
+                raise ScheduleError('invalid_request')
+            identifier = store.identifier(user, device, body['transaction'])
+            try: previous = store.get(user, identifier)
+            except ScheduleError as error:
+                if error.status != 404: raise
+                previous = None
+            if previous is not None:
+                if previous['room_id'] != body['room_id']: raise ScheduleError('transaction_reused', 409)
+                return self.reply(200, {'id': identifier, 'state': previous['state'], 'event_id': previous['event_id']})
+            room = body['room_id']
+            if not isinstance(room, str) or not room.startswith('!') or len(room) > 255: raise ScheduleError('invalid_room')
+            state = self.matrix('rooms/' + urllib.parse.quote(room, safe='') + '/state')
+            if not any(e.get('type') == 'm.room.member' and e.get('state_key') == user and e.get('content', {}).get('membership') == 'join' for e in state):
+                raise ScheduleError('not_joined', 403)
+            if not any(e.get('type') == 'm.room.encryption' and e.get('content', {}).get('algorithm') == 'm.megolm.v1.aes-sha2' for e in state):
+                raise ScheduleError('unencrypted_room', 403)
+            members = scheduled_audience(state)
+            if any(e.get('type') == 'dev.voicechat.kind' for e in state):
+                peer = next(member for member in members if member != user)
+                if not contact_store().accepted(user, peer): raise ScheduleError('contact_not_accepted', 403)
+            keys = self.matrix('keys/query', {'device_keys': {member: [] for member in members}})
+            if keys.get('failures'): raise ScheduleError('keys_unavailable', 503)
+            expected = audience_digest(members, keys['device_keys'])
+            if body['audience'] != expected: raise ScheduleError('audience_changed', 409)
+            curve = keys['device_keys'][user][device]['keys']['curve25519:' + device]
+            from client_policy import load_policy
+            policy = load_policy()
+            validate_envelope(body['payload'], device, curve, policy)
+            identifier = store.put(user, device, body['transaction'], room, body['due'], body['payload'], expected, policy['schedule_max_seconds'])
+            current = store.get(user, identifier)
+            return self.reply(200, {'id': identifier, 'state': current['state'], 'event_id': current['event_id']})
+        except ScheduleError as error: return self.reply(error.status, {'error': str(error)})
+        except ContactError: return self.reply(401, {'error': 'unauthorized'})
+        except urllib.error.HTTPError as error:
+            return self.reply(503 if error.code == 429 or error.code >= 500 else 401 if error.code == 401 else 403, {'error': 'matrix_unavailable'})
+        except (KeyError, ValueError, TypeError): return self.reply(400, {'error': 'invalid_request'})
+        except (OSError, sqlite3.Error): return self.reply(503, {'error': 'scheduled_unavailable'})
     def contact_get(self):
         user = self.matrix('account/whoami')['user_id']
         store = contact_store()
@@ -155,6 +248,7 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError): pass
     def do_OPTIONS(self): self.reply(204, {})
     def do_GET(self):
+        if self.path == '/scheduled' or self.path.startswith('/scheduled?'): return self.scheduled_request()
         if self.path == '/health':
             return self.reply(503 if _call_failure.is_set() else 200, {'ok': not _call_failure.is_set()})
         if self.path.startswith('/presence?'):
@@ -194,6 +288,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/reports' and laboratory: return self.reply(200, reports)
         self.reply(404, {'error': 'not_found'})
     def do_POST(self):
+        if self.path == '/scheduled': return self.scheduled_request()
         if self.path == '/link-preview':
             try:
                 user = self.matrix('account/whoami')['user_id']
@@ -320,5 +415,6 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(503, {'error': 'upstream_unavailable'})
 
 if __name__ == '__main__':
+    scheduled_store()
     print('Prototype token issuer: http://127.0.0.1:8090 (local test accounts only)', flush=True)
     ControlServer((os.environ.get('VOICECHAT_BIND', '127.0.0.1'), 8090), Handler).serve_forever()

@@ -15,6 +15,12 @@ def write(path, value, uid):
     path.chmod(0o600)
 
 
+def configure_policy(defaults=Path('/client-policy.json'), target=Path('/media/client-policy.json')):
+    value = json.loads(defaults.read_text())
+    if target.exists(): value.update(json.loads(target.read_text()))
+    write(target, json.dumps(value), 10001)
+
+
 def main():
     env=os.environ
     local=env['LOCAL_STAND']=='1'
@@ -47,6 +53,7 @@ def main():
                                for kind in ('address', 'account')}
     write('/matrix/homeserver.yaml',json.dumps(synapse),991)
     write(marker,name,991)
+    configure_policy()
     write('/media/livekit.json',json.dumps({'port':7880,'bind_addresses':['0.0.0.0'],
         'rtc':{'tcp_port':7981,'port_range_start':50300,'port_range_end':50400,'use_external_ip':False,'node_ip':env['PUBLIC_IP']},
         'keys':{'prototype':env['LIVEKIT_SECRET']},'room':{'auto_create':False,'max_participants':10}}),10001)

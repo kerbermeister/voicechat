@@ -13,10 +13,25 @@ from unittest.mock import patch
 infra=Path(__file__).resolve().parents[1]/'infra'
 sys.path.insert(0,str(infra))
 from client_config import client_config
+import configure
 import bootstrap
 import deploy
 
 class DeploymentTests(unittest.TestCase):
+    def test_policy_upgrade_preserves_operator_limits_and_adds_new_defaults(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(configure.os, 'chown'):
+            defaults, target = (Path(directory) / name for name in ('defaults.json', 'policy.json'))
+            defaults.write_text(json.dumps({'version':1, 'text_max_length':16000, 'schedule_max_seconds':172800}))
+            target.write_text(json.dumps({'version':1, 'text_max_length':8000}))
+            configure.configure_policy(defaults, target)
+            self.assertEqual(json.loads(target.read_text()), {'version':1, 'text_max_length':8000, 'schedule_max_seconds':172800})
+            target.write_text(json.dumps({'version':1, 'text_max_length':8000, 'schedule_max_seconds':3600}))
+            configure.configure_policy(defaults, target)
+            self.assertEqual(json.loads(target.read_text())['schedule_max_seconds'],3600)
+            target.write_text('invalid')
+            with self.assertRaises(ValueError): configure.configure_policy(defaults,target)
+            self.assertEqual(target.read_text(),'invalid')
+
     def test_endpoint_origins_are_canonical_and_never_contain_credentials(self):
         self.assertEqual(client_config('https://EXAMPLE.com:443/'), {
             'MATRIX_URL':'https://example.com','TOKEN_URL':'https://example.com/api','LIVEKIT_URL':'wss://example.com'})

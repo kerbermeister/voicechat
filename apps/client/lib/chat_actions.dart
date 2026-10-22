@@ -11,6 +11,7 @@ import 'picked_file.dart';
 import 'link_preview.dart';
 import 'call_event.dart';
 import 'temporary_message.dart';
+import 'scheduled_messages.dart';
 
 const maxAttachmentBytes = 10 * 1024 * 1024;
 
@@ -114,6 +115,7 @@ class ChatActions extends ChangeNotifier {
     String? edit,
     bool preparing = false,
     int? ttlSeconds,
+    DateTime? scheduledFor,
   }) async {
     if (_closed) {
       throw UserActionError('Хранилище закрывается. Повторите после входа.');
@@ -134,6 +136,14 @@ class ChatActions extends ChangeNotifier {
                 0)) {
       throw UserActionError('Выберите допустимый срок временного сообщения.');
     }
+    if (scheduledFor != null) {
+      validateSchedule(scheduledFor, policy.scheduleMaxSeconds);
+      if (edit != null || type != EventTypes.Message || policyUrl == null) {
+        throw UserActionError(
+          'Планирование доступно для новых сообщений при подключённом сервере.',
+        );
+      }
+    }
     final item = <String, dynamic>{
       'id': client.generateUniqueTransactionId(),
       'room': room.id,
@@ -143,6 +153,8 @@ class ChatActions extends ChangeNotifier {
       },
       'type': type,
       'created': DateTime.now().millisecondsSinceEpoch,
+      if (scheduledFor != null)
+        'scheduled_at': scheduledFor.millisecondsSinceEpoch,
       if (reply != null) 'reply': reply.eventId,
       if (edit != null) 'edit': edit,
       if (preparing) 'preparing': true,
@@ -169,6 +181,7 @@ class ChatActions extends ChangeNotifier {
     void Function(double)? progress,
     bool Function()? cancelled,
     int? ttlSeconds,
+    DateTime? scheduledFor,
   }) async {
     await refreshPolicy();
     final video = source.mime.startsWith('video/');
@@ -199,6 +212,7 @@ class ChatActions extends ChangeNotifier {
       reply: reply,
       preparing: true,
       ttlSeconds: ttlSeconds,
+      scheduledFor: scheduledFor,
     );
     final item = pending.firstWhere((i) => i['id'] == id);
     _preparing.add(id);
@@ -286,6 +300,7 @@ class ChatActions extends ChangeNotifier {
     String? edit,
     List<LinkPreview> previews = const [],
     int? ttlSeconds,
+    DateTime? scheduledFor,
   }) async {
     await refreshPolicy();
     text = text.trim();
@@ -320,6 +335,7 @@ class ChatActions extends ChangeNotifier {
       reply: reply,
       edit: edit,
       ttlSeconds: ttlSeconds,
+      scheduledFor: scheduledFor,
     );
   }
 
@@ -330,6 +346,7 @@ class ChatActions extends ChangeNotifier {
     List<int>? waveform,
     String caption = '',
     int? ttlSeconds,
+    DateTime? scheduledFor,
   }) async {
     if (caption.trim().length > policy.textMaxLength) {
       throw UserActionError('Подпись слишком длинная.');
@@ -363,6 +380,7 @@ class ChatActions extends ChangeNotifier {
       },
       reply: reply,
       ttlSeconds: ttlSeconds,
+      scheduledFor: scheduledFor,
     );
   }
 
@@ -372,6 +390,7 @@ class ChatActions extends ChangeNotifier {
     String caption, {
     Event? reply,
     int? ttlSeconds,
+    DateTime? scheduledFor,
   }) async {
     await refreshPolicy();
     if (photos.isEmpty ||
@@ -407,6 +426,7 @@ class ChatActions extends ChangeNotifier {
       },
       reply: reply,
       ttlSeconds: ttlSeconds,
+      scheduledFor: scheduledFor,
     );
   }
 
@@ -456,13 +476,21 @@ class ChatActions extends ChangeNotifier {
 
   String pendingStatus(Map<String, dynamic> item) {
     if (item['error'] is String) return item['error'] as String;
-    final head = pending.where((p) => p['room'] == item['room']).firstOrNull;
+    final head = pending
+        .where(
+          (p) => p['room'] == item['room'] && p['schedule_rejected'] != true,
+        )
+        .firstOrNull;
     if (head != null && head['id'] != item['id']) {
       return head['error'] is String
           ? 'Не отправлено. ${head['error']}'
           : 'Ожидает отправки предыдущего сообщения';
     }
-    return item['preparing'] == true ? 'Подготовка вложения…' : 'Отправляется…';
+    return item['preparing'] == true
+        ? 'Подготовка вложения…'
+        : item['scheduled_at'] != null
+        ? 'Передаём в расписание сервера…'
+        : 'Отправляется…';
   }
 
   Future<void> flush() async {
@@ -470,13 +498,15 @@ class ChatActions extends ChangeNotifier {
     while (!_closed) {
       final heads = <String, Map<String, dynamic>>{};
       for (final item in pending) {
+        if (item['schedule_rejected'] == true) continue;
         heads.putIfAbsent(item['room'] as String, () => item);
       }
       final jobs = <Future<void>>[];
       for (final entry in heads.entries) {
         if (_sending.containsKey(entry.key) ||
             attempted.contains(entry.key) ||
-            entry.value['preparing'] == true) {
+            entry.value['preparing'] == true ||
+            entry.value['schedule_rejected'] == true) {
           continue;
         }
         if (!_reserveSending(entry.key, entry.value)) continue;
@@ -510,7 +540,10 @@ class ChatActions extends ChangeNotifier {
     try {
       while (!_closed) {
         final item = pending
-            .where((item) => item['room'] == roomId)
+            .where(
+              (item) =>
+                  item['room'] == roomId && item['schedule_rejected'] != true,
+            )
             .firstOrNull;
         if (item == null) break;
         if (item['cancelled'] == true && !_preparing.contains(item['id'])) {
@@ -519,7 +552,9 @@ class ChatActions extends ChangeNotifier {
           await _deleteParts(item);
           continue;
         }
-        if (item['preparing'] == true) break;
+        if (item['preparing'] == true || item['schedule_rejected'] == true) {
+          break;
+        }
         if (!_reserveSending(roomId, item)) break;
         _activeItems[roomId] = item['id'] as String;
         try {
@@ -527,83 +562,94 @@ class ChatActions extends ChangeNotifier {
           if (room == null || !room.encrypted) {
             throw StateError('Room unavailable');
           }
-          await authorizedDevices(room).timeout(const Duration(seconds: 8));
-          if (_closed) break;
-          await client.encryption!.keyManager.clearOrUseOutboundGroupSession(
-            room.id,
-            wipe: true,
-          );
-          if (item['content']['msgtype'] == 'dev.voicechat.album') {
-            await _uploadAlbum(item, room);
-          }
-          if (item['content']['msgtype'] == 'dev.voicechat.file') {
-            await _uploadFile(item);
+          String? id;
+          if (item['scheduled_at'] != null && item['sealed'] != null) {
+            // Resolve a lost acknowledgement before new recipients can block this transaction.
+            _publishing[roomId] = item['id'] as String;
+            id = await _schedule(
+              room,
+              item,
+              Map<String, dynamic>.from(item['content'] as Map),
+            );
+          } else {
             await authorizedDevices(room).timeout(const Duration(seconds: 8));
+            if (_closed) break;
             await client.encryption!.keyManager.clearOrUseOutboundGroupSession(
               room.id,
               wipe: true,
             );
-          }
-          if (_closed) break;
-          if (item['cancelled'] == true) throw StateError('Cancelled');
-          final content = Map<String, dynamic>.from(item['content'] as Map);
-          final reply = item['reply'] == null
-              ? null
-              : await room.getEventById(item['reply'] as String);
-          if (item['reply'] != null && reply == null) {
-            throw StateError('Reply unavailable');
-          }
-          String? id;
-          if (item['cancelled'] == true) throw StateError('Cancelled');
-          _publishing[roomId] = item['id'] as String;
-          if (content.containsKey('bytes')) {
-            final bytes = base64Decode(content['bytes'] as String);
-            final file = content['msgtype'] == MessageTypes.Audio
-                ? MatrixAudioFile(
-                    bytes: bytes,
-                    name: content['body'] as String,
-                    mimeType: content['mime'] as String,
-                    duration: content['duration'] as int?,
-                  )
-                : MatrixImageFile(
-                    bytes: bytes,
-                    name: content['body'] as String,
-                    mimeType: content['mime'] as String,
-                  );
-            id = await room.sendFileEvent(
-              file,
-              txid: item['id'] as String,
-              inReplyTo: reply,
-              extraContent: {
-                if (content.containsKey('dev.voicechat.ttl_seconds'))
-                  'dev.voicechat.ttl_seconds':
-                      content['dev.voicechat.ttl_seconds'],
-                if (content.containsKey('dev.voicechat.waveform'))
-                  'dev.voicechat.waveform': content['dev.voicechat.waveform'],
-                if (content.containsKey('dev.voicechat.caption'))
-                  'dev.voicechat.caption': content['dev.voicechat.caption'],
-              },
-            );
-          } else {
-            if (utf8.encode(jsonEncode(content)).length > 44000) {
-              throw UserActionError(
-                'Сообщение слишком большое для сервера. Сократите подпись или разделите альбом.',
+            if (item['content']['msgtype'] == 'dev.voicechat.album') {
+              await _uploadAlbum(item, room);
+            }
+            if (item['content']['msgtype'] == 'dev.voicechat.file') {
+              await _uploadFile(item);
+              await authorizedDevices(room).timeout(const Duration(seconds: 8));
+              await client.encryption!.keyManager
+                  .clearOrUseOutboundGroupSession(room.id, wipe: true);
+            }
+            if (_closed) break;
+            if (item['cancelled'] == true) throw StateError('Cancelled');
+            final content = Map<String, dynamic>.from(item['content'] as Map);
+            final reply = item['reply'] == null
+                ? null
+                : await room.getEventById(item['reply'] as String);
+            if (item['reply'] != null && reply == null) {
+              throw StateError('Reply unavailable');
+            }
+            if (item['cancelled'] == true) throw StateError('Cancelled');
+            _publishing[roomId] = item['id'] as String;
+            if (item['scheduled_at'] != null) {
+              id = await _schedule(room, item, content);
+            } else if (content.containsKey('bytes')) {
+              final bytes = base64Decode(content['bytes'] as String);
+              final file = content['msgtype'] == MessageTypes.Audio
+                  ? MatrixAudioFile(
+                      bytes: bytes,
+                      name: content['body'] as String,
+                      mimeType: content['mime'] as String,
+                      duration: content['duration'] as int?,
+                    )
+                  : MatrixImageFile(
+                      bytes: bytes,
+                      name: content['body'] as String,
+                      mimeType: content['mime'] as String,
+                    );
+              id = await room.sendFileEvent(
+                file,
+                txid: item['id'] as String,
+                inReplyTo: reply,
+                extraContent: {
+                  if (content.containsKey('dev.voicechat.ttl_seconds'))
+                    'dev.voicechat.ttl_seconds':
+                        content['dev.voicechat.ttl_seconds'],
+                  if (content.containsKey('dev.voicechat.waveform'))
+                    'dev.voicechat.waveform': content['dev.voicechat.waveform'],
+                  if (content.containsKey('dev.voicechat.caption'))
+                    'dev.voicechat.caption': content['dev.voicechat.caption'],
+                },
+              );
+            } else {
+              if (utf8.encode(jsonEncode(content)).length > 44000) {
+                throw UserActionError(
+                  'Сообщение слишком большое для сервера. Сократите подпись или разделите альбом.',
+                );
+              }
+              id = await room.sendEvent(
+                content,
+                type: item['type'] as String,
+                txid: item['id'] as String,
+                inReplyTo: reply,
+                editEventId: item['edit'] as String?,
               );
             }
-            id = await room.sendEvent(
-              content,
-              type: item['type'] as String,
-              txid: item['id'] as String,
-              inReplyTo: reply,
-              editEventId: item['edit'] as String?,
-            );
           }
           if (_closed) break;
           if (id == null) throw StateError('Send not confirmed');
           pending.remove(item);
           await _save();
           if ((item['created'] as int) >= _opened &&
-              item['type'] == EventTypes.Message) {
+              item['type'] == EventTypes.Message &&
+              item['scheduled_at'] == null) {
             onSent?.call();
           }
           await _deleteParts(item);
@@ -616,6 +662,7 @@ class ChatActions extends ChangeNotifier {
             await _deleteParts(item);
             continue;
           }
+          if (error is ScheduleRejected) item['schedule_rejected'] = true;
           item['error'] = error is UserActionError
               ? error.message
               : 'Нет подтверждения отправки. Повторим при восстановлении связи.';
@@ -635,6 +682,88 @@ class ChatActions extends ChangeNotifier {
     }
   }
 
+  Future<String> _schedule(
+    Room room,
+    Map<String, dynamic> item,
+    Map<String, dynamic> content,
+  ) async {
+    final service = ScheduledMessages(client, policyUrl!);
+    if (item['sealed'] == null) {
+      if (content.containsKey('bytes')) {
+        final bytes = base64Decode(content.remove('bytes') as String);
+        final mime = content.remove('mime') as String;
+        final duration = content.remove('duration');
+        final file = MatrixFile(
+          bytes: bytes,
+          name: content['body'] as String,
+          mimeType: mime,
+        );
+        final encrypted = await file.encrypt();
+        final uri = await client.uploadContent(
+          encrypted.data,
+          filename: 'attachment',
+          contentType: 'application/octet-stream',
+        );
+        content['file'] = {
+          ...encryptedDescriptor(encrypted),
+          'url': uri.toString(),
+        };
+        content['info'] = {
+          'mimetype': mime,
+          'size': bytes.length,
+          if (duration != null) 'duration': duration,
+        };
+        item['content'] = content;
+        await _save();
+      }
+      if (item['reply'] != null) {
+        content['m.relates_to'] = {
+          'm.in_reply_to': {'event_id': item['reply']},
+        };
+      }
+      if (utf8.encode(jsonEncode(content)).length > 44000) {
+        throw UserActionError(
+          'Сообщение слишком большое. Сократите подпись или разделите альбом.',
+        );
+      }
+      await authorizedDevices(room).timeout(const Duration(seconds: 8));
+      await client.encryption!.keyManager.clearOrUseOutboundGroupSession(
+        room.id,
+        wipe: true,
+      );
+      final audience = service.audience(room);
+      final sealed = await client.encryption!.encryptGroupMessagePayload(
+        room.id,
+        content,
+      );
+      if (content.containsKey('dev.voicechat.ttl_seconds')) {
+        sealed['dev.voicechat.ttl_seconds'] =
+            content['dev.voicechat.ttl_seconds'];
+      }
+      item['sealed'] = sealed;
+      item['audience'] = audience;
+      await _save();
+    }
+    final job = await service.create(item);
+    return job['id'] as String;
+  }
+
+  Future<void> reschedulePending(String id, DateTime due) async {
+    final item = pending.firstWhere((item) => item['id'] == id);
+    if (_activeItems.containsValue(id) || item['schedule_rejected'] != true) {
+      throw UserActionError('Дождитесь подтверждения сервера.');
+    }
+    validateSchedule(due, policy.scheduleMaxSeconds);
+    item['scheduled_at'] = due.millisecondsSinceEpoch;
+    item.remove('sealed');
+    item.remove('audience');
+    item.remove('error');
+    item.remove('schedule_rejected');
+    await _save();
+    notifyListeners();
+    unawaited(flush());
+  }
+
   Future<void> cancel(String id) async {
     if (_publishing.containsValue(id)) {
       throw UserActionError(
@@ -643,6 +772,9 @@ class ChatActions extends ChangeNotifier {
     }
     final index = pending.indexWhere((item) => item['id'] == id);
     if (index < 0) return;
+    if (pending[index]['scheduled_at'] != null) {
+      await ScheduledMessages(client, policyUrl!).withdraw(pending[index]);
+    }
     if (_activeItems.containsValue(id) || _preparing.contains(id)) {
       pending[index]['cancelled'] = true;
       await _save();

@@ -26,6 +26,8 @@ import 'link_preview.dart';
 import 'link_cards.dart';
 import 'history_recovery.dart';
 import 'temporary_message.dart';
+import 'scheduled_messages.dart';
+import 'scheduled_view.dart';
 
 String? reactionEmoji(mx.Event event) {
   final relation = event.content['m.relates_to'];
@@ -71,6 +73,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   late final Future<void> Function() voiceCancellation = cancelVoiceCapture;
   mx.Event? reply;
   int? temporarySeconds;
+  DateTime? scheduledFor;
   mx.Event? edit;
   bool working = false;
   bool recording = false;
@@ -304,6 +307,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             caption,
             reply: reply,
             ttlSeconds: temporarySeconds,
+            scheduledFor: scheduledFor,
             videoNote: draftIsVideoNote,
             duration: draftVideoDuration,
             cancelled: () => cancelFile || !mounted,
@@ -329,6 +333,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         List.of(draftPhotos),
         text,
         ttlSeconds: temporarySeconds,
+        scheduledFor: scheduledFor,
         reply: reply,
       );
       draftPhotos.clear();
@@ -339,6 +344,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         reply: reply,
         edit: edit?.eventId,
         previews: linkPreviews.values.toList(),
+        scheduledFor: scheduledFor,
         ttlSeconds: edit == null
             ? temporarySeconds
             : edit!.content['dev.voicechat.ttl_seconds'] as int?,
@@ -348,12 +354,29 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       input.clear();
       linkPreviews.clear();
       temporarySeconds = null;
+      scheduledFor = null;
     }
     typing(input.text);
     setState(() {
       reply = null;
       edit = null;
     });
+  }
+
+  Future<void> chooseSchedule({String? pendingId}) async {
+    await widget.actions.refreshPolicy();
+    if (!mounted) return;
+    final chosen = await chooseScheduledTime(
+      context,
+      widget.actions.policy.scheduleMaxSeconds,
+      initial: scheduledFor,
+    );
+    if (chosen == null || !mounted) return;
+    if (pendingId != null) {
+      await widget.actions.reschedulePending(pendingId, chosen);
+    } else {
+      setState(() => scheduledFor = chosen);
+    }
   }
 
   Future<void> chooseTemporaryDuration() async {
@@ -676,6 +699,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       reply: voiceReply,
       waveform: unsentWave,
       ttlSeconds: temporarySeconds,
+      scheduledFor: scheduledFor,
       caption: input.text,
     );
     await voicePreview.stop();
@@ -1063,12 +1087,19 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
               trailing: PopupMenuButton<String>(
                 tooltip: 'Действия с очередью',
                 onSelected: (action) => perform(
-                  () => action == 'retry'
+                  () => action == 'schedule'
+                      ? chooseSchedule(pendingId: p['id'] as String)
+                      : action == 'retry'
                       ? widget.actions.flush()
                       : widget.actions.cancel(p['id'] as String),
                 ),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(
+                itemBuilder: (_) => [
+                  if (p['schedule_rejected'] == true)
+                    const PopupMenuItem(
+                      value: 'schedule',
+                      child: Text('Выбрать новое время'),
+                    ),
+                  const PopupMenuItem(
                     value: 'retry',
                     child: Text('Повторить отправку'),
                   ),
@@ -1275,6 +1306,19 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             ),
           ),
         ),
+        if (scheduledFor != null)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: InputChip(
+                avatar: const Icon(Icons.schedule, size: 18),
+                label: Text('Отправить ${scheduledTime(scheduledFor!)}'),
+                onPressed: () => perform(chooseSchedule),
+                onDeleted: () => setState(() => scheduledFor = null),
+              ),
+            ),
+          ),
         if (draftFiles.isEmpty &&
             draftPhotos.isEmpty &&
             unsentVoice == null &&
@@ -1632,9 +1676,46 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   ),
                 );
                 final sendButton = IconButton.filled(
-                  tooltip: 'Отправить',
+                  tooltip: scheduledFor == null ? 'Отправить' : 'Запланировать',
                   onPressed: working ? null : () => perform(send),
                   icon: const Icon(Icons.arrow_upward),
+                );
+                final schedule = PopupMenuButton<String>(
+                  tooltip: 'Отложенные сообщения',
+                  enabled: !working && widget.actions.policyUrl != null,
+                  icon: Icon(
+                    Icons.schedule,
+                    color: scheduledFor == null
+                        ? null
+                        : Theme.of(context).colorScheme.primary,
+                  ),
+                  onSelected: (value) => perform(() async {
+                    if (value == 'choose') {
+                      await chooseSchedule();
+                    } else {
+                      await showDialog<void>(
+                        context: context,
+                        builder: (_) => ScheduledView(
+                          service: ScheduledMessages(
+                            widget.room.client,
+                            widget.actions.policyUrl!,
+                          ),
+                          roomId: widget.room.id,
+                        ),
+                      );
+                    }
+                  }),
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'choose',
+                      enabled: edit == null,
+                      child: const Text('Выбрать время отправки'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'list',
+                      child: Text('Запланированные сообщения'),
+                    ),
+                  ],
                 );
                 final temporary = IconButton(
                   tooltip: temporarySeconds == null
@@ -1656,15 +1737,15 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                     ? Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(children: [emojiButton, field]),
-                          Row(
+                          Row(children: [emojiButton, schedule, field]),
+                          Wrap(
+                            alignment: WrapAlignment.spaceBetween,
                             children: [
                               photo,
                               files,
                               temporary,
                               voice,
                               video,
-                              const Spacer(),
                               sendButton,
                             ],
                           ),
@@ -1676,6 +1757,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                           emojiButton,
                           files,
                           temporary,
+                          schedule,
                           field,
                           voice,
                           video,

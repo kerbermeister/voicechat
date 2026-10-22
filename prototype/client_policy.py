@@ -1,5 +1,6 @@
 """Public client limits; Synapse independently enforces its upload-size limit."""
 import json
+import os
 from pathlib import Path
 
 BOUNDS = {
@@ -12,10 +13,12 @@ BOUNDS = {
     'temporary_min_seconds': (int, 1, 86400),
     'temporary_max_seconds': (int, 1, 86400),
     'temporary_step_seconds': (int, 1, 86400),
+    'schedule_max_seconds': (int, 1, 31536000),
 }
 
 
-def load_policy(path=Path(__file__).with_name('client-policy.json')):
+def load_policy(path=None):
+    path = Path(path or os.environ.get('VOICECHAT_CLIENT_POLICY', Path(__file__).with_name('client-policy.json')))
     data = json.loads(path.read_text())
     if not isinstance(data, dict) or type(data.get('version')) is not int or data.get('version') != 1 or set(data) != {'version', *BOUNDS}:
         raise ValueError('Unsupported policy')

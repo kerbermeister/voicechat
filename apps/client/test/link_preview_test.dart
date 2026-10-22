@@ -103,6 +103,31 @@ void main() {
       await queue.close();
     },
   );
+  testWidgets('Editing or removing a URL removes its obsolete playable card', (
+    tester,
+  ) async {
+    Future<void> render(String text) => tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LinkCards(
+            text: text,
+            previews: const [
+              {'url': 'https://example.com/a.mp4', 'title': 'Old clip', 'description': ''},
+            ],
+          ),
+        ),
+      ),
+    );
+    await render('https://example.com/a.mp4');
+    expect(find.text('Old clip'), findsOneWidget);
+    expect(find.text('Смотреть видео'), findsOneWidget);
+    await render('https://example.com/new.txt');
+    expect(find.text('Old clip'), findsNothing);
+    expect(find.text('Смотреть видео'), findsNothing);
+    await render('Link removed');
+    expect(find.byType(LinkCards), findsOneWidget);
+    expect(find.text('Old clip'), findsNothing);
+  });
   testWidgets('Link cards fit narrow layouts in all seven themes', (
     tester,
   ) async {

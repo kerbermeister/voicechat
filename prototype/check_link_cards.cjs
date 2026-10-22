@@ -4,7 +4,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 module.exports=async function checkLinkCards({page:a,fill,button,waitForAnnouncement,root}) {
   const escape=text=>text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const clip = Buffer.from(await a.evaluate(async () => {
+  console.log('Links: create bounded canvas fixture');
+  const clip = Buffer.from(await Promise.race([a.evaluate(async () => {
     const canvas=document.createElement('canvas');
     canvas.width=canvas.height=16;
     const context=canvas.getContext('2d');
@@ -14,19 +15,24 @@ module.exports=async function checkLinkCards({page:a,fill,button,waitForAnnounce
     recorder.ondataavailable=event=>chunks.push(event.data);
     const stopped=new Promise(resolve=>recorder.onstop=resolve);
     const started=new Promise(resolve=>recorder.onstart=resolve);
-    recorder.start(); await started;
+    recorder.start();
+    context.fillStyle='#9e8edb'; context.fillRect(0,0,16,16);
+    await Promise.race([started,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Recorder did not start')),5000))]);
     for(let frame=0;frame<10;frame++) {
       context.fillStyle=frame%2?'#9e8edb':'#8470c4'; context.fillRect(0,0,16,16);
       await new Promise(resolve=>setTimeout(resolve,100));
     }
-    recorder.stop(); await stopped;
+    recorder.stop(); await Promise.race([stopped,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Recorder did not stop')),5000))]);
     stream.getTracks().forEach(track=>track.stop());
     return Array.from(new Uint8Array(await new Blob(chunks).arrayBuffer()));
-  }));
+  }),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Video fixture timeout')),10000))]));
+  console.log('Links: fixture ready',clip.length);
+  assert(clip.length>100,'Encoded fixture required');
   let videoRequests=0, embedRequests=0;
   const requestedPaths=[];
   await a.route('https://media.example.test/**',async route=>{
     videoRequests++; requestedPaths.push(new URL(route.request().url()).pathname);
+    if(route.request().url().includes('offline')) return route.abort('internetdisconnected');
     if(route.request().url().includes('broken')) return route.fulfill({status:404,headers:{'Cross-Origin-Resource-Policy':'cross-origin'},body:''});
     const range=/bytes=(\d+)-(\d*)/.exec(route.request().headers().range||'');
     const start=range?Number(range[1]):0;
@@ -41,17 +47,17 @@ module.exports=async function checkLinkCards({page:a,fill,button,waitForAnnounce
     return route.fulfill({status:403,contentType:'text/html',body:'Embedding unavailable'});
   });
   async function sendLink(text) {
+    console.log('Links: send',text);
     await fill(a,'Написать сообщение…',text); await button(a,'Отправить').click();
     await waitForAnnouncement(a,text);
     return text;
   }
   async function playLink(text) {
+    console.log('Links: open',text);
     // Flutter merges a settled link card into a button, not a text group.
     const card=a.getByRole('button',{name:new RegExp(escape(text))})
       .filter({has:button(a,'Смотреть видео')});
     await card.getByRole('button',{name:'Смотреть видео',exact:true}).click();
-    console.log('Playback target:',text);
-    console.log('Current player:',await a.locator('video').evaluateAll(videos=>videos.map(v=>({src:v.currentSrc,ready:v.readyState,error:v.error?.code}))));
   }
   const message=await sendLink('https://media.example.test/clip.webm');
   assert.equal(videoRequests,0,'Video must not load before the explicit action');
@@ -66,10 +72,16 @@ module.exports=async function checkLinkCards({page:a,fill,button,waitForAnnounce
   const broken=await sendLink('https://media.example.test/broken.webm');
   await playLink(broken);
   try {await waitForAnnouncement(a,'Видео не удалось открыть');} catch(error) {
+    fs.writeFileSync(path.join(root,'.prototype/ui/link-error-accessibility.txt'),await a.locator('body').ariaSnapshot());
     console.log('Fixture paths:',requestedPaths);
     console.log('Failed player:',await a.locator('video').evaluateAll(videos=>videos.map(v=>({src:v.currentSrc,ready:v.readyState,error:v.error?.code,paused:v.paused}))));
     throw error;
   }
+  await button(a,'Открыть оригинал').waitFor();
+  await a.getByRole('button',{name:/^Закрыть видео/}).click();
+  const offline=await sendLink('https://media.example.test/offline.webm');
+  await playLink(offline);
+  await waitForAnnouncement(a,'Видео не удалось открыть');
   await button(a,'Открыть оригинал').waitFor();
   await a.getByRole('button',{name:/^Закрыть видео/}).click();
   const youtube=await sendLink('https://youtu.be/abcdefghijk');
@@ -87,6 +99,6 @@ module.exports=async function checkLinkCards({page:a,fill,button,waitForAnnounce
   fs.writeFileSync(path.join(root,'prototype/verified-links-run.json'),JSON.stringify({
     run:Math.floor(Date.now()/1000),result:'PASS',scope:'web 390px; decoded local WebM fixture; denied YouTube embed fixture',
     no_video_requests_before_action:true,direct_webm_frames_decoded:true,
-    broken_video_fallback:true,youtube_fallback_and_cleanup:true,unsupported_link_has_no_inline_player:true,
+    broken_video_fallback:true,network_failure_fallback:true,youtube_fallback_and_cleanup:true,unsupported_link_has_no_inline_player:true,
   },null,2)+'\n');
 };

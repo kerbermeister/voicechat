@@ -1,0 +1,15 @@
+{
+  "run": 1792687393,
+  "result": "PASS",
+  "scope": "actual E2EE between isolated web clients; 390px composer",
+  "private_encrypted_attachment_decrypted": true,
+  "scheduled_preview_decrypted_locally": true,
+  "group_encrypted_text_decrypted": true,
+  "sender_tab_closed": true,
+  "no_publication_before_due": true,
+  "temporary_duration_starts_at_publication": true,
+  "expires_after_publication": true,
+  "cancelled_message_not_published": true,
+  "schedule_survives_reload": true,
+  "control_api_outage_retried": true
+}

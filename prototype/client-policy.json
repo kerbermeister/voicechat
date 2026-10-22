@@ -13,5 +13,6 @@
   "file_max_count": 5,
   "temporary_min_seconds": 10,
   "temporary_max_seconds": 600,
-  "temporary_step_seconds": 10
+  "temporary_step_seconds": 10,
+  "schedule_max_seconds": 172800
 }

@@ -6,6 +6,7 @@ services:
     env_file: runtime/stand.env
     volumes:
       - ./configure.py:/configure.py:ro
+      - ../prototype/client-policy.json:/client-policy.json:ro
       - synapse:/matrix
       - media-config:/media
       - turn-config:/turn
@@ -26,11 +27,17 @@ services:
   synapse:
     image: matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0
     environment: {PYTHONPATH: /modules}
+    healthcheck:
+      test: [CMD, python, -c, 'import urllib.request;urllib.request.urlopen("http://127.0.0.1:8008/_matrix/client/versions",timeout=2)']
+      interval: 5s
+      timeout: 3s
+      retries: 30
     ports: ['127.0.0.1:8088:8008']
     volumes:
       - synapse:/data
       - ../prototype/voicechat_policy.py:/modules/voicechat_policy.py:ro
       - ../prototype/client_policy.py:/modules/client_policy.py:ro
+      - ../prototype/scheduled_messages.py:/modules/scheduled_messages.py:ro
     depends_on:
       configure: {condition: service_completed_successfully}
       postgres: {condition: service_healthy}
@@ -41,6 +48,7 @@ services:
       VOICECHAT_LIVEKIT_SECRET: ${LIVEKIT_SECRET:?}
       VOICECHAT_POLICY_SECRET: ${POLICY_SECRET:?}
       VOICECHAT_MATRIX_INTERNAL: http://synapse:8008
+      VOICECHAT_CLIENT_POLICY: /config/client-policy.json
       VOICECHAT_ORIGINS: ${PUBLIC_URL:?}
     volumes: [control:/work/.prototype, media-config:/config:ro]
     ports:

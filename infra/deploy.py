@@ -62,6 +62,7 @@ def backup(root, release, env):
             '-v', f'{password}:/password:ro', '-v', f'{repository}:/repository',
             '-v', f'{root}/runtime:/snapshot/runtime:ro', '-v', f'{directory}:/snapshot/database:ro',
             '-v', 'voicechat_synapse:/snapshot/synapse:ro', '-v', 'voicechat_control:/snapshot/control:ro',
+            '-v', 'voicechat_media-config:/snapshot/media-config:ro',
             RESTIC, '-r', '/repository', 'backup', '/snapshot', '--tag', 'pre-deploy'])
     execute([*command, 'check'])
 
