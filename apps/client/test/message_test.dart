@@ -94,7 +94,9 @@ class TestDevice implements DeviceKeys {
   @override
   String get userId => '@user:local';
   @override
-  String get deviceId => 'DEVICE';
+  String get deviceId => id;
+  final String id;
+  TestDevice([this.id = 'DEVICE']);
   @override
   String get ed25519Key => 'expected-fingerprint';
   @override
@@ -282,7 +284,16 @@ void main() {
       room.client.userDeviceKeys[room.client.userID]!.deviceKeys[device
               .deviceId] =
           device;
-      await expectLater(MatrixProbe.sendText(room, 'hello'), throwsStateError);
+      await expectLater(
+        MatrixProbe.sendText(room, 'hello'),
+        throwsA(
+          isA<StateError>().having(
+            (error) => error.message,
+            'identifies whose device needs verification',
+            contains('ваш аккаунт'),
+          ),
+        ),
+      );
       expect(room.sent, false);
       await expectLater(
         verifyDevice(room.client, device.userId, device.deviceId, 'wrong'),
@@ -297,6 +308,22 @@ void main() {
       );
       expect(device.directVerified, true);
       expect(await MatrixProbe.sendText(room, 'hello'), 'event');
+    },
+  );
+  test(
+    'An extra unverified device neither blocks a trusted device nor receives keys',
+    () async {
+      final room = TestRoom(true, 'event');
+      final trusted = TestDevice('TRUSTED')..directVerified = true;
+      final unverified = TestDevice('UNVERIFIED');
+      room.client.userDeviceKeys[room.client.userID]!.deviceKeys.addAll({
+        trusted.deviceId: trusted,
+        unverified.deviceId: unverified,
+      });
+      expect(await authorizedDevices(room), [trusted]);
+      expect(await MatrixProbe.sendText(room, 'hello'), 'event');
+      expect(unverified.directVerified, false);
+      expect(unverified.encryptToDevice, false);
     },
   );
   test('Failed server logout preserves the local session', () async {

@@ -5,11 +5,23 @@ import 'chat_actions_test.dart' show OutboxDatabase;
 
 class PinClient implements Client {
   @override
-  final OutboxDatabase database = OutboxDatabase();
+  final PinDatabase database = PinDatabase();
   @override
   final userDeviceKeys = <String, DeviceKeysList>{};
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class PinDatabase extends OutboxDatabase {
+  int writes = 0;
+  @override
+  Future<void> storeAccountData(
+    String type,
+    Map<String, Object?> content,
+  ) async {
+    await super.storeAccountData(type, content);
+    writes++;
+  }
 }
 
 class PinDevice implements DeviceKeys {
@@ -64,6 +76,19 @@ void main() {
       client.database.failWrite = false;
       await acceptFirstKeys(client, {first.userId});
       expect(first.directVerified, true);
+      final writes = client.database.writes;
+      first.directVerified = false;
+      await acceptFirstKeys(client, {first.userId});
+      expect(
+        first.directVerified,
+        true,
+        reason: 'Previously persisted pins still authorize the exact key',
+      );
+      expect(
+        client.database.writes,
+        writes,
+        reason: 'Unchanged pins must not rewrite the encrypted vault',
+      );
       final second = PinDevice(first.userId, 'B', 'unsigned-key');
       client.userDeviceKeys[first.userId]!.deviceKeys['B'] = second;
       await acceptFirstKeys(client, {first.userId});

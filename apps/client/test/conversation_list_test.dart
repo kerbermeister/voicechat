@@ -14,6 +14,8 @@ class ListClient implements Client {
   @override
   final rooms = <Room>[];
   @override
+  PushRuleSet? globalPushRules;
+  @override
   final directChats = <String, List<String>>{};
   @override
   final presences = <String, CachedPresence>{};
@@ -22,6 +24,56 @@ class ListClient implements Client {
 }
 
 void main() {
+  testWidgets('Muted people and groups show a persistent, accessible icon', (
+    tester,
+  ) async {
+    final client = ListClient();
+    final room = Room(id: '!chat:local', client: client);
+    client.rooms.add(room);
+    for (final direct in [true, false]) {
+      client.directChats.clear();
+      if (direct) client.directChats['@peer:local'] = [room.id];
+      for (final muted in [true, false]) {
+        client.globalPushRules = PushRuleSet.fromJson({
+          'override': [
+            if (muted)
+              {
+                'rule_id': room.id,
+                'enabled': true,
+                'default': false,
+                'actions': [],
+              },
+          ],
+        });
+        await tester.pumpWidget(const SizedBox());
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppPalette.lavender.theme,
+            home: Scaffold(
+              body: ConversationList(
+                client: client,
+                groups: !direct,
+                onTabChanged: (_) {},
+                onSelect: (_) {},
+                onNewPerson: () {},
+                onNewGroup: () {},
+                onSettings: () {},
+              ),
+            ),
+          ),
+        );
+        expect(
+          find.byIcon(Icons.notifications_off_outlined),
+          muted ? findsOneWidget : findsNothing,
+        );
+        expect(
+          find.byTooltip('Уведомления отключены'),
+          muted ? findsOneWidget : findsNothing,
+        );
+        expect(tester.takeException(), isNull);
+      }
+    }
+  });
   testWidgets(
     'Presence uses a larger filled online dot and a hollow offline ring in every theme',
     (tester) async {

@@ -33,9 +33,14 @@ Future<void> frames(CallProbe call) async {
             !call.decryptedAudioFrom.contains(peer.identity)) {
           return false;
         }
-        final stats = await video.track!.receiver!.getStats().timeout(
-          const Duration(seconds: 5),
-        );
+        final List<dynamic> stats;
+        try {
+          stats = await video.track!.receiver!.getStats().timeout(
+            const Duration(seconds: 5),
+          );
+        } catch (_) {
+          return false;
+        }
         if (!stats.any(
           (s) =>
               s.type == 'inbound-rtp' &&
@@ -116,14 +121,14 @@ Future<void> exercise() async {
       var denied = false;
       try {
         await rejected.connect();
-      } catch (_) {
-        denied = true;
+      } catch (error) {
+        denied = error is CallFull;
       }
       lab.require(
         denied && rejected.isClosed,
         'Eleventh participant was not rejected by the SFU',
       );
-      await lab.report('load_eleventh_rejected');
+      await lab.report('load_eleventh_rejected', {'detail': 'call_full'});
       await lab.barrier('load_slot_released');
     }
     call = createCall();
@@ -150,9 +155,11 @@ Future<void> exercise() async {
       if (index != 10) {
         await lab.barrier('load_owner_releasing');
         await lab.until(
-          () async => !call!.media!.remoteParticipants.values.any(
-            (p) => p.identity.startsWith('${user(0)}/'),
-          ),
+          () async =>
+              call!.media?.remoteParticipants.values.any(
+                (p) => p.identity.startsWith('${user(0)}/'),
+              ) ==
+              false,
           'Server did not remove the disconnected participant',
         );
         await lab.report('load_owner_left_$index');

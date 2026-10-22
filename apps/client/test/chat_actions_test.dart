@@ -280,6 +280,10 @@ void main() {
       expect(independent.attempts, 2);
       expect(actions.pending.map((p) => p['id']), ['one', 'two', 'three']);
       expect(actions.pending[1]['error'], isNull);
+      expect(
+        actions.pendingStatus(actions.pending[1]),
+        startsWith('Не отправлено.'),
+      );
       expect(actions.pending[2]['error'], isNotNull);
       await actions.close();
     },

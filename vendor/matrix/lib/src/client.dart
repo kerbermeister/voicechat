@@ -2242,9 +2242,7 @@ class Client extends MatrixApi {
         deviceName: deviceName,
         olmAccount: olmAccount,
       );
-      if (e is! DatabaseIntegrityException) {
-        await clear(reason: SessionClearReason.initFailed);
-      }
+      // Initialization failures must preserve the only local copy of E2EE keys.
       throw clientInitException;
     } finally {
       _initLock = false;

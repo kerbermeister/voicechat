@@ -1,0 +1,114 @@
+{
+  "run": "1792643076",
+  "result": "PASS",
+  "reports": [
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_identity_1",
+      "timestamp": 1792643220
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_identity_0",
+      "timestamp": 1792643220
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_identity_2",
+      "timestamp": 1792643220
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_room",
+      "timestamp": 1792643221
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_trusted_0",
+      "timestamp": 1792643221
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_trusted_1",
+      "timestamp": 1792643221
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_trusted_2",
+      "timestamp": 1792643221
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_ready_0",
+      "timestamp": 1792643224
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_ready_2",
+      "timestamp": 1792643224
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_ready_1",
+      "timestamp": 1792643224
+    },
+    {
+      "run": "1792643076",
+      "role": "driver",
+      "stage": "revoked",
+      "timestamp": 1792643225
+    },
+    {
+      "run": "1792643076",
+      "role": "driver",
+      "stage": "replay_rejected",
+      "timestamp": 1792643227
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoked_frames_1",
+      "timestamp": 1792643227
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoked_frames_0",
+      "timestamp": 1792643227
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_passed_1",
+      "timestamp": 1792643227
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_passed_0",
+      "timestamp": 1792643227
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_done_1",
+      "timestamp": 1792643227
+    },
+    {
+      "run": "1792643076",
+      "role": "web",
+      "stage": "revoke_done_0",
+      "timestamp": 1792643227
+    }
+  ]
+}

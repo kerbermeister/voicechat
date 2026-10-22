@@ -9,6 +9,12 @@ import 'matrix_probe.dart';
 import 'transport.dart';
 import 'voice_call.dart';
 import 'call_quality.dart';
+import 'user_action_error.dart';
+
+class CallFull extends UserActionError {
+  CallFull()
+    : super('В звонке уже десять участников. Дождитесь свободного места.');
+}
 
 bool allowsCallMedia(
   lk.EncryptionType encryption,
@@ -21,8 +27,7 @@ bool allowsCallMedia(
     (source == lk.TrackSource.microphone ||
         video && source == lk.TrackSource.camera);
 
-/// Exercises sender-specific E2EE keys delivered through encrypted Matrix
-/// to-device events. Authorization changes end the call; no seamless rekey yet.
+/// Sender-specific keys are bound to a server lease and media generation.
 class CallProbe implements VoiceCall {
   @override
   final mx.Room chat;
@@ -65,7 +70,7 @@ class CallProbe implements VoiceCall {
   StreamSubscription<mx.ToDeviceEvent>? _messages;
   lk.EventsListener<lk.RoomEvent>? _events;
   Timer? _resend;
-  final Uint8List _senderKey = Uint8List.fromList(
+  Uint8List _senderKey = Uint8List.fromList(
     List.generate(32, (_) => Random.secure().nextInt(256)),
   );
   final Set<String> decryptedAudioFrom = {};
@@ -76,9 +81,16 @@ class CallProbe implements VoiceCall {
   @override
   bool get isClosed => _closed;
   Future<void>? _sharing;
+  int _transportSerial = 0, _sharingSerial = 0;
   bool _closed = false;
   Future<void>? _closing;
   DateTime _authorizedAt = DateTime.now();
+  Map<String, dynamic>? _admission;
+  List<mx.DeviceKeys> _devices = [];
+  Future<void>? _renewing;
+  bool _rebuilding = false;
+  bool _microphone = true;
+  bool _wantedCamera = false;
   final _clock = Stopwatch();
   @override
   Duration get duration => _clock.elapsed;
@@ -95,102 +107,202 @@ class CallProbe implements VoiceCall {
   });
 
   Future<void> connect({bool microphone = true}) async {
+    _microphone = microphone;
+    _wantedCamera = video;
+    _rebuilding = true;
+    try {
+      await _connect(microphone: microphone, camera: video);
+    } catch (error, stack) {
+      try {
+        await close();
+      } catch (_) {
+        status('Ресурсы звонка закрыты с ошибкой');
+      }
+      Error.throwWithStackTrace(error, stack);
+    } finally {
+      _rebuilding = false;
+    }
+  }
+
+  Future<void> _connect({
+    required bool microphone,
+    required bool camera,
+  }) async {
+    final budget = Stopwatch()..start();
+    while (!_closed) {
+      try {
+        await _connectTransport(microphone: microphone, camera: camera);
+        return;
+      } catch (error, stack) {
+        if ((error is lk.ConnectException ||
+                error is lk.TimeoutException ||
+                error is http.ClientException ||
+                error is TimeoutException) &&
+            budget.elapsed < const Duration(seconds: 45) &&
+            !_closed) {
+          connection = 'Обновляем защиту звонка';
+          changed?.call();
+          final generation = _admission?['generation'] as String?;
+          await _disposeTransport();
+          _admission = await _requestAdmission(reconnect: generation);
+          _newKeys();
+          continue;
+        }
+        try {
+          await close();
+        } catch (_) {
+          status('Ресурсы звонка закрыты с ошибкой');
+        }
+        Error.throwWithStackTrace(error, stack);
+      }
+    }
+  }
+
+  Future<void> _connectTransport({
+    required bool microphone,
+    required bool camera,
+  }) async {
     if (!chat.encrypted) {
       throw StateError('Call requires an encrypted Matrix room');
     }
     secureEndpoint(tokenUrl);
     secureEndpoint(livekitUrl, websocket: true);
-    try {
-      connection = 'Готовим защиту звонка';
-      status(connection);
-      changed?.call();
-      _keys = await lk.BaseKeyProvider.create(
-        sharedKey: false,
-        discardFrameWhenCryptorNotReady: true,
+    connection = 'Готовим защиту звонка';
+    status(connection);
+    changed?.call();
+    final keys = await lk.BaseKeyProvider.create(
+      sharedKey: false,
+      discardFrameWhenCryptorNotReady: true,
+    );
+    if (_closed) {
+      await keys.keyProvider.dispose();
+      throw StateError('Call closed during key provider creation');
+    }
+    _keys = keys;
+    await _keys!.setRawKey(_senderKey, participantId: identity);
+    _messages = chat.client.onToDeviceEvent.stream.listen((event) {
+      unawaited(
+        _receive(event).catchError((Object _) {
+          status('Ключ участника отклонён');
+        }),
       );
-      await _keys!.setRawKey(_senderKey, participantId: identity);
-      _messages = chat.client.onToDeviceEvent.stream.listen((event) {
-        unawaited(
-          _receive(event).catchError((Object _) {
-            status('Ключ участника отклонён');
-          }),
-        );
-      });
-      media = lk.Room(
-        roomOptions: lk.RoomOptions(
-          encryption: lk.E2EEOptions(keyProvider: _keys!),
-          adaptiveStream: true,
-          dynacast: true,
-        ),
-      );
-      _events = media!.createListener();
-      _events!.on<lk.LocalTrackPublishedEvent>((_) => changed?.call());
-      _events!.on<lk.ParticipantConnectedEvent>((_) => changed?.call());
-      _events!.on<lk.ParticipantDisconnectedEvent>((_) => changed?.call());
-      _events!.on<lk.ParticipantConnectionQualityUpdatedEvent>(
-        (_) => changed?.call(),
-      );
-      _events!.on<lk.TrackSubscribedEvent>((event) {
-        if (!allowsCallMedia(
-          event.publication.encryptionType,
-          event.publication.source,
-          event.publication.mimeType,
-          video: video,
-        )) {
-          unawaited(close());
-          status('Поток без поддерживаемой E2EE-защиты отклонён');
-        } else {
-          changed?.call();
-        }
-      });
-      _events!.on<lk.TrackPublishedEvent>(
-        (event) => _subscribe(event.participant.identity, event.publication),
-      );
-      _events!.on<lk.TrackUnsubscribedEvent>((event) {
-        decryptedVideoTracks.remove(event.publication.sid);
-        changed?.call();
-      });
-      _events!.on<lk.TrackMutedEvent>((_) => changed?.call());
-      _events!.on<lk.TrackUnmutedEvent>((_) => changed?.call());
-      _events!.on<lk.RoomReconnectingEvent>((_) {
-        connection = 'Восстанавливаем соединение';
-        status(connection);
-        changed?.call();
-      });
-      _events!.on<lk.RoomReconnectedEvent>((_) {
-        connection = 'Соединение восстановлено';
-        status(connection);
-        changed?.call();
-      });
-      _events!.on<lk.RoomDisconnectedEvent>((_) {
-        connection = 'Звонок завершён';
-        changed?.call();
+    });
+    media = lk.Room(
+      roomOptions: lk.RoomOptions(
+        encryption: lk.E2EEOptions(keyProvider: _keys!),
+        adaptiveStream: true,
+        dynacast: true,
+      ),
+    );
+    _events = media!.createListener();
+    _events!.on<lk.LocalTrackPublishedEvent>((_) => changed?.call());
+    _events!.on<lk.ParticipantConnectedEvent>((_) => changed?.call());
+    _events!.on<lk.ParticipantDisconnectedEvent>((_) => changed?.call());
+    _events!.on<lk.ParticipantConnectionQualityUpdatedEvent>(
+      (_) => changed?.call(),
+    );
+    _events!.on<lk.TrackSubscribedEvent>((event) {
+      if (!allowsCallMedia(
+        event.publication.encryptionType,
+        event.publication.source,
+        event.publication.mimeType,
+        video: video,
+      )) {
         unawaited(close());
-      });
-      _events!.on<lk.TrackE2EEStateEvent>((event) {
-        if (event.participant.identity == identity) return;
-        if (event.state == lk.E2EEState.kOk) {
-          _clock.start();
-          if (event.publication.kind == lk.TrackType.VIDEO) {
-            decryptedVideoFrom.add(event.participant.identity);
-            decryptedVideoTracks.add(event.publication.sid);
-          } else {
-            decryptedAudioFrom.add(event.participant.identity);
-          }
-          connection = video ? 'Защищённое видео' : 'Защищённое аудио';
-          status('Получено E2EE-аудио: ${decryptedAudioFrom.length}');
-          changed?.call();
-        } else if (event.state == lk.E2EEState.kDecryptionFailed ||
-            event.state == lk.E2EEState.kMissingKey) {
-          decryptedVideoTracks.remove(event.publication.sid);
-          failedAudioFrom.add(event.participant.identity);
-          status('Ожидаем правильный ключ участника');
-        }
-      });
-      connection = 'Проверяем доступ к звонку';
+        status('Поток без поддерживаемой E2EE-защиты отклонён');
+      } else {
+        changed?.call();
+      }
+    });
+    _events!.on<lk.TrackPublishedEvent>(
+      (event) => _subscribe(event.participant.identity, event.publication),
+    );
+    _events!.on<lk.TrackUnsubscribedEvent>((event) {
+      decryptedVideoTracks.remove(event.publication.sid);
+      changed?.call();
+    });
+    _events!.on<lk.TrackMutedEvent>((_) => changed?.call());
+    _events!.on<lk.TrackUnmutedEvent>((_) => changed?.call());
+    _events!.on<lk.RoomReconnectingEvent>((_) {
+      connection = 'Восстанавливаем соединение';
       status(connection);
       changed?.call();
-      await shareKey().timeout(const Duration(seconds: 8));
+    });
+    _events!.on<lk.RoomReconnectedEvent>((_) {
+      connection = 'Соединение восстановлено';
+      status(connection);
+      changed?.call();
+    });
+    _events!.on<lk.RoomDisconnectedEvent>((_) {
+      connection = 'Восстанавливаем соединение';
+      changed?.call();
+      if (!_closed && !_rebuilding) unawaited(_renew());
+    });
+    _events!.on<lk.TrackE2EEStateEvent>((event) {
+      if (event.participant.identity == identity) return;
+      if (event.state == lk.E2EEState.kOk) {
+        _clock.start();
+        if (event.publication.kind == lk.TrackType.VIDEO) {
+          decryptedVideoFrom.add(event.participant.identity);
+          decryptedVideoTracks.add(event.publication.sid);
+        } else {
+          decryptedAudioFrom.add(event.participant.identity);
+        }
+        connection = video ? 'Защищённое видео' : 'Защищённое аудио';
+        status('Получено E2EE-аудио: ${decryptedAudioFrom.length}');
+        changed?.call();
+      } else if (event.state == lk.E2EEState.kDecryptionFailed ||
+          event.state == lk.E2EEState.kMissingKey) {
+        decryptedVideoTracks.remove(event.publication.sid);
+        failedAudioFrom.add(event.participant.identity);
+        status('Ожидаем правильный ключ участника');
+      }
+    });
+    connection = 'Проверяем доступ к звонку';
+    status(connection);
+    changed?.call();
+    _admission ??= await _requestAdmission();
+    await shareKey().timeout(const Duration(seconds: 8));
+    _validateRoster();
+    final data = _admission!;
+    connection = 'Подключаем медиа';
+    status(connection);
+    changed?.call();
+    await media!.connect(
+      livekitUrl,
+      data['token'] as String,
+      connectOptions: const lk.ConnectOptions(autoSubscribe: false),
+    );
+    if (media!.e2eeManager == null) {
+      throw StateError('E2EE unavailable; refusing microphone');
+    }
+    for (final participant in media!.remoteParticipants.values) {
+      for (final publication in participant.trackPublications.values) {
+        _subscribe(participant.identity, publication);
+      }
+    }
+    await shareKey().timeout(const Duration(seconds: 15));
+    _resend ??= Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => unawaited(_renew()),
+    );
+    if (_closed) throw StateError('Call closed during authorization');
+    connection = 'Включаем медиа';
+    status(connection);
+    changed?.call();
+    if (microphone) await media!.localParticipant!.setMicrophoneEnabled(true);
+    if (camera) await this.camera(true);
+    connection = 'E2EE включено · ждём медиапотоки';
+    status(connection);
+    changed?.call();
+  }
+
+  Future<Map<String, dynamic>> _requestAdmission({String? reconnect}) async {
+    final budget = Stopwatch()..start();
+    while (!_closed) {
+      if (budget.elapsed >= const Duration(seconds: 25)) {
+        throw TimeoutException('Call admission negotiation timed out');
+      }
       final response = await http
           .post(
             Uri.parse('$tokenUrl/token'),
@@ -202,70 +314,129 @@ class CallProbe implements VoiceCall {
               'room_id': chat.id,
               'session': session,
               'video': video,
+              'protocol_version': 1,
+              if (_admission != null) 'lease_id': _admission!['lease_id'],
+              if (reconnect != null) 'reconnect': reconnect,
             }),
           )
           .timeout(const Duration(seconds: 10));
-      if (response.statusCode != 200) {
-        throw StateError('Call admission denied (${response.statusCode})');
+      if (response.bodyBytes.length > 32768) {
+        throw const FormatException('Invalid admission size');
       }
       final data = jsonDecode(response.body) as Map<String, dynamic>;
-      if (data['identity'] != identity) {
-        throw StateError('Wrong media identity');
+      if (response.statusCode == 410) {
+        _admission = null;
+        reconnect = null;
+        continue;
       }
-      connection = 'Подключаем медиа';
-      status(connection);
-      changed?.call();
-      await media!.connect(
-        livekitUrl,
-        data['token'] as String,
-        connectOptions: const lk.ConnectOptions(autoSubscribe: false),
-      );
-      if (media!.e2eeManager == null) {
-        throw StateError('E2EE unavailable; refusing microphone');
+      if (response.statusCode == 409 &&
+          data['error'] == 'generation_settling' &&
+          budget.elapsed < const Duration(seconds: 20)) {
+        await Future<void>.delayed(const Duration(milliseconds: 400));
+        continue;
       }
-      for (final participant in media!.remoteParticipants.values) {
-        for (final publication in participant.trackPublications.values) {
-          _subscribe(participant.identity, publication);
-        }
+      if (response.statusCode == 409 && data['error'] == 'call_full') {
+        throw CallFull();
       }
-      // A first join establishes up to nine Olm sessions before opening the microphone.
-      await shareKey().timeout(const Duration(seconds: 15));
-      _resend = Timer.periodic(const Duration(seconds: 3), (_) {
-        unawaited(
-          shareKey(force: false).timeout(const Duration(seconds: 5)).catchError(
-            (Object error) async {
-              if (!callAccessDenied(error) &&
-                  DateTime.now().difference(_authorizedAt) <
-                      const Duration(seconds: 15)) {
-                connection = 'Восстанавливаем соединение';
-                changed?.call();
-                return;
-              }
-              await close();
-              status(
-                'Звонок завершён: доступ изменён или не удалось его проверить',
-              );
-            },
-          ),
-        );
-      });
-      if (_closed) throw StateError('Call closed during authorization');
-      connection = 'Включаем медиа';
-      status(connection);
-      changed?.call();
-      if (microphone) await media!.localParticipant!.setMicrophoneEnabled(true);
-      if (video) await camera(true);
-      connection = 'E2EE включено · ждём медиапотоки';
-      status(connection);
-      changed?.call();
-    } catch (error, stack) {
-      try {
-        await close();
-      } catch (_) {
-        status('Ресурсы звонка закрыты с ошибкой');
+      if ([401, 403].contains(response.statusCode)) throw CallAccessChanged();
+      if (response.statusCode != 200) {
+        throw http.ClientException('Call admission unavailable');
       }
-      Error.throwWithStackTrace(error, stack);
+      if (data['identity'] != identity ||
+          data['lease_seconds'] != 30 ||
+          data['generation'] is! String ||
+          !RegExp(r'^vc-[a-f0-9]{48}$').hasMatch(data['generation']) ||
+          data['lease_id'] is! String ||
+          !RegExp(r'^[a-f0-9]{64}$').hasMatch(data['lease_id']) ||
+          data['token'] is! String ||
+          data['roster'] is! List ||
+          (data['roster'] as List).isEmpty ||
+          (data['roster'] as List).length > 10) {
+        throw const FormatException('Invalid call admission');
+      }
+      _authorizedAt = DateTime.now();
+      return data;
     }
+    throw StateError('Call closed during admission');
+  }
+
+  void _validateRoster() {
+    final roster = (_admission!['roster'] as List);
+    final identities = <String>{};
+    for (final entry in roster) {
+      if (entry is! Map ||
+          entry['identity'] is! String ||
+          !identities.add(entry['identity']) ||
+          !_devices.any(
+            (d) =>
+                '${d.userId}/${d.deviceId}' == entry['identity'] &&
+                d.encryptToDevice &&
+                !d.blocked &&
+                d.curve25519Key == entry['curve'] &&
+                d.ed25519Key == entry['ed'],
+          )) {
+        throw CallAccessChanged();
+      }
+    }
+    if (!identities.contains(identity)) throw CallAccessChanged();
+    _allowedParticipants = identities;
+  }
+
+  Future<void> _renew() =>
+      _renewing ??= _renewLease().whenComplete(() => _renewing = null);
+
+  Future<void> _renewLease() async {
+    if (_closed || _rebuilding) return;
+    try {
+      final next = await _requestAdmission();
+      if (_closed) return;
+      final changedGeneration = next['generation'] != _admission?['generation'];
+      final disconnected =
+          media == null ||
+          media?.connectionState == lk.ConnectionState.disconnected;
+      if (changedGeneration || disconnected) {
+        _rebuilding = true;
+        final camera = _wantedCamera;
+        _clock.stop();
+        final old = _admission?['generation'] as String?;
+        await _disposeTransport();
+        _admission = disconnected && !changedGeneration
+            ? await _requestAdmission(reconnect: old)
+            : next;
+        _newKeys();
+        await _connect(microphone: _microphone && !muted, camera: camera);
+      } else {
+        _admission = next;
+        _validateRoster();
+        await shareKey(force: false).timeout(const Duration(seconds: 10));
+      }
+    } catch (error) {
+      if (_closed) return;
+      if (callAccessDenied(error) ||
+          DateTime.now().difference(_authorizedAt) >=
+              const Duration(seconds: 25)) {
+        await close();
+        status('Звонок завершён: доступ отозван или не удалось его проверить');
+      } else {
+        connection = 'Восстанавливаем соединение';
+        changed?.call();
+      }
+    } finally {
+      _rebuilding = false;
+    }
+  }
+
+  void _newKeys() {
+    _authorization = null;
+    _devices = [];
+    _keyRecipients = {};
+    _keySharedAt = null;
+    decryptedAudioFrom.clear();
+    decryptedVideoFrom.clear();
+    decryptedVideoTracks.clear();
+    _senderKey = Uint8List.fromList(
+      List.generate(32, (_) => Random.secure().nextInt(256)),
+    );
   }
 
   void _subscribe(String identity, lk.RemoteTrackPublication publication) {
@@ -290,12 +461,36 @@ class CallProbe implements VoiceCall {
 
   Future<void> shareKey({bool force = true}) {
     if (_closed) return Future.value();
-    return _sharing ??= _shareKey(force).whenComplete(() => _sharing = null);
+    if (_sharing != null && _sharingSerial == _transportSerial) {
+      return _sharing!;
+    }
+    final serial = _sharingSerial = _transportSerial;
+    return _sharing = _shareKey(force, serial).whenComplete(() {
+      if (_transportSerial == serial) _sharing = null;
+    });
   }
 
-  Future<void> _shareKey(bool force) async {
-    final authorized = await authorizedDevices(chat);
-    if (_closed) return;
+  Future<void> _shareKey(bool force, int serial) async {
+    final authorized = _admission == null || _devices.isEmpty
+        ? await authorizedDevices(
+            chat,
+            selectedUsers: _admission == null
+                ? null
+                : (_admission!['roster'] as List).map((entry) {
+                    if (entry is! Map || entry['identity'] is! String) {
+                      throw const FormatException('Invalid roster');
+                    }
+                    final value = entry['identity'] as String;
+                    final separator = value.lastIndexOf('/');
+                    if (separator < 1) {
+                      throw const FormatException('Invalid identity');
+                    }
+                    return value.substring(0, separator);
+                  }).toSet(),
+          )
+        : _devices;
+    if (_closed || serial != _transportSerial) return;
+    _devices = authorized;
     final current = authorized
         .map(
           (d) => '${d.userId}/${d.deviceId}/${d.curve25519Key}/${d.ed25519Key}',
@@ -311,12 +506,15 @@ class CallProbe implements VoiceCall {
     _allowedParticipants = authorized
         .map((d) => '${d.userId}/${d.deviceId}')
         .toSet();
-    _authorizedAt = DateTime.now();
+    if (_admission != null) _validateRoster();
     final devices = authorized
         .where(
-          (d) => media!.remoteParticipants.containsKey(
-            '${d.userId}/${d.deviceId}',
-          ),
+          (d) => _admission == null
+              ? media!.remoteParticipants.containsKey(
+                  '${d.userId}/${d.deviceId}',
+                )
+              : '${d.userId}/${d.deviceId}' != identity &&
+                    _allowedParticipants.contains('${d.userId}/${d.deviceId}'),
         )
         .toList();
     final recipients = devices.map((d) => '${d.userId}/${d.deviceId}').toSet();
@@ -332,6 +530,7 @@ class CallProbe implements VoiceCall {
         .sendToDeviceEncrypted(devices, 'dev.voicechat.probe.media_key', {
           'room_id': chat.id,
           'session': session,
+          if (_admission != null) 'generation': _admission!['generation'],
           'identity': identity,
           'sender_device': chat.client.deviceID,
           'expires_at': DateTime.now()
@@ -339,8 +538,10 @@ class CallProbe implements VoiceCall {
               .millisecondsSinceEpoch,
           'key': base64Encode(_senderKey),
         });
-    _keyRecipients = recipients;
-    _keySharedAt = DateTime.now();
+    if (serial == _transportSerial) {
+      _keyRecipients = recipients;
+      _keySharedAt = DateTime.now();
+    }
   }
 
   Future<void> _receive(mx.ToDeviceEvent event) async {
@@ -350,8 +551,13 @@ class CallProbe implements VoiceCall {
       return;
     }
     final data = event.content;
-    if (data['room_id'] != chat.id || data['session'] != session) return;
-    if (!(media?.remoteParticipants.containsKey(data['identity']) ?? false)) {
+    if (data['room_id'] != chat.id ||
+        data['session'] != session ||
+        _admission == null ||
+        data['generation'] != _admission!['generation']) {
+      return;
+    }
+    if (!_allowedParticipants.contains(data['identity'])) {
       return;
     }
     final expires = data['expires_at'];
@@ -374,8 +580,20 @@ class CallProbe implements VoiceCall {
         data['identity'] != '${device.userId}/${device.deviceId}') {
       return;
     }
-    final members = await chat.client.getJoinedMembersByRoom(chat.id);
-    if (_closed || !(members?.containsKey(event.sender) ?? false)) return;
+    if (!_devices.any(
+      (d) =>
+          d.userId == device.userId &&
+          d.deviceId == device.deviceId &&
+          d.ed25519Key == device.ed25519Key &&
+          d.curve25519Key == device.curve25519Key,
+    )) {
+      return;
+    }
+    if (_closed ||
+        DateTime.now().difference(_authorizedAt) >=
+            const Duration(seconds: 25)) {
+      return;
+    }
     final key = base64Decode(data['key'] as String);
     if (key.length != 32) return;
     await _keys!.setRawKey(key, participantId: data['identity'] as String);
@@ -402,6 +620,7 @@ class CallProbe implements VoiceCall {
 
   @override
   Future<void> camera(bool enabled) async {
+    if (video && !_closed) _wantedCamera = enabled;
     if (!video || _closed || enabled == cameraEnabled) return;
     final participant = media!.localParticipant!;
     if (enabled) {
@@ -461,6 +680,34 @@ class CallProbe implements VoiceCall {
     cameraEnabled = false;
     _resend?.cancel();
     try {
+      await _disposeTransport();
+    } finally {
+      final lease = _admission?['lease_id'];
+      _admission = null;
+      if (lease != null) {
+        try {
+          await http
+              .post(
+                Uri.parse('$tokenUrl/call/leave'),
+                headers: {
+                  'Authorization': 'Bearer ${chat.client.accessToken}',
+                  'Content-Type': 'application/json',
+                },
+                body: jsonEncode({'lease_id': lease}),
+              )
+              .timeout(const Duration(seconds: 5));
+        } catch (_) {
+          /* The server expires the lease even if release cannot be delivered. */
+        }
+      }
+    }
+  }
+
+  Future<void> _disposeTransport() async {
+    _transportSerial++;
+    _clock.stop();
+    cameraEnabled = false;
+    try {
       await Future.wait([
         _messages?.cancel() ?? Future.value(),
         _events?.dispose() ?? Future.value(),
@@ -482,7 +729,11 @@ class CallProbe implements VoiceCall {
             _keys = null;
             _senderKey.fillRange(0, _senderKey.length, 0);
             media = null;
-            connection = 'Звонок завершён';
+            _messages = null;
+            _events = null;
+            connection = _closed
+                ? 'Звонок завершён'
+                : 'Обновляем защиту звонка';
             changed?.call();
           }
         }

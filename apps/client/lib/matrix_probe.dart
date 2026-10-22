@@ -251,7 +251,10 @@ bool callAccessDenied(Object error) =>
         ].contains(error.errcode);
 
 /// Refresh authorization from the server, never infer revocation from a cache.
-Future<List<DeviceKeys>> authorizedDevices(Room room) async {
+Future<List<DeviceKeys>> authorizedDevices(
+  Room room, {
+  Set<String>? selectedUsers,
+}) async {
   await room.client.getTokenOwner();
   final participants = await room.requestParticipants(
     const [
@@ -328,14 +331,22 @@ Future<List<DeviceKeys>> authorizedDevices(Room room) async {
     }
     audience.add(peer);
   }
+  if (selectedUsers != null) {
+    if (!selectedUsers.contains(room.client.userID) ||
+        !audience.containsAll(selectedUsers)) {
+      throw CallAccessChanged();
+    }
+    audience.retainAll(selectedUsers);
+  }
   await refreshDevices(room.client, audience);
-  if (audience
-      .where((u) => u != room.client.userID)
-      .any(
-        (u) => room.client.userDeviceKeys[u]!.deviceKeys.values.every(
-          (d) => d.blocked || !d.isValid,
-        ),
-      )) {
+  if (room.isDirectChat &&
+      audience
+          .where((u) => u != room.client.userID)
+          .any(
+            (u) => room.client.userDeviceKeys[u]!.deviceKeys.values.every(
+              (d) => d.blocked || !d.isValid,
+            ),
+          )) {
     throw UserActionError(
       'У собеседника ещё нет доступного ключа. Сообщение сохранено до его входа.',
     );
@@ -344,19 +355,29 @@ Future<List<DeviceKeys>> authorizedDevices(Room room) async {
   final devices = audience.expand(
     (user) => room.client.userDeviceKeys[user]!.deviceKeys.values,
   );
-  if (devices.any((device) => !device.blocked && !device.directVerified)) {
+  // Additional unverified devices receive no keys and must not block trusted recipients.
+  final authorized = devices
+      .where(
+        (device) =>
+            device.directVerified && device.encryptToDevice && !device.blocked,
+      )
+      .toList();
+  final unverifiedUsers = audience.where(
+    (user) =>
+        !authorized.any((device) => device.userId == user) &&
+        devices.any((device) => device.userId == user && !device.blocked),
+  );
+  if (unverifiedUsers.isNotEmpty) {
+    final names = unverifiedUsers.map(
+      (user) => user == room.client.userID ? 'ваш аккаунт' : user,
+    );
     throw UserActionError(
-      'Подтвердите новые устройства в «Проверить устройства».',
+      'Нет проверенного устройства: ${names.join(', ')}. '
+      'Откройте «Настройки → Проверить устройства». '
+      'Отправка приостановлена до проверки.',
     );
   }
-  return audience
-      .expand(
-        (user) =>
-            room.client.userDeviceKeys[user]?.deviceKeys.values ??
-            <DeviceKeys>[],
-      )
-      .where((device) => device.encryptToDevice && !device.blocked)
-      .toList();
+  return authorized;
 }
 
 Future<void> refreshDevices(Client client, Set<String> users) async {

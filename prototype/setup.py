@@ -98,6 +98,7 @@ rtc:
 keys:
   prototype: "{s['livekit']}"
 room:
+  auto_create: false
   max_participants: 10
 ''')
 (out / 'turnserver.conf').write_text(f'''listening-port=3478

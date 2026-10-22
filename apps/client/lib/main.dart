@@ -106,9 +106,24 @@ class ProbeScreen extends StatefulWidget {
 }
 
 class _ProbeScreenState extends State<ProbeScreen> {
-  final server = TextEditingController(text: 'http://localhost:8008');
-  final tokenServer = TextEditingController(text: 'http://localhost:8090');
-  final mediaServer = TextEditingController(text: 'ws://localhost:7880');
+  final server = TextEditingController(
+    text: const String.fromEnvironment(
+      'MATRIX_URL',
+      defaultValue: 'http://localhost:8008',
+    ),
+  );
+  final tokenServer = TextEditingController(
+    text: const String.fromEnvironment(
+      'TOKEN_URL',
+      defaultValue: 'http://localhost:8090',
+    ),
+  );
+  final mediaServer = TextEditingController(
+    text: const String.fromEnvironment(
+      'LIVEKIT_URL',
+      defaultValue: 'ws://localhost:7880',
+    ),
+  );
   final username = TextEditingController(text: 'alice');
   final password = TextEditingController();
   final vaultPassword = TextEditingController();
@@ -204,20 +219,27 @@ class _ProbeScreenState extends State<ProbeScreen> {
     try {
       await action();
     } catch (e) {
-      if (mounted) {
-        setState(
-          () => status = e is UserActionError
-              ? e.message
-              : 'Не удалось выполнить действие: ${e.runtimeType}. Проверьте подключение и ключ.',
-        );
-      }
+      report(
+        e is UserActionError
+            ? e.message
+            : 'Не удалось выполнить действие: ${e.runtimeType}. Проверьте подключение и ключ.',
+      );
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
   void report(String value) {
-    if (mounted) setState(() => status = value);
+    if (!mounted) return;
+    if (probe == null) {
+      setState(() => status = value);
+    } else {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(value), duration: const Duration(seconds: 8)),
+        );
+    }
   }
 
   Future<void> login({bool resume = false}) async {
@@ -1762,30 +1784,31 @@ class _ProbeScreenState extends State<ProbeScreen> {
                                     ),
                             ),
                           ),
-                          Container(
-                            width: double.infinity,
-                            height: keyboardOpen ? 28 : 48,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: keyboardOpen ? 4 : 8,
-                            ),
-                            decoration: BoxDecoration(
-                              border: Border(
-                                top: BorderSide(
-                                  color: colors.outlineVariant.withValues(
-                                    alpha: .4,
+                          if (probe == null)
+                            Container(
+                              width: double.infinity,
+                              height: keyboardOpen ? 28 : 48,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: keyboardOpen ? 4 : 8,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(
+                                    color: colors.outlineVariant.withValues(
+                                      alpha: .4,
+                                    ),
                                   ),
                                 ),
                               ),
+                              child: Text(
+                                status,
+                                maxLines: keyboardOpen ? 1 : 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(color: colors.onSurfaceVariant),
+                              ),
                             ),
-                            child: Text(
-                              status,
-                              maxLines: keyboardOpen ? 1 : 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(color: colors.onSurfaceVariant),
-                            ),
-                          ),
                         ],
                       ),
                     ),

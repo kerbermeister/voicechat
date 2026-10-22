@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart';
@@ -37,6 +38,36 @@ class BrokenMedia implements lk.Room {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('Closing during provider creation disposes the late provider', () async {
+    const channel = MethodChannel('FlutterWebRTC.Method');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final created = Completer<Map<String, String>>();
+    final started = Completer<void>();
+    var disposals = 0;
+    messenger.setMockMethodCallHandler(channel, (method) async {
+      if (method.method == 'frameCryptorFactoryCreateKeyProvider') {
+        started.complete();
+        return created.future;
+      }
+      if (method.method == 'keyProviderDispose') disposals++;
+      return null;
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    final call = CallProbe(
+      chat: OutboxRoom(CleanupClient()),
+      session: 'late',
+      tokenUrl: 'http://localhost:8090',
+      livekitUrl: 'ws://localhost:7880',
+      status: (_) {},
+    );
+    final connected = expectLater(call.connect(), throwsStateError);
+    await started.future;
+    await call.close();
+    created.complete({'keyProviderId': 'late-provider'});
+    await connected;
+    expect(disposals, 1);
+  });
   test(
     'Failed key setup disposes the per-call provider exactly once before close completes',
     () async {

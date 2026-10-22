@@ -420,6 +420,17 @@ class ChatActions extends ChangeNotifier {
     );
   }
 
+  String pendingStatus(Map<String, dynamic> item) {
+    if (item['error'] is String) return item['error'] as String;
+    final head = pending.where((p) => p['room'] == item['room']).firstOrNull;
+    if (head != null && head['id'] != item['id']) {
+      return head['error'] is String
+          ? 'Не отправлено. ${head['error']}'
+          : 'Ожидает отправки предыдущего сообщения';
+    }
+    return item['preparing'] == true ? 'Подготовка вложения…' : 'Отправляется…';
+  }
+
   Future<void> flush() async {
     final attempted = <String>{};
     while (!_closed) {

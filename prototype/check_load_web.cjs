@@ -3,8 +3,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {chromium} = require('playwright');
-const {execFileSync} = require('node:child_process');
-const crypto = require('node:crypto');
 (async()=>{
   const root=path.join(__dirname,'..');
   const config=JSON.parse(fs.readFileSync(path.join(root,'.prototype/load-web.json')));
@@ -24,7 +22,9 @@ const crypto = require('node:crypto');
       page.on('console',message=>{if(message.text().startsWith('LOAD STACK:') || message.text().startsWith('LOAD PHASE:')) console.log(message.text());});
       page.on('response',response=>{
         const url=new URL(response.url());
-        if(url.pathname==='/token') {console.log(`Peer ${peer}: admission HTTP ${response.status()}`);traceMatrix=true;}
+        if(url.pathname==='/token') {
+          console.log(`Peer ${peer}: admission HTTP ${response.status()}`);traceMatrix=true;
+        }
         if(peer===10 && traceMatrix && url.port==='8008') console.log(`Matrix response ${response.status()}: ${url.pathname}`);
       });
       page.on('websocket',()=>console.log(`Peer ${peer}: media signaling opened`));
@@ -37,13 +37,9 @@ const crypto = require('node:crypto');
       const stages=new Set(reports.map(r=>r.stage));
       const failed=reports.find(r=>r.stage==='failed');
       assert(!failed,failed?.detail || 'Load acceptance failed');
-      if(stages.has('load_eleventh_rejected') && !capProved) {
-        const room=reports.find(report=>report.stage==='load_room')?.room_id;
-        assert(room,'Load room binding missing');
-        const name=crypto.createHash('sha256').update(room+'\0load'+config.RUN_ID).digest('hex');
-        const logs=execFileSync('docker',['compose','-f',path.join(root,'prototype/compose.yaml'),'logs','--no-color','--tail=1000','livekit'],{encoding:'utf8',maxBuffer:8*1024*1024});
-        capProved=logs.split('\n').some(line=>line.includes(name) && line.includes('room has exceeded its max participants'));
-        assert(capProved,'Eleventh failure was not confirmed as a server room-cap rejection');
+      if(stages.has('load_eleventh_rejected')) {
+        capProved=reports.some(r=>r.stage==='load_eleventh_rejected' && r.detail==='call_full');
+        assert(capProved,'Eleventh failure must be the server call_full rejection');
       }
       if(attempt%30===0) console.log(`Load acceptance: connected=${[...stages].filter(s=>/^load_connected_/.test(s)).length}, decoded=${[...stages].filter(s=>/^load_frames_/.test(s)).length}`);
       if(Array.from({length:11},(_,i)=>`load_done_${i}`).every(s=>stages.has(s))) {

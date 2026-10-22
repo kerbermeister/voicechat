@@ -20,3 +20,4 @@ apps/client/web/e2ee.worker.dart.js*
 apps/client/web/zxing/
 apps/client/web/zxing.js
 __pycache__/
+infra/runtime/

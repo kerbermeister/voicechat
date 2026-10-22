@@ -26,6 +26,7 @@ String _fingerprint(DeviceKeys device) =>
     '${device.ed25519Key}/${device.curve25519Key}';
 Future<void> _accept(Client client, Set<String> users) async {
   final pins = await _load(client);
+  var saved = jsonEncode(pins);
   final pinnedUsers = pins['users'] as Map;
   final approve = <DeviceKeys>[];
   final masters = <CrossSigningKey>[];
@@ -74,9 +75,12 @@ Future<void> _accept(Client client, Set<String> users) async {
     pinnedUsers[user] = pin;
   }
   // Pin durably before granting trust; a failed write must not silently accept new keys.
-  await client.database.storeAccountData(_storage, pins);
+  if (jsonEncode(pins) != saved) {
+    await client.database.storeAccountData(_storage, pins);
+    saved = jsonEncode(pins);
+  }
   for (final master in masters) {
-    await master.setVerified(true, false);
+    if (!master.directVerified) await master.setVerified(true, false);
   }
   for (final user in users) {
     final pin = pinnedUsers[user] as Map;
@@ -96,7 +100,9 @@ Future<void> _accept(Client client, Set<String> users) async {
       }
     }
   }
-  await client.database.storeAccountData(_storage, pins);
+  if (jsonEncode(pins) != saved) {
+    await client.database.storeAccountData(_storage, pins);
+  }
   for (final device in approve) {
     if (!device.directVerified) await device.setVerified(true, false);
   }

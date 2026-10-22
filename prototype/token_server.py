@@ -7,7 +7,9 @@ import json
 import time
 import threading
 import sqlite3
+import os
 from contacts import ContactStore, ContactError
+from call_control import CallStore, CallError
 from link_preview import preview
 import http.client
 import urllib.error
@@ -16,9 +18,14 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-_secrets = json.loads((Path(__file__).resolve().parents[1] / '.prototype/secrets.json').read_text())
+_secrets = ({'livekit': os.environ['VOICECHAT_LIVEKIT_SECRET'], 'policy': os.environ['VOICECHAT_POLICY_SECRET']}
+            if 'VOICECHAT_LIVEKIT_SECRET' in os.environ else
+            json.loads((Path(__file__).resolve().parents[1] / '.prototype/secrets.json').read_text()))
 secret = _secrets['livekit']
 policy_secret = _secrets['policy']
+matrix_url = os.environ.get('VOICECHAT_MATRIX_INTERNAL', 'http://127.0.0.1:8008').rstrip('/')
+origins = os.environ.get('VOICECHAT_ORIGINS', 'http://localhost:7357,http://127.0.0.1:7357,http://localhost:7358,http://127.0.0.1:7358').split(',')
+laboratory = os.environ.get('VOICECHAT_LAB', '1') == '1'
 reports = []
 report_lock = threading.Lock()
 _contacts = None
@@ -26,6 +33,40 @@ _contacts_lock = threading.Lock()
 _preview_slots = threading.BoundedSemaphore(4)
 _preview_calls = {}
 _preview_lock = threading.Lock()
+_calls = None
+_calls_lock = threading.Lock()
+_call_failure = threading.Event()
+
+def media_api(method, body):
+    now = int(time.time())
+    token = jwt({'iss': 'prototype', 'nbf': now - 5, 'exp': now + 30,
+                 'video': {'roomCreate': True}})
+    request = urllib.request.Request('http://127.0.0.1:7880/twirp/livekit.RoomService/' + method,
+        json.dumps(body).encode(), {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            return json.load(response)
+    except urllib.error.HTTPError as error:
+        if method == 'DeleteRoom' and error.code == 404: return {}
+        raise
+
+def call_store():
+    global _calls
+    with _calls_lock:
+        if _calls is None:
+            store = CallStore(Path(__file__).resolve().parents[1] / '.prototype/calls/calls.sqlite', media_api)
+            store.recover()
+            _calls = store
+            def watch():
+                while True:
+                    time.sleep(1)
+                    try:
+                        store.sweep()
+                        _call_failure.clear()
+                    except Exception:
+                        _call_failure.set()
+            threading.Thread(target=watch, daemon=True, name='call-leases').start()
+    return _calls
 
 def contact_store():
     global _contacts
@@ -40,7 +81,7 @@ def jwt(payload):
     return (data + b'.' + base64.urlsafe_b64encode(hmac.new(secret.encode(), data, hashlib.sha256).digest()).rstrip(b'=')).decode()
 
 def contact_presence(target):
-    url = 'http://127.0.0.1:8008/_synapse/client/voicechat/presence?' + urllib.parse.urlencode({'user_id': target})
+    url = matrix_url + '/_synapse/client/voicechat/presence?' + urllib.parse.urlencode({'user_id': target})
     request = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + policy_secret})
     with urllib.request.urlopen(request, timeout=5) as response: data = response.read(4097)
     if len(data) > 4096: raise ValueError('Presence response too large')
@@ -52,12 +93,13 @@ class ControlServer(ThreadingHTTPServer):
 
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_): pass
-    def matrix(self, path):
+    def matrix(self, path, body=None):
         auth = self.headers.get('Authorization', '')
         if not auth.startswith('Bearer ') or len(auth) > 8192:
             raise ContactError('unauthorized')
-        req = urllib.request.Request('http://127.0.0.1:8008/_matrix/client/v3/' + path,
-                                     headers={'Authorization': auth})
+        req = urllib.request.Request(matrix_url + '/_matrix/client/v3/' + path,
+                                     None if body is None else json.dumps(body).encode(),
+                                     headers={'Authorization': auth, 'Content-Type': 'application/json'})
         with urllib.request.urlopen(req, timeout=10) as response: return json.load(response)
     def contact_get(self):
         user = self.matrix('account/whoami')['user_id']
@@ -104,15 +146,17 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(len(encoded)))
         self.send_header('Cache-Control', 'no-store')
         origin = self.headers.get('Origin', '')
-        if origin in ('http://localhost:7357', 'http://127.0.0.1:7357',
-                      'http://localhost:7358', 'http://127.0.0.1:7358'):
+        if origin in origins:
             self.send_header('Access-Control-Allow-Origin', origin)
         self.send_header('Access-Control-Allow-Headers', 'Authorization,Content-Type')
         self.send_header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
         self.end_headers()
-        self.wfile.write(encoded)
+        try: self.wfile.write(encoded)
+        except (BrokenPipeError, ConnectionResetError): pass
     def do_OPTIONS(self): self.reply(204, {})
     def do_GET(self):
+        if self.path == '/health':
+            return self.reply(503 if _call_failure.is_set() else 200, {'ok': not _call_failure.is_set()})
         if self.path.startswith('/presence?'):
             try:
                 user = self.matrix('account/whoami')['user_id']
@@ -147,7 +191,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(200, load_policy())
             except (OSError, ValueError, TypeError):
                 return self.reply(503, {'error': 'invalid_policy'})
-        if self.path == '/reports': return self.reply(200, reports)
+        if self.path == '/reports' and laboratory: return self.reply(200, reports)
         self.reply(404, {'error': 'not_found'})
     def do_POST(self):
         if self.path == '/link-preview':
@@ -179,7 +223,7 @@ class Handler(BaseHTTPRequestHandler):
             except ContactError as error: return self.reply(403, {'error': str(error)})
             except urllib.error.HTTPError: return self.reply(401, {'error': 'matrix_denied'})
             except (OSError, ValueError, KeyError, TypeError, sqlite3.Error): return self.reply(503, {'error': 'contacts_unavailable'})
-        if self.path == '/report':
+        if self.path == '/report' and laboratory:
             try:
                 size = int(self.headers.get('Content-Length', '0'))
                 if not 0 < size <= 8192: return self.reply(400, {'error': 'invalid_size'})
@@ -198,41 +242,74 @@ class Handler(BaseHTTPRequestHandler):
                     path.chmod(0o600)
                 return self.reply(200, {'ok': True})
             except (ValueError, TypeError): return self.reply(400, {'error': 'invalid_report'})
-        if self.path != '/token': return self.reply(404, {'error': 'not_found'})
+        if self.path not in ('/token', '/call/leave'): return self.reply(404, {'error': 'not_found'})
         try:
             size = int(self.headers.get('Content-Length', '0'))
             if not 0 < size <= 4096: return self.reply(400, {'error': 'invalid_size'})
             body = json.loads(self.rfile.read(size))
+            if not isinstance(body, dict): return self.reply(400, {'error': 'invalid_request'})
+            who = self.matrix('account/whoami')
+            if not all(isinstance(who.get(k), str) and who[k] for k in ('user_id', 'device_id')):
+                return self.reply(403, {'error': 'device_required'})
+            if self.path == '/call/leave':
+                if set(body) != {'lease_id'} or not isinstance(body['lease_id'], str) or len(body['lease_id']) != 64:
+                    return self.reply(400, {'error': 'invalid_lease'})
+                call_store().leave(who, body['lease_id'])
+                return self.reply(200, {'ok': True})
             room = body['room_id']
             session = body['session']
             video = body.get('video', False)
-            if type(video) is not bool or set(body) - {'room_id', 'session', 'video'}:
+            if (type(video) is not bool or body.get('protocol_version') != 1 or
+                set(body) - {'room_id', 'session', 'video', 'protocol_version', 'lease_id', 'reconnect'}):
                 return self.reply(400, {'error': 'invalid_call_mode'})
             if not isinstance(room, str) or not room.startswith('!') or len(room) > 255:
                 return self.reply(400, {'error': 'invalid_room'})
             if not isinstance(session, str) or not 1 <= len(session) <= 64:
                 return self.reply(400, {'error': 'invalid_session'})
-            auth = self.headers.get('Authorization', '')
-            if not auth.startswith('Bearer '): return self.reply(401, {'error': 'unauthorized'})
-            def matrix(path):
-                req = urllib.request.Request('http://127.0.0.1:8008/_matrix/client/v3/' + path,
-                                             headers={'Authorization': auth})
-                with urllib.request.urlopen(req, timeout=10) as r: return json.load(r)
-            who = matrix('account/whoami')
+            lease, reconnect = body.get('lease_id'), body.get('reconnect')
+            if lease is not None and (not isinstance(lease, str) or len(lease) != 64):
+                return self.reply(400, {'error': 'invalid_lease'})
+            if reconnect is not None and (not isinstance(reconnect, str) or len(reconnect) != 51):
+                return self.reply(400, {'error': 'invalid_generation'})
             prefix = 'rooms/' + urllib.parse.quote(room, safe='') + '/state/'
-            member = matrix(prefix + 'm.room.member/' + urllib.parse.quote(who['user_id'], safe=''))
-            if member.get('membership') != 'join': return self.reply(403, {'error': 'not_joined'})
-            if matrix(prefix + 'm.room.encryption/').get('algorithm') != 'm.megolm.v1.aes-sha2':
+            members = self.matrix('rooms/' + urllib.parse.quote(room, safe='') + '/joined_members')['joined']
+            if who['user_id'] not in members: return self.reply(403, {'error': 'not_joined'})
+            if self.matrix(prefix + 'm.room.encryption/').get('algorithm') != 'm.megolm.v1.aes-sha2':
                 return self.reply(403, {'error': 'unencrypted_room'})
-            identity = who['user_id'] + '/' + who['device_id']
-            media_room = hashlib.sha256((room + '\0' + session).encode()).hexdigest()
+            store = call_store()
+            wanted = {who['user_id']: [who['device_id']]}
+            observed = store.roster(room, session)
+            for peer in observed:
+                if peer['user_id'] in members:
+                    wanted.setdefault(peer['user_id'], []).append(peer['identity'][len(peer['user_id'])+1:])
+            keys = self.matrix('keys/query', {'device_keys': wanted})['device_keys']
+            device = keys[who['user_id']][who['device_id']]
+            if device.get('user_id') != who['user_id'] or device.get('device_id') != who['device_id']:
+                return self.reply(403, {'error': 'invalid_device'})
+            curve, ed = (device['keys'][kind + ':' + who['device_id']] for kind in ('curve25519', 'ed25519'))
+            for key in (curve, ed):
+                if not isinstance(key, str) or len(key) != 43 or len(base64.b64decode(key + '=', validate=True)) != 32:
+                    return self.reply(403, {'error': 'invalid_device'})
+            valid = {}
+            for user, devices in wanted.items():
+                for identifier in devices:
+                    candidate = keys.get(user, {}).get(identifier, {})
+                    if candidate.get('user_id') != user or candidate.get('device_id') != identifier: continue
+                    values = candidate.get('keys', {})
+                    valid[user + '/' + identifier] = (values.get('curve25519:' + identifier), values.get('ed25519:' + identifier))
+            admission = store.admission(room, session, video, who, curve, ed, lease, reconnect, valid,
+                                        {peer['id'] for peer in observed})
             now = int(time.time())
-            token = jwt({'iss': 'prototype', 'sub': identity, 'nbf': now - 5, 'exp': now + 60,
-                         'video': {'roomJoin': True, 'room': media_room,
+            token = jwt({'iss': 'prototype', 'sub': admission['identity'], 'nbf': now - 5, 'exp': now + 60,
+                         'video': {'roomJoin': True, 'room': admission['generation'],
                                    'canPublish': True, 'canSubscribe': True,
                                    'canPublishData': False,
                                    'canPublishSources': ['microphone', 'camera'] if video else ['microphone']}})
-            self.reply(200, {'token': token, 'identity': identity})
+            self.reply(200, {**admission, 'token': token})
+        except ContactError:
+            self.reply(401, {'error': 'unauthorized'})
+        except CallError as error:
+            self.reply(error.status, {'error': str(error)})
         except urllib.error.HTTPError as e:
             self.reply(401 if e.code == 401 else 403, {'error': 'matrix_denied'})
         except (KeyError, ValueError, TypeError):
@@ -242,4 +319,4 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == '__main__':
     print('Prototype token issuer: http://127.0.0.1:8090 (local test accounts only)', flush=True)
-    ControlServer(('127.0.0.1', 8090), Handler).serve_forever()
+    ControlServer((os.environ.get('VOICECHAT_BIND', '127.0.0.1'), 8090), Handler).serve_forever()

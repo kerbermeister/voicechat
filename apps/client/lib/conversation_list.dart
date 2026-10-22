@@ -531,6 +531,24 @@ class _ConversationListState extends State<ConversationList> {
                                             ),
                                           ),
                                         ),
+                                        if (room.pushRuleState ==
+                                            mx.PushRuleState.dontNotify)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              right: 6,
+                                            ),
+                                            child: Tooltip(
+                                              message: 'Уведомления отключены',
+                                              child: Icon(
+                                                Icons
+                                                    .notifications_off_outlined,
+                                                size: 16,
+                                                color: colors.onSurfaceVariant,
+                                                semanticLabel:
+                                                    'Уведомления отключены',
+                                              ),
+                                            ),
+                                          ),
                                         if (time != null)
                                           Text(
                                             TimeOfDay.fromDateTime(

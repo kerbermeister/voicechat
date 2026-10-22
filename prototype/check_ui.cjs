@@ -107,6 +107,20 @@ const {chromium} = require('playwright');
     await page.getByRole('checkbox', {name:'❤️ 1',exact:true}).waitFor({timeout:20000});
     await page.getByRole('checkbox', {name:'👍 1',exact:true}).waitFor({state:'hidden'});
 
+    await button('Действия с сообщением').first().click();
+    await page.getByRole('menuitem', {name:'Ответить',exact:true}).click();
+    await fill(field('Написать сообщение…'), 'Ответ с выделенной цитатой');
+    await button('Отправить').click();
+    const quote=page.getByRole('button',{name:/Перейти к исходному сообщению/}).first();
+    await quote.waitFor({timeout:30000});
+    await page.screenshot({path:path.join(output,'reply-quote.png')});
+    await quote.click();
+    await button('Вернуться к новым сообщениям').waitFor({timeout:30000});
+    await page.getByRole('group',{name:/Привет! Сообщение изменено/}).first().waitFor();
+    await button('Вернуться к новым сообщениям').click();
+    await button('Вернуться к новым сообщениям').waitFor({state:'hidden'});
+    console.log('PASS: themed reply quote navigates to its original message context');
+
     const chooser = page.waitForEvent('filechooser');
     await button('Отправить изображение').click();
     await (await chooser).setFiles([1,2].map(i => ({name: `Фото${i}.png`, mimeType: 'image/png', buffer: fs.readFileSync(path.join(root, 'apps/client/web/icons/Icon-192.png'))})));

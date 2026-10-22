@@ -7,6 +7,9 @@ const {execFileSync} = require('node:child_process');
 const {chromium} = require('playwright');
 const root = path.join(__dirname, '..');
 const webUrl=process.env.VOICECHAT_UI_URL || 'http://localhost:7357/';
+const matrixUrl=process.env.VOICECHAT_MATRIX_URL || 'http://localhost:8008';
+const apiUrl=process.env.VOICECHAT_API_URL || 'http://localhost:8090';
+const secretsFile=process.env.VOICECHAT_SECRETS_FILE || path.join(root,'.prototype/secrets.json');
 const video = process.env.VOICECHAT_VIDEO_TEST === '1';
 const network = process.env.VOICECHAT_NETWORK_TEST === '1';
 const callButton = video ? 'Видеозвонок' : 'Голосовой звонок';
@@ -23,12 +26,12 @@ async function request(base, route, body, token, method = body ? 'POST' : 'GET')
 }
 
 async function register(role) {
-  const base = 'http://localhost:8008';
+  const base = matrixUrl;
   const route = '/_synapse/admin/v1/register';
   const {nonce} = await request(base, route);
   const username = `consent_ui_${role}_${Date.now()}`;
   const password = crypto.randomBytes(24).toString('base64url');
-  const secret = JSON.parse(fs.readFileSync(path.join(root,'.prototype/secrets.json'))).registration;
+  const secret = JSON.parse(fs.readFileSync(secretsFile)).registration;
   const mac = crypto.createHmac('sha1',secret).update([nonce,username,password,'notadmin'].join('\0')).digest('hex');
   await request(base, route, {nonce,username,password,admin:false,mac});
   const session = await request(base,'/_matrix/client/v3/login',{type:'m.login.password',user:username,password});
@@ -37,7 +40,7 @@ async function register(role) {
 
 (async () => {
   const alice = await register('alice'), bob = await register('bob'), charlie = await register('charlie');
-  await request('http://localhost:8090','/contacts',{action:'policy',allow_direct:false},bob.access_token);
+  await request(apiUrl,'/contacts',{action:'policy',allow_direct:false},bob.access_token);
   const browser = await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']});
   const pages=[];
   let sensitiveVerification=false;
@@ -329,7 +332,7 @@ async function register(role) {
     await waitForAnnouncement(b,'Принято');
     let joined=[];
     for(let i=0;i<30;i++) {
-      joined=(await request('http://localhost:8008','/_matrix/client/v3/joined_rooms',undefined,bob.access_token)).joined_rooms;
+      joined=(await request(matrixUrl,'/_matrix/client/v3/joined_rooms',undefined,bob.access_token)).joined_rooms;
       if(joined.length===2) break;
       await b.waitForTimeout(500);
     }
@@ -423,7 +426,7 @@ async function register(role) {
     await a.getByText('Люди',{exact:true}).click();
     const c=await login(charlie);
     for(let i=0;i<60;i++) {
-      const keys=await request('http://localhost:8008','/_matrix/client/v3/keys/query',{device_keys:{[charlie.user_id]:[]}},alice.access_token);
+      const keys=await request(matrixUrl,'/_matrix/client/v3/keys/query',{device_keys:{[charlie.user_id]:[]}},alice.access_token);
       if(Object.keys(keys.device_keys[charlie.user_id] ?? {}).length) break;
       assert(i<59,'Offline recipient did not publish device keys');
       await c.waitForTimeout(300);
@@ -436,16 +439,16 @@ async function register(role) {
     const offlineText='Сообщение первому офлайн-контакту';
     await fill(a,'Написать сообщение…',offlineText); await button(a,'Отправить').click();
     await a.getByRole('group',{name:new RegExp(offlineText)}).waitFor({timeout:30000});
-    const rooms=(await request('http://localhost:8008','/_matrix/client/v3/joined_rooms',undefined,alice.access_token)).joined_rooms;
+    const rooms=(await request(matrixUrl,'/_matrix/client/v3/joined_rooms',undefined,alice.access_token)).joined_rooms;
     let offlineRoom;
     for(const id of rooms) {
-      const state=await request('http://localhost:8008',`/_matrix/client/v3/rooms/${encodeURIComponent(id)}/state`,undefined,alice.access_token);
+      const state=await request(matrixUrl,`/_matrix/client/v3/rooms/${encodeURIComponent(id)}/state`,undefined,alice.access_token);
       if(state.some(e=>e.type==='m.room.member' && e.state_key===charlie.user_id && e.content.membership==='invite')) offlineRoom=id;
     }
     assert(offlineRoom,'Recipient must still be invited while offline');
     let wire;
     for(let i=0;i<120;i++) {
-      wire=await request('http://localhost:8008',`/_matrix/client/v3/rooms/${encodeURIComponent(offlineRoom)}/messages?dir=b&limit=10`,undefined,alice.access_token);
+      wire=await request(matrixUrl,`/_matrix/client/v3/rooms/${encodeURIComponent(offlineRoom)}/messages?dir=b&limit=10`,undefined,alice.access_token);
       if(wire.chunk.some(e=>e.type==='m.room.encrypted')) break;
       await a.waitForTimeout(500);
     }
@@ -457,16 +460,16 @@ async function register(role) {
     await c.getByRole('group',{name:new RegExp(offlineText)}).waitFor({timeout:60000});
     await c.goto('about:blank');
     const roomPath=`/_matrix/client/v3/rooms/${encodeURIComponent(offlineRoom)}`;
-    await request('http://localhost:8008',`${roomPath}/leave`,{},charlie.access_token);
-    await request('http://localhost:8008',`${roomPath}/invite`,{user_id:charlie.user_id},alice.access_token);
-    await request('http://localhost:8008',`${roomPath}/state/m.room.history_visibility`,{history_visibility:'joined'},alice.access_token,'PUT');
+    await request(matrixUrl,`${roomPath}/leave`,{},charlie.access_token);
+    await request(matrixUrl,`${roomPath}/invite`,{user_id:charlie.user_id},alice.access_token);
+    await request(matrixUrl,`${roomPath}/state/m.room.history_visibility`,{history_visibility:'joined'},alice.access_token,'PUT');
     await a.waitForTimeout(1000);
     const legacyText='Офлайн-доставка после обновления старого диалога';
     await fill(a,'Написать сообщение…',legacyText); await button(a,'Отправить').click();
     let migrated=false;
     for(let i=0;i<120;i++) {
-      const state=await request('http://localhost:8008',`${roomPath}/state/m.room.history_visibility`,undefined,alice.access_token);
-      wire=await request('http://localhost:8008',`${roomPath}/messages?dir=b&limit=15`,undefined,alice.access_token);
+      const state=await request(matrixUrl,`${roomPath}/state/m.room.history_visibility`,undefined,alice.access_token);
+      wire=await request(matrixUrl,`${roomPath}/messages?dir=b&limit=15`,undefined,alice.access_token);
       migrated=state.history_visibility==='invited' && wire.chunk.filter(e=>e.type==='m.room.encrypted').length>=2;
       if(migrated) break;
       await a.waitForTimeout(500);

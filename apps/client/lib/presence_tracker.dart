@@ -12,19 +12,15 @@ class PresenceTracker {
   bool _closed = false;
   PresenceTracker(this.client, this.changed);
   Future<GetPresenceResponse> _presence(String userId) async {
-    try {
-      return await client
-          .getPresence(userId)
-          .timeout(const Duration(seconds: 5));
-    } on MatrixException catch (error) {
-      final contacts = ContactService.of(client);
-      if (error.response?.statusCode != 403 ||
-          contacts == null ||
-          !contacts.acceptedUsers.contains(userId)) {
-        rethrow;
+    final contacts = ContactService.of(client);
+    if (contacts?.acceptedUsers.contains(userId) == true) {
+      try {
+        return await contacts!.presence(userId);
+      } catch (_) {
+        // Joined contacts can still use Matrix when the control API is unreachable.
       }
-      return contacts.presence(userId);
     }
+    return client.getPresence(userId).timeout(const Duration(seconds: 5));
   }
 
   void start() {
@@ -42,6 +38,9 @@ class PresenceTracker {
       userId == null
           ? {
               if (client.userID != null) client.userID!,
+              ...?ContactService.of(client)?.acceptedUsers,
+              for (final room in client.rooms)
+                if (room.directChatMatrixID != null) room.directChatMatrixID!,
               for (final room in client.rooms)
                 for (final user in room.getParticipants()) user.id,
             }

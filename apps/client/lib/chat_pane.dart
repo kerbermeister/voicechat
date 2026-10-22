@@ -725,6 +725,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         padding: const EdgeInsets.fromLTRB(14, 8, 6, 10),
         decoration: BoxDecoration(
           color: own ? colors.primary : colors.surfaceContainerLowest,
+          border: event.eventId == focusedEvent
+              ? Border.all(color: colors.tertiary, width: 3)
+              : null,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(24),
             topRight: const Radius.circular(24),
@@ -794,29 +797,69 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                 if (event.inReplyToEventId() != null)
                   FutureBuilder<mx.Event?>(
                     future: event.getReplyEvent(widget.timeline),
-                    builder: (_, snapshot) => Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          left: BorderSide(color: colors.primary, width: 3),
+                    builder: (_, snapshot) => Semantics(
+                      button: true,
+                      label: 'Перейти к исходному сообщению',
+                      child: InkWell(
+                        onTap: widget.onJump == null
+                            ? null
+                            : () => perform(
+                                () => widget.onJump!(event.inReplyToEventId()),
+                              ),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          margin: const EdgeInsets.only(bottom: 6),
+                          decoration: BoxDecoration(
+                            color: colors.primaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border(
+                              left: BorderSide(color: colors.primary, width: 4),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                snapshot
+                                        .data
+                                        ?.senderFromMemoryOrFallback
+                                        .displayName ??
+                                    'Цитата',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: colors.onPrimaryContainer,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                snapshot.data?.redacted == true
+                                    ? 'Удалённое сообщение'
+                                    : snapshot.data
+                                              ?.getDisplayEvent(widget.timeline)
+                                              .body ??
+                                          'Загрузка исходного сообщения…',
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: colors.onPrimaryContainer,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        snapshot.data?.redacted == true
-                            ? 'Удалённое сообщение'
-                            : snapshot.data
-                                      ?.getDisplayEvent(widget.timeline)
-                                      .body ??
-                                  'Ответ на сообщение',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),
                 if (event.redacted)
                   const Text('Сообщение удалено')
                 else if (event.type == mx.EventTypes.Encrypted)
-                  const Text('Нет ключа. Восстановите историю.')
+                  const Text(
+                    'Ключ этого сообщения недоступен на данном устройстве. Для доступа к истории нужно прежнее устройство или ключ восстановления.',
+                  )
                 else if (shown.type == mx.EventTypes.CallInvite ||
                     [
                       'dev.voicechat.call',
@@ -985,7 +1028,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                                           : c['body'] as String? ?? 'Реакция',
                                     ),
                                     subtitle: Text(
-                                      p['error'] as String? ?? 'Отправляется…',
+                                      widget.actions.pendingStatus(p),
                                     ),
                                     trailing: PopupMenuButton<String>(
                                       tooltip: 'Действия с очередью',

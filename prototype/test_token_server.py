@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 import tempfile
 from contacts import ContactStore, ContactError
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import token_server
 
 
@@ -25,6 +25,7 @@ class AdmissionTests(unittest.TestCase):
         cls.thread.join()
 
     def request(self, body=None, auth='Bearer test', path='/token'):
+        if path == '/token' and isinstance(body, dict): body = {'protocol_version': 1, **body}
         request = urllib.request.Request(
             f'http://127.0.0.1:{self.server.server_port}{path}',
             None if body is None else json.dumps(body).encode(), {'Authorization': auth})
@@ -35,11 +36,15 @@ class AdmissionTests(unittest.TestCase):
             return error.code, json.load(error)
 
     def test_missing_auth_and_bad_input(self):
-        self.assertEqual(self.request({'room_id': '!room:local', 'session': 'test'}, '')[0], 401)
-        self.assertEqual(self.request({'room_id': {}, 'session': 'test'})[0], 400)
-        self.assertEqual(self.request({'room_id': '!room:local', 'session': ''})[0], 400)
-        for mode in ('true', 1, None, {}):
-            self.assertEqual(self.request({'room_id': '!room:local', 'session': 'test', 'video': mode})[0], 400)
+        def identity(handler, path):
+            if handler.headers.get('Authorization') != 'Bearer test': raise ContactError('unauthorized')
+            return {'user_id': '@alice:local', 'device_id': 'DEVICE'}
+        with patch.object(token_server.Handler, 'matrix', identity):
+            self.assertEqual(self.request({'room_id': '!room:local', 'session': 'test'}, '')[0], 401)
+            self.assertEqual(self.request({'room_id': {}, 'session': 'test'})[0], 400)
+            self.assertEqual(self.request({'room_id': '!room:local', 'session': ''})[0], 400)
+            for mode in ('true', 1, None, {}):
+                self.assertEqual(self.request({'room_id': '!room:local', 'session': 'test', 'video': mode})[0], 400)
 
     def test_presence_is_limited_to_authenticated_accepted_contacts(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -139,12 +144,19 @@ class AdmissionTests(unittest.TestCase):
                     return original(request, *args, **kwargs)
                 if request.full_url.endswith('whoami'):
                     data = {'user_id': '@alice:local', 'device_id': 'DEVICE'}
-                elif 'm.room.member/' in request.full_url:
-                    data = {'membership': membership}
+                elif request.full_url.endswith('keys/query'):
+                    data = {'device_keys': {'@alice:local': {'DEVICE': {'user_id': '@alice:local', 'device_id': 'DEVICE',
+                            'keys': {'curve25519:DEVICE': 'A'*43, 'ed25519:DEVICE': 'B'*43}}}}}
+                elif request.full_url.endswith('joined_members'):
+                    data = {'joined': {'@alice:local': {}} if membership == 'join' else {}}
                 else:
                     data = {'algorithm': algorithm}
                 return io.BytesIO(json.dumps(data).encode())
-            with patch('urllib.request.urlopen', side_effect=upstream):
+            store = Mock()
+            store.roster.return_value = []
+            store.admission.return_value = {'identity': '@alice:local/DEVICE', 'generation': 'vc-' + 'a'*48,
+                                           'lease_id': 'b'*64, 'lease_seconds': 30, 'roster': []}
+            with patch('urllib.request.urlopen', side_effect=upstream), patch.object(token_server, 'call_store', return_value=store):
                 status, body = self.request({'room_id': '!room:local', 'session': 'test', 'video': video})
             self.assertEqual(status, expected)
             if status == 200:
