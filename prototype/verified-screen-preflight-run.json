@@ -61,7 +61,7 @@
     },
     {
       "tasks": "SS-15 / A17",
-      "required": "Full application fresh install, existing-volume upgrade and isolated backup/restore/rollback; registry images and target config"
+      "required": "Registry images, target config, existing-volume upgrade and compatible rollback; full isolated local Compose application restore accepted separately"
     },
     {
       "tasks": "SS-16 / A16",
@@ -90,5 +90,7 @@
     "prototype/verified-screen-security-faults-after_delete-run.json",
     "prototype/verified-screen-security-faults-lease-run.json",
     "prototype/verified-screen-security-faults-kick-run.json"
-  ]
+  ],
+  "local_application_restore_evidence": "prototype/verified-screen-security-restore-run.json",
+  "local_operations_cleanup_evidence": "prototype/verified-screen-operations-cleanup-run.json"
 }

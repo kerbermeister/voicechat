@@ -6,14 +6,17 @@ const crypto=require('node:crypto');
 const {execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
 const media=require('./check_screen_calls.cjs');
-const matrix='http://localhost:8008',ui='http://localhost:7363/';
-const mode=process.argv[2];assert(['commands','keys','publish','faults'].includes(mode));
+let matrix='http://localhost:8008',registrationUrl=matrix;
+const ui='http://localhost:7363/';
+const mode=process.argv[2];assert(['commands','keys','publish','faults','restore'].includes(mode));
 const excluded=process.argv[3]||'';
 assert(mode==='faults' ? ['network','restart','kill_control','kill_sfu','pause_control','after_create','after_delete','lease','kick'].includes(excluded) :
   ['','member','device'].includes(excluded) && (!excluded || mode==='commands'));
 if(mode==='faults' && !['after_create','after_delete','lease','kick'].includes(excluded)) process.env.VOICECHAT_SCREEN_CONTAINER='1';
+if(mode==='restore') process.env.VOICECHAT_SCREEN_RESTORE='1';
 const root=path.join(__dirname,'..');
 const secrets=JSON.parse(fs.readFileSync(path.join(root,'.prototype/secrets.json')));
+let registrationSecret=secrets.registration;
 async function request(base,route,body,token,method=body ? 'POST' : 'GET') {
   const r=await fetch(base+route,{method,signal:AbortSignal.timeout(15000),
     headers:{'Content-Type':'application/json',...(token ? {Authorization:'Bearer '+token} : {})},
@@ -22,10 +25,10 @@ async function request(base,route,body,token,method=body ? 'POST' : 'GET') {
 }
 async function ok(...args) {const r=await request(...args);assert.equal(r.status,200,'Fixture request failed');return r.body;}
 async function register(role) {
-  const {nonce}=await ok(matrix,'/_synapse/admin/v1/register');
+  const {nonce}=await ok(registrationUrl,'/_synapse/admin/v1/register');
   const username='screen_negative_'+role+'_'+Date.now(),password=crypto.randomBytes(24).toString('base64url');
-  const mac=crypto.createHmac('sha1',secrets.registration).update([nonce,username,password,'notadmin'].join('\0')).digest('hex');
-  await ok(matrix,'/_synapse/admin/v1/register',{nonce,username,password,admin:false,mac});
+  const mac=crypto.createHmac('sha1',registrationSecret).update([nonce,username,password,'notadmin'].join('\0')).digest('hex');
+  await ok(registrationUrl,'/_synapse/admin/v1/register',{nonce,username,password,admin:false,mac});
   return {username,password,...await ok(matrix,'/_matrix/client/v3/login',{type:'m.login.password',user:username,password})};
 }
 async function cmd(page,data) {
@@ -62,17 +65,22 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
   try {
     report.laboratory_source_sha256=crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'apps/client/lib/lab_screen_security_main.dart'))).digest('hex');
     report.laboratory_js_sha256=crypto.createHash('sha256').update(Buffer.from(await (await fetch(ui+'main.dart.js')).arrayBuffer())).digest('hex');
-    for(const role of ['a','b','outsider']) accounts.push(await register(role));
     process.env.VOICECHAT_ORIGINS=new URL(ui).origin;
-    fixture=await require('./check_screen_faults.cjs').start();
+    if(mode==='restore') {
+      fixture=await require('./check_screen_faults.cjs').start();
+      matrix=fixture.matrix;registrationUrl=fixture.registrationUrl;registrationSecret=fixture.registration;
+    }
+    for(const role of ['a','b','outsider']) accounts.push(await register(role));
+    if(!fixture)fixture=await require('./check_screen_faults.cjs').start();
     if(fixture.image)report.control_image_id=fixture.image;
     for(const peer of accounts.slice(1)) {
-      await ok('http://localhost:8090','/contacts',{action:'policy',allow_direct:true},peer.access_token);
+      const contacts=mode==='restore' ? fixture.base : 'http://localhost:8090';
+      await ok(contacts,'/contacts',{action:'policy',allow_direct:true},peer.access_token);
       const dm=await ok(matrix,'/_matrix/client/v3/createRoom',{preset:'private_chat',is_direct:true,invite:[peer.user_id],initial_state:[
         {type:'m.room.encryption',state_key:'',content:{algorithm:'m.megolm.v1.aes-sha2'}},
         {type:'dev.voicechat.kind',state_key:'',content:{kind:'direct',owner:accounts[0].user_id,peer:peer.user_id}},
       ]},accounts[0].access_token);
-      await ok('http://localhost:8090','/contacts',{action:'request',recipient:peer.user_id,room_id:dm.room_id},accounts[0].access_token);
+      await ok(contacts,'/contacts',{action:'request',recipient:peer.user_id,room_id:dm.room_id},accounts[0].access_token);
       await ok(matrix,'/_matrix/client/v3/rooms/'+encodeURIComponent(dm.room_id)+'/join',{},peer.access_token);
     }
     const room=await ok(matrix,'/_matrix/client/v3/createRoom',{preset:'private_chat',invite:accounts.slice(1).map(a=>a.user_id),initial_state:[
@@ -98,7 +106,7 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
         };
       });
       await context.route('**/fixture.json',route=>route.fulfill({json:{profile:session+'-'+i,
-        username:account.username,password:account.password,room:room.room_id,session,api:fixture.base,livekit:fixture.livekit}}));
+        username:account.username,password:account.password,room:room.room_id,session,api:fixture.base,livekit:fixture.livekit,matrix}}));
       const page=await context.newPage();pages.push(page);
       page.on('request',r=>{
         if(r.url().startsWith(fixture.base) || r.url().includes('/sendToDevice/')) wire.push(r.postData()||'');
@@ -159,7 +167,7 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
     const ctx={a,b,pages,sources,accounts,fixture,report,cmd,until,media,button,start,api,identities,bindings,claims,tokens,request,absent,updatePermission,wire,logins,room:room.room_id,session};
     await require('./check_screen_security_'+mode+'.cjs')(ctx);
     report.result='PASS';
-    console.log('PASS: '+(mode==='faults' ? 'SS-10/SS-16 '+excluded : 'SS-11 '+mode));
+    console.log('PASS: '+(mode==='faults' ? 'SS-10/SS-16 '+excluded : mode==='restore' ? 'SS-15 full restore' : 'SS-11 '+mode));
   } catch(error) {
     failed=true;throw error;
   } finally {
@@ -168,7 +176,6 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
       for(const page of pages) await cmd(page,{action:'close'}).catch(()=>{});
       await browser.close().catch(()=>{cleanupFailed=true;});
     }
-    if(fixture) await fixture.close().catch(()=>{cleanupFailed=true;});
     for(const a of accounts) {
       try {
         const r=await request(matrix,'/_matrix/client/v3/account/deactivate',{
@@ -176,6 +183,7 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
         if(r.status!==200)cleanupFailed=true;
       } catch (_) {cleanupFailed=true;}
     }
+    if(fixture) await fixture.close().catch(()=>{cleanupFailed=true;});
     report.cleanup_completed=!cleanupFailed;
     if(cleanupFailed)report.result='FAIL';
     report.elapsed_seconds=(performance.now()-started)/1000;

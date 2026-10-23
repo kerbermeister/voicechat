@@ -7,7 +7,9 @@ const {createInterface}=require('node:readline');
 
 exports.start=async()=>{
   const secrets=JSON.parse(fs.readFileSync(path.join(__dirname,'../.prototype/secrets.json')));
-  const child=spawn('python3',[path.join(__dirname,process.env.VOICECHAT_SCREEN_CONTAINER==='1' ? 'screen_container_fixture.py' : 'screen_fault_fixture.py')],{
+  const script=process.env.VOICECHAT_SCREEN_RESTORE==='1' ? 'screen_restore_fixture.py' :
+    process.env.VOICECHAT_SCREEN_CONTAINER==='1' ? 'screen_container_fixture.py' : 'screen_fault_fixture.py';
+  const child=spawn('python3',[path.join(__dirname,script)],{
     detached:true,stdio:['pipe','pipe','inherit'],env:{...process.env,
       VOICECHAT_LIVEKIT_SECRET:secrets.livekit,VOICECHAT_POLICY_SECRET:secrets.policy},
   });
@@ -22,9 +24,13 @@ exports.start=async()=>{
   let current;
   try {current=await read();} catch(error) {child.stdin.end();await exited;throw error;}
   return {
-    get base(){return 'http://127.0.0.1:'+current.api_port;},
+    get base(){return 'http://127.0.0.1:'+current.api_port+(current.api_path||'');},
     get livekit(){return current.livekit_url;},
     get image(){return current.image_id;},
+    get matrix(){return current.matrix_url;},
+    get registrationUrl(){return current.registration_url;},
+    get registration(){return current.registration_secret;},
+    get sfuSecret(){return current.sfu_secret;},
     async command(action){child.stdin.write(action+'\n');current=await read();return current;},
     async close(){child.stdin.end();assert.equal(await exited,0,'Private fixture cleanup failed');},
   };

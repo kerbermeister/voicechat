@@ -2,6 +2,57 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-15 — полный локальный Compose backup/restore
+
+**PASS, 129.137 с**, отдельные source/target Compose projects и
+непересекающиеся новые тома; общий prototype/VPS не изменялись. Fresh installation
+подняла Synapse/PostgreSQL/control+SFU/Caddy/TURN и локальный mail sink. Два реальных
+SDK клиента создали encrypted text/file и живую E2EE screen generation.
+
+Пишущие сервисы остановлены; существующий production backup создал согласованный
+Restic snapshot и выполнил check. Исправлен реальный недостаток backup: вместо
+жёстких `voicechat_*` используются фактические volume names из Compose config,
+включая override/project name. Unit проверяет отдельный prefix; default deployment
+сохраняет прежние имена. Secret config JSON не выводится.
+
+Восстановлен конкретный snapshot ID: SQL в пустой PostgreSQL, пять файловых томов
+с byte-for-byte проверкой, UID/GID/permissions и signing key; три SQLite прошли
+integrity_check. Release, runtime env и compose override взяты **из backup**.
+Пароль Restic не находится в snapshot. До control startup flag принудительно=0.
+Snapshot действительно содержал active screen; после startup active/pending/retired=0,
+старой комнаты нет. Actual media keys не найдены в control SQLite/WAL и развёрнутом
+SQL (`pg_restore --file=-`), screen JWT отсутствует в control.
+
+Свежий password login успешен. После закрытия/reload SDK браузер принудительно
+прочитал encrypted events с восстановленного сервера, расшифровал текст и реально
+скачал/расшифровал файл (не только local cache). Сохранён исходный encrypted client
+vault; восстановление истории при его потере не заявлено. Основной group E2EE
+voice/camera работает при screen off. Reload не запускает capture.
+
+После явного screen enable создан **новый call_session**, новый показ виден зрителю.
+Выключение очищает screen и сохраняет основные voice PC/растущие media counters.
+Первая попытка неверно повторила terminal call_session: сервер правильно вернул
+410; она не засчитана. Полный повтор от новых пустых томов прошёл и удалил оба
+проекта/тома/аккаунты. Никаких пользовательских данных в drill нет.
+
+Для независимой проверки старой room через длительный restore JWT fixture меняет
+только expiry старого grant на 600 с, подписывая секретом **одноразового** SFU.
+До expiry независимый SDK отвергает этот токен после restore. Production TTL=60 с
+не менялся; предыдущие короткие fault-прогоны отвергали настоящие unmodified JWT.
+
+10 deployment unit tests PASS, 29 screen tests PASS, lab analyze PASS/release build
+65.7 с. [Полный безопасный отчёт](../../prototype/verified-screen-security-restore-run.json).
+Команда: `node prototype/check_screen_security.cjs restore` с существующим NODE_PATH,
+lab web на 7363 и локальными образами; подробности в infra runbook.
+
+**Принят полный локальный backend/application restore, не production rollout.**
+Registry manifest, отдельный upgrade/rollback на целевых volumes, точная старая
+клиентская версия, публичные DNS/SMTP/ACME/TURN остаются внешней приёмкой.
+Android и тяжёлая нагрузка не запускались; default off и release BLOCKED сохранены.
+[Финальная очистка](../../prototype/verified-screen-operations-cleanup-run.json):
+9 fault cohorts + full restore PASS, частные контейнеры/тома и lab server удалены,
+общий stand сохранён, active/pending/retired=0, production JS не изменён.
+
 ## SS-10 / SS-16 — локальная fault-матрица завершена
 
 **PASS**: `network` 26.810 с, `after_create` 32.929 с, `after_delete` 33.893 с, `lease` 55.438 с, `kick` 23.510 с.

@@ -6,13 +6,13 @@
 
 **Текущая точка: сервер SS-02–SS-05 реализован; SS-06–SS-11 имеют клиентскую
 реализацию и локальную web/HTTP/SFU приёмку. SS-12–SS-14 не закрыты внешними
-устройствами, сетями и нагрузкой; Android отложен владельцем. SS-15 подготовлена и
-проверена на образе/SQLite; SS-16 дополнена реальными web перехватом A → B → C,
+устройствами, сетями и нагрузкой; Android отложен владельцем. SS-15 имеет полный локальный
+Compose backup/restore (SQL/три SQLite/файлы/E2EE-клиенты); SS-16 дополнена реальными web перехватом A → B → C,
 поздним входом, конкурентными claims, сбоями отдельного control API и живыми
 restart/crash/watchdog частного control/SFU контейнера.
 Локальная негативная матрица SS-11 принята.
 Локальные fault фазы SS-10/SS-16 приняты.
-SS-17 — только после полного restore, внешних проверок и приёмки
+SS-17 — только после target upgrade/rollback, внешних проверок и приёмки
 целевого стенда. Default off, релиз не принят.**
 [Результаты и оставшиеся проверки](../iterations/08-screen-sharing.md).
 Техническая возможность размещения на одной машине уже заложена в проекте;
@@ -356,12 +356,17 @@ production-код не менялся.
   непривилегированный запуск, supervisor и закрытые административные маршруты.
 - [ ] Проверить обновление existing volume и fresh installation, feature off/on,
   остановку screen перед rollback и сохранность данных остальных функций.
-- [ ] Включить новые метаданные в существующий backup; restore закрывает leases,
+- [x] Включить новые метаданные в существующий backup; restore закрывает leases,
   удаляет retired rooms, не воскрешает захват и не содержит медиаключей.
 - [x] Добавить безопасные счётчики/диагностику и runbook: нет картинки, picker отказал,
   E2EE не готово, старый owner, failed cleanup, TURN не работает, отключение функции.
 - [ ] Проверить manifest сборки, pinned images и совместимость старого клиента;
   не открывать screen feature старым клиентам без capability.
+
+Локальный full restore принят: fresh source → Restic → новые target volumes,
+restore release/runtime, signing key/SQL/3 SQLite, реальные E2EE text/file/call/screen.
+Existing-volume upgrade/совместимый rollback и registry/target manifest остаются
+отдельными незавершёнными пунктами, их не заменяет restore.
 
 **Файлы:** `infra/control.Dockerfile`, `configure.py`, `supervise.py`, Compose/Caddy
 только если требуется, deployment/backup tests, `infra/README.md`.

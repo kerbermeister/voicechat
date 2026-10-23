@@ -14,8 +14,8 @@ SFU подтверждены E2EE-пиксели, запрет viewer/wrong-sour
 перехват и stop. Личный и групповой video сценарии, Low, fullscreen и feature off прошли сквозную
 проверку с сохранением voice PC; личные и групповые аудиозвонки тоже прошли screen/mute без запроса камеры.
 Пройдены Flutter unit/analyze, Python control/миграции, read-only control image под
-UID10001 и SQLite backup/recovery без оживления screen leases. Это не заменяет
-полное восстановление приложения и аппаратную/сетевую/нагрузочную приёмку.
+UID10001 и SQLite backup/recovery без оживления screen leases. Полный локальный Compose restore также принят отдельной итерацией ниже; это не
+заменяет аппаратную/сетевую/нагрузочную и target release приёмку.
 
 Чистый кандидат caecb3c: 135 тестов проверены (один повтор после подготовки
 каталога тестового QR), analyze и release JS — PASS. Три web-клиента прошли поздний
@@ -29,7 +29,12 @@ API/SQLite пережил restart и отказ его Matrix-зависимос
 Живые joint control/SFU restart, crash обоих процессов и health watchdog приняты
 в отдельном контейнере. Локальная SS-10/SS-16 fault-матрица завершена: также
 short disconnect/loser reconnect, unknown SFU outcomes, silent lease и Matrix kick.
-Полный application backup/restore — следующий этап; внешняя приёмка остаётся открытой.
+Полный local application backup/restore принят: новые тома, restored release/runtime,
+SQL/3 SQLite/signing key/media, новый login, реальный decrypt history/file download,
+group voice/camera и новый screen call. Старые leases/capture не воскресли.
+Исправлен backup для фактических Compose volume names вместо жёсткого prefix.
+Сохранён client vault; потеря локальных E2EE keys не покрывается серверным backup.
+Target upgrade/rollback, registry manifest и внешняя приёмка остаются открытыми.
 
 SS-11 локально принят: stale commands, original/refreshed JWT, подмена JWT identity/
 publisher grant, raw SFU source/role отказы, duplicate/plaintext metadata guard,

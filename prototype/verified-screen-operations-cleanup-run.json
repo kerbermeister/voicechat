@@ -1,0 +1,25 @@
+{
+  "result": "PASS",
+  "scope": "post-fault/restore local cleanup; shared prototype preserved",
+  "fault_cohorts_passed": 9,
+  "full_restore_passed": true,
+  "private_containers_and_volumes_removed": true,
+  "laboratory_server_stopped": true,
+  "persistent_screen_flag_absent": true,
+  "temporary_screen_flag_absent": true,
+  "shared_screen_metadata": {
+    "schema": 2,
+    "sessions": {
+      "ended": 52
+    },
+    "retired_rooms": 0,
+    "pending_commands": 0,
+    "oldest_pending_seconds": null
+  },
+  "production_web_sha256": "4a3af9a1c9d1f6ed10092e74cf048f6ca223506549af713f2f5c9e258032b790",
+  "production_web_has_no_lab_bridge": true,
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "release": "BLOCKED",
+  "run": "2026-10-23T21:50:27.867102+00:00"
+}

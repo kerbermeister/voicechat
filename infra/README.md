@@ -75,7 +75,7 @@ python3 infra/bootstrap.py --url https://chat.example.com --ip 203.0.113.10 --se
 закреплённый ключ хоста, пользователя и доступ к Docker/Compose без изменения VPS.
 Почта, сборка образов и запуск приложения для этой проверки не требуются.
 
-`deploy.py` блокирует параллельный deploy через flock, проверяет manifest/origin, скачивает образы **до** остановки, останавливает пишущие сервисы и создаёт согласованный snapshot: `pg_dump --format=custom`, Synapse signing/config/media, control SQLite (включая зашифрованное расписание), media-config с публичными лимитами, Caddy certificates/config, runtime env и активный release с manifest. Отдельный пароль Restic в snapshot не включается. Обычный copy живого PostgreSQL-тома не используется. Snapshot шифрует закреплённый Restic, затем выполняется `restic check`; только после этого стартуют новые сервисы с ожиданием healthchecks.
+`deploy.py` блокирует параллельный deploy через flock, проверяет manifest/origin, скачивает образы **до** остановки, останавливает пишущие сервисы и создаёт согласованный snapshot: `pg_dump --format=custom`, Synapse signing/config/media, control SQLite (включая зашифрованное расписание), media-config с публичными лимитами, Caddy certificates/config, runtime env и активный release с manifest. Фактические имена файловых томов берутся из Compose config с учётом project/override; `voicechat_*` больше не зашиты в backup. Отдельный пароль Restic в snapshot не включается. Обычный copy живого PostgreSQL-тома не используется. Snapshot шифрует закреплённый Restic, затем выполняется `restic check`; только после этого стартуют новые сервисы с ожиданием healthchecks.
 
 Пароль Restic хранится отдельно от репозитория backup в `runtime/backup-password` (0600). Его нужно сохранить **вне VPS**; без него backup не расшифровать. Для backup без обновления предусмотрен `deploy.py --root /srv/voicechat --backup-only`; systemd timer и внешнее копирование описаны в [VPS.md](VPS.md). Сами копии по умолчанию остаются на этом VPS и не защищают от его потери: внешнее хранилище ещё не подключено. Скрипт не перезаписывает пропавший пароль поверх существующего backup-репозитория и не удаляет прежние snapshots автоматически.
 
@@ -86,7 +86,7 @@ python3 /srv/voicechat/releases/PREVIOUS_COMMIT/infra/deploy.py \
   --root /srv/voicechat --release /srv/voicechat/releases/PREVIOUS_COMMIT
 ```
 
-Восстановление проверяйте на отдельной VPS с отключённой реальной почтой/push: фиксированное имя проекта `voicechat` не позволяет изолировать restore просто другим каталогом. Через официальный Restic восстановите snapshot, проверьте signing key и конфиги, восстановите dump в пустой PostgreSQL, файлы — в новые тома, затем проверьте вход/историю/файлы/звонок. Не восстанавливайте поверх работающих пользовательских данных. Полная аварийная приёмка восстановления ещё не завершена; наличие backup не означает принятую процедуру восстановления.
+Восстановление проверяйте на отдельной VPS с отключённой реальной почтой/push: фиксированное имя проекта `voicechat` не позволяет изолировать restore просто другим каталогом. Через официальный Restic восстановите snapshot, проверьте signing key и конфиги, восстановите dump в пустой PostgreSQL, файлы — в новые тома, затем проверьте вход/историю/файлы/звонок. Не восстанавливайте поверх работающих пользовательских данных. Полный локальный Compose drill принят: [отчёт](../prototype/verified-screen-security-restore-run.json). Registry/целевой upgrade/rollback и реальные DNS/SMTP/ACME/TURN этим не проверены. Серверный backup не заменяет клиентский E2EE vault/recovery keys.
 
 
 ### Изменение лимитов без сборки клиента
@@ -129,5 +129,40 @@ JWT и ключи не печатает. Не включайте подробн�
 | Слабая сеть | Выберите «Экран: Низкое»; проверьте реальные ICE/TURN порты, обычный HTTPS не заменяет TURN/TLS. |
 | Нужно аварийно выключить | Атомарно flag=0, дождитесь cleanup и закройте screen UI; голос сохраняется при исправной инфраструктуре. Не удаляйте volumes. |
 
-Android onStop/lock/background, внешняя сеть, полный restore приложения и нагрузка
+Android onStop/lock/background, внешняя сеть, target upgrade/rollback и нагрузка
 остаются в [матрице приёмки](../docs/screen-sharing-acceptance.md); сборка образа их не заменяет.
+
+### Локальный полный restore drill
+
+`prototype/screen_restore_fixture.py` использует только новые проекты
+`voicechat-screen-source-*` и `voicechat-screen-target-*`, новые тома и mail sink.
+Source останавливается до запуска target с той же тестовой Matrix identity.
+Release/runtime и SQL/файлы берутся из зашифрованного snapshot; перед startup
+восстановленный screen flag=0. Оба проекта/тома удаляются в finally; существующие
+`voicechat` и `voicechat-prototype` не останавливаются. Нужны свободные порты
+локального Compose (7364/7365, 8088, 7981, 3488 и его UDP ranges) и lab web 7363.
+
+Подготовьте обычные pinned web assets по client README, локальные образы
+`voicechat-screen-control:test` и `voicechat-web:local`. В `apps/client` соберите
+**только тестовый** target (его bridge нельзя публиковать):
+
+```sh
+flutter build web --release --target lib/lab_screen_security_main.dart --output=/tmp/voicechat-screen-restore-web
+```
+
+Из корня отдельно запустите web server, затем проверку с существующим NODE_PATH
+для Playwright/pngjs:
+
+```sh
+python3 prototype/serve_web.py --port 7363 --directory /tmp/voicechat-screen-restore-web
+```
+
+```sh
+NODE_PATH=/path/to/existing/node_modules node prototype/check_screen_security.cjs restore
+```
+
+Проверка читает encrypted history с сервера и действительно скачивает/decrypt файл,
+сохраняя исходный client vault. После включения screen начинает **новый** звонок:
+terminal call_session после restore повторно не допускается. Для JWT-проверки через
+долгий restore используется test-only grant с expiry 600 с; production TTL=60 с не
+меняется. Результат без ключей/credentials — `verified-screen-security-restore-run.json`.
