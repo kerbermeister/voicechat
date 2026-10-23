@@ -7,6 +7,8 @@ import 'package:matrix/matrix.dart';
 import 'call_probe.dart';
 import 'direct_call.dart';
 import 'voice_call.dart';
+import 'screen_api.dart';
+import 'screen_controller.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'matrix_probe.dart';
 import 'user_action_error.dart';
@@ -37,6 +39,9 @@ class CallController extends ChangeNotifier
   final invitations = <String, CallInvitation>{};
   final declined = <String>{};
   VoiceCall? active;
+  ScreenShareController? screen;
+  VoiceCall? _screenCall;
+  bool _screenChecking = false;
   Room? dialingRoom;
   String? dialError;
   bool starting = false;
@@ -109,6 +114,7 @@ class CallController extends ChangeNotifier
   }
 
   void _refresh() {
+    if (!_closed) unawaited(_prepareScreen());
     if (_android) {
       final call = active;
       final microphone = switch (call) {
@@ -143,6 +149,46 @@ class CallController extends ChangeNotifier
       }
     }
     if (!_closed) notifyListeners();
+  }
+
+  Future<void> _prepareScreen() async {
+    final call = active;
+    if (_screenChecking || call == _screenCall) return;
+    if (call == null ||
+        call.isClosed ||
+        (call is DirectCall && call.call.state != CallState.kConnected) ||
+        (call is CallProbe && call.screenBindingLease == null)) {
+      return;
+    }
+    _screenChecking = true;
+    _screenCall = call;
+    final previous = screen;
+    screen = null;
+    unawaited(previous?.close());
+    previous?.dispose();
+    final api = ScreenApi(tokenUrl, () => client.accessToken ?? '');
+    ScreenShareController? next;
+    try {
+      final capability = await api.request('capabilities');
+      if (_closed ||
+          active != call ||
+          call.isClosed ||
+          capability['screen'] != true) {
+        api.close();
+        return;
+      }
+      next = ScreenShareController(call, api, mediaUrl);
+      screen = next;
+      await next.connect();
+      if (_closed || active != call || call.isClosed) await next.close();
+    } catch (_) {
+      await next?.close();
+      if (next == null) api.close();
+      // Недоступность дополнительного экрана не завершает основной звонок.
+    } finally {
+      _screenChecking = false;
+      if (!_closed) notifyListeners();
+    }
   }
 
   void receive(Event event) {
@@ -346,7 +392,9 @@ class CallController extends ChangeNotifier
       return;
     }
     _ringTimeout?.cancel();
+    final screenClose = screen?.close();
     await call.close(); // Release microphone even if signalling is offline.
+    await screenClose;
     _refresh();
     if (call is DirectCall) {
       await _recordDirectEnd(call);
@@ -397,7 +445,10 @@ class CallController extends ChangeNotifier
     mediaDevices.ondevicechange =
         null; // Release the SDK callback retaining this client after lock/logout.
     await _events?.cancel();
+    final screenClose = screen?.close();
     await active?.close();
+    await screenClose;
+    screen?.dispose();
     for (final call in _directCalls.values) {
       await call.close();
     }

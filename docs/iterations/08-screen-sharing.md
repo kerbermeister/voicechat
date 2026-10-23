@@ -2,6 +2,27 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-06 — 23 октября 2026: общий клиентный контроллер
+
+Добавлены ScreenApi, ScreenSnapshot, ScreenShareController и проверка screen-key
+контекста. CallController автоматически подготавливает отдельный screen binding
+после подключения совместимого звонка и закрывает его вместе со звонком. Отказ
+screen API не завершает голос. Capture принадлежит контроллеру, а не CallWindow.
+Сохраняется request_id при неизвестном результате, отвергаются старые revision,
+JWT связан с поколением. Matrix envelope проверяет encrypted sender, актуальное
+доверенное устройство, roster, binding/session/generation/revision и срок ключа.
+Получатель подписывается только на E2EE screen video текущего владельца; renderer
+до cryptor kOk не получает remoteTrack. Ключи не пишутся в HTTP/SQLite/журнал.
+
+Проверено: **9 Flutter tests PASS**, включая серверные fixtures, подмену владельца,
+устройства/ключа/поколения/срока и регрессию окна звонка; targeted analyze — без замечаний.
+Невалидные синтетические Base64 fixtures исправлены до успешного прогона.
+Реальное декодирование SDK уже проверено SS-01; обмен Matrix и полный controller
+проходят интеграционную приёмку после подключения кнопок в SS-07/SS-09. Поэтому
+SS-06 пока не закрывает все интеграционные критерии. Android clone в закреплённом
+SDK повторно использует native track: сохранение projection при ротации требует
+отдельного решения SS-08, аппаратная проверка отложена владельцем.
+
 ## SS-05 — 23 октября 2026: HTTP API подключён, функция выключена
 
 `screen_http.py` подключён к существующему Handler: capabilities, bind/unbind,

@@ -165,16 +165,19 @@ screen share не отмечена реализованной. **Зависим�
 
 ## SS-06. Общий клиентный контроллер демонстрации и E2EE
 
-- [ ] Ввести минимальный `ScreenShareController`/типизированное состояние с привязкой
+- [x] Ввести минимальный `ScreenShareController`/типизированное состояние с привязкой
   к VoiceCall; состояние переживает перестроение CallWindow, но закрывается со звонком.
-- [ ] Общий HTTP-клиент snapshot/claim/stop/token/receipt с одним запросом на фазу,
+- [x] Общий HTTP-клиент snapshot/claim/stop/token/receipt с одним запросом на фазу,
   revision guard и тем же request_id при неизвестном результате.
-- [ ] Отдельный LiveKit Room только для экрана; ключи на поколение через encrypted
+- [x] Отдельный LiveKit Room только для экрана; ключи на поколение через encrypted
   Matrix to-device, строгие sender/device/trust/roster/expiry проверки.
-- [ ] Допуск публикации/рендеринга по screen source, owner, generation, codec и
+- [x] Допуск публикации/рендеринга по screen source, owner, generation, codec и
   реальной E2EE; не расширять `allowsCallMedia` камерной комнаты до произвольного видео.
-- [ ] Отдельно очищать sender/receiver tracks, cryptor, listeners, poll, renderer и ключи.
+- [x] Отдельно очищать sender/receiver tracks, cryptor, listeners, poll, renderer и ключи.
   Повтор close/stop идемпотентен; события старой сессии игнорируются.
+
+**Статус:** реализация и unit-проверки готовы; полная интеграция Matrix/capture
+и асинхронного lifecycle остаётся до SS-07/SS-09.
 
 **Файлы:** новый небольшой экранный модуль, `voice_call.dart`, контроллер звонков,
 точечное извлечение действительно общей E2EE-логики из `call_probe.dart` при необходимости.
