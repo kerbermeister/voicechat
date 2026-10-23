@@ -78,4 +78,55 @@ void main() {
       await client.dispose();
     },
   );
+  test(
+    'Выключатель завершает клиентский контекст сразу, без ожидания lease',
+    () async {
+      final client = Client('disabled', database: LifecycleDatabase());
+      final call = LifecycleCall(Room(id: '!lifecycle:local', client: client));
+      var releases = 0;
+      final api = ScreenApi(
+        'http://localhost',
+        () => '',
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/bind')) {
+            return http.Response(
+              jsonEncode({
+                'binding_id': '22222222-2222-4222-8222-222222222222',
+                'lease_id': 'b' * 64,
+                'binding_state': 'pending',
+                'snapshot': {
+                  'protocol_version': 1,
+                  'binding_id': '22222222-2222-4222-8222-222222222222',
+                  'state': 'idle',
+                  'revision': 0,
+                  'roster_version': 0,
+                  'roster': [],
+                  'owner_identity': null,
+                  'generation': null,
+                },
+              }),
+              200,
+            );
+          }
+          if (request.url.path.endsWith('/state')) {
+            return http.Response('{"error":"screen_disabled"}', 503);
+          }
+          expect(request.url.path, '/screen/unbind');
+          releases++;
+          return http.Response('{}', 200);
+        }),
+      );
+      final controller = ScreenShareController(
+        call,
+        api,
+        'ws://localhost:7880',
+      );
+      await controller.connect();
+      await controller.poll();
+      expect(controller.isClosed, isTrue);
+      expect(releases, 1);
+      controller.dispose();
+      await client.dispose();
+    },
+  );
 }

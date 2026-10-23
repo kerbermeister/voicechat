@@ -53,7 +53,9 @@ class ScreenShareController extends ChangeNotifier {
       '${call.chat.client.userID}/${call.chat.client.deviceID}';
   bool get isClosed => _closed;
   bool get busy => _acting;
-  lk.VideoTrack? get displayTrack => snapshot?.owner == identity
+  lk.VideoTrack? get displayTrack => _closed
+      ? null
+      : snapshot?.owner == identity
       ? media?.localParticipant?.videoTrackPublications.firstOrNull?.track
       : decoded
       ? remoteTrack
@@ -145,7 +147,8 @@ class ScreenShareController extends ChangeNotifier {
         await _command('stop');
       }
     } on ScreenApiError catch (error) {
-      if ([401, 403, 404, 410].contains(error.status)) {
+      if ([401, 403, 404, 410].contains(error.status) ||
+          error.code == 'screen_disabled') {
         await close();
       } else {
         phase = ScreenPhase.reconnecting;
@@ -243,7 +246,9 @@ class ScreenShareController extends ChangeNotifier {
       if (result['status'] != 'pending') _pending = null;
       await _apply(result['snapshot'] as Map<String, dynamic>);
     } on ScreenApiError catch (error) {
-      if (error.status < 500) _pending = null;
+      if (error.status < 500 || error.code == 'screen_disabled') {
+        _pending = null;
+      }
       rethrow;
     }
     // Неизвестный сетевой исход сохраняет тот же request_id для следующего poll.
@@ -616,6 +621,7 @@ class ScreenShareController extends ChangeNotifier {
     _events = null;
     media = null;
     _keys = null;
+    _changed();
     try {
       // Web clone тоже держит capture: прекращаем его до любых сетевых await.
       await publication?.dispose();

@@ -3,6 +3,8 @@
 !infra/**
 !prototype/
 !prototype/*.py
+!prototype/screen_schema.sql
+!prototype/screen_schema_v2.sql
 !prototype/client-policy.json
 !apps/
 !apps/client/

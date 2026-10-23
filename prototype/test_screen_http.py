@@ -133,7 +133,7 @@ class ScreenHTTPTests(unittest.TestCase):
         self.service.tick()
         self.assertEqual(self.rooms,set())
         self.assertEqual(self.request('capabilities')[1]['screen'],False)
-        self.assertEqual(self.request(binding+'/state')[0],503)
+        self.assertEqual(self.request(binding+'/state'),(503,{'error':'screen_disabled'}))
         self.enabled=True
         self.assertEqual(self.request(binding+'/state')[0],404)
 

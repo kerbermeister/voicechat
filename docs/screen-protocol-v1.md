@@ -70,7 +70,7 @@ Claim/stop с незавершённым результатом возвраща
 HTTP-ошибки: 400 invalid_request, 401 unauthorized, 403 screen_access_denied,
 404 screen_session_not_found, 409 screen_revision_conflict / screen_transition_in_progress /
 screen_not_owner / screen_binding_mismatch / idempotency_conflict,
-410 call_ended / lease_expired, 429 screen_rate_limited, 503 screen_unavailable.
+410 call_ended / lease_expired, 429 screen_rate_limited, 503 screen_unavailable / screen_disabled. Последний код означает выключатель и немедленную локальную очистку.
 Оболочка: `{error:code}`; для 409 можно приложить разрешённый snapshot, для 429 —
 `retry_after` в секундах. Чужой binding не раскрывать через подробную ошибку.
 

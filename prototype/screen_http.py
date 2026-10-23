@@ -137,7 +137,7 @@ class ScreenService:
         with self.lock:
             if not self.enabled():
                 self.tick()
-                raise ScreenError('screen_unavailable',503)
+                raise ScreenError('screen_disabled',503)
             if method == 'POST' and path == '/screen/bind':
                 body = parse_request('bind',raw)
                 with self.store.db() as db:

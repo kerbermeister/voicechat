@@ -4,6 +4,7 @@ COPY --from=sfu /livekit-server /usr/local/bin/livekit-server
 WORKDIR /work
 COPY prototype/token_server.py prototype/call_control.py prototype/scheduled_messages.py prototype/contacts.py prototype/link_preview.py prototype/client_policy.py prototype/client-policy.json ./prototype/
 COPY prototype/screen_control.py prototype/screen_schema.sql prototype/screen_schema_v2.sql prototype/screen_protocol.py prototype/screen_access.py prototype/screen_transitions.py prototype/screen_http.py ./prototype/
+COPY prototype/screen_status.py ./prototype/
 COPY infra/supervise.py ./infra/supervise.py
 RUN mkdir -p /work/.prototype && chown 10001:10001 /work/.prototype
 USER 10001:10001

@@ -86,3 +86,40 @@ python3 /srv/voicechat/releases/PREVIOUS_COMMIT/infra/deploy.py \
 Control API читает `client-policy.json` при каждом запросе `/config` и перед постановкой задания; клиент обновляет политику каждые 30 секунд. В прототипе это `prototype/client-policy.json`. В Docker конфиг находится в постоянном томе `voicechat_media-config`, путь `/media/client-policy.json` в configure и `/config/client-policy.json` в control (`VOICECHAT_CLIENT_POLICY`). Первичная настройка добавляет новые значения по умолчанию и сохраняет уже заданные оператором лимиты. Обновление образа не должно сбрасывать их.
 
 Администратор меняет JSON атомарной заменой файла в томе, сохраняя владельца `10001:10001` и права `0600`; control монтирует каталог только для чтения. Неверный тип, неизвестное поле или выход за границы даёт отказ, не тихое ослабление ограничений. `schedule_max_seconds=172800` задаёт максимум 48 часов; временные сообщения используют `temporary_min_seconds=10`, `temporary_max_seconds=600`, `temporary_step_seconds=10`. Фактическое время сравнивается по часам сервера. Восстанавливая backup, переносите и каталог snapshot/media-config в соответствующий новый том до запуска configure.
+
+## Экран: диагностика, обновление и восстановление
+
+Schema screen metadata — v2, additive в существующей `calls/calls.sqlite`. В ней
+нет медиаключей/кадров. Существующий backup всего control volume включает binding,
+receipt и retired очередь; отдельного volume/сервиса для экрана не добавлено.
+При старте control аннулирует screen leases до HTTP и очищает retired rooms;
+восстановление SQLite не возобновляет локальный capture.
+
+Перед обновлением/откатом отключите flag, дождитесь пустой active/retired очереди
+и проверьте базовый звонок. Восстанавливайте backup только в изолированный стенд,
+до запуска запишите flag `0`; затем проверьте `integrity_check`, schema и отсутствие
+активных screen sessions. Восстановленный flag `1` сам по себе не является приёмкой.
+Не откатывайте общую БД поверх пользовательских данных ради отключения screen share.
+
+Безопасные агрегаты (запуск внутри существующего control, никаких токенов в команде):
+
+```sh
+docker compose --env-file infra/runtime/stand.env -f infra/compose.yaml exec -T control python3 prototype/screen_status.py
+```
+
+Проверяйте `pending_commands`, `oldest_pending_seconds`, `retired_rooms` и состояния
+sessions. CLI открывает SQLite read-only; identities, leases, SDP, source/window names,
+JWT и ключи не печатает. Не включайте подробные SDK/raw HTTP логи для диагностики.
+
+| Симптом | Проверка и действие |
+| --- | --- |
+| Нет кнопки или capability=false | Серверный flag off, несовместимый/старый клиент; после включения начните новый звонок. |
+| Picker отменён/доступ запрещён | Повторите пользовательское действие и проверьте разрешение ОС; текущий ведущий сохраняется. |
+| Замок вместо картинки | Проверьте доверие выбранным устройствам, HTTPS/worker/E2EE; plaintext fallback отсутствует. |
+| Старый ведущий/завис переход | Проверьте revision и агрегаты pending/retired; не обходите DeleteRoom вручную выдачей JWT. При SFU-ошибке выключите flag и восстановите связь control↔SFU. |
+| Пустой показ | Без SFU-публикации 15 с room отзывается, heartbeat не продлевает её бесконечно. |
+| Слабая сеть | Выберите «Экран: Низкое»; проверьте реальные ICE/TURN порты, обычный HTTPS не заменяет TURN/TLS. |
+| Нужно аварийно выключить | Атомарно flag=0, дождитесь cleanup и закройте screen UI; голос сохраняется при исправной инфраструктуре. Не удаляйте volumes. |
+
+Android onStop/lock/background, внешняя сеть, полный restore приложения и нагрузка
+остаются в [матрице приёмки](../docs/screen-sharing-acceptance.md); сборка образа их не заменяет.

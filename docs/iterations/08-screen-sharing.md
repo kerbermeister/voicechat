@@ -2,6 +2,28 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-15 — 23 октября 2026: control image, backup metadata и runbook
+
+Реальная сборка выявила недостающий docker context: `.dockerignore` исключал SQL,
+хотя Dockerfile их копировал. Добавлены только два screen schema файла. Control image
+собран из закреплённых баз, модули импортируются, fresh/repeated migration v2 работают
+под UID10001 с read-only root и пустым tmpfs control; flag off, секретов внутри нет.
+Артефакт — `prototype/verified-screen-control-image-run.json`.
+
+Backup existing control volume уже включает screen metadata. Новый test SQLite backup
+→ восстановление → startup recovery доказывает, что старые leases аннулируются,
+retired очередь очищается, предыдущие call данные сохранены; integrity_check ok.
+Добавлен read-only screen_status.py с агрегатами без identities/JWT/leases/ключей.
+Runbook описывает диагностику, off/rollback и изолированный restore. Feature off имеет
+отдельный код screen_disabled: клиент закрывает экран сразу, не ждёт истечения lease.
+
+**43 Python tests PASS** (4.356 с), последующий адресный повтор 11 tests PASS;
+тестовый ResourceWarning устранён явным закрытием SQLite backup connection.
+Dart lifecycle/capture tests PASS; targeted analyze доводится до чистого состояния.
+Полное восстановление всего Compose приложения, внешний сервер и screen supervisor
+fault с живым media остаются не приняты. Образ не публиковался и production не менялся.
+SS-15 **PARTIAL**, аппаратные/нагрузочные/полный restore критерии не закрыты.
+
 ## SS-14 — 23 октября 2026: лёгкая циклическая регрессия, нагрузка BLOCKED
 
 Добавлена проверка 50 циклов takeover/stop в fake SFU координатора. После каждого

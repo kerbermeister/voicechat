@@ -1,0 +1,19 @@
+{
+  "result": "PASS",
+  "image": "sha256:caa3777db260ddf4aca89465429b47931162c11f46eb519c343cd97abaf2156a",
+  "uid": 10001,
+  "read_only_root": true,
+  "screen_schema": 2,
+  "feature_default": "off",
+  "checks": [
+    "imports of all control/screen modules",
+    "fresh migration",
+    "repeated migration",
+    "no embedded secrets file"
+  ],
+  "not_tested": [
+    "full Compose application restore",
+    "public network",
+    "production deployment"
+  ]
+}
