@@ -1,0 +1,12 @@
+{
+  "result": "PASS",
+  "run": "2026-10-23T18:45:34.494Z",
+  "scope": "real committed claim with one HTTP reply dropped by browser route",
+  "same_request_replayed": true,
+  "same_revision_and_generation": true,
+  "capture_released_and_owner_stopped": true,
+  "elapsed_seconds": 2.6136834169998764,
+  "client_source_commit": "691a0fc30a90b174dbe046069de130e739213116",
+  "client_js_sha256": "f450fc76593d49190bc1488429ef2eb46f78bcee46973bd1ceb708cdc4fc620d",
+  "call_mode": "audio; camera not requested"
+}

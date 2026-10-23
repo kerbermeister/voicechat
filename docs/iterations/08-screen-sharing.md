@@ -2,6 +2,46 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-10/SS-11 — 23 октября 2026: реальный device revoke и потерянный claim reply
+
+Обычная чистая web-сборка 691a0fc, Chrome 156, два одноразовых Matrix-пользователя,
+аудиозвонок без camera request. **PASS**:
+
+- Принятый сервером claim лишён HTTP-ответа через browser route. Poll повторил
+  то же тело/request_id; revision и generation совпали. Захват закрыт локально,
+  серверный owner остановлен; следующий обычный показ/перехват прошёл. **2.614 с**.
+- Во время группового показа удалено именно текущее Matrix-устройство ведущего,
+  не аккаунт. Его добровольный screen unbind блокирован. Выдача нового screen JWT
+  вернула 401, кадр скрыт, старая room отсутствует, независимый pinned SDK отверг
+  сохранённый **ещё действующий** JWT. Оставшийся участник сохранил звонок и смог
+  опубликовать новое поколение. **2.668 с**, без диагностической подмены приложения.
+
+Свидетельства: [потерянный ответ](../../prototype/verified-screen-lost-reply-run.json),
+[отзыв устройства](../../prototype/verified-screen-revoke-run.json). Только безопасные
+флаги/хеши, токены и credentials не записаны. Для удаления room используется ListRooms:
+ListParticipants в pinned SFU возвращает 200/[] даже для отсутствующей room. Проверка
+helper сначала обнаружила существующую room, затем подтвердила её удаление.
+
+Harness получил focused direct/group режимы, ожидание входящих base media и явную
+активацию вкладок; adaptiveStream может приостанавливать video в фоне. Дополнительные
+video прогоны выявили нестабильный старт основного group call **до screen claim**:
+иногда нет приглашения, иногда нет входящего audio/video у одной стороны. Причина
+пока не доказана; один успешный прогон это не отменяет. Это открытая локальная
+регрессия SS-16/A14, отдельно от аппаратных/сетевых gate. Финальные focused audio
+сценарии прошли. Временный диагностический JS и harness удалены, release не менялся.
+
+Команды (последовательно, локальный стенд с временным screen flag=1):
+
+```sh
+VOICECHAT_UI_URL=http://localhost:7358/ VOICECHAT_SCREEN_TEST=1 VOICECHAT_SCREEN_DIRECT_ONLY=1 VOICECHAT_SCREEN_LOST_REPLY_TEST=1 node prototype/check_contacts_ui.cjs
+VOICECHAT_UI_URL=http://localhost:7358/ VOICECHAT_SCREEN_TEST=1 VOICECHAT_SCREEN_GROUP_ONLY=1 VOICECHAT_SCREEN_REVOKE_TEST=1 node prototype/check_contacts_ui.cjs
+```
+
+Playwright использует доступный NODE_PATH; UI :7358 — чистая release JS сборка,
+SDK probe :7362 — существующая лаборатория. Android не запускался. Сквозной replay
+старого key envelope, три участника/одновременные pickers и полный live restart ещё
+не приняты; SS-11 остаётся PARTIAL.
+
 ## SS-16 — 23 октября 2026: итоговая локальная регрессия и пользовательская инструкция
 
 В обычном web приложении приняты personal/group video screen share с двумя

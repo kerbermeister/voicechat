@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const {execFileSync} = require('node:child_process');
 exports.syntheticMedia = () => {
   window.screenCaptureTracks=[];
   window.screenTestCameraRequests=0;
@@ -59,8 +60,23 @@ async function audio(page) {
   });
 }
 
+async function waitForCallMedia(a,b,video) {
+  // Основной звонок использует adaptiveStream: фоновая вкладка вправе не получать video.
+  for(const page of [a,b]) {
+    await page.bringToFront();
+    let state;
+    for(let attempt=0;attempt<100;attempt++) {
+      state=await audio(page);
+      if(state.packets>0 && (!video || state.frames>0)) break;
+      await page.waitForTimeout(200);
+    }
+    assert(state.packets>0 && (!video || state.frames>0),
+      'Base call must receive media before screen sharing: '+JSON.stringify(state));
+  }
+}
+
 const results={result:'IN_PROGRESS',run:new Date().toISOString()};
-exports.check = async (a,b,button,transport) => {
+exports.check = async (a,b,button,transport,revokeDevice) => {
   const started=performance.now();
   const audioOnly=process.env.VOICECHAT_VIDEO_TEST!=='1';
   async function mute(page, value) {
@@ -78,7 +94,11 @@ exports.check = async (a,b,button,transport) => {
     await source.goto(sourceUrl);
   }
   try {
+    await waitForCallMedia(a,b,!audioOnly);
     await button(a,'Показать экран').waitFor({timeout:30000});
+    if(transport==='direct' && process.env.VOICECHAT_SCREEN_LOST_REPLY_TEST==='1') {
+      await checkLostClaimReply(a,button);
+    }
     await a.bringToFront();
     if(audioOnly) await mute(a,true);
     await button(a,'Показать экран').click();
@@ -87,12 +107,12 @@ exports.check = async (a,b,button,transport) => {
     await a.bringToFront();
     await a.getByText('Экран: Авто',{exact:true}).click();
     await a.getByRole('menuitem',{name:'Экран: Низкое',exact:true}).click();
-    await a.getByRole('menu',{name:'Всплывающее меню'}).waitFor({state:'hidden'});
+    await a.getByRole('menu').waitFor({state:'hidden'});
     await a.waitForFunction(()=>window.callPeers.flatMap(pc=>pc.getSenders())
       .filter(s=>s.track?.getSettings().displaySurface).some(s=>s.getParameters().encodings?.every(e=>e.maxBitrate<=1000000&&e.maxFramerate<=8)));
     await a.getByText('Экран: Низкое',{exact:true}).click();
     await a.getByRole('menuitem',{name:'Экран: Авто',exact:true}).click();
-    await a.getByRole('menu',{name:'Всплывающее меню'}).waitFor({state:'hidden'});
+    await a.getByRole('menu').waitFor({state:'hidden'});
     if(audioOnly) await mute(a,false);
     const before=await audio(b);
     // Отмена picker не должна захватить владение или уничтожить текущий renderer.
@@ -147,6 +167,7 @@ exports.check = async (a,b,button,transport) => {
     results.result=results.direct && results.group ? 'PASS' : 'PARTIAL';
     fs.writeFileSync(path.join(__dirname,audioOnly ? 'verified-screen-calls-audio-run.json' : 'verified-screen-calls-run.json'),JSON.stringify(results,null,2)+'\n');
     console.log(`PASS: ${transport} screen capture, Matrix E2EE, cancellation, takeover and stop`);
+    if(revokeDevice) await checkRevoke(a,b,button,revokeDevice);
   } finally {
     const flag=process.env.VOICECHAT_SCREEN_TEST_FLAG;
     if(transport==='group' && flag && flag.startsWith('/tmp/voicechat-screen-')) {
@@ -155,3 +176,112 @@ exports.check = async (a,b,button,transport) => {
     for(const source of sources) await source.close();
   }
 };
+
+async function checkLostClaimReply(page,button) {
+  const started=performance.now();
+  const report={result:'FAIL',run:new Date().toISOString(),scope:'real committed claim with one HTTP reply dropped by browser route'};
+  const pattern='**/screen/*/claim';
+  let first,finish,fail;
+  const replayed=new Promise((resolve,reject)=>{finish=resolve;fail=reject;});
+  const timer=setTimeout(()=>fail(new Error('Lost claim must be replayed within 15 seconds')),15000);
+  const handler=async route=>{
+    try {
+      const body=route.request().postDataJSON();
+      const response=await route.fetch();
+      assert.equal(response.status(),200);
+      const result=await response.json();
+      assert.equal(result.status,'succeeded');
+      if(!first) {
+        first={body,result};
+        await route.abort();
+      } else {
+        assert.deepEqual(body,first.body,'Retry must preserve the whole command and request_id');
+        assert.equal(result.snapshot.generation,first.result.snapshot.generation,'Retry must not rotate the screen room');
+        assert.equal(result.snapshot.revision,first.result.snapshot.revision);
+        await route.fulfill({response});
+        finish();
+      }
+    } catch(error) {fail(error);await route.abort().catch(()=>{});}
+  };
+  await page.route(pattern,handler);
+  const stopped=page.waitForResponse(r=>r.status()===200 && /\/screen\/[^/]+\/stop$/.test(r.url()),{timeout:20000});
+  const settled=Promise.all([replayed,stopped]);
+  try {
+    await page.bringToFront();await button(page,'Показать экран').click();
+    await settled;
+    await button(page,'Показать экран').waitFor();
+    await page.waitForFunction(()=>window.screenCaptureTracks.every(t=>t.readyState==='ended'));
+    report.result='PASS';
+    report.same_request_replayed=true;
+    report.same_revision_and_generation=true;
+    report.capture_released_and_owner_stopped=true;
+    console.log('PASS: dropped claim reply replays same command without rotating room again');
+  } finally {
+    clearTimeout(timer);
+    await page.unroute(pattern,handler);
+    report.elapsed_seconds=(performance.now()-started)/1000;
+    fs.writeFileSync(path.join(__dirname,'verified-screen-lost-reply-run.json'),JSON.stringify(report,null,2)+'\n');
+  }
+}
+
+async function checkRevoke(a,b,button,revokeDevice) {
+  const report={result:'FAIL',run:new Date().toISOString(),scope:'real Matrix device deletion during group screen publication'};
+  const tokenResponse=b.waitForResponse(r=>r.status()===200 && /\/screen\/[^/]+\/token$/.test(r.url()));
+  await b.bringToFront();await button(b,'Показать экран').click();
+  const response=await tokenResponse;
+  const saved=await response.json();
+  const headers=await response.request().allHeaders();
+  const claims=JSON.parse(Buffer.from(saved.token.split('.')[1],'base64url').toString());
+  assert.equal(saved.role,'publisher');
+  const whoResponse=await fetch(new URL('/_matrix/client/v3/account/whoami',process.env.VOICECHAT_MATRIX_URL || 'http://localhost:8008'),{
+    headers:{Authorization:headers.authorization},signal:AbortSignal.timeout(5000)});
+  assert.equal(whoResponse.status,200);
+  const who=await whoResponse.json();
+  assert.equal(claims.sub,who.user_id+'/'+who.device_id);
+  await button(b,'Остановить показ').waitFor({timeout:15000});
+  await button(a,'Перехватить экран').waitFor({timeout:15000});
+  await pixels(a);
+  // Не позволяем отозванному UI добровольно unbind: отзыв должен обеспечить сервер.
+  const block=route=>route.abort();
+  await b.route('**/screen/**',block);
+  let probe;
+  const started=performance.now();
+  try {
+    await revokeDevice(who.device_id);
+    const denied=await fetch(response.url(),{method:'POST',headers:{'Content-Type':'application/json',Authorization:headers.authorization},
+      body:response.request().postData(),signal:AbortSignal.timeout(5000)});
+    assert.equal(denied.status,401,'Deleted device must not receive another screen token');
+    await button(a,'Показать экран').waitFor({timeout:10000});
+    await pixels(a,false);
+    assert.equal(claims.video.room,saved.generation);
+    execFileSync('python3',['-c',
+      "import sys;sys.path.insert(0,'prototype');from screen_fixture import assert_room_absent;assert_room_absent(sys.stdin.read())"],
+      {input:saved.generation,cwd:path.join(__dirname,'..'),stdio:['pipe','pipe','pipe']});
+    assert(Date.now()/1000<claims.exp,'Saved JWT must still be unexpired');
+    probe=await a.context().newPage();
+    const fixture={key:Buffer.alloc(32).toString('base64'),screen_wrong:saved.token,camera_wrong:saved.token};
+    await probe.route('**/fixture.json',route=>route.fulfill({json:fixture}));
+    await probe.goto(process.env.VOICECHAT_SCREEN_PROBE_URL || 'http://localhost:7362/?role=wrong');
+    await probe.getByText(/^failed:/).waitFor({timeout:20000});
+    assert(Date.now()/1000<claims.exp,'Reconnect rejection must precede token expiry');
+    assert(await button(a,'Завершить').isVisible(),'Remaining group participant must retain the call');
+    await a.bringToFront();
+    await button(a,'Показать экран').click();
+    await button(a,'Остановить показ').waitFor({timeout:15000});
+    await button(a,'Остановить показ').click();
+    report.result='PASS';
+    report.token_endpoint_after_device_deletion=401;
+    report.old_frame_hidden=true;
+    report.old_sfu_room_deleted=true;
+    report.independent_pinned_sdk_rejects_unexpired_old_jwt=true;
+    report.revoked_client_unbind_blocked=true;
+    report.remaining_group_call_survives=true;
+    report.remaining_device_can_publish_new_generation=true;
+    console.log('PASS: Matrix device deletion revokes active screen; independent SDK rejects unexpired JWT');
+  } finally {
+    report.elapsed_seconds=(performance.now()-started)/1000;
+    fs.writeFileSync(path.join(__dirname,'verified-screen-revoke-run.json'),JSON.stringify(report,null,2)+'\n');
+    if(probe) await probe.close();
+    await b.unroute('**/screen/**',block);
+  }
+}

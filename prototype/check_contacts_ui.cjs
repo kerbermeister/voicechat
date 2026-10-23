@@ -529,33 +529,39 @@ async function register(role) {
       console.log('PASS: chat list and requested acceptance scenarios; no calls or microphone');
       return;
     }
-    await button(a,callButton).click();
-    await button(b,'Принять').waitFor({timeout:30000});
-    await b.waitForFunction(()=>window.soundPlays.some(p=>p.src.includes('ringtone.wav')));
-    await button(b,'Принять').click();
-    if(!screenTest) await waitForAnnouncement(a,video ? 'защищённое видео' : 'защищённое аудио');
-    if(!screenTest) await waitForAnnouncement(b,video ? 'защищённое видео' : 'защищённое аудио');
-    if(video && !screenTest) {
-      await videoFrames(a); await videoFrames(b);
-      await toggleCamera(a);
-      await videoFrames(a);
-      await qualityCheck(a,b);
-      if(network) await networkCheck(a,b,'direct');
-      await a.screenshot({path:path.join(root,'.prototype/ui/direct-video.png')});
+    if(!screenTest || process.env.VOICECHAT_SCREEN_GROUP_ONLY!=='1') {
+      await a.bringToFront();
+      await button(a,callButton).click();
+      await button(b,'Принять').waitFor({timeout:30000});
+      await b.waitForFunction(()=>window.soundPlays.some(p=>p.src.includes('ringtone.wav')));
+      await button(b,'Принять').click();
+      if(!screenTest) await waitForAnnouncement(a,video ? 'защищённое видео' : 'защищённое аудио');
+      if(!screenTest) await waitForAnnouncement(b,video ? 'защищённое видео' : 'защищённое аудио');
+      if(video && !screenTest) {
+        await videoFrames(a); await videoFrames(b);
+        await toggleCamera(a);
+        await videoFrames(a);
+        await qualityCheck(a,b);
+        if(network) await networkCheck(a,b,'direct');
+        await a.screenshot({path:path.join(root,'.prototype/ui/direct-video.png')});
+      }
+      if(screenTest) await require('./check_screen_calls.cjs').check(a,b,button,'direct');
+      await b.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringtone.wav')).every(p=>p.audio.paused));
+      await a.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringback.wav')).every(p=>p.audio.paused));
+      await a.waitForTimeout(2200);
+      console.log('Checking direct-call termination');
+      await button(a,'Завершить').click();
+      await button(a,'Закрыть').click();
+      await button(b,'Закрыть').click();
     }
-    if(screenTest) await require('./check_screen_calls.cjs').check(a,b,button,'direct');
-    await b.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringtone.wav')).every(p=>p.audio.paused));
-    await a.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringback.wav')).every(p=>p.audio.paused));
-    await a.waitForTimeout(2200);
-    console.log('Checking direct-call termination');
-    await button(a,'Завершить').click();
-    await button(a,'Закрыть').click();
-    await button(b,'Закрыть').click();
+    if(screenTest && process.env.VOICECHAT_SCREEN_DIRECT_ONLY==='1') return;
     console.log('Checking answered group-call timeout');
     await a.getByText('Группы',{exact:true}).click();
     await a.getByRole('button',{name:/Согласие на группу/}).click();
+    await a.bringToFront();
     await button(a,callButton).click();
     await button(b,'Принять').waitFor({timeout:30000});
+    await b.bringToFront();
     await button(b,'Принять').click();
     if(!screenTest) await waitForAnnouncement(a,video ? 'Защищённое видео' : 'Защищённое аудио');
     if(!screenTest) await waitForAnnouncement(b,video ? 'Защищённое видео' : 'Защищённое аудио');
@@ -567,7 +573,16 @@ async function register(role) {
       if(network) await networkCheck(a,b,'group');
       await a.screenshot({path:path.join(root,'.prototype/ui/group-video.png')});
     }
-    if(screenTest) await require('./check_screen_calls.cjs').check(a,b,button,'group');
+    if(screenTest) await require('./check_screen_calls.cjs').check(a,b,button,'group',
+      process.env.VOICECHAT_SCREEN_REVOKE_TEST==='1' ? device=>request(matrixUrl,
+        '/_matrix/client/v3/devices/'+encodeURIComponent(device),
+        {auth:{type:'m.login.password',identifier:{type:'m.id.user',user:bob.user_id},password:bob.password}},
+        bob.access_token,'DELETE') : null);
+    if(screenTest && process.env.VOICECHAT_SCREEN_REVOKE_TEST==='1') {
+      await button(a,'Завершить').click();
+      await button(a,'Закрыть').click();
+      return;
+    }
     await button(b,'Завершить').click();
     await button(b,'Закрыть').click();
     await a.waitForTimeout(screenTest ? 1000 : 46000);

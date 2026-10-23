@@ -13,6 +13,18 @@ root = Path(__file__).resolve().parents[1]
 directory = root / '.prototype/screen-probe-web'
 
 
+def assert_room_absent(room):
+    # ListParticipants возвращает 200/[] и для отсутствующей room: нужен ListRooms.
+    now = int(time.time())
+    token = jwt({'iss': 'prototype', 'nbf': now - 5, 'exp': now + 30,
+                 'video': {'roomList': True}})
+    request = urllib.request.Request('http://127.0.0.1:7880/twirp/livekit.RoomService/ListRooms',
+        json.dumps({'names': [room]}).encode(),
+        {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
+    with urllib.request.urlopen(request, timeout=5) as response:
+        assert not json.load(response).get('rooms', []), 'Revoked screen room still exists'
+
+
 def main():
     if sys.argv[1:] not in ([], ['cleanup'], ['retire-screen'], ['refresh-sender'], ['inspect-duplicate']):
         raise SystemExit('Usage: screen_fixture.py [cleanup|retire-screen|refresh-sender|inspect-duplicate]')

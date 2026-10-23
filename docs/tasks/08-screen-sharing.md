@@ -271,8 +271,12 @@ UI-тесты и mocks VoiceCall. Согласовать с текущим ди�
   binding без второго подтверждения не получают экранный токен/ключ.
 - [ ] Серверу недоступны ключи/кадры; logs/SQLite/reports не содержат их и bearer tokens.
   Потеря ключа не переводит поток в plaintext; правильный ключ расшифровывает кадры.
-- [ ] Проверить fail-closed supervisor, `auto_create:false` и успешное уничтожение
+- [x] Проверить fail-closed supervisor, `auto_create:false` и успешное уничтожение
   комнат на реальном pinned LiveKit, а не только в fake media API.
+
+Локальное дополнение: потерянный HTTP claim reply и Matrix device deletion с
+независимым replay unexpired JWT — PASS. Полная негативная матрица остаётся PARTIAL;
+нестабильный основной group video до screen claim расследуется в SS-16/A14.
 
 **Готовность:** SS-A10/A11/A12 с независимым атакующим test client и сохранёнными
 безопасными результатами. Любой обход — блокирующий дефект.
