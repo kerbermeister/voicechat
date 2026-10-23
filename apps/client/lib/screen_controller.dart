@@ -26,11 +26,13 @@ class ScreenShareController extends ChangeNotifier {
   bool decoded = false;
   bool _closed = false, _polling = false, _acting = false;
   bool _bindingPending = false;
+  bool _bindingInFlight = false;
   bool _disposed = false;
   String? _binding, _lease, _generation;
   int _serial = 0;
   Timer? _timer;
   ScreenCapture? _capture;
+  lk.LocalVideoTrack? _publication;
   lk.BaseKeyProvider? _keys;
   Uint8List? _senderKey;
   lk.EventsListener<lk.RoomEvent>? _events;
@@ -59,37 +61,47 @@ class ScreenShareController extends ChangeNotifier {
   }
 
   Future<void> connect() async {
-    if (_closed || _binding != null) return;
-    final result = await api.request('bind', await screenBindingRequest(call));
-    if (_closed || call.isClosed) {
-      await api.request('unbind', {
-        'protocol_version': 1,
-        'binding_id': result['binding_id'],
-        'lease_id': result['lease_id'],
-        'request_id': screenRequestId(),
-      });
-      return;
-    }
-    if (result['binding_id'] is! String ||
-        result['lease_id'] is! String ||
-        !RegExp(r'^[a-f0-9]{64}$').hasMatch(result['lease_id'])) {
-      throw const FormatException('screen binding');
-    }
-    _binding = result['binding_id'];
-    _lease = result['lease_id'];
-    _bindingPending = result['binding_state'] == 'pending';
-    _messages = call.chat.client.onToDeviceEvent.stream.listen((event) {
-      unawaited(_receive(event).catchError((Object _) {}));
-    });
-    _authorized.start();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (call.isClosed || _authorized.elapsed >= const Duration(seconds: 25)) {
-        unawaited(close());
-      } else {
-        unawaited(poll());
+    if (_closed || _binding != null || _bindingInFlight) return;
+    _bindingInFlight = true;
+    try {
+      final result = await api.request(
+        'bind',
+        await screenBindingRequest(call),
+      );
+      if (_closed || call.isClosed) {
+        await api.request('unbind', {
+          'protocol_version': 1,
+          'binding_id': result['binding_id'],
+          'lease_id': result['lease_id'],
+          'request_id': screenRequestId(),
+        });
+        return;
       }
-    });
-    await _apply(result['snapshot'] as Map<String, dynamic>);
+      if (result['binding_id'] is! String ||
+          result['lease_id'] is! String ||
+          !RegExp(r'^[a-f0-9]{64}$').hasMatch(result['lease_id'])) {
+        throw const FormatException('screen binding');
+      }
+      _binding = result['binding_id'];
+      _lease = result['lease_id'];
+      _bindingPending = result['binding_state'] == 'pending';
+      _messages = call.chat.client.onToDeviceEvent.stream.listen((event) {
+        unawaited(_receive(event).catchError((Object _) {}));
+      });
+      _authorized.start();
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (call.isClosed ||
+            _authorized.elapsed >= const Duration(seconds: 25)) {
+          unawaited(close());
+        } else {
+          unawaited(poll());
+        }
+      });
+      await _apply(result['snapshot'] as Map<String, dynamic>);
+    } finally {
+      _bindingInFlight = false;
+      if (_closed) api.close();
+    }
   }
 
   Future<void> poll() async {
@@ -275,6 +287,14 @@ class ScreenShareController extends ChangeNotifier {
     }
     if (next.state != 'active') {
       await _disposeMedia();
+      if (next.state == 'unavailable' &&
+          next.owner == identity &&
+          _capture != null &&
+          _pending == null) {
+        phase = ScreenPhase.preparing;
+        await _command('claim');
+        return;
+      }
       phase = ScreenPhase.idle;
       _changed();
       return;
@@ -414,6 +434,7 @@ class ScreenShareController extends ChangeNotifier {
         return;
       }
       try {
+        _publication = publication;
         await room.localParticipant!.publishVideoTrack(publication);
       } catch (_) {
         await publication.dispose();
@@ -521,10 +542,14 @@ class ScreenShareController extends ChangeNotifier {
     remoteTrack = null;
     decoded = false;
     final events = _events, room = media, keys = _keys;
+    final publication = _publication;
+    _publication = null;
     _events = null;
     media = null;
     _keys = null;
     try {
+      // Web clone тоже держит capture: прекращаем его до любых сетевых await.
+      await publication?.dispose();
       await events?.dispose();
     } finally {
       try {
@@ -539,7 +564,7 @@ class ScreenShareController extends ChangeNotifier {
     }
   }
 
-  Future<void> close() => _closing ??= _close();
+  Future<void> close() => _closing ??= _close().catchError((Object _) {});
   Future<void> _close() async {
     _closed = true;
     _timer?.cancel();
@@ -566,7 +591,7 @@ class ScreenShareController extends ChangeNotifier {
         } catch (_) {
           /* Lease завершится на сервере без доверия к клиентской очистке. */
         }
-        api.close();
+        if (!_bindingInFlight) api.close();
       }
     }
   }

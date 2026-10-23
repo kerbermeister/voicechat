@@ -49,6 +49,7 @@ class ScreenHTTPTests(unittest.TestCase):
         self.server.shutdown();self.server.server_close();self.thread.join()
 
     def media(self,method,body):
+        if method=='ListParticipants': return {'participants':getattr(self,'participants',[])}
         if method=='CreateRoom':self.rooms.add(body['name'])
         else:self.rooms.discard(body['room'])
 
@@ -68,6 +69,27 @@ class ScreenHTTPTests(unittest.TestCase):
         status,second=self.request('bind',{**base,'peer':{'user_id':'@a:x','device_id':'A'}},actor='b')
         self.assertEqual(status,200)
         return first,second
+
+    def test_empty_duplicate_and_plaintext_publications_are_revoked(self):
+        first,_=self.pair();binding=first['binding_id']
+        def claim():
+            state=self.request(binding+'/state')[1]
+            return self.request(binding+'/claim',{'protocol_version':1,'lease_id':first['lease_id'],
+                'request_id':str(uuid4()),'expected_revision':state['revision']})[1]['snapshot']
+        claim(); self.service.tick()
+        self.now+=14
+        self.service.tick(); self.assertTrue(self.rooms)
+        self.now+=1
+        self.service.tick(); self.assertFalse(self.rooms)
+        for tracks in ([{'source':'SCREEN_SHARE','encryption':'GCM'}]*2,
+                       [{'source':'SCREEN_SHARE','encryption':'NONE'}],
+                       [{'source':'CAMERA','encryption':'GCM'}]):
+            claim()
+            self.participants=[{'identity':'@a:x/A','tracks':tracks}]
+            self.service.tick();self.assertFalse(self.rooms)
+        claim()
+        self.participants=[{'identity':'@a:x/A','tracks':[{'source':'SCREEN_SHARE','encryption':'GCM'}]}]
+        self.service.tick();self.assertTrue(self.rooms)
 
     def test_routes_roles_receipts_and_no_cross_device_secrets(self):
         first,second=self.pair(); binding=first['binding_id']

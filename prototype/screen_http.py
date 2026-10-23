@@ -14,6 +14,7 @@ class ScreenService:
         self.store, self.signer, self.enabled = store, signer, enabled
         self.transitions = ScreenTransitions(store, media_api)
         self.lock = threading.RLock()
+        self._publication_deadlines = {}
 
     def tick(self):
         with self.lock:
@@ -29,6 +30,39 @@ class ScreenService:
                         AND binding_id NOT IN (SELECT binding_id FROM screen_retired)''',
                         (self.store._now()-86400000,))
             self.transitions.recover()
+            self._watch_publications()
+
+    def _watch_publications(self):
+        # Эти часы не авторизуют доступ. После restart все binding отзываются.
+        with self.store.db() as db:
+            sessions = [dict(r) for r in db.execute("SELECT * FROM screen_sessions WHERE state='active'")]
+        active = {s['generation'] for s in sessions}
+        self._publication_deadlines = {g:d for g,d in self._publication_deadlines.items() if g in active}
+        for session in sessions:
+            generation = session['generation']
+            now = self.store._now()
+            deadline = self._publication_deadlines.setdefault(generation,now+15000)
+            info = self.transitions.media_api('ListParticipants',{'room':generation})
+            if not isinstance(info,dict) or not isinstance(info.get('participants',[]),list):
+                raise ValueError('invalid_screen_media_state')
+            allowed = {p['identity'] for p in self.store.participants(session['binding_id'])}
+            tracks = [(p.get('identity'),t) for p in info.get('participants',[]) for t in p.get('tracks',[])]
+            invalid = any(p.get('identity') not in allowed for p in info.get('participants',[]))
+            invalid = invalid or len(tracks)>1 or any(
+                identity!=session['owner_identity'] or track.get('source') not in (3,'SCREEN_SHARE')
+                or track.get('type',0) not in (0,'VIDEO') or track.get('encryption') not in (1,'GCM')
+                or 'av1' in str(track.get('mimeType',track.get('mime_type',''))).lower()
+                for identity,track in tracks)
+            if tracks and not invalid:
+                self._publication_deadlines[generation]=now+15000
+            if invalid or (not tracks and now>=deadline):
+                with self.store.db() as db:
+                    db.execute('BEGIN IMMEDIATE')
+                    current=db.execute('SELECT generation FROM screen_sessions WHERE binding_id=?',
+                                       (session['binding_id'],)).fetchone()
+                    if current and current[0]==generation:
+                        self.store._invalidate(db,session['binding_id'])
+                self.transitions.recover()
 
     def _binding(self, binding_id, who):
         identity = who['user_id']+'/'+who['device_id']

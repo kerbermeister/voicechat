@@ -112,6 +112,33 @@ class ScreenAdmissionTests(unittest.TestCase):
         with self.assertRaises(ScreenError):
             self.auth(self.a,bound)
 
+    def test_roster_change_keeps_only_surviving_owner_for_fresh_claim(self):
+        from uuid import uuid4
+        from screen_transitions import ScreenTransitions
+        bindings=[]
+        for actor in (self.a,self.b):
+            try: self.calls.admission('!g:x','rotation',False,actor,*self.valid[actor['user_id']+'/'+actor['device_id']])
+            except ValueError: pass
+            self.now+=1
+            call=self.calls.admission('!g:x','rotation',False,actor,*self.valid[actor['user_id']+'/'+actor['device_id']])
+            bindings.append(self.store.bind(actor,{'room_id':'!g:x','call_session':'rotation','transport':'group',
+                                                   'call_lease_id':call['lease_id']},self.valid))
+        binding=bindings[0]['binding_id']
+        def session():
+            with self.store.db() as db: return dict(db.execute('SELECT * FROM screen_sessions WHERE binding_id=?',(binding,)).fetchone())
+        engine=ScreenTransitions(self.store,lambda *_:None)
+        engine.command('claim',self.a,binding,bindings[0]['lease_id'],self.valid,str(uuid4()),session()['revision'])
+        old=session()['generation']
+        self.store.leave(self.b,binding,bindings[1]['lease_id'])
+        self.assertEqual(session()['state'],'unavailable')
+        self.assertEqual(session()['owner_identity'],'@a:x/A')
+        self.assertIsNone(session()['generation'])
+        engine.command('claim',self.a,binding,bindings[0]['lease_id'],self.valid,str(uuid4()),session()['revision'])
+        self.assertNotEqual(session()['generation'],old)
+        self.store.leave(self.a,binding,bindings[0]['lease_id'])
+        self.assertEqual(session()['state'],'ended')
+        self.assertIsNone(session()['owner_identity'])
+
     def test_v1_metadata_upgrade_preserves_bindings(self):
         path = self.path.with_name('old.sqlite')
         with sqlite3.connect(path) as db:

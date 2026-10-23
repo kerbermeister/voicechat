@@ -49,14 +49,18 @@ class ScreenStore:
     def _now(self):
         return int(self.clock() * 1000)
 
-    def _invalidate(self, db, binding_id, terminal=False):
+    def _invalidate(self, db, binding_id, terminal=False, retain_owner=False):
         session = db.execute('SELECT * FROM screen_sessions WHERE binding_id=?', (binding_id,)).fetchone()
         if session['generation']:
             db.execute('INSERT OR IGNORE INTO screen_retired VALUES(?,?,?)',
                        (session['generation'], binding_id, session['revision']))
+        retain_owner = (retain_owner and not terminal and session['owner_identity'] is not None
+                        and session['state'] in ('active','unavailable'))
         db.execute('''UPDATE screen_sessions SET revision=revision+1,roster_version=roster_version+1,
-            state=?,owner_identity=NULL,owner_lease_id=NULL,generation=NULL,operation_id=NULL,deadline=NULL
-            WHERE binding_id=?''', ('ended' if terminal else 'idle', binding_id))
+            state=?,owner_identity=?,owner_lease_id=?,generation=NULL,operation_id=NULL,deadline=NULL
+            WHERE binding_id=?''', ('ended' if terminal else 'unavailable' if retain_owner else 'idle',
+                                  session['owner_identity'] if retain_owner else None,
+                                  session['owner_lease_id'] if retain_owner else None, binding_id))
         if terminal:
             db.execute("UPDATE screen_bindings SET state='ended',ended_at=? WHERE id=?", (self._now(), binding_id))
 
@@ -79,7 +83,8 @@ class ScreenStore:
                 invalid.append(participant['identity'])
         if invalid:
             terminal = binding['transport'] == 'direct' or len(invalid) == len(participants)
-            self._invalidate(db, binding['id'], terminal)
+            owner = db.execute('SELECT owner_identity FROM screen_sessions WHERE binding_id=?',(binding['id'],)).fetchone()[0]
+            self._invalidate(db, binding['id'], terminal, retain_owner=owner not in invalid)
             db.executemany('DELETE FROM screen_participants WHERE binding_id=? AND identity=?',
                            [(binding['id'], identity) for identity in invalid])
             if terminal:
@@ -134,7 +139,7 @@ class ScreenStore:
                                 (binding_id,identity,user_id,device_id,curve,ed,lease_id,call_lease_id,confirmed,expires,peer_identity)
                                 VALUES(?,?,?,?,?,?,?,?,0,?,?)''', (binding['id'], identity, who['user_id'], who['device_id'],
                                     *keys, lease, request.get('call_lease_id'), self._now()+30000, peer_identity))
-                            self._invalidate(db, binding['id'])
+                            self._invalidate(db, binding['id'], retain_owner=True)
                         else:
                             db.execute('UPDATE screen_participants SET expires=?,call_lease_id=? WHERE lease_id=?',
                                        (self._now()+30000, request.get('call_lease_id'), lease))
@@ -190,6 +195,8 @@ class ScreenStore:
                 raise ScreenError('screen_access_denied')
             binding = db.execute('SELECT * FROM screen_bindings WHERE id=?', (binding_id,)).fetchone()
             count = db.execute('SELECT COUNT(*) FROM screen_participants WHERE binding_id=?', (binding_id,)).fetchone()[0]
-            self._invalidate(db, binding_id, binding['transport'] == 'direct' or count == 1)
+            owner = db.execute('SELECT owner_identity FROM screen_sessions WHERE binding_id=?',(binding_id,)).fetchone()[0]
+            self._invalidate(db, binding_id, binding['transport'] == 'direct' or count == 1,
+                             retain_owner=owner != identity)
             db.execute('DELETE FROM screen_participants WHERE binding_id=? AND (identity=? OR ?)',
                        (binding_id, identity, binding['transport'] == 'direct'))

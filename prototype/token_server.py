@@ -78,8 +78,9 @@ def scheduled_store():
 
 def media_api(method, body):
     now = int(time.time())
+    grant = {'roomAdmin': True, 'room': body['room']} if method == 'ListParticipants' else {'roomCreate': True}
     token = jwt({'iss': 'prototype', 'nbf': now - 5, 'exp': now + 30,
-                 'video': {'roomCreate': True}})
+                 'video': grant})
     request = urllib.request.Request('http://127.0.0.1:7880/twirp/livekit.RoomService/' + method,
         json.dumps(body).encode(), {'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
     try:
