@@ -21,8 +21,19 @@ def main():
         with smtplib.SMTP('smtp.yandex.ru', 587, timeout=20) as smtp:
             smtp.starttls(context=ssl.create_default_context())
             smtp.login(address, password)
-    except (OSError, smtplib.SMTPException):
-        raise SystemExit('Yandex connection/authentication failed; check app password and outbound TCP 587') from None
+    except smtplib.SMTPAuthenticationError as error:
+        # Do not print the raw SMTP reply: providers may echo authentication data.
+        raise SystemExit(
+            f'Yandex authentication failed (SMTP {error.smtp_code}). '
+            'Use a Mail app password, not the account password. Enable app passwords '
+            'in Yandex Mail settings. A newly created app password may take 2-3 hours '
+            'to become active; keep it and retry later.'
+        ) from None
+    except (OSError, smtplib.SMTPException) as error:
+        raise SystemExit(
+            f'Yandex connection failed ({type(error).__name__}); '
+            'check outbound TCP 587 and TLS. Server secrets were not created.'
+        ) from None
     os.environ.update(SMTP_HOST='smtp.yandex.ru', SMTP_PORT='587', SMTP_USER=address,
                       SMTP_PASSWORD=password, SMTP_FROM=f'VoiceChat <{address}>')
     bootstrap.main()

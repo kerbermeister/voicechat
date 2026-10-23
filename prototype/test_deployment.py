@@ -20,7 +20,8 @@ import setup_yandex
 
 class DeploymentTests(unittest.TestCase):
     def test_yandex_bootstrap_requires_verified_smtp_login(self):
-        for failure in (None, setup_yandex.smtplib.SMTPAuthenticationError(535, b'denied')):
+        for failure in (None, setup_yandex.smtplib.SMTPAuthenticationError(535, b'echoed-secret'),
+                        OSError('echoed-secret'), setup_yandex.smtplib.SMTPException('echoed-secret')):
             with self.subTest(failure=failure), patch.dict(os.environ,{},clear=True), \
                  patch.object(Path,'exists',return_value=False), \
                  patch('builtins.input',return_value='sender@yandex.ru'), \
@@ -30,8 +31,12 @@ class DeploymentTests(unittest.TestCase):
                 connection = smtp.return_value.__enter__.return_value
                 connection.login.side_effect = failure
                 if failure:
-                    with self.assertRaisesRegex(SystemExit,'authentication failed'):
+                    with self.assertRaisesRegex(SystemExit,'(authentication|connection) failed') as result:
                         setup_yandex.main()
+                    self.assertNotIn('echoed-secret', str(result.exception))
+                    if isinstance(failure, setup_yandex.smtplib.SMTPAuthenticationError):
+                        self.assertIn('SMTP 535', str(result.exception))
+                        self.assertIn('2-3 hours', str(result.exception))
                     initialize.assert_not_called()
                     self.assertNotIn('SMTP_PASSWORD',os.environ)
                 else:
