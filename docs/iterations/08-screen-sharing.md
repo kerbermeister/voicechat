@@ -2,6 +2,51 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-10 / SS-16 — локальная fault-матрица завершена
+
+**PASS**: `network` 26.810 с, `after_create` 32.929 с, `after_delete` 33.893 с, `lease` 55.438 с, `kick` 23.510 с.
+
+Короткий реальный обрыв SFU WebSockets и HTTP A: после восстановления получен
+свежий grant, растут decoded frames, остаются прежние generation и root capture.
+При следующем отключении B перехватил экран; вернувшийся A закрыл capture,
+получил viewer grant и увидел пиксели B, без автоматического claim. Это отказ
+сигналинга/control, не измерение потерь UDP или внешней сети.
+
+Для CreateRoom/DeleteRoom production API wrapper вызывает настоящий pinned SFU,
+затем однократно теряет ответ уже выполненной операции. Клиент закрывает
+неопределённый capture; durable intent восстанавливается и компенсируется.
+Нет ложного success, active/pending/retired=0, старый root/кадр исчезают.
+Явный новый запуск B создаёт один рабочий encrypted screen, A видит B; основные
+voice PC не заменяются, voice/camera counters растут.
+
+Блокировка только screen HTTP A оставляет основной voice/video call живым:
+истекают клиентский допуск и серверный lease, capture закрыт, room удалена,
+независимый SDK отвергает unexpired old JWT. B может явно начать новый показ.
+Настоящий Matrix kick зрителя B ротирует screen generation/roster; ведущий A
+продолжает тот же capture, B не получает новый ключ/grant и не входит старым JWT.
+Вместе с предыдущими late join, добровольным leave и device revoke это закрывает
+локальный roster/recovery scope SS-10. OS Stop, Android и внешние сети остаются
+своими отдельными gate, нагрузка не запускалась.
+
+Observer исправлен окончательно: копия реального fetch response читается внутри
+тестовой вкладки до передачи SDK; body/JWT сохраняются только в памяти Node/browser.
+Это не proxy и не подмена ответов, offline продолжает блокировать реальные запросы.
+Чтение response body через DevTools иногда зависало, хотя SDK получал ответ.
+Первоначальное ожидание автоматической публикации после SFU 503 было ошибкой
+теста: безопасный контракт — локальный abort и компенсация, затем явный retry.
+Production-код не менялся. 29 Python screen tests повторно PASS.
+
+Все fixture accounts/rooms/private databases очищены. Lab target для kick
+прошёл analyzer и release build 65.7 с; хешы source/JS находятся в отчётах.
+Ранее четыре container fault-прогона сохранены отдельным коммитом 0d1bb10.
+Следующий этап — полный Compose backup/restore SS-15.
+
+- [network](../../prototype/verified-screen-security-faults-network-run.json)
+- [after_create](../../prototype/verified-screen-security-faults-after_create-run.json)
+- [after_delete](../../prototype/verified-screen-security-faults-after_delete-run.json)
+- [lease](../../prototype/verified-screen-security-faults-lease-run.json)
+- [kick](../../prototype/verified-screen-security-faults-kick-run.json)
+
 ## SS-10 / SS-16 — живые restart, crash и health watchdog
 
 **Локально PASS**: `restart` 32.996 с, `kill_control` 47.233 с, `kill_sfu` 50.911 с, `pause_control` 41.741 с.

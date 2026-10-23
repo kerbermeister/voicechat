@@ -1,0 +1,18 @@
+{
+  "result": "PASS",
+  "run": "2026-10-23T21:36:37.878Z",
+  "mode": "faults",
+  "scope": "laboratory entrypoint using production controllers; real Matrix/Olm/SFU/tab capture; synthetic voice/camera",
+  "production_source_commit": "56efbb17440c9d495fc9385a284cb08dbade73da",
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "fault": "network",
+  "laboratory_source_sha256": "d2550be91c74287df2e04cf6dbf1901eb042bd62dfa19b1f3063e464bd317697",
+  "laboratory_js_sha256": "10614ec57551746979d1bb2a2dda49f9768bbd04312e5c841180d7afb0a79656",
+  "control_image_id": "sha256:caa3777db260ddf4aca89465429b47931162c11f46eb519c343cd97abaf2156a",
+  "short_disconnect_preserves_capture_and_generation": true,
+  "reconnected_loser_is_viewer_and_sees_winner": true,
+  "no_automatic_reclaim_or_capture": true,
+  "cleanup_completed": true,
+  "elapsed_seconds": 26.810274291999637
+}

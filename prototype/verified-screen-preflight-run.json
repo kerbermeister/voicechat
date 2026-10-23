@@ -48,10 +48,6 @@
   },
   "remaining_gates": [
     {
-      "tasks": "SS-10 / SS-16 / A14",
-      "required": "Remaining joint container/media fault phases; local web SS-11 negatives accepted by separate evidence"
-    },
-    {
       "tasks": "SS-12 / A02,A09,A13,A16",
       "required": "Physical Android deferred by owner; supported browser/mobile viewers, manual monitor/window picker and OS Stop, system audio exclusion, accessibility"
     },
@@ -83,5 +79,16 @@
     "verified-screen-security-commands-member-run.json",
     "verified-screen-security-commands-device-run.json",
     "verified-screen-security-cleanup-run.json"
+  ],
+  "local_fault_acceptance_evidence": [
+    "prototype/verified-screen-security-faults-restart-run.json",
+    "prototype/verified-screen-security-faults-kill_control-run.json",
+    "prototype/verified-screen-security-faults-kill_sfu-run.json",
+    "prototype/verified-screen-security-faults-pause_control-run.json",
+    "prototype/verified-screen-security-faults-network-run.json",
+    "prototype/verified-screen-security-faults-after_create-run.json",
+    "prototype/verified-screen-security-faults-after_delete-run.json",
+    "prototype/verified-screen-security-faults-lease-run.json",
+    "prototype/verified-screen-security-faults-kick-run.json"
   ]
 }

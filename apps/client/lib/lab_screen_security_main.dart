@@ -1,12 +1,14 @@
-// Disposable SS-11 target. Never distribute this entrypoint or its command bridge.
+// Disposable SS-10/SS-11/SS-15 target. Never distribute this command bridge.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart' as lk;
+import 'package:matrix/matrix.dart' as mx;
 // SS-11 deliberately bypasses public publish helpers to test server authorization.
 // ignore: implementation_imports
 import 'package:livekit_client/src/proto/livekit_models.pb.dart' as models;
@@ -87,13 +89,49 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
       revision.value++;
       await call!.connect();
       step = 'screen-bind';
+      final api = ScreenApi(fixture['api'] as String, () => client.accessToken!);
+      if ((await api.request('capabilities'))['screen'] != true) {
+        api.close();
+        break;
+      }
       screen = ScreenShareController(
         call!,
-        ScreenApi(fixture['api'] as String, () => client.accessToken!),
+        api,
         livekitUrl,
       );
       screen!.addListener(() => revision.value++);
       await screen!.connect();
+    case 'rejoin':
+      await screen?.close();
+      await call?.close();
+      screen = null;
+      call = null;
+      return command({'action': 'connect'});
+    case 'seedData':
+      final room = await probe!.room(fixture['room'] as String);
+      final nonce = data['nonce'] as String;
+      final text = await MatrixProbe.sendText(room, 'restore-text:$nonce');
+      final file = await room.sendFileEvent(mx.MatrixFile(
+        bytes: Uint8List.fromList(utf8.encode('restore-file:$nonce')),
+        name: 'restore-fixture.txt',
+        mimeType: 'text/plain',
+      ));
+      return {'text': text, 'file': file};
+    case 'readData':
+      final room = await probe!.room(fixture['room'] as String);
+      Future<mx.Event> read(String id) async {
+        // Force a server read; a local timeline entry is not restore evidence.
+        final wire = await client.getOneRoomEvent(room.id, id);
+        if (wire.type != mx.EventTypes.Encrypted) throw StateError('Plaintext event');
+        return client.encryption!.decryptRoomEvent(mx.Event.fromMatrixEvent(wire, room));
+      }
+      final text = await read(data['text'] as String);
+      final event = await read(data['file'] as String);
+      final file = await event.downloadAndDecryptAttachment(skipScanner: true);
+      return {
+        'text_matches': text.content['body'] == 'restore-text:${data['nonce']}',
+        'file_matches': utf8.decode(file.bytes) == 'restore-file:${data['nonce']}',
+      };
     case 'gate':
       withhold = data['enabled'] == true;
     case 'inspect':
@@ -251,7 +289,7 @@ Future<void> prepare() async {
     );
     probe!.client.httpClient = KeyGate(probe!.client.httpClient);
     await probe!.login(
-      'http://localhost:8008',
+      fixture['matrix'] as String? ?? 'http://localhost:8008',
       fixture['username'] as String,
       fixture['password'] as String,
     );

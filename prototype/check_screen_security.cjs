@@ -9,9 +9,9 @@ const media=require('./check_screen_calls.cjs');
 const matrix='http://localhost:8008',ui='http://localhost:7363/';
 const mode=process.argv[2];assert(['commands','keys','publish','faults'].includes(mode));
 const excluded=process.argv[3]||'';
-assert(mode==='faults' ? ['network','restart','kill_control','kill_sfu','pause_control','after_create','after_delete','lease'].includes(excluded) :
+assert(mode==='faults' ? ['network','restart','kill_control','kill_sfu','pause_control','after_create','after_delete','lease','kick'].includes(excluded) :
   ['','member','device'].includes(excluded) && (!excluded || mode==='commands'));
-if(mode==='faults' && !['after_create','after_delete','lease'].includes(excluded)) process.env.VOICECHAT_SCREEN_CONTAINER='1';
+if(mode==='faults' && !['after_create','after_delete','lease','kick'].includes(excluded)) process.env.VOICECHAT_SCREEN_CONTAINER='1';
 const root=path.join(__dirname,'..');
 const secrets=JSON.parse(fs.readFileSync(path.join(root,'.prototype/secrets.json')));
 async function request(base,route,body,token,method=body ? 'POST' : 'GET') {
@@ -103,33 +103,35 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
       page.on('request',r=>{
         if(r.url().startsWith(fixture.base) || r.url().includes('/sendToDevice/')) wire.push(r.postData()||'');
       });
-      page.on('response',async response=>{
-        try {
-          if(response.url().startsWith(fixture.base) && response.url().includes('/screen/'))responses.push({page:i,action:response.url().split('/').pop(),status:response.status(),method:response.request().method()});
-          if(response.status()===200 && response.request().method()==='POST' && response.url().endsWith('/_matrix/client/v3/login')) {
-            const login=await response.json();
-            if(typeof login.access_token==='string') logins.set(page,login);
+      await page.exposeFunction('screenLabObserve',record=>{
+        if(record.login){logins.set(page,record.body);return;}
+        const {action,body,auth,request:command}=record;
+        if(action==='bind')bindings.set(page,{...body,auth,request:command});
+        if(action==='claim' && (!claims.has(page) || command.expected_revision>=claims.get(page).command.expected_revision))
+          claims.set(page,{command,response:body});
+        if(action==='token' && (!tokens.has(page) || body.revision>=tokens.get(page).revision))
+          tokens.set(page,{...body,request:command});
+      });
+      await page.addInitScript(()=>{
+        const fetch=window.fetch.bind(window);
+        window.fetch=async(...args)=>{
+          const request=new Request(...args);
+          const watched=request.method==='POST' && (/\/screen\/(?:bind|[^/]+\/(?:claim|token))$/.test(request.url) || request.url.endsWith('/_matrix/client/v3/login'));
+          const body=watched ? request.clone().text() : null;
+          const response=await fetch(request);
+          if(watched && [200,202].includes(response.status)) {
+            const login=request.url.endsWith('/_matrix/client/v3/login');
+            await window.screenLabObserve({login,action:request.url.split('/').pop(),
+              body:await response.clone().json(),auth:request.headers.get('authorization'),
+              request:login ? null : JSON.parse(await body)});
           }
-          if(response.status()>=400 && response.url().startsWith(fixture.base)) {
-            const body=await response.json().catch(()=>({}));
-            console.log('Private control',response.url().split('/').pop(),response.status(),/^[a-z_]+$/.test(body.error||'') ? body.error : '');
-          }
-          if(![200,202].includes(response.status()) || !response.url().includes('/screen/'))return;
-          const action=response.url().split('/').pop();
-          if(!['bind','claim','token'].includes(action))return;
-          const body=await response.json().catch(()=>null);
-          if(!body){if(action==='bind')console.log('Bind observer: response body unavailable');return;}
-          const auth=response.request().headers().authorization;
-          if(action==='bind') bindings.set(page,{...body,auth,request:response.request().postDataJSON()});
-          if(action==='claim') {
-            const command=response.request().postDataJSON();
-            if(!claims.has(page) || command.expected_revision>=claims.get(page).command.expected_revision) claims.set(page,{command,response:body});
-          }
-          if(action==='token' && (!tokens.has(page) || body.revision>=tokens.get(page).revision)) tokens.set(page,{...body,request:response.request().postDataJSON()});
-        } catch (error) {
-          if(response.url().endsWith('/screen/bind'))console.log('Bind observer error',error.constructor.name);
-          // Observer reads can lose their body when the context closes. Main
-          // assertions still require the relevant grant/claim/login to arrive.
+          return response;
+        };
+      });
+      page.on('response',response=>{
+        if(response.url().startsWith(fixture.base) && response.url().includes('/screen/')) {
+          responses.push({page:i,action:response.url().split('/').pop(),status:response.status(),method:response.request().method()});
+          if(response.status()>=400)console.log('Private control',response.url().split('/').pop(),response.status());
         }
       });
       await page.goto(ui);await page.getByText('ready',{exact:true}).waitFor({timeout:60000});
@@ -148,12 +150,13 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
       const previousCommand=claims.get(page)?.command.request_id;
       await button(page,await button(page,'Показать экран').isVisible() ? 'Показать экран' : 'Перехватить экран').click();
       await button(page,'Остановить показ').waitFor({timeout:20000});
-      await until(()=>tokens.get(page)?.role==='publisher' && tokens.get(page).generation!==previous,'Publisher grant required');
+      try {await until(()=>tokens.get(page)?.role==='publisher' && tokens.get(page).generation!==previous,'Publisher grant required');}
+      catch(error) {console.log('Publisher observer diagnostics',JSON.stringify({page:index,role:tokens.get(page)?.role,changed:tokens.get(page)?.generation!==previous,revision:tokens.get(page)?.revision,responses:responses.filter(r=>r.page===index).slice(-12)}));throw error;}
       await until(()=>claims.get(page)?.command.request_id && claims.get(page).command.request_id!==previousCommand,'Claim request required');
       return tokens.get(page);
     }
     async function api(page,suffix,body) {return request(fixture.base,'/screen/'+bindings.get(page).binding_id+'/'+suffix,body,bindings.get(page).auth.slice(7));}
-    const ctx={a,b,pages,accounts,fixture,report,cmd,until,media,button,start,api,identities,bindings,claims,tokens,request,absent,updatePermission,wire,logins,room:room.room_id,session};
+    const ctx={a,b,pages,sources,accounts,fixture,report,cmd,until,media,button,start,api,identities,bindings,claims,tokens,request,absent,updatePermission,wire,logins,room:room.room_id,session};
     await require('./check_screen_security_'+mode+'.cjs')(ctx);
     report.result='PASS';
     console.log('PASS: '+(mode==='faults' ? 'SS-10/SS-16 '+excluded : 'SS-11 '+mode));

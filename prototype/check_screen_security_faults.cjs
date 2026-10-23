@@ -11,22 +11,53 @@ module.exports=async c=>{
     await media.pixels(b,false);
     assert.equal(await a.evaluate(()=>window.screenCaptureTracks.length),captures,'No automatic new capture');
   }
-  if(['after_create','after_delete'].includes(fault)) {
+  if(fault==='kick') {
+    const viewer=c.tokens.get(b);
+    const kicked=await c.request('http://localhost:8008','/_matrix/client/v3/rooms/'+encodeURIComponent(c.room)+'/kick',
+      {user_id:c.accounts[1].user_id,reason:'disposable screen fault acceptance'},c.accounts[0].access_token);
+    assert.equal(kicked.status,200);
+    let next;
+    await until(async()=>{
+      const r=await c.api(a,'state');next=r.body;
+      return r.status===200 && next.state==='active' && next.generation!==first.generation && next.roster.length===1;
+    },'Actual Matrix kick must rotate the screen roster');
+    c.absent(first.generation);await media.pixels(b,false);
+    await until(()=>c.tokens.get(a)?.generation===next.generation && c.tokens.get(a)?.role==='publisher','Remaining owner must republish');
+    assert.equal(await a.evaluate(()=>window.screenCaptureTracks.length),captures);
+    assert.equal(await a.evaluate(()=>window.screenCaptureTracks.filter(t=>t.readyState==='live').length),1);
+    assert(!(await cmd(b,{action:'gate'})).received_generations.includes(next.generation),'Kicked viewer must not receive new screen key');
+    const denied=await c.api(b,'token',c.tokens.get(b).request);
+    assert([401,403,404,410].includes(denied.status));
+    const claims=JSON.parse(Buffer.from(viewer.token.split('.')[1],'base64url'));
+    assert(Date.now()/1000<claims.exp);
+    assert.equal((await cmd(b,{action:'rawJoin',token:viewer.token})).connected,false);
+    report.real_matrix_kick_rotates_roster=true;report.owner_continues_same_capture=true;
+    report.excluded_viewer_has_no_new_key_or_grant=true;report.old_room_deleted_and_jwt_rejected=true;
+  } else if(['after_create','after_delete'].includes(fault)) {
     const before=await media.audio(b);
     await fixture.command(fault);
-    const winner=await start(1);
-    await media.pixels(a,true,[201,97,49]);
+    await media.selectSource(c.sources,1);await b.bringToFront();
+    await c.button(b,'Перехватить экран').click();
+    await b.waitForFunction(()=>window.screenCaptureTracks.length===1 && window.screenCaptureTracks.every(t=>t.readyState==='ended'));
     await a.waitForFunction(()=>window.screenCaptureTracks.every(t=>t.readyState==='ended'));
     c.absent(first.generation);
-    const state=await fixture.command('status');
+    let state;
+    await until(async()=>{
+      state=await fixture.command('status');
+      return !state.pending_commands && !state.retired_rooms && !state.sessions.active;
+    },'Unknown command must be recovered and compensated after local abort');
     assert.equal(state.sfu_fault_injected,true);assert.equal(state.pending_commands,0);
-    assert.equal(state.retired_rooms,0);assert.equal(state.sessions.active,1);
+    assert.equal(state.retired_rooms,0);assert.equal(state.sessions.active||0,0);
+    await media.pixels(a,false);await media.pixels(b,false);
+    assert.equal(await b.evaluate(()=>window.screenCaptureTracks.length),1,'No automatic second capture');
+    const winner=await start(1);await media.pixels(a,true,[201,97,49]);
     assert.notEqual(winner.generation,first.generation);
     const after=await media.audio(b);
     assert(after.packets>before.packets && after.frames>before.frames);
     assert.deepEqual(after.voicePeers,before.voicePeers);
-    report.real_sfu_committed_before_reply_lost=true;report.pending_intent_recovered=true;
-    report.exactly_one_active_generation=true;report.old_owner_stopped_and_sees_winner=true;
+    report.real_sfu_committed_before_reply_lost=true;report.pending_intent_recovered_and_compensated=true;
+    report.uncertain_capture_aborted_without_false_success=true;
+    report.explicit_retry_publishes_one_new_generation=true;report.old_owner_stopped_and_sees_winner=true;
     report.voice_camera_preserved=true;
   } else if(fault==='lease') {
     const pattern=fixture.base+'/screen/**',block=route=>route.abort();
