@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:matrix/matrix.dart';
+import 'package:livekit_client/livekit_client.dart' as lk;
 import 'call_probe.dart';
 import 'direct_call.dart';
 import 'voice_call.dart';
@@ -43,6 +44,7 @@ class CallController extends ChangeNotifier
   ScreenShareController? screen;
   VoiceCall? _screenCall;
   bool _screenChecking = false;
+  DateTime? _screenRetryAt;
   final _screenParties = ScreenCallParties();
   StreamSubscription<List<BasicEventWithSender>>? _screenSignals;
   Room? dialingRoom;
@@ -157,12 +159,19 @@ class CallController extends ChangeNotifier
 
   Future<void> _prepareScreen() async {
     final call = active;
-    if (_screenChecking || call == _screenCall) return;
+    if (_screenChecking ||
+        call == _screenCall ||
+        (_screenRetryAt != null && DateTime.now().isBefore(_screenRetryAt!))) {
+      return;
+    }
     if (call == null ||
         call.isClosed ||
+        (call is! DirectCall && call is! CallProbe) ||
         (call is DirectCall && call.call.state != CallState.kConnected) ||
         (call is DirectCall && _screenParties.curve(call) == null) ||
-        (call is CallProbe && call.screenBindingLease == null)) {
+        (call is CallProbe &&
+            (call.screenBindingLease == null ||
+                call.media?.connectionState != lk.ConnectionState.connected))) {
       return;
     }
     _screenChecking = true;
@@ -194,6 +203,10 @@ class CallController extends ChangeNotifier
     } catch (_) {
       await next?.close();
       if (next == null) api.close();
+      if (next?.hasBinding != true) {
+        _screenCall = null;
+        _screenRetryAt = DateTime.now().add(const Duration(seconds: 5));
+      }
       // Недоступность дополнительного экрана не завершает основной звонок.
     } finally {
       _screenChecking = false;

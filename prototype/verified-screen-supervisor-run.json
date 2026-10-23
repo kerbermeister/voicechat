@@ -1,0 +1,9 @@
+{
+  "result": "PASS",
+  "scope": "real pinned SFU + control process lifecycle; no live media",
+  "network": "none, no published ports",
+  "healthy_control": true,
+  "real_sfu_room_created": true,
+  "control_termination_stops_entire_container": true,
+  "elapsed_seconds": 2.300552708999021
+}

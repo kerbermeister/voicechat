@@ -15,12 +15,24 @@ import 'matrix_probe.dart';
 import 'transport.dart';
 import 'voice_call.dart';
 
+bool allowsScreenMedia(
+  lk.EncryptionType encryption,
+  lk.TrackSource source,
+  lk.TrackType kind,
+  String mime,
+) =>
+    kind == lk.TrackType.VIDEO &&
+    source == lk.TrackSource.screenShareVideo &&
+    encryption == lk.EncryptionType.kGcm &&
+    !mime.toLowerCase().contains('av1');
+
 /// Владеет только экраном текущего звонка; микрофон и камера остаются у VoiceCall.
 class ScreenShareController extends ChangeNotifier {
   final VoiceCall call;
   final ScreenApi api;
   final String mediaUrl;
   final ScreenCallParties? parties;
+  final Future<ScreenCapture> Function() captureFactory;
   ScreenPhase phase = ScreenPhase.idle;
   ScreenSnapshot? snapshot;
   String? notice;
@@ -38,6 +50,7 @@ class ScreenShareController extends ChangeNotifier {
   String? _binding, _lease, _generation;
   int _serial = 0;
   Timer? _timer;
+  Timer? _preparation;
   ScreenCapture? _capture;
   lk.LocalVideoTrack? _publication;
   lk.BaseKeyProvider? _keys;
@@ -52,6 +65,7 @@ class ScreenShareController extends ChangeNotifier {
   String get identity =>
       '${call.chat.client.userID}/${call.chat.client.deviceID}';
   bool get isClosed => _closed;
+  bool get hasBinding => _binding != null;
   bool get busy => _acting;
   lk.VideoTrack? get displayTrack => _closed
       ? null
@@ -61,7 +75,13 @@ class ScreenShareController extends ChangeNotifier {
       ? remoteTrack
       : null;
 
-  ScreenShareController(this.call, this.api, this.mediaUrl, {this.parties}) {
+  ScreenShareController(
+    this.call,
+    this.api,
+    this.mediaUrl, {
+    this.parties,
+    this.captureFactory = ScreenCapture.start,
+  }) {
     secureEndpoint(mediaUrl, websocket: true);
   }
 
@@ -178,35 +198,52 @@ class ScreenShareController extends ChangeNotifier {
     }
     _acting = true;
     _preparingCapture = true;
+    notice = null;
     final previousPhase = phase;
     phase = ScreenPhase.selecting;
     _changed();
     try {
       // Capture запускается до сетевых await, сохраняя browser user activation.
-      final capture = await ScreenCapture.start();
+      final capture = await captureFactory();
       if (_closed || call.isClosed) {
         await capture.close();
         return;
       }
       await _capture?.close();
       _capture = capture;
+      _preparation?.cancel();
+      _preparation = Timer(const Duration(seconds: 15), () {
+        if (_capture != capture || phase == ScreenPhase.sharing) return;
+        notice = 'Не удалось подключить показ вовремя. Попробуйте ещё раз.';
+        phase = ScreenPhase.error;
+        unawaited(stop());
+      });
       capture.source.mediaStreamTrack.onEnded = () {
         unawaited(stop());
       };
-      await _pollFinished?.future;
-      if (_closed || _capture != capture) {
-        await capture.close();
-        return;
-      }
-      _preparingCapture = false;
-      phase = ScreenPhase.preparing;
-      await _command('claim');
-    } catch (_) {
+      await (() async {
+        await _pollFinished?.future;
+        if (_closed || _capture != capture) {
+          await capture.close();
+          return;
+        }
+        _preparingCapture = false;
+        phase = ScreenPhase.preparing;
+        await _command('claim');
+      })().timeout(const Duration(seconds: 15));
+    } catch (error) {
       final captured = _capture;
       _capture = null;
+      _preparation?.cancel();
       await captured?.close();
       if (captured != null) await _disposeMedia();
-      notice = 'Показ не начат. Проверьте разрешение на захват экрана.';
+      notice = error is UnsupportedError
+          ? 'В этой среде недоступен захват экрана.'
+          : error is TimeoutException
+          ? 'Не удалось подключить показ вовремя. Попробуйте ещё раз.'
+          : captured == null
+          ? 'Показ не начат. Проверьте разрешение на захват экрана.'
+          : 'Показ остановлен. Проверьте сеть и защищённое соединение.';
       phase = captured == null ? previousPhase : ScreenPhase.error;
     } finally {
       _acting = false;
@@ -217,6 +254,7 @@ class ScreenShareController extends ChangeNotifier {
 
   Future<void> stop() async {
     if (_closed) return;
+    _preparation?.cancel();
     final capture = _capture;
     _capture = null;
     await capture?.close();
@@ -296,6 +334,7 @@ class ScreenShareController extends ChangeNotifier {
     _authorized.reset();
     if (next.roster.any((d) => d.identity == identity)) _bindingPending = false;
     if (!_preparingCapture && next.owner != identity && _capture != null) {
+      _preparation?.cancel();
       final capture = _capture;
       _capture = null;
       await capture!.close();
@@ -332,9 +371,12 @@ class ScreenShareController extends ChangeNotifier {
 
   bool _allowed(lk.RemoteTrackPublication publication, String sender) =>
       sender == snapshot?.owner &&
-      publication.source == lk.TrackSource.screenShareVideo &&
-      publication.encryptionType == lk.EncryptionType.kGcm &&
-      !publication.mimeType.toLowerCase().contains('av1');
+      allowsScreenMedia(
+        publication.encryptionType,
+        publication.source,
+        publication.kind,
+        publication.mimeType,
+      );
 
   Future<void> _connectMedia(ScreenSnapshot next) async {
     // Повторное подключение того же поколения сохраняет его sender key.
@@ -475,6 +517,7 @@ class ScreenShareController extends ChangeNotifier {
         rethrow;
       }
       phase = ScreenPhase.sharing;
+      _preparation?.cancel();
     }
     await _shareKey(force: true);
   }
@@ -643,6 +686,7 @@ class ScreenShareController extends ChangeNotifier {
   Future<void> _close() async {
     _closed = true;
     _timer?.cancel();
+    _preparation?.cancel();
     phase = ScreenPhase.closed;
     if (!_disposed) notifyListeners();
     final capture = _capture;

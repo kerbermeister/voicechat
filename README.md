@@ -5,7 +5,7 @@
 Основной стек согласован: Flutter, Matrix/Synapse, PostgreSQL, WebRTC и LiveKit с E2EE. Добавлен локальный Flutter-прототип для проверки E2EE; это ещё не готовый MVP. Развёртывание планируется на одном VPS через Docker Compose и GitHub Actions.
 
 - [Статус реализации и незавершённые работы](docs/implementation-status.md)
-- [ТЗ демонстрации экрана](docs/screen-sharing-spec.md) и [пошаговые задачи SS-00–SS-17](docs/tasks/08-screen-sharing.md) — Android/веб, один ведущий с перехватом; начата лабораторная проверка SS-01, [результаты](docs/iterations/08-screen-sharing.md).
+- [ТЗ демонстрации экрана](docs/screen-sharing-spec.md) и [пошаговые задачи SS-00–SS-17](docs/tasks/08-screen-sharing.md) — Android/веб, один ведущий с перехватом. Реализация экспериментальная, default off; [результаты](docs/iterations/08-screen-sharing.md), [приёмка](docs/screen-sharing-acceptance.md), [как пользоваться](docs/screen-sharing.md).
 - [Итерация 4: веб-вход и Lavender Soft](docs/iterations/04-web-session-and-lavender.md) — восстановление вкладки без паролей, отдельные люди/группы и настройки.
 - [Итерация 3: основной мессенджер](docs/iterations/03-core-messenger.md) — аккаунты, контакты, переписка, медиа, очередь и звонки.
 - [Итерация 2: веб-vault и проверка устройств](docs/iterations/02-web-vault-and-device-verification.md) — веб-вход с локальной фразой, шифрование IndexedDB и ручная сверка отпечатков.

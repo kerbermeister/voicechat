@@ -67,6 +67,13 @@ const {chromium} = require('playwright');
     const wrong = await pages.wrong.getByText(/^stats:/).textContent();
     result.decoder_observations = {valid, missing_key: wrong};
     assert.match(wrong, /screen=0,camera=0,decrypted=false/);
+    await pages.wrong.getByRole('button', {name:'Неверный ключ',exact:true}).click();
+    await pages.wrong.getByText('wrong-key-installed',{exact:true}).waitFor();
+    await pages.wrong.waitForTimeout(1000);
+    await pages.wrong.getByRole('button',{name:'Статистика',exact:true}).click();
+    const incorrect=await pages.wrong.getByText(/^stats:/).textContent();
+    assert.match(incorrect,/screen=0,camera=0,decrypted=false/);
+    result.wrong_key_decoded_frames=0;
     const pixels = await pages.viewer.locator('video').evaluateAll(videos => videos.map(video => {
       if (!video.videoWidth) return 0;
       const canvas = document.createElement('canvas'); canvas.width = canvas.height = 32;

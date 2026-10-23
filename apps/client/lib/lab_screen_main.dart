@@ -187,6 +187,11 @@ class _ScreenProbeState extends State<ScreenProbe> {
     }
   });
 
+  Future<void> wrongKey() => perform(() async {
+    await keys.first.setRawKey(Uint8List(32), participantId: 'sender');
+    stage = 'wrong-key-installed';
+  });
+
   Future<int> frames(lk.Room room) async {
     var count = 0;
     for (final peer in room.remoteParticipants.values) {
@@ -332,6 +337,11 @@ class _ScreenProbeState extends State<ScreenProbe> {
           onPressed: busy ? null : inspect,
           child: const Text('Статистика'),
         ),
+        if (role == 'wrong')
+          TextButton(
+            onPressed: busy ? null : wrongKey,
+            child: const Text('Неверный ключ'),
+          ),
         if (role == 'viewer')
           TextButton(
             onPressed: busy ? null : capture,

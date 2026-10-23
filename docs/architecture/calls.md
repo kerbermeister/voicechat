@@ -2,7 +2,7 @@
 
 > Дополнение 23 октября 2026: [ТЗ экрана](../screen-sharing-spec.md) и
 > [задачи](../tasks/08-screen-sharing.md) расширяют звонки демонстрацией с одним
-> ведущим и перехватом. План: отдельное поколение screen room в уже имеющемся
+> ведущим и перехватом. Реализовано отдельное поколение screen room в уже имеющемся
 > LiveKit, без изменения транспорта голоса/камер. Обычный media JWT ниже по-прежнему
 > запрещает screen share; право появляется только в отдельном экранном контракте.
 > Реализация ещё не начата. Фактический control API сейчас Python/SQLite;
@@ -139,3 +139,21 @@ Envelope: version, call_id, transport_generation, sender identity/device, epoch,
 - [FCM Flutter receive](https://firebase.google.com/docs/cloud-messaging/flutter/receive-messages)
 
 Control API, sender-key envelope, lease policy и ротация SFU room — проектные решения. До реализации нужна проверка SDK-интеграции и безопасности обмена ключами; наличие LiveKit E2EE не реализует эти механизмы автоматически.
+
+## Экран: границы текущей реализации
+
+Screen binding выбирает одно устройство пользователя и действующий звонок. Для
+личного звонка нужны взаимные bind; выбранный random VoIP party связывается с ключом
+оригинального encrypted invite/answer. Для группы нужен текущий call lease.
+Claim резервирует revision, удаляет прежнюю SFU room и только затем создаёт новую.
+Неизвестный DeleteRoom блокирует новый grant. JWT ограничен room/role/source;
+viewer не публикует, owner публикует только screen video, без audio/data.
+
+Ключ каждого поколения создаёт клиент и передаёт только текущему trusted roster через
+encrypted to-device. Получатель проверяет sender/device/trust/context/expiry, kind
+video/source/codec/GCM и не показывает track до готовности cryptor. Камеры и основной
+голос имеют отдельный transport. SFU watchdog отзывает пустой/двойной/неверный track;
+на restart leases закрываются, а capture не восстанавливается из SQLite.
+
+Функция default off. [Приёмка](../screen-sharing-acceptance.md) остаётся частичной:
+Android, остальные браузеры, внешний TURN, нагрузка и полный restore не подтверждены.

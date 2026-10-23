@@ -11,6 +11,7 @@ const matrixUrl=process.env.VOICECHAT_MATRIX_URL || 'http://localhost:8008';
 const apiUrl=process.env.VOICECHAT_API_URL || 'http://localhost:8090';
 const secretsFile=process.env.VOICECHAT_SECRETS_FILE || path.join(root,'.prototype/secrets.json');
 const video = process.env.VOICECHAT_VIDEO_TEST === '1';
+const screenTest = process.env.VOICECHAT_SCREEN_TEST === '1';
 const network = process.env.VOICECHAT_NETWORK_TEST === '1';
 const textOnly = process.env.VOICECHAT_TEXT_ONLY === '1';
 const callButton = video ? 'Видеозвонок' : 'Голосовой звонок';
@@ -42,7 +43,7 @@ async function register(role) {
 (async () => {
   const alice = await register('alice'), bob = await register('bob'), charlie = await register('charlie');
   await request(apiUrl,'/contacts',{action:'policy',allow_direct:false},bob.access_token);
-  const browser = await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:textOnly ? ['--mute-audio','--autoplay-policy=no-user-gesture-required'] : ['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']});
+  const browser = await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:screenTest ? ['--enable-usermedia-screen-capturing','--auto-select-tab-capture-source-by-title=VoiceChat Screen Source','--autoplay-policy=no-user-gesture-required'] : textOnly ? ['--mute-audio','--autoplay-policy=no-user-gesture-required'] : ['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']});
   const deadline=process.env.VOICECHAT_LINKS_ONLY==='1' ? setTimeout(()=>{console.error('Focused links deadline exceeded'); browser.close().catch(()=>{});},90000) : process.env.VOICECHAT_SCHEDULE_TEST==='1' ? setTimeout(()=>{console.error('Scheduled UI deadline exceeded'); browser.close().catch(()=>{});},360000) : null;
   const pages=[];
   let sensitiveVerification=false;
@@ -58,7 +59,7 @@ async function register(role) {
       assert.equal(await field.inputValue()===value,true,`Text input did not commit: ${name}`);
       await page.keyboard.press('Tab');
     };
-    const button=(page,name)=>page.getByRole('button',{name,exact:true});
+    const button=(page,name)=>screenTest && name==='Закрыть' ? page.getByRole('button',{name,exact:true}).first() : page.getByRole('button',{name,exact:true});
     async function waitForAnnouncement(page, text) {
       for(let i=0;i<100;i++) {
         if((await page.locator('body').ariaSnapshot()).includes(text)) return;
@@ -193,6 +194,7 @@ async function register(role) {
     }
     async function login(account) {
       const context=await browser.newContext({permissions:textOnly ? [] : ['microphone','camera'],viewport:{width:1280,height:900}});
+      if(screenTest) await context.addInitScript(require('./check_screen_calls.cjs').syntheticMedia);
       await context.addInitScript(()=>{
         const capture=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
         navigator.mediaDevices.getUserMedia=async constraints=>{
@@ -221,6 +223,15 @@ async function register(role) {
         };
       });
       const page=await context.newPage(); pages.push(page);
+      if(screenTest) page.on('response', async response=>{
+        if(response.url().endsWith('/token') && !response.url().includes('/screen/') && response.status()!==200) {
+          const data=await response.json().catch(()=>({}));console.log('Voice admission',response.status(),data.error||'');
+        }
+        if(response.url().includes('/screen/')) {
+          const body=await response.json().catch(()=>({}));
+          if(response.status()!==200 || /\/(bind|claim|stop)$/.test(response.url())) console.log('Screen HTTP',response.url().split('/screen/')[1].split('/').pop(),response.status(),body.error||body.binding_state||body.snapshot?.state||body.state||'');
+        }
+      });
       page.on('console', message=>{
         const text=message.text();
         if(text.includes('onCallHangup') || text.includes('hangup res =>') || text.includes('hangup error =>')) console.log('Call diagnostic:',text.split('=>')[0]);
@@ -289,17 +300,19 @@ async function register(role) {
       async function startVerification() {
         await button(a,'Настройки').click();
         await a.getByRole('button',{name:/^Проверить устройства/}).click();
-        await a.getByRole('button',{name:new RegExp(escapedBob+' /')}).first().click();
+        await a.getByRole('button',{name:new RegExp(screenTest ? escapedBob : escapedBob+' /')}).first().click();
         await button(b,'Открыть').click({timeout:30000});
         await button(b,'Принять проверку').click();
         await button(a,'Совпадают').waitFor({timeout:30000});
         await button(b,'Совпадают').waitFor({timeout:30000});
       }
+      if(!screenTest) {
       await startVerification();
       await button(a,'Не совпадают').click();
       await a.getByText('Коды не совпали. Устройство не подтверждено.',{exact:true}).waitFor();
       await b.getByText('Коды не совпали. Устройство не подтверждено.',{exact:true}).waitFor();
       await button(a,'Закрыть').click(); await button(b,'Закрыть').click();
+      }
       await startVerification();
       const codes=async page=>{
         const match=(await page.getByRole('alertdialog').ariaSnapshot()).match(/\d{4}\s+\d{4}\s+\d{4}/);
@@ -324,7 +337,7 @@ async function register(role) {
           await button(page,'Я сохранил ключ').click({timeout:30000});
         }
         await button(a,'Настройки').click();await a.getByRole('button',{name:/^Проверить устройства/}).click();
-        await a.getByRole('button',{name:new RegExp(escapedBob+' /')}).first().click();
+        await a.getByRole('button',{name:new RegExp(screenTest ? escapedBob : escapedBob+' /')}).first().click();
         await button(b,'Открыть').click({timeout:30000});await button(b,'Принять проверку').click();
         await a.waitForTimeout(1000);
         console.log('QR controls:',JSON.stringify({scan:await button(a,'Сканировать QR').count(),sas:await button(a,'Совпадают').count(),label:(await a.locator('body').ariaSnapshot()).includes('QR для текущей проверки устройства')}));
@@ -520,9 +533,9 @@ async function register(role) {
     await button(b,'Принять').waitFor({timeout:30000});
     await b.waitForFunction(()=>window.soundPlays.some(p=>p.src.includes('ringtone.wav')));
     await button(b,'Принять').click();
-    await waitForAnnouncement(a,video ? 'защищённое видео' : 'защищённое аудио');
-    await waitForAnnouncement(b,video ? 'защищённое видео' : 'защищённое аудио');
-    if(video) {
+    if(!screenTest) await waitForAnnouncement(a,video ? 'защищённое видео' : 'защищённое аудио');
+    if(!screenTest) await waitForAnnouncement(b,video ? 'защищённое видео' : 'защищённое аудио');
+    if(video && !screenTest) {
       await videoFrames(a); await videoFrames(b);
       await toggleCamera(a);
       await videoFrames(a);
@@ -530,6 +543,7 @@ async function register(role) {
       if(network) await networkCheck(a,b,'direct');
       await a.screenshot({path:path.join(root,'.prototype/ui/direct-video.png')});
     }
+    if(screenTest) await require('./check_screen_calls.cjs').check(a,b,button,'direct');
     await b.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringtone.wav')).every(p=>p.audio.paused));
     await a.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringback.wav')).every(p=>p.audio.paused));
     await a.waitForTimeout(2200);
@@ -543,9 +557,9 @@ async function register(role) {
     await button(a,callButton).click();
     await button(b,'Принять').waitFor({timeout:30000});
     await button(b,'Принять').click();
-    await waitForAnnouncement(a,video ? 'Защищённое видео' : 'Защищённое аудио');
-    await waitForAnnouncement(b,video ? 'Защищённое видео' : 'Защищённое аудио');
-    if(video) {
+    if(!screenTest) await waitForAnnouncement(a,video ? 'Защищённое видео' : 'Защищённое аудио');
+    if(!screenTest) await waitForAnnouncement(b,video ? 'Защищённое видео' : 'Защищённое аудио');
+    if(video && !screenTest) {
       await videoFrames(a); await videoFrames(b);
       await toggleCamera(a);
       await videoFrames(a);
@@ -553,13 +567,15 @@ async function register(role) {
       if(network) await networkCheck(a,b,'group');
       await a.screenshot({path:path.join(root,'.prototype/ui/group-video.png')});
     }
+    if(screenTest) await require('./check_screen_calls.cjs').check(a,b,button,'group');
     await button(b,'Завершить').click();
     await button(b,'Закрыть').click();
-    await a.waitForTimeout(46000);
+    await a.waitForTimeout(screenTest ? 1000 : 46000);
     assert(await button(a,'Завершить').isVisible(),'An answered group call must not time out after another participant leaves');
     await button(a,'Завершить').click();
     await button(a,'Закрыть').click();
     await a.getByText('Люди',{exact:true}).click();
+    if(screenTest) return;
     const c=await login(charlie);
     for(let i=0;i<60;i++) {
       const keys=await request(matrixUrl,'/_matrix/client/v3/keys/query',{device_keys:{[charlie.user_id]:[]}},alice.access_token);
@@ -640,7 +656,7 @@ async function register(role) {
   } finally {
     if(deadline) clearTimeout(deadline);
     await browser.close();
-    if(process.env.VOICECHAT_SCHEDULE_TEST==='1') {
+    if(process.env.VOICECHAT_SCHEDULE_TEST==='1' || screenTest) {
       for(const account of [alice,bob,charlie]) await request(matrixUrl,'/_matrix/client/v3/account/deactivate',{auth:{type:'m.login.password',identifier:{type:'m.id.user',user:account.user_id},password:account.password},erase:true},account.access_token).catch(()=>{});
     }
   }

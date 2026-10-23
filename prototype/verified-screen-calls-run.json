@@ -1,0 +1,40 @@
+{
+  "result": "PASS",
+  "run": "2026-10-23T17:39:18.580Z",
+  "direct": {
+    "result": "PASS",
+    "elapsed_seconds": 23.419708959000186,
+    "capture": "real browser tab, automatic picker selection",
+    "camera_microphone": "synthetic",
+    "encrypted_matrix_key_exchange": true,
+    "decoded_source_pixels": true,
+    "cancel_preserves_owner": true,
+    "takeover_without_confirmation": true,
+    "old_capture_stopped": true,
+    "fullscreen_keeps_call": true,
+    "stop_releases_capture": true,
+    "low_encoder_limits_applied": true,
+    "voice_packets_increase": true,
+    "video_frames_increase": true,
+    "voice_peer_connections_unchanged": true
+  },
+  "group": {
+    "result": "PASS",
+    "elapsed_seconds": 26.600655875001102,
+    "capture": "real browser tab, automatic picker selection",
+    "camera_microphone": "synthetic",
+    "encrypted_matrix_key_exchange": true,
+    "decoded_source_pixels": true,
+    "cancel_preserves_owner": true,
+    "takeover_without_confirmation": true,
+    "old_capture_stopped": true,
+    "fullscreen_keeps_call": true,
+    "stop_releases_capture": true,
+    "low_encoder_limits_applied": true,
+    "voice_packets_increase": true,
+    "video_frames_increase": true,
+    "voice_peer_connections_unchanged": true,
+    "feature_off_stops_capture_and_hides_frame": true,
+    "feature_off_preserves_voice_and_camera": true
+  }
+}

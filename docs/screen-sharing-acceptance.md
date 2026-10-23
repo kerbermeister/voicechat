@@ -36,4 +36,36 @@ HTTPS, codec и фактический E2EE decode должны проверят
 
 История изменений и фактические команды: [журнал](iterations/08-screen-sharing.md).
 Контракт: [screen protocol v1](screen-protocol-v1.md). Требования и критерии:
-[ТЗ §13](screen-sharing-spec.md#13-приёмка), [задачи](tasks/08-screen-sharing.md).
+[ТЗ §13](screen-sharing-spec.md#13-приёмка-и-проверочные-свидетельства), [задачи](tasks/08-screen-sharing.md).
+
+## Критерии SS-A01–SS-A18 — SS-16
+
+PASS ниже относится только к явно указанной среде/части. PARTIAL и BLOCKED не
+закрывают обязательную приёмку всего продукта.
+
+| ID | Результат | Свидетельство / остаётся |
+| --- | --- | --- |
+| A01 | PARTIAL PASS | Два обычных Chrome клиента видят контрольные пиксели; голосовые PC и камеры сохраняются. Настоящая вкладка, ручной выбор окна/монитора ещё не проверен. |
+| A02 | DEFERRED | Android ↔ web на телефоне отложен владельцем. |
+| A03 | WEB PASS | Личный и групповой аудиозвонки: настоящий screen без camera request, mute сохраняется до/во время/после показа. |
+| A04 | BLOCKED | 10 участников, поздние join/return на реальных устройствах не проверены. |
+| A05 | PARTIAL PASS | A → B в личном/групповом звонке, без подтверждения и без замены voice PC. A → B → C отдельным прогоном ещё не принят. |
+| A06 | UNIT PASS | Два конкурентных claim одной revision дают одного победителя; реальный одновременный picker/claim ещё не принят. |
+| A07 | UNIT/HTTP PASS | Idempotency, stale revisions/leases, recovery и повтор старого claim; нет повторной ротации. Реальный потерянный сетевой ответ ещё не принят. |
+| A08 | PARTIAL PASS | Реальная отмена capture сохраняет текущий показ; late bind/close, дедлайн HTTP и 202 pending покрыты unit. Закрытие системного picker при завершении звонка вручную ещё не проверено. |
+| A09 | PARTIAL PASS | UI Stop и feature off освобождают web capture и скрывают кадр. Browser OS Stop и Android lock/onStop не приняты. |
+| A10 | PARTIAL PASS | Реальный pinned SFU отвергает original/refreshed JWT удалённой room. Независимый клиент с Matrix revoke во время показа ещё не принят. |
+| A11 | PARTIAL PASS | HTTP доступ/пара/роль/lease, source и kind; настоящий SFU отвергает viewer publish и owner camera, production metadata guard обнаруживает duplicate. Полный hostile client против активного Matrix звонка ещё не принят. |
+| A12 | PARTIAL PASS | Реальные E2EE-пиксели, 0 кадров без ключа/с неверным ключом; sender/device/generation/expiry envelope проверены unit. Сквозной replay старого envelope ещё не принят. |
+| A13 | PARTIAL PASS | Capture video-only и source grants, audio-kind отвергается до subscribe, голос в своей room. Воспроизведение системного звука с выключенным mic на физических устройствах не принято. |
+| A14 | PARTIAL PASS | Fault/lease/fencing unit, реальный control/SFU fail-closed container и DeleteRoom. Полный перезапуск с живым E2EE экраном/Matrix outage ещё не принят. |
+| A15 | BLOCKED | Нет внешнего VPS/NAT/целевых Wi-Fi/mobile сетей; TCP443-only не заявлен. |
+| A16 | PARTIAL PASS | Layout 320×640/640×320, fullscreen, Material focus/semantics; тема и реальный screen reader на каждой платформе ещё не приняты. |
+| A17 | PARTIAL PASS | Additive v1→v2, fresh/repeated migration, read-only image, SQLite backup/recovery, настоящий feature off сохраняет group voice/camera. Полный Compose application restore ещё не принят. |
+| A18 | BLOCKED | 50 fake metadata cycles без retired rooms; это не 30 минут media и не доказательство native/браузерных утечек. Тяжёлая нагрузка не разрешена. |
+
+Артефакты: [обычные video calls](../prototype/verified-screen-calls-run.json),
+[аудиосценарий](../prototype/verified-screen-calls-audio-run.json),
+[отрицательный SFU/E2EE](../prototype/verified-screen-web-run.json),
+[образ control](../prototype/verified-screen-control-image-run.json),
+[настоящий supervisor](../prototype/verified-screen-supervisor-run.json).

@@ -8,6 +8,8 @@ import 'package:matrix/matrix.dart';
 import 'package:voicechat_probe/call_probe.dart';
 import 'package:voicechat_probe/screen_api.dart';
 import 'package:voicechat_probe/screen_controller.dart';
+import 'package:voicechat_probe/screen_capture.dart';
+import 'screen_capture_test.dart' show CaptureTrack;
 
 class LifecycleDatabase extends Fake implements DatabaseApi {
   @override
@@ -31,6 +33,22 @@ class LifecycleCall extends Fake implements CallProbe {
   String get screenBindingLease => 'a' * 64;
   @override
   lk.Room get media => LifecycleRoom();
+}
+
+class DeadlineVideo extends Fake implements lk.LocalVideoTrack {
+  final track = CaptureTrack();
+  @override
+  CaptureTrack get mediaStreamTrack => track;
+}
+
+class DeadlineCapture extends ScreenCapture {
+  int closes = 0;
+  DeadlineCapture(super.source);
+  @override
+  Future<void> close() async {
+    closes++;
+    await source.mediaStreamTrack.stop();
+  }
 }
 
 void main() {
@@ -127,6 +145,96 @@ void main() {
       expect(releases, 1);
       controller.dispose();
       await client.dispose();
+    },
+  );
+  testWidgets(
+    'Зависший claim освобождает подготовленный capture за 15 секунд',
+    (tester) async {
+      for (final pending in [false, true]) {
+        final client = Client('timeout', database: LifecycleDatabase());
+        final call = LifecycleCall(
+          Room(id: '!lifecycle:local', client: client),
+        );
+        final response = Completer<http.Response>();
+        final api = ScreenApi(
+          'http://localhost',
+          () => '',
+          client: MockClient((request) async {
+            if (request.url.path.endsWith('/bind')) {
+              return http.Response(
+                jsonEncode({
+                  'binding_id': '22222222-2222-4222-8222-222222222222',
+                  'lease_id': 'b' * 64,
+                  'binding_state': 'open',
+                  'snapshot': {
+                    'protocol_version': 1,
+                    'binding_id': '22222222-2222-4222-8222-222222222222',
+                    'state': 'idle',
+                    'revision': 0,
+                    'roster_version': 0,
+                    'roster': [],
+                    'owner_identity': null,
+                    'generation': null,
+                  },
+                }),
+                200,
+              );
+            }
+            if (request.url.path.endsWith('/claim')) {
+              if (pending) {
+                return http.Response(
+                  jsonEncode({
+                    'status': 'pending',
+                    'snapshot': {
+                      'protocol_version': 1,
+                      'binding_id': '22222222-2222-4222-8222-222222222222',
+                      'revision': 1,
+                      'roster_version': 0,
+                      'state': 'switching',
+                      'owner_identity': 'null/null',
+                      'generation': 'screen-${'a' * 48}',
+                      'roster': [],
+                    },
+                  }),
+                  202,
+                );
+              }
+              return response.future;
+            }
+            return http.Response('{}', 200);
+          }),
+        );
+        final video = DeadlineVideo();
+        final capture = DeadlineCapture(video);
+        final controller = ScreenShareController(
+          call,
+          api,
+          'ws://localhost:7880',
+          captureFactory: () async => capture,
+        );
+        await tester.runAsync(controller.connect);
+        final sharing = controller.share();
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 16));
+        for (var i = 0; i < 10 && controller.busy; i++) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        expect(capture.closes, 1);
+        expect(controller.busy, isFalse);
+        expect(controller.notice, contains('вовремя'));
+        await sharing;
+        expect(video.track.stops, greaterThan(0));
+        expect(capture.closes, 1);
+        if (!pending) {
+          response.complete(
+            http.Response('{"error":"screen_unavailable"}', 503),
+          );
+        }
+        await tester.pump();
+        await tester.runAsync(controller.close);
+        controller.dispose();
+        await client.dispose();
+      }
     },
   );
 }
