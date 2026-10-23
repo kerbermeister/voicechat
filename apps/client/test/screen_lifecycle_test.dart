@@ -53,6 +53,81 @@ class DeadlineCapture extends ScreenCapture {
 
 void main() {
   test(
+    'После picker claim использует свежий roster; отказ проверки закрывает capture',
+    () async {
+      for (final denied in [false, true]) {
+        final client = Client('fresh-claim', database: LifecycleDatabase());
+        final call = LifecycleCall(
+          Room(id: '!lifecycle:local', client: client),
+        );
+        const binding = '22222222-2222-4222-8222-222222222222';
+        final events = <String>[];
+        Map<String, dynamic> snapshot(int revision) => {
+          'protocol_version': 1,
+          'binding_id': binding,
+          'state': 'idle',
+          'revision': revision,
+          'roster_version': revision,
+          'roster': [],
+          'owner_identity': null,
+          'generation': null,
+        };
+        final api = ScreenApi(
+          'http://localhost',
+          () => '',
+          client: MockClient((request) async {
+            if (request.url.path.endsWith('/bind')) {
+              return http.Response(
+                jsonEncode({
+                  'binding_id': binding,
+                  'lease_id': 'b' * 64,
+                  'binding_state': 'open',
+                  'snapshot': snapshot(0),
+                }),
+                200,
+              );
+            }
+            if (request.url.path.endsWith('/heartbeat')) {
+              events.add('heartbeat');
+              return denied
+                  ? http.Response('{"error":"screen_access_denied"}', 403)
+                  : http.Response(jsonEncode({'snapshot': snapshot(4)}), 200);
+            }
+            if (request.url.path.endsWith('/claim')) {
+              events.add(
+                'claim:${jsonDecode(request.body)['expected_revision']}',
+              );
+              return http.Response('{"error":"screen_revision_conflict"}', 409);
+            }
+            return http.Response('{}', 200);
+          }),
+        );
+        final capture = DeadlineCapture(DeadlineVideo());
+        final controller = ScreenShareController(
+          call,
+          api,
+          'ws://localhost:7880',
+          captureFactory: () async {
+            events.add('capture');
+            return capture;
+          },
+        );
+        await controller.connect();
+        await controller.share();
+        expect(
+          events,
+          denied
+              ? ['capture', 'heartbeat']
+              : ['capture', 'heartbeat', 'claim:4'],
+        );
+        expect(capture.closes, 1);
+        await controller.close();
+        controller.dispose();
+        await client.dispose();
+      }
+    },
+  );
+  test(
     'close во время bind освобождает поздний lease; повтор close идемпотентен',
     () async {
       final client = Client('lifecycle', database: LifecycleDatabase());
@@ -166,6 +241,23 @@ void main() {
                   'binding_id': '22222222-2222-4222-8222-222222222222',
                   'lease_id': 'b' * 64,
                   'binding_state': 'open',
+                  'snapshot': {
+                    'protocol_version': 1,
+                    'binding_id': '22222222-2222-4222-8222-222222222222',
+                    'state': 'idle',
+                    'revision': 0,
+                    'roster_version': 0,
+                    'roster': [],
+                    'owner_identity': null,
+                    'generation': null,
+                  },
+                }),
+                200,
+              );
+            }
+            if (request.url.path.endsWith('/heartbeat')) {
+              return http.Response(
+                jsonEncode({
                   'snapshot': {
                     'protocol_version': 1,
                     'binding_id': '22222222-2222-4222-8222-222222222222',

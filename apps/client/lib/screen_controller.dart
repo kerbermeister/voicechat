@@ -152,17 +152,7 @@ class ScreenShareController extends ChangeNotifier {
           if (error.status != 409 && error.status != 429) rethrow;
         }
       }
-      final result = _bindingPending
-          ? await api.request('$_binding/state')
-          : await api.request('$_binding/heartbeat', {
-              'protocol_version': 1,
-              'lease_id': _lease,
-              'observed_revision': snapshot?.revision ?? 0,
-              'capture_state': _capture == null ? 'idle' : 'sharing',
-            });
-      await _apply(
-        _bindingPending ? result : result['snapshot'] as Map<String, dynamic>,
-      );
+      await _refreshSnapshot();
       if (snapshot?.owner == identity && _capture == null && _pending == null) {
         await _command('stop');
       }
@@ -185,6 +175,20 @@ class ScreenShareController extends ChangeNotifier {
       if (_pollFinished == finished) _pollFinished = null;
       _changed();
     }
+  }
+
+  Future<void> _refreshSnapshot() async {
+    final result = _bindingPending
+        ? await api.request('$_binding/state')
+        : await api.request('$_binding/heartbeat', {
+            'protocol_version': 1,
+            'lease_id': _lease,
+            'observed_revision': snapshot?.revision ?? 0,
+            'capture_state': _capture == null ? 'idle' : 'sharing',
+          });
+    await _apply(
+      _bindingPending ? result : result['snapshot'] as Map<String, dynamic>,
+    );
   }
 
   Future<void> share() async {
@@ -227,6 +231,9 @@ class ScreenShareController extends ChangeNotifier {
           await capture.close();
           return;
         }
+        // Пока открыт picker, roster и revision могли измениться.
+        await _refreshSnapshot();
+        if (_closed || _capture != capture) return;
         _preparingCapture = false;
         phase = ScreenPhase.preparing;
         await _command('claim');
@@ -349,6 +356,7 @@ class ScreenShareController extends ChangeNotifier {
     if (next.state != 'active') {
       await _disposeMedia();
       if (next.state == 'unavailable' &&
+          !_preparingCapture &&
           next.owner == identity &&
           _capture != null &&
           _pending == null) {
