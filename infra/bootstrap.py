@@ -40,6 +40,7 @@ def main():
         'SMTP_HOST':os.environ.get('SMTP_HOST','mailpit'),'SMTP_PORT':os.environ.get('SMTP_PORT','1025' if local else '587'),
         'SMTP_USER_B64':base64.b64encode(os.environ.get('SMTP_USER','').encode()).decode(),
         'SMTP_PASSWORD_B64':base64.b64encode(os.environ.get('SMTP_PASSWORD','').encode()).decode(),
+        'SMTP_FROM_B64':base64.b64encode(os.environ.get('SMTP_FROM','').encode()).decode(),
         **{name:secrets.token_hex(32) for name in ('POSTGRES_PASSWORD','REGISTRATION_SECRET','MACAROON_SECRET','LIVEKIT_SECRET','TURN_SECRET','POLICY_SECRET')},
     }
     if any('\n' in value or '\r' in value or "'" in value for value in values.values()): raise SystemExit('Configuration values must be single-line and contain no single quotes')

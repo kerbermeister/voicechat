@@ -96,7 +96,7 @@ jobs:
           destination=root+'/releases/'+os.environ['GITHUB_SHA']
           target=user+'@'+host
           ssh=['ssh','-o','StrictHostKeyChecking=yes','-o','BatchMode=yes',target]
-          subprocess.run([*ssh,'mkdir -p '+shlex.quote(destination)],check=True)
+          subprocess.run([*ssh,'mkdir -p '+shlex.quote(root+'/releases')+' && mkdir '+shlex.quote(destination)],check=True)
           subprocess.run(['scp','-o','StrictHostKeyChecking=yes','-o','BatchMode=yes','/tmp/release.tar.gz',target+':'+destination+'/release.tar.gz'],check=True)
           command='cd '+shlex.quote(destination)+' && tar -xzf release.tar.gz && python3 infra/deploy.py --root '+shlex.quote(root)+' --release '+shlex.quote(destination)
           subprocess.run([*ssh,command],check=True)

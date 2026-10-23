@@ -27,9 +27,13 @@ def main():
     name=env['MATRIX_SERVER_NAME']
     marker=Path('/matrix/.voicechat-server-name')
     if marker.exists() and marker.read_text()!=name: raise SystemExit('Refusing a Matrix server_name change on existing data')
+    sender = (base64.b64decode(env['SMTP_FROM_B64'], validate=True).decode()
+              if env.get('SMTP_FROM_B64') else f'VoiceChat <noreply@{name}>')
+    if not sender.strip() or '\r' in sender or '\n' in sender:
+        raise ValueError('SMTP_FROM must be a nonempty single-line sender')
     smtp={'smtp_host':env['SMTP_HOST'],'smtp_port':int(env['SMTP_PORT']),
         'require_transport_security':not local,'enable_tls':not local,
-        'notif_from':f'VoiceChat <noreply@{name}>','app_name':'VoiceChat'}
+        'notif_from':sender,'app_name':'VoiceChat'}
     if env.get('SMTP_USER_B64'):
         smtp.update(smtp_user=base64.b64decode(env['SMTP_USER_B64'],validate=True).decode(),
                     smtp_pass=base64.b64decode(env['SMTP_PASSWORD_B64'],validate=True).decode())

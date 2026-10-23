@@ -1,0 +1,16 @@
+# VPS 84.200.80.13: the existing Avito Caddy owns 80/443.
+# Copy to the shared runtime/compose.override.yaml; deploy.py includes it.
+services:
+  web:
+    ports: !reset []
+    environment:
+      SITE: http://:80
+      TRUSTED_PROXIES: 172.18.0.0/16
+    networks:
+      default:
+      edge:
+        aliases: [voicechat-web]
+networks:
+  edge:
+    external: true
+    name: deploy_default

@@ -1,0 +1,12 @@
+[Unit]
+Description=Consistent VoiceChat backup (interrupts calls)
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=voicechat
+UMask=0077
+ExecStart=/usr/bin/python3 -c "import json,os; root='/srv/voicechat'; release=json.load(open(root+'/current.json'))['release']; os.execv('/usr/bin/python3',['python3',release+'/infra/deploy.py','--root',root,'--backup-only'])"
+# Allow large media backups to complete; watch failures and disk space separately.
+TimeoutStartSec=infinity

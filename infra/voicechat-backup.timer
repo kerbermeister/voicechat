@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily VoiceChat backup during the maintenance window
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+Persistent=true
+Unit=voicechat-backup.service
+
+[Install]
+WantedBy=timers.target
