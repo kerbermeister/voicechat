@@ -405,14 +405,23 @@ Future<List<DeviceKeys>> authorizedDevices(
   return authorized;
 }
 
-Future<void> refreshDevices(Client client, Set<String> users) async {
-  for (final user in users) {
-    client.userDeviceKeys[user]?.outdated = true;
-  }
-  await client.updateUserDeviceKeys(additionalUsers: users);
-  if (users.any((user) => client.userDeviceKeys[user]?.outdated != false)) {
-    throw StateError('Device authorization refresh failed');
-  }
+final _deviceRefreshes = Expando<Future<void>>();
+
+Future<void> refreshDevices(Client client, Set<String> users) {
+  // Voice and screen authorization share the SDK's mutable device lists.
+  return _deviceRefreshes[client] = (_deviceRefreshes[client] ?? Future.value())
+      .catchError((Object _) {})
+      .then((_) async {
+        for (final user in users) {
+          client.userDeviceKeys[user]?.outdated = true;
+        }
+        await client.updateUserDeviceKeys(additionalUsers: users);
+        if (users.any(
+          (user) => client.userDeviceKeys[user]?.outdated != false,
+        )) {
+          throw StateError('Device authorization refresh failed');
+        }
+      });
 }
 
 Future<void> verifyDevice(

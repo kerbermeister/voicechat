@@ -1,0 +1,8 @@
+{
+  "result": "PASS",
+  "run": "2026-10-23T18:51:48.511Z",
+  "scope": "base group video call with screen feature disabled; real SFU, synthetic camera/microphone",
+  "incoming_audio_and_camera_on_both": true,
+  "screen_ui_absent": true,
+  "elapsed_seconds": 3.5476140000000598
+}
