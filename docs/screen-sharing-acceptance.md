@@ -22,8 +22,9 @@ HTTPS, codec и фактический E2EE decode должны проверят
 
 ## Внешние условия — SS-13/SS-14/SS-17
 
-- Нет согласованного внешнего адреса/VPS, характеристик канала и тестовых мобильных
-  сетей. Loopback SFU не доказывает работу firewall/NAT/TURN или сети только TCP 443.
+- В этой итерации screen share не принят на целевом VPS и тестовых мобильных
+  сетях. Параллельная подготовка общего VPS deploy не заменяет эту приёмку.
+  Loopback SFU не доказывает работу firewall/NAT/TURN или сети только TCP 443.
 - TURN/TLS на 443 сейчас не настроен. HTTP reverse proxy сам по себе не заменяет
   TURN. До проверки L4/SNI или отдельного разрешённого порта эта сеть не поддержана.
 - Ограничение владельца на тяжёлые тесты и параллельные сборки сохранено. Нагрузку
@@ -78,3 +79,34 @@ PASS ниже относится только к явно указанной с�
 [образ control](../prototype/verified-screen-control-image-run.json),
 [сверка исходников образа](../prototype/verified-screen-image-sources-run.json),
 [настоящий supervisor](../prototype/verified-screen-supervisor-run.json).
+
+## Локальная подготовка включения — SS-17
+
+[Preflight](../prototype/verified-screen-preflight-run.json): **локально PASS,
+релиз BLOCKED**. Чистый клиент caecb3c, проверочный commit 6c37d84; локальный JS
+artifact `.prototype/screen-release-web` имеет SHA256
+`4a3af9a1c9d1f6ed10092e74cf048f6ca223506549af713f2f5c9e258032b790`.
+Это loopback build для регрессии; публичная конфигурация и production web image
+требуют отдельной сборки/проверки. Проверенный local control image:
+`sha256:caa3777db260ddf4aca89465429b47931162c11f46eb519c343cd97abaf2156a`.
+Его 16 файлов совпадают с актуальными исходниками; registry digest у этого
+локального образа отсутствует. Protocol v1, screen SQLite v2; `schema: 1` в
+deployment manifest — другой маркер совместимости.
+
+После тестов active=0, pending=0, retired=0; SDK fixture и временный flag удалены,
+постоянный flag отсутствует. Screen-only серверы остановлены; общий локальный
+стенд и volumes сохранены для параллельной работы. Production в этой итерации
+не обновлялся. Отдельные коммиты не включают незавершённый дизайн/VPS diff.
+
+До включения остаются как внешние, так и локальные проверки: полный hostile
+publish/key replay/fault matrix (A07/A10–A12/A14), физический Android и браузеры,
+системный picker/Stop/доступность, внешние сети, разрешённая нагрузка,
+полный application restore/rollback и оставшаяся регрессия сообщений/файлов/тем.
+Пункты PARTIAL/BLOCKED выше сохраняются.
+
+На целевом стенде порядок: совместимый сервер с flag off → web/APK и обычный
+звонок → обязательная приёмка в тестовом окне → решение о включении. Отключение:
+атомарный flag=0, дождаться active/pending/retired=0, проверить обычный звонок.
+Общую БД ради выключения экрана не откатывать. Команды и restore-порядок:
+[runbook](../infra/README.md#экран-диагностика-обновление-и-восстановление),
+[однохостовый VPS](../infra/VPS.md#4-screen-api-и-sqlite).

@@ -2,6 +2,29 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-17 — 23 октября 2026: локальный preflight, включение отложено
+
+**Local preflight PASS, release BLOCKED.** Зафиксирован клиент caecb3c,
+проверочный commit 6c37d84, JS SHA256, local control image ID и соответствие всех
+16 source files образу. У локального образа нет registry digest; production web
+image/публичная конфигурация не приняты. Protocol v1, screen SQLite v2, deployment
+manifest schema=1 — отдельные версии. Локальный release artifact обновлён на
+caecb3c; прежний 691a0fc сохранён отдельно, не подменён в историческом отчёте.
+
+После сценариев schema=2, ended=52, active=0, pending=0, retired=0. SDK fixture,
+временный flag и два screen-only web сервера убраны. Постоянный flag не создавался;
+общий локальный app/API/Compose и volumes оставлены для параллельной работы.
+Production в этой итерации не обновлялся. Общую схему и deploy на VPS можно готовить
+параллельно, сохраняя screen off; работа другого агента не включена в screen-коммиты.
+
+[Preflight artifact](../../prototype/verified-screen-preflight-run.json) содержит
+семь групп gate: оставшаяся hostile/key-replay/fault матрица; Android/браузеры/OS Stop;
+внешняя сеть/TURN; разрешённая нагрузка; полный application restore/rollback;
+остаточная messages/files/theme/accessibility регрессия; приёмка целевого стенда.
+Подробный порядок включения/отключения — [матрица](../screen-sharing-acceptance.md#локальная-подготовка-включения--ss-17)
+и существующий infra runbook. SS-17 целиком не закрыта: локальная сборка и подготовка
+общего VPS не являются приёмкой показа экрана на всех согласованных платформах.
+
 ## SS-16 — 23 октября 2026: чистый кандидат, видимый экран и реальные сбои
 
 Клиент **caecb3c** собран из отдельного `git archive`, без незавершённого дизайна

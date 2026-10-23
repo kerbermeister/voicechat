@@ -1,0 +1,79 @@
+{
+  "run": "2026-10-23T20:33:27.851162+00:00",
+  "local_preflight": "PASS",
+  "release_acceptance": "BLOCKED",
+  "scope": "local loopback candidate; no production deployment in this iteration",
+  "client": {
+    "source_commit": "caecb3cbae32adcebc489f54806649b91abbc38a",
+    "source_scope": "clean git archive; no pending design or VPS worktree edits",
+    "flutter_tests_passed": 135,
+    "test_detail": "134 PASS in suite; QR test initially failed because output directory was absent; after creating .prototype its focused retest PASS",
+    "flutter_analyze": "PASS",
+    "release_web_js": "PASS",
+    "main_dart_js_sha256": "4a3af9a1c9d1f6ed10092e74cf048f6ca223506549af713f2f5c9e258032b790",
+    "lockfile_unchanged": true,
+    "release_file_count": 55,
+    "fixture_files_absent": true,
+    "local_infrastructure_secrets_absent": true,
+    "generated_crypto_scanner_assets": "reused pinned upstream outputs; cold Rust/WASM build not tested",
+    "build_seconds": 51.8
+  },
+  "verification_commit": "6c37d84f9b2dcb2037c9647c4095cadc27fbadfd",
+  "local_web_artifact": ".prototype/screen-release-web",
+  "production_web_image_and_public_config": "NOT_ACCEPTED",
+  "control": {
+    "local_image_id": "sha256:caa3777db260ddf4aca89465429b47931162c11f46eb519c343cd97abaf2156a",
+    "registry_digest": "NOT_PUBLISHED_FOR_THIS_LOCAL_IMAGE",
+    "runtime_uid": "10001:10001",
+    "matching_image_source_files": 16,
+    "protocol_version": 1,
+    "sqlite_screen_schema": 2,
+    "deploy_manifest_schema_is_separate": 1
+  },
+  "feature_default": "OFF; persistent flag absent",
+  "metadata_after_tests": {
+    "schema": 2,
+    "sessions": {
+      "ended": 52
+    },
+    "retired_rooms": 0,
+    "pending_commands": 0,
+    "oldest_pending_seconds": null
+  },
+  "cleanup": {
+    "screen_probe_fixture_removed": true,
+    "temporary_feature_flag_removed": true,
+    "screen_only_web_servers_stopped": true,
+    "shared_local_app_services": "retained for parallel work; volumes preserved"
+  },
+  "remaining_gates": [
+    {
+      "tasks": "SS-11 / A07,A10-A12,A14",
+      "required": "Remaining end-to-end hostile publish, stale key-envelope replay, reordered commands and joint container/media fault phases"
+    },
+    {
+      "tasks": "SS-12 / A02,A09,A13,A16",
+      "required": "Physical Android deferred by owner; supported browser/mobile viewers, manual monitor/window picker and OS Stop, system audio exclusion, accessibility"
+    },
+    {
+      "tasks": "SS-13 / A15",
+      "required": "Selected VPS/public HTTPS/WSS/NAT/TURN and Wi-Fi/mobile networks; TCP443-only is not supported by present TURN configuration"
+    },
+    {
+      "tasks": "SS-14 / A04,A18",
+      "required": "Explicit permission for heavy tests; 10 participants, 30-minute media soak, 50 real cycles, resource and voice-quality measurements"
+    },
+    {
+      "tasks": "SS-15 / A17",
+      "required": "Full application fresh install, existing-volume upgrade and isolated backup/restore/rollback; registry images and target config"
+    },
+    {
+      "tasks": "SS-16 / A16",
+      "required": "Remaining messages/files/theme/manual accessibility regression on target clients"
+    },
+    {
+      "tasks": "SS-17",
+      "required": "Accepted target stand and rollout window; deploy compatible server/web/APK with screen off, perform acceptance then decide enabling"
+    }
+  ]
+}

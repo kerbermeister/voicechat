@@ -373,6 +373,8 @@ Matrix device deletion с независимым replay unexpired JWT — PASS.
 
 ## SS-17. Включение и итоговая приёмка
 
+- [x] Подготовить локальный preflight с точными commit/хешами, состоянием metadata,
+  default off и списком оставшихся gate. Это подготовка, а не включение или приёмка.
 - [ ] На согласованном стенде сначала сервер с выключенной функцией, затем
   совместимые web/APK; короткая регрессия базового звонка.
 - [ ] Включить screen capability, выполнить Android ↔ web и групповой перехват,
@@ -386,6 +388,12 @@ Matrix device deletion с независимым replay unexpired JWT — PASS.
 основывается только на сборке, локальном mock или эмуляторе.
 **Зависимости:** SS-16, доступный целевой стенд и разрешённое окно обновления.
 **Требования:** SS-F01–SS-F16.
+
+Локальный preflight принят: клиент caecb3c, проверка 6c37d84, protocol v1,
+screen SQLite v2, нет active/pending/retired, временные screen fixtures удалены.
+[Свидетельство](../../prototype/verified-screen-preflight-run.json).
+Деплой всего VoiceChat можно готовить параллельно с выключенным screen flag;
+включение screen не следует автоматически из успешного общего deploy.
 
 ## Трассировка приёмки
 

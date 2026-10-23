@@ -28,6 +28,11 @@ API/SQLite пережил restart и отказ его Matrix-зависимос
 полного SDK reconnect и устаревшая revision после picker. Оставшиеся сквозные
 негативные сценарии также перечислены в матрице; только внешними gate дело не ограничено.
 
+SS-17: локальный [preflight](../prototype/verified-screen-preflight-run.json) — PASS,
+включение/релиз — BLOCKED. Persistent flag отсутствует, active/pending/retired=0;
+screen fixtures удалены. Общий деплой на одной VPS можно готовить параллельно,
+сохраняя screen off до приёмки. Порядок и оставшиеся gate — в матрице.
+
 Источник статуса: [задачи SS-00–SS-17](tasks/08-screen-sharing.md),
 [журнал](iterations/08-screen-sharing.md), [матрица приёмки](screen-sharing-acceptance.md).
 Для пользователей — [демонстрация экрана](screen-sharing.md), для оператора —
