@@ -480,5 +480,6 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == '__main__':
     scheduled_store()
+    screen_service()
     print('Prototype token issuer: http://127.0.0.1:8090 (local test accounts only)', flush=True)
     ControlServer((os.environ.get('VOICECHAT_BIND', '127.0.0.1'), 8090), Handler).serve_forever()

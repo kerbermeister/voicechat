@@ -161,6 +161,7 @@ class _ScreenProbeState extends State<ScreenProbe> {
     } catch (_) {
       await track.stop();
       await track.dispose();
+      await screenCapture?.close();
       rethrow;
     }
   });
@@ -172,6 +173,18 @@ class _ScreenProbeState extends State<ScreenProbe> {
     );
     await participant.publishVideoTrack(await screenCapture!.publication());
     stage = 'clone-republished';
+  });
+
+  Future<void> wrongSource() => perform(() async {
+    final camera = await lk.LocalVideoTrack.createCameraTrack();
+    try {
+      await rooms.first.localParticipant!.publishVideoTrack(camera);
+      stage = 'camera-published';
+    } catch (_) {
+      stage = 'camera-rejected';
+    } finally {
+      await camera.dispose();
+    }
   });
 
   Future<int> frames(lk.Room room) async {
@@ -289,6 +302,10 @@ class _ScreenProbeState extends State<ScreenProbe> {
         Text(stage),
         if (role == 'sender') ...[
           TextButton(
+            onPressed: busy ? null : wrongSource,
+            child: const Text('Камера в screen room'),
+          ),
+          TextButton(
             onPressed: busy ? null : replaceClone,
             child: const Text('Перепубликовать копию'),
           ),
@@ -315,6 +332,11 @@ class _ScreenProbeState extends State<ScreenProbe> {
           onPressed: busy ? null : inspect,
           child: const Text('Статистика'),
         ),
+        if (role == 'viewer')
+          TextButton(
+            onPressed: busy ? null : capture,
+            child: const Text('Публикация viewer'),
+          ),
         if (role == 'sender')
           TextButton(
             onPressed: busy ? null : capture,

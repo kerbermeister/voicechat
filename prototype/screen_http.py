@@ -9,6 +9,19 @@ from screen_protocol import parse_request, identifier
 from screen_transitions import ScreenTransitions
 
 
+def publication_state(info, owner, allowed):
+    """Проверяет фактическую SFU metadata; SDP и клиентский heartbeat не заменяют её."""
+    participants=info.get('participants',[])
+    tracks=[(p.get('identity'),t) for p in participants for t in p.get('tracks',[])]
+    invalid=any(p.get('identity') not in allowed for p in participants)
+    invalid=invalid or len(tracks)>1 or any(
+        identity!=owner or track.get('source') not in (3,'SCREEN_SHARE')
+        or track.get('type',0) not in (0,'VIDEO') or track.get('encryption') not in (1,'GCM')
+        or 'av1' in str(track.get('mimeType',track.get('mime_type',''))).lower()
+        for identity,track in tracks)
+    return invalid,bool(tracks)
+
+
 class ScreenService:
     def __init__(self, store, media_api, signer, enabled):
         self.store, self.signer, self.enabled = store, signer, enabled
@@ -46,13 +59,7 @@ class ScreenService:
             if not isinstance(info,dict) or not isinstance(info.get('participants',[]),list):
                 raise ValueError('invalid_screen_media_state')
             allowed = {p['identity'] for p in self.store.participants(session['binding_id'])}
-            tracks = [(p.get('identity'),t) for p in info.get('participants',[]) for t in p.get('tracks',[])]
-            invalid = any(p.get('identity') not in allowed for p in info.get('participants',[]))
-            invalid = invalid or len(tracks)>1 or any(
-                identity!=session['owner_identity'] or track.get('source') not in (3,'SCREEN_SHARE')
-                or track.get('type',0) not in (0,'VIDEO') or track.get('encryption') not in (1,'GCM')
-                or 'av1' in str(track.get('mimeType',track.get('mime_type',''))).lower()
-                for identity,track in tracks)
+            invalid, tracks = publication_state(info,session['owner_identity'],allowed)
             if tracks and not invalid:
                 self._publication_deadlines[generation]=now+15000
             if invalid or (not tracks and now>=deadline):

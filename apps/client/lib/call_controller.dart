@@ -8,6 +8,7 @@ import 'call_probe.dart';
 import 'direct_call.dart';
 import 'voice_call.dart';
 import 'screen_api.dart';
+import 'screen_binding.dart';
 import 'screen_controller.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'matrix_probe.dart';
@@ -42,6 +43,8 @@ class CallController extends ChangeNotifier
   ScreenShareController? screen;
   VoiceCall? _screenCall;
   bool _screenChecking = false;
+  final _screenParties = ScreenCallParties();
+  StreamSubscription<List<BasicEventWithSender>>? _screenSignals;
   Room? dialingRoom;
   String? dialError;
   bool starting = false;
@@ -76,6 +79,7 @@ class CallController extends ChangeNotifier
         }
       });
     }
+    _screenSignals = client.onCallEvents.stream.listen(_screenParties.observe);
     voip = VoIP(client, this);
     _events = client.onTimelineEvent.stream.listen(receive);
     _expiry = Timer.periodic(const Duration(seconds: 5), (_) {
@@ -157,6 +161,7 @@ class CallController extends ChangeNotifier
     if (call == null ||
         call.isClosed ||
         (call is DirectCall && call.call.state != CallState.kConnected) ||
+        (call is DirectCall && _screenParties.curve(call) == null) ||
         (call is CallProbe && call.screenBindingLease == null)) {
       return;
     }
@@ -177,7 +182,12 @@ class CallController extends ChangeNotifier
         api.close();
         return;
       }
-      next = ScreenShareController(call, api, mediaUrl);
+      next = ScreenShareController(
+        call,
+        api,
+        mediaUrl,
+        parties: _screenParties,
+      );
       screen = next;
       await next.connect();
       if (_closed || active != call || call.isClosed) await next.close();
@@ -445,6 +455,7 @@ class CallController extends ChangeNotifier
     mediaDevices.ondevicechange =
         null; // Release the SDK callback retaining this client after lock/logout.
     await _events?.cancel();
+    await _screenSignals?.cancel();
     final screenClose = screen?.close();
     await active?.close();
     await screenClose;

@@ -2,6 +2,29 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-11 — 23 октября 2026: отрицательные SFU-проверки и исправление direct binding
+
+Реальная интеграция обнаружила неверное предположение SS-03: `party_id` SDK не
+равен deviceID, это случайный VoIP session ID. Исправлено: CallController запоминает
+только encrypted invite/answer sender_key, связанный с room/call/party, и сверяет
+его с доверенным Matrix-устройством выбранной стороны. `invitee_device_id` не даёт
+допуска. Plaintext, другое устройство/пользователь и повторная подмена не заменяют
+первую связь. Добавлен негативный тест. Ошибка перехвата во время heartbeat также
+исправлена: picker вызывается сразу, claim ждёт текущий poll без потери нажатия.
+
+Chrome 156, pinned SFU: **PASS 21.393 с**. Viewer не публикует экран; owner не
+публикует camera в screen room; original/refreshed JWT после DeleteRoom отвергнуты;
+0 декодированных кадров без ключа. Фактическая ListParticipants metadata проходит
+production validator для одного E2EE screen и отклоняет два track. Камера/голос/P2P
+продолжаются после удаления screen room. Артефакт — verified-screen-web-run.json.
+При старте control теперь немедленно аннулирует сохранённые screen leases, до HTTP.
+
+**41 Python tests PASS**, адресные Dart tests/analyze PASS. Полный Matrix-перехват
+двумя UI-клиентами продолжается; отзыв устройства во время такого показа, настоящий
+аварийный перезапуск control/SFU с экраном и Android пока не приняты. Отсутствие
+ключей на сервере обеспечивается границами API/SQLite; это не независимый аудит E2EE.
+SS-11 **IN_PROGRESS** до оставшейся сквозной негативной приёмки.
+
 ## SS-10 — 23 октября 2026: восстановление и ограничение пустой публикации
 
 Смена группового roster отзывает старую screen room и сохраняет только ещё

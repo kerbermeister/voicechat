@@ -7,25 +7,28 @@
   "android": "NOT_TESTED",
   "p2p_plus_sfu": "PASS: local Flutter WebRTC pair; not Matrix DirectCall acceptance",
   "decoder_observations": {
-    "valid": "stats:screen=9,camera=15,decrypted=true,p2p=0,publications=0,audio=87",
-    "missing_key": "stats:screen=0,camera=0,decrypted=false,p2p=0,publications=0,audio=139"
+    "valid": "stats:screen=11,camera=19,decrypted=true,p2p=0,publications=0,audio=95",
+    "missing_key": "stats:screen=0,camera=0,decrypted=false,p2p=0,publications=0,audio=154"
   },
   "source_colour_samples": [
-    994,
+    985,
     0
   ],
   "capture_survives_publication_disposal": true,
-  "p2p_frames": 29,
+  "owner_camera_in_screen_room": "REJECTED",
+  "viewer_publication": "REJECTED",
+  "p2p_frames": 138,
   "same_owner_two_tracks": {
     "result": "duplicate-published",
     "publications": 2
   },
+  "production_metadata_guard": "REJECTS_DUPLICATE",
   "refreshed_jwt_deleted_room": "REJECTED",
   "old_jwt_deleted_room": "REJECTED",
   "screen_deletion_call_continuity": "PASS: camera, microphone packets, local P2P",
   "source_colour_verified": true,
-  "screen_frames": 9,
-  "camera_frames": 15,
+  "screen_frames": 11,
+  "camera_frames": 19,
   "missing_key_decoded_frames": 0,
-  "elapsed_seconds": 10.763205249998718
+  "elapsed_seconds": 21.53738929199986
 }

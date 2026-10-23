@@ -38,6 +38,11 @@ Capture state: `idle | preparing | sharing`. Серверные deadlines кли
 membership/device/trust/lease/version checks. Отказ — безопасный `invalid_request`
 без rejected values. Версию нельзя автоматически понижать при неизвестном значении.
 
+Для direct `party_id` является случайным VoIP session ID. Клиент связывает выбранный
+party с `sender_key` оригинального зашифрованного invite/answer и актуальным доверенным
+device. `invitee_device_id`, remoteDeviceId и само значение party не доказывают,
+какое устройство ответило. Сервер подтверждает пару взаимными bind двух устройств.
+
 ## Выход
 
 Snapshot содержит: `protocol_version`, `binding_id`, `revision`, `state`,

@@ -90,6 +90,12 @@ const {chromium} = require('playwright');
       return Math.abs(p[0]-81)<20 && Math.abs(p[1]-73)<20 && Math.abs(p[2]-201)<20;
     }), null, {timeout:15000});
     result.capture_survives_publication_disposal = true;
+    await pages.sender.getByRole('button', {name:'Камера в screen room', exact:true}).click();
+    await pages.sender.getByText('camera-rejected', {exact:true}).waitFor({timeout:15000});
+    result.owner_camera_in_screen_room = 'REJECTED';
+    await pages.viewer.getByRole('button', {name:'Публикация viewer', exact:true}).click();
+    await pages.viewer.getByText(/^failed:/).waitFor({timeout:15000});
+    result.viewer_publication = 'REJECTED';
     await pages.sender.getByRole('button', {name: 'Статистика', exact: true}).click();
     const direct = await pages.sender.getByText(/^stats:/).textContent();
     assert(Number(direct.match(/p2p=(\d+)/)[1]) > 5, 'Flutter WebRTC P2P decoder must continue alongside both SFU rooms');
@@ -103,6 +109,8 @@ const {chromium} = require('playwright');
     const duplicate = await pages.sender.getByText(/^stats:/).textContent();
     result.same_owner_two_tracks = {result: duplicateStage,
       publications: Number(duplicate.match(/publications=(\d+)/)[1])};
+    execFileSync('python3', [path.join(__dirname, 'screen_fixture.py'), 'inspect-duplicate'], {stdio:'pipe'});
+    result.production_metadata_guard = 'REJECTS_DUPLICATE';
     execFileSync('python3', [path.join(__dirname, 'screen_fixture.py'), 'refresh-sender'], {stdio: 'pipe'});
     for (let attempt = 0; attempt < 10; attempt++) {
       await pages.sender.getByRole('button', {name: 'Запомнить токен', exact: true}).click();

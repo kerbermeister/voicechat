@@ -18,6 +18,7 @@ class ScreenShareController extends ChangeNotifier {
   final VoiceCall call;
   final ScreenApi api;
   final String mediaUrl;
+  final ScreenCallParties? parties;
   ScreenPhase phase = ScreenPhase.idle;
   ScreenSnapshot? snapshot;
   String? notice;
@@ -27,6 +28,8 @@ class ScreenShareController extends ChangeNotifier {
   bool _closed = false, _polling = false, _acting = false;
   bool _bindingPending = false;
   bool _bindingInFlight = false;
+  bool _preparingCapture = false;
+  Completer<void>? _pollFinished;
   bool _disposed = false;
   String? _binding, _lease, _generation;
   int _serial = 0;
@@ -52,7 +55,7 @@ class ScreenShareController extends ChangeNotifier {
       ? remoteTrack
       : null;
 
-  ScreenShareController(this.call, this.api, this.mediaUrl) {
+  ScreenShareController(this.call, this.api, this.mediaUrl, {this.parties}) {
     secureEndpoint(mediaUrl, websocket: true);
   }
 
@@ -66,7 +69,7 @@ class ScreenShareController extends ChangeNotifier {
     try {
       final result = await api.request(
         'bind',
-        await screenBindingRequest(call),
+        await screenBindingRequest(call, parties: parties),
       );
       if (_closed || call.isClosed) {
         await api.request('unbind', {
@@ -107,6 +110,7 @@ class ScreenShareController extends ChangeNotifier {
   Future<void> poll() async {
     if (_closed || _polling || _acting || _binding == null) return;
     _polling = true;
+    final finished = _pollFinished = Completer<void>();
     try {
       if (_pending != null) {
         final pending = _pending!;
@@ -150,6 +154,8 @@ class ScreenShareController extends ChangeNotifier {
       phase = ScreenPhase.reconnecting;
     } finally {
       _polling = false;
+      finished.complete();
+      if (_pollFinished == finished) _pollFinished = null;
       _changed();
     }
   }
@@ -157,7 +163,6 @@ class ScreenShareController extends ChangeNotifier {
   Future<void> share() async {
     if (_closed ||
         _acting ||
-        _polling ||
         _pending != null ||
         snapshot == null ||
         _bindingPending ||
@@ -165,6 +170,7 @@ class ScreenShareController extends ChangeNotifier {
       return;
     }
     _acting = true;
+    _preparingCapture = true;
     final previousPhase = phase;
     phase = ScreenPhase.selecting;
     _changed();
@@ -180,6 +186,12 @@ class ScreenShareController extends ChangeNotifier {
       capture.source.mediaStreamTrack.onEnded = () {
         unawaited(stop());
       };
+      await _pollFinished?.future;
+      if (_closed || _capture != capture) {
+        await capture.close();
+        return;
+      }
+      _preparingCapture = false;
       phase = ScreenPhase.preparing;
       await _command('claim');
     } catch (_) {
@@ -191,6 +203,7 @@ class ScreenShareController extends ChangeNotifier {
       phase = captured == null ? previousPhase : ScreenPhase.error;
     } finally {
       _acting = false;
+      _preparingCapture = false;
       _changed();
     }
   }
@@ -273,7 +286,7 @@ class ScreenShareController extends ChangeNotifier {
     snapshot = next;
     _authorized.reset();
     if (next.roster.any((d) => d.identity == identity)) _bindingPending = false;
-    if (next.owner != identity && _capture != null) {
+    if (!_preparingCapture && next.owner != identity && _capture != null) {
       final capture = _capture;
       _capture = null;
       await capture!.close();

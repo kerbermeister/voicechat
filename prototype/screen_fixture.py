@@ -14,9 +14,20 @@ directory = root / '.prototype/screen-probe-web'
 
 
 def main():
-    if sys.argv[1:] not in ([], ['cleanup'], ['retire-screen'], ['refresh-sender']):
-        raise SystemExit('Usage: screen_fixture.py [cleanup|retire-screen|refresh-sender]')
+    if sys.argv[1:] not in ([], ['cleanup'], ['retire-screen'], ['refresh-sender'], ['inspect-duplicate']):
+        raise SystemExit('Usage: screen_fixture.py [cleanup|retire-screen|refresh-sender|inspect-duplicate]')
     fixture = directory / 'fixture.json'
+    if sys.argv[1:] == ['inspect-duplicate']:
+        from screen_http import publication_state
+        data=json.loads(fixture.read_text())
+        info=media_api('ListParticipants',{'room':data['rooms'][0]})
+        assert publication_state(info,'sender',{'sender','viewer','wrong'})==(True,True)
+        tracks=[(p['identity'],t) for p in info['participants'] for t in p.get('tracks',[])]
+        assert len(tracks)==2
+        single={'participants':[{'identity':identity,'tracks':[track]} for identity,track in tracks[:1]]}
+        assert publication_state(single,'sender',{'sender','viewer','wrong'})==(False,True)
+        print('Pinned SFU metadata accepted for one encrypted screen; duplicate rejected by production validator')
+        return
     if sys.argv[1:] == ['refresh-sender']:
         data = json.loads(fixture.read_text())
         room = data['rooms'][0]
