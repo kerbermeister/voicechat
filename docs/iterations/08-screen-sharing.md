@@ -2,6 +2,29 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-05 — 23 октября 2026: HTTP API подключён, функция выключена
+
+`screen_http.py` подключён к существующему Handler: capabilities, bind/unbind,
+snapshot, claim/stop, heartbeat, token и собственные квитанции. Выдача JWT строго
+по текущим revision/generation/role: viewer без publish, publisher только screen_share,
+без screen audio/data/admin. Матрица проверяется заново перед каждой выдачей.
+Старый `/token` сохранён. Повтор unbind восстанавливается по durable квитанции;
+после выхода snapshot=null, чтобы не раскрывать продолжающийся roster/keys.
+
+Один singleton координатора и worker обслуживают leases, pending IO и cleanup.
+Feature flag — файл `.prototype/screen-enabled` (либо `VOICECHAT_SCREEN_FLAG`),
+отсутствует/не содержит `1` — функция выключена. Worker отзывает активные screen
+rooms без изменения базовых звонков. Флаг не является открытым административным API.
+Новые Python/SQL файлы включены в control Dockerfile, иначе импорт нового Handler
+сломал бы существующий образ. Внешние пути обслуживает существующий Caddy `/api/*`.
+
+**33 теста PASS за 2,401 с**: loopback HTTP с тестовым Matrix и прежняя регрессия API;
+лог `.prototype/ss05-check.txt`. Проверены ownership, source grants, неизвестные/лишние
+JSON-поля, чужие квитанции, токен старой ревизии, rate limit и повтор без повторного
+списания лимита. Предварительный отказ авторизации ошибочно давал 400; исправлен до PASS.
+Docker image и настоящий Matrix HTTP в этой итерации не запускались; сквозной клиент
+проверяется после SS-06/SS-07. Первая пользовательская кнопка пока отсутствует.
+
 ## SS-04 — 23 октября 2026: координатор переходов реализован
 
 `screen_transitions.py` сохраняет намерение/квитанцию до SFU IO, удаляет старую

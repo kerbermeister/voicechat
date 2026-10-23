@@ -18,6 +18,9 @@ import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from screen_control import ScreenStore, ScreenError
+from screen_http import ScreenService
+from screen_protocol import ScreenRequestError
 
 _secrets = ({'livekit': os.environ['VOICECHAT_LIVEKIT_SECRET'], 'policy': os.environ['VOICECHAT_POLICY_SECRET']}
             if 'VOICECHAT_LIVEKIT_SECRET' in os.environ else
@@ -37,6 +40,9 @@ _preview_lock = threading.Lock()
 _calls = None
 _calls_lock = threading.Lock()
 _call_failure = threading.Event()
+_screen_failure = threading.Event()
+_screens = None
+_screens_lock = threading.Lock()
 _scheduled = None
 _scheduled_lock = threading.Lock()
 
@@ -101,6 +107,35 @@ def call_store():
             threading.Thread(target=watch, daemon=True, name='call-leases').start()
     return _calls
 
+def screen_enabled():
+    flag = Path(os.environ.get('VOICECHAT_SCREEN_FLAG', str(Path(__file__).resolve().parents[1] / '.prototype/screen-enabled')))
+    try:
+        return flag.read_text().strip() == '1'
+    except FileNotFoundError:
+        return False
+
+
+def screen_service():
+    global _screens
+    with _screens_lock:
+        if _screens is None:
+            store = ScreenStore(call_store().path)
+            store.recover()
+            service = ScreenService(store,media_api,jwt,screen_enabled)
+            service.tick()
+            _screens = service
+            def watch():
+                while True:
+                    time.sleep(1)
+                    try:
+                        service.tick()
+                        _screen_failure.clear()
+                    except Exception:
+                        _screen_failure.set()
+            threading.Thread(target=watch,daemon=True,name='screen-leases').start()
+        return _screens
+
+
 def contact_store():
     global _contacts
     with _contacts_lock:
@@ -134,6 +169,31 @@ class Handler(BaseHTTPRequestHandler):
                                      None if body is None else json.dumps(body).encode(),
                                      headers={'Authorization': auth, 'Content-Type': 'application/json'})
         with urllib.request.urlopen(req, timeout=10) as response: return json.load(response)
+    def screen_request(self):
+        try:
+            raw=b''
+            if self.command=='POST':
+                self.connection.settimeout(10)
+                try:
+                    size=int(self.headers.get('Content-Length','0'))
+                except ValueError:
+                    return self.reply(400,{'error':'invalid_request'})
+                if not 0<size<=8192: return self.reply(400,{'error':'invalid_request'})
+                raw=self.rfile.read(size)
+            status,body=screen_service().handle(self.command,self.path,raw,self.matrix)
+            return self.reply(status,body)
+        except ScreenError as error:
+            body={'error':str(error)}
+            if error.status==429: body['retry_after']=10
+            return self.reply(error.status,body)
+        except ScreenRequestError:
+            return self.reply(400,{'error':'invalid_request'})
+        except ContactError:
+            return self.reply(401,{'error':'unauthorized'})
+        except urllib.error.HTTPError as error:
+            return self.reply(401 if error.code==401 else 503,{'error':'unauthorized' if error.code==401 else 'screen_unavailable'})
+        except (OSError,sqlite3.Error,ValueError,TypeError,KeyError):
+            return self.reply(503,{'error':'screen_unavailable'})
     def scheduled_request(self):
         try:
             who = self.matrix('account/whoami')
@@ -248,9 +308,11 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError): pass
     def do_OPTIONS(self): self.reply(204, {})
     def do_GET(self):
+        if self.path.startswith('/screen/'): return self.screen_request()
         if self.path == '/scheduled' or self.path.startswith('/scheduled?'): return self.scheduled_request()
         if self.path == '/health':
-            return self.reply(503 if _call_failure.is_set() else 200, {'ok': not _call_failure.is_set()})
+            healthy=not (_call_failure.is_set() or _screen_failure.is_set())
+            return self.reply(200 if healthy else 503, {'ok':healthy})
         if self.path.startswith('/presence?'):
             try:
                 user = self.matrix('account/whoami')['user_id']
@@ -288,6 +350,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/reports' and laboratory: return self.reply(200, reports)
         self.reply(404, {'error': 'not_found'})
     def do_POST(self):
+        if self.path.startswith('/screen/'): return self.screen_request()
         if self.path == '/scheduled': return self.scheduled_request()
         if self.path == '/link-preview':
             try:

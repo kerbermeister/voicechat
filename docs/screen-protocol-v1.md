@@ -1,7 +1,7 @@
 # Screen protocol v1 — контракт SS-02
 
-Статус: структурная валидация и схема SQLite реализованы; HTTP-маршруты и бизнес-операции
-добавляются в SS-03–SS-05. Этот документ не объявляет endpoints работающими.
+Статус: маршруты подключены к Python control API в SS-05; по умолчанию функция
+выключена. Проверен loopback HTTP с тестовым Matrix; производственный деплой не выполнен.
 Основание: [ТЗ §8](screen-sharing-spec.md#8-контракт-управления-экраном).
 Машиночитаемые примеры: [fixtures](../prototype/screen_protocol_fixtures.json).
 
@@ -23,6 +23,7 @@ Matrix Bearer token передаётся только заголовком. Ид
 | `POST /api/screen/{binding}/token` | `lease_id`, `expected_revision`, `generation` |
 | `GET /api/screen/{binding}/state` | Нет тела |
 | `GET /api/screen/{binding}/operations/{request_id}` | Нет тела |
+| `GET /api/screen/capabilities` | Нет тела, требуется Matrix-сессия; `{protocol_version:1,screen:boolean}` |
 
 `binding_id` и `request_id`: UUID в канонической нижнерегистровой записи.
 `lease_id/call_lease_id`: 64 hex-символа нижнего регистра. Generation:
@@ -50,7 +51,7 @@ Roster — до десяти допущенных устройств с identity
 | Ответ | Дополнительные поля / смысл |
 | --- | --- |
 | Bind | `binding_id`, свой `lease_id`, `binding_state:pending|open`, `snapshot` |
-| Unbind | `status`, `request_id`, `snapshot` |
+| Unbind | `status`, `request_id`, `snapshot:null`; после выхода актуальный roster больше не выдаётся |
 | Claim/stop | `status:pending|succeeded|failed`, `request_id`, `result_revision:integer|null`, `snapshot` |
 | Heartbeat | `lease_expires_at`, `snapshot` |
 | Token | `generation`, `revision`, `role:viewer|publisher`, `token`, `expires_at` |
