@@ -12,11 +12,17 @@ def main():
     if Path(bootstrap.__file__).with_name('runtime').joinpath('stand.env').exists():
         raise SystemExit('Configuration already exists; refusing to replace server secrets')
     address = input('Yandex email address: ').strip()
-    if '@' not in address or any(c.isspace() for c in address):
-        raise SystemExit('Enter the full Yandex email address')
+    if '@' not in address or not address.isascii() or not address.isprintable() or any(c.isspace() for c in address):
+        raise SystemExit('Enter the full Yandex email address using ASCII characters without spaces')
     password = getpass.getpass('Yandex app password (hidden): ')
     if not password:
         raise SystemExit('An app password is required')
+    if not password.isascii() or not password.isprintable() or any(c.isspace() for c in password):
+        raise SystemExit(
+            'Invalid app password input: copy only the password from Yandex, '
+            'without quotes, spaces, Cyrillic letters or terminal prompt characters. '
+            'Nothing was sent to Yandex and server secrets were not created.'
+        )
     try:
         with smtplib.SMTP('smtp.yandex.ru', 587, timeout=20) as smtp:
             smtp.starttls(context=ssl.create_default_context())
