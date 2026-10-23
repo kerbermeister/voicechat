@@ -1,6 +1,11 @@
 name: Build and deploy
 on:
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy to VPS after publishing images
+        type: boolean
+        default: true
 permissions:
   contents: read
   packages: write
@@ -62,8 +67,8 @@ jobs:
         run: |
           printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
           repository="ghcr.io/${REPOSITORY,,}"
-          docker buildx build --platform linux/amd64,linux/arm64 -f infra/control.Dockerfile -t "$repository/control:$GITHUB_SHA" --push --metadata-file /tmp/control-image.json .
-          docker buildx build --platform linux/amd64,linux/arm64 -f infra/web.Dockerfile -t "$repository/web:$GITHUB_SHA" --push --metadata-file /tmp/web-image.json .prototype/web-image
+          docker buildx build --platform linux/amd64,linux/arm64 --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" -f infra/control.Dockerfile -t "$repository/control:$GITHUB_SHA" --push --metadata-file /tmp/control-image.json .
+          docker buildx build --platform linux/amd64,linux/arm64 --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" -f infra/web.Dockerfile -t "$repository/web:$GITHUB_SHA" --push --metadata-file /tmp/web-image.json .prototype/web-image
           export IMAGE_REPOSITORY="$repository"
           python3 - <<'PY'
           import json,os
@@ -80,6 +85,7 @@ jobs:
           path: /tmp/release.tar.gz
           retention-days: 30
       - name: Deploy using pinned host identity
+        if: ${{ inputs.deploy }}
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
