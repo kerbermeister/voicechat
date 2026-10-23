@@ -9,6 +9,8 @@ import 'screen_binding.dart';
 import 'screen_capture.dart';
 import 'screen_state.dart';
 import 'screen_key.dart';
+import 'screen_quality.dart';
+import 'call_quality.dart';
 import 'matrix_probe.dart';
 import 'transport.dart';
 import 'voice_call.dart';
@@ -25,6 +27,8 @@ class ScreenShareController extends ChangeNotifier {
   lk.Room? media;
   lk.VideoTrack? remoteTrack;
   bool decoded = false;
+  ScreenQuality quality = ScreenQuality.auto;
+  ScreenQuality? _appliedQuality;
   bool _closed = false, _polling = false, _acting = false;
   bool _bindingPending = false;
   bool _bindingInFlight = false;
@@ -317,6 +321,7 @@ class ScreenShareController extends ChangeNotifier {
       await _connectMedia(next);
     }
     await _shareKey();
+    await _updateQuality();
     _changed();
   }
 
@@ -448,7 +453,18 @@ class ScreenShareController extends ChangeNotifier {
       }
       try {
         _publication = publication;
-        await room.localParticipant!.publishVideoTrack(publication);
+        await room.localParticipant!.publishVideoTrack(
+          publication,
+          publishOptions: lk.VideoPublishOptions(
+            videoCodec: 'vp8',
+            simulcast: false,
+            screenShareEncoding: lk.VideoEncoding(
+              maxBitrate: quality.bitrate,
+              maxFramerate: quality.fps,
+            ),
+          ),
+        );
+        await _updateQuality();
       } catch (_) {
         await publication.dispose();
         rethrow;
@@ -456,6 +472,45 @@ class ScreenShareController extends ChangeNotifier {
       phase = ScreenPhase.sharing;
     }
     await _shareKey(force: true);
+  }
+
+  Future<void> setQuality(ScreenQuality value) async {
+    final previous = quality;
+    quality = value;
+    try {
+      await _updateQuality();
+    } catch (_) {
+      quality = previous;
+      notice = 'Не удалось изменить качество экрана.';
+    }
+    _changed();
+  }
+
+  Future<void> _updateQuality() async {
+    final track = _publication, sender = _publication?.sender;
+    if (_closed || track == null || sender == null) return;
+    final effective =
+        quality == ScreenQuality.auto &&
+            (call.quality == CallQuality.poor ||
+                media?.localParticipant?.connectionQuality ==
+                    lk.ConnectionQuality.poor)
+        ? ScreenQuality.low
+        : quality;
+    if (effective == _appliedQuality) return;
+    final parameters = sender.parameters;
+    final settings = track.mediaStreamTrack.getSettings();
+    for (final encoding in parameters.encodings ?? []) {
+      encoding.maxBitrate = effective.bitrate;
+      encoding.maxFramerate = effective.fps;
+      encoding.scaleResolutionDownBy = effective.scale(
+        settings['width'] as num? ?? 1920,
+        settings['height'] as num? ?? 1080,
+      );
+    }
+    if (!await sender.setParameters(parameters)) {
+      throw StateError('Screen quality not applied');
+    }
+    _appliedQuality = effective;
   }
 
   Future<void> _shareKey({bool force = false}) async {
@@ -552,6 +607,7 @@ class ScreenShareController extends ChangeNotifier {
     _senderKey?.fillRange(0, _senderKey!.length, 0);
     _senderKey = null;
     _sharedAt = null;
+    _appliedQuality = null;
     remoteTrack = null;
     decoded = false;
     final events = _events, room = media, keys = _keys;

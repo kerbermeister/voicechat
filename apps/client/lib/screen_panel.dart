@@ -3,6 +3,7 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 import 'screen_capture.dart';
 import 'screen_controller.dart';
 import 'screen_state.dart';
+import 'screen_quality.dart';
 
 /// Окно может сворачиваться: состояние и capture остаются у контроллера звонка.
 class ScreenPanel extends StatelessWidget {
@@ -115,6 +116,22 @@ class ScreenPanel extends StatelessWidget {
             alignment: WrapAlignment.center,
             spacing: 8,
             children: [
+              if (mine)
+                DropdownButton<ScreenQuality>(
+                  value: controller.quality,
+                  items: [
+                    for (final quality in ScreenQuality.values)
+                      DropdownMenuItem(
+                        value: quality,
+                        child: Text('Экран: ${quality.label}'),
+                      ),
+                  ],
+                  onChanged: controller.isClosed || controller.busy
+                      ? null
+                      : (value) {
+                          if (value != null) controller.setQuality(value);
+                        },
+                ),
               if (mine)
                 TextButton.icon(
                   onPressed: controller.isClosed ? null : controller.stop,
