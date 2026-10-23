@@ -88,6 +88,11 @@ class _CallWindowState extends State<CallWindow> {
                       : 'Звонок завершён'));
     final colors = Theme.of(context).colorScheme;
     final video = current?.video ?? direct?.video ?? group?.video ?? false;
+    Widget bodyArea(Widget child) => calls.screen == null
+        ? Expanded(child: child)
+        : SizedBox(height: 160, child: child);
+    Widget contentScroll(Widget child) =>
+        calls.screen == null ? child : SingleChildScrollView(child: child);
     return AlertDialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
@@ -111,122 +116,126 @@ class _CallWindowState extends State<CallWindow> {
       ),
       content: SizedBox(
         width: video || calls.screen != null ? 850 : 500,
-        height: video || calls.screen != null ? MediaQuery.sizeOf(context).height * .65 : 360,
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colors.primaryContainer,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Row(
-                children: [
-                  if (calls.starting || current != null && connected.length < 2)
-                    const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else
-                    const Icon(Icons.lock_outline),
-                  const SizedBox(width: 14),
-                  Expanded(child: Text(status)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (current != null && calls.screen != null)
-              ConstrainedBox(constraints: const BoxConstraints(maxHeight: 220),
-                child: SingleChildScrollView(child: ScreenPanel(controller: calls.screen!))),
-            if (error != null) Text(error!),
-            if (current != null)
-              Wrap(
-                spacing: 12,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
-                  ),
-                  Text(
-                    current.quality.label,
-                    style: TextStyle(
-                      color:
-                          current.quality == CallQuality.poor ||
-                              current.quality == CallQuality.lost
-                          ? colors.error
-                          : colors.onSurfaceVariant,
-                    ),
-                  ),
-                  if (video)
-                    DropdownButton<VideoQuality>(
-                      value: current.videoQuality,
-                      hint: const Text('Качество видео'),
-                      items: [
-                        for (final quality in VideoQuality.values)
-                          DropdownMenuItem(
-                            value: quality,
-                            child: Text(quality.label),
-                          ),
-                      ],
-                      onChanged: busy
-                          ? null
-                          : (value) {
-                              if (value != null) {
-                                perform(() => current.setVideoQuality(value));
-                              }
-                            },
-                    ),
-                ],
-              ),
-            if (video && current != null)
-              Expanded(child: CallVideoGrid(call: current))
-            else
-              Expanded(
-                child: FutureBuilder<List<mx.User>>(
-                  future: members,
-                  builder: (_, snapshot) {
-                    final people = (snapshot.data ?? <mx.User>[])
-                        .where(
-                          (u) => [
-                            mx.Membership.join,
-                            mx.Membership.invite,
-                          ].contains(u.membership),
-                        )
-                        .toList();
-                    return ListView.separated(
-                      itemCount: people.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (_, i) {
-                        final user = people[i];
-                        final present = connected.contains(user.id);
-                        return ListTile(
-                          leading: PersonAvatar(
-                            name: user.displayName ?? user.id,
-                            client: calls.client,
-                            url: user.avatarUrl,
-                            online: present,
-                          ),
-                          title: Text(user.displayName ?? user.id),
-                          subtitle: Text(
-                            present
-                                ? 'В звонке'
-                                : user.membership == mx.Membership.invite
-                                ? 'Ещё не вступил в чат'
-                                : current == null && !calls.starting
-                                ? 'Не подключён'
-                                : 'Ждём подключения',
-                          ),
-                          trailing: present
-                              ? const Icon(Icons.graphic_eq)
-                              : const Icon(Icons.more_horiz),
-                        );
-                      },
-                    );
-                  },
+        height: video || calls.screen != null
+            ? MediaQuery.sizeOf(context).height * .65
+            : 360,
+        child: contentScroll(
+          Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: colors.primaryContainer,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Row(
+                  children: [
+                    if (calls.starting ||
+                        current != null && connected.length < 2)
+                      const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      const Icon(Icons.lock_outline),
+                    const SizedBox(width: 14),
+                    Expanded(child: Text(status)),
+                  ],
                 ),
               ),
-          ],
+              const SizedBox(height: 12),
+              if (current != null && calls.screen != null)
+                ScreenPanel(controller: calls.screen!),
+              if (error != null) Text(error!),
+              if (current != null)
+                Wrap(
+                  spacing: 12,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
+                    ),
+                    Text(
+                      current.quality.label,
+                      style: TextStyle(
+                        color:
+                            current.quality == CallQuality.poor ||
+                                current.quality == CallQuality.lost
+                            ? colors.error
+                            : colors.onSurfaceVariant,
+                      ),
+                    ),
+                    if (video)
+                      DropdownButton<VideoQuality>(
+                        value: current.videoQuality,
+                        hint: const Text('Качество видео'),
+                        items: [
+                          for (final quality in VideoQuality.values)
+                            DropdownMenuItem(
+                              value: quality,
+                              child: Text(quality.label),
+                            ),
+                        ],
+                        onChanged: busy
+                            ? null
+                            : (value) {
+                                if (value != null) {
+                                  perform(() => current.setVideoQuality(value));
+                                }
+                              },
+                      ),
+                  ],
+                ),
+              if (video && current != null)
+                bodyArea(CallVideoGrid(call: current))
+              else
+                bodyArea(
+                  FutureBuilder<List<mx.User>>(
+                    future: members,
+                    builder: (_, snapshot) {
+                      final people = (snapshot.data ?? <mx.User>[])
+                          .where(
+                            (u) => [
+                              mx.Membership.join,
+                              mx.Membership.invite,
+                            ].contains(u.membership),
+                          )
+                          .toList();
+                      return ListView.separated(
+                        itemCount: people.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (_, i) {
+                          final user = people[i];
+                          final present = connected.contains(user.id);
+                          return ListTile(
+                            leading: PersonAvatar(
+                              name: user.displayName ?? user.id,
+                              client: calls.client,
+                              url: user.avatarUrl,
+                              online: present,
+                            ),
+                            title: Text(user.displayName ?? user.id),
+                            subtitle: Text(
+                              present
+                                  ? 'В звонке'
+                                  : user.membership == mx.Membership.invite
+                                  ? 'Ещё не вступил в чат'
+                                  : current == null && !calls.starting
+                                  ? 'Не подключён'
+                                  : 'Ждём подключения',
+                            ),
+                            trailing: present
+                                ? const Icon(Icons.graphic_eq)
+                                : const Icon(Icons.more_horiz),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
       actions: [

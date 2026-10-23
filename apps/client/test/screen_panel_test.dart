@@ -82,7 +82,7 @@ void main() {
             (_) async => null,
           );
       final client = Client('screen-window', database: PanelDatabase());
-      final call = WindowCall(CallRoom(client), video: false);
+      final call = WindowCall(CallRoom(client));
       final screen =
           ScreenShareController(
               call,
