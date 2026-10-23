@@ -170,6 +170,14 @@ class ScreenStore:
         with self.db() as db:
             return [dict(row) for row in db.execute('SELECT * FROM screen_participants WHERE binding_id=?', (binding_id,))]
 
+    def recover(self):
+        """При старте процесса старые допуска и screen rooms только отзываются."""
+        with self.db() as db:
+            db.execute('BEGIN IMMEDIATE')
+            for binding in db.execute("SELECT id FROM screen_bindings WHERE state!='ended'").fetchall():
+                self._invalidate(db,binding['id'],terminal=True)
+            db.execute('DELETE FROM screen_participants')
+
     def leave(self, who, binding_id, lease):
         identity = who['user_id'] + '/' + who['device_id']
         with self.db() as db:

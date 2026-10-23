@@ -115,6 +115,7 @@ class ScreenAdmissionTests(unittest.TestCase):
     def test_v1_metadata_upgrade_preserves_bindings(self):
         path = self.path.with_name('old.sqlite')
         with sqlite3.connect(path) as db:
+            self.addCleanup(db.close)
             db.executescript(Path(__file__).with_name('screen_schema.sql').read_text())
             db.execute("INSERT INTO screen_bindings VALUES('old','!r:x','s','group','pending',0,NULL)")
         upgraded = ScreenStore(path)

@@ -1,0 +1,11 @@
+{
+  "result": "PASS",
+  "elapsed_seconds": 0.07768558300085715,
+  "checks": [
+    "real CreateRoom",
+    "old room deleted before takeover",
+    "new room present",
+    "stop removes room"
+  ],
+  "matrix_and_media": "NOT_TESTED: synthetic admission, no media in this smoke"
+}

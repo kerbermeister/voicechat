@@ -16,9 +16,14 @@ class ScreenSchemaTests(unittest.TestCase):
         self.addCleanup(self.directory.cleanup)
         self.path = Path(self.directory.name) / 'calls.sqlite'
 
+    def connection(self):
+        db = sqlite3.connect(self.path)
+        self.addCleanup(db.close)
+        return db
+
     def test_additive_migration_preserves_calls_and_terminal_state_on_restart(self):
         CallStore(self.path, lambda *_: None)
-        with sqlite3.connect(self.path) as db:
+        with self.connection() as db:
             db.execute("INSERT INTO calls VALUES(1,'!room:x','session',0,'vc-old',0)")
         store = ScreenStore(self.path)
         with store.db() as db:
@@ -43,7 +48,7 @@ class ScreenSchemaTests(unittest.TestCase):
         with patch('screen_control.Path.read_text', return_value=sql.replace('COMMIT;', 'INVALID SQL;\nCOMMIT;')):
             with self.assertRaises(sqlite3.OperationalError):
                 ScreenStore(self.path)
-        with sqlite3.connect(self.path) as db:
+        with self.connection() as db:
             self.assertEqual(db.execute("SELECT COUNT(*) FROM sqlite_master WHERE name LIKE 'screen_%'").fetchone()[0], 0)
         ScreenStore(self.path)
 
@@ -60,7 +65,7 @@ class ScreenSchemaTests(unittest.TestCase):
                     db.execute(sql)
 
     def test_unknown_schema_version_is_not_downgraded(self):
-        with sqlite3.connect(self.path) as db:
+        with self.connection() as db:
             db.execute('CREATE TABLE screen_schema(singleton INTEGER PRIMARY KEY,version INTEGER)')
             db.execute('INSERT INTO screen_schema VALUES(1,3)')
         with self.assertRaisesRegex(ValueError, 'unsupported_screen_schema'):
