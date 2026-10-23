@@ -7,6 +7,7 @@ import 'conversation_list.dart';
 import 'call_quality.dart';
 import 'call_video_grid.dart';
 import 'call_event.dart';
+import 'screen_panel.dart';
 
 class CallWindow extends StatefulWidget {
   final CallController calls;
@@ -109,8 +110,8 @@ class _CallWindowState extends State<CallWindow> {
         ],
       ),
       content: SizedBox(
-        width: video ? 850 : 500,
-        height: video ? MediaQuery.sizeOf(context).height * .65 : 360,
+        width: video || calls.screen != null ? 850 : 500,
+        height: video || calls.screen != null ? MediaQuery.sizeOf(context).height * .65 : 360,
         child: Column(
           children: [
             Container(
@@ -135,6 +136,9 @@ class _CallWindowState extends State<CallWindow> {
               ),
             ),
             const SizedBox(height: 12),
+            if (current != null && calls.screen != null)
+              ConstrainedBox(constraints: const BoxConstraints(maxHeight: 220),
+                child: SingleChildScrollView(child: ScreenPanel(controller: calls.screen!))),
             if (error != null) Text(error!),
             if (current != null)
               Wrap(
