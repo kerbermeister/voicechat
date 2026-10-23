@@ -100,6 +100,23 @@ class ScreenTransitionTests(unittest.TestCase):
         self.assertEqual(self.session()['state'],'ended')
         self.assertEqual(self.rooms,set())
 
+    def test_fifty_fake_sfu_cycles_leave_no_retired_rooms_and_replay_has_no_effect(self):
+        first_request=str(uuid4())
+        initial_revision=self.session()['revision']
+        self.command(request_id=first_request,revision=initial_revision)
+        for index in range(50):
+            actor,bound=(self.b,self.second) if index%2==0 else (self.a,self.first)
+            self.command(actor,bound)
+            generation=self.session()['generation']
+            self.assertEqual(self.rooms,{generation})
+            self.command(request_id=first_request,revision=initial_revision)
+            self.assertEqual(self.session()['generation'],generation)
+            self.command(actor,bound,action='stop')
+            self.assertEqual(self.rooms,set())
+            with self.store.db() as db:
+                self.assertEqual(db.execute('SELECT COUNT(*) FROM screen_retired').fetchone()[0],0)
+        self.assertEqual(self.session()['state'],'idle')
+
     def test_process_restart_annuls_leases_instead_of_resuming_capture(self):
         self.command()
         restarted=ScreenStore(self.path,lambda:self.now)
