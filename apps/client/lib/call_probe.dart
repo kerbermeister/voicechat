@@ -235,6 +235,7 @@ class CallProbe implements VoiceCall {
       connection = 'Соединение восстановлено';
       status(connection);
       changed?.call();
+      if (!_closed) unawaited(_renew());
     });
     _events!.on<lk.RoomDisconnectedEvent>((_) {
       connection = 'Восстанавливаем соединение';
@@ -278,11 +279,6 @@ class CallProbe implements VoiceCall {
     );
     if (media!.e2eeManager == null) {
       throw StateError('E2EE unavailable; refusing microphone');
-    }
-    for (final participant in media!.remoteParticipants.values) {
-      for (final publication in participant.trackPublications.values) {
-        _subscribe(participant.identity, publication);
-      }
     }
     await shareKey().timeout(const Duration(seconds: 15));
     _resend ??= Timer.periodic(
@@ -462,6 +458,15 @@ class CallProbe implements VoiceCall {
     );
   }
 
+  void _subscribeAvailable() {
+    if (media?.connectionState != lk.ConnectionState.connected) return;
+    for (final entry in media!.remoteParticipants.entries) {
+      for (final publication in entry.value.trackPublications.values) {
+        if (!publication.subscribed) _subscribe(entry.key, publication);
+      }
+    }
+  }
+
   Future<void> shareKey({bool force = true}) {
     if (_closed) return Future.value();
     if (_sharing != null && _sharingSerial == _transportSerial) {
@@ -510,6 +515,8 @@ class CallProbe implements VoiceCall {
         .map((d) => '${d.userId}/${d.deviceId}')
         .toSet();
     if (_admission != null) _validateRoster();
+    // Full SDK reconnect rebuilds publications without TrackPublished events.
+    _subscribeAvailable();
     final devices = authorized
         .where(
           (d) => _admission == null

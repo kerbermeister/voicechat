@@ -55,15 +55,93 @@ class SharingMedia implements lk.Room {
   UnmodifiableMapView<String, lk.RemoteParticipant> get remoteParticipants =>
       UnmodifiableMapView(peers);
   @override
+  lk.ConnectionState get connectionState => lk.ConnectionState.connected;
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class SharingPeer implements lk.RemoteParticipant {
+  final publications = <String, lk.RemoteTrackPublication>{};
+  @override
+  UnmodifiableMapView<String, lk.RemoteTrackPublication>
+  get trackPublications => UnmodifiableMapView(publications);
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class RestoredPublication implements lk.RemoteTrackPublication {
+  int requests = 0;
+  @override
+  bool subscribed = false;
+  @override
+  lk.EncryptionType get encryptionType => lk.EncryptionType.kGcm;
+  @override
+  lk.TrackSource get source => lk.TrackSource.microphone;
+  @override
+  String get mimeType => 'audio/opus';
+  @override
+  Future<void> subscribe() async => requests++;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
+  test(
+    'A fresh authorization restores missing subscriptions without new track events',
+    () async {
+      final client = SharingClient();
+      client.userDeviceKeys[client.userID]!.deviceKeys['A'] = SharingDevice(
+        'A',
+      );
+      final peer = SharingPeer(), stranger = SharingPeer();
+      final first = RestoredPublication(), forbidden = RestoredPublication();
+      peer.publications['mic'] = first;
+      stranger.publications['mic'] = forbidden;
+      final call =
+          CallProbe(
+              chat: SharingRoom(client),
+              session: 'restored',
+              tokenUrl: 'http://localhost:8090',
+              livekitUrl: 'ws://localhost:7880',
+              status: (_) {},
+            )
+            ..media = (SharingMedia()
+              ..peers.addAll({
+                '${client.userID}/A': peer,
+                '@stranger:local/X': stranger,
+              }));
+      await call.shareKey(force: false);
+      expect(first.requests, 1);
+      first.subscribed = true;
+      await call.shareKey(force: false);
+      expect(first.requests, 1);
+      final restored = RestoredPublication();
+      peer.publications['mic'] = restored;
+      await call.shareKey(force: false);
+      expect(restored.requests, 1);
+      expect(
+        client.sends,
+        1,
+        reason:
+            'Subscription recovery must work even when key resend is skipped',
+      );
+      expect(
+        forbidden.requests,
+        0,
+        reason: 'A reconnected peer still needs fresh authorization',
+      );
+      final failure = StateError('authorization unavailable');
+      final pending = client.pendingCheck = Completer<TokenOwnerInfo>();
+      peer.publications['mic'] = RestoredPublication();
+      final denied = expectLater(
+        call.shareKey(force: false),
+        throwsA(same(failure)),
+      );
+      pending.completeError(failure);
+      await denied;
+      expect((peer.publications['mic'] as RestoredPublication).requests, 0);
+    },
+  );
   testWidgets(
     'Key repeats are bounded; access, new recipients and repairs are not',
     (tester) async {

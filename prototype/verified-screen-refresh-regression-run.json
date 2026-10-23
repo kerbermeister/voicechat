@@ -1,0 +1,126 @@
+{
+  "result": "PARTIAL",
+  "source_commit": "2abf4a7f3ba6467d0102ebe7de335d65924dad6e",
+  "source_scope": "clean git archive; no pending design or VPS changes",
+  "flutter_tests_passed": 133,
+  "flutter_analyze": "PASS",
+  "release_web_js": "PASS",
+  "main_dart_js_sha256": "52da1e6772862f44bdab699fbd0a78e91ec72743a1b9f79bd20cb26ac421b923",
+  "lockfile_unchanged": true,
+  "generated_crypto_scanner_assets": "reused pinned upstream outputs; cold Rust/WASM build not tested",
+  "runs": [
+    {
+      "scope": "personal/group video, lost reply, concurrent claims, device revoke",
+      "calls": {
+        "result": "PASS",
+        "run": "2026-10-23T19:02:51.620Z",
+        "direct": {
+          "result": "PASS",
+          "elapsed_seconds": 21.33592350000143,
+          "capture": "real browser tab, automatic picker selection",
+          "camera_microphone": "synthetic",
+          "encrypted_matrix_key_exchange": true,
+          "decoded_source_pixels": true,
+          "cancel_preserves_owner": true,
+          "takeover_without_confirmation": true,
+          "old_capture_stopped": true,
+          "fullscreen_keeps_call": true,
+          "stop_releases_capture": true,
+          "low_encoder_limits_applied": true,
+          "voice_packets_increase": true,
+          "video_frames_increase": true,
+          "voice_peer_connections_unchanged": true
+        },
+        "group": {
+          "result": "PASS",
+          "elapsed_seconds": 15.784464499998837,
+          "capture": "real browser tab, automatic picker selection",
+          "camera_microphone": "synthetic",
+          "encrypted_matrix_key_exchange": true,
+          "decoded_source_pixels": true,
+          "cancel_preserves_owner": true,
+          "takeover_without_confirmation": true,
+          "old_capture_stopped": true,
+          "fullscreen_keeps_call": true,
+          "stop_releases_capture": true,
+          "low_encoder_limits_applied": true,
+          "voice_packets_increase": true,
+          "video_frames_increase": true,
+          "voice_peer_connections_unchanged": true
+        }
+      }
+    },
+    {
+      "scope": "focused group video with feature off; passed between failed base-media repeats",
+      "calls": {
+        "result": "PARTIAL",
+        "run": "2026-10-23T19:08:22.095Z",
+        "group": {
+          "result": "PASS",
+          "elapsed_seconds": 28.412624542001634,
+          "capture": "real browser tab, automatic picker selection",
+          "camera_microphone": "synthetic",
+          "encrypted_matrix_key_exchange": true,
+          "decoded_source_pixels": true,
+          "cancel_preserves_owner": true,
+          "takeover_without_confirmation": true,
+          "old_capture_stopped": true,
+          "fullscreen_keeps_call": true,
+          "stop_releases_capture": true,
+          "low_encoder_limits_applied": true,
+          "voice_packets_increase": true,
+          "video_frames_increase": true,
+          "voice_peer_connections_unchanged": true,
+          "feature_off_stops_capture_and_hides_frame": true,
+          "feature_off_preserves_voice_and_camera": true
+        }
+      }
+    }
+  ],
+  "concurrent": {
+    "result": "PASS",
+    "run": "2026-10-23T19:03:38.693Z",
+    "scope": "two real capture requests held at the same revision, then sent concurrently",
+    "status_codes": [
+      200,
+      409
+    ],
+    "loser_capture_stopped": true,
+    "one_live_capture": true,
+    "winner_pixels_decrypted_by_loser": true,
+    "elapsed_seconds": 10.494297250002623,
+    "client_source_commit": "2abf4a7f3ba6467d0102ebe7de335d65924dad6e",
+    "client_js_sha256": "52da1e6772862f44bdab699fbd0a78e91ec72743a1b9f79bd20cb26ac421b923",
+    "call_mode": "video; camera/microphone synthetic; real tab capture"
+  },
+  "lost-reply": {
+    "result": "PASS",
+    "run": "2026-10-23T19:03:36.212Z",
+    "scope": "real committed claim with one HTTP reply dropped by browser route",
+    "same_request_replayed": true,
+    "same_revision_and_generation": true,
+    "capture_released_and_owner_stopped": true,
+    "elapsed_seconds": 2.47919258300215,
+    "client_source_commit": "2abf4a7f3ba6467d0102ebe7de335d65924dad6e",
+    "client_js_sha256": "52da1e6772862f44bdab699fbd0a78e91ec72743a1b9f79bd20cb26ac421b923",
+    "call_mode": "video; camera/microphone synthetic; real tab capture"
+  },
+  "revoke": {
+    "result": "PASS",
+    "run": "2026-10-23T19:04:15.937Z",
+    "scope": "real Matrix device deletion during group screen publication",
+    "token_endpoint_after_device_deletion": 401,
+    "old_frame_hidden": true,
+    "old_sfu_room_deleted": true,
+    "independent_pinned_sdk_rejects_unexpired_old_jwt": true,
+    "revoked_client_unbind_blocked": true,
+    "remaining_group_call_survives": true,
+    "remaining_device_can_publish_new_generation": true,
+    "elapsed_seconds": 2.1526991659998895,
+    "client_source_commit": "2abf4a7f3ba6467d0102ebe7de335d65924dad6e",
+    "client_js_sha256": "52da1e6772862f44bdab699fbd0a78e91ec72743a1b9f79bd20cb26ac421b923",
+    "call_mode": "video; camera/microphone synthetic; real tab capture"
+  },
+  "followup_base_video_failures_observed": 2,
+  "followup_diagnosis": "ICE connected and synthetic microphone running; no subscriber receivers after full SDK reconnect. Device refresh serialization alone is insufficient."
+}

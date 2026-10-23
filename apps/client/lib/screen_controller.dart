@@ -365,6 +365,7 @@ class ScreenShareController extends ChangeNotifier {
       await _connectMedia(next);
     }
     await _shareKey();
+    _subscribeAvailable();
     await _updateQuality();
     _changed();
   }
@@ -377,6 +378,38 @@ class ScreenShareController extends ChangeNotifier {
         publication.kind,
         publication.mimeType,
       );
+
+  void _subscribe(
+    lk.Room room,
+    int serial,
+    String sender,
+    lk.RemoteTrackPublication publication,
+  ) {
+    if (_closed || serial != _serial || !_allowed(publication, sender)) return;
+    final videos =
+        room.remoteParticipants[sender]?.videoTrackPublications ?? [];
+    if (videos.length > 1) {
+      unawaited(close());
+      return;
+    }
+    unawaited(
+      publication.subscribe().catchError((Object _) {
+        unawaited(close());
+      }),
+    );
+  }
+
+  void _subscribeAvailable() {
+    final room = media;
+    if (room?.connectionState != lk.ConnectionState.connected) return;
+    for (final entry in room!.remoteParticipants.entries) {
+      for (final publication in entry.value.trackPublications.values) {
+        if (!publication.subscribed) {
+          _subscribe(room, _serial, entry.key, publication);
+        }
+      }
+    }
+  }
 
   Future<void> _connectMedia(ScreenSnapshot next) async {
     // Повторное подключение того же поколения сохраняет его sender key.
@@ -413,25 +446,8 @@ class ScreenShareController extends ChangeNotifier {
     );
     media = room;
     _events = room.createListener();
-    void subscribe(String sender, lk.RemoteTrackPublication publication) {
-      if (_closed || serial != _serial || !_allowed(publication, sender)) {
-        return;
-      }
-      final videos =
-          room.remoteParticipants[sender]?.videoTrackPublications ?? [];
-      if (videos.length > 1) {
-        unawaited(close());
-        return;
-      }
-      unawaited(
-        publication.subscribe().catchError((Object _) {
-          unawaited(close());
-        }),
-      );
-    }
-
     _events!.on<lk.TrackPublishedEvent>(
-      (e) => subscribe(e.participant.identity, e.publication),
+      (e) => _subscribe(room, serial, e.participant.identity, e.publication),
     );
     _events!.on<lk.TrackSubscribedEvent>((e) {
       if (serial != _serial ||
@@ -440,6 +456,13 @@ class ScreenShareController extends ChangeNotifier {
         return;
       }
       remoteTrack = e.track as lk.VideoTrack;
+      _changed();
+    });
+    _events!.on<lk.TrackUnsubscribedEvent>((e) {
+      if (serial != _serial || remoteTrack != e.track) return;
+      remoteTrack = null;
+      decoded = false;
+      phase = ScreenPhase.connecting;
       _changed();
     });
     _events!.on<lk.TrackE2EEStateEvent>((e) {
@@ -487,11 +510,7 @@ class ScreenShareController extends ChangeNotifier {
     if (room.e2eeManager == null) {
       throw const FormatException('screen E2EE unavailable');
     }
-    for (final participant in room.remoteParticipants.values) {
-      for (final publication in participant.trackPublications.values) {
-        subscribe(participant.identity, publication);
-      }
-    }
+    _subscribeAvailable();
     if (next.owner == identity && _capture != null) {
       final publication = await _capture!.publication();
       if (_closed || serial != _serial) {

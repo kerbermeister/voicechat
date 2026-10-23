@@ -2,6 +2,29 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-10/SS-16 — 23 октября 2026: подписки после полного reconnect SDK
+
+На 2abf4a7 прошли 133 tests/analyze/release JS и полный personal/group video с
+потерянным reply, конкурентными claims и device revoke. Но независимые group video
+повторы всё ещё иногда не получали media до screen claim. Дополнительные счётчики
+показали connected ICE, работающий synthetic AudioContext и пустой subscriber PC
+без receivers. Это не отсутствие микрофона и не отказ шифрования уже принятого кадра.
+
+Установленный SDK 2.13.1 при полном restart создаёт RemoteParticipant/publications
+из JoinResponse без TrackPublished events. С autoSubscribe=false начальный connect
+покрывался явным обходом, а восстановление того же Room — нет. UI мог сообщать
+«Соединение восстановлено» с пустой подпиской. Новый unit до исправления **FAIL**:
+0 subscribe requests вместо 1.
+
+Теперь после свежей проверки устройств/roster и при connected Room обходятся
+неподписанные публикации. Это работает и когда повторная отправка ключа ещё не нужна;
+уже подписанные tracks не дублируются. RoomReconnected ускоряет обновление допуска.
+Screen использует тот же принцип в своём snapshot loop, сохраняя owner/source/kind,
+GCM/codec, duplicate-track и serial guards. Unsubscribe убирает старый экранный кадр.
+Чужой peer и ошибка авторизации не получают подписку. **8 адресных tests PASS**,
+ещё **6 screen UI/lifecycle tests PASS**, analyze чистый. Чистый build и сквозной
+повтор этого исправления выполняются отдельно; полный fault matrix ещё не принят.
+
 ## SS-16 — 23 октября 2026: сериализация проверки Matrix-устройств
 
 Сравнительный основной group video при выключенном screen flag прошёл: входящие
