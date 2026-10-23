@@ -7,6 +7,7 @@ import 'package:flutter/semantics.dart';
 import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
+import 'screen_capture.dart';
 
 SemanticsHandle? probeSemantics;
 void main() {
@@ -33,6 +34,7 @@ class _ScreenProbeState extends State<ScreenProbe> {
   bool busy = false;
   bool decrypted = false;
   String? savedToken;
+  ScreenCapture? screenCapture;
   final role = Uri.base.queryParameters['role'] ?? 'viewer';
 
   @override
@@ -148,9 +150,8 @@ class _ScreenProbeState extends State<ScreenProbe> {
 
   Future<void> capture() => perform(() async {
     // Вызов до первого сетевого await сохраняет browser user activation.
-    final track = await lk.LocalVideoTrack.createScreenShareTrack(
-      const lk.ScreenShareCaptureOptions(captureScreenAudio: false),
-    );
+    screenCapture = await ScreenCapture.start();
+    final track = await screenCapture!.publication();
     try {
       if (track.mediaStream.getAudioTracks().isNotEmpty) {
         throw StateError('unexpected screen audio');
@@ -162,6 +163,15 @@ class _ScreenProbeState extends State<ScreenProbe> {
       await track.dispose();
       rethrow;
     }
+  });
+
+  Future<void> replaceClone() => perform(() async {
+    final participant = rooms.first.localParticipant!;
+    await participant.removePublishedTrack(
+      participant.videoTrackPublications.single.sid,
+    );
+    await participant.publishVideoTrack(await screenCapture!.publication());
+    stage = 'clone-republished';
   });
 
   Future<int> frames(lk.Room room) async {
@@ -251,6 +261,7 @@ class _ScreenProbeState extends State<ScreenProbe> {
 
   @override
   void dispose() {
+    unawaited(screenCapture?.close());
     for (final peer in peers) {
       unawaited(peer.close());
     }
@@ -277,6 +288,10 @@ class _ScreenProbeState extends State<ScreenProbe> {
       children: [
         Text(stage),
         if (role == 'sender') ...[
+          TextButton(
+            onPressed: busy ? null : replaceClone,
+            child: const Text('Перепубликовать копию'),
+          ),
           TextButton(
             onPressed: busy ? null : duplicateTrack,
             child: const Text('Второй трек'),

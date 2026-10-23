@@ -153,6 +153,7 @@ class ScreenShareController extends ChangeNotifier {
       return;
     }
     _acting = true;
+    final previousPhase = phase;
     phase = ScreenPhase.selecting;
     _changed();
     try {
@@ -170,11 +171,12 @@ class ScreenShareController extends ChangeNotifier {
       phase = ScreenPhase.preparing;
       await _command('claim');
     } catch (_) {
-      await _capture?.close();
+      final captured = _capture;
       _capture = null;
-      await _disposeMedia();
-      notice = 'Не удалось начать показ. Экран не передаётся.';
-      phase = ScreenPhase.error;
+      await captured?.close();
+      if (captured != null) await _disposeMedia();
+      notice = 'Показ не начат. Проверьте разрешение на захват экрана.';
+      phase = captured == null ? previousPhase : ScreenPhase.error;
     } finally {
       _acting = false;
       _changed();
@@ -320,7 +322,8 @@ class ScreenShareController extends ChangeNotifier {
     final room = lk.Room(
       roomOptions: lk.RoomOptions(
         encryption: lk.E2EEOptions(keyProvider: keys),
-        adaptiveStream: true,
+        // Renderer закрыт до kOk; adaptive stream иначе ждёт видимый renderer.
+        adaptiveStream: false,
       ),
     );
     media = room;

@@ -80,6 +80,16 @@ const {chromium} = require('playwright');
     }));
     result.source_colour_samples = pixels;
     assert(pixels.some(count => count > 300), 'Decoded source colour must match captured tab');
+    await pages.sender.getByRole('button', {name:'Перепубликовать копию', exact:true}).click();
+    await pages.sender.getByText('clone-republished', {exact:true}).waitFor({timeout:15000});
+    await pages.viewer.waitForFunction(() => [...document.querySelectorAll('video')].some(video => {
+      if (!video.videoWidth) return false;
+      const canvas=document.createElement('canvas'); canvas.width=canvas.height=1;
+      const c=canvas.getContext('2d'); c.drawImage(video,0,0,1,1);
+      const p=c.getImageData(0,0,1,1).data;
+      return Math.abs(p[0]-81)<20 && Math.abs(p[1]-73)<20 && Math.abs(p[2]-201)<20;
+    }), null, {timeout:15000});
+    result.capture_survives_publication_disposal = true;
     await pages.sender.getByRole('button', {name: 'Статистика', exact: true}).click();
     const direct = await pages.sender.getByText(/^stats:/).textContent();
     assert(Number(direct.match(/p2p=(\d+)/)[1]) > 5, 'Flutter WebRTC P2P decoder must continue alongside both SFU rooms');

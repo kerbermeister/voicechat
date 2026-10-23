@@ -1,14 +1,22 @@
 import 'package:livekit_client/livekit_client.dart' as lk;
+import 'package:flutter/foundation.dart';
 
 /// Исходный захват живёт отдельно от публикаций сменяемых SFU-поколений.
 class ScreenCapture {
+  static bool get supported => kIsWeb
+      ? !lk.lkPlatformIsWebMobile()
+      : defaultTargetPlatform == TargetPlatform.android;
   final lk.LocalVideoTrack source;
   bool _closed = false;
   ScreenCapture(this.source);
 
   static Future<ScreenCapture> start() async {
+    if (!supported) throw UnsupportedError('Screen capture unavailable');
     final track = await lk.LocalVideoTrack.createScreenShareTrack(
-      const lk.ScreenShareCaptureOptions(captureScreenAudio: false),
+      const lk.ScreenShareCaptureOptions(
+        captureScreenAudio: false,
+        maxFrameRate: 15,
+      ),
     );
     if (track.mediaStream.getAudioTracks().isNotEmpty) {
       await track.dispose();
