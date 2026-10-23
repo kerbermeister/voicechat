@@ -55,6 +55,21 @@ mute сохранён до/во время/после screen; `verified-screen-c
 host прошли. Для базового QR-fixture создан пустой `.prototype`, как на обычном стенде.
 Полный committed прогон повторяется после фиксации исправления.
 
+Повтор завершён на чистом `git archive` **691a0fc30a**: **130 Flutter tests PASS**,
+полный analyze без замечаний, release web JS build PASS. Сборка не содержит чужого
+дизайна. В ней заново прошли обычные personal/group video calls: реальные screen
+пиксели, Matrix key exchange, отмена, перехват, stop/fullscreen, encoder Low и
+непрерывность основной камеры/голоса. Прогон от 18:09 UTC: direct 21.987 с,
+group 22.756 с. [Отдельный артефакт](../../prototype/verified-screen-committed-calls-run.json)
+содержит полный source commit и SHA-256 main.dart.js; прежний feature-off прогон
+сохранён отдельно. Проверены 55 файлов release: нет fixture/SQLite/access-файлов
+и значений локальных инфраструктурных secrets.
+
+Зависимости восстановлены offline с `--enforce-lockfile`; использованы уже
+сгенерированные upstream crypto/scanner assets из закреплённых зависимостей.
+Холодная Rust/WASM сборка этим не проверена. Общий checkout имел 146 tests с чужими
+изменениями; именно **130** относятся к принятому чистому screen snapshot.
+
 ## SS-15 — 23 октября 2026: control image, backup metadata и runbook
 
 Реальная сборка выявила недостающий docker context: `.dockerignore` исключал SQL,

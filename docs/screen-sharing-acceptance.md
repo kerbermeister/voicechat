@@ -65,6 +65,7 @@ PASS ниже относится только к явно указанной с�
 | A18 | BLOCKED | 50 fake metadata cycles без retired rooms; это не 30 минут media и не доказательство native/браузерных утечек. Тяжёлая нагрузка не разрешена. |
 
 Артефакты: [обычные video calls](../prototype/verified-screen-calls-run.json),
+[повтор на чистом committed build](../prototype/verified-screen-committed-calls-run.json),
 [аудиосценарий](../prototype/verified-screen-calls-audio-run.json),
 [отрицательный SFU/E2EE](../prototype/verified-screen-web-run.json),
 [образ control](../prototype/verified-screen-control-image-run.json),
