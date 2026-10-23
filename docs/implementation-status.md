@@ -17,6 +17,17 @@ SFU подтверждены E2EE-пиксели, запрет viewer/wrong-sour
 UID10001 и SQLite backup/recovery без оживления screen leases. Это не заменяет
 полное восстановление приложения и аппаратную/сетевую/нагрузочную приёмку.
 
+Чистый кандидат caecb3c: 135 тестов проверены (один повтор после подготовки
+каталога тестового QR), analyze и release JS — PASS. Три web-клиента прошли поздний
+вход с ротацией поколения и A → B → C без замены voice PC; проверяются видимые
+пиксели Flutter UI с разным цветом каждого источника. Конкурентные claims одной
+revision дали 200/409; проигравший освободил capture. Отдельный production control
+API/SQLite пережил restart и отказ его Matrix-зависимости с отзывом живого экрана
+и unexpired JWT; эти fault-прогоны выполнены на 10b97ee, общий Synapse/SFU не
+выключались. Исправлены гонка Matrix device refresh, пропуск subscriptions после
+полного SDK reconnect и устаревшая revision после picker. Оставшиеся сквозные
+негативные сценарии также перечислены в матрице; только внешними gate дело не ограничено.
+
 Источник статуса: [задачи SS-00–SS-17](tasks/08-screen-sharing.md),
 [журнал](iterations/08-screen-sharing.md), [матрица приёмки](screen-sharing-acceptance.md).
 Для пользователей — [демонстрация экрана](screen-sharing.md), для оператора —

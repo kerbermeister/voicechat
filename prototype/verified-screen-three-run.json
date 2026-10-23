@@ -1,0 +1,20 @@
+{
+  "result": "PASS",
+  "run": "2026-10-23T20:25:41.291Z",
+  "scope": "three ordinary web clients; real Matrix + SFU + tab capture; synthetic camera/microphone",
+  "participants": 3,
+  "takeover_sequence": "A -> B -> C",
+  "former_owners_view_winner_pixels": true,
+  "one_live_capture": true,
+  "voice_connections_unchanged": true,
+  "voice_and_camera_continue_on_all_clients": true,
+  "stop_releases_all_captures": true,
+  "distinct_source_colours": true,
+  "late_join_rotates_generation_and_delivers_pixels": true,
+  "roster_rotation_reuses_root_capture": true,
+  "previous_generation_deleted": true,
+  "elapsed_seconds": 38.00593045800179,
+  "client_source_commit": "caecb3cbae32adcebc489f54806649b91abbc38a",
+  "client_js_sha256": "4a3af9a1c9d1f6ed10092e74cf048f6ca223506549af713f2f5c9e258032b790",
+  "pixel_assertion": "actual Flutter UI screenshot PNG; distinct per-owner colours"
+}

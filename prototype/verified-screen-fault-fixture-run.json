@@ -1,0 +1,8 @@
+{
+  "result": "PASS",
+  "scope": "private control/proxy initialization; no accounts or live media",
+  "screen_schema": 2,
+  "invalid_token_denied": true,
+  "matrix_outage_denies_grant": true,
+  "restart_healthy": true
+}

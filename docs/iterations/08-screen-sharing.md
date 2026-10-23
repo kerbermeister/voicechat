@@ -2,6 +2,79 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-16 — 23 октября 2026: чистый кандидат, видимый экран и реальные сбои
+
+Клиент **caecb3c** собран из отдельного `git archive`, без незавершённого дизайна
+и VPS diff. Flutter 3.47.7, Chrome 156.0.8078.47, release JavaScript, SDK 2.13.1.
+Проверены **135 тестов**: 134 PASS в общем прогоне, один QR-тест сначала не нашёл
+каталог вывода `.prototype`; после создания каталога его отдельный повтор PASS.
+Analyze чистый, JS build PASS (**51.8 с**). Lockfile совпал с commit; **55 файлов**
+release не содержат fixtures/SQLite/локальных инфраструктурных secret values.
+Готовые закреплённые crypto/scanner assets переиспользованы; cold Rust/WASM build
+не проверен. SHA256 JS: `4a3af9a1c9d1f6ed10092e74cf048f6ca223506549af713f2f5c9e258032b790`.
+
+Проверка renderer усилена: установленный flutter_webrtc скрывает DOM `<video>`
+и рисует его во Flutter Canvas. Теперь assertion анализирует PNG всего реального UI,
+а не только декодер скрытого video. У A/B/C разные контрольные цвета; автоматический
+picker получает ровно один источник с подходящим title. После stop проверяется
+исчезновение последнего цвета. Эти кадры — тестовая вкладка; камера/микрофон
+синтетические, физический монитор/системный picker/телефон этим не приняты.
+
+На новом кандидате **PASS**:
+
+- Personal/group video: Matrix E2EE, видимые кадры правильного источника, отмена
+  picker сохраняет ведущего, перехват, остановка старого root, fullscreen, Low/Auto.
+  В voice PC растут audio/camera counters; сами PC не заменяются.
+- Потерянный HTTP reply: сервер принял claim, browser route удалил ответ; повтор
+  сохранил request_id/revision/generation, capture остановлен, следующий показ работает.
+- Два подготовленных capture одной revision отправляют claims параллельно: 200/409,
+  один root остаётся live; проигравший освобождает свой и видит победителя. Picker
+  выполнялся последовательно ради focus, конкурентными были серверные команды.
+- Поздний C принимает group call во время экрана A: screen generation меняется,
+  старая room удалена, B/C получают кадры A. У A остаётся тот же единственный root
+  capture, второй picker не нужен. Затем A → B → C, бывшие ведущие видят новый цвет,
+  voice/camera сохраняются у всех троих; Stop освобождает все roots. **38.006 с**.
+- Настоящий временный feature flag=0 прекращает capture/renderer, сохраняя group
+  voice/camera. Постоянный flag проекта не создавался, default off сохранён.
+- Удаление текущего Matrix-устройства ведущего во время group screen — **2.342 с**:
+  новый token получает 401, реальный кадр скрыт, старая room отсутствует, независимый
+  SDK отвергает сохранённый unexpired JWT. Добровольный screen unbind заблокирован;
+  отозванный UI закрывает root capture, оставшийся участник публикует новое поколение.
+
+На предыдущем чистом клиенте **10b97ee** отдельно приняты сбои с живым E2EE-экраном:
+private API использует настоящие production modules/SQLite/SFU, но отдельную БД и
+proxy к Matrix. Отказ Matrix только для screen control (**31.005 с**) и restart
+этого API с тем же SQLite (**1.120 с**) прекращают захват, скрывают кадр, удаляют
+room и отвергают ещё действующий JWT в независимом SDK. P2P voice/camera продолжаются,
+автозахват не начинается, retired rooms=0. Общий Synapse/SFU не останавливались;
+совместная авария контейнера с media и полный перебор фаз этим не приняты.
+
+Исправления device cache и SDK reconnect подтверждены тестами до/после и новыми
+сквозными повторами. Дополнительный исходный group отказ на 10b97ee после успешного
+personal был конфликтом старой revision перед claim; его исправление и red test
+описаны ниже. Отдельный ранний PARTIAL отчёт 2abf4a7 сохранён как история, а не
+переименован в PASS. Конечные результаты и commit каждого сценария —
+[регрессия](../../prototype/verified-screen-subscription-regression-run.json),
+[матрица](../screen-sharing-acceptance.md). Полная приёмка SS-16 остаётся PARTIAL:
+внешние платформы/сети/нагрузка, ручная доступность, полный restore и остаточная
+негативная матрица не закрыты. Android не собирался и не запускался.
+
+Команды UI (последовательно, `NODE_PATH` указывает на имеющийся Playwright/pngjs;
+`:7358` обслуживает чистую сборку, `:7362` — SDK probe):
+
+```sh
+VOICECHAT_UI_URL=http://localhost:7358/ VOICECHAT_SCREEN_TEST=1 VOICECHAT_VIDEO_TEST=1 VOICECHAT_SCREEN_THREE_TEST=1 node prototype/check_contacts_ui.cjs
+VOICECHAT_UI_URL=http://localhost:7358/ VOICECHAT_SCREEN_TEST=1 VOICECHAT_VIDEO_TEST=1 VOICECHAT_SCREEN_CONCURRENT_TEST=1 VOICECHAT_SCREEN_LOST_REPLY_TEST=1 VOICECHAT_SCREEN_TEST_FLAG=/tmp/voicechat-screen-test-enabled node prototype/check_contacts_ui.cjs
+VOICECHAT_UI_URL=http://localhost:7358/ VOICECHAT_SCREEN_TEST=1 VOICECHAT_VIDEO_TEST=1 VOICECHAT_SCREEN_GROUP_ONLY=1 VOICECHAT_SCREEN_REVOKE_TEST=1 node prototype/check_contacts_ui.cjs
+VOICECHAT_UI_URL=http://localhost:7358/ VOICECHAT_SCREEN_TEST=1 VOICECHAT_VIDEO_TEST=1 VOICECHAT_SCREEN_DIRECT_ONLY=1 VOICECHAT_SCREEN_FAULT_TEST=matrix node prototype/check_contacts_ui.cjs
+VOICECHAT_UI_URL=http://localhost:7358/ VOICECHAT_SCREEN_TEST=1 VOICECHAT_VIDEO_TEST=1 VOICECHAT_SCREEN_DIRECT_ONLY=1 VOICECHAT_SCREEN_FAULT_TEST=restart node prototype/check_contacts_ui.cjs
+```
+
+Fault-команды создают/удаляют собственный API/SQLite/proxy. Последние две в этой
+серии выполнялись на 10b97ee; остальные на caecb3c. Для UI-прогонов нужен отдельный
+временный screen flag=1, для fault — также отдельный готовый SDK probe. Команды
+нельзя направлять на пользовательские звонки или использовать как нагрузочный тест.
+
 ## SS-07/SS-16 — 23 октября 2026: свежий допуск после picker
 
 В чистом клиенте 10b97ee personal video прошёл с потерянным reply и двумя

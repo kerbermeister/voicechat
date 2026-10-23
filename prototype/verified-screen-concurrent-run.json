@@ -1,0 +1,16 @@
+{
+  "result": "PASS",
+  "run": "2026-10-23T20:27:29.557Z",
+  "scope": "two real capture requests held at the same revision, then sent concurrently",
+  "status_codes": [
+    200,
+    409
+  ],
+  "loser_capture_stopped": true,
+  "one_live_capture": true,
+  "winner_pixels_decrypted_by_loser": true,
+  "elapsed_seconds": 13.221134749997407,
+  "client_source_commit": "caecb3cbae32adcebc489f54806649b91abbc38a",
+  "client_js_sha256": "4a3af9a1c9d1f6ed10092e74cf048f6ca223506549af713f2f5c9e258032b790",
+  "pixel_assertion": "actual Flutter UI screenshot PNG; distinct per-owner colours"
+}

@@ -47,7 +47,12 @@ async function register(role) {
   const deadline=process.env.VOICECHAT_LINKS_ONLY==='1' ? setTimeout(()=>{console.error('Focused links deadline exceeded'); browser.close().catch(()=>{});},90000) : process.env.VOICECHAT_SCHEDULE_TEST==='1' ? setTimeout(()=>{console.error('Scheduled UI deadline exceeded'); browser.close().catch(()=>{});},360000) : null;
   const pages=[];
   let sensitiveVerification=false;
+  let screenFaults;
   try {
+    if(screenTest && process.env.VOICECHAT_SCREEN_FAULT_TEST) {
+      assert(process.env.VOICECHAT_SCREEN_DIRECT_ONLY==='1' && video);
+      screenFaults=await require('./check_screen_faults.cjs').start();
+    }
     const fill = async (page, name, value) => {
       await page.bringToFront();
       const field=page.getByRole('textbox',{name,exact:true});
@@ -194,6 +199,10 @@ async function register(role) {
     }
     async function login(account) {
       const context=await browser.newContext({permissions:textOnly ? [] : ['microphone','camera'],viewport:{width:1280,height:900}});
+      if(screenFaults) await context.route('http://localhost:8090/screen/**',route=>{
+        const url=new URL(route.request().url());
+        return route.continue({url:screenFaults.base+url.pathname});
+      });
       if(screenTest) await context.addInitScript(require('./check_screen_calls.cjs').syntheticMedia);
       await context.addInitScript(()=>{
         const capture=navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
@@ -223,13 +232,17 @@ async function register(role) {
         };
       });
       const page=await context.newPage(); pages.push(page);
+      let lastScreenError;
       if(screenTest) page.on('response', async response=>{
         if(response.url().endsWith('/token') && !response.url().includes('/screen/') && response.status()!==200) {
           const data=await response.json().catch(()=>({}));console.log('Voice admission',response.status(),data.error||'');
         }
         if(response.url().includes('/screen/')) {
           const body=await response.json().catch(()=>({}));
-          if(response.status()!==200 || /\/(bind|claim|stop)$/.test(response.url())) console.log('Screen HTTP',response.url().split('/screen/')[1].split('/').pop(),response.status(),body.error||body.binding_state||body.snapshot?.state||body.state||'');
+          const action=response.url().split('/screen/')[1].split('/').pop();
+          const error=response.status()!==200 ? action+':'+response.status()+':'+body.error : null;
+          if((error && error!==lastScreenError) || /\/(bind|claim|stop)$/.test(response.url())) console.log('Screen HTTP',action,response.status(),body.error||body.binding_state||body.snapshot?.state||body.state||'');
+          lastScreenError=error;
         }
       });
       page.on('console', message=>{
@@ -248,6 +261,45 @@ async function register(role) {
       return page;
     }
     const a=await login(alice), b=await login(bob);
+    if(screenTest && process.env.VOICECHAT_SCREEN_THREE_TEST==='1') {
+      assert(video,'Three participant screen scenario expects video calls');
+      for(const account of [bob,charlie]) await request(apiUrl,'/contacts',{action:'policy',allow_direct:true},account.access_token);
+      const c=await login(charlie);
+      for(const account of [bob,charlie]) {
+        const direct=await request(matrixUrl,'/_matrix/client/v3/createRoom',{
+          preset:'private_chat',is_direct:true,invite:[account.user_id],initial_state:[
+            {type:'m.room.encryption',state_key:'',content:{algorithm:'m.megolm.v1.aes-sha2'}},
+            {type:'dev.voicechat.kind',state_key:'',content:{kind:'direct',owner:alice.user_id,peer:account.user_id}},
+            {type:'m.room.history_visibility',state_key:'',content:{history_visibility:'invited'}},
+          ],
+        },alice.access_token);
+        await request(apiUrl,'/contacts',{action:'request',recipient:account.user_id,room_id:direct.room_id},alice.access_token);
+        await request(matrixUrl,'/_matrix/client/v3/rooms/'+encodeURIComponent(direct.room_id)+'/join',{},account.access_token);
+      }
+      const {room_id}=await request(matrixUrl,'/_matrix/client/v3/createRoom',{
+        name:'Проверка экрана втроём',preset:'private_chat',invite:[bob.user_id,charlie.user_id],
+        power_level_content_override:{invite:50,kick:50,ban:50},initial_state:[
+          {type:'m.room.encryption',state_key:'',content:{algorithm:'m.megolm.v1.aes-sha2'}},
+          {type:'m.room.history_visibility',state_key:'',content:{history_visibility:'joined'}},
+        ],
+      },alice.access_token);
+      for(const account of [bob,charlie]) await request(matrixUrl,'/_matrix/client/v3/rooms/'+encodeURIComponent(room_id)+'/join',{},account.access_token);
+      for(const page of [a,b,c]) {
+        await page.getByText('Группы',{exact:true}).click();
+        await page.getByRole('button',{name:/Проверка экрана втроём/}).click({timeout:30000});
+      }
+      await a.bringToFront();await button(a,callButton).click();
+      async function accept(page) {
+        await button(page,'Принять').waitFor({timeout:30000});
+        await page.bringToFront();await button(page,'Принять').click();
+      }
+      await accept(b);
+      await require('./check_screen_calls.cjs').checkThree([a,b,c],button,()=>accept(c));
+      for(const page of [a,b,c]) {
+        await button(page,'Завершить').click();await button(page,'Закрыть').click();
+      }
+      return;
+    }
     if(process.env.VOICECHAT_LINKS_ONLY==='1') {
       a.setDefaultTimeout(15000);
       console.log('Links: create isolated encrypted room');
@@ -545,7 +597,7 @@ async function register(role) {
         if(network) await networkCheck(a,b,'direct');
         await a.screenshot({path:path.join(root,'.prototype/ui/direct-video.png')});
       }
-      if(screenTest) await require('./check_screen_calls.cjs').check(a,b,button,'direct');
+      if(screenTest) await require('./check_screen_calls.cjs').check(a,b,button,'direct',null,screenFaults);
       await b.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringtone.wav')).every(p=>p.audio.paused));
       await a.waitForFunction(()=>window.soundPlays.filter(p=>p.src.includes('ringback.wav')).every(p=>p.audio.paused));
       await a.waitForTimeout(2200);
@@ -670,9 +722,16 @@ async function register(role) {
     throw error;
   } finally {
     if(deadline) clearTimeout(deadline);
-    await browser.close();
-    if(process.env.VOICECHAT_SCHEDULE_TEST==='1' || screenTest) {
-      for(const account of [alice,bob,charlie]) await request(matrixUrl,'/_matrix/client/v3/account/deactivate',{auth:{type:'m.login.password',identifier:{type:'m.id.user',user:account.user_id},password:account.password},erase:true},account.access_token).catch(()=>{});
+    try {
+      await browser.close();
+    } finally {
+      try {
+        if(screenFaults) await screenFaults.close();
+      } finally {
+        if(process.env.VOICECHAT_SCHEDULE_TEST==='1' || screenTest) {
+          for(const account of [alice,bob,charlie]) await request(matrixUrl,'/_matrix/client/v3/account/deactivate',{auth:{type:'m.login.password',identifier:{type:'m.id.user',user:account.user_id},password:account.password},erase:true},account.access_token).catch(()=>{});
+        }
+      }
     }
   }
 })().catch(error=>{console.error(error.stack);process.exitCode=1;});

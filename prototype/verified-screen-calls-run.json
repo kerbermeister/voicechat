@@ -1,9 +1,9 @@
 {
   "result": "PASS",
-  "run": "2026-10-23T17:39:18.580Z",
+  "run": "2026-10-23T20:26:40.973Z",
   "direct": {
     "result": "PASS",
-    "elapsed_seconds": 23.419708959000186,
+    "elapsed_seconds": 24.59937991699949,
     "capture": "real browser tab, automatic picker selection",
     "camera_microphone": "synthetic",
     "encrypted_matrix_key_exchange": true,
@@ -16,11 +16,12 @@
     "low_encoder_limits_applied": true,
     "voice_packets_increase": true,
     "video_frames_increase": true,
-    "voice_peer_connections_unchanged": true
+    "voice_peer_connections_unchanged": true,
+    "distinct_source_colours": true
   },
   "group": {
     "result": "PASS",
-    "elapsed_seconds": 26.600655875001102,
+    "elapsed_seconds": 26.808947541002183,
     "capture": "real browser tab, automatic picker selection",
     "camera_microphone": "synthetic",
     "encrypted_matrix_key_exchange": true,
@@ -35,6 +36,10 @@
     "video_frames_increase": true,
     "voice_peer_connections_unchanged": true,
     "feature_off_stops_capture_and_hides_frame": true,
-    "feature_off_preserves_voice_and_camera": true
-  }
+    "feature_off_preserves_voice_and_camera": true,
+    "distinct_source_colours": true
+  },
+  "source_commit": "caecb3cbae32adcebc489f54806649b91abbc38a",
+  "main_dart_js_sha256": "4a3af9a1c9d1f6ed10092e74cf048f6ca223506549af713f2f5c9e258032b790",
+  "pixel_assertion": "actual Flutter UI screenshot PNG; distinct per-owner colours, not hidden video DOM only"
 }

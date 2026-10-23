@@ -1,6 +1,6 @@
 {
   "result": "PASS",
-  "run": "2026-10-23T18:47:27.226Z",
+  "run": "2026-10-23T20:29:35.849Z",
   "scope": "real Matrix device deletion during group screen publication",
   "token_endpoint_after_device_deletion": 401,
   "old_frame_hidden": true,
@@ -9,8 +9,9 @@
   "revoked_client_unbind_blocked": true,
   "remaining_group_call_survives": true,
   "remaining_device_can_publish_new_generation": true,
-  "elapsed_seconds": 2.668043042000383,
-  "client_source_commit": "691a0fc30a90b174dbe046069de130e739213116",
-  "client_js_sha256": "f450fc76593d49190bc1488429ef2eb46f78bcee46973bd1ceb708cdc4fc620d",
-  "call_mode": "audio; camera not requested"
+  "revoked_client_capture_stopped": true,
+  "elapsed_seconds": 2.341613791998476,
+  "client_source_commit": "caecb3cbae32adcebc489f54806649b91abbc38a",
+  "client_js_sha256": "4a3af9a1c9d1f6ed10092e74cf048f6ca223506549af713f2f5c9e258032b790",
+  "pixel_assertion": "actual Flutter UI screenshot PNG; distinct per-owner colours"
 }
