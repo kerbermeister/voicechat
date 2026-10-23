@@ -86,6 +86,9 @@ class CallProbe implements VoiceCall {
   Future<void>? _closing;
   DateTime _authorizedAt = DateTime.now();
   Map<String, dynamic>? _admission;
+
+  /// Только собственный допуск активного группового звонка, не отдельное место SFU.
+  String? get screenBindingLease => _admission?['lease_id'] as String?;
   List<mx.DeviceKeys> _devices = [];
   Future<void>? _renewing;
   bool _rebuilding = false;

@@ -62,7 +62,7 @@ class ScreenSchemaTests(unittest.TestCase):
     def test_unknown_schema_version_is_not_downgraded(self):
         with sqlite3.connect(self.path) as db:
             db.execute('CREATE TABLE screen_schema(singleton INTEGER PRIMARY KEY,version INTEGER)')
-            db.execute('INSERT INTO screen_schema VALUES(1,2)')
+            db.execute('INSERT INTO screen_schema VALUES(1,3)')
         with self.assertRaisesRegex(ValueError, 'unsupported_screen_schema'):
             ScreenStore(self.path)
 
