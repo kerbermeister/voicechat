@@ -61,6 +61,8 @@ const {chromium} = require('playwright');
     assert.match(valid, /decrypted=true/);
     const numbers = valid.match(/screen=(\d+),camera=(\d+)/);
     assert(Number(numbers[1]) > 5 && Number(numbers[2]) > 5, 'Independent screen/camera decoding required');
+    const audioBefore = Number(valid.match(/audio=(\d+)/)[1]);
+    assert(audioBefore > 0, 'Microphone packets required in the independent call room');
     await pages.wrong.getByRole('button', {name: 'Статистика', exact: true}).click();
     const wrong = await pages.wrong.getByText(/^stats:/).textContent();
     result.decoder_observations = {valid, missing_key: wrong};
@@ -106,6 +108,14 @@ const {chromium} = require('playwright');
     await replay.goto('http://localhost:7362/?role=sender');
     await replay.getByText(/^failed:/).waitFor({timeout: 30000});
     result.old_jwt_deleted_room = 'REJECTED';
+    await pages.viewer.getByRole('button', {name: 'Статистика', exact: true}).click();
+    const after = await pages.viewer.getByText(/^stats:/).textContent();
+    assert(Number(after.match(/camera=(\d+)/)[1]) > Number(numbers[2]), 'Camera must survive screen room deletion');
+    assert(Number(after.match(/audio=(\d+)/)[1]) > audioBefore, 'Microphone must survive screen room deletion');
+    await pages.sender.getByRole('button', {name: 'Статистика', exact: true}).click();
+    const afterDirect = await pages.sender.getByText(/^stats:/).textContent();
+    assert(Number(afterDirect.match(/p2p=(\d+)/)[1]) > result.p2p_frames, 'P2P must survive screen room deletion');
+    result.screen_deletion_call_continuity = 'PASS: camera, microphone packets, local P2P';
     result.source_colour_verified = true;
     result.result = 'PASS';
     result.screen_frames = Number(numbers[1]);
@@ -115,6 +125,7 @@ const {chromium} = require('playwright');
     console.log(JSON.stringify(result));
   } finally {
     await browser.close();
+    result.elapsed_seconds = (performance.now() - start) / 1000;
     fs.writeFileSync(path.join(__dirname, 'verified-screen-web-run.json'), JSON.stringify(result, null, 2) + '\n');
   }
 })().catch(error => {

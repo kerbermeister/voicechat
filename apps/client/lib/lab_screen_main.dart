@@ -182,6 +182,17 @@ class _ScreenProbeState extends State<ScreenProbe> {
   Future<void> inspect() => perform(() async {
     final screen = await frames(rooms.first);
     final camera = await frames(rooms[1]);
+    var audio = 0;
+    for (final participant in rooms[1].remoteParticipants.values) {
+      for (final publication in participant.audioTrackPublications) {
+        for (final stat
+            in await publication.track?.receiver?.getStats() ?? []) {
+          if (stat.type == 'inbound-rtp') {
+            audio += (stat.values['packetsReceived'] as num? ?? 0).toInt();
+          }
+        }
+      }
+    }
     var direct = 0;
     if (peers.isNotEmpty) {
       for (final stat in await peers.last.getStats()) {
@@ -191,7 +202,7 @@ class _ScreenProbeState extends State<ScreenProbe> {
       }
     }
     stage =
-        'stats:screen=$screen,camera=$camera,decrypted=$decrypted,p2p=$direct,publications=${rooms.first.localParticipant!.videoTrackPublications.length}';
+        'stats:screen=$screen,camera=$camera,decrypted=$decrypted,p2p=$direct,publications=${rooms.first.localParticipant!.videoTrackPublications.length},audio=$audio';
   });
 
   Future<void> rememberToken() => perform(() async {
