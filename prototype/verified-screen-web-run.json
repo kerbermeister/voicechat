@@ -1,0 +1,29 @@
+{
+  "result": "PASS",
+  "browser": "156.0.8078.47",
+  "capture": "real browser tab; automated source selection",
+  "camera_microphone": "synthetic",
+  "matrix_key_exchange": "NOT_TESTED",
+  "android": "NOT_TESTED",
+  "p2p_plus_sfu": "PASS: local Flutter WebRTC pair; not Matrix DirectCall acceptance",
+  "decoder_observations": {
+    "valid": "stats:screen=10,camera=19,decrypted=true,p2p=0,publications=0",
+    "missing_key": "stats:screen=0,camera=0,decrypted=false,p2p=0,publications=0"
+  },
+  "source_colour_samples": [
+    981,
+    0
+  ],
+  "p2p_frames": 31,
+  "same_owner_two_tracks": {
+    "result": "duplicate-published",
+    "publications": 2
+  },
+  "refreshed_jwt_deleted_room": "REJECTED",
+  "old_jwt_deleted_room": "REJECTED",
+  "source_colour_verified": true,
+  "screen_frames": 10,
+  "camera_frames": 19,
+  "missing_key_decoded_frames": 0,
+  "elapsed_seconds": 8.61555216700025
+}
