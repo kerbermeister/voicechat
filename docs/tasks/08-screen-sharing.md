@@ -5,7 +5,7 @@
 голос/камеры продолжаются, экран отдельно, без звука устройства/записи/нативного iOS.
 
 **Текущая точка: SS-00 выполнена; SS-01 завершена в веб-объёме;
-Android отложен владельцем, разрешён переход к SS-02. SS-02–SS-17 не начаты.**
+Android отложен владельцем; SS-02 выполнена. Следующая SS-03; SS-03–SS-17 не начаты.**
 [Результаты и оставшиеся проверки](../iterations/08-screen-sharing.md).
 Техническая возможность размещения на одной машине уже заложена в проекте;
 работоспособность screen share и его E2EE пока не проверена.
@@ -87,15 +87,15 @@ screen share не отмечена реализованной. **Зависим�
 
 ## SS-02. Модель состояния, протокол и миграция
 
-- [ ] Описать строгие request/response fixtures всех маршрутов §8 ТЗ: типы, размеры,
+- [x] Описать строгие request/response fixtures всех маршрутов §8 ТЗ: типы, размеры,
   nullability, роли и стабильные ошибки. Зафиксировать version negotiation и capabilities.
-- [ ] Добавить `screen_session`, command receipts, retired generations и direct binding
+- [x] Добавить `screen_session`, command receipts, retired generations и direct binding
   только там, где существующих таблиц недостаточно; не копировать Matrix membership.
-- [ ] Разделить business revision, screen generation, roster version и состояние
+- [x] Разделить business revision, screen generation, roster version и состояние
   локального capture; определить уникальные ограничения и индексы по реальным запросам.
-- [ ] Добавить schema version/additive migration, идемпотентную и безопасную для
+- [x] Добавить schema version/additive migration, идемпотентную и безопасную для
   существующих contacts/scheduled/call данных; терминальные bindings не воскрешаются.
-- [ ] Зафиксировать сроки технических квитанций, cleanup и поведение позднего повтора.
+- [x] Зафиксировать сроки технических квитанций, cleanup и поведение позднего повтора.
 
 **Файлы:** `prototype/call_control.py` либо небольшой соседний `screen_control.py`,
 `test_call_control.py`/`test_screen_control.py`, контрактные fixtures.

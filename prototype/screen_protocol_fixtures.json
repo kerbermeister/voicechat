@@ -1,0 +1,193 @@
+{
+  "requests": {
+    "bind_group": {
+      "protocol_version": 1,
+      "room_id": "!room:local",
+      "call_session": "group-session",
+      "transport": "group",
+      "call_lease_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "bind_direct": {
+      "protocol_version": 1,
+      "room_id": "!dm:local",
+      "call_session": "matrix-call-id",
+      "transport": "direct",
+      "peer": {
+        "user_id": "@peer:local",
+        "device_id": "D"
+      }
+    },
+    "unbind": {
+      "protocol_version": 1,
+      "binding_id": "22222222-2222-4222-8222-222222222222",
+      "lease_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "request_id": "11111111-1111-4111-8111-111111111111"
+    },
+    "claim": {
+      "protocol_version": 1,
+      "lease_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "request_id": "11111111-1111-4111-8111-111111111111",
+      "expected_revision": 0
+    },
+    "stop": {
+      "protocol_version": 1,
+      "lease_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "request_id": "11111111-1111-4111-8111-111111111111",
+      "expected_revision": 1
+    },
+    "heartbeat": {
+      "protocol_version": 1,
+      "lease_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "observed_revision": 1,
+      "capture_state": "sharing"
+    },
+    "token": {
+      "protocol_version": 1,
+      "lease_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected_revision": 1,
+      "generation": "screen-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+  },
+  "responses": {
+    "bind": {
+      "binding_id": "22222222-2222-4222-8222-222222222222",
+      "lease_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "binding_state": "pending",
+      "snapshot": {
+        "protocol_version": 1,
+        "binding_id": "22222222-2222-4222-8222-222222222222",
+        "revision": 0,
+        "state": "idle",
+        "owner_identity": null,
+        "generation": null,
+        "roster_version": 0,
+        "deadline": null,
+        "server_time": 0,
+        "roster": [],
+        "capabilities": {
+          "screen": true
+        }
+      }
+    },
+    "unbind": {
+      "status": "succeeded",
+      "request_id": "11111111-1111-4111-8111-111111111111",
+      "snapshot": {
+        "protocol_version": 1,
+        "binding_id": "22222222-2222-4222-8222-222222222222",
+        "revision": 0,
+        "state": "idle",
+        "owner_identity": null,
+        "generation": null,
+        "roster_version": 0,
+        "deadline": null,
+        "server_time": 0,
+        "roster": [],
+        "capabilities": {
+          "screen": true
+        }
+      }
+    },
+    "state": {
+      "protocol_version": 1,
+      "binding_id": "22222222-2222-4222-8222-222222222222",
+      "revision": 0,
+      "state": "idle",
+      "owner_identity": null,
+      "generation": null,
+      "roster_version": 0,
+      "deadline": null,
+      "server_time": 0,
+      "roster": [],
+      "capabilities": {
+        "screen": true
+      }
+    },
+    "claim": {
+      "status": "pending",
+      "request_id": "11111111-1111-4111-8111-111111111111",
+      "result_revision": null,
+      "snapshot": {
+        "protocol_version": 1,
+        "binding_id": "22222222-2222-4222-8222-222222222222",
+        "revision": 0,
+        "state": "idle",
+        "owner_identity": null,
+        "generation": null,
+        "roster_version": 0,
+        "deadline": null,
+        "server_time": 0,
+        "roster": [],
+        "capabilities": {
+          "screen": true
+        }
+      }
+    },
+    "stop": {
+      "status": "succeeded",
+      "request_id": "11111111-1111-4111-8111-111111111111",
+      "result_revision": 1,
+      "snapshot": {
+        "protocol_version": 1,
+        "binding_id": "22222222-2222-4222-8222-222222222222",
+        "revision": 0,
+        "state": "idle",
+        "owner_identity": null,
+        "generation": null,
+        "roster_version": 0,
+        "deadline": null,
+        "server_time": 0,
+        "roster": [],
+        "capabilities": {
+          "screen": true
+        }
+      }
+    },
+    "heartbeat": {
+      "lease_expires_at": 30000,
+      "snapshot": {
+        "protocol_version": 1,
+        "binding_id": "22222222-2222-4222-8222-222222222222",
+        "revision": 0,
+        "state": "idle",
+        "owner_identity": null,
+        "generation": null,
+        "roster_version": 0,
+        "deadline": null,
+        "server_time": 0,
+        "roster": [],
+        "capabilities": {
+          "screen": true
+        }
+      }
+    },
+    "token": {
+      "generation": "screen-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "revision": 1,
+      "role": "viewer",
+      "token": "<disposable-jwt>",
+      "expires_at": 60000
+    },
+    "operation": {
+      "request_id": "11111111-1111-4111-8111-111111111111",
+      "status": "succeeded",
+      "result_revision": 1,
+      "error_code": null,
+      "snapshot": {
+        "protocol_version": 1,
+        "binding_id": "22222222-2222-4222-8222-222222222222",
+        "revision": 0,
+        "state": "idle",
+        "owner_identity": null,
+        "generation": null,
+        "roster_version": 0,
+        "deadline": null,
+        "server_time": 0,
+        "roster": [],
+        "capabilities": {
+          "screen": true
+        }
+      }
+    }
+  }
+}
