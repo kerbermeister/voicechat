@@ -69,4 +69,5 @@ PASS ниже относится только к явно указанной с�
 [аудиосценарий](../prototype/verified-screen-calls-audio-run.json),
 [отрицательный SFU/E2EE](../prototype/verified-screen-web-run.json),
 [образ control](../prototype/verified-screen-control-image-run.json),
+[сверка исходников образа](../prototype/verified-screen-image-sources-run.json),
 [настоящий supervisor](../prototype/verified-screen-supervisor-run.json).

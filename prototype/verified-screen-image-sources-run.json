@@ -1,0 +1,25 @@
+{
+  "result": "PASS",
+  "source_commit": "28a698930340d426bbf5a3c1bdaf413d729af739",
+  "local_control_image_id": "sha256:caa3777db260ddf4aca89465429b47931162c11f46eb519c343cd97abaf2156a",
+  "uid": "10001:10001",
+  "image_files_match_source": {
+    "infra/supervise.py": "957815e8c5687ac0944d5a4eb6f4c674b2fa14d165b8766bce0366fde5a47d9c",
+    "prototype/call_control.py": "ac230c28654af4018cbd24d63470e0d246c1ee1eb4a23dfbe4c0f34afcf1600e",
+    "prototype/client-policy.json": "e6310e6b2850950f1b99c5e409026ec772c621f80822ae25293b2d378e8a0ed6",
+    "prototype/client_policy.py": "86d9480c35de8260a4f785b5d788dc593984d46cf1eb40e58548f0c88e8b39c2",
+    "prototype/contacts.py": "92eabc39e6771bbb15dc9463920b8ec09476595f5d2c54b3e9668f7a87d90228",
+    "prototype/link_preview.py": "6b6c0ba04287d3d9101dbb82cf36b5a5787d9d3991f242b6622d08e255b79b3d",
+    "prototype/scheduled_messages.py": "f45f69aac9ec96855c0e75d5ef9a15069b8ae359cda2099e9c4797c24b023bfd",
+    "prototype/screen_access.py": "9d6081384b18a343f0d3ebcb81636b6dcb0effc6f1f8d87e3b3d8ccf02e303ca",
+    "prototype/screen_control.py": "1b2e141d1d79179a6117c2a0f218b08b5e779049de8355014142e08e8b11b9c8",
+    "prototype/screen_http.py": "d55d8e2be21e485cb36867bfd1ccb27a005f34c6e3945cff1e37ab96a91473ec",
+    "prototype/screen_protocol.py": "81c7b7593d68f1b65219e5ee24f237693586c6e1ff6f4de86097c245a49482d4",
+    "prototype/screen_schema.sql": "886c3420a7a72753f1f7269b029d4e731d6e46b811f990f3d741f045ff51d09d",
+    "prototype/screen_schema_v2.sql": "7a174a3a53efdf95af23965a42c6391342c9c8b5ec77fffe1dfe9d4fc729de93",
+    "prototype/screen_status.py": "ebe990199414ebe016fa8a1b22ba5abe4cbc30054ae8cabafd9852e31b52ff64",
+    "prototype/screen_transitions.py": "6b640771223da44faf95a19206cafae6d0c68545c39a002af8f0656c3679c189",
+    "prototype/token_server.py": "7313b57f6d5eee424b8919deebb27dbbe719ec219554d4a9e059763296f9e305"
+  },
+  "registry_digest": "NOT_PUBLISHED"
+}

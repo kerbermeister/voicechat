@@ -92,6 +92,15 @@ Dart lifecycle/capture tests PASS; targeted analyze доводится до чи
 fault с живым media остаются не приняты. Образ не публиковался и production не менялся.
 SS-15 **PARTIAL**, аппаратные/нагрузочные/полный restore критерии не закрыты.
 
+Допроверка: все **16 файлов COPY** в локальном образе совпали по SHA-256 с исходниками
+(первый автоматический список ошибочно включал lab fixture; исправлен на фактический
+Dockerfile COPY). [Manifest исходников образа](../../prototype/verified-screen-image-sources-run.json)
+фиксирует image ID и UID10001:10001; это не опубликованный registry digest.
+Реальный контейнер с сохраняемым control bind mount прошёл restart: screen participants=0,
+старый binding ended, retired=0. Затем остановка control завершила весь контейнер/SFU
+с exit=1. **PASS 8.988 с**, сеть none, портов нет, живое media не передавалось.
+[Supervisor report](../../prototype/verified-screen-supervisor-run.json).
+
 ## SS-14 — 23 октября 2026: лёгкая циклическая регрессия, нагрузка BLOCKED
 
 Добавлена проверка 50 циклов takeover/stop в fake SFU координатора. После каждого
