@@ -2,6 +2,40 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-10 / SS-16 — живые restart, crash и health watchdog
+
+**Локально PASS**: `restart` 32.996 с, `kill_control` 47.233 с, `kill_sfu` 50.911 с, `pause_control` 41.741 с.
+Два настоящих Matrix SDK участника, group voice/video и видимые пиксели E2EE
+экрана; отдельный pinned control/SFU container, private SQLite и loopback-порты.
+Общий Synapse/SFU и пользовательские звонки не останавливались.
+
+После restart, SIGKILL control, SIGKILL SFU и SIGSTOP control supervisor
+останавливает медиаконтекст; root capture закрыт, старый кадр скрыт. После запуска
+нет active/pending/retired, ListRooms подтверждает отсутствие старой generation,
+независимый SDK отвергает сохранённый **ещё действующий** JWT. Автоматического
+захвата нет. Групповой голос при сбое общего SFU прерывается; продолжение голоса
+в этих сценариях не заявляется. Для отказа только screen control есть отдельные
+предыдущие свидетельства.
+
+Исправлены только fixtures: стабильные опубликованные порты при Docker restart,
+право roomList для ListRooms, формирование argv без NUL. SIGTERM LiveKit является
+штатным drain, поэтому crash проверен SIGKILL. Ошибки setup/observer и очистки
+не засчитывались как PASS; observer больше не ждёт дополнительный allHeaders RPC.
+Все четыре принятых прогона завершили очистку контейнера/БД/аккаунтов.
+
+Команда: `node prototype/check_screen_security.cjs faults SCENARIO` с имеющимся
+NODE_PATH и lab web на 7363; lab target анализатор PASS, release build 40.4 с.
+29 screen Python tests PASS; первый sandbox-only запуск не мог открыть loopback
+и повторён с разрешённым bind. Android и нагрузка не запускались.
+
+Короткий сигналинг-обрыв, unknown SFU outcomes и silent lease — следующая
+локальная итерация. Restore/внешняя приёмка ещё не закрыты.
+
+- [restart](../../prototype/verified-screen-security-faults-restart-run.json)
+- [kill_control](../../prototype/verified-screen-security-faults-kill_control-run.json)
+- [kill_sfu](../../prototype/verified-screen-security-faults-kill_sfu-run.json)
+- [pause_control](../../prototype/verified-screen-security-faults-pause_control-run.json)
+
 ## SS-11 — локальная итерация 4: доверие не заменяет допуск к звонку
 
 **PASS** для двух отдельных cohorts: член чата вне звонка (**19.652 с**)

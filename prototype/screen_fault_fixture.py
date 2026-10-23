@@ -71,9 +71,22 @@ def main():
                'VOICECHAT_MATRIX_INTERNAL': f'http://127.0.0.1:{proxy.server_port}'}
         code = """
 import json,sys
+from pathlib import Path
 sys.path.insert(0,'prototype')
+import token_server
 from token_server import Handler,screen_service
 from http.server import ThreadingHTTPServer
+# Lose exactly one reply AFTER the real SFU committed the operation.
+original_media=token_server.media_api
+def media(method,body):
+ result=original_media(method,body)
+ marker=Path('.prototype/fault-after')
+ if marker.exists() and marker.read_text()==method and str(body.get('room',body.get('name',''))).startswith('screen-'):
+  marker.unlink()
+  Path('.prototype/fault-fired').write_text(method)
+  raise OSError('Injected lost SFU reply')
+ return result
+token_server.media_api=media
 screen_service()
 server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
 print(json.dumps({'api_port':server.server_port}),flush=True)
@@ -113,6 +126,9 @@ server.serve_forever()
                 elif action == 'restart':
                     stop()
                     ready = start()
+                elif action in ('after_create', 'after_delete'):
+                    (root/'.prototype/fault-after').write_text(
+                        'CreateRoom' if action == 'after_create' else 'DeleteRoom')
                 elif action == 'close':
                     break
                 elif action.startswith('audit '):
@@ -127,7 +143,8 @@ server.serve_forever()
                         for path in databases)
                 elif action != 'status':
                     raise ValueError('Unknown fixture action')
-                print(json.dumps({**ready, **status(root/'.prototype/calls/calls.sqlite'), **extra}), flush=True)
+                print(json.dumps({**ready, **status(root/'.prototype/calls/calls.sqlite'),
+                    'sfu_fault_injected': (root/'.prototype/fault-fired').exists(), **extra}), flush=True)
         finally:
             stop()
             # Recover only this fixture's metadata, including after a failed browser test.

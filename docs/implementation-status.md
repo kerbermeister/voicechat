@@ -26,7 +26,8 @@ API/SQLite пережил restart и отказ его Matrix-зависимос
 и unexpired JWT; эти fault-прогоны выполнены на 10b97ee, общий Synapse/SFU не
 выключались. Исправлены гонка Matrix device refresh, пропуск subscriptions после
 полного SDK reconnect и устаревшая revision после picker. Локальная web-негативная матрица SS-11 принята отдельными итерациями ниже.
-Оставшиеся fault фазы SS-10/SS-16/A14 и полный restore также требуют проверки.
+Живые joint control/SFU restart, crash обоих процессов и health watchdog приняты
+в отдельном контейнере. Остальные локальные fault фазы и полный restore ещё проверяются.
 
 SS-11 локально принят: stale commands, original/refreshed JWT, подмена JWT identity/
 publisher grant, raw SFU source/role отказы, duplicate/plaintext metadata guard,

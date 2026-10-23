@@ -7,8 +7,8 @@ const {createInterface}=require('node:readline');
 
 exports.start=async()=>{
   const secrets=JSON.parse(fs.readFileSync(path.join(__dirname,'../.prototype/secrets.json')));
-  const child=spawn('python3',[path.join(__dirname,'screen_fault_fixture.py')],{
-    detached:true,stdio:['pipe','pipe','ignore'],env:{...process.env,
+  const child=spawn('python3',[path.join(__dirname,process.env.VOICECHAT_SCREEN_CONTAINER==='1' ? 'screen_container_fixture.py' : 'screen_fault_fixture.py')],{
+    detached:true,stdio:['pipe','pipe','inherit'],env:{...process.env,
       VOICECHAT_LIVEKIT_SECRET:secrets.livekit,VOICECHAT_POLICY_SECRET:secrets.policy},
   });
   const exited=new Promise(resolve=>child.once('exit',code=>resolve(code)));
@@ -23,6 +23,8 @@ exports.start=async()=>{
   try {current=await read();} catch(error) {child.stdin.end();await exited;throw error;}
   return {
     get base(){return 'http://127.0.0.1:'+current.api_port;},
+    get livekit(){return current.livekit_url;},
+    get image(){return current.image_id;},
     async command(action){child.stdin.write(action+'\n');current=await read();return current;},
     async close(){child.stdin.end();assert.equal(await exited,0,'Private fixture cleanup failed');},
   };

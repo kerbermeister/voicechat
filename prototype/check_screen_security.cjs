@@ -7,9 +7,11 @@ const {execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
 const media=require('./check_screen_calls.cjs');
 const matrix='http://localhost:8008',ui='http://localhost:7363/';
-const mode=process.argv[2];assert(['commands','keys','publish'].includes(mode));
+const mode=process.argv[2];assert(['commands','keys','publish','faults'].includes(mode));
 const excluded=process.argv[3]||'';
-assert(['','member','device'].includes(excluded) && (!excluded || mode==='commands'));
+assert(mode==='faults' ? ['network','restart','kill_control','kill_sfu','pause_control','after_create','after_delete','lease'].includes(excluded) :
+  ['','member','device'].includes(excluded) && (!excluded || mode==='commands'));
+if(mode==='faults' && !['after_create','after_delete','lease'].includes(excluded)) process.env.VOICECHAT_SCREEN_CONTAINER='1';
 const root=path.join(__dirname,'..');
 const secrets=JSON.parse(fs.readFileSync(path.join(root,'.prototype/secrets.json')));
 async function request(base,route,body,token,method=body ? 'POST' : 'GET') {
@@ -50,12 +52,12 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
     {cwd:root,input:JSON.stringify({room:generation,identity}),stdio:['pipe','pipe','pipe']});
 }
 (async()=>{
-  const accounts=[],pages=[],sources=[],bindings=new Map(),claims=new Map(),tokens=new Map(),logins=new Map(),wire=[];
-  let fixture,browser;
+  const accounts=[],pages=[],sources=[],bindings=new Map(),claims=new Map(),tokens=new Map(),logins=new Map(),wire=[],responses=[];
+  let fixture,browser,failed=false;
   const report={result:'FAIL',run:new Date().toISOString(),mode,
     scope:'laboratory entrypoint using production controllers; real Matrix/Olm/SFU/tab capture; synthetic voice/camera',
     production_source_commit:execFileSync('git',['rev-parse','56efbb1'],{cwd:root,encoding:'utf8'}).trim(),android:'NOT_RUN',heavy_load:'NOT_RUN'};
-  if(excluded) report.excluded_trusted_device=excluded;
+  if(excluded) report[mode==='faults' ? 'fault' : 'excluded_trusted_device']=excluded;
   const started=performance.now();
   try {
     report.laboratory_source_sha256=crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'apps/client/lib/lab_screen_security_main.dart'))).digest('hex');
@@ -63,6 +65,7 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
     for(const role of ['a','b','outsider']) accounts.push(await register(role));
     process.env.VOICECHAT_ORIGINS=new URL(ui).origin;
     fixture=await require('./check_screen_faults.cjs').start();
+    if(fixture.image)report.control_image_id=fixture.image;
     for(const peer of accounts.slice(1)) {
       await ok('http://localhost:8090','/contacts',{action:'policy',allow_direct:true},peer.access_token);
       const dm=await ok(matrix,'/_matrix/client/v3/createRoom',{preset:'private_chat',is_direct:true,invite:[peer.user_id],initial_state:[
@@ -79,12 +82,14 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
     browser=await chromium.launch({executablePath:'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:[
       '--enable-usermedia-screen-capturing','--auto-select-tab-capture-source-by-title=VoiceChat Screen Source','--autoplay-policy=no-user-gesture-required']});
     const session=crypto.randomUUID();
-    const loginAccounts=[...accounts.slice(0,2),...(excluded ? [accounts[excluded==='member' ? 2 : 0]] : [])];
+    const loginAccounts=[...accounts.slice(0,2),...(excluded && mode==='commands' ? [accounts[excluded==='member' ? 2 : 0]] : [])];
     for(const [i,account] of loginAccounts.entries()) {
       const context=await browser.newContext({permissions:['microphone','camera'],viewport:{width:1280,height:1000}});
       await context.addInitScript(media.syntheticMedia);
       await context.addInitScript(()=>{window.callPeers=[];window.RTCPeerConnection=new Proxy(window.RTCPeerConnection,{construct(target,args){
         const pc=Reflect.construct(target,args);window.callPeers.push(pc);return pc;}});
+        window.screenLabSockets=[];window.WebSocket=new Proxy(window.WebSocket,{construct(target,args){
+          const socket=Reflect.construct(target,args);window.screenLabSockets.push(socket);return socket;}});
         // Observe the real cryptor worker boundary, in memory only. Never log this array.
         window.screenLabKeys=[];const post=Worker.prototype.postMessage;
         Worker.prototype.postMessage=function(message,...args){
@@ -93,13 +98,14 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
         };
       });
       await context.route('**/fixture.json',route=>route.fulfill({json:{profile:session+'-'+i,
-        username:account.username,password:account.password,room:room.room_id,session,api:fixture.base}}));
+        username:account.username,password:account.password,room:room.room_id,session,api:fixture.base,livekit:fixture.livekit}}));
       const page=await context.newPage();pages.push(page);
       page.on('request',r=>{
         if(r.url().startsWith(fixture.base) || r.url().includes('/sendToDevice/')) wire.push(r.postData()||'');
       });
       page.on('response',async response=>{
         try {
+          if(response.url().startsWith(fixture.base) && response.url().includes('/screen/'))responses.push({page:i,action:response.url().split('/').pop(),status:response.status(),method:response.request().method()});
           if(response.status()===200 && response.request().method()==='POST' && response.url().endsWith('/_matrix/client/v3/login')) {
             const login=await response.json();
             if(typeof login.access_token==='string') logins.set(page,login);
@@ -111,15 +117,17 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
           if(![200,202].includes(response.status()) || !response.url().includes('/screen/'))return;
           const action=response.url().split('/').pop();
           if(!['bind','claim','token'].includes(action))return;
-          const body=await response.json().catch(()=>null);if(!body)return;
-          const auth=(await response.request().allHeaders()).authorization;
+          const body=await response.json().catch(()=>null);
+          if(!body){if(action==='bind')console.log('Bind observer: response body unavailable');return;}
+          const auth=response.request().headers().authorization;
           if(action==='bind') bindings.set(page,{...body,auth,request:response.request().postDataJSON()});
           if(action==='claim') {
             const command=response.request().postDataJSON();
             if(!claims.has(page) || command.expected_revision>=claims.get(page).command.expected_revision) claims.set(page,{command,response:body});
           }
           if(action==='token' && (!tokens.has(page) || body.revision>=tokens.get(page).revision)) tokens.set(page,{...body,request:response.request().postDataJSON()});
-        } catch (_) {
+        } catch (error) {
+          if(response.url().endsWith('/screen/bind'))console.log('Bind observer error',error.constructor.name);
           // Observer reads can lose their body when the context closes. Main
           // assertions still require the relevant grant/claim/login to arrive.
         }
@@ -131,7 +139,8 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
     const identities=await Promise.all(pages.map(page=>cmd(page,{action:'identity'})));
     for(const page of pages) for(const identity of identities) await cmd(page,{action:'trust',...identity});
     await Promise.all(pages.slice(0,2).map(page=>cmd(page,{action:'connect'})));
-    await until(()=>bindings.size===2,'Both screen bindings required');
+    try {await until(()=>bindings.size===2,'Both screen bindings required');}
+    catch(error) {console.log('Binding setup diagnostics',JSON.stringify({observed:bindings.size,responses:responses.slice(0,12)}));throw error;}
     const button=(page,name)=>page.getByRole('button',{name,exact:true});
     async function start(index) {
       await media.selectSource(sources,index);const page=pages[index];await page.bringToFront();
@@ -147,7 +156,9 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
     const ctx={a,b,pages,accounts,fixture,report,cmd,until,media,button,start,api,identities,bindings,claims,tokens,request,absent,updatePermission,wire,logins,room:room.room_id,session};
     await require('./check_screen_security_'+mode+'.cjs')(ctx);
     report.result='PASS';
-    console.log('PASS: SS-11 '+mode);
+    console.log('PASS: '+(mode==='faults' ? 'SS-10/SS-16 '+excluded : 'SS-11 '+mode));
+  } catch(error) {
+    failed=true;throw error;
   } finally {
     let cleanupFailed=false;
     if(browser) {
@@ -166,7 +177,7 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
     if(cleanupFailed)report.result='FAIL';
     report.elapsed_seconds=(performance.now()-started)/1000;
     fs.writeFileSync(path.join(__dirname,'verified-screen-security-'+mode+(excluded ? '-'+excluded : '')+'-run.json'),JSON.stringify(report,null,2)+'\n');
-    if(cleanupFailed)throw new Error('Private test fixture cleanup failed');
+    if(cleanupFailed && !failed)throw new Error('Private test fixture cleanup failed');
   }
 })().catch(error=>{console.error(error.stack);process.exitCode=1;})
   .finally(()=>process.exit(process.exitCode || 0));

@@ -34,6 +34,7 @@ bool withhold = false;
 int dropped = 0;
 String stage = 'loading';
 String step = 'idle';
+String get livekitUrl => fixture['livekit'] as String? ?? 'ws://localhost:7880';
 
 class KeyGate extends http.BaseClient {
   final http.Client inner;
@@ -78,7 +79,7 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
         chat: room,
         session: fixture['session'] as String,
         tokenUrl: fixture['api'] as String,
-        livekitUrl: 'ws://localhost:7880',
+        livekitUrl: livekitUrl,
         video: true,
         status: (_) {},
         changed: () => revision.value++,
@@ -89,7 +90,7 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
       screen = ScreenShareController(
         call!,
         ScreenApi(fixture['api'] as String, () => client.accessToken!),
-        'ws://localhost:7880',
+        livekitUrl,
       );
       screen!.addListener(() => revision.value++);
       await screen!.connect();
@@ -145,7 +146,7 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
     case 'rawJoin':
       final room = lk.Room();
       try {
-        await room.connect('ws://localhost:7880', data['token'] as String);
+        await room.connect(livekitUrl, data['token'] as String);
         return {'connected': true};
       } on lk.ConnectException {
         return {'connected': false};
@@ -190,7 +191,7 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
         await room.disconnect();
         final raw = lk.Room();
         rawRooms.add(raw);
-        await raw.connect('ws://localhost:7880', data['token'] as String);
+        await raw.connect(livekitUrl, data['token'] as String);
         await raw.localParticipant!.publishVideoTrack(track);
         return {'published': true};
       }
