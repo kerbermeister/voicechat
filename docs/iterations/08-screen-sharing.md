@@ -2,6 +2,27 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-08 — 23 октября 2026: native-путь подготовлен, Android DEFERRED
+
+Добавлены mediaProjection permission/service и notification «Остановить показ»
+отдельно от CallService микрофона. Порядок: SDK consent → готовность foreground
+service → SDK getDisplayMedia, без второго владельца MediaProjection и без новой
+зависимости. Engine сохраняется также при живом ScreenService. Исходный native
+track принадлежит ScreenCapture: публикации заимствуют его и не уничтожают при
+смене screen room. FLAG_SECURE приложения сохранён: содержимое самого VoiceChat
+ОС может скрывать при показе всего экрана; чужие приложения подчиняются своим
+ограничениям capture. Скрытого автозапуска камеры этот путь не добавляет.
+
+Основание порядка ОС: [Android MediaProjection](https://developer.android.com/media/grow/media-projection),
+[LiveKit Flutter createScreenShareTrack](https://docs.livekit.io/reference/client-sdk-flutter/livekit_client/LocalVideoTrack/createScreenShareTrack.html)
+и исходники закреплённых пакетов. Проверен только общий Dart analyze/контракт.
+По указанию владельца **не запускались Android build, эмулятор и телефон**.
+Не приняты: merged manifest, реальная остановка ОС/onStop, lock/background/rotation,
+уведомления и ресурсы; текущий SDK не гарантирует Dart onEnded из системного
+MediaProjection callback. Это блокирует Android-приёмку и требует аппаратного
+воспроизведения/при необходимости исправления SDK, а не отметки PASS по сборке.
+SS-08 **IN_PROGRESS / аппаратная приёмка DEFERRED**; продолжаем независимые задачи UI.
+
 ## SS-07 — 23 октября 2026: веб-адаптер захвата проверен
 
 Вызов захвата остаётся до сетевых await; audio выключен, частичный результат

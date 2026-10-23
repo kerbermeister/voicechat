@@ -32,7 +32,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun provideFlutterEngine(context: Context): FlutterEngine? = FlutterEngineCache.getInstance().get(ENGINE_ID)
-    override fun shouldDestroyEngineWithHost(): Boolean = !CallService.running
+    override fun shouldDestroyEngineWithHost(): Boolean = !CallService.running && !ScreenService.running
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +46,26 @@ class MainActivity : FlutterActivity() {
         if (first) {
             flutterEngine.platformViewsController.registry.registerViewFactory("voicechat/youtube", YouTubeFactory())
             val app = applicationContext
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/screen").setMethodCallHandler { call, result ->
+                val service = Intent(app, ScreenService::class.java)
+                when (call.method) {
+                    "start" -> {
+                        if (ScreenService.pending != null) {
+                            result.error("busy", "Screen service is starting", null)
+                        } else {
+                            ScreenService.pending = result
+                            try {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) app.startForegroundService(service) else app.startService(service)
+                            } catch (_: Exception) {
+                                ScreenService.pending = null
+                                result.error("projection_service", "Cannot start screen service", null)
+                            }
+                        }
+                    }
+                    "stop" -> { app.stopService(service); result.success(null) }
+                    else -> result.notImplemented()
+                }
+            }
             MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/calls").setMethodCallHandler { call, result ->
                 val active = call.arguments as? Boolean
                 if (call.method != "active" || active == null) { result.error("invalid", "Invalid call state", null); return@setMethodCallHandler }
@@ -182,7 +202,7 @@ class MainActivity : FlutterActivity() {
         imageResult?.success(null); imageResult = null
         fileResult?.success(null); fileResult = null
         saveResult?.success(null); saveResult = null
-        if (!CallService.running) {
+        if (!CallService.running && !ScreenService.running) {
             FlutterEngineCache.getInstance().remove(ENGINE_ID)
             selectedImages = emptySet()
             selectedFiles.clear()
