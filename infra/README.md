@@ -70,6 +70,11 @@ python3 infra/bootstrap.py --url https://chat.example.com --ip 203.0.113.10 --se
 
 ## Обновление, backup и откат
 
+Для отдельной проверки доступа запустите вручную workflow `Check VPS SSH`.
+Он использует SSH secrets и variables environment `production`, проверяет
+закреплённый ключ хоста, пользователя и доступ к Docker/Compose без изменения VPS.
+Почта, сборка образов и запуск приложения для этой проверки не требуются.
+
 `deploy.py` блокирует параллельный deploy через flock, проверяет manifest/origin, скачивает образы **до** остановки, останавливает пишущие сервисы и создаёт согласованный snapshot: `pg_dump --format=custom`, Synapse signing/config/media, control SQLite (включая зашифрованное расписание), media-config с публичными лимитами, Caddy certificates/config, runtime env и активный release с manifest. Отдельный пароль Restic в snapshot не включается. Обычный copy живого PostgreSQL-тома не используется. Snapshot шифрует закреплённый Restic, затем выполняется `restic check`; только после этого стартуют новые сервисы с ожиданием healthchecks.
 
 Пароль Restic хранится отдельно от репозитория backup в `runtime/backup-password` (0600). Его нужно сохранить **вне VPS**; без него backup не расшифровать. Для backup без обновления предусмотрен `deploy.py --root /srv/voicechat --backup-only`; systemd timer и внешнее копирование описаны в [VPS.md](VPS.md). Сами копии по умолчанию остаются на этом VPS и не защищают от его потери: внешнее хранилище ещё не подключено. Скрипт не перезаписывает пропавший пароль поверх существующего backup-репозитория и не удаляет прежние snapshots автоматически.
