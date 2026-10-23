@@ -27,6 +27,7 @@ CallProbe? call;
 ScreenShareController? screen;
 Map<String, dynamic> fixture = {};
 final envelopes = <Map<String, dynamic>>[];
+final rawRooms = <lk.Room>[];
 final received = <String>[];
 final manual = Object();
 bool withhold = false;
@@ -184,13 +185,14 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
         original.currentOptions,
       );
       if (data['kind'] == 'plaintext') {
-        await local.removePublishedTrack(
-          local.videoTrackPublications.single.sid,
-        );
-        await room.setE2EEEnabled(false);
-        // Test-only downgrade of both actual cryptor and announced metadata.
-        // ignore: invalid_use_of_internal_member
-        room.engine.roomOptions = const lk.RoomOptions();
+        // A raw client has no cryptor. Disabling the protected room's cryptor
+        // would discard frames instead of producing a real plaintext publication.
+        await room.disconnect();
+        final raw = lk.Room();
+        rawRooms.add(raw);
+        await raw.connect('ws://localhost:7880', data['token'] as String);
+        await raw.localParticipant!.publishVideoTrack(track);
+        return {'published': true};
       }
       try {
         await local.publishVideoTrack(track);
@@ -218,6 +220,9 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
         zoneValues: {manual: true},
       );
     case 'close':
+      for (final room in rawRooms) {
+        await room.dispose();
+      }
       await screen?.close();
       await call?.close();
       await probe?.close();

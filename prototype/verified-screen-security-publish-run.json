@@ -1,0 +1,25 @@
+{
+  "result": "PASS",
+  "run": "2026-10-23T21:03:16.352Z",
+  "mode": "publish",
+  "scope": "laboratory entrypoint using production controllers; real Matrix/Olm/SFU/tab capture; synthetic voice/camera",
+  "production_source_commit": "56efbb17440c9d495fc9385a284cb08dbade73da",
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "laboratory_source_sha256": "7a137c61728393f4c7619720de6f58e8639fb73aa44b8355dd6a809c839b3295",
+  "laboratory_js_sha256": "3dd927735d6126b909beeb6963fc5a7ce137747a0cbd63a776b25d4ebfb54561",
+  "direct_sfu_signal_denied": [
+    "owner camera in screen room",
+    "screen source in voice room",
+    "viewer publishes screen"
+  ],
+  "real_metadata_guard_revoked": [
+    "duplicate",
+    "plaintext"
+  ],
+  "guard_deleted_rooms_and_stopped_capture": true,
+  "voice_camera_preserved": true,
+  "metadata_guard_test_roster_size": 1,
+  "voice_video_participants": 2,
+  "elapsed_seconds": 55.37623825000227
+}

@@ -2,6 +2,43 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-11 — локальная итерация 3: raw SFU signaling и недопустимые tracks
+
+**PASS, 55.376 с**, production controllers 56efbb1, настоящий Matrix group call,
+private control API/SQLite и pinned SFU. SDK `engine.addTrack` отправляет raw
+сигнал напрямую, обходя LocalParticipant/UI helpers. Реально отвергнуты:
+камера владельца в screen room; SCREEN_SHARE в voice room; публикация зрителя.
+После каждого отказа в screen room остаётся ровно один SCREEN_SHARE/GCM track,
+правильные пиксели видны B, обычные voice/camera продолжаются.
+
+Следом приняты и отозваны настоящие недопустимые публикации: duplicate screen track
+и plaintext track независимого Room без cryptor. Производственный metadata watcher
+удаляет room, штатный owner освобождает root capture; old frame скрыт, voice PC
+не заменяются и media counters растут. Для plaintext используется тот же ещё
+действующий owner JWT в raw Room; браузерные screen API запросы A блокируются
+на время атаки, чтобы controller не восстановил штатный encrypted Room раньше
+проверки. Серверные наблюдения идут напрямую и не блокируются.
+
+Чтобы доказать именно серверный guard, B заранее покидает только screen binding,
+оставаясь в живом voice/video call. A проходит нормальную roster rotation и
+действительно публикует новый одиночный track до атаки. Screen roster в этих двух
+metadata-проверках содержит только A, voice call — A/B. Это исключает ложный PASS
+от быстрого локального unbind честного зрителя при обнаружении duplicate.
+
+Предыдущая plaintext fixture не принята: отключение cryptor в защищённом Room с
+`discardFrameWhenCryptorNotReady` не создаёт требуемую открытую трансляцию, а
+отбрасывает кадры. Заменена на независимый нешифрующий Room, production-код не
+менялся. Raw tracks/rooms закрываются в finally, fixture удаляет свою SQLite/SFU.
+[Отчёт](../../prototype/verified-screen-security-publish-run.json) содержит роли,
+типы проверок, ограничение roster и хеши; tokens/keys/media в него не записываются.
+
+```sh
+NODE_PATH=/path/to/existing/node_modules node prototype/check_screen_security.cjs publish
+```
+
+Остаётся отдельная локальная проверка trusted crypto-capable устройств вне звонка
+и дополнительных устройств участника. Android и тяжёлая нагрузка не запускались.
+
 ## SS-11 — локальная итерация 2: настоящий Olm replay и граница cryptor
 
 **PASS, 28.299 с**, тот же production-код 56efbb1, отдельный lab target и private
