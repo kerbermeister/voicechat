@@ -1,0 +1,10 @@
+{
+  "result": "PASS",
+  "scope": "only this SS-11 harness disposable account prefix; no other users changed",
+  "remaining_active_fixture_accounts": 0,
+  "recovered_fixture_accounts_after_interrupted_runner": 3,
+  "temporary_cleanup_admin_deactivated": true,
+  "recorded_at": "2026-10-23T21:14:13.516434+00:00",
+  "laboratory_web_server_stopped": true,
+  "persistent_screen_flag_absent": true
+}

@@ -57,6 +57,10 @@ module.exports=async c=>{
   const viewer=await api(a,'token',token);assert.equal(viewer.status,200);
   const grant=JSON.parse(Buffer.from(viewer.body.token.split('.')[1],'base64url')).video;
   assert(grant.room===winner.generation && !grant.canPublish && !grant.canPublishData);
+  const pieces=viewer.body.token.split('.'),forged=JSON.parse(Buffer.from(pieces[1],'base64url'));
+  forged.sub=current.owner_identity;forged.video.canPublish=true;
+  const forgedToken=[pieces[0],Buffer.from(JSON.stringify(forged)).toString('base64url'),pieces[2]].join('.');
+  assert.equal((await cmd(a,{action:'rawJoin',token:forgedToken})).connected,false,'Changed JWT identity/grant must fail signature verification');
   await media.pixels(a,true,[201,97,49]);const after=await media.audio(a);
   assert(after.packets>before.packets && after.frames>before.frames);
   assert.deepEqual(after.voicePeers,before.voicePeers);
@@ -64,4 +68,22 @@ module.exports=async c=>{
   report.old_owner_only_receives_viewer_grant=true;report.chat_member_and_unselected_device_denied=true;
   report.direct_without_mutual_confirmation_denied=true;report.other_call_denied=true;
   report.winner_pixels_and_voice_camera_continue=true;
+  report.tampered_jwt_identity_and_publisher_grant_denied=true;
+  if(c.pages[2]) {
+    const extra=c.pages[2];await until(()=>c.logins.has(extra),'Additional SDK login required');
+    const recipient=identities[2],marker='excluded-device-positive-probe';
+    assert(recipient.device!==identities[0].device,'Fixture must use a different actual device');
+    await cmd(a,{action:'send',user:recipient.user,device:recipient.device,
+      type:'dev.voicechat.screen_security_probe',content:{lab_case:marker}});
+    await until(async()=>(await cmd(extra,{action:'inspect'})).received.includes(marker),
+      'Excluded device must actually decrypt a harmless positive-control Olm message');
+    const r=await request(fixture.base,'/screen/'+current.binding_id+'/token',token,c.logins.get(extra).access_token);
+    assert.equal(r.status,404,'Even a trusted crypto-capable device outside the call must not receive a grant');
+    const observed=await cmd(extra,{action:'gate',enabled:false});
+    assert.equal(observed.received_generations.length,0,'Excluded trusted device must not receive any screen key');
+    report.additional_sdk_device_keys_manually_verified=true;
+    report.additional_sdk_device_without_call_denied=true;
+    report.additional_sdk_device_received_no_screen_key=true;
+    report.additional_sdk_device_decrypted_positive_control=true;
+  }
 };

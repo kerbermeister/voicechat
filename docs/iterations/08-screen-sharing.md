@@ -2,6 +2,51 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-11 — локальная итерация 4: доверие не заменяет допуск к звонку
+
+**PASS** для двух отдельных cohorts: член чата вне звонка (**19.652 с**)
+и дополнительное устройство уже звонящего пользователя (**31.559 с**).
+В каждом — два настоящих voice/video участника и третья idle SDK-сессия с реальными
+Curve25519/Ed25519 keys. Все устройства явно вручную проверены друг у друга.
+Третье устройство не вызывает CallProbe.connect и не получает call lease.
+
+Контрольная безвредная Olm-посылка A → excluded device реально расшифрована:
+синхронизация/криптография у него работают. Тем не менее запрос screen token с его
+собственным SDK bearer отклонён (404), ни один screen generation key ему не пришёл.
+Повторно пройдены takeover/stale commands, original/refreshed JWT rejection,
+viewer-only grant прежнему ведущему и независимый отказ подменённому JWT с изменёнными
+identity/canPublish. Картинка B и основные voice PC/media counters сохраняются.
+
+Уточнён тестовый collector: GET login flows не принимается за POST login session;
+поздний ответ не перезаписывает более новую revision, 202 claim учитывается как
+наблюдаемая команда. Условие готовности проверяет новый request_id и publisher
+context, не требует случайного совпадения времени двух HTTP observer callbacks.
+Чтение response при закрытии context не порождает необработанный Promise rejection.
+Cleanup больше не пропускает аккаунты при ошибке закрытия fixture и отражает ошибку
+в результате, вместо ложного PASS. Изменений production-кода не потребовалось.
+
+Один промежуточный runner оборвался в асинхронном observer при закрытии браузера.
+Восстановительная проверка очистила три оставшихся **только тестовых** аккаунта по
+точному prefix/role pattern. Одноразовый local cleanup admin деактивирован, активных
+fixture accounts не осталось; другие пользователи не затронуты.
+[Cleanup report](../../prototype/verified-screen-security-cleanup-run.json).
+
+Свидетельства: [член чата](../../prototype/verified-screen-security-commands-member-run.json),
+[второе устройство](../../prototype/verified-screen-security-commands-device-run.json).
+Полные хеши lab source/JS и production base commit находятся в каждом отчёте.
+
+```sh
+NODE_PATH=/path/to/existing/node_modules node prototype/check_screen_security.cjs commands member
+NODE_PATH=/path/to/existing/node_modules node prototype/check_screen_security.cjs commands device
+```
+
+**Локальная web-часть SS-11 завершена.** Четыре итерации не меняют production API,
+контроллеры, зависимости или feature flag. Лаборатория не включена в production JS.
+Android и тяжёлая нагрузка не запускались; target browser/device/network матрица,
+оставшиеся SS-10/SS-16 fault фазы и полный restore остаются release gates.
+Прежний SS-17 preflight дополнен ссылками на новые свидетельства, а не выдан за
+разрешение включать screen share. Постоянный flag отсутствует, default off сохранён.
+
 ## SS-11 — локальная итерация 3: raw SFU signaling и недопустимые tracks
 
 **PASS, 55.376 с**, production controllers 56efbb1, настоящий Matrix group call,

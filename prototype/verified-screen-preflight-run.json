@@ -48,8 +48,8 @@
   },
   "remaining_gates": [
     {
-      "tasks": "SS-11 / A07,A10-A12,A14",
-      "required": "Remaining end-to-end hostile publish, stale key-envelope replay, reordered commands and joint container/media fault phases"
+      "tasks": "SS-10 / SS-16 / A14",
+      "required": "Remaining joint container/media fault phases; local web SS-11 negatives accepted by separate evidence"
     },
     {
       "tasks": "SS-12 / A02,A09,A13,A16",
@@ -75,5 +75,13 @@
       "tasks": "SS-17",
       "required": "Accepted target stand and rollout window; deploy compatible server/web/APK with screen off, perform acceptance then decide enabling"
     }
+  ],
+  "additional_local_ss11_evidence": [
+    "verified-screen-security-commands-run.json",
+    "verified-screen-security-keys-run.json",
+    "verified-screen-security-publish-run.json",
+    "verified-screen-security-commands-member-run.json",
+    "verified-screen-security-commands-device-run.json",
+    "verified-screen-security-cleanup-run.json"
   ]
 }

@@ -25,8 +25,17 @@ revision дали 200/409; проигравший освободил capture. О
 API/SQLite пережил restart и отказ его Matrix-зависимости с отзывом живого экрана
 и unexpired JWT; эти fault-прогоны выполнены на 10b97ee, общий Synapse/SFU не
 выключались. Исправлены гонка Matrix device refresh, пропуск subscriptions после
-полного SDK reconnect и устаревшая revision после picker. Оставшиеся сквозные
-негативные сценарии также перечислены в матрице; только внешними gate дело не ограничено.
+полного SDK reconnect и устаревшая revision после picker. Локальная web-негативная матрица SS-11 принята отдельными итерациями ниже.
+Оставшиеся fault фазы SS-10/SS-16/A14 и полный restore также требуют проверки.
+
+SS-11 локально принят: stale commands, original/refreshed JWT, подмена JWT identity/
+publisher grant, raw SFU source/role отказы, duplicate/plaintext metadata guard,
+15 настоящих Matrix/Olm key negatives с проверкой реального worker setKey и видимых
+пикселей положительного контроля. Trusted member вне звонка и дополнительное trusted
+устройство звонящего не получили screen token/key, но расшифровали контрольный Olm
+probe. Production-код не менялся; лабораторный bridge отсутствует в обычном JS.
+Все одноразовые аккаунты/приватные API/БД убраны, общий локальный стенд сохранён.
+Android/нагрузка не запускались; кроссплатформенная приёмка и релиз не закрыты.
 
 SS-17: локальный [preflight](../prototype/verified-screen-preflight-run.json) — PASS,
 включение/релиз — BLOCKED. Persistent flag отсутствует, active/pending/retired=0;

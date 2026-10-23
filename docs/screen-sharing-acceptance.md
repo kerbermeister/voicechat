@@ -55,8 +55,8 @@ PASS ниже относится только к явно указанной с�
 | A07 | PARTIAL PASS | Реально потерянный claim reply: тот же request_id, revision и generation, безопасный stop и следующий запуск. В лабораторном живом group call старые stop/claim, изменённый idempotency key/body, чужой lease, generation/identity не сменили нового ведущего; старый успешный claim вернул только квитанцию. Остальные recovery/fault фазы остаются ниже. |
 | A08 | PARTIAL PASS | Реальная отмена capture сохраняет текущий показ; late bind/close, дедлайн HTTP и 202 pending покрыты unit. Закрытие системного picker при завершении звонка вручную ещё не проверено. |
 | A09 | PARTIAL PASS | UI Stop и feature off освобождают web capture и скрывают кадр. Browser OS Stop и Android lock/onStop не приняты. |
-| A10 | PARTIAL PASS | Реальный pinned SFU отвергает original/refreshed JWT удалённой room. Matrix device deletion во время group screen: 401 на новый token, ListRooms подтверждает удаление, независимый SDK отвергает unexpired old JWT; оставшийся участник публикует новое поколение. После настоящего group takeover независимый SDK отверг original/refreshed unexpired JWT; прежний ведущий получает только viewer grant нового поколения. Raw SFU signaling и duplicate/plaintext publication проверены отдельной локальной итерацией; фактический scope указан в A11. |
-| A11 | PARTIAL PASS | HTTP доступ/пара/роль/lease, source и kind; настоящий SFU отвергает viewer publish и owner camera, production metadata guard обнаруживает duplicate. В настоящем Matrix group call raw addTrack отвергнут для owner-camera, screen-in-voice и viewer-publish. Duplicate и raw plaintext приняты SFU, затем production watcher удалил generation и остановил capture. Для изоляции серверного guard screen roster=A, voice=A/B. Trusted дополнительные устройства проверяются отдельно. |
+| A10 | WEB PASS | Реальный pinned SFU отвергает original/refreshed JWT удалённой room. Matrix device deletion во время group screen: 401 на новый token, ListRooms подтверждает удаление, независимый SDK отвергает unexpired old JWT; оставшийся участник публикует новое поколение. После настоящего group takeover независимый SDK отверг original/refreshed unexpired JWT; прежний ведущий получает только viewer grant нового поколения. Raw SFU signaling и duplicate/plaintext publication проверены отдельной локальной итерацией; фактический scope указан в A11. |
+| A11 | WEB PASS | HTTP доступ/пара/роль/lease, source и kind; настоящий SFU отвергает viewer publish и owner camera, production metadata guard обнаруживает duplicate. В настоящем Matrix group call raw addTrack отвергнут для owner-camera, screen-in-voice и viewer-publish. Duplicate и raw plaintext приняты SFU, затем production watcher удалил generation и остановил capture. Для изоляции серверного guard screen roster=A, voice=A/B. Trusted idle SDK другого члена чата и второе trusted устройство участника не получили token/key; оба способны расшифровать контрольное Olm-сообщение. Подменённый identity/canPublish JWT отвергнут независимым SDK. |
 | A12 | WEB PASS | 15 доставленных Matrix/Olm отрицательных случаев: точный старый envelope, подменённые контексты/срок/устройство, plaintext, voice channel. Ни один не достиг screen setKey; voice key не изменился, 0 кадров до правильного ключа. Положительный контроль установил актуальный raw key и дал видимые пиксели. Физические платформы остаются в SS-12. |
 | A13 | PARTIAL PASS | Capture video-only и source grants, audio-kind отвергается до subscribe, голос в своей room. Воспроизведение системного звука с выключенным mic на физических устройствах не принято. |
 | A14 | PARTIAL PASS | Потерянный claim reply, fault/lease/fencing unit, настоящий fail-closed container и DeleteRoom. Живой E2EE screen прекращён при restart отдельного production control API/SQLite и отказе его Matrix-зависимости; unexpired JWT отвергнут, P2P голос/камера продолжаются. Общий Synapse/SFU не выключались; joint container/media restart и остальные фазы ещё не приняты. Исправлены гонка device refresh, пропуск subscriptions после SDK reconnect и revision до picker; результаты повторов — в журнале. |
@@ -78,6 +78,9 @@ PASS ниже относится только к явно указанной с�
 [старые команды и сохранённые JWT](../prototype/verified-screen-security-commands-run.json),
 [настоящий Olm key replay и SQLite audit](../prototype/verified-screen-security-keys-run.json),
 [raw SFU signaling / duplicate / plaintext](../prototype/verified-screen-security-publish-run.json),
+[trusted участник вне звонка](../prototype/verified-screen-security-commands-member-run.json),
+[trusted дополнительное устройство](../prototype/verified-screen-security-commands-device-run.json),
+[cleanup одноразовых аккаунтов](../prototype/verified-screen-security-cleanup-run.json),
 [отрицательный SFU/E2EE](../prototype/verified-screen-web-run.json),
 [образ control](../prototype/verified-screen-control-image-run.json),
 [сверка исходников образа](../prototype/verified-screen-image-sources-run.json),
@@ -101,11 +104,14 @@ deployment manifest — другой маркер совместимости.
 стенд и volumes сохранены для параллельной работы. Production в этой итерации
 не обновлялся. Отдельные коммиты не включают незавершённый дизайн/VPS diff.
 
-До включения остаются как внешние, так и локальные проверки: оставшаяся hostile
-publish/fault матрица (A10/A11/A14); key replay локально принят, физический Android и браузеры,
-системный picker/Stop/доступность, внешние сети, разрешённая нагрузка,
-полный application restore/rollback и оставшаяся регрессия сообщений/файлов/тем.
-Пункты PARTIAL/BLOCKED выше сохраняются.
+Локальная web-негативная матрица SS-11 принята отдельной лабораторией на production
+controllers: новые свидетельства связаны выше. Это не полная аппаратная приёмка
+и не независимый security audit всей инфраструктуры.
+
+До включения остаются как внешние, так и локальные проверки: дополнительные fault
+фазы SS-10/SS-16 (A14), физический Android и браузеры, системный picker/Stop/
+доступность, внешние сети, разрешённая нагрузка, полный application restore/rollback
+и оставшаяся регрессия сообщений/файлов/тем. PARTIAL/BLOCKED сохраняются для них.
 
 На целевом стенде порядок: совместимый сервер с flag off → web/APK и обычный
 звонок → обязательная приёмка в тестовом окне → решение о включении. Отключение:
