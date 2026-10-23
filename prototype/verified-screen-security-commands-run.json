@@ -1,0 +1,28 @@
+{
+  "result": "PASS",
+  "run": "2026-10-23T20:50:04.331Z",
+  "mode": "commands",
+  "scope": "laboratory entrypoint using production controllers; real Matrix/Olm/SFU/tab capture; synthetic voice/camera",
+  "production_source_commit": "56efbb17440c9d495fc9385a284cb08dbade73da",
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "commands": [
+    "late old-owner stop",
+    "late new claim with old revision",
+    "request id reused with changed body",
+    "old successful claim replay is inert",
+    "old-generation token",
+    "forged generation",
+    "another device lease",
+    "body identity spoof"
+  ],
+  "original_and_refreshed_unexpired_jwt_reconnect_denied": true,
+  "old_owner_only_receives_viewer_grant": true,
+  "chat_member_and_unselected_device_denied": true,
+  "direct_without_mutual_confirmation_denied": true,
+  "other_call_denied": true,
+  "winner_pixels_and_voice_camera_continue": true,
+  "elapsed_seconds": 31.019072416998448,
+  "laboratory_source_sha256": "f5e4c6933800b49edead6786f2dda5cf10ed66353b10eff348c172e6129ffbbf",
+  "laboratory_js_sha256": "8b79ff923c976b009c35d689dcf2218865025bac94bf6f2bf295521e46bd468d"
+}

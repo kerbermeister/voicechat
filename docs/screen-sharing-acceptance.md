@@ -52,10 +52,10 @@ PASS ниже относится только к явно указанной с�
 | A04 | PARTIAL PASS | Три обычных web-клиента декодируют экран A → B → C. Поздний вход C меняет generation, удаляет старую room, сохраняет один разрешённый root capture у A; B и C получают реальные кадры. 10 участников и join/return на физических устройствах не проверены. |
 | A05 | WEB PASS | A → B → C с тремя разными цветами источников на снимках реального UI: бывшие ведущие видят победителя, остаётся один capture, voice PC/камеры сохраняются. Ручные picker/разные устройства остаются в SS-12. |
 | A06 | WEB PASS | Два реальных подготовленных capture удержаны на одной revision; claim отправлены одновременно: 200/409. Проигравший останавливает capture и видит экран победителя. Picker выбирался последовательно для сохранения browser focus; одновременными были команды серверу. |
-| A07 | PARTIAL PASS | Реально потерянный claim reply: тот же request_id, revision и generation, безопасный stop и следующий запуск. Stale revisions/leases/old claim и recovery покрыты unit/HTTP; переставленные команды против нового реального ведущего ещё не приняты. |
+| A07 | PARTIAL PASS | Реально потерянный claim reply: тот же request_id, revision и generation, безопасный stop и следующий запуск. В лабораторном живом group call старые stop/claim, изменённый idempotency key/body, чужой lease, generation/identity не сменили нового ведущего; старый успешный claim вернул только квитанцию. Остальные recovery/fault фазы остаются ниже. |
 | A08 | PARTIAL PASS | Реальная отмена capture сохраняет текущий показ; late bind/close, дедлайн HTTP и 202 pending покрыты unit. Закрытие системного picker при завершении звонка вручную ещё не проверено. |
 | A09 | PARTIAL PASS | UI Stop и feature off освобождают web capture и скрывают кадр. Browser OS Stop и Android lock/onStop не приняты. |
-| A10 | PARTIAL PASS | Реальный pinned SFU отвергает original/refreshed JWT удалённой room. Matrix device deletion во время group screen: 401 на новый token, ListRooms подтверждает удаление, независимый SDK отвергает unexpired old JWT; оставшийся участник публикует новое поколение. Полный hostile publish в новом поколении ещё не принят. |
+| A10 | PARTIAL PASS | Реальный pinned SFU отвергает original/refreshed JWT удалённой room. Matrix device deletion во время group screen: 401 на новый token, ListRooms подтверждает удаление, независимый SDK отвергает unexpired old JWT; оставшийся участник публикует новое поколение. После настоящего group takeover независимый SDK отверг original/refreshed unexpired JWT; прежний ведущий получает только viewer grant нового поколения. Hostile publish в активном поколении ещё не принят. |
 | A11 | PARTIAL PASS | HTTP доступ/пара/роль/lease, source и kind; настоящий SFU отвергает viewer publish и owner camera, production metadata guard обнаруживает duplicate. Полный hostile client против активного Matrix звонка ещё не принят. |
 | A12 | PARTIAL PASS | Реальные E2EE-пиксели, 0 кадров без ключа/с неверным ключом; sender/device/generation/expiry envelope проверены unit. Сквозной replay старого envelope ещё не принят. |
 | A13 | PARTIAL PASS | Capture video-only и source grants, audio-kind отвергается до subscribe, голос в своей room. Воспроизведение системного звука с выключенным mic на физических устройствах не принято. |
@@ -75,6 +75,7 @@ PASS ниже относится только к явно указанной с�
 [отказ Matrix для screen control](../prototype/verified-screen-matrix-fault-run.json),
 [перезапуск отдельного control](../prototype/verified-screen-restart-fault-run.json),
 [регрессия чистой сборки](../prototype/verified-screen-subscription-regression-run.json),
+[старые команды и сохранённые JWT](../prototype/verified-screen-security-commands-run.json),
 [отрицательный SFU/E2EE](../prototype/verified-screen-web-run.json),
 [образ control](../prototype/verified-screen-control-image-run.json),
 [сверка исходников образа](../prototype/verified-screen-image-sources-run.json),

@@ -2,6 +2,49 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-11 — локальная итерация 1: команды и сохранённые JWT
+
+**PASS, 31.019 с**, Chrome 156, отдельный laboratory entrypoint, production-код
+контроллеров из 56efbb1, настоящие Matrix/Olm/LiveKit и capture тестовой вкладки.
+Собственные control API/SQLite удалены после теста; общие службы не перезапускались.
+Камера/микрофон синтетические, Android/нагрузка не запускались.
+
+A начал показ, затем B перехватил. Отправлены старый stop, новый claim старой revision,
+повтор request_id с другим телом, старый token request, чужой lease и body identity,
+подменённое generation. Отказы не изменили revision/generation/owner B. Повтор
+успешного старого claim вернул квитанцию и текущий snapshot, не вернул владение A.
+Пиксели B видны у A, входящие voice/camera растут, основные PC не менялись.
+
+Независимый SDK Room не подключился с сохранёнными original и действительно
+обновлённым SDK JWT до их expiry. Старая room отсутствует по ListRooms. Новый token
+для A относится к текущей комнате и имеет только viewer grant без publish/data.
+Член чата вне звонка и другая Matrix login-сессия не получили grant (404); последняя
+не имела собственного call lease, это не приёмка всех вариантов доверия устройств.
+Bind другого call_session с настоящим lease текущего звонка отклонён (403/410).
+Direct bind только одной стороны остался pending, token отклонён (403).
+
+Подготовка fixture сначала не прошла: контакты должны записываться в общий сервис,
+который проверяет Synapse; приватный control используется для звонков и screen.
+Лаборатория также настраивает свой Origin и вручную сверяет реальные отпечатки
+двух SDK-устройств до connect. Неуспешные setup/assertion прогоны не выданы за
+продуктовые дефекты или PASS. Изменений production-кода не потребовалось.
+
+Новый `lab_screen_security_main.dart` — отдельная тестовая цель с командами для
+негативной приёмки; она не импортирована production entrypoint. Ключи/credentials/JWT
+живут только в памяти, не включаются в отчёт. Привязка: SHA256 source/JS в
+[commands report](../../prototype/verified-screen-security-commands-run.json).
+Тестовые команды генерации/публикации и key gate также остаются только в лаборатории.
+Дальше — encrypted key replay и реальные SFU publish/source/metadata отказы.
+
+```sh
+NODE_PATH=/path/to/existing/node_modules node prototype/check_screen_security.cjs commands
+```
+
+Перед запуском нужны общие loopback Matrix/contacts/SFU, generated crypto assets и
+отдельный web server :7363 со сборкой `--target=lib/lab_screen_security_main.dart`.
+`fixture.json` отдаётся только одноразовому browser context через route, на диск
+с credentials не записывается. Все аккаунты деактивируются в finally.
+
 ## SS-17 — 23 октября 2026: локальный preflight, включение отложено
 
 **Local preflight PASS, release BLOCKED.** Зафиксирован клиент caecb3c,

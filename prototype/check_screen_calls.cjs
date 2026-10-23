@@ -111,6 +111,8 @@ async function selectSource(sources,index) {
   }
 }
 
+Object.assign(exports,{pixels,audio,captureSource,selectSource});
+
 const results={result:'IN_PROGRESS',run:new Date().toISOString()};
 exports.check = async (a,b,button,transport,revokeDevice,faults) => {
   const started=performance.now();
