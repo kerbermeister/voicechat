@@ -57,7 +57,7 @@ PASS ниже относится только к явно указанной с�
 | A09 | PARTIAL PASS | UI Stop и feature off освобождают web capture и скрывают кадр. Browser OS Stop и Android lock/onStop не приняты. |
 | A10 | PARTIAL PASS | Реальный pinned SFU отвергает original/refreshed JWT удалённой room. Matrix device deletion во время group screen: 401 на новый token, ListRooms подтверждает удаление, независимый SDK отвергает unexpired old JWT; оставшийся участник публикует новое поколение. После настоящего group takeover независимый SDK отверг original/refreshed unexpired JWT; прежний ведущий получает только viewer grant нового поколения. Hostile publish в активном поколении ещё не принят. |
 | A11 | PARTIAL PASS | HTTP доступ/пара/роль/lease, source и kind; настоящий SFU отвергает viewer publish и owner camera, production metadata guard обнаруживает duplicate. Полный hostile client против активного Matrix звонка ещё не принят. |
-| A12 | PARTIAL PASS | Реальные E2EE-пиксели, 0 кадров без ключа/с неверным ключом; sender/device/generation/expiry envelope проверены unit. Сквозной replay старого envelope ещё не принят. |
+| A12 | WEB PASS | 15 доставленных Matrix/Olm отрицательных случаев: точный старый envelope, подменённые контексты/срок/устройство, plaintext, voice channel. Ни один не достиг screen setKey; voice key не изменился, 0 кадров до правильного ключа. Положительный контроль установил актуальный raw key и дал видимые пиксели. Физические платформы остаются в SS-12. |
 | A13 | PARTIAL PASS | Capture video-only и source grants, audio-kind отвергается до subscribe, голос в своей room. Воспроизведение системного звука с выключенным mic на физических устройствах не принято. |
 | A14 | PARTIAL PASS | Потерянный claim reply, fault/lease/fencing unit, настоящий fail-closed container и DeleteRoom. Живой E2EE screen прекращён при restart отдельного production control API/SQLite и отказе его Matrix-зависимости; unexpired JWT отвергнут, P2P голос/камера продолжаются. Общий Synapse/SFU не выключались; joint container/media restart и остальные фазы ещё не приняты. Исправлены гонка device refresh, пропуск subscriptions после SDK reconnect и revision до picker; результаты повторов — в журнале. |
 | A15 | BLOCKED | Нет внешнего VPS/NAT/целевых Wi-Fi/mobile сетей; TCP443-only не заявлен. |
@@ -76,6 +76,7 @@ PASS ниже относится только к явно указанной с�
 [перезапуск отдельного control](../prototype/verified-screen-restart-fault-run.json),
 [регрессия чистой сборки](../prototype/verified-screen-subscription-regression-run.json),
 [старые команды и сохранённые JWT](../prototype/verified-screen-security-commands-run.json),
+[настоящий Olm key replay и SQLite audit](../prototype/verified-screen-security-keys-run.json),
 [отрицательный SFU/E2EE](../prototype/verified-screen-web-run.json),
 [образ control](../prototype/verified-screen-control-image-run.json),
 [сверка исходников образа](../prototype/verified-screen-image-sources-run.json),
@@ -99,8 +100,8 @@ deployment manifest — другой маркер совместимости.
 стенд и volumes сохранены для параллельной работы. Production в этой итерации
 не обновлялся. Отдельные коммиты не включают незавершённый дизайн/VPS diff.
 
-До включения остаются как внешние, так и локальные проверки: полный hostile
-publish/key replay/fault matrix (A07/A10–A12/A14), физический Android и браузеры,
+До включения остаются как внешние, так и локальные проверки: оставшаяся hostile
+publish/fault матрица (A10/A11/A14); key replay локально принят, физический Android и браузеры,
 системный picker/Stop/доступность, внешние сети, разрешённая нагрузка,
 полный application restore/rollback и оставшаяся регрессия сообщений/файлов/тем.
 Пункты PARTIAL/BLOCKED выше сохраняются.

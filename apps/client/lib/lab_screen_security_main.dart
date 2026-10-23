@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:http/http.dart' as http;
@@ -29,7 +28,6 @@ ScreenShareController? screen;
 Map<String, dynamic> fixture = {};
 final envelopes = <Map<String, dynamic>>[];
 final received = <String>[];
-final checkpoints = <String, Uint8List>{};
 final manual = Object();
 bool withhold = false;
 int dropped = 0;
@@ -119,10 +117,6 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
       };
     case 'currentEnvelope':
       final s = screen!.snapshot!;
-      final key = await screen!.media!.e2eeManager!.keyProvider.exportKey(
-        s.owner!,
-        0,
-      );
       return {
         'protocol_version': 1,
         'room_id': call!.chat.id,
@@ -134,20 +128,16 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
         'sender_identity': s.owner,
         'sender_device': client.deviceID,
         'expires_at': DateTime.now().millisecondsSinceEpoch + 20000,
-        'key': base64Encode(key),
+        'provider_id': screen!.media!.e2eeManager!.keyProvider.keyProvider.id,
       };
-    case 'checkpoint':
-    case 'unchanged':
+    case 'provider':
       final channel = data['channel'] as String;
       final room = channel == 'screen' ? screen!.media! : call!.media!;
-      final owner = data['owner'] as String;
-      final provider = room.e2eeManager!.keyProvider;
-      if (data['action'] == 'checkpoint' && channel == 'screen') {
-        await provider.setRawKey(Uint8List(32), participantId: owner);
-      }
-      final key = await provider.exportKey(owner, 0);
-      if (data['action'] == 'checkpoint') checkpoints[channel] = key;
-      return {'unchanged': listEquals(checkpoints[channel], key)};
+      return {
+        'id': room.e2eeManager!.keyProvider.keyProvider.id,
+        'generation': room.name,
+        'connected': room.connectionState == lk.ConnectionState.connected,
+      };
     case 'engineToken':
       // ignore: invalid_use_of_internal_member
       return {'token': screen!.media!.engine.token};

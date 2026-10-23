@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Private control DB/API and Matrix fault proxy; never stops shared services."""
 import json
+import base64
 import os
 from pathlib import Path
 import selectors
@@ -104,6 +105,7 @@ server.serve_forever()
             print(json.dumps(ready), flush=True)
             for line in sys.stdin:
                 action = line.strip()
+                extra = {}
                 if action == 'matrix_off':
                     unavailable.set()
                 elif action == 'matrix_on':
@@ -113,9 +115,19 @@ server.serve_forever()
                     ready = start()
                 elif action == 'close':
                     break
+                elif action.startswith('audit '):
+                    values = json.loads(action[6:])
+                    needles = [v.encode() for v in values['text']]
+                    needles += [base64.b64decode(v, validate=True) for v in values['base64']]
+                    assert needles and all(needles)
+                    databases = list((root/'.prototype').rglob('*.sqlite*'))
+                    assert databases
+                    extra['audit_clean'] = all(
+                        not any(needle in path.read_bytes() for needle in needles)
+                        for path in databases)
                 elif action != 'status':
                     raise ValueError('Unknown fixture action')
-                print(json.dumps({**ready, **status(root/'.prototype/calls/calls.sqlite')}), flush=True)
+                print(json.dumps({**ready, **status(root/'.prototype/calls/calls.sqlite'), **extra}), flush=True)
         finally:
             stop()
             # Recover only this fixture's metadata, including after a failed browser test.

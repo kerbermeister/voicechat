@@ -80,7 +80,14 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
       const context=await browser.newContext({permissions:['microphone','camera'],viewport:{width:1280,height:1000}});
       await context.addInitScript(media.syntheticMedia);
       await context.addInitScript(()=>{window.callPeers=[];window.RTCPeerConnection=new Proxy(window.RTCPeerConnection,{construct(target,args){
-        const pc=Reflect.construct(target,args);window.callPeers.push(pc);return pc;}});});
+        const pc=Reflect.construct(target,args);window.callPeers.push(pc);return pc;}});
+        // Observe the real cryptor worker boundary, in memory only. Never log this array.
+        window.screenLabKeys=[];const post=Worker.prototype.postMessage;
+        Worker.prototype.postMessage=function(message,...args){
+          if(message?.msgType==='setKey') window.screenLabKeys.push({id:message.keyProviderId,owner:message.participantId,key:message.key});
+          return post.call(this,message,...args);
+        };
+      });
       await context.route('**/fixture.json',route=>route.fulfill({json:{profile:session+'-'+i,
         username:account.username,password:account.password,room:room.room_id,session,api:fixture.base}}));
       const page=await context.newPage();pages.push(page);

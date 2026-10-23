@@ -2,6 +2,50 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-11 — локальная итерация 2: настоящий Olm replay и граница cryptor
+
+**PASS, 28.299 с**, тот же production-код 56efbb1, отдельный lab target и private
+API/SQLite. A → B → A создаёт новое screen generation. Нормальная отправка нового
+ключа A временно удерживается тестовым HTTP adapter; ручные тестовые посылки идут
+через настоящий `sendToDeviceEncrypted` и Matrix, с реальным Olm sender/device.
+У B подтверждены новая room, отсутствие корректного ключа и 0 decoded frames.
+
+**15 отрицательных случаев доставлены реально**: точный ещё действующий старый
+envelope в новом Olm-сообщении; старое generation с новым expiry; другая room/call/
+binding; старые revision/roster; подмена sender/device; expired/слишком долгий expiry;
+неверный key/base64 и boolean protocol; plaintext screen envelope; screen envelope
+в voice-key channel. Plaintext случай использует фиктивные 32 байта, не настоящий
+медиаключ. Для каждого случая наблюдается отсутствие `setKey` в экранный cryptor
+и неизменный голосовой ключ. До положительного контроля остаётся 0 decoded frames.
+
+Правильный текущий raw key берётся только в памяти с фактической границы sender →
+cryptor worker. Валидный envelope, отправленный тем же authenticated Matrix SDK,
+действительно устанавливает его у B, даёт >5 расшифрованных кадров и правильный цвет
+на PNG всего Flutter UI. Voice/camera counters растут, их PC не заменяются.
+
+Первый способ измерения через SDK `exportKey` оказался непригоден: pinned WebCrypto
+material неэкспортируем, API возвращает пустой результат. Положительный контроль
+не прошёл и не позволил принять такой прогон. Теперь тест наблюдает реальные
+`Worker.postMessage(setKey)` по provider/participant, не подменяя cryptor. Значения
+не пишутся в DOM, console или отчёты. Лабораторный bridge отсутствует в production JS.
+
+Проверены тела control и Matrix sendToDevice запросов: действующих ключей в открытом
+виде нет (Olm ciphertext допускается). В отдельной SQLite и её WAL нет raw/base64
+медиаключей, SFU JWT и Matrix bearer. Сам scanner сначала нашёл известный безопасный
+schema marker — отрицательный контроль против фиктивного PASS. Source review:
+production `Handler.log_message` отключён; private fixture не пишет HTTP bodies/
+headers в logs. Это локальная проверка границ, не аудит всех production лог-систем.
+Отчёт содержит только safe booleans/названия случаев/хеши:
+[key replay](../../prototype/verified-screen-security-keys-run.json).
+Изменения затронули только лабораторию/fixtures; production-код не менялся.
+
+```sh
+NODE_PATH=/path/to/existing/node_modules node prototype/check_screen_security.cjs keys
+```
+
+Android, браузерная матрица и нагрузка не выполнялись; SS-11 целиком ещё не закрыта:
+дальше проверяются raw SFU signaling и реальные недопустимые публикации.
+
 ## SS-11 — локальная итерация 1: команды и сохранённые JWT
 
 **PASS, 31.019 с**, Chrome 156, отдельный laboratory entrypoint, production-код
