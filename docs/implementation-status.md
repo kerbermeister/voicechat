@@ -75,6 +75,10 @@ SS-17: локальный [preflight](../prototype/verified-screen-preflight-run
 screen fixtures удалены. Общий деплой на одной VPS можно готовить параллельно,
 сохраняя screen off до приёмки. Порядок и оставшиеся gate — в матрице.
 
+24 октября оставшиеся работы сверены в SS-12–SS-17: Firefox и ручные платформенные
+проверки, внешняя сеть, нагрузка, целевой upgrade/rollback, screen reader и включение.
+Непроверенные пункты сохранены открытыми; Android и нагрузка по-прежнему отложены.
+
 Источник статуса: [задачи SS-00–SS-17](tasks/08-screen-sharing.md),
 [журнал](iterations/08-screen-sharing.md), [матрица приёмки](screen-sharing-acceptance.md).
 Для пользователей — [демонстрация экрана](screen-sharing.md), для оператора —
