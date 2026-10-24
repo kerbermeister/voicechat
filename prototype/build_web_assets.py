@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Build upstream crypto assets using the dependencies locked by Flutter."""
+"""Build locked crypto assets; CI reuses outputs only when the input cache key matches.
+
+Keep this generator in the assets cache key. Local invocations intentionally rebuild.
+"""
 import json
 import shutil
 import subprocess

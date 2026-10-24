@@ -33,6 +33,7 @@ jobs:
         run: |
           test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER" && test -n "$DEPLOY_ROOT"
           python3 infra/client_config.py "$PUBLIC_URL" /tmp/client.json
+          python3 -c 'import json; assert json.load(open("/tmp/client.json"))["MATRIX_URL"].startswith("https://")'
           python3 infra/release_source.py
       - name: Set up pinned SSH identity
         if: ${{ inputs.deploy || inputs.mode == 'web' }}
