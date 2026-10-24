@@ -144,6 +144,7 @@ class DeploySpeedTests(unittest.TestCase):
         for path in ('prototype/build_web_assets.py', 'prototype/build_qr_assets.py', 'apps/client/pubspec.lock', 'vendor/matrix/lib/**'):
             self.assertIn(path, assets)
         config = json.loads((root/'infra/crypto-tools.json').read_text())
+        self.assertIn("runs-on: "+config['runner'], workflow)
         self.assertIn("flutter-version: '"+config['flutter']+"'", workflow)
         self.assertRegex(config['nightly'], r'^nightly-\d{4}-\d{2}-\d{2}$')
 
