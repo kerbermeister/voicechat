@@ -1,0 +1,33 @@
+{
+  "result": "PASS",
+  "run": "2026-10-24T07:24:57.237666+00:00",
+  "ss15_upgrade_rollback": "PASS; private containers/volumes removed",
+  "ss16_ui_regression": "PASS; 3 fixture accounts deactivated",
+  "aborted_pre_browser_accounts_deactivated": 3,
+  "disposable_cleanup_admin_deactivated": true,
+  "feature_flag_files_absent": true,
+  "metadata_after_tests": {
+    "schema": 2,
+    "sessions": {
+      "ended": 60
+    },
+    "retired_rooms": 0,
+    "pending_commands": 0,
+    "oldest_pending_seconds": null
+  },
+  "own_lab_web_regression_web_and_api_stopped": true,
+  "shared_prototype_containers_retained": [
+    "synapse",
+    "livekit",
+    "turn",
+    "mailpit",
+    "postgres"
+  ],
+  "shared_volumes_preserved": true,
+  "prior_release_js_sha256_unchanged": "4a3af9a1c9d1f6ed10092e74cf048f6ca223506549af713f2f5c9e258032b790",
+  "new_regression_web_files_checked": 55,
+  "new_regression_web_secrets_and_bridge_absent": true,
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "production_screen_rollout": "NOT_RUN; release acceptance BLOCKED"
+}

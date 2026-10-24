@@ -2,6 +2,54 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-16 — оставшаяся локальная регрессия обычного клиента
+
+**PASS** на чистом `4df481d` с одним исправлением production-кода: удалён
+неиспользуемый hint списка качества видео. Flutter учитывал его ширину даже при
+выбранном значении, что давало overflow на 320 px при тексте 130%. Вариант с
+растягиванием списка нарушал компоновку обычного звонка и не принят. Итоговый
+вариант прошёл analyze, все **135 Flutter tests** и release web build (85.1 с).
+Чужие pending UI/VPS изменения, зависимости и lockfile не включены; готовые pinned
+crypto/scanner assets переиспользованы, cold Rust/WASM build не заявляется.
+
+Два обычных Chrome клиента: согласия/приглашения, direct replies/reactions,
+muted unread counts/read receipts, новый group text; файлы в direct и group
+скачаны через UI, расшифрованные bytes точно совпали с разными исходными payloads.
+Все 7 тем выбраны через UI: значения записаны в localStorage, PNG подтвердили
+7 разных основных цветов и ожидаемую светлую/тёмную яркость. Чат проверен на
+320×640, 390×844, 640×320. Для живого group screen на этих размерах кнопка
+«Завершить» остаётся видимой, screen-действия доступны через прокрутку content;
+fullscreen/возврат сохраняют звонок. A использует Midnight, B — Lavender Soft.
+
+Личный P2P и групповой video call: реальный tab capture, разные пиксели A/B,
+Matrix E2EE, cancel/takeover/stop/Low/Auto/fullscreen и feature off; voice peers
+сохраняются. В обоих звонках камера выключена/включена, mic muted/unmuted,
+screen pixels остаются. После republish сравнивается рост **новых** RTP counters,
+а не их абсолютное значение до замены stream; после resize media продолжаются.
+
+Widget-проверки обеих ориентаций расширены на все 7 тем; окно звонка — с text
+scale 1.3 и disableAnimations. Tab достигает fullscreen, Enter открывает его,
+возврат не закрывает screen controller. DOM activeElement у Flutter Canvas не
+используется как доказательство Flutter focus. Это не приёмка screen reader.
+Ранее принятые audio-only/mute/no-camera и Matrix device revoke не переписаны;
+их media/authorization controllers совпадают с принятым caecb3c.
+
+Команда: обычный clean web на 7358, local control 8090 с
+`VOICECHAT_SCREEN_FLAG=/tmp/voicechat-screen-test-enabled`, существующие Matrix/SFU;
+`NODE_PATH=/path/to/existing/node_modules python3 prototype/run_screen_regression.py`.
+Нужны Playwright/pngjs и установленный Chrome. Runner проверяет health до создания
+аккаунтов, сохраняет прежний calls report и удаляет временный flag в finally.
+Основной отчёт требует PASS обеих calls и деактивацию 3 fixture accounts.
+Три аккаунта раннего запуска без API и временный cleanup admin тоже деактивированы;
+первые FAIL и прерванные прогоны не считаются приёмкой.
+
+[Сквозная регрессия](../../prototype/verified-screen-regression-run.json),
+[источник/сборка](../../prototype/verified-screen-regression-build-run.json),
+[очистка](../../prototype/verified-screen-local-regression-cleanup-run.json).
+Постоянный flag отсутствует, release BLOCKED. Android, тяжёлая нагрузка, другие
+реальные браузеры/OS picker/Stop, screen reader и целевой VPS screen rollout не
+проверялись. SS-16 локально принят; полная межплатформенная приёмка остаётся PARTIAL.
+
 ## SS-15 — локальное обновление существующих томов и безопасный откат
 
 **PASS, 193.480 с.** Реальный baseline control из pre-screen `c3e3f43` →

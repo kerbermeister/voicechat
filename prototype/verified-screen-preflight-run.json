@@ -65,7 +65,7 @@
     },
     {
       "tasks": "SS-16 / A16",
-      "required": "Remaining messages/files/theme/manual accessibility regression on target clients"
+      "required": "Manual screen reader and target platform/browser acceptance; local ordinary Chrome messages/files/themes/three viewports and live call controls accepted separately"
     },
     {
       "tasks": "SS-17",
@@ -93,5 +93,8 @@
   ],
   "local_application_restore_evidence": "prototype/verified-screen-security-restore-run.json",
   "local_operations_cleanup_evidence": "prototype/verified-screen-operations-cleanup-run.json",
-  "local_existing_volume_upgrade_rollback_evidence": "prototype/verified-screen-security-operations-run.json"
+  "local_existing_volume_upgrade_rollback_evidence": "prototype/verified-screen-security-operations-run.json",
+  "local_remaining_regression_evidence": "prototype/verified-screen-regression-run.json",
+  "local_remaining_regression_build_evidence": "prototype/verified-screen-regression-build-run.json",
+  "local_remaining_regression_cleanup_evidence": "prototype/verified-screen-local-regression-cleanup-run.json"
 }

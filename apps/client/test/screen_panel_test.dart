@@ -11,6 +11,7 @@ import 'screen_protocol_test.dart' show active;
 import 'call_window_test.dart' show WindowCall, CallRoom;
 import 'package:voicechat_probe/call_controller.dart';
 import 'package:voicechat_probe/call_window.dart';
+import 'package:voicechat_probe/theme.dart';
 
 class PanelDatabase extends Fake implements DatabaseApi {
   @override
@@ -40,30 +41,46 @@ void main() {
             ..snapshot = ScreenSnapshot.parse(active())
             ..phase = ScreenPhase.viewing;
       for (final size in [const Size(320, 640), const Size(640, 320)]) {
-        tester.view.devicePixelRatio = 1;
-        tester.view.physicalSize = size;
-        await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(
-              body: SingleChildScrollView(
-                child: ScreenPanel(controller: controller),
+        for (final palette in AppPalette.values) {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = size;
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: palette.theme,
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  child: ScreenPanel(controller: controller),
+                ),
               ),
             ),
-          ),
-        );
-        await tester.pump();
-        expect(find.text('Перехватить экран'), findsOneWidget);
-        expect(find.byType(Semantics), findsWidgets);
-        expect(tester.takeException(), isNull);
-        await tester.ensureVisible(find.byTooltip('Развернуть экран'));
-        await tester.tap(find.byTooltip('Развернуть экран'));
-        await tester.pumpAndSettle();
-        expect(find.byTooltip('Вернуться в звонок'), findsOneWidget);
-        await tester.tap(find.byTooltip('Вернуться в звонок'));
-        await tester.pumpAndSettle();
-        expect(controller.isClosed, isFalse);
-        expect(find.text('Перехватить экран'), findsOneWidget);
-        expect(tester.takeException(), isNull);
+          );
+          await tester.pump();
+          expect(find.text('Перехватить экран'), findsOneWidget);
+          expect(find.byType(Semantics), findsWidgets);
+          expect(tester.takeException(), isNull);
+          await tester.ensureVisible(find.byTooltip('Развернуть экран'));
+          FocusManager.instance.primaryFocus?.unfocus();
+          await tester.pump();
+          for (var i = 0; i < 4; i++) {
+            await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+            await tester.pump();
+            if (Focus.of(tester.element(find.byIcon(Icons.fullscreen))).hasFocus) {
+              break;
+            }
+          }
+          expect(
+            Focus.of(tester.element(find.byIcon(Icons.fullscreen))).hasFocus,
+            isTrue,
+          );
+          await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+          await tester.pumpAndSettle();
+          expect(find.byTooltip('Вернуться в звонок'), findsOneWidget);
+          await tester.tap(find.byTooltip('Вернуться в звонок'));
+          await tester.pumpAndSettle();
+          expect(controller.isClosed, isFalse);
+          expect(find.text('Перехватить экран'), findsOneWidget);
+          expect(tester.takeException(), isNull);
+        }
       }
       await tester.pumpWidget(const SizedBox.shrink());
       await controller.close();
@@ -101,20 +118,30 @@ void main() {
             ..active = call
             ..screen = screen;
       for (final size in [const Size(320, 640), const Size(640, 320)]) {
-        tester.view.devicePixelRatio = 1;
-        tester.view.physicalSize = size;
-        await tester.pumpWidget(
-          MaterialApp(
-            home: CallWindow(calls: calls, audioOutput: () async {}),
-          ),
-        );
-        await tester.pump();
-        expect(find.byType(ScreenPanel), findsOneWidget);
-        expect(tester.takeException(), isNull);
-        expect(
-          tester.getRect(find.text('Завершить')).bottom,
-          lessThanOrEqualTo(size.height),
-        );
+        for (final palette in AppPalette.values) {
+          tester.view.devicePixelRatio = 1;
+          tester.view.physicalSize = size;
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: palette.theme,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: const TextScaler.linear(1.3),
+                  disableAnimations: true,
+                ),
+                child: child!,
+              ),
+              home: CallWindow(calls: calls, audioOutput: () async {}),
+            ),
+          );
+          await tester.pump();
+          expect(find.byType(ScreenPanel), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          expect(
+            tester.getRect(find.text('Завершить')).bottom,
+            lessThanOrEqualTo(size.height),
+          );
+        }
       }
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.runAsync(calls.close);

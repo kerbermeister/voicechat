@@ -11,7 +11,9 @@ Compose backup/restore и локальные upgrade/rollback на сущест�
 поздним входом, конкурентными claims, сбоями отдельного control API и живыми
 restart/crash/watchdog частного control/SFU контейнера.
 Локальная негативная матрица SS-11 принята.
-Локальные fault фазы SS-10/SS-16 приняты.
+Локальные fault фазы SS-10/SS-16 приняты. Оставшаяся регрессия обычного Chrome
+клиента (данные, темы, controls и viewport) также принята; screen reader/целевые
+устройства остаются внешними gate.
 SS-17 — только после target upgrade/rollback, внешних проверок и приёмки
 целевого стенда. Default off, релиз не принят.**
 [Результаты и оставшиеся проверки](../iterations/08-screen-sharing.md).
@@ -380,8 +382,12 @@ pre-screen c3e3f43 → текущий control → c3e3f43, те же тома, v
 
 - [x] Записать матрицу SS-A01–SS-A18 со свидетельствами и явно открытыми проверками.
   Полная реальная приёмка остаётся незавершённой.
-- [ ] Проверить существующие P2P/group audio/video, mute/camera, сообщения/файлы,
-  revoke, темы и мобильный layout; mock-тест не заменяет критическую интеграцию.
+- [x] Локально проверить P2P/group audio/video, mute/camera, сообщения/файлы,
+  revoke, темы и мобильный viewport; реальные Chrome/Matrix/SFU + widget tests.
+  Audio-only и device revoke сохраняют прежние принятые свидетельства, их
+  media/authorization controllers не менялись.
+- [ ] Дополнить manual screen reader и проверками целевых браузеров/устройств
+  из SS-12; viewport/widget тесты не заменяют физическую приёмку.
 - [x] Документировать запуск, ограничения мобильного веба, системные разрешения,
   предупреждение об уведомлениях, перехват/stop и поведение после обрыва.
 - [x] Обновить README, requirements, architecture/calls, implementation-status,

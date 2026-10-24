@@ -169,7 +169,6 @@ class _CallWindowState extends State<CallWindow> {
                     if (video)
                       DropdownButton<VideoQuality>(
                         value: current.videoQuality,
-                        hint: const Text('Качество видео'),
                         items: [
                           for (final quality in VideoQuality.values)
                             DropdownMenuItem(

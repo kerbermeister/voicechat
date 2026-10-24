@@ -34,7 +34,18 @@ SQL/3 SQLite/signing key/media, новый login, реальный decrypt histo
 group voice/camera и новый screen call. Старые leases/capture не воскресли.
 Исправлен backup для фактических Compose volume names вместо жёсткого prefix.
 Сохранён client vault; потеря локальных E2EE keys не покрывается серверным backup.
-Target upgrade/rollback, registry manifest и внешняя приёмка остаются открытыми.
+Локальный upgrade/rollback на существующих томах принят отдельно: pre-screen
+c3e3f43 → current → baseline, v1→v2 без downgrade, backup перед сменами,
+данные до/после upgrade читаются после rollback. Registry/target deployment,
+точная старая версия клиента и внешняя приёмка остаются открытыми.
+
+24 октября: оставшаяся локальная регрессия SS-16 принята на clean 4df481d с
+минимальным исправлением ширины quality dropdown (убран неиспользуемый hint).
+Analyze, все 135 Flutter tests и release JS PASS; ordinary UI direct/group
+text/file byte checks, 7 palettes и 3 viewport, live camera/mic toggles,
+scroll/fullscreen и сохранение voice PC/media PASS. Widget: 7 тем, text130%,
+reduced animations, Tab/Enter. Это Chrome/viewport-проверки; screen reader,
+физические платформы и release остаются вне приёмки.
 
 SS-11 локально принят: stale commands, original/refreshed JWT, подмена JWT identity/
 publisher grant, raw SFU source/role отказы, duplicate/plaintext metadata guard,
