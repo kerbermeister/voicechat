@@ -1,0 +1,61 @@
+{
+  "commit": "39abf2d492254a052addbd44f9fd0f50d287a112",
+  "origin": "https://univc.duckdns.org",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/40121466592",
+  "mode": "full",
+  "local_checks": {
+    "python_tests": 82,
+    "python_skipped": 1,
+    "flutter_analyze": "PASS",
+    "flutter_tests": 160,
+    "chrome_vault": "PASS",
+    "python_skip_reason": "Explicit isolated Docker check only; integration flag not enabled"
+  },
+  "production_acceptance": {
+    "origin": "https://univc.duckdns.org",
+    "automatic_profile": true,
+    "local_passphrase_required": false,
+    "registration_without_phrase": true,
+    "emoji_default": true,
+    "emoji_sas": true,
+    "mismatch_blocks": true,
+    "encrypted_history_decrypted": true,
+    "reload": true,
+    "physical_devices": "NOT_TESTED"
+  },
+  "physical_devices": "NOT_TESTED",
+  "legacy_password_vault_migration": "NOT_IMPLEMENTED; original data retained",
+  "runtime": {
+    "commit": "39abf2d492254a052addbd44f9fd0f50d287a112",
+    "previous_commit": "a37ddbf355355fc56d1c778f93650afe5fcc4542",
+    "manifest": {
+      "commit": "39abf2d492254a052addbd44f9fd0f50d287a112",
+      "schema": 1,
+      "origin": "https://univc.duckdns.org",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:ff8f0659bdb8330858df3ad199e460e25f13d4436c79668d5595197affca29d2",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:b693fc7b436519be89fda61a503dafa3b20c1bd55eef1fea6e5d31336d8e5799"
+    },
+    "containers": {
+      "voicechat-web-1": "healthy",
+      "voicechat-control-1": "healthy",
+      "voicechat-synapse-1": "healthy",
+      "voicechat-postgres-1": "healthy",
+      "voicechat-turn-1": "running"
+    },
+    "main_js_sha256": "10670941d241de3e8ece232e1642099564701a9b5c03a66d9917b6b00ed5cc77",
+    "screen_enabled": false,
+    "screen_schema": 2
+  },
+  "workflow_status": "SUCCESS",
+  "workflow_duration": "8m 37s",
+  "backup": {
+    "snapshot": "fced0ece",
+    "time": "2026-10-24T18:44:26.859897104Z",
+    "restic_check": "PASS in deployment",
+    "encrypted_offsite_copy": "Mac .prototype/vps-recovery/repository-after-integration-39abf2d.tar.gz; 0600"
+  },
+  "cache": {
+    "crypto_tools": "HIT",
+    "crypto_assets": "MISS after dependency changes; rebuilt and cached"
+  }
+}
