@@ -224,7 +224,11 @@ class CallController extends ChangeNotifier
     final id = content['session'];
     if (id is! String || !RegExp(r'^[a-z0-9]{32}$').hasMatch(id)) return;
     final age = DateTime.now().difference(event.originServerTs);
-    if (age.isNegative || age.inMinutes >= 10) return;
+    // Matrix timestamps come from the homeserver, whose clock may lead the client.
+    if (age < const Duration(minutes: -1) ||
+        age >= const Duration(minutes: 10)) {
+      return;
+    }
     if (content['action'] == 'invite' &&
         event.senderId != client.userID &&
         !declined.contains(id)) {

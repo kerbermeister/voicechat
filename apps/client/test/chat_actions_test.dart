@@ -605,6 +605,13 @@ void main() {
           'session': id,
         }, timestamp: DateTime.now().subtract(const Duration(minutes: 11))),
       );
+      calls.receive(
+        event('@alice:local', {
+          'msgtype': 'dev.voicechat.call',
+          'action': 'invite',
+          'session': id,
+        }, timestamp: DateTime.now().add(const Duration(minutes: 2))),
+      );
       expect(calls.invitations, isEmpty);
       calls.receive(
         event('@alice:local', {
@@ -630,6 +637,16 @@ void main() {
         }),
       );
       expect(calls.invitations, isEmpty);
+      for (final action in ['invite', 'end']) {
+        calls.receive(
+          event('@alice:local', {
+            'msgtype': 'dev.voicechat.call',
+            'action': action,
+            'session': id,
+          }, timestamp: DateTime.now().add(const Duration(seconds: 30))),
+        );
+        expect(calls.invitations, hasLength(action == 'invite' ? 1 : 0));
+      }
       await calls.close();
     },
   );
