@@ -26,6 +26,7 @@ def quiet(args, **kwargs):
 
 def main():
     deploy.execute = quiet
+    operations = os.environ.get('VOICECHAT_SCREEN_OPERATIONS') == '1'
     with tempfile.TemporaryDirectory(prefix='voicechat-screen-restore-') as directory:
         root = Path(directory)
         release = root/'release'
@@ -47,12 +48,16 @@ def main():
         values = {k: v.strip("'") for k, v in values.items()}
         image = subprocess.check_output(['docker', 'image', 'inspect', 'voicechat-screen-control:test',
                                          '--format', '{{.Id}}'], text=True).strip()
-        values.update(CONTROL_IMAGE=image, HTTPS_PORT='7365')
+        baseline = subprocess.check_output(['docker', 'image', 'inspect', 'voicechat-screen-baseline:c3e3f43',
+                                           '--format', '{{.Id}}'], text=True).strip() if operations else image
+        web_image = subprocess.check_output(['docker', 'image', 'inspect', 'voicechat-web:local',
+                                            '--format', '{{.Id}}'], text=True).strip()
+        values.update(CONTROL_IMAGE=baseline, WEB_IMAGE=web_image, HTTPS_PORT='7365')
         env_file.write_text(''.join(f"{k}='{v}'\n" for k, v in values.items()))
         override = {'services': {'control': {'environment': {
             'VOICECHAT_ORIGINS': 'http://localhost:7363,http://localhost:7364'}}}}
         (runtime/'compose.override.yaml').write_text(json.dumps(override))
-        record = {'scope': 'local drill, not a published release manifest', 'control': image}
+        record = {'scope': 'local drill, not a published release manifest', 'control': baseline}
         (root/'current.json').write_text(json.dumps(record))
         suffix = secrets.token_hex(5)
         source = {**os.environ, 'COMPOSE_PROJECT_NAME': 'voicechat-screen-source-'+suffix}
@@ -73,8 +78,9 @@ def main():
             return output(current, 'exec', '-T', 'control', 'python3', '-c', code)
 
         def state():
-            return json.loads(control("import sys,json;sys.path.insert(0,'prototype');"
-                "from screen_status import status;print(json.dumps(status('.prototype/calls/calls.sqlite')))"))
+            # Reuse the read-only diagnostic even on a pre-screen image.
+            code = "__file__='prototype/screen_status.py'\n" + (ROOT/'prototype/screen_status.py').read_text()
+            return json.loads(control(code))
 
         def flag(value):
             control("from pathlib import Path;p=Path('.prototype/screen-enabled');"
@@ -84,20 +90,63 @@ def main():
             return output(env, 'exec', '-T', 'postgres', 'psql', '-U', 'synapse', '-d', 'synapse',
                 '-At', '-c', "SELECT count(*) FROM users; SELECT count(*) FROM events WHERE type='m.room.encrypted';")
 
+        def switch_image(selected):
+            before = sql(current)
+            volumes = config(current)['volumes']
+            key = output(current, 'exec', '-T', 'synapse', 'python', '-c',
+                "from pathlib import Path;import hashlib;print(hashlib.sha256(Path('/data/voicechat.signing.key').read_bytes()).hexdigest())")
+            compose(current, 'stop', 'web', 'synapse', 'control', 'turn')
+            deploy.backup(root, release, current)
+            current['CONTROL_IMAGE'] = selected
+            compose(current, 'up', '-d', '--wait', '--wait-timeout', '180')
+            container = output(current, 'ps', '-q', 'control')
+            assert subprocess.check_output(['docker', 'inspect', '--format', '{{.Image}}', container], text=True).strip() == selected
+            assert config(current)['volumes'] == volumes
+            assert sql(current) == before
+            assert output(current, 'exec', '-T', 'synapse', 'python', '-c',
+                "from pathlib import Path;import hashlib;print(hashlib.sha256(Path('/data/voicechat.signing.key').read_bytes()).hexdigest())") == key
+            control("import sqlite3;db=sqlite3.connect('file:.prototype/calls/calls.sqlite?mode=ro',uri=True);"
+                "assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok';"
+                "assert db.execute(\"SELECT state FROM screen_bindings WHERE id='legacy-migration-sentinel'\").fetchone()[0]=='ended'")
+            (root/'current.json').write_text(json.dumps({**record, 'control': selected}))
+            return {'same_volume_names': True, 'postgres_counts_preserved': True,
+                    'signing_key_preserved': True, 'legacy_tombstone_preserved': True,
+                    'backup_checked_before_switch': True, 'running_image': selected}
+
         try:
             compose(source, 'up', '-d', '--wait', '--wait-timeout', '180')
             assert config(source)['services']['configure']['environment']['LOCAL_STAND'] == '1'
-            flag(1)
+            flag(0 if operations else 1)
+            if operations:
+                schema = (ROOT/'prototype/screen_schema.sql').read_text()
+                control("import sys,sqlite3;sys.path.insert(0,'prototype');from call_control import CallStore;"
+                    "s=CallStore('.prototype/calls/calls.sqlite',lambda *_:None);"
+                    "db=sqlite3.connect(s.path);db.executescript("+repr(schema)+");"
+                    "db.execute(\"INSERT INTO screen_bindings VALUES('legacy-migration-sentinel','!legacy:fixture','legacy','direct','ended',0,0)\");"
+                    "db.commit();db.close()")
+                assert state()['schema'] == 1
             info = {'api_port': 7364, 'api_path': '/api', 'matrix_url': 'http://localhost:7364',
                     'registration_url': 'http://localhost:8088',
                     'livekit_url': 'ws://localhost:7364', 'image_id': image,
                     'registration_secret': values['REGISTRATION_SECRET'],
                     'sfu_secret': values['LIVEKIT_SECRET']}
+            if operations:
+                info.update(baseline_image=baseline, candidate_image=image, web_image=web_image)
             print(json.dumps(info), flush=True)
             for line in sys.stdin:
                 action = line.strip()
                 extra = {}
-                if action == 'backup_restore':
+                if operations and action == 'upgrade':
+                    extra = switch_image(image)
+                    assert state()['schema'] == 2
+                elif operations and action == 'rollback':
+                    counts = state()
+                    if control("from pathlib import Path;print(Path('.prototype/screen-enabled').read_text().strip())") != '0' or counts['sessions'].get('active') or counts['pending_commands'] or counts['retired_rooms']:
+                        extra = {'rollback_refused_until_screen_stopped': True}
+                    else:
+                        extra = switch_image(baseline)
+                        assert state()['schema'] == 2  # Additive tables are never downgraded/restored.
+                elif action == 'backup_restore':
                     assert state()['sessions'].get('active') == 1
                     expected = sql(source)
                     assert all(int(v) > 0 for v in expected.splitlines())

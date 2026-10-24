@@ -7,7 +7,7 @@
 **Текущая точка: сервер SS-02–SS-05 реализован; SS-06–SS-11 имеют клиентскую
 реализацию и локальную web/HTTP/SFU приёмку. SS-12–SS-14 не закрыты внешними
 устройствами, сетями и нагрузкой; Android отложен владельцем. SS-15 имеет полный локальный
-Compose backup/restore (SQL/три SQLite/файлы/E2EE-клиенты); SS-16 дополнена реальными web перехватом A → B → C,
+Compose backup/restore и локальные upgrade/rollback на существующих томах; SS-16 дополнена реальными web перехватом A → B → C,
 поздним входом, конкурентными claims, сбоями отдельного control API и живыми
 restart/crash/watchdog частного control/SFU контейнера.
 Локальная негативная матрица SS-11 принята.
@@ -354,7 +354,7 @@ production-код не менялся.
 
 - [x] Добавить новые modules/config в существующий control image, сохранить
   непривилегированный запуск, supervisor и закрытые административные маршруты.
-- [ ] Проверить обновление existing volume и fresh installation, feature off/on,
+- [x] Локально проверить обновление existing volume и fresh installation, feature off/on,
   остановку screen перед rollback и сохранность данных остальных функций.
 - [x] Включить новые метаданные в существующий backup; restore закрывает leases,
   удаляет retired rooms, не воскрешает захват и не содержит медиаключей.
@@ -365,8 +365,10 @@ production-код не менялся.
 
 Локальный full restore принят: fresh source → Restic → новые target volumes,
 restore release/runtime, signing key/SQL/3 SQLite, реальные E2EE text/file/call/screen.
-Existing-volume upgrade/совместимый rollback и registry/target manifest остаются
-отдельными незавершёнными пунктами, их не заменяет restore.
+Локальный existing-volume upgrade и совместимый rollback приняты отдельно:
+pre-screen c3e3f43 → текущий control → c3e3f43, те же тома, v1→v2 без downgrade,
+данные до/после обновления расшифрованы после отката. Registry/target manifest,
+целевое обновление и точная старая клиентская версия остаются открытыми.
 
 **Файлы:** `infra/control.Dockerfile`, `configure.py`, `supervise.py`, Compose/Caddy
 только если требуется, deployment/backup tests, `infra/README.md`.

@@ -88,6 +88,7 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
       )..videoQuality = VideoQuality.low;
       revision.value++;
       await call!.connect();
+      if (data['screen'] == false) break;
       step = 'screen-bind';
       final api = ScreenApi(fixture['api'] as String, () => client.accessToken!);
       if ((await api.request('capabilities'))['screen'] != true) {
@@ -316,6 +317,16 @@ Future<void> prepare() async {
             return {
               'error': 'lab-command-failed',
               'kind': error.runtimeType.toString(),
+              'state': error is StateError
+                  ? const ['No element', 'Too many elements', 'Call closed during authorization', 'Call closed during admission',
+                           'Device authorization refresh failed', 'Call requires an encrypted Matrix room',
+                           'Call closed during key provider creation', 'E2EE unavailable; refusing microphone',
+                           'Call ended during camera permission', 'ReusableCompleter disposed',
+                           'Cannot add new events after calling close', 'Future already completed']
+                        .contains(error.message)
+                      ? error.message
+                      : 'other'
+                  : null,
               'step': step,
             }.jsify();
           }

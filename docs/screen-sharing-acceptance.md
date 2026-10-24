@@ -62,7 +62,7 @@ PASS ниже относится только к явно указанной с�
 | A14 | WEB PASS | Локальные private control Matrix/restart, joint container restart/SIGKILL control/SIGKILL SFU/SIGSTOP watchdog, короткий signaling/control обрыв и возврат проигравшего viewer, unknown результат настоящих SFU CreateRoom/DeleteRoom, silent lease и настоящий Matrix kick. Захват/старый кадр закрыты, retired/pending очищены, unexpired old JWT отвергнут. Только screen faults сохраняют основные voice PC/media; crash общего SFU прерывает групповой голос. Внешняя сеть/UDP loss относятся к A15. |
 | A15 | BLOCKED | Нет внешнего VPS/NAT/целевых Wi-Fi/mobile сетей; TCP443-only не заявлен. |
 | A16 | PARTIAL PASS | Layout 320×640/640×320, fullscreen, Material focus/semantics; тема и реальный screen reader на каждой платформе ещё не приняты. |
-| A17 | PARTIAL PASS | Additive v1→v2, fresh/repeated migration, read-only image, SQLite backup/recovery, настоящий feature off сохраняет group voice/camera. Полный локальный Compose restore принят: новые тома, restored release/runtime, signing key, SQL/3 SQLite/media; новый login, принудительное чтение/decrypt истории и реальный download/decrypt файла, group voice/camera и новый screen call. Старые leases отозваны, capture не возобновляется. Сохранён client vault; registry/target upgrade/rollback остаются. |
+| A17 | PARTIAL PASS | Additive v1→v2, fresh/repeated migration, read-only image, SQLite backup/recovery, настоящий feature off сохраняет group voice/camera. Полный локальный Compose restore принят: новые тома, restored release/runtime, signing key, SQL/3 SQLite/media; новый login, принудительное чтение/decrypt истории и реальный download/decrypt файла, group voice/camera и новый screen call. Старые leases отозваны, capture не возобновляется. Сохранён client vault. Отдельный local upgrade pre-screen c3e3f43 → current → baseline на тех же томах: v1→v2, off/on, отказ ручного rollback при active screen, quiescence, backup перед обеими сменами; данные до/после upgrade и ordinary E2EE call сохранены. Registry/target release и старая клиентская версия остаются. |
 | A18 | BLOCKED | 50 fake metadata cycles без retired rooms; это не 30 минут media и не доказательство native/браузерных утечек. Тяжёлая нагрузка не разрешена. |
 
 Артефакты: [обычные video calls](../prototype/verified-screen-calls-run.json),
@@ -85,7 +85,8 @@ PASS ниже относится только к явно указанной с�
 [образ control](../prototype/verified-screen-control-image-run.json),
 [сверка исходников образа](../prototype/verified-screen-image-sources-run.json),
 [настоящий supervisor](../prototype/verified-screen-supervisor-run.json),
-[полный локальный Compose restore](../prototype/verified-screen-security-restore-run.json).
+[полный локальный Compose restore](../prototype/verified-screen-security-restore-run.json),
+[обновление томов и совместимый rollback](../prototype/verified-screen-security-operations-run.json).
 
 ## Локальная подготовка включения — SS-17
 

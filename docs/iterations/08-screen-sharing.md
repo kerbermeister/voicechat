@@ -2,6 +2,39 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-15 — локальное обновление существующих томов и безопасный откат
+
+**PASS, 193.480 с.** Реальный baseline control из pre-screen `c3e3f43` →
+текущий pinned local image → baseline. Отдельный Compose project с новыми тестовыми
+томами; при обеих сменах image используются **те же** named volumes. Перед каждой
+сменой writers остановлены, production backup/check выполнен, SQL counts,
+signing key и terminal tombstone сохранены. До upgrade в calls.sqlite подготовлена
+схема screen v1 с ended binding; текущий сервер мигрирует её до v2. Это metadata
+fixture на pre-screen коде, не действующая старая screen generation.
+
+До upgrade созданы настоящие encrypted text/file и E2EE voice/camera call.
+После upgrade: screen off, принудительное чтение серверной истории и реальный
+скачанный/decrypt файл; затем новые text/file, screen on и видимые пиксели у зрителя.
+Ранний ручной rollback отвергнут fixture при active screen. Flag=0 закрывает root
+capture/кадр и старую room, active/pending/retired=0, основные voice PC сохраняются.
+После следующего backup baseline запущен на тех же данных: **без restore старой БД
+и без downgrade v2**. Старый код корректно возвращает 404 capability, обычный звонок
+работает; оба набора encrypted text/file прочитаны после rollback, файл, созданный
+после upgrade, действительно скачан. Capture автоматически не начинается.
+
+Сохранены те же encrypted client vaults. При переключении flag пересоздаётся звонок,
+без лишнего reload Matrix-клиента; SDK-команды ограничены 60 с. Предварительные
+FAIL/прерванные прогоны на пересоздании lab-клиентов не засчитаны; принят полный
+повтор от пустого проекта с cleanup=true. 29 screen и 10 deployment tests PASS;
+lab analyze/release PASS. Все частные проекты/тома/аккаунты удалены.
+
+[Отчёт](../../prototype/verified-screen-security-operations-run.json),
+[команда и границы drill](../../infra/README.md#локальная-проверка-обновления-существующих-томов).
+Guard раннего rollback находится в fixture и проверяет **ручной runbook**;
+production deploy coordinator, registry manifest/target config и точная старая
+версия клиента не проверены. Общий stand и VPS не изменялись. Android и тяжёлая
+нагрузка не запускались; release BLOCKED и default off сохраняются.
+
 ## SS-15 — полный локальный Compose backup/restore
 
 **PASS, 129.137 с**, отдельные source/target Compose projects и

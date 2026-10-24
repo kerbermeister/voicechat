@@ -7,7 +7,7 @@ const {createInterface}=require('node:readline');
 
 exports.start=async()=>{
   const secrets=JSON.parse(fs.readFileSync(path.join(__dirname,'../.prototype/secrets.json')));
-  const script=process.env.VOICECHAT_SCREEN_RESTORE==='1' ? 'screen_restore_fixture.py' :
+  const script=process.env.VOICECHAT_SCREEN_RESTORE==='1' || process.env.VOICECHAT_SCREEN_OPERATIONS==='1' ? 'screen_restore_fixture.py' :
     process.env.VOICECHAT_SCREEN_CONTAINER==='1' ? 'screen_container_fixture.py' : 'screen_fault_fixture.py';
   const child=spawn('python3',[path.join(__dirname,script)],{
     detached:true,stdio:['pipe','pipe','inherit'],env:{...process.env,
@@ -27,6 +27,7 @@ exports.start=async()=>{
     get base(){return 'http://127.0.0.1:'+current.api_port+(current.api_path||'');},
     get livekit(){return current.livekit_url;},
     get image(){return current.image_id;},
+    get baseline(){return current.baseline_image;},
     get matrix(){return current.matrix_url;},
     get registrationUrl(){return current.registration_url;},
     get registration(){return current.registration_secret;},

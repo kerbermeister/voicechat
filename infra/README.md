@@ -166,3 +166,26 @@ NODE_PATH=/path/to/existing/node_modules node prototype/check_screen_security.cj
 terminal call_session после restore повторно не допускается. Для JWT-проверки через
 долгий restore используется test-only grant с expiry 600 с; production TTL=60 с не
 меняется. Результат без ключей/credentials — `verified-screen-security-restore-run.json`.
+
+
+### Локальная проверка обновления существующих томов
+
+С тем же lab web на 7363 и NODE_PATH запустите
+`node prototype/check_screen_security.cjs operations`. Дополнительно нужен baseline
+`voicechat-screen-baseline:c3e3f43`, собранный через `infra/control.Dockerfile`
+**из чистого git archive c3e3f43**. Fixture разрешает baseline/candidate/web tags
+в фактические локальные image IDs; registry digest и production manifest не имитирует.
+
+На baseline создаются реальные encrypted данные и voice/camera call, в его
+существующей calls.sqlite — screen v1 fixture с terminal binding. Upgrade выполняется
+на тех же named volumes, с остановкой writers и настоящим backup/check до смены образа.
+Проверяются v2, signing key, SQL counts, terminal tombstone, старые text/file, off/on
+и новые данные. Перед совместимым откатом screen выключается, active/pending/retired
+должны стать 0, старая SFU room должна исчезнуть. Fixture отказывает раннему rollback;
+**это проверка ручного runbook, не новый автоматический guard в deploy.py**.
+После backup запускается baseline, общая БД не восстанавливается и схема не понижается.
+Те же клиентские vaults читают данные до/после upgrade; voice/camera работают.
+
+[Отчёт](../prototype/verified-screen-security-operations-run.json) относится к
+изолированным локальным Compose-проектам. Проверки registry/deploy coordinator,
+целевой конфигурации, точной старой версии клиента и публичной сети остаются отдельными.

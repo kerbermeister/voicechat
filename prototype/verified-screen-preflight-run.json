@@ -61,7 +61,7 @@
     },
     {
       "tasks": "SS-15 / A17",
-      "required": "Registry images, target config, existing-volume upgrade and compatible rollback; full isolated local Compose application restore accepted separately"
+      "required": "Registry images, target config/deployment coordinator and exact old client compatibility; isolated local restore and same-volume upgrade/compatible rollback accepted separately"
     },
     {
       "tasks": "SS-16 / A16",
@@ -92,5 +92,6 @@
     "prototype/verified-screen-security-faults-kick-run.json"
   ],
   "local_application_restore_evidence": "prototype/verified-screen-security-restore-run.json",
-  "local_operations_cleanup_evidence": "prototype/verified-screen-operations-cleanup-run.json"
+  "local_operations_cleanup_evidence": "prototype/verified-screen-operations-cleanup-run.json",
+  "local_existing_volume_upgrade_rollback_evidence": "prototype/verified-screen-security-operations-run.json"
 }
