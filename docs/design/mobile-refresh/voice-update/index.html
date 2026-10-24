@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VoiceChat · голосовые, отступы и лёгкие переходы</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#faf8fd;color:#312940;font:16px/1.5 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:24px}h1{font-size:clamp(26px,4vw,36px)}h2{margin-top:32px;font-size:22px}p{max-width:900px}a{color:#6841b2}figure{margin:0 0 24px}figcaption{padding:12px 0;font-weight:650}img{display:block;max-width:100%;height:auto;border-radius:16px;border:1px solid #e4dcef}.pair{display:grid;grid-template-columns:1fr 1fr;gap:20px}.mobile img{max-width:390px}.note{padding:16px 20px;border-radius:18px;background:#ede4fb}@media(max-width:600px){main{padding:16px}.pair{grid-template-columns:1fr}}
+</style>
+<main>
+<p><a href="../index.html">← Обзор 35 экранов предыдущей итерации</a> · <a href="http://localhost:7357/">Основной сайт</a> · <a href="../queue-update/index.html">Очередь расписания</a></p>
+<h1>Голосовые, ровные отступы и быстрые переходы</h1>
+<p>23 октября 2026. Новая шкала записи строится по последовательным окнам микрофонного PCM по 50 мс. Увеличены высота, толщина и контраст столбцов; тихая речь и паузы различимы. Плеер отделён оттенком от внешней карточки. Собственное голосовое в списке людей/групп выделяется лавандовым, входящее — коралловым.</p>
+<h2>При записи</h2>
+<figure><figcaption>Настоящий компонент записи · уровни из тестового PCM</figcaption><img src="recording-390.png" alt="Контрастная диаграмма записи с пиками и паузами, кнопками отмены и остановки"></figure>
+<h2>Сообщения и время</h2>
+<p>У содержимого и времени единые отступы 12 px. Время выровнено справа. Короткие сообщения остаются компактными; меню сохраняет область нажатия 48 × 48 px внутри карточки.</p>
+<div class="pair mobile">
+<figure><figcaption>Мобильная ширина · 390 px</figcaption><a href="messages-390.png"><img src="messages-390.png" alt="Текстовые и голосовое сообщения с одинаковыми отступами времени"></a></figure>
+<figure><figcaption>Узкий экран · 320 px</figcaption><a href="messages-320.png"><img src="messages-320.png" alt="Компактные сообщения и дорожка голоса на экране 320 пикселей"></a></figure>
+</div>
+<figure><figcaption>Общий интерфейс · лавандовое превью собственного голосового слева</figcaption><a href="messages-1000.png"><img src="messages-1000.png" alt="Лавандовое собственное голосовое в списке групп и выделенный плеер в чате"></a></figure>
+<p class="note">Эти снимки — отрисовка используемых приложением Flutter-компонентов с тестовыми сообщениями и синтетическим PCM. Общий код работает в Android и вебе. Здесь не показана проверка настоящего микрофона, доставки аудио или реального телефона.</p>
+<h2>Основной сайт · было / стало</h2>
+<p>Один тестовый профиль и одна комната во встроенном браузере. В новой версии цветные области доходят до краёв окна, без внешней рамки, верхней пустой полоски и разделителя между шапками.</p>
+<div class="pair">
+<figure><figcaption>Было</figcaption><a href="site-before-desktop.png"><img src="site-before-desktop.png" alt="Основной сайт до удаления внешних отступов и светлых швов"></a></figure>
+<figure><figcaption>Стало</figcaption><a href="site-after-desktop.png"><img src="site-after-desktop.png" alt="Обновлённый основной сайт с цветными шапками до краёв окна"></a></figure>
+</div>
+<details><summary>Опубликованный сайт на мобильной ширине · 390 × 844</summary><figure class="mobile"><a href="site-after-mobile.png"><img src="site-after-mobile.png" alt="Реальный мобильный сайт после обновления, тестовый профиль"></a></figure></details>
+<h2>Быстрая лёгкая анимация</h2>
+<p>Переходы около 180 мс: вкладки людей/групп, смена чата и темы, окна и меню, новые сообщения, очередь расписания, ответы, вложения, запись и дополнительные действия. Панели мягко раскрываются и затухают; исчезающие кнопки не принимают нажатия. Уменьшение движения в системе отключает новые эффекты. Системные окна камеры, микрофона и выбора файлов используют анимацию самой платформы.</p>
+<p>Промежуточные кадры, быстрое завершение переходов и режим уменьшения движения проверены автоматическими тестами. Для просмотра в действии <a href="http://localhost:7357/">откройте основной сайт</a>.</p>
+<p>Проверка завершена: 131 Flutter-тест, анализ без замечаний, web release опубликован, Android debug собран для ARM64 и x86_64. Настоящий микрофон и реальный телефон не проверены.</p>
+</main></html>

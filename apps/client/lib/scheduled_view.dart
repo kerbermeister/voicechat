@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'scheduled_messages.dart';
@@ -25,6 +26,7 @@ Future<DateTime?> chooseScheduledTime(
   }
   return showDialog<DateTime>(
     context: context,
+    animationStyle: appAnimationStyle(context),
     builder: (context) => StatefulBuilder(
       builder: (context, update) => AlertDialog(
         title: const Text('Отложенное сообщение'),
@@ -115,7 +117,13 @@ Future<DateTime?> chooseScheduledTime(
 class ScheduledView extends StatefulWidget {
   final ScheduledMessages service;
   final String roomId;
-  const ScheduledView({super.key, required this.service, required this.roomId});
+  final bool queueOnly;
+  const ScheduledView({
+    super.key,
+    required this.service,
+    required this.roomId,
+    this.queueOnly = false,
+  });
   @override
   State<ScheduledView> createState() => _ScheduledViewState();
 }
@@ -124,6 +132,7 @@ class _ScheduledViewState extends State<ScheduledView> {
   List<Map<String, dynamic>>? jobs;
   String? error;
   bool loading = false;
+  final previews = <String, Future<String>>{};
   Timer? timer;
   @override
   void initState() {
@@ -139,7 +148,13 @@ class _ScheduledViewState extends State<ScheduledView> {
       final data = await widget.service.list();
       if (mounted) {
         setState(() {
-          jobs = data.where((job) => job['room_id'] == widget.roomId).toList();
+          jobs = data
+              .where(
+                (job) =>
+                    job['room_id'] == widget.roomId &&
+                    (!widget.queueOnly || scheduledInQueue(job)),
+              )
+              .toList();
           error = null;
         });
       }
@@ -170,6 +185,7 @@ class _ScheduledViewState extends State<ScheduledView> {
       if (!mounted) return;
       await showDialog<void>(
         context: context,
+        animationStyle: appAnimationStyle(context),
         builder: (context) => AlertDialog(
           title: const Text('Содержимое сообщения'),
           content: SingleChildScrollView(
@@ -210,48 +226,70 @@ class _ScheduledViewState extends State<ScheduledView> {
           if (jobs?.isEmpty == true)
             const Text('В этом чате пока нет запланированных сообщений.'),
           Expanded(
-            child: ListView(
-              children: [
-                for (final job in jobs ?? <Map<String, dynamic>>[])
-                  Card(
-                    child: ListTile(
-                      onTap:
-                          job['state'] == 'pending' ||
-                              job['state'] == 'failed' ||
-                              job['state'] == 'retry'
-                          ? () => preview(job['id'] as String)
-                          : null,
-                      leading: Icon(
-                        job['state'] == 'failed'
-                            ? Icons.error_outline
-                            : Icons.schedule,
-                      ),
-                      title: Text(
-                        scheduledTime(
-                          DateTime.fromMillisecondsSinceEpoch(
-                            job['due'] as int,
-                          ),
-                        ),
-                      ),
-                      subtitle: Text(switch (job['state']) {
-                        'pending' => 'Ожидает публикации',
-                        'sent' => 'Опубликовано',
-                        'cancelled' => 'Отменено',
-                        'failed' => scheduledError(job['error'] as String?),
-                        'retry' =>
-                          'Повторяем после сбоя сервера. Зашифрованное сообщение сохранено.',
-                        _ => 'Публикуется…',
-                      }),
-                      trailing: ['pending', 'failed'].contains(job['state'])
-                          ? IconButton(
-                              tooltip: 'Отменить запланированное сообщение',
-                              icon: const Icon(Icons.cancel_outlined),
-                              onPressed: () => cancel(job['id'] as String),
-                            )
-                          : null,
+            child: ListView.builder(
+              itemCount: jobs?.length ?? 0,
+              itemBuilder: (context, index) {
+                final job = jobs![index];
+                return Card(
+                  child: ListTile(
+                    onTap:
+                        job['state'] == 'pending' ||
+                            job['state'] == 'failed' ||
+                            job['state'] == 'retry'
+                        ? () => preview(job['id'] as String)
+                        : null,
+                    leading: Icon(
+                      job['state'] == 'failed'
+                          ? Icons.error_outline
+                          : Icons.schedule,
                     ),
+                    title: Text(
+                      scheduledTime(
+                        DateTime.fromMillisecondsSinceEpoch(job['due'] as int),
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(switch (job['state']) {
+                          'pending' => 'Ожидает публикации',
+                          'sent' => 'Опубликовано',
+                          'cancelled' => 'Отменено',
+                          'failed' => scheduledError(job['error'] as String?),
+                          'retry' =>
+                            'Повторяем после сбоя сервера. Зашифрованное сообщение сохранено.',
+                          _ => 'Публикуется…',
+                        }),
+                        if (widget.queueOnly && job['state'] != 'sending')
+                          FutureBuilder<String>(
+                            future: previews.putIfAbsent(
+                              job['id'] as String,
+                              () => widget.service.preview(job['id'] as String),
+                            ),
+                            builder: (context, snapshot) => Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                snapshot.data ??
+                                    (snapshot.hasError
+                                        ? 'Содержимое недоступно на этом устройстве'
+                                        : 'Загрузка содержимого…'),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    trailing: ['pending', 'failed'].contains(job['state'])
+                        ? IconButton(
+                            tooltip: 'Отменить запланированное сообщение',
+                            icon: const Icon(Icons.cancel_outlined),
+                            onPressed: () => cancel(job['id'] as String),
+                          )
+                        : null,
                   ),
-              ],
+                );
+              },
             ),
           ),
         ],
@@ -268,6 +306,125 @@ class _ScheduledViewState extends State<ScheduledView> {
   @override
   void dispose() {
     timer?.cancel();
+    super.dispose();
+  }
+}
+
+/// Counts server-acknowledged jobs; local transfers remain visible in the outbox.
+class ScheduledQueueBar extends StatefulWidget {
+  final ScheduledMessages service;
+  final String roomId;
+  final Listenable changes;
+  const ScheduledQueueBar({
+    super.key,
+    required this.service,
+    required this.roomId,
+    required this.changes,
+  });
+
+  @override
+  State<ScheduledQueueBar> createState() => _ScheduledQueueBarState();
+}
+
+class _ScheduledQueueBarState extends State<ScheduledQueueBar> {
+  int? count;
+  bool loading = false, stale = false;
+  Timer? timer;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.changes.addListener(refresh);
+    unawaited(refresh());
+    timer = Timer.periodic(const Duration(seconds: 5), (_) => refresh());
+  }
+
+  @override
+  void didUpdateWidget(ScheduledQueueBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.changes != widget.changes) {
+      oldWidget.changes.removeListener(refresh);
+      widget.changes.addListener(refresh);
+    }
+  }
+
+  Future<void> refresh() async {
+    if (loading) return;
+    loading = true;
+    try {
+      final jobs = await widget.service.list();
+      if (mounted) {
+        setState(() {
+          count = jobs
+              .where(
+                (job) =>
+                    job['room_id'] == widget.roomId && scheduledInQueue(job),
+              )
+              .length;
+          stale = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => stale = true);
+    } finally {
+      loading = false;
+    }
+  }
+
+  Future<void> open() async {
+    await showDialog<void>(
+      context: context,
+      animationStyle: appAnimationStyle(context),
+      builder: (_) => ScheduledView(
+        service: widget.service,
+        roomId: widget.roomId,
+        queueOnly: true,
+      ),
+    );
+    if (mounted) await refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hidden = (count == null || count == 0) && !stale;
+    final colors = Theme.of(context).colorScheme;
+    return AnimatedPanel(
+      child: hidden
+          ? null
+          : Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: Material(
+                color: colors.primaryContainer,
+                borderRadius: BorderRadius.circular(16),
+                clipBehavior: Clip.antiAlias,
+                child: ListTile(
+                  onTap: open,
+                  dense: true,
+                  minTileHeight: 48,
+                  leading: const Icon(Icons.schedule_send_outlined),
+                  title: Text(
+                    count == null
+                        ? 'Очередь расписания недоступна'
+                        : 'Запланировано · $count',
+                    style: TextStyle(
+                      color: colors.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  subtitle: stale
+                      ? const Text('Нет обновления · нажмите, чтобы проверить')
+                      : null,
+                  trailing: const Icon(Icons.chevron_right),
+                ),
+              ),
+            ),
+    );
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    widget.changes.removeListener(refresh);
     super.dispose();
   }
 }

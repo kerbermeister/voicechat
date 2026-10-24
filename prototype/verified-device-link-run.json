@@ -1,0 +1,20 @@
+{
+  "emoji_default": true,
+  "emoji_sas": true,
+  "mismatch_blocks": true,
+  "numeric_sas": true,
+  "secret_transfer": true,
+  "history_decrypted": true,
+  "demo_users": 3,
+  "demo_groups": 2,
+  "reload": true,
+  "physical_devices": "NOT_TESTED",
+  "flutter_tests": 160,
+  "flutter_analyze": "PASS",
+  "android_arm64_debug_build": "PASS",
+  "apk_sha256": "aaf57ebdc5a028bd12fb5a3b514991c6e4fb63b4dd11a10f0452f00f4d96b39f",
+  "android_hardware": "NOT_TESTED",
+  "safari": "NOT_TESTED",
+  "apk_endpoints": "https://univc.duckdns.org",
+  "apk_packaging": "CRC valid; ARM64 vodozemac present; no other ABIs"
+}

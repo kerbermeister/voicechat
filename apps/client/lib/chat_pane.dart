@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
@@ -76,6 +77,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   DateTime? scheduledFor;
   mx.Event? edit;
   bool working = false;
+  bool toolsOpen = false;
   bool recording = false;
   bool stopping = false;
   bool recordingFailed = false;
@@ -104,8 +106,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   bool previewPlaying = false;
   final recordingClock = Stopwatch();
   Timer? recordingMeter;
-  int latestLevel = 0;
-  final liveLevels = <int>[];
+  PcmLevelMeter liveMeter = PcmLevelMeter();
 
   @override
   void initState() {
@@ -391,6 +392,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     }
     final chosen = await showDialog<int>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => StatefulBuilder(
         builder: (context, update) => AlertDialog(
           title: const Text('Временное сообщение'),
@@ -587,8 +589,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     }
     await widget.actions.refreshPolicy();
     recordingFailed = false;
-    liveLevels.clear();
-    latestLevel = 0;
+    liveMeter = PcmLevelMeter();
     pcm = BytesBuilder(copy: false);
     recordingDone = Completer<void>();
     final stream = await recorder.startStream(
@@ -603,10 +604,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         if (pcm!.length + chunk.length <=
             16000 * 2 * widget.actions.policy.voiceMaxSeconds) {
           pcm!.add(chunk);
-          latestLevel = pcmWaveform(
-            Uint8List.sublistView(chunk, 0, chunk.length - chunk.length % 2),
-            bins: 1,
-          ).first;
+          liveMeter.add(chunk);
         } else if (!stopping) {
           unawaited(finishRecording());
         }
@@ -628,12 +626,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     );
     recordingClock.reset();
     recordingClock.start();
-    recordingMeter = Timer.periodic(const Duration(milliseconds: 100), (_) {
+    recordingMeter = Timer.periodic(PcmLevelMeter.interval, (_) {
       if (!mounted || !recording) return;
-      setState(() {
-        liveLevels.add(latestLevel);
-        if (liveLevels.length > 48) liveLevels.removeAt(0);
-      });
+      setState(() {});
     });
     if (mounted) {
       setState(() => recording = true);
@@ -761,6 +756,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     if (action == 'delete') {
       final confirmed = await showDialog<bool>(
         context: context,
+        animationStyle: appAnimationStyle(context),
         builder: (context) => AlertDialog(
           title: const Text('Удалить сообщение у всех?'),
           content: const Text(
@@ -828,10 +824,28 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   reaction.senderId,
       );
     }
+    final menu = !event.redacted && event.type != mx.EventTypes.Encrypted
+        ? PopupMenuButton<String>(
+            popUpAnimationStyle: appAnimationStyle(context),
+            style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+            tooltip: 'Действия с сообщением',
+            onSelected: (action) => perform(() => eventAction(event, action)),
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'reply', child: Text('Ответить')),
+              if (own && shown.messageType == mx.MessageTypes.Text)
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Text('Редактировать'),
+                ),
+              if (event.canRedact)
+                const PopupMenuItem(value: 'delete', child: Text('Удалить')),
+              const PopupMenuItem(value: 'react', child: Text('Реакция…')),
+            ],
+          )
+        : null;
     final content = Container(
       constraints: const BoxConstraints(maxWidth: 520),
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      padding: const EdgeInsets.fromLTRB(14, 8, 6, 10),
+      margin: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
         color: own ? colors.primary : colors.surfaceContainerLowest,
         border: event.eventId == focusedEvent
@@ -857,169 +871,179 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
           data: IconThemeData(
             color: own ? colors.onPrimary : colors.onSurfaceVariant,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+          child: Stack(
             children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      own ? 'Вы' : event.senderId,
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.only(right: menu == null ? 0 : 36),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (!own && !widget.room.isDirectChat)
+                            Text(
+                              event.senderFromMemoryOrFallback.displayName ??
+                                  event.senderId,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: colors.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          if (event.inReplyToEventId() != null)
+                            FutureBuilder<mx.Event?>(
+                              future: event.getReplyEvent(widget.timeline),
+                              builder: (_, snapshot) => Semantics(
+                                button: true,
+                                label: 'Перейти к исходному сообщению',
+                                child: InkWell(
+                                  onTap: widget.onJump == null
+                                      ? null
+                                      : () => perform(
+                                          () => widget.onJump!(
+                                            event.inReplyToEventId(),
+                                          ),
+                                        ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(10),
+                                    margin: const EdgeInsets.only(bottom: 6),
+                                    decoration: BoxDecoration(
+                                      color: colors.primaryContainer,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border(
+                                        left: BorderSide(
+                                          color: colors.primary,
+                                          width: 4,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          snapshot
+                                                  .data
+                                                  ?.senderFromMemoryOrFallback
+                                                  .displayName ??
+                                              'Цитата',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: colors.onPrimaryContainer,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          snapshot.data != null &&
+                                                  messageExpiry(
+                                                        snapshot.data!,
+                                                      ) !=
+                                                      null
+                                              ? 'Временное сообщение'
+                                              : snapshot.data?.redacted == true
+                                              ? 'Удалённое сообщение'
+                                              : snapshot.data
+                                                        ?.getDisplayEvent(
+                                                          widget.timeline,
+                                                        )
+                                                        .body ??
+                                                    'Загрузка исходного сообщения…',
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: colors.onPrimaryContainer,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          if (event.redacted)
+                            const Text('Сообщение удалено')
+                          else if (event.type == mx.EventTypes.Encrypted)
+                            const Text(
+                              'Ключ этого сообщения недоступен на данном устройстве. Для доступа к истории нужно прежнее устройство или ключ восстановления.',
+                            )
+                          else if (shown.type == mx.EventTypes.CallInvite ||
+                              [
+                                'dev.voicechat.call',
+                                'dev.voicechat.call_summary',
+                              ].contains(shown.messageType))
+                            CallEventCard(event: shown)
+                          else if (shown.messageType == 'dev.voicechat.album')
+                            AlbumView(
+                              key: ValueKey(shown.eventId),
+                              event: shown,
+                            )
+                          else if (shown.messageType == 'dev.voicechat.file')
+                            FileView(key: ValueKey(shown.eventId), event: shown)
+                          else if ({
+                            mx.MessageTypes.Image,
+                            mx.MessageTypes.Audio,
+                          }.contains(shown.messageType))
+                            AttachmentView(
+                              key: ValueKey(shown.eventId),
+                              event: shown,
+                            )
+                          else
+                            LinkedText(
+                              text: shown.calcUnlocalizedBody(hideReply: true),
+                              style: TextStyle(
+                                fontSize: shown.onlyEmotes ? 30 : 15,
+                                height: 1.25,
+                              ),
+                            ),
+                          if (!event.redacted &&
+                              event.type != mx.EventTypes.Encrypted)
+                            LinkCards(
+                              text: messageSearchText(shown),
+                              previews: shown.content['dev.voicechat.links'],
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${TimeOfDay.fromDateTime(event.originServerTs.toLocal()).format(context)}${shown.eventId != event.eventId ? ' · изменено' : ''}${own ? (messageIsRead(event, widget.timeline) ? ' · прочитано' : ' · отправлено') : ''}',
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: own
                             ? colors.onPrimary.withValues(alpha: .8)
                             : colors.onSurfaceVariant,
                       ),
                     ),
-                  ),
-                  if (!event.redacted && event.type != mx.EventTypes.Encrypted)
-                    PopupMenuButton<String>(
-                      tooltip: 'Действия с сообщением',
-                      onSelected: (action) =>
-                          perform(() => eventAction(event, action)),
-                      itemBuilder: (_) => [
-                        const PopupMenuItem(
-                          value: 'reply',
-                          child: Text('Ответить'),
-                        ),
-                        if (own && shown.messageType == mx.MessageTypes.Text)
-                          const PopupMenuItem(
-                            value: 'edit',
-                            child: Text('Редактировать'),
-                          ),
-                        if (event.canRedact)
-                          const PopupMenuItem(
-                            value: 'delete',
-                            child: Text('Удалить'),
-                          ),
-                        const PopupMenuItem(
-                          value: 'react',
-                          child: Text('Реакция…'),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-              if (event.inReplyToEventId() != null)
-                FutureBuilder<mx.Event?>(
-                  future: event.getReplyEvent(widget.timeline),
-                  builder: (_, snapshot) => Semantics(
-                    button: true,
-                    label: 'Перейти к исходному сообщению',
-                    child: InkWell(
-                      onTap: widget.onJump == null
-                          ? null
-                          : () => perform(
-                              () => widget.onJump!(event.inReplyToEventId()),
-                            ),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(10),
-                        margin: const EdgeInsets.only(bottom: 6),
-                        decoration: BoxDecoration(
-                          color: colors.primaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border(
-                            left: BorderSide(color: colors.primary, width: 4),
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              snapshot
-                                      .data
-                                      ?.senderFromMemoryOrFallback
-                                      .displayName ??
-                                  'Цитата',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: colors.onPrimaryContainer,
-                                fontWeight: FontWeight.w700,
+                    if (reactions.isNotEmpty)
+                      Wrap(
+                        spacing: 4,
+                        children: reactions.entries
+                            .map(
+                              (r) => Tooltip(
+                                message: r.value.join('\n'),
+                                child: ActionChip(
+                                  label: Text('${r.key} ${r.value.length}'),
+                                  onPressed: () =>
+                                      perform(() => react(event, r.key)),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              snapshot.data != null &&
-                                      messageExpiry(snapshot.data!) != null
-                                  ? 'Временное сообщение'
-                                  : snapshot.data?.redacted == true
-                                  ? 'Удалённое сообщение'
-                                  : snapshot.data
-                                            ?.getDisplayEvent(widget.timeline)
-                                            .body ??
-                                        'Загрузка исходного сообщения…',
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: colors.onPrimaryContainer,
-                              ),
-                            ),
-                          ],
-                        ),
+                            )
+                            .toList(),
                       ),
-                    ),
-                  ),
-                ),
-              if (event.redacted)
-                const Text('Сообщение удалено')
-              else if (event.type == mx.EventTypes.Encrypted)
-                const Text(
-                  'Ключ этого сообщения недоступен на данном устройстве. Для доступа к истории нужно прежнее устройство или ключ восстановления.',
-                )
-              else if (shown.type == mx.EventTypes.CallInvite ||
-                  [
-                    'dev.voicechat.call',
-                    'dev.voicechat.call_summary',
-                  ].contains(shown.messageType))
-                CallEventCard(event: shown)
-              else if (shown.messageType == 'dev.voicechat.album')
-                AlbumView(key: ValueKey(shown.eventId), event: shown)
-              else if (shown.messageType == 'dev.voicechat.file')
-                FileView(key: ValueKey(shown.eventId), event: shown)
-              else if ({
-                mx.MessageTypes.Image,
-                mx.MessageTypes.Audio,
-              }.contains(shown.messageType))
-                AttachmentView(key: ValueKey(shown.eventId), event: shown)
-              else
-                LinkedText(
-                  text: shown.calcUnlocalizedBody(hideReply: true),
-                  style: TextStyle(fontSize: shown.onlyEmotes ? 30 : 18),
-                ),
-              if (!event.redacted && event.type != mx.EventTypes.Encrypted)
-                LinkCards(
-                  text: messageSearchText(shown),
-                  previews: shown.content['dev.voicechat.links'],
-                ),
-              const SizedBox(height: 4),
-              Text(
-                '${TimeOfDay.fromDateTime(event.originServerTs.toLocal()).format(context)}${shown.eventId != event.eventId ? ' · изменено' : ''}${own ? (messageIsRead(event, widget.timeline) ? ' · прочитано' : ' · отправлено') : ''}',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: own
-                      ? colors.onPrimary.withValues(alpha: .8)
-                      : colors.onSurfaceVariant,
+                  ],
                 ),
               ),
-              if (reactions.isNotEmpty)
-                Wrap(
-                  spacing: 4,
-                  children: reactions.entries
-                      .map(
-                        (r) => Tooltip(
-                          message: r.value.join('\n'),
-                          child: ActionChip(
-                            label: Text('${r.key} ${r.value.length}'),
-                            onPressed: () => perform(() => react(event, r.key)),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
+              if (menu != null) Positioned(top: 0, right: 0, child: menu),
             ],
           ),
         ),
@@ -1085,6 +1109,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
               ),
               subtitle: Text(widget.actions.pendingStatus(p)),
               trailing: PopupMenuButton<String>(
+                popUpAnimationStyle: appAnimationStyle(context),
                 tooltip: 'Действия с очередью',
                 onSelected: (action) => perform(
                   () => action == 'schedule'
@@ -1137,19 +1162,27 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                 ).colorScheme.tertiaryContainer,
               ),
             ),
-          bubble(event),
+          TweenAnimationBuilder<double>(
+            duration: motionDuration(context),
+            curve: Curves.easeOutCubic,
+            tween: Tween(begin: 0, end: 1),
+            builder: (_, opacity, child) =>
+                Opacity(opacity: opacity, child: child),
+            child: bubble(event),
+          ),
         ],
       );
     }
 
     final pivot = focusedIndex < 0 ? 0 : pending.length + focusedIndex;
     const anchor = ValueKey('history-anchor');
-    return Column(
+    final shownFiles = List<PickedFile>.of(draftFiles);
+    final shownPhotos = List<mx.MatrixImageFile>.of(draftPhotos);
+    final body = Column(
       children: [
-        widget.header,
         if (!keyboardOpen || searchFocus.hasFocus)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
             child: TextField(
               controller: search,
               focusNode: searchFocus,
@@ -1164,6 +1197,13 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                 ),
               ),
             ),
+          ),
+        if (widget.actions.policyUrl case final String url)
+          ScheduledQueueBar(
+            key: ValueKey(widget.room.id),
+            service: ScheduledMessages(widget.room.client, url),
+            roomId: widget.room.id,
+            changes: widget.actions,
           ),
         if (focusedEvent != null || widget.timeline.canRequestFuture)
           TextButton.icon(
@@ -1306,19 +1346,22 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             ),
           ),
         ),
-        if (scheduledFor != null)
-          Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: InputChip(
-                avatar: const Icon(Icons.schedule, size: 18),
-                label: Text('Отправить ${scheduledTime(scheduledFor!)}'),
-                onPressed: () => perform(chooseSchedule),
-                onDeleted: () => setState(() => scheduledFor = null),
-              ),
-            ),
-          ),
+        AnimatedPanel(
+          child: scheduledFor != null
+              ? Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: InputChip(
+                      avatar: const Icon(Icons.schedule, size: 18),
+                      label: Text('Отправить ${scheduledTime(scheduledFor!)}'),
+                      onPressed: () => perform(chooseSchedule),
+                      onDeleted: () => setState(() => scheduledFor = null),
+                    ),
+                  ),
+                )
+              : null,
+        ),
         if (draftFiles.isEmpty &&
             draftPhotos.isEmpty &&
             unsentVoice == null &&
@@ -1369,144 +1412,158 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
               ],
             ),
           ),
-        if (draftFiles.isNotEmpty)
-          SizedBox(
-            height: keyboardOpen ? 64 : 88,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: draftFiles.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 6),
-              itemBuilder: (_, i) => SizedBox(
-                width: 260,
-                child: ListTile(
-                  onTap: draftFiles[i].mime.startsWith('video/')
-                      ? () => showDialog<void>(
-                          context: context,
-                          builder: (_) => MessageVideo.draft(
-                            file: draftFiles[i],
-                            videoNote: draftIsVideoNote,
-                            thumbnail: false,
-                          ),
-                        )
-                      : null,
-                  leading: draftFiles[i].mime.startsWith('video/')
-                      ? MessageVideo.draft(
-                          key: ObjectKey(draftFiles[i]),
-                          file: draftFiles[i],
-                          videoNote: draftIsVideoNote,
-                        )
-                      : Icon(
-                          draftIsVideoNote
-                              ? Icons.video_camera_front
-                              : Icons.attach_file,
+        AnimatedPanel(
+          child: draftFiles.isNotEmpty
+              ? SizedBox(
+                  height: keyboardOpen ? 64 : 88,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: shownFiles.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 6),
+                    itemBuilder: (_, i) => SizedBox(
+                      width: 260,
+                      child: ListTile(
+                        onTap: shownFiles[i].mime.startsWith('video/')
+                            ? () => showDialog<void>(
+                                context: context,
+                                animationStyle: appAnimationStyle(context),
+                                builder: (_) => MessageVideo.draft(
+                                  file: shownFiles[i],
+                                  videoNote: draftIsVideoNote,
+                                  thumbnail: false,
+                                ),
+                              )
+                            : null,
+                        leading: shownFiles[i].mime.startsWith('video/')
+                            ? MessageVideo.draft(
+                                key: ObjectKey(shownFiles[i]),
+                                file: shownFiles[i],
+                                videoNote: draftIsVideoNote,
+                              )
+                            : Icon(
+                                draftIsVideoNote
+                                    ? Icons.video_camera_front
+                                    : Icons.attach_file,
+                              ),
+                        title: Text(
+                          shownFiles[i].name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                  title: Text(
-                    draftFiles[i].name,
+                        subtitle: fileProgress != null && i == 0
+                            ? LinearProgressIndicator(value: fileProgress)
+                            : Text(
+                                '${(shownFiles[i].size / 1048576).toStringAsFixed(1)} МБ · ${i + 1}/${widget.actions.policy.fileMaxCount}',
+                              ),
+                        trailing: IconButton(
+                          tooltip: 'Убрать файл ${i + 1}',
+                          icon: const Icon(Icons.close),
+                          onPressed: () async {
+                            if (fileProgress != null) {
+                              setState(() => cancelFile = true);
+                              return;
+                            }
+                            final source = draftFiles.removeAt(i);
+                            await source.release();
+                            if (mounted) setState(() {});
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : null,
+        ),
+        AnimatedPanel(
+          child: draftPhotos.isNotEmpty
+              ? Container(
+                  margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Прикреплено фото: ${draftPhotos.length} / ${widget.actions.policy.photoMaxCount}',
+                        style: Theme.of(context).textTheme.labelMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: keyboardOpen ? 48 : 84,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: shownPhotos.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
+                          itemBuilder: (_, i) => Stack(
+                            children: [
+                              InkWell(
+                                onTap: () => showPhotos(context, [
+                                  for (final p in draftPhotos)
+                                    () async => p.bytes,
+                                ], i),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.memory(
+                                    shownPhotos[i].bytes,
+                                    width: 84,
+                                    height: keyboardOpen ? 48 : 84,
+                                    fit: BoxFit.cover,
+                                    cacheWidth: 170,
+                                    semanticLabel:
+                                        'Прикреплённое фото ${i + 1}',
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: IconButton.filled(
+                                  tooltip: 'Убрать фото ${i + 1}',
+                                  visualDensity: VisualDensity.compact,
+                                  onPressed: () =>
+                                      setState(() => draftPhotos.removeAt(i)),
+                                  icon: const Icon(Icons.close, size: 16),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : null,
+        ),
+        AnimatedPanel(
+          child: reply != null || edit != null
+              ? ListTile(
+                  dense: true,
+                  leading: Icon(edit == null ? Icons.reply : Icons.edit),
+                  title: Text(edit == null ? 'Ответ' : 'Редактирование'),
+                  subtitle: Text(
+                    messageExpiry((reply ?? edit)!) != null
+                        ? 'Временное сообщение'
+                        : (reply ?? edit)!
+                              .getDisplayEvent(widget.timeline)
+                              .body,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  subtitle: fileProgress != null && i == 0
-                      ? LinearProgressIndicator(value: fileProgress)
-                      : Text(
-                          '${(draftFiles[i].size / 1048576).toStringAsFixed(1)} МБ · ${i + 1}/${widget.actions.policy.fileMaxCount}',
-                        ),
                   trailing: IconButton(
-                    tooltip: 'Убрать файл ${i + 1}',
+                    tooltip: 'Отменить',
+                    onPressed: () => setState(() {
+                      reply = null;
+                      edit = null;
+                      input.clear();
+                    }),
                     icon: const Icon(Icons.close),
-                    onPressed: () async {
-                      if (fileProgress != null) {
-                        setState(() => cancelFile = true);
-                        return;
-                      }
-                      final source = draftFiles.removeAt(i);
-                      await source.release();
-                      if (mounted) setState(() {});
-                    },
                   ),
-                ),
-              ),
-            ),
-          ),
-        if (draftPhotos.isNotEmpty)
-          Container(
-            margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Прикреплено фото: ${draftPhotos.length} / ${widget.actions.policy.photoMaxCount}',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: keyboardOpen ? 48 : 84,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: draftPhotos.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 8),
-                    itemBuilder: (_, i) => Stack(
-                      children: [
-                        InkWell(
-                          onTap: () => showPhotos(context, [
-                            for (final p in draftPhotos) () async => p.bytes,
-                          ], i),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.memory(
-                              draftPhotos[i].bytes,
-                              width: 84,
-                              height: keyboardOpen ? 48 : 84,
-                              fit: BoxFit.cover,
-                              cacheWidth: 170,
-                              semanticLabel: 'Прикреплённое фото ${i + 1}',
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: IconButton.filled(
-                            tooltip: 'Убрать фото ${i + 1}',
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () =>
-                                setState(() => draftPhotos.removeAt(i)),
-                            icon: const Icon(Icons.close, size: 16),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        if (reply != null || edit != null)
-          ListTile(
-            dense: true,
-            leading: Icon(edit == null ? Icons.reply : Icons.edit),
-            title: Text(edit == null ? 'Ответ' : 'Редактирование'),
-            subtitle: Text(
-              messageExpiry((reply ?? edit)!) != null
-                  ? 'Временное сообщение'
-                  : (reply ?? edit)!.getDisplayEvent(widget.timeline).body,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            trailing: IconButton(
-              tooltip: 'Отменить',
-              onPressed: () => setState(() {
-                reply = null;
-                edit = null;
-                input.clear();
-              }),
-              icon: const Icon(Icons.close),
-            ),
-          ),
+                )
+              : null,
+        ),
         Align(
           alignment: Alignment.centerRight,
           child: Padding(
@@ -1521,253 +1578,303 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             ),
           ),
         ),
-        if (unsentVoice != null && !recording)
-          ListTile(
-            leading: IconButton(
-              tooltip: previewPlaying
-                  ? 'Остановить предпросмотр'
-                  : 'Прослушать запись',
-              icon: Icon(previewPlaying ? Icons.stop : Icons.play_arrow),
-              onPressed: () => perform(() async {
-                if (previewPlaying) {
-                  await voicePreview.stop();
-                } else {
-                  await voicePreview.play(
-                    BytesSource(unsentVoice!.bytes, mimeType: 'audio/wav'),
-                  );
-                }
-                if (mounted) setState(() => previewPlaying = !previewPlaying);
-              }),
-            ),
-            title: Text(
-              'Голосовое · ${mediaTime(Duration(milliseconds: unsentVoice!.duration ?? 0))}',
-            ),
-            subtitle: keyboardOpen
-                ? null
-                : WaveformView(levels: unsentWave ?? [0]),
-            trailing: Wrap(
-              children: [
-                IconButton(
-                  tooltip: 'Удалить готовую запись',
-                  onPressed: () => setState(() {
-                    unawaited(voicePreview.stop());
-                    previewPlaying = false;
-                    unsentVoice = null;
-                    unsentWave = null;
-                    voiceReply = null;
-                  }),
-                  icon: const Icon(Icons.delete_outline),
-                ),
-              ],
-            ),
-          ),
-        if (recording)
-          Container(
-            margin: const EdgeInsets.all(12),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.mic, color: Color(0xFFC64250)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
+        AnimatedPanel(
+          child: unsentVoice != null && !recording
+              ? ListTile(
+                  leading: IconButton(
+                    tooltip: previewPlaying
+                        ? 'Остановить предпросмотр'
+                        : 'Прослушать запись',
+                    icon: Icon(previewPlaying ? Icons.stop : Icons.play_arrow),
+                    onPressed: () => perform(() async {
+                      if (previewPlaying) {
+                        await voicePreview.stop();
+                      } else {
+                        await voicePreview.play(
+                          BytesSource(
+                            unsentVoice!.bytes,
+                            mimeType: 'audio/wav',
+                          ),
+                        );
+                      }
+                      if (mounted) {
+                        setState(() => previewPlaying = !previewPlaying);
+                      }
+                    }),
+                  ),
+                  title: Text(
+                    'Голосовое · ${mediaTime(Duration(milliseconds: unsentVoice!.duration ?? 0))}',
+                  ),
+                  subtitle: keyboardOpen
+                      ? null
+                      : WaveformView(levels: unsentWave ?? [0]),
+                  trailing: Wrap(
+                    children: [
+                      IconButton(
+                        tooltip: 'Удалить готовую запись',
+                        onPressed: () => setState(() {
+                          unawaited(voicePreview.stop());
+                          previewPlaying = false;
+                          unsentVoice = null;
+                          unsentWave = null;
+                          voiceReply = null;
+                        }),
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ],
+                  ),
+                )
+              : null,
+        ),
+        AnimatedPanel(
+          child: KeyedSubtree(
+            key: ValueKey(recording),
+            child: recording
+                ? RecordingWaveformPanel(
+                    levels: List.of(liveMeter.levels),
+                    label:
                         'Запись ${mediaTime(recordingClock.elapsed)} · осталось ${mediaTime(Duration(seconds: (widget.actions.policy.voiceMaxSeconds - recordingClock.elapsed.inSeconds).clamp(0, widget.actions.policy.voiceMaxSeconds)))}',
-                        style: Theme.of(context).textTheme.labelMedium,
-                      ),
+                    onCancel: () => finishRecording(send: false),
+                    onStop: () => finishRecording(),
+                  )
+                : Container(
+                    margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(26),
                     ),
-                    IconButton(
-                      tooltip: 'Отменить запись',
-                      onPressed: () => finishRecording(send: false),
-                      icon: const Icon(Icons.delete_outline),
-                    ),
-                    IconButton.filled(
-                      tooltip: 'Остановить запись',
-                      onPressed: () => finishRecording(),
-                      icon: const Icon(Icons.stop),
-                    ),
-                  ],
-                ),
-                WaveformView(
-                  levels: liveLevels.isEmpty ? [0] : List.of(liveLevels),
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ],
-            ),
-          )
-        else
-          Container(
-            margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(26),
-            ),
-            child: LayoutBuilder(
-              builder: (_, box) {
-                final photo = IconButton(
-                  tooltip: 'Отправить изображение',
-                  onPressed: working ? null : () => perform(image),
-                  icon: const Icon(Icons.image_outlined),
-                );
-                final emojiButton = IconButton(
-                  tooltip: 'Эмодзи',
-                  onPressed: working ? null : emoji,
-                  icon: const Icon(Icons.sentiment_satisfied_alt_outlined),
-                );
-                final files = PopupMenuButton<String>(
-                  tooltip: 'Прикрепить файл или видео',
-                  enabled: !working,
-                  icon: const Icon(Icons.attach_file),
-                  onSelected: (kind) => perform(() => attachFile(kind)),
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'video', child: Text('Видеофайл')),
-                    PopupMenuItem(value: 'file', child: Text('Файл')),
-                  ],
-                );
-                final field = Expanded(
-                  child: TextField(
-                    controller: input,
-                    focusNode: composerFocus,
-                    onChanged: (value) {
-                      typing(value);
-                      final urls = messageLinks(value);
-                      linkPreviews.removeWhere((url, _) => !urls.contains(url));
-                      setState(() {});
-                    },
-                    minLines: 1,
-                    maxLines: keyboardOpen ? 2 : 4,
-                    decoration: const InputDecoration(
-                      hintText: 'Написать сообщение…',
-                    ),
-                  ),
-                );
-                final voice = IconButton(
-                  tooltip: 'Записать голосовое',
-                  onPressed: working ? null : () => perform(startRecording),
-                  icon: const Icon(Icons.mic_none),
-                );
-                final video = GestureDetector(
-                  onLongPressStart: (_) {
-                    if (working) return;
-                    heldVideo.value = true;
-                    unawaited(perform(() => attachFile('note', hold: true)));
-                  },
-                  onLongPressEnd: (_) => heldVideo.value = false,
-                  onLongPressCancel: () => heldVideo.value = false,
-                  child: Tooltip(
-                    message: 'Видеокружок · удерживайте для записи',
-                    triggerMode: TooltipTriggerMode.manual,
-                    excludeFromSemantics: true,
-                    child: IconButton(
-                      onPressed: working
-                          ? null
-                          : () => perform(() => attachFile('note')),
-                      icon: const Icon(
-                        Icons.videocam_outlined,
-                        semanticLabel: 'Видеокружок · удерживайте для записи',
-                      ),
-                    ),
-                  ),
-                );
-                final sendButton = IconButton.filled(
-                  tooltip: scheduledFor == null ? 'Отправить' : 'Запланировать',
-                  onPressed: working ? null : () => perform(send),
-                  icon: const Icon(Icons.arrow_upward),
-                );
-                final schedule = PopupMenuButton<String>(
-                  tooltip: 'Отложенные сообщения',
-                  enabled: !working && widget.actions.policyUrl != null,
-                  icon: Icon(
-                    Icons.schedule,
-                    color: scheduledFor == null
-                        ? null
-                        : Theme.of(context).colorScheme.primary,
-                  ),
-                  onSelected: (value) => perform(() async {
-                    if (value == 'choose') {
-                      await chooseSchedule();
-                    } else {
-                      await showDialog<void>(
-                        context: context,
-                        builder: (_) => ScheduledView(
-                          service: ScheduledMessages(
-                            widget.room.client,
-                            widget.actions.policyUrl!,
+                    child: LayoutBuilder(
+                      builder: (_, box) {
+                        final photo = IconButton(
+                          tooltip: 'Отправить изображение',
+                          onPressed: working ? null : () => perform(image),
+                          icon: const Icon(Icons.image_outlined),
+                        );
+                        final emojiButton = IconButton(
+                          tooltip: 'Эмодзи',
+                          onPressed: working ? null : emoji,
+                          icon: const Icon(
+                            Icons.sentiment_satisfied_alt_outlined,
                           ),
-                          roomId: widget.room.id,
-                        ),
-                      );
-                    }
-                  }),
-                  itemBuilder: (_) => [
-                    PopupMenuItem(
-                      value: 'choose',
-                      enabled: edit == null,
-                      child: const Text('Выбрать время отправки'),
-                    ),
-                    const PopupMenuItem(
-                      value: 'list',
-                      child: Text('Запланированные сообщения'),
-                    ),
-                  ],
-                );
-                final temporary = IconButton(
-                  tooltip: temporarySeconds == null
-                      ? 'Временное сообщение'
-                      : 'Временное сообщение · $temporarySeconds с',
-                  color: temporarySeconds == null
-                      ? null
-                      : Theme.of(context).colorScheme.tertiary,
-                  onPressed: working || edit != null
-                      ? null
-                      : chooseTemporaryDuration,
-                  icon: Icon(
-                    temporarySeconds == null
-                        ? Icons.timer_outlined
-                        : Icons.timer,
-                  ),
-                );
-                return box.maxWidth < 500
-                    ? Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(children: [emojiButton, schedule, field]),
-                          Wrap(
-                            alignment: WrapAlignment.spaceBetween,
-                            children: [
-                              photo,
-                              files,
-                              temporary,
-                              voice,
-                              video,
-                              sendButton,
-                            ],
+                        );
+                        final files = PopupMenuButton<String>(
+                          popUpAnimationStyle: appAnimationStyle(context),
+                          tooltip: 'Прикрепить файл или видео',
+                          enabled: !working,
+                          icon: const Icon(Icons.attach_file),
+                          onSelected: (kind) => perform(() => attachFile(kind)),
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(
+                              value: 'video',
+                              child: Text('Видеофайл'),
+                            ),
+                            PopupMenuItem(value: 'file', child: Text('Файл')),
+                          ],
+                        );
+                        final field = Expanded(
+                          child: TextField(
+                            controller: input,
+                            focusNode: composerFocus,
+                            onChanged: (value) {
+                              typing(value);
+                              final urls = messageLinks(value);
+                              linkPreviews.removeWhere(
+                                (url, _) => !urls.contains(url),
+                              );
+                              setState(() {});
+                            },
+                            minLines: 1,
+                            maxLines: keyboardOpen ? 2 : 4,
+                            decoration: const InputDecoration(
+                              hintText: 'Написать сообщение…',
+                              hintMaxLines: 1,
+                            ),
                           ),
-                        ],
-                      )
-                    : Row(
-                        children: [
-                          photo,
-                          emojiButton,
-                          files,
-                          temporary,
-                          schedule,
-                          field,
-                          voice,
-                          video,
-                          sendButton,
-                        ],
-                      );
-              },
+                        );
+                        final voice = IconButton.filledTonal(
+                          tooltip: 'Записать голосовое',
+                          onPressed: working
+                              ? null
+                              : () => perform(startRecording),
+                          icon: const Icon(Icons.mic_none),
+                        );
+                        final video = GestureDetector(
+                          onLongPressStart: (_) {
+                            if (working) return;
+                            heldVideo.value = true;
+                            unawaited(
+                              perform(() => attachFile('note', hold: true)),
+                            );
+                          },
+                          onLongPressEnd: (_) => heldVideo.value = false,
+                          onLongPressCancel: () => heldVideo.value = false,
+                          child: Tooltip(
+                            message: 'Видеокружок · удерживайте для записи',
+                            triggerMode: TooltipTriggerMode.manual,
+                            excludeFromSemantics: true,
+                            child: IconButton(
+                              onPressed: working
+                                  ? null
+                                  : () => perform(() => attachFile('note')),
+                              icon: const Icon(
+                                Icons.videocam_outlined,
+                                semanticLabel:
+                                    'Видеокружок · удерживайте для записи',
+                              ),
+                            ),
+                          ),
+                        );
+                        final sendButton = IconButton.filled(
+                          tooltip: scheduledFor == null
+                              ? 'Отправить'
+                              : 'Запланировать',
+                          onPressed: working ? null : () => perform(send),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.onSurface,
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surface,
+                          ),
+                          icon: const Icon(Icons.arrow_upward),
+                        );
+                        final schedule = PopupMenuButton<String>(
+                          popUpAnimationStyle: appAnimationStyle(context),
+                          tooltip: 'Отложенные сообщения',
+                          enabled: !working && widget.actions.policyUrl != null,
+                          icon: Icon(
+                            Icons.schedule,
+                            color: scheduledFor == null
+                                ? null
+                                : Theme.of(context).colorScheme.primary,
+                          ),
+                          onSelected: (value) => perform(() async {
+                            if (value == 'choose') {
+                              await chooseSchedule();
+                            } else {
+                              await showDialog<void>(
+                                context: context,
+                                animationStyle: appAnimationStyle(context),
+                                builder: (_) => ScheduledView(
+                                  service: ScheduledMessages(
+                                    widget.room.client,
+                                    widget.actions.policyUrl!,
+                                  ),
+                                  roomId: widget.room.id,
+                                ),
+                              );
+                            }
+                          }),
+                          itemBuilder: (_) => [
+                            PopupMenuItem(
+                              value: 'choose',
+                              enabled: edit == null,
+                              child: const Text('Выбрать время отправки'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'list',
+                              child: Text('Запланированные сообщения'),
+                            ),
+                          ],
+                        );
+                        final temporary = IconButton(
+                          tooltip: temporarySeconds == null
+                              ? 'Временное сообщение'
+                              : 'Временное сообщение · $temporarySeconds с',
+                          color: temporarySeconds == null
+                              ? null
+                              : Theme.of(context).colorScheme.tertiary,
+                          onPressed: working || edit != null
+                              ? null
+                              : chooseTemporaryDuration,
+                          icon: Icon(
+                            temporarySeconds == null
+                                ? Icons.timer_outlined
+                                : Icons.timer,
+                          ),
+                        );
+                        return box.maxWidth < 500
+                            ? Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      IconButton.filledTonal(
+                                        tooltip: 'Дополнительные действия',
+                                        isSelected: toolsOpen,
+                                        onPressed: () => setState(
+                                          () => toolsOpen = !toolsOpen,
+                                        ),
+                                        icon: Icon(
+                                          toolsOpen
+                                              ? Icons.close_rounded
+                                              : Icons.add_rounded,
+                                        ),
+                                      ),
+                                      field,
+                                      voice,
+                                      sendButton,
+                                    ],
+                                  ),
+                                  AnimatedPanel(
+                                    child: toolsOpen
+                                        ? Wrap(
+                                            alignment: WrapAlignment.center,
+                                            children: [
+                                              emojiButton,
+                                              photo,
+                                              files,
+                                              temporary,
+                                              schedule,
+                                              video,
+                                            ],
+                                          )
+                                        : null,
+                                  ),
+                                ],
+                              )
+                            : Row(
+                                children: [
+                                  photo,
+                                  emojiButton,
+                                  files,
+                                  temporary,
+                                  schedule,
+                                  field,
+                                  voice,
+                                  video,
+                                  sendButton,
+                                ],
+                              );
+                      },
+                    ),
+                  ),
+          ),
+        ),
+      ],
+    );
+    return ColoredBox(
+      color: Theme.of(context).colorScheme.tertiaryContainer,
+      child: Column(
+        children: [
+          widget.header,
+          Expanded(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(32),
+              ),
+              child: ColoredBox(
+                color: Theme.of(context).colorScheme.surface,
+                child: body,
+              ),
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1875,18 +1982,20 @@ class _AttachmentViewState extends State<AttachmentView> {
       final colors = Theme.of(context).colorScheme;
       final own = widget.event.senderId == widget.event.room.client.userID;
       final background = own
-          ? colors.primaryContainer
+          ? Color.lerp(colors.primary, colors.onSurface, .2)!
           : colors.secondaryContainer;
-      final foreground = own
-          ? colors.onPrimaryContainer
-          : colors.onSecondaryContainer;
-      final accent = own ? colors.primary : colors.secondary;
+      final foreground = own ? colors.onPrimary : colors.onSecondaryContainer;
       final caption = widget.event.content['dev.voicechat.caption'];
       return Container(
         width: 320,
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: background,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [background, Color.lerp(background, colors.primary, .08)!],
+          ),
+          border: Border.all(color: foreground.withValues(alpha: .18)),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Column(
@@ -1898,12 +2007,14 @@ class _AttachmentViewState extends State<AttachmentView> {
                   tooltip: playing ? 'Приостановить' : 'Прослушать',
                   onPressed: play,
                   style: IconButton.styleFrom(
-                    backgroundColor: accent.withValues(alpha: .16),
-                    foregroundColor: foreground,
+                    backgroundColor: colors.surfaceContainerLowest.withValues(
+                      alpha: .8,
+                    ),
+                    foregroundColor: colors.primary,
                   ),
                   icon: Icon(
                     playing ? Icons.pause : Icons.play_arrow,
-                    color: foreground,
+                    color: colors.primary,
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -1924,10 +2035,9 @@ class _AttachmentViewState extends State<AttachmentView> {
                               ? 0
                               : position.inMilliseconds /
                                     duration.inMilliseconds,
-                          color: accent,
                         )
                       else
-                        Icon(Icons.graphic_eq, color: accent),
+                        Icon(Icons.graphic_eq, color: foreground),
                       Text(
                         '${mediaTime(position)} / ${mediaTime(duration)}',
                         style: Theme.of(

@@ -1,0 +1,1152 @@
+[
+  {
+    "key": "login",
+    "label": "Вход",
+    "group": "Аккаунт",
+    "source": "main.dart",
+    "functions": "Имя, пароль, регистрация, сброс; web: отдельная фраза и сохранение входа.",
+    "layout": "Форма прокручивается; поля и пояснения не удаляются на узком экране.",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "unlock",
+    "label": "Открыть сохранённый профиль",
+    "group": "Аккаунт",
+    "source": "main.dart",
+    "functions": "Разблокировка локальных ключей, смена профиля.",
+    "layout": "",
+    "platform": "web",
+    "custom": false
+  },
+  {
+    "key": "register",
+    "label": "Создать аккаунт",
+    "group": "Аккаунт",
+    "source": "registration_screen.dart",
+    "functions": "Username, отображаемое имя, почта, пароль, повтор, проверка почты.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "email-check",
+    "label": "Подтверждение почты",
+    "group": "Аккаунт",
+    "source": "registration_screen.dart",
+    "functions": "Отправленное письмо, завершение регистрации, возврат к форме.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "register-error",
+    "label": "Ошибка регистрации",
+    "group": "Аккаунт",
+    "source": "registration_screen.dart",
+    "functions": "Пример ошибки; поля остаются заполненными, исправление рядом с формой.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "reset",
+    "label": "Восстановить пароль",
+    "group": "Аккаунт",
+    "source": "registration_screen.dart",
+    "functions": "Почта, новый пароль, повтор, предупреждение об истории и сессиях.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "reset-confirm",
+    "label": "Подтверждение смены пароля",
+    "group": "Аккаунт",
+    "source": "registration_screen.dart",
+    "functions": "Завершение сброса после подтверждения почты.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "connection",
+    "label": "Параметры подключения",
+    "group": "Аккаунт",
+    "source": "main.dart",
+    "functions": "Все четыре параметра; длинные адреса доступны в поле.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "people",
+    "label": "Люди · разговоры",
+    "group": "Люди и группы",
+    "source": "conversation_list.dart",
+    "functions": "Список, поиск по имени, группы, приглашения, профиль, поиск истории, настройки.",
+    "layout": "Строки по 72–80 px; служебная шапка не занимает треть экрана.",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "people-empty",
+    "label": "Пустой список",
+    "group": "Люди и группы",
+    "source": "conversation_list.dart",
+    "functions": "Понятный первый шаг, приглашения и группы доступны без переписки.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "find-person",
+    "label": "Найти человека",
+    "group": "Люди и группы",
+    "source": "people_picker.dart",
+    "functions": "Поиск пользователя; выбор открывает профиль или личный разговор.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "find-empty",
+    "label": "Поиск · нет результата",
+    "group": "Люди и группы",
+    "source": "people_picker.dart",
+    "functions": "Пустой результат и повторный поиск.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "invitations",
+    "label": "Приглашения · люди",
+    "group": "Люди и группы",
+    "source": "invitations_dialog.dart",
+    "functions": "Входящие принять/отклонить, исходящие отменить; статусы.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "group-invitations",
+    "label": "Приглашения · группы",
+    "group": "Люди и группы",
+    "source": "invitations_dialog.dart",
+    "functions": "Приглашения Matrix-групп; входящие и исходящие.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "profile-contact",
+    "label": "Профиль собеседника",
+    "group": "Люди и группы",
+    "source": "profile_dialog.dart",
+    "functions": "Имя, аватар, presence, аккаунт; написать или запросить контакт.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "contact-request",
+    "label": "Запрос контакта",
+    "group": "Люди и группы",
+    "source": "profile_dialog.dart",
+    "functions": "Ожидание/отклонение запроса без ложного разрешения переписки.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "groups",
+    "label": "Группы",
+    "group": "Люди и группы",
+    "source": "conversation_list.dart",
+    "functions": "Список групп, поиск, создание, приглашения и настройки.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "new-group",
+    "label": "Создать группу",
+    "group": "Люди и группы",
+    "source": "main.dart, people_picker.dart",
+    "functions": "Название и выбор участников; сохраняется оба шага существующего сценария.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "members",
+    "label": "Участники группы",
+    "group": "Люди и группы",
+    "source": "room_members_dialog.dart",
+    "functions": "Полный состав; профиль; модерация по правам; аватар, приглашение, название, выход.",
+    "layout": "Вместо пяти тесных кнопок — подписанный вертикальный список; «Назад» всегда в шапке.",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "members-invited",
+    "label": "Приглашённые участники",
+    "group": "Люди и группы",
+    "source": "room_members_dialog.dart",
+    "functions": "Ожидающие приглашения, отмена по правам.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "invite-members",
+    "label": "Добавить участников",
+    "group": "Люди и группы",
+    "source": "people_picker.dart",
+    "functions": "Множественный выбор участников.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "group-name",
+    "label": "Название группы",
+    "group": "Люди и группы",
+    "source": "main.dart",
+    "functions": "Переименование; возврат к информации группы.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "member-actions",
+    "label": "Действия с участником",
+    "group": "Люди и группы",
+    "source": "room_members_dialog.dart",
+    "functions": "Исключение или отзыв приглашения, доступность по правам.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "leave-group",
+    "label": "Покинуть группу",
+    "group": "Люди и группы",
+    "source": "main.dart",
+    "functions": "Выход из группы; подтверждение как предложение UX.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "chat",
+    "label": "Личная переписка",
+    "group": "Переписка",
+    "source": "chat_pane.dart, main.dart",
+    "functions": "Профиль, меню, голосовой/видеовызов; текст, время, прочтение, реакция; плюс, микрофон, отправка.",
+    "layout": "Свои справа, чужие слева. Пузырёк по содержимому, максимум 82%; 16px текст, 4px между сообщениями.",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "group-chat",
+    "label": "Групповая переписка",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Имена авторов только на чужих сообщениях группы; свои справа.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "chat-menu",
+    "label": "Меню переписки",
+    "group": "Переписка",
+    "source": "chat_pane.dart, main.dart",
+    "functions": "Поиск, дата, расписание, профиль или настройки группы.",
+    "layout": "Функции остаются доступны, но не занимают отдельную высокую строку над каждым чатом.",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "chat-search",
+    "label": "Поиск в чате",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Поиск, календарь, переход к совпадению и возврат к новым.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "global-search",
+    "label": "Поиск по истории",
+    "group": "Переписка",
+    "source": "history_search.dart",
+    "functions": "Чаты, сообщения, индексация, неполнота, расширение поиска.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "message-menu-own",
+    "label": "Действия · своё сообщение",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Редактирование только своего текста; удаление — если есть право.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "message-menu-other",
+    "label": "Действия · чужое сообщение",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Чужие сообщения нельзя редактировать; права удаления сохранены.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "reply",
+    "label": "Ответ на сообщение",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Цитата автора и текста, отмена ответа, отправка.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "edit-message",
+    "label": "Редактирование",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Заполненный текст, отмена, сохранение; таймер/планирование недоступны при редактировании.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "delete-message",
+    "label": "Удаление сообщения",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Явное подтверждение и честное ограничение удаления.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "deleted-message",
+    "label": "Удалённое сообщение",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Место удалённого сообщения; доступные соседние сообщения.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "emoji",
+    "label": "Эмодзи и реакции",
+    "group": "Переписка",
+    "source": "emoji_picker.dart, chat_pane.dart",
+    "functions": "Категории и выбор; реальное использование emoji как содержимого.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "chat-keyboard",
+    "label": "Переписка · клавиатура",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Поле до двух строк при клавиатуре; цитата и отправка остаются видимыми.",
+    "layout": "Схематичная клавиатура 240 px (200 px на компактном экране); высота телефона не увеличена.",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "chat-long",
+    "label": "Длинный текст и адрес",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Длинный текст, URL, короткий ответ и прокрутка.",
+    "layout": "Слова и URL переносятся; сообщения не обрезаются и не сжимают ввод.",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "chat-offline",
+    "label": "Офлайн и очередь",
+    "group": "Переписка",
+    "source": "main.dart, chat_pane.dart",
+    "functions": "Офлайн-баннер, сохранение исходящих, доступ к очереди.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "send-queue",
+    "label": "Исходящие · ошибка отправки",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Повтор, отмена, новое время для просроченной очереди.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "chat-missing-keys",
+    "label": "Недоступная история",
+    "group": "Переписка",
+    "source": "chat_pane.dart",
+    "functions": "Недоступные ключи, восстановление, догрузка ранних событий.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "composer-tools",
+    "label": "Инструменты сообщения",
+    "group": "Медиа",
+    "source": "chat_pane.dart",
+    "functions": "Все 6 дополнительных действий с подписями; ввод, микрофон и отправка сохраняются.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "attachment-type",
+    "label": "Файл или видео",
+    "group": "Медиа",
+    "source": "chat_pane.dart",
+    "functions": "Два типа вложений; системный picker обозначен отдельно.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "voice-record",
+    "label": "Запись голоса",
+    "group": "Медиа",
+    "source": "chat_pane.dart, waveform_view.dart",
+    "functions": "Реальная шкала записи в реализации; здесь иллюстрация. Таймер, остаток, удалить, стоп.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "voice-preview",
+    "label": "Голосовое перед отправкой",
+    "group": "Медиа",
+    "source": "chat_pane.dart",
+    "functions": "Предпрослушивание, удаление черновика, отправка отдельной кнопкой.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "voice-playing",
+    "label": "Прослушивание голосового",
+    "group": "Медиа",
+    "source": "chat_pane.dart",
+    "functions": "Воспроизведение/пауза, прогресс и длительность.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "capture-permission",
+    "label": "Нет доступа к микрофону",
+    "group": "Медиа",
+    "source": "voice_recording.dart, user_action_error.dart",
+    "functions": "Отказ разрешения, повтор, безопасный выход; системное окно не имитируется.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "photo-draft",
+    "label": "Фото перед отправкой",
+    "group": "Медиа",
+    "source": "chat_pane.dart",
+    "functions": "До лимита фото, предпросмотр, удаление, подпись, отправка.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "album",
+    "label": "Альбом в переписке",
+    "group": "Медиа",
+    "source": "album_view.dart, chat_pane.dart",
+    "functions": "Альбом, предпросмотр; собственный альбом остаётся справа.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "photo-viewer",
+    "label": "Просмотр фотографии",
+    "group": "Медиа",
+    "source": "photo_viewer.dart",
+    "functions": "Закрыть, предыдущее/следующее, масштаб; ошибки загрузки — отдельное состояние.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "media-error",
+    "label": "Вложение недоступно",
+    "group": "Медиа",
+    "source": "photo_viewer.dart, album_view.dart, file_view.dart",
+    "functions": "Честная ошибка без пустой рамки или обещания успешной загрузки.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "file-draft",
+    "label": "Файл перед отправкой",
+    "group": "Медиа",
+    "source": "chat_pane.dart",
+    "functions": "Черновики файлов/видео, имя, размер, счётчик, убрать, подпись.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "file-upload",
+    "label": "Отправка файла",
+    "group": "Медиа",
+    "source": "chat_pane.dart",
+    "functions": "Прогресс, отмена и запрет повторной отправки в реальной реализации.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "file-message",
+    "label": "Файл в переписке",
+    "group": "Медиа",
+    "source": "file_view.dart",
+    "functions": "Имя, тип, размер, скачивание; длинное имя переносится.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "file-download",
+    "label": "Загрузка файла",
+    "group": "Медиа",
+    "source": "file_view.dart",
+    "functions": "Сохранение, прогресс, отмена; не обещаем собственный файловый менеджер.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "video-note",
+    "label": "Видеокружок · камера",
+    "group": "Медиа",
+    "source": "video_note.dart",
+    "functions": "Предпросмотр, переключение камеры, запись кнопкой; удержание — дополнительный способ.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "video-record",
+    "label": "Видеокружок · запись",
+    "group": "Медиа",
+    "source": "video_note.dart",
+    "functions": "Таймер, лимит, отмена, завершение и прикрепление к черновику.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "video-error",
+    "label": "Ошибка камеры",
+    "group": "Медиа",
+    "source": "video_note.dart",
+    "functions": "Ошибка подготовки/записи/переключения; выход без потери контекста.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "video-viewer",
+    "label": "Просмотр видео",
+    "group": "Медиа",
+    "source": "file_view.dart, embedded_video.dart",
+    "functions": "Play/pause, длительность, сохранение; закрытие в шапке.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "link-preview",
+    "label": "Ссылка и встроенное видео",
+    "group": "Медиа",
+    "source": "link_cards.dart",
+    "functions": "Ссылка, preview, встроенный просмотр, оригинал при проблеме.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "embedded-video",
+    "label": "Встроенное видео",
+    "group": "Медиа",
+    "source": "link_cards.dart, embedded_video.dart",
+    "functions": "Закрыть плеер; переход к источнику; ошибка открытия браузера.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "temporary",
+    "label": "Временное сообщение",
+    "group": "Время и поиск",
+    "source": "chat_pane.dart, media_policy.dart",
+    "functions": "Срок, ограничения, без таймера, применить.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "temporary-active",
+    "label": "Таймер в черновике",
+    "group": "Время и поиск",
+    "source": "chat_pane.dart",
+    "functions": "Явный срок до отправки; без обещания удаления чужих копий.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "schedule-time",
+    "label": "Отложить сообщение",
+    "group": "Время и поиск",
+    "source": "scheduled_view.dart",
+    "functions": "Дата и время, диапазон политики, применить, отмена.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "schedule-calendar",
+    "label": "Календарь планирования",
+    "group": "Время и поиск",
+    "source": "scheduled_view.dart",
+    "functions": "Выбор даты в допустимом диапазоне; русская локаль.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "schedule-draft",
+    "label": "Планирование · черновик",
+    "group": "Время и поиск",
+    "source": "chat_pane.dart",
+    "functions": "Время и статус прямо над вводом; явное действие отправки по расписанию.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "scheduled-list",
+    "label": "Очередь расписания",
+    "group": "Время и поиск",
+    "source": "scheduled_view.dart",
+    "functions": "Дата, время, состояние, содержимое на устройстве, отмена, обновление.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "scheduled-empty",
+    "label": "Расписание · пусто или ошибка",
+    "group": "Время и поиск",
+    "source": "scheduled_view.dart",
+    "functions": "Пустое состояние и явно отделённая ошибка обновления.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "history-calendar",
+    "label": "Календарь истории",
+    "group": "Время и поиск",
+    "source": "chat_pane.dart",
+    "functions": "Переход к дате истории; возврат к новым сообщениям.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "call-picker",
+    "label": "Голосовой или видеозвонок",
+    "group": "Звонки",
+    "source": "main.dart",
+    "functions": "Два вида вызова на мобильной ширине; отдельно от записи сообщения.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "call-incoming",
+    "label": "Входящий звонок",
+    "group": "Звонки",
+    "source": "call_window.dart",
+    "functions": "Имя, аватар, входящий статус, принять/отклонить.",
+    "layout": "Крупный аватар уместен в звонке; сообщение в чате такого размера не получает.",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "call-active",
+    "label": "Активный голосовой звонок",
+    "group": "Звонки",
+    "source": "call_window.dart",
+    "functions": "Таймер, реальное качество в реализации, mute, аудиовыход, завершение, сворачивание.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "call-muted",
+    "label": "Микрофон выключен",
+    "group": "Звонки",
+    "source": "call_window.dart",
+    "functions": "Явный mute-state и обратное действие.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "audio-output",
+    "label": "Аудиовыход",
+    "group": "Звонки",
+    "source": "main.dart",
+    "functions": "Android: toggle speaker; web: системный выбор. Не придумываем список маршрутов.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "call-group",
+    "label": "Групповой звонок · 10 человек",
+    "group": "Звонки",
+    "source": "call_window.dart",
+    "functions": "До 10 участников; подключённые и ожидающие; управление всегда в нижней панели.",
+    "layout": "Сетка участников прокручивается, кнопки вызова не уходят за край.",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "call-minimized",
+    "label": "Свёрнутый звонок",
+    "group": "Звонки",
+    "source": "main.dart",
+    "functions": "Постоянный баннер активного звонка и возвращение в него.",
+    "layout": "",
+    "platform": "both",
+    "custom": true
+  },
+  {
+    "key": "call-reconnecting",
+    "label": "Восстановление связи",
+    "group": "Звонки",
+    "source": "call_window.dart, call_quality.dart",
+    "functions": "Реконнект, неизвестное качество; не рисуем ложные заполненные деления.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "call-error",
+    "label": "Ошибка звонка",
+    "group": "Звонки",
+    "source": "call_window.dart",
+    "functions": "Ошибка и доступное в текущем коде действие «Закрыть».",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "video-call",
+    "label": "Видеозвонок",
+    "group": "Звонки",
+    "source": "call_window.dart, call_video_grid.dart",
+    "functions": "Видео обоих, camera toggle, смена камеры, mute, выход, качество, завершить.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "video-quality",
+    "label": "Качество видео",
+    "group": "Звонки",
+    "source": "call_window.dart",
+    "functions": "Выбор режима видео; не смешиваем с качеством демонстрации экрана.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "settings",
+    "label": "Настройки",
+    "group": "Настройки",
+    "source": "main.dart",
+    "functions": "Все настройки сохранены; отдельные страницы — навигационное предложение, не удаление функций.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "profile-own",
+    "label": "Мой профиль",
+    "group": "Настройки",
+    "source": "profile_dialog.dart",
+    "functions": "Аватар, имя, аккаунт, presence; без придуманного редактирования username.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "avatar-editor",
+    "label": "Изменение аватара",
+    "group": "Настройки",
+    "source": "avatar_editor.dart",
+    "functions": "Масштаб, X/Y-сдвиг, сохранение/отмена, ограничение E2EE.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "appearance",
+    "label": "Оформление",
+    "group": "Настройки",
+    "source": "theme.dart",
+    "functions": "Выбранная тема; палитра исходного Nocturne.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "sounds",
+    "label": "Звуки и разрешение браузера",
+    "group": "Настройки",
+    "source": "main.dart, app_sounds.dart",
+    "functions": "Переключатель и отдельный web-state блокировки autoplay.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "storage",
+    "label": "Локальное хранилище",
+    "group": "Настройки",
+    "source": "storage_dialog.dart",
+    "functions": "Кольцо, фактический объём/остаток лимита, лимит, очистка и исключения.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "storage-result",
+    "label": "Хранилище · результат проверки",
+    "group": "Настройки",
+    "source": "storage_dialog.dart",
+    "functions": "Результат или ошибка проверки/сохранения, без обещания освобождения места диска.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "logout",
+    "label": "Выход из аккаунта",
+    "group": "Настройки",
+    "source": "main.dart",
+    "functions": "Подтверждение выхода и удаления локальных ключей.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "security",
+    "label": "Устройства и безопасность",
+    "group": "Безопасность",
+    "source": "main.dart",
+    "functions": "Все входы в управление сеансами и доверие.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "devices",
+    "label": "Устройства аккаунта",
+    "group": "Безопасность",
+    "source": "main.dart",
+    "functions": "Карточки текущего и других устройств, отзыв с ограничениями.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "revoke-device",
+    "label": "Отзыв устройства",
+    "group": "Безопасность",
+    "source": "main.dart",
+    "functions": "Подтверждение паролем и завершение чужого сеанса.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "verify-list",
+    "label": "Выбор устройства для проверки",
+    "group": "Безопасность",
+    "source": "main.dart, identity_field.dart",
+    "functions": "Аккаунт, ID, fingerprint с копированием; список и независимая проверка.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "verify-start",
+    "label": "Проверка устройства",
+    "group": "Безопасность",
+    "source": "device_verification_dialog.dart, main.dart",
+    "functions": "SAS, QR, ручной fingerprint; различаем доверие и восстановление истории.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "verify-emoji",
+    "label": "Сравнение кодов",
+    "group": "Безопасность",
+    "source": "device_verification_dialog.dart",
+    "functions": "7 emoji + 3 числа, совпадают/нет, ожидание другой стороны.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "verify-qr",
+    "label": "Сканировать QR",
+    "group": "Безопасность",
+    "source": "device_qr_scanner.dart",
+    "functions": "Сканирование, смена камеры, отмена, fallback при отказе разрешения.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "verify-qr-confirm",
+    "label": "QR · подтверждение",
+    "group": "Безопасность",
+    "source": "device_verification_dialog.dart",
+    "functions": "Не завершаем доверие только по наличию QR; личное подтверждение.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "verify-fingerprint",
+    "label": "Сверка отпечатка",
+    "group": "Безопасность",
+    "source": "main.dart",
+    "functions": "Ввод независимо полученного fingerprint, проверка и отмена.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "verify-wait",
+    "label": "Проверка · ожидание",
+    "group": "Безопасность",
+    "source": "device_verification_dialog.dart",
+    "functions": "Ожидание, отмена, срок запроса; успех — отдельный макет.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "verify-success",
+    "label": "Устройство подтверждено",
+    "group": "Безопасность",
+    "source": "device_verification_dialog.dart",
+    "functions": "Успешное доверие; история отдельно.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "verify-error",
+    "label": "Проверка · ошибка",
+    "group": "Безопасность",
+    "source": "device_verification_dialog.dart",
+    "functions": "Несовпадение, тайм-аут, отмена, ошибочный QR без ложного успеха.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "history-settings",
+    "label": "Доступ к истории",
+    "group": "Безопасность",
+    "source": "main.dart",
+    "functions": "Все четыре действия раздела истории.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "recovery-password",
+    "label": "Создание ключа · пароль",
+    "group": "Безопасность",
+    "source": "main.dart",
+    "functions": "Подтверждение пароля перед созданием.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "recovery-key",
+    "label": "Сохранить ключ восстановления",
+    "group": "Безопасность",
+    "source": "main.dart",
+    "functions": "Выделяемый ключ, предупреждение, подтверждение сохранения.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "restore-history",
+    "label": "Вернуть историю",
+    "group": "Безопасность",
+    "source": "main.dart",
+    "functions": "Ввод ключа, восстановление, отказ; не обещаем восстановление без ключей.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "restore-result",
+    "label": "История · результат",
+    "group": "Безопасность",
+    "source": "main.dart",
+    "functions": "Результат восстановления и последующая загрузка истории.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "history-requests",
+    "label": "Запросы истории",
+    "group": "Безопасность",
+    "source": "history_recovery_dialog.dart",
+    "functions": "Запрос, fingerprint, передать/отклонить; передача требует фактической проверки.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "history-request-verified",
+    "label": "Передача ключа истории",
+    "group": "Безопасность",
+    "source": "history_recovery_dialog.dart",
+    "functions": "Граница доверия, явное действие передачи.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "backup-result",
+    "label": "Обновление backup",
+    "group": "Безопасность",
+    "source": "main.dart",
+    "functions": "Успех и ветка отсутствующей конфигурации backup.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "screen-view",
+    "label": "Демонстрация · просмотр",
+    "group": "Демонстрация экрана",
+    "source": "screen_panel.dart",
+    "functions": "Показ чужого экрана, fullscreen, takeover на поддерживаемой платформе; web view-only.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "screen-own",
+    "label": "Демонстрация · свой экран",
+    "group": "Демонстрация экрана",
+    "source": "screen_panel.dart",
+    "functions": "Качество Auto/Low, stop, fullscreen; только поддерживаемый захват.",
+    "layout": "",
+    "platform": "android",
+    "custom": false
+  },
+  {
+    "key": "screen-takeover",
+    "label": "Перехват демонстрации",
+    "group": "Демонстрация экрана",
+    "source": "screen_panel.dart, screen_capture.dart",
+    "functions": "Захват и takeover; системное разрешение не изображено как собственное окно.",
+    "layout": "",
+    "platform": "android",
+    "custom": false
+  },
+  {
+    "key": "screen-fullscreen",
+    "label": "Демонстрация · полный экран",
+    "group": "Демонстрация экрана",
+    "source": "screen_panel.dart",
+    "functions": "Contain без обрезки демонстрации, выход из полноэкранного режима.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "screen-reconnect",
+    "label": "Демонстрация · восстановление",
+    "group": "Демонстрация экрана",
+    "source": "screen_panel.dart",
+    "functions": "Preparing/connecting/reconnecting/closed статусы без показа незащищённого кадра.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "profile-new",
+    "label": "Новый контакт",
+    "group": "Люди и группы",
+    "source": "profile_dialog.dart",
+    "functions": "Запрос на добавление нового контакта; переписка после принятия.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  },
+  {
+    "key": "file-ready",
+    "label": "Файл загружен",
+    "group": "Медиа",
+    "source": "file_view.dart",
+    "functions": "Сохранение через Android или браузер после завершения загрузки.",
+    "layout": "",
+    "platform": "both",
+    "custom": false
+  }
+]

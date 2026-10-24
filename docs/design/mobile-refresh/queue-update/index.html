@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VoiceChat · очередь запланированных сообщений</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#faf8fd;color:#312940;font:16px/1.5 system-ui,sans-serif}main{max-width:1100px;margin:auto;padding:24px}h1{font-size:28px}a{color:#6841b2}p{max-width:800px}.pair{display:flex;gap:24px;flex-wrap:wrap}figure{margin:0 0 24px;flex:1;min-width:260px}img{width:100%;border:1px solid #eae3f3;border-radius:18px}figcaption{margin:12px 0;font-weight:600}.mobile img{max-width:390px}summary{cursor:pointer;padding:16px 0}
+</style>
+<main>
+<p><a href="../index.html">← Все 35 экранов до / после</a> · <a href="http://localhost:7357/">Открыть основной сайт</a></p>
+<h1>Очередь запланированных сообщений</h1>
+<p>23 октября 2026. Раньше очередь открывалась только из меню отложенной отправки. Теперь под поиском видна строка «Запланировано · N». Нажатие раскрывает тексты, даты и статусы. Полный текст открывается нажатием на карточку. После отправки или отмены задания счётчик уменьшается.</p>
+<p>Снимки обычного клиента во встроенном браузере. Отдельный тестовый аккаунт, комната с одним участником. Общий Flutter-код Android и веба; эти новые снимки показывают веб. Android debug собран, реальный телефон в этой итерации не проверен.</p>
+<div class="pair mobile">
+<figure><figcaption>Мобильный сайт · количество в чате</figcaption><a href="queue-count-mobile.png"><img src="queue-count-mobile.png" alt="Под поиском отображается Запланировано · 2"></a></figure>
+<figure><figcaption>Мобильный сайт · раскрытая очередь</figcaption><a href="queue-expanded-mobile.png"><img src="queue-expanded-mobile.png" alt="Два запланированных сообщения с датами и содержимым"></a></figure>
+</div>
+<details open><summary>Полноценный веб-сайт</summary>
+<figure><figcaption>Количество в чате</figcaption><a href="queue-count-desktop.png"><img src="queue-count-desktop.png" alt="Очередь расписания в широком веб-интерфейсе"></a></figure>
+<figure><figcaption>Раскрытая очередь</figcaption><a href="queue-expanded-desktop.png"><img src="queue-expanded-desktop.png" alt="Раскрытые запланированные сообщения на широком экране"></a></figure>
+</details>
+<p>Проверено: временное сообщение на 10 секунд → обычное сообщение, оба подтверждены сервером. Два задания расписания → счётчик 2 → раскрытие → отмена → 1 → отмена → панель скрыта. Тестовые задания отменены.</p>
+</main></html>

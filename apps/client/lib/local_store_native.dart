@@ -60,6 +60,7 @@ Future<MatrixSdkDatabase> openStore(
   String name, {
   String? passphrase,
   bool remember = false,
+  bool automatic = false,
 }) async {
   final root = await sql.getDatabasesPath();
   if (await sql.databaseExists('$root/$name.db')) {

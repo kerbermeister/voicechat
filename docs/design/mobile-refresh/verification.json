@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-23",
+  "baseline_commit": "c3e3f43ecafc60891efa85173d8c81caac338d4b",
+  "reference": "../lavender-soft.html",
+  "screens_per_platform": 35,
+  "platforms": [
+    "Android emulator API 35",
+    "Chrome mobile viewport 390x844"
+  ],
+  "screenshot_count": 213,
+  "flutter_tests": {
+    "full_suite_passed": 123,
+    "final_refinement_tests_passed": 6
+  },
+  "flutter_analyze": "PASS",
+  "android_gallery": "PASS: full 35-screen capture and final group-tray refresh",
+  "web_gallery": "PASS: full 35-screen capture and final group-tray refresh",
+  "gallery_filters": "PASS: both platforms and representative screen filters; all image paths verified",
+  "web_build": "normal release main.dart; no gallery credentials; desktop 1440x1000 and mobile 390x844 startup passed",
+  "android_build": "normal debug main.dart; no gallery credentials; installed and welcome screen confirmed through accessibility tree",
+  "native_dependency": "Existing unmodified arm64 vodozemac JNI reused; Rust was not rebuilt",
+  "native_dependency_source_sha256": "d3cedbc3375acf920830a1b300d3e6f09cce8ad483f5505a803d64f5c3454f89",
+  "fixtures": "Disposable isolated ui_* accounts. Synthetic voice data. Call windows use UI fixtures without any media connection.",
+  "not_verified": [
+    "Physical phones",
+    "Real camera or microphone capture",
+    "Real call media and media decryption",
+    "Operating system file picker screens"
+  ],
+  "comparison_screenshot_count": 210,
+  "comparison_baselines": {
+    "current": "approved design from 2026-10-22 vs refinements from 2026-10-23",
+    "original": "original pre-redesign baseline retained in original.html"
+  },
+  "preview_urls": {
+    "web_app": "http://localhost:7357/",
+    "gallery": "http://localhost:7365/"
+  },
+  "deployment": "Local preview only; no production website deployment",
+  "storage_chart": "Usage relative to the local profile limit, not the entire physical disk",
+  "final_refresh": "After the full captures, only group action label sizing changed; group screens were recaptured on both platforms, with the complete navigation scenario passing again"
+}

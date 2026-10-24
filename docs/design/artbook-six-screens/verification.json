@@ -1,0 +1,33 @@
+{
+  "directions": 10,
+  "screensPerDirection": 6,
+  "mockups": 60,
+  "overflow": [],
+  "responsive": [
+    {
+      "width": 320,
+      "phoneOverflow": [],
+      "overflow": false
+    },
+    {
+      "width": 375,
+      "phoneOverflow": [],
+      "overflow": false
+    },
+    {
+      "width": 768,
+      "phoneOverflow": [],
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "phoneOverflow": [],
+      "overflow": false
+    }
+  ],
+  "errors": [],
+  "missing": [],
+  "filter": "passed",
+  "navigation": "passed",
+  "notes": "Static artbook only; no Flutter or hardware testing"
+}

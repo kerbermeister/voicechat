@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'package:flutter/material.dart';
 
 // Unicode characters, rendered by the device; no remote image requests from chats.
@@ -16,8 +17,11 @@ const emojiCategories = <String, String>{
       '🏠 🏡 🏢 🏥 🏫 🏖️ ⛰️ 🏕️ 🌅 🌇 🌉 🚗 🚕 🚌 🚎 🚲 🛵 🏍️ 🚆 🚇 🚀 ✈️ 🚁 🚢 ⛵ ⚽ 🏀 🏈 ⚾ 🎾 🏐 🏓 🏸 🥊 🏊 🏃 🚶 🧘 🏆 🥇 🎮 🎲 🎯 🎨 🎭 🎤 🎧 🎼 🎹 🎸 🎺 🥁 📱 💻 🖥️ ⌨️ 📷 🎥 📚 📖 📝 ✏️ 📌 📎 📅 ⏰ ✅ ☑️ ❌ ❎ ❓ ❗ ⚠️ ⛔ 🚫 💡 🔑 🔒 🔓 🛠️ ⚙️ ❤️ 👍',
 };
 
-Future<String?> pickEmoji(BuildContext context) =>
-    showDialog<String>(context: context, builder: (_) => const _EmojiPicker());
+Future<String?> pickEmoji(BuildContext context) => showDialog<String>(
+  context: context,
+  animationStyle: appAnimationStyle(context),
+  builder: (_) => const _EmojiPicker(),
+);
 
 class _EmojiPicker extends StatefulWidget {
   const _EmojiPicker();

@@ -46,12 +46,17 @@ void main() {
       expect(find.text('@anna:local'), findsOneWidget);
       expect(find.text('Открыть переписку'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Пароль аккаунта'), findsNothing);
+      await tester.ensureVisible(find.text('Параметры подключения'));
       await tester.tap(find.text('Параметры подключения'));
       await tester.pumpAndSettle();
       final fields = tester
           .widgetList<TextField>(find.byType(TextField))
           .toList();
-      expect(fields.any((f) => f.controller?.text == 'annas-browser'), true);
+      expect(
+        find.widgetWithText(TextField, 'Профиль устройства'),
+        findsNothing,
+      );
+      expect(fields.any((f) => f.controller?.text == 'annas-browser'), false);
       expect(
         fields.any((f) => f.controller?.text == 'http://localhost:8008'),
         true,

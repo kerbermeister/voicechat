@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
@@ -47,6 +48,7 @@ Future<VideoNoteResult?> recordVideoNote(
   }
   return showDialog<VideoNoteResult>(
     context: context,
+    animationStyle: appAnimationStyle(context),
     barrierDismissible: false,
     builder: (_) =>
         _Recorder(maxSeconds: maxSeconds, held: held, onRecording: onRecording),

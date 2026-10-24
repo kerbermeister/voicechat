@@ -1,10 +1,6 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-
 import 'user_action_error.dart';
-
 import 'package:matrix/matrix.dart' as mx;
 
 /// Synapse handles email verification and UIA; the app never validates its own email token.
@@ -12,10 +8,12 @@ class RegistrationScreen extends StatefulWidget {
   final Future<mx.Client> Function(String? passphrase) openClient;
   final bool requireLocalPassphrase;
   final bool resetPassword;
+  final void Function(String password)? onRegistered;
   const RegistrationScreen({
     super.key,
     required this.openClient,
-    this.requireLocalPassphrase = kIsWeb,
+    this.requireLocalPassphrase = false,
+    this.onRegistered,
     this.resetPassword = false,
   });
   @override
@@ -117,6 +115,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             });
           }
         }
+        if (!widget.resetPassword) widget.onRegistered?.call(password.text);
         if (mounted) Navigator.pop(context, true);
       }
     } on UserActionError catch (error) {
@@ -166,65 +165,77 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   );
   @override
   Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
     appBar: AppBar(
       title: Text(
         widget.resetPassword ? 'Восстановить пароль' : 'Создать аккаунт',
       ),
     ),
-    body: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            if (!widget.resetPassword)
-              field(username, 'Имя пользователя · латиницей'),
-            if (!widget.resetPassword) field(displayName, 'Отображаемое имя'),
-            field(email, 'Электронная почта'),
-            field(password, 'Пароль аккаунта · от 12 символов', secret: true),
-            field(confirmation, 'Повторите пароль', secret: true),
-            if (widget.requireLocalPassphrase) ...[
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: TextField(
-                  controller: localPassphrase,
-                  obscureText: true,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  readOnly: busy || client != null,
-                  decoration: InputDecoration(
-                    labelText: widget.resetPassword
-                        ? 'Локальная фраза этого профиля'
-                        : 'Локальная фраза · от 12 символов',
-                    helperText: widget.resetPassword
-                        ? 'Введите фразу, которой защищены данные этого браузера.'
-                        : 'Защищает переписку в этом браузере. Придумайте отдельную фразу и сохраните её в менеджере паролей.',
-                    helperMaxLines: 4,
-                    errorText: localPassphraseError,
-                    errorMaxLines: 3,
+    body: ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      child: ColoredBox(
+        color: Theme.of(context).colorScheme.surface,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                if (!widget.resetPassword)
+                  field(username, 'Имя пользователя · латиницей'),
+                if (!widget.resetPassword)
+                  field(displayName, 'Отображаемое имя'),
+                field(email, 'Электронная почта'),
+                field(
+                  password,
+                  'Пароль аккаунта · от 12 символов',
+                  secret: true,
+                ),
+                field(confirmation, 'Повторите пароль', secret: true),
+                if (widget.requireLocalPassphrase) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: TextField(
+                      controller: localPassphrase,
+                      obscureText: true,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      readOnly: busy || client != null,
+                      decoration: InputDecoration(
+                        labelText: widget.resetPassword
+                            ? 'Локальная фраза этого профиля'
+                            : 'Локальная фраза · от 12 символов',
+                        helperText: widget.resetPassword
+                            ? 'Введите фразу, которой защищены данные этого браузера.'
+                            : 'Защищает переписку в этом браузере. Придумайте отдельную фразу и сохраните её в менеджере паролей.',
+                        helperMaxLines: 4,
+                        errorText: localPassphraseError,
+                        errorMaxLines: 3,
+                      ),
+                    ),
+                  ),
+                ],
+                Text(status),
+                const SizedBox(height: 16),
+                if (widget.resetPassword)
+                  const Text(
+                    'Смена пароля отзовёт серверные сессии. Для истории по-прежнему нужен ключ восстановления; локальные ключи сохраняются.',
+                  ),
+                const SizedBox(height: 16),
+                if (busy) const LinearProgressIndicator(),
+                FilledButton(
+                  onPressed: busy ? null : submit,
+                  child: Text(
+                    sid == null
+                        ? 'Отправить письмо'
+                        : widget.resetPassword
+                        ? 'Почта подтверждена · сменить пароль'
+                        : 'Почта подтверждена · создать аккаунт',
                   ),
                 ),
-              ),
-            ],
-            Text(status),
-            const SizedBox(height: 16),
-            if (widget.resetPassword)
-              const Text(
-                'Смена пароля отзовёт серверные сессии. Для истории по-прежнему нужен ключ восстановления; локальная фраза не меняется.',
-              ),
-            const SizedBox(height: 16),
-            if (busy) const LinearProgressIndicator(),
-            FilledButton(
-              onPressed: busy ? null : submit,
-              child: Text(
-                sid == null
-                    ? 'Отправить письмо'
-                    : widget.resetPassword
-                    ? 'Почта подтверждена · сменить пароль'
-                    : 'Почта подтверждена · создать аккаунт',
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     ),

@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
@@ -9,6 +10,7 @@ Future<({mx.Room room, String? event})?> searchHistory(
   mx.Client client,
 ) => showDialog<({mx.Room room, String? event})>(
   context: context,
+  animationStyle: appAnimationStyle(context),
   builder: (_) => _HistorySearch(client: client),
 );
 

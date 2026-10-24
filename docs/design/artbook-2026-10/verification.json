@@ -1,0 +1,26 @@
+{
+  "concepts": 10,
+  "mobileMockups": 30,
+  "desktopLayouts": 2,
+  "sourceScreenshots": 80,
+  "phoneOverflow": [],
+  "responsive": [
+    {
+      "width": 320,
+      "overflow": false
+    },
+    {
+      "width": 390,
+      "overflow": false
+    },
+    {
+      "width": 768,
+      "overflow": false
+    },
+    {
+      "width": 1440,
+      "overflow": false
+    }
+  ],
+  "notes": "Static reference artbook; source galleries inspected. No app or hardware testing."
+}

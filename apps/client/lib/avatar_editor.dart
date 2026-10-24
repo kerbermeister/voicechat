@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -37,6 +38,7 @@ Future<MatrixFile?> editAvatar(BuildContext context) async {
   if (photos.isEmpty || !context.mounted) return null;
   final bytes = await showDialog<Uint8List>(
     context: context,
+    animationStyle: appAnimationStyle(context),
     builder: (_) => _AvatarEditor(bytes: photos.single.bytes),
   );
   return bytes == null

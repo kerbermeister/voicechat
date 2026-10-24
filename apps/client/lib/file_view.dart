@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:video_player/video_player.dart';
@@ -101,6 +102,7 @@ class _FileViewState extends State<FileView> {
                       icon: const Icon(Icons.play_circle_outline),
                       onPressed: () => showDialog<void>(
                         context: context,
+                        animationStyle: appAnimationStyle(context),
                         builder: (_) => MessageVideo(file: file!),
                       ),
                     ),
@@ -256,6 +258,7 @@ class _MessageVideoState extends State<MessageVideo> {
         child: InkWell(
           onTap: () => showDialog<void>(
             context: context,
+            animationStyle: appAnimationStyle(context),
             builder: (_) => MessageVideo.draft(
               file: widget.draft!,
               videoNote: widget.videoNote,

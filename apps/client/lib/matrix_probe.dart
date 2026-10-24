@@ -19,6 +19,7 @@ class MatrixProbe {
     String profile, {
     String? passphrase,
     bool remember = false,
+    bool automatic = false,
   }) async {
     _cryptoInit ??= vod.init();
     await _cryptoInit;
@@ -27,6 +28,7 @@ class MatrixProbe {
       name,
       passphrase: passphrase,
       remember: remember,
+      automatic: automatic,
     );
     final client = Client(
       name,
@@ -66,7 +68,9 @@ class MatrixProbe {
         LoginType.mLoginPassword,
         identifier: AuthenticationUserIdentifier(user: username),
         password: password,
-        initialDeviceDisplayName: kIsWeb ? 'Web probe' : 'Android probe',
+        initialDeviceDisplayName: kIsWeb
+            ? 'VoiceChat · браузер'
+            : 'VoiceChat · Android',
       );
     }
     await client.firstSyncReceived;

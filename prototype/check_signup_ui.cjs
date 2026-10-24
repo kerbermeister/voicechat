@@ -21,9 +21,6 @@ const {chromium} = require('playwright');
     const username = 'signup' + Date.now();
     const email = username + '@example.test';
     const password = crypto.randomBytes(24).toString('base64url');
-    await page.getByText('Параметры подключения', {exact: true}).click();
-    await fill('Профиль устройства', username);
-    await fill('Отдельная локальная фраза (от 12 символов)', 'separate signup UI test passphrase');
     await button('Создать аккаунт').click();
     await page.getByRole('textbox', {name: 'Имя пользователя · латиницей', exact: true}).waitFor({timeout: 30000});
     await fill('Имя пользователя · латиницей', username);
@@ -36,6 +33,8 @@ const {chromium} = require('playwright');
     // Reuse the same local email/form verification helper as the backend acceptance test.
     execFileSync('python3', ['-c', 'import sys; from check_registration import validate_email; validate_email(sys.argv[1])', email], {cwd: __dirname, stdio: 'pipe'});
     await button('Почта подтверждена · создать аккаунт').click();
+    await button('Я сохранил ключ').waitFor({timeout: 60000});
+    await button('Я сохранил ключ').click();
     await button('Настройки').waitFor({timeout: 60000});
     await button('Настройки').click();
     await page.getByRole('button', {name: /^Выйти/}).click();

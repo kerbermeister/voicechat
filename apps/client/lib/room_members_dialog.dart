@@ -85,11 +85,12 @@ class RoomMembersDialog extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: AlertDialog(
+        scrollable: true,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         title: Text(room.getLocalizedDisplayname()),
         content: SizedBox(
           width: 480,
-          height: 380,
+          height: (MediaQuery.sizeOf(context).height * .42).clamp(100, 380),
           child: Column(
             children: [
               TabBar(
@@ -113,34 +114,109 @@ class RoomMembersDialog extends StatelessWidget {
             ],
           ),
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         actions: [
-          if (!room.isDirectChat &&
-              room.canChangeStateEvent(mx.EventTypes.RoomAvatar))
-            TextButton.icon(
-              onPressed: () => Navigator.pop(context, 'avatar'),
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: const Text('Аватар'),
+          Container(
+            width: (MediaQuery.sizeOf(context).width - 56).clamp(17, 480),
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(20),
             ),
-          if (!room.isDirectChat && room.canInvite)
-            TextButton.icon(
-              onPressed: () => Navigator.pop(context, 'invite'),
-              icon: const Icon(Icons.person_add_alt),
-              label: const Text('Пригласить'),
+            child: Builder(
+              builder: (context) {
+                final trayWidth = (MediaQuery.sizeOf(context).width - 72).clamp(
+                  1.0,
+                  464.0,
+                );
+                final actions =
+                    <
+                      ({
+                        String label,
+                        IconData icon,
+                        String? value,
+                        bool danger,
+                      })
+                    >[
+                      if (!room.isDirectChat &&
+                          room.canChangeStateEvent(mx.EventTypes.RoomAvatar))
+                        (
+                          label: 'Аватар',
+                          icon: Icons.add_a_photo_outlined,
+                          value: 'avatar',
+                          danger: false,
+                        ),
+                      if (!room.isDirectChat && room.canInvite)
+                        (
+                          label: 'Пригласить',
+                          icon: Icons.person_add_alt,
+                          value: 'invite',
+                          danger: false,
+                        ),
+                      if (!room.isDirectChat &&
+                          room.canChangeStateEvent(mx.EventTypes.RoomName))
+                        (
+                          label: 'Название',
+                          icon: Icons.edit_outlined,
+                          value: 'rename',
+                          danger: false,
+                        ),
+                      if (!room.isDirectChat)
+                        (
+                          label: 'Покинуть',
+                          icon: Icons.logout,
+                          value: 'leave',
+                          danger: true,
+                        ),
+                      (
+                        label: 'Закрыть',
+                        icon: Icons.close,
+                        value: null,
+                        danger: false,
+                      ),
+                    ];
+                final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
+                final columns = (trayWidth / (60 * scale)).floor().clamp(
+                  1,
+                  actions.length,
+                );
+                return Wrap(
+                  alignment: WrapAlignment.center,
+                  children: [
+                    for (final action in actions)
+                      SizedBox(
+                        width: trayWidth / columns,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: action.danger
+                                ? Theme.of(context).colorScheme.error
+                                : null,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 0,
+                              vertical: 10,
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(context, action.value),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(action.icon),
+                              const SizedBox(height: 6),
+                              Text(
+                                action.label,
+                                textAlign: TextAlign.center,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.labelSmall?.copyWith(fontSize: 10),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
-          if (!room.isDirectChat &&
-              room.canChangeStateEvent(mx.EventTypes.RoomName))
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'rename'),
-              child: const Text('Изменить название'),
-            ),
-          if (!room.isDirectChat)
-            TextButton(
-              onPressed: () => Navigator.pop(context, 'leave'),
-              child: const Text('Покинуть чат'),
-            ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
           ),
         ],
       ),

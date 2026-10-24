@@ -24,6 +24,56 @@ class ListClient implements Client {
 }
 
 void main() {
+  testWidgets(
+    'Own voice previews use lavender; peer previews use the reply accent',
+    (tester) async {
+      final client = ListClient();
+      final room = Room(id: '!voice:local', client: client);
+      client.rooms.add(room);
+      for (final palette in [AppPalette.lavender, AppPalette.midnight]) {
+        for (final own in [true, false]) {
+          room.lastEvent = Event.fromJson({
+            'event_id': r'$voice',
+            'type': EventTypes.Message,
+            'sender': own ? client.userID : '@friend:local',
+            'origin_server_ts': 1700000000000,
+            'content': {'msgtype': MessageTypes.Audio, 'body': 'voice.wav'},
+          }, room);
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: palette.theme,
+              home: Scaffold(
+                body: ConversationList(
+                  client: client,
+                  groups: true,
+                  onTabChanged: (_) {},
+                  onSelect: (_) {},
+                  onNewPerson: () {},
+                  onNewGroup: () {},
+                  onSettings: () {},
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final preview = find.text(
+            own ? 'Вы: Голосовое сообщение' : 'Голосовое сообщение',
+          );
+          expect(preview, findsOneWidget);
+          final tile = tester.widget<Container>(
+            find.ancestor(of: preview, matching: find.byType(Container)).first,
+          );
+          expect(
+            (tile.decoration as BoxDecoration).color,
+            own
+                ? palette.theme.colorScheme.primaryContainer
+                : palette.theme.colorScheme.tertiaryContainer,
+          );
+          expect(tester.takeException(), isNull);
+        }
+      }
+    },
+  );
   testWidgets('Muted people and groups show a persistent, accessible icon', (
     tester,
   ) async {

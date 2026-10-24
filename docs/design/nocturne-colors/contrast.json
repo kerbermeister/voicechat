@@ -1,0 +1,82 @@
+[
+  {
+    "theme": "01 / Moonstone",
+    "text": 10.97,
+    "secondary": 6.63,
+    "button": 9.82,
+    "accent": 9.39,
+    "secondaryAccent": 7.57
+  },
+  {
+    "theme": "02 / Glacier",
+    "text": 10.36,
+    "secondary": 6.39,
+    "button": 9.54,
+    "accent": 9.89,
+    "secondaryAccent": 7.3
+  },
+  {
+    "theme": "03 / Jade",
+    "text": 10.02,
+    "secondary": 6.43,
+    "button": 9.0,
+    "accent": 9.97,
+    "secondaryAccent": 7.22
+  },
+  {
+    "theme": "04 / Amber",
+    "text": 10.67,
+    "secondary": 6.7,
+    "button": 9.5,
+    "accent": 9.96,
+    "secondaryAccent": 7.23
+  },
+  {
+    "theme": "05 / Rosewood",
+    "text": 10.74,
+    "secondary": 6.55,
+    "button": 8.72,
+    "accent": 8.88,
+    "secondaryAccent": 7.26
+  },
+  {
+    "theme": "06 / Ultraviolet",
+    "text": 11.29,
+    "secondary": 6.76,
+    "button": 8.41,
+    "accent": 8.79,
+    "secondaryAccent": 7.88
+  },
+  {
+    "theme": "07 / Ember",
+    "text": 10.89,
+    "secondary": 6.82,
+    "button": 8.3,
+    "accent": 8.98,
+    "secondaryAccent": 7.88
+  },
+  {
+    "theme": "08 / Blue Hour",
+    "text": 10.27,
+    "secondary": 6.37,
+    "button": 7.82,
+    "accent": 8.48,
+    "secondaryAccent": 6.27
+  },
+  {
+    "theme": "09 / Lichen",
+    "text": 9.33,
+    "secondary": 6.05,
+    "button": 8.77,
+    "accent": 9.47,
+    "secondaryAccent": 6.09
+  },
+  {
+    "theme": "10 / Graphite",
+    "text": 10.27,
+    "secondary": 6.46,
+    "button": 11.56,
+    "accent": 11.86,
+    "secondaryAccent": 6.72
+  }
+]

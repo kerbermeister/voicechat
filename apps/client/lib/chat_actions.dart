@@ -36,6 +36,18 @@ class ChatActions extends ChangeNotifier {
   ChatActions(this.client, {this.policyUrl, this.onSent});
   static const _storageKey = 'dev.voicechat.local.outbox';
 
+  Future<MediaPolicy> _fetchPolicy() async {
+    final response = await client.httpClient
+        .get(secureEndpoint('$policyUrl/config'))
+        .timeout(const Duration(seconds: 5));
+    if (response.statusCode != 200 || response.bodyBytes.length > 8192) {
+      throw const FormatException('Policy unavailable');
+    }
+    return MediaPolicy.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<void> refreshPolicy() async {
     if (policyUrl == null ||
         _closed ||
@@ -46,15 +58,7 @@ class ChatActions extends ChangeNotifier {
     _loadingPolicy = true;
     _policyChecked = DateTime.now();
     try {
-      final response = await client.httpClient
-          .get(secureEndpoint('$policyUrl/config'))
-          .timeout(const Duration(seconds: 5));
-      if (response.statusCode != 200 || response.bodyBytes.length > 8192) {
-        throw const FormatException('Policy unavailable');
-      }
-      final next = MediaPolicy.fromJson(
-        jsonDecode(response.body) as Map<String, dynamic>,
-      );
+      final next = await _fetchPolicy();
       if (_closed) return;
       await (_writes = _writes
           .catchError((Object _) {})
@@ -483,7 +487,7 @@ class ChatActions extends ChangeNotifier {
         .firstOrNull;
     if (head != null && head['id'] != item['id']) {
       return head['error'] is String
-          ? 'Не отправлено. ${head['error']}'
+          ? 'Ожидает отправки предыдущего сообщения. ${head['error']}'
           : 'Ожидает отправки предыдущего сообщения';
     }
     return item['preparing'] == true
@@ -572,6 +576,17 @@ class ChatActions extends ChangeNotifier {
               Map<String, dynamic>.from(item['content'] as Map),
             );
           } else {
+            if (item['content']['dev.voicechat.ttl_seconds'] != null &&
+                policyUrl != null) {
+              try {
+                // Synapse also validates the deadline; this only makes an API outage explicit.
+                await _fetchPolicy();
+              } catch (_) {
+                throw UserActionError(
+                  'Сервис временных сообщений недоступен. Сообщение сохранено; повторим автоматически. Следующие сообщения этого чата ждут его отправки.',
+                );
+              }
+            }
             await authorizedDevices(room).timeout(const Duration(seconds: 8));
             if (_closed) break;
             await client.encryption!.keyManager.clearOrUseOutboundGroupSession(
@@ -665,6 +680,11 @@ class ChatActions extends ChangeNotifier {
           if (error is ScheduleRejected) item['schedule_rejected'] = true;
           item['error'] = error is UserActionError
               ? error.message
+              : error is MatrixException &&
+                    error.error == MatrixError.M_FORBIDDEN
+              ? item['content']['dev.voicechat.ttl_seconds'] != null
+                    ? 'Сервер отклонил временное сообщение. Проверьте доступ к чату и доступность сервиса срока жизни. Сообщение сохранено; повторим автоматически.'
+                    : 'Сервер запретил отправку в этот чат. Проверьте доступ. Сообщение сохранено.'
               : 'Нет подтверждения отправки. Повторим при восстановлении связи.';
           await _save();
           break; // Retry this chat later; unrelated chats continue independently.

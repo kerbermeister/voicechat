@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
@@ -6,22 +7,25 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'device_verification.dart';
 import 'device_qr_scanner.dart';
 import 'voice_call.dart';
+import 'identity_field.dart';
 
-Future<void> showDeviceVerification(
+Future<bool> showDeviceVerification(
   BuildContext context,
   DeviceVerifications owner,
   KeyVerification request, {
   VoiceCall? call,
 }) async {
-  if (owner.viewing != null) return;
+  if (owner.viewing != null) return false;
   owner.viewing = request;
   try {
     await showDialog<void>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       barrierDismissible: false,
       builder: (_) =>
           _VerificationDialog(owner: owner, request: request, call: call),
     );
+    return owner.completed.contains(request);
   } finally {
     if (!request.isDone) {
       try {
@@ -48,6 +52,7 @@ class _VerificationDialog extends StatefulWidget {
 
 class _VerificationDialogState extends State<_VerificationDialog> {
   bool busy = false;
+  bool showNumbers = false;
   String? error;
   Future<void> scan() async {
     if (busy) return;
@@ -113,6 +118,21 @@ class _VerificationDialogState extends State<_VerificationDialog> {
     builder: (context, _) {
       final request = widget.request;
       final completed = widget.owner.completed.contains(request);
+      if (!busy &&
+          !request.isDone &&
+          request.userId == widget.owner.client.userID &&
+          (request.state == KeyVerificationState.askChoice &&
+                  request.startedVerification ||
+              request.state == KeyVerificationState.askSSSS)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || busy || request.isDone) return;
+          if (request.state == KeyVerificationState.askChoice) {
+            act(() => request.continueVerification(EventTypes.Sas));
+          } else if (request.state == KeyVerificationState.askSSSS) {
+            act(() => request.openSSSS(skip: true));
+          }
+        });
+      }
       return AlertDialog(
         title: Text(
           completed ? 'Устройство подтверждено' : 'Проверка устройства',
@@ -124,9 +144,11 @@ class _VerificationDialogState extends State<_VerificationDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${request.userId}\nУстройство: ${request.deviceId ?? 'ожидаем ответ'}',
-                ),
+                IdentityField(label: 'Аккаунт', value: request.userId),
+                if (request.deviceId case final String deviceId)
+                  IdentityField(label: 'Устройство', value: deviceId)
+                else
+                  const Text('Устройство: ожидаем ответ'),
                 const SizedBox(height: 16),
                 if (completed)
                   const Text(
@@ -149,29 +171,44 @@ class _VerificationDialogState extends State<_VerificationDialog> {
                   )
                 else if (request.state == KeyVerificationState.askSas) ...[
                   const Text(
-                    'Сравните все семь эмодзи и три числа на обоих устройствах лично или по независимому доверенному каналу.',
+                    'Выберите одинаковый способ и сравните все символы на обоих устройствах. Подтверждайте только при полном совпадении.',
                   ),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final emoji in request.sasEmojis)
-                        Tooltip(
-                          message: emoji.name,
-                          child: Text(
-                            emoji.emoji,
-                            style: const TextStyle(fontSize: 34),
-                          ),
-                        ),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(value: false, label: Text('Эмодзи')),
+                      ButtonSegment(value: true, label: Text('Код')),
                     ],
+                    selected: {showNumbers},
+                    onSelectionChanged: (value) =>
+                        setState(() => showNumbers = value.single),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    request.sasNumbers.join('  '),
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                ] else if (request.state == KeyVerificationState.askChoice) ...[
+                  if (!showNumbers)
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final emoji in request.sasEmojis)
+                          Tooltip(
+                            message: emoji.name,
+                            child: Text(
+                              emoji.emoji,
+                              style: const TextStyle(fontSize: 34),
+                            ),
+                          ),
+                      ],
+                    ),
+                  const SizedBox(height: 12),
+                  if (showNumbers)
+                    Text(
+                      request.sasNumbers.join('  '),
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                ] else if (request.state == KeyVerificationState.askChoice &&
+                    request.userId == widget.owner.client.userID)
+                  const Text('Ждём начало сверки на новом устройстве…')
+                else if (request.state == KeyVerificationState.askChoice) ...[
                   const Text(
                     'Сравните эмодзи или сканируйте QR с другого устройства лично.',
                   ),
@@ -239,7 +276,8 @@ class _VerificationDialogState extends State<_VerificationDialog> {
               child: const Text('Принять проверку'),
             ),
           if (!request.isDone &&
-              request.state == KeyVerificationState.askChoice)
+              request.state == KeyVerificationState.askChoice &&
+              request.userId != widget.owner.client.userID)
             FilledButton(
               onPressed: busy
                   ? null
@@ -249,6 +287,7 @@ class _VerificationDialogState extends State<_VerificationDialog> {
             ),
           if (!request.isDone &&
               request.state == KeyVerificationState.askChoice &&
+              request.userId != widget.owner.client.userID &&
               request.possibleMethods.contains(EventTypes.QRScan))
             OutlinedButton(
               onPressed: busy ? null : scan,

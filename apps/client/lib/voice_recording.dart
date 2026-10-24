@@ -1,6 +1,35 @@
 import 'dart:typed_data';
 import 'dart:math';
 
+/// Consecutive 50 ms RMS windows of PCM16 mono at 16 kHz, independent of chunks.
+class PcmLevelMeter {
+  static const interval = Duration(milliseconds: 50);
+  static const historySize = 56;
+  final levels = <int>[];
+  double _squares = 0;
+  int _samples = 0;
+  int? _lowByte;
+
+  void add(Uint8List chunk) {
+    for (final byte in chunk) {
+      if (_lowByte == null) {
+        _lowByte = byte;
+        continue;
+      }
+      final word = _lowByte! | (byte << 8);
+      _lowByte = null;
+      final sample = (word >= 32768 ? word - 65536 : word) / 32768;
+      _squares += sample * sample;
+      if (++_samples == 800) {
+        levels.add((sqrt(_squares / _samples) * 1024).round().clamp(0, 1024));
+        if (levels.length > historySize) levels.removeAt(0);
+        _samples = 0;
+        _squares = 0;
+      }
+    }
+  }
+}
+
 /// PCM16 mono, 16 kHz; the recorder streams into memory, never a plaintext file.
 Uint8List voiceWav(Uint8List pcm) {
   if (pcm.isEmpty || pcm.length.isOdd || pcm.length > 16000 * 2 * 180) {

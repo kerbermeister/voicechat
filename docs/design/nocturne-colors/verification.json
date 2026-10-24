@@ -1,0 +1,35 @@
+{
+  "themes": 10,
+  "mobileScreens": 80,
+  "overflows": [],
+  "responsive": [
+    {
+      "width": 320,
+      "overflow": false,
+      "screens": []
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "screens": []
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "screens": []
+    },
+    {
+      "width": 1440,
+      "overflow": false,
+      "screens": []
+    },
+    {
+      "width": 1720,
+      "overflow": false,
+      "screens": []
+    }
+  ],
+  "filtered": 1,
+  "desktopFollows": "03 / Jade",
+  "errors": []
+}

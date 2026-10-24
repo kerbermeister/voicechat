@@ -1,0 +1,9 @@
+{
+  "origin": "https://univc.duckdns.org",
+  "emoji_sas": true,
+  "encrypted_history_decrypted": true,
+  "reload": true,
+  "physical_devices": "NOT_TESTED",
+  "main_js_sha256": "def971d729a70f2c916a4d75dcfe348bbbb7fc741e395492f6bb156b912192ce",
+  "deployment": "web-only local image hotfix; base release unchanged"
+}

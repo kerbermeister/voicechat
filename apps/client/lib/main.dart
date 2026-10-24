@@ -1,5 +1,8 @@
+import 'app_motion.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'identity_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart' as mx;
@@ -35,6 +38,8 @@ import 'theme.dart';
 import 'user_action_error.dart';
 import 'transport.dart';
 import 'device_verification.dart';
+import 'device_link.dart';
+import 'dart:math';
 import 'device_verification_dialog.dart';
 import 'history_recovery.dart';
 import 'history_recovery_dialog.dart';
@@ -49,6 +54,11 @@ Future<void> main() async {
   await cleanupRecordings();
   runApp(const VoiceChatApp());
 }
+
+String newDeviceProfile() => List.generate(
+  24,
+  (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
+).join();
 
 class VoiceChatApp extends StatefulWidget {
   const VoiceChatApp({super.key});
@@ -86,11 +96,16 @@ class _VoiceChatAppState extends State<VoiceChatApp> {
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'VoiceChat',
+    locale: const Locale('ru'),
+    supportedLocales: const [Locale('ru')],
+    localizationsDelegates: GlobalMaterialLocalizations.delegates,
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
       child: child!,
     ),
     theme: palette.theme,
+    themeAnimationDuration: appMotionDuration,
+    themeAnimationCurve: Curves.easeOutCubic,
     home: ProbeScreen(palette: palette, onPalette: setPalette),
   );
 }
@@ -128,8 +143,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   );
   final username = TextEditingController(text: 'alice');
   final password = TextEditingController();
-  final vaultPassword = TextEditingController();
-  final profile = TextEditingController(text: 'device-1');
+  final profile = TextEditingController(text: newDeviceProfile());
   MatrixProbe? probe;
   mx.Room? selected;
   mx.Timeline? timeline;
@@ -148,8 +162,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
   bool online = true;
   bool restoringSession = true;
   bool savedAccount = false;
+  bool linked = false;
   bool groupsTab = false;
-  bool rememberTab = true;
 
   @override
   void initState() {
@@ -161,12 +175,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final stored = readTabAccount() ?? prefs.getString('lastAccount');
-      rememberTab = prefs.getBool('rememberTab') ?? true;
       if (stored == null) return;
       final data = jsonDecode(stored) as Map<String, dynamic>;
-      if (data['rememberTab'] is bool) {
-        rememberTab = data['rememberTab'] as bool;
-      }
       for (final entry in {
         'profile': profile,
         'username': username,
@@ -181,16 +191,13 @@ class _ProbeScreenState extends State<ProbeScreen> {
         entry.value.text = value;
       }
       savedAccount = true;
-      if (kIsWeb && rememberTab) {
-        try {
-          await login(resume: true);
-        } catch (_) {
-          status =
-              'Введите локальную фразу, чтобы открыть сохранённую переписку.';
-        }
+      try {
+        await login(resume: true);
+      } catch (_) {
+        status = 'Не удалось открыть сохранённый вход. Попробуйте снова.';
       }
     } catch (_) {
-      status = 'Откройте свой профиль. Локальные данные сохранены.';
+      status = 'Откройте свой аккаунт. Локальные данные сохранены.';
     } finally {
       if (mounted) setState(() => restoringSession = false);
     }
@@ -204,11 +211,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
       'server': server.text.trim(),
       'tokenServer': tokenServer.text.trim(),
       'mediaServer': mediaServer.text.trim(),
-      'rememberTab': rememberTab,
     });
     writeTabAccount(account);
     await prefs.setString('lastAccount', account);
-    await prefs.setBool('rememberTab', rememberTab);
     savedAccount = true;
   }
 
@@ -246,11 +251,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> login({bool resume = false}) async {
-    final next = await MatrixProbe.open(
-      profile.text.trim(),
-      passphrase: kIsWeb && !resume ? vaultPassword.text : null,
-      remember: kIsWeb && rememberTab,
-    );
+    if (!savedAccount) profile.text = newDeviceProfile();
+    final accountPassword = password.text;
+    final next = await MatrixProbe.open(profile.text.trim(), automatic: true);
     try {
       if (!next.client.isLogged() && savedAccount) {
         savedAccount = false;
@@ -264,12 +267,13 @@ class _ProbeScreenState extends State<ProbeScreen> {
       rethrow;
     }
     await connected(next);
+    if (!linked && mounted) await linkDevice(accountPassword);
   }
 
   Future<void> connected(MatrixProbe next) async {
     password.clear();
-    vaultPassword.clear();
     probe = next;
+    linked = await deviceLinked(next.client);
     enableFirstContactTrust(next.client);
     historyRecovery = HistoryRecovery(next.client, () {
       if (mounted) {
@@ -280,6 +284,17 @@ class _ProbeScreenState extends State<ProbeScreen> {
     });
     verifications = DeviceVerifications(next.client, () {
       if (!mounted) return;
+      final owner = verifications;
+      if (owner != null && owner.pending.isNotEmpty && owner.viewing == null) {
+        unawaited(
+          showDeviceVerification(
+            context,
+            owner,
+            owner.pending.first,
+            call: call,
+          ),
+        );
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Получен запрос проверки устройства'),
@@ -362,22 +377,25 @@ class _ProbeScreenState extends State<ProbeScreen> {
     MatrixProbe? next;
     Future<mx.Client>? preparing;
     var adopted = false;
+    String? registrationPassword;
+    profile.text = newDeviceProfile();
     try {
       final completed = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
           builder: (_) => RegistrationScreen(
             resetPassword: reset,
+            requireLocalPassphrase: false,
+            onRegistered: (value) => registrationPassword = value,
             openClient: (passphrase) => preparing = () async {
               final opened = await MatrixProbe.open(
                 profile.text.trim(),
-                passphrase: passphrase,
-                remember: kIsWeb && rememberTab,
+                automatic: true,
               );
               try {
                 if (opened.client.isLogged()) {
                   throw UserActionError(
-                    'Этот локальный профиль уже связан с аккаунтом. Используйте другое имя профиля для регистрации.',
+                    'Не удалось создать новое хранилище. Повторите регистрацию.',
                   );
                 }
                 await opened.client.checkHomeserver(
@@ -397,6 +415,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       if (completed == true && !reset && next != null) {
         await connected(next!);
         adopted = true;
+        if (mounted) await linkDevice(registrationPassword);
       }
       if (completed == true && reset) {
         report('Пароль изменён. Войдите снова и восстановите историю ключом.');
@@ -416,6 +435,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     final input = TextEditingController(text: initial);
     final value = await showDialog<String>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: Text(title),
         content: TextField(controller: input, autofocus: true),
@@ -438,6 +458,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   Future<void> newChat({bool group = false}) async {
     final people = await showDialog<List<String>>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (_) => PeoplePicker(
         client: probe!.client,
         multiple: group,
@@ -497,6 +518,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (!mounted) return;
     final result = await showDialog<String>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (_) => ProfileDialog(
         client: probe!.client,
         contacts: contacts!,
@@ -532,6 +554,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (!mounted) return;
     await showDialog<void>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (_) => InvitationsDialog(contacts: service),
     );
     if (mounted) setState(() {});
@@ -550,6 +573,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
         chosenAction ??
         await showDialog<String>(
           context: context,
+          animationStyle: appAnimationStyle(context),
           builder: (_) => RoomMembersDialog(room: room, members: members),
         );
     if (action?.startsWith('profile:') == true && mounted) {
@@ -557,6 +581,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     } else if (action == 'invite' && !room.isDirectChat && mounted) {
       final users = await showDialog<List<String>>(
         context: context,
+        animationStyle: appAnimationStyle(context),
         builder: (_) => PeoplePicker(
           client: room.client,
           multiple: true,
@@ -643,13 +668,125 @@ class _ProbeScreenState extends State<ProbeScreen> {
     report('Локальный стенд · сквозное шифрование');
   }
 
+  Future<void> linkDevice(String? accountPassword) async {
+    final client = probe!.client;
+    final identity = await client.getCryptoIdentityState();
+    if (!identity.initialized) {
+      final devices = await client.getDevices();
+      if (devices == null ||
+          devices.any((d) => d.deviceId != client.deviceID)) {
+        throw UserActionError(
+          'На аккаунте ещё не настроено восстановление. Создайте ключ на первом устройстве.',
+        );
+      }
+      final secret = accountPassword?.isNotEmpty == true
+          ? accountPassword
+          : await askPassword();
+      if (secret == null) return;
+      final key = await probe!.initializeRecovery(secret);
+      await client.encryption!.keyManager.uploadInboundGroupSessions();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Сохраните ключ восстановления'),
+          content: SelectableText(
+            'Он понадобится, если вы потеряете все устройства. Сохраните его в менеджере паролей.\n\n$key',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Я сохранил ключ'),
+            ),
+          ],
+        ),
+      );
+      await markDeviceLinked(client);
+      if (mounted) setState(() => linked = true);
+      return;
+    }
+    await client.updateUserDeviceKeys();
+    final devices =
+        client.userDeviceKeys[client.userID]?.deviceKeys.values
+            .where(
+              (d) => d.deviceId != client.deviceID && d.isValid && !d.blocked,
+            )
+            .toList() ??
+        [];
+    if (!mounted) return;
+    final device = devices.length == 1
+        ? devices.single
+        : await showDialog<mx.DeviceKeys>(
+            context: context,
+            builder: (dialogContext) => SimpleDialog(
+              title: const Text('Где подтвердить вход?'),
+              children: [
+                if (devices.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'Других устройств нет. Используйте ключ восстановления.',
+                    ),
+                  ),
+                for (final device in devices)
+                  SimpleDialogOption(
+                    onPressed: () => Navigator.pop(dialogContext, device),
+                    child: Text(
+                      '${device.deviceDisplayName ?? 'VoiceChat'} · ${device.deviceId}',
+                    ),
+                  ),
+              ],
+            ),
+          );
+    if (device == null || !mounted) return;
+    final owner = verifications!;
+    final request = await owner.start(device);
+    if (!mounted) return;
+    final verified = await showDeviceVerification(
+      context,
+      owner,
+      request,
+      call: call,
+    );
+    if (!verified ||
+        request.canceled ||
+        request.state != crypto.KeyVerificationState.done ||
+        !device.directVerified) {
+      throw UserActionError('Подключение не подтверждено. Повторите сверку.');
+    }
+    report('Получаем ключи и восстанавливаем историю…');
+    await receiveLinkedSecrets(client, device);
+    if (mounted) setState(() => linked = true);
+  }
+
   Future<void> setupRecovery() async {
+    if ((await probe!.client.getCryptoIdentityState()).initialized) {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Ключ восстановления'),
+          content: const Text(
+            'Ключ был показан при первом входе. Используйте сохранённую копию из менеджера паролей. Новые устройства можно подключить подтверждением на этом устройстве. Создание другого ключа не требуется.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Понятно'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
     final secret = await askPassword();
     if (secret == null) return;
     final key = await probe!.initializeRecovery(secret);
     if (!mounted) return;
     await showDialog<void>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('Сохраните ключ восстановления'),
         content: SelectableText(
@@ -672,6 +809,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     final input = TextEditingController();
     final value = await showDialog<String>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('Вернуть историю'),
         content: TextField(
@@ -696,6 +834,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     input.dispose();
     if (value == null) return;
     await probe!.restore(value);
+    await markDeviceLinked(probe!.client);
+    linked = true;
     report('Ключи восстановлены. Откройте чат для загрузки истории.');
   }
 
@@ -724,6 +864,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     final input = TextEditingController();
     final value = await showDialog<String>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('Подтвердите паролем аккаунта'),
         content: TextField(
@@ -799,11 +940,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
         .expand((user) => client.userDeviceKeys[user]!.deviceKeys.values)
         .toList();
     final independent = await independentlyVerifiedDevices(client, devices);
-    final ownIdentity =
-        'Это устройство: ${client.userID} / ${client.deviceID}\nВаш отпечаток:\n${client.fingerprintKey}';
     if (!mounted) return;
     final chosen = await showDialog<Object>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('Проверка личности устройств'),
         content: SizedBox(
@@ -813,12 +953,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Semantics(
-                  container: true,
-                  label: ownIdentity,
-                  excludeSemantics: true,
-                  child: SelectableText(ownIdentity),
-                ),
+                IdentityField(label: 'Аккаунт', value: client.userID!),
+                IdentityField(label: 'Это устройство', value: client.deviceID!),
+                if (client.fingerprintKey case final String fingerprint)
+                  IdentityField(label: 'Ваш отпечаток', value: fingerprint),
                 const SizedBox(height: 16),
                 const Text(
                   'Выберите устройство и сравните коды на обоих экранах лично или по независимому каналу. Автоматически закреплённый ключ ещё не означает независимую проверку.',
@@ -829,52 +967,55 @@ class _ProbeScreenState extends State<ProbeScreen> {
                     onTap: () => Navigator.pop(context, request),
                   ),
                 ...devices.map(
-                  (device) => ListTile(
-                    title: Text('${device.userId} / ${device.deviceId}'),
-                    subtitle: Text(
-                      device.userId == client.userID &&
-                              device.deviceId == client.deviceID
-                          ? 'Это устройство'
-                          : independent.contains(device)
-                          ? 'Подтверждено независимой сверкой'
-                          : device.directVerified
-                          ? 'Ключ закреплён без отметки независимой сверки'
-                          : 'Не проверено',
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          independent.contains(device)
-                              ? Icons.verified_user
-                              : device.directVerified
-                              ? Icons.lock_outline
-                              : Icons.help_outline,
-                        ),
-                        if (!device.blocked &&
-                            !(device.userId == client.userID &&
-                                device.deviceId == client.deviceID))
-                          PopupMenuButton<String>(
-                            tooltip: 'Способ проверки',
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
-                                value: 'manual',
-                                child: Text('Сверить полный отпечаток'),
-                              ),
-                            ],
-                            onSelected: (_) => Navigator.pop(context, (
-                              device: device,
-                              manual: true,
-                            )),
+                  (device) => Card.outlined(
+                    margin: const EdgeInsets.only(top: 10),
+                    child: ListTile(
+                      title: Text(device.userId),
+                      subtitle: Text(
+                        '${device.deviceId}\n${device.userId == client.userID && device.deviceId == client.deviceID
+                            ? 'Это устройство'
+                            : independent.contains(device)
+                            ? 'Подтверждено независимой сверкой'
+                            : device.directVerified
+                            ? 'Ключ закреплён без отметки независимой сверки'
+                            : 'Не проверено'}',
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            independent.contains(device)
+                                ? Icons.verified_user
+                                : device.directVerified
+                                ? Icons.lock_outline
+                                : Icons.help_outline,
                           ),
-                      ],
+                          if (!device.blocked &&
+                              !(device.userId == client.userID &&
+                                  device.deviceId == client.deviceID))
+                            PopupMenuButton<String>(
+                              popUpAnimationStyle: appAnimationStyle(context),
+                              tooltip: 'Способ проверки',
+                              itemBuilder: (_) => const [
+                                PopupMenuItem(
+                                  value: 'manual',
+                                  child: Text('Сверить полный отпечаток'),
+                                ),
+                              ],
+                              onSelected: (_) => Navigator.pop(context, (
+                                device: device,
+                                manual: true,
+                              )),
+                            ),
+                        ],
+                      ),
+                      onTap:
+                          device.blocked ||
+                              device.userId == client.userID &&
+                                  device.deviceId == client.deviceID
+                          ? null
+                          : () => Navigator.pop(context, device),
                     ),
-                    onTap:
-                        device.blocked ||
-                            device.userId == client.userID &&
-                                device.deviceId == client.deviceID
-                        ? null
-                        : () => Navigator.pop(context, device),
                   ),
                 ),
               ],
@@ -906,6 +1047,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   Future<void> historyRequests() async {
     await showDialog<void>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       barrierDismissible: false,
       builder: (_) => HistoryRecoveryDialog(
         owner: historyRecovery!,
@@ -919,12 +1061,14 @@ class _ProbeScreenState extends State<ProbeScreen> {
     final input = TextEditingController();
     final fingerprint = await showDialog<String>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('Введите отпечаток со второго устройства'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('${chosen.userId} / ${chosen.deviceId}'),
+            IdentityField(label: 'Аккаунт', value: chosen.userId),
+            IdentityField(label: 'Устройство', value: chosen.deviceId!),
             TextField(
               controller: input,
               autocorrect: false,
@@ -959,6 +1103,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (!mounted) return;
     final device = await showDialog<mx.Device>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('Устройства аккаунта'),
         content: SizedBox(
@@ -970,20 +1115,25 @@ class _ProbeScreenState extends State<ProbeScreen> {
                 'Отзыв завершает сеанс. Уже полученные сообщения и скопированные ключи удалить удалённо нельзя.',
               ),
               ...?items?.map(
-                (device) => ListTile(
-                  title: Text(device.displayName ?? device.deviceId),
-                  subtitle: Text(
-                    device.deviceId == probe!.client.deviceID
-                        ? 'Это устройство'
-                        : device.deviceId,
+                (device) => Card.outlined(
+                  margin: const EdgeInsets.only(top: 12),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(12),
+                    leading: const Icon(Icons.devices_outlined),
+                    title: Text(device.displayName ?? device.deviceId),
+                    subtitle: Text(
+                      device.deviceId == probe!.client.deviceID
+                          ? '${device.deviceId} · Это устройство'
+                          : device.deviceId,
+                    ),
+                    trailing: device.deviceId == probe!.client.deviceID
+                        ? null
+                        : IconButton(
+                            tooltip: 'Отозвать доступ',
+                            icon: const Icon(Icons.no_accounts_outlined),
+                            onPressed: () => Navigator.pop(context, device),
+                          ),
                   ),
-                  trailing: device.deviceId == probe!.client.deviceID
-                      ? null
-                      : IconButton(
-                          tooltip: 'Отозвать доступ',
-                          icon: const Icon(Icons.no_accounts_outlined),
-                          onPressed: () => Navigator.pop(context, device),
-                        ),
                 ),
               ),
             ],
@@ -1010,6 +1160,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   Future<void> logout() async {
     final confirmed = await showDialog<bool>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
         title: const Text('Выйти и удалить локальные ключи?'),
         content: const Text(
@@ -1049,6 +1200,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     writeTabAccount(null);
     savedAccount = false;
     await calls?.close();
+    await verifications?.close();
+    verifications = null;
     await sounds?.close();
     await historyRecovery?.close();
     await presenceTracker?.close();
@@ -1093,7 +1246,6 @@ class _ProbeScreenState extends State<ProbeScreen> {
       username,
       password,
       profile,
-      vaultPassword,
     ]) {
       c.dispose();
     }
@@ -1112,6 +1264,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
         ),
       );
   Widget paletteMenu() => PopupMenuButton<AppPalette>(
+    popUpAnimationStyle: appAnimationStyle(context),
     tooltip: 'Цветовая схема',
     initialValue: widget.palette,
     onSelected: widget.onPalette,
@@ -1154,35 +1307,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
             field(username, 'Имя пользователя'),
             field(password, 'Пароль аккаунта', secret: true),
           ],
-          if (kIsWeb)
-            field(
-              vaultPassword,
-              'Отдельная локальная фраза (от 12 символов)',
-              secret: true,
-            ),
-          if (kIsWeb)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                savedAccount
-                    ? 'Это фраза, которую вы придумали при первом входе. Пароль аккаунта повторно не нужен.'
-                    : 'Придумайте отдельную фразу для защиты переписки в браузере. Для этого профиля её потребуется помнить.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          if (kIsWeb)
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              value: rememberTab,
-              onChanged: (value) => setState(() => rememberTab = value!),
-              title: const Text('Сохранять вход в этой вкладке'),
-              subtitle: const Text(
-                'Обновление страницы без повторного пароля. «Заблокировать» завершит разблокировку.',
-              ),
-            ),
+          const Text(
+            'Переписка хранится зашифрованной на этом устройстве. Для нового входа понадобится подтверждение с другого устройства или ключ восстановления.',
+          ),
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: busy ? null : () => run(login),
@@ -1196,8 +1323,11 @@ class _ProbeScreenState extends State<ProbeScreen> {
           const SizedBox(height: 12),
           if (savedAccount)
             TextButton(
-              onPressed: () => setState(() => savedAccount = false),
-              child: const Text('Другой аккаунт или профиль'),
+              onPressed: () => setState(() {
+                savedAccount = false;
+                profile.text = newDeviceProfile();
+              }),
+              child: const Text('Другой аккаунт'),
             )
           else ...[
             OutlinedButton(
@@ -1216,7 +1346,6 @@ class _ProbeScreenState extends State<ProbeScreen> {
             tilePadding: EdgeInsets.zero,
             title: const Text('Параметры подключения'),
             children: [
-              field(profile, 'Профиль устройства'),
               field(server, 'Matrix URL'),
               field(tokenServer, 'Token API URL'),
               field(mediaServer, 'LiveKit URL'),
@@ -1240,6 +1369,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     String? privacyError;
     final chosen = await showDialog<String>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (dialogContext) => AlertDialog(
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         title: const Text('Настройки'),
@@ -1359,7 +1489,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.key_outlined),
-                  title: const Text('Создать ключ'),
+                  title: const Text('Ключ восстановления'),
                   onTap: () => Navigator.pop(dialogContext, 'recovery'),
                 ),
                 ListTile(
@@ -1381,15 +1511,6 @@ class _ProbeScreenState extends State<ProbeScreen> {
                   onTap: () => Navigator.pop(dialogContext, 'backup'),
                 ),
                 const Divider(height: 24),
-                if (kIsWeb)
-                  ListTile(
-                    leading: const Icon(Icons.lock_outline),
-                    title: const Text('Заблокировать'),
-                    subtitle: const Text(
-                      'Закрыть локальные ключи в этой вкладке',
-                    ),
-                    onTap: () => Navigator.pop(dialogContext, 'lock'),
-                  ),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded),
                   title: const Text('Выйти'),
@@ -1422,6 +1543,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
           if (mounted) {
             await showDialog<void>(
               context: context,
+              animationStyle: appAnimationStyle(context),
               builder: (_) => StorageDialog(policy: storagePolicy!),
             );
           }
@@ -1537,14 +1659,22 @@ class _ProbeScreenState extends State<ProbeScreen> {
       completeHistory: completeHistory,
       onJump: (event) => run(() => select(room, eventId: event)),
       header: Container(
-        padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+        padding: const EdgeInsets.fromLTRB(8, 16, 12, 24),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.tertiaryContainer,
         ),
         child: Row(
           children: [
-            IconButton(
+            IconButton.filledTonal(
               tooltip: 'Закрыть чат',
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerLowest.withValues(alpha: .65),
+                foregroundColor: Theme.of(
+                  context,
+                ).colorScheme.onTertiaryContainer,
+              ),
               onPressed: () => run(() async {
                 await stopActiveCapture();
                 if (mounted) setState(() => selected = null);
@@ -1606,9 +1736,19 @@ class _ProbeScreenState extends State<ProbeScreen> {
             ),
             if (MediaQuery.sizeOf(context).width < 500)
               PopupMenuButton<bool>(
+                popUpAnimationStyle: appAnimationStyle(context),
                 tooltip: 'Позвонить',
                 enabled: !busy && (call == null || call!.isClosed),
-                icon: const Icon(Icons.call_outlined),
+                icon: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerLowest.withValues(alpha: .65),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.call_outlined),
+                ),
                 onSelected: (video) => run(() => startCall(video: video)),
                 itemBuilder: (_) => const [
                   PopupMenuItem(value: false, child: Text('Голосовой звонок')),
@@ -1667,6 +1807,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       if (!mounted) return;
       await showDialog<void>(
         context: context,
+        animationStyle: appAnimationStyle(context),
         barrierDismissible: false,
         builder: (_) => CallWindow(calls: calls!, audioOutput: audioOutput),
       );
@@ -1709,31 +1850,87 @@ class _ProbeScreenState extends State<ProbeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (probe != null && !linked) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Подключить устройство')),
+        body: SingleChildScrollView(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Подтвердите вход на устройстве, где уже открыта переписка. Держите оба устройства рядом.',
+                    ),
+                    const SizedBox(height: 16),
+                    if (busy)
+                      const LinearProgressIndicator(
+                        semanticsLabel: 'Подключение и восстановление истории',
+                      ),
+                    FilledButton(
+                      onPressed: busy
+                          ? null
+                          : () => run(() => linkDevice(null)),
+                      child: const Text('Подтвердить на другом устройстве'),
+                    ),
+                    TextButton(
+                      onPressed: busy
+                          ? null
+                          : () => run(() async {
+                              await restore();
+                              if (mounted) setState(() {});
+                            }),
+                      child: const Text('У меня есть ключ восстановления'),
+                    ),
+                    TextButton(
+                      onPressed: busy ? null : () => run(lock),
+                      child: const Text('Вернуться ко входу'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     final colors = Theme.of(context).colorScheme;
     final keyboardOpen = View.of(context).viewInsets.bottom > 0;
     return Scaffold(
+      backgroundColor: probe == null
+          ? null
+          : selected == null
+          ? colors.primary
+          : colors.tertiaryContainer,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, box) {
             final wide = box.maxWidth >= 840;
             return Padding(
-              padding: EdgeInsets.all(wide ? 24 : 0),
+              padding: EdgeInsets.all(wide && probe == null ? 24 : 0),
               child: Center(
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1480),
+                  constraints: BoxConstraints(
+                    maxWidth: probe == null ? 1480 : double.infinity,
+                  ),
                   child: Container(
                     clipBehavior: Clip.antiAlias,
                     decoration: BoxDecoration(
                       color: colors.surface,
-                      borderRadius: BorderRadius.circular(wide ? 30 : 0),
-                      border: wide
+                      borderRadius: BorderRadius.circular(
+                        wide && probe == null ? 30 : 0,
+                      ),
+                      border: wide && probe == null
                           ? Border.all(
                               color: colors.outlineVariant.withValues(
                                 alpha: .5,
                               ),
                             )
                           : null,
-                      boxShadow: wide
+                      boxShadow: wide && probe == null
                           ? [
                               BoxShadow(
                                 color: colors.primary.withValues(alpha: .06),
@@ -1747,12 +1944,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
                       color: colors.surface,
                       child: Column(
                         children: [
-                          SizedBox(
-                            height: 2,
-                            child: busy || restoringSession
-                                ? const LinearProgressIndicator(minHeight: 2)
-                                : null,
-                          ),
+                          if (busy || restoringSession)
+                            const LinearProgressIndicator(minHeight: 2),
                           if (probe != null) callBanner(),
                           if (probe != null && !online)
                             Container(
@@ -1772,12 +1965,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
                                       child: CircularProgressIndicator(),
                                     )
                                   : AnimatedSwitcher(
-                                      duration:
-                                          MediaQuery.disableAnimationsOf(
-                                            context,
-                                          )
-                                          ? Duration.zero
-                                          : const Duration(milliseconds: 240),
+                                      duration: motionDuration(context),
+                                      switchInCurve: Curves.easeOutCubic,
+                                      switchOutCurve: Curves.easeInCubic,
                                       child: probe == null
                                           ? (wide
                                                 ? Row(
@@ -1805,17 +1995,33 @@ class _ProbeScreenState extends State<ProbeScreen> {
                                                     key: const ValueKey(
                                                       'welcome-small',
                                                     ),
-                                                    child: Column(
-                                                      children: [
-                                                        const SizedBox(
-                                                          width:
-                                                              double.infinity,
-                                                          child: WelcomePanel(
-                                                            compact: true,
+                                                    child: ColoredBox(
+                                                      color: colors.primary,
+                                                      child: Column(
+                                                        children: [
+                                                          const SizedBox(
+                                                            width:
+                                                                double.infinity,
+                                                            child: WelcomePanel(
+                                                              compact: true,
+                                                            ),
                                                           ),
-                                                        ),
-                                                        connection(),
-                                                      ],
+                                                          Material(
+                                                            color:
+                                                                colors.surface,
+                                                            borderRadius:
+                                                                const BorderRadius.vertical(
+                                                                  top:
+                                                                      Radius.circular(
+                                                                        32,
+                                                                      ),
+                                                                ),
+                                                            clipBehavior:
+                                                                Clip.antiAlias,
+                                                            child: connection(),
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ),
                                                   ))
                                           : wide
@@ -1828,12 +2034,18 @@ class _ProbeScreenState extends State<ProbeScreen> {
                                                   width: 350,
                                                   child: rooms(),
                                                 ),
-                                                VerticalDivider(
-                                                  width: 1,
-                                                  color: colors.outlineVariant
-                                                      .withValues(alpha: .5),
+                                                Expanded(
+                                                  child: AnimatedSwitcher(
+                                                    duration: motionDuration(
+                                                      context,
+                                                    ),
+                                                    switchInCurve:
+                                                        Curves.easeOutCubic,
+                                                    switchOutCurve:
+                                                        Curves.easeInCubic,
+                                                    child: conversation(),
+                                                  ),
                                                 ),
-                                                Expanded(child: conversation()),
                                               ],
                                             )
                                           : selected == null
@@ -1842,8 +2054,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
                                               child: rooms(),
                                             )
                                           : KeyedSubtree(
-                                              key: const ValueKey(
-                                                'conversation',
+                                              key: ValueKey(
+                                                'conversation-${selected?.id}-$focusedEvent',
                                               ),
                                               child: conversation(),
                                             ),

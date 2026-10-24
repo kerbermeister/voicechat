@@ -43,6 +43,7 @@ external JSPromise<JSAny?> _open(
   JSString name,
   JSString? password,
   JSBoolean remember,
+  JSBoolean automatic,
 );
 @JS('voicechatVault.close')
 external JSPromise<JSAny?> _close(JSString name);
@@ -98,12 +99,18 @@ Future<MatrixSdkDatabase> openStore(
   String name, {
   String? passphrase,
   bool remember = false,
+  bool automatic = false,
 }) async {
   try {
-    await _open(name.toJS, passphrase?.toJS, remember.toJS).toDart;
+    await _open(
+      name.toJS,
+      passphrase?.toJS,
+      remember.toJS,
+      automatic.toJS,
+    ).toDart;
   } catch (_) {
     throw UserActionError(
-      'Не удалось открыть веб-хранилище. Проверьте локальную фразу (от 12 символов), закройте другие вкладки этого профиля. Старые незашифрованные профили требуют восстановления. Данные не сброшены.',
+      'Не удалось открыть хранилище. Закройте другие вкладки этого аккаунта и повторите вход. Если данные браузера потеряны, подключите новое устройство или используйте ключ восстановления.',
     );
   }
   final database = MatrixSdkDatabase.buildWithoutOpen(

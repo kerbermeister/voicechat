@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +41,7 @@ Future<Uint8List?> scanDeviceQr(
     }
     return await showDialog<Uint8List>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       barrierDismissible: false,
       builder: (_) => _Scanner(owner: owner, request: request),
     );

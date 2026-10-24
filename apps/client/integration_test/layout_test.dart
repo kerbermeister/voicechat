@@ -137,6 +137,8 @@ void main() {
     tester.view.resetViewInsets();
     await tester.pump(const Duration(milliseconds: 300));
     // Presence and typing animate continuously; wait for controls rather than global idleness.
+    await tester.tap(find.byTooltip('Дополнительные действия'));
+    await tester.pump();
     await tester.tap(find.byTooltip('Эмодзи'));
     await tester.pump(const Duration(milliseconds: 400));
     await screenshot('emoji');

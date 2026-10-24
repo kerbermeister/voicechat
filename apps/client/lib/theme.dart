@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_motion.dart';
 
 Color onlinePresenceColor(ColorScheme colors) =>
     colors.brightness == Brightness.dark
@@ -99,25 +100,77 @@ extension PaletteTheme on AppPalette {
     );
     final scheme = base.copyWith(
       primary: primary,
+      onPrimary: dark ? Color(bg) : Colors.white,
       secondary: Color(b),
       tertiary: accent.primary,
       primaryContainer: Color(soft),
       onPrimaryContainer: Color(ink),
-      tertiaryContainer: Color.lerp(Color(bg), Color(c), dark ? .25 : .55),
+      tertiaryContainer: dark ? Color.lerp(Color(bg), Color(c), .25) : Color(c),
       onTertiaryContainer: Color(ink),
       secondaryContainer: Color.lerp(Color(bg), Color(b), .18),
       surface: Color(bg),
       onSurface: Color(ink),
+      onSurfaceVariant: dark
+          ? const Color(0xFFC9BED7)
+          : const Color(0xFF736A81),
+      surfaceContainerLowest: dark
+          ? Color.lerp(Color(bg), Colors.white, .04)
+          : Colors.white,
     );
     return ThemeData(
       useMaterial3: true,
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          for (final platform in TargetPlatform.values)
+            platform: const AppPageTransitions(),
+        },
+      ),
       visualDensity: VisualDensity.standard,
       materialTapTargetSize: MaterialTapTargetSize.padded,
       colorScheme: scheme,
       scaffoldBackgroundColor: Color.lerp(scheme.surface, scheme.primary, .04),
       dividerColor: scheme.outlineVariant.withValues(alpha: .5),
+      appBarTheme: AppBarTheme(
+        backgroundColor: scheme.tertiaryContainer,
+        foregroundColor: scheme.onTertiaryContainer,
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
+        toolbarHeight: 72,
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: scheme.surfaceContainerLowest,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: scheme.surface,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      listTileTheme: ListTileThemeData(iconColor: scheme.primary),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(0, 44),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
       dialogTheme: DialogThemeData(
         backgroundColor: scheme.surface,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: TextStyle(
+          color: scheme.onSurface,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -150,9 +203,19 @@ extension PaletteTheme on AppPalette {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.surfaceContainerLowest,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
+        hintStyle: TextStyle(color: scheme.onSurfaceVariant, fontSize: 15),
+        floatingLabelBehavior: FloatingLabelBehavior.always,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
         ),
       ),
       cardTheme: CardThemeData(
