@@ -1,14 +1,21 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+
+import 'user_action_error.dart';
+
 import 'package:matrix/matrix.dart' as mx;
 
 /// Synapse handles email verification and UIA; the app never validates its own email token.
 class RegistrationScreen extends StatefulWidget {
-  final mx.Client client;
+  final Future<mx.Client> Function(String? passphrase) openClient;
+  final bool requireLocalPassphrase;
   final bool resetPassword;
   const RegistrationScreen({
     super.key,
-    required this.client,
+    required this.openClient,
+    this.requireLocalPassphrase = kIsWeb,
     this.resetPassword = false,
   });
   @override
@@ -16,6 +23,9 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
+  final localPassphrase = TextEditingController();
+  mx.Client? client;
+  String? localPassphraseError;
   final username = TextEditingController();
   final displayName = TextEditingController();
   final email = TextEditingController();
@@ -43,16 +53,30 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       );
       return;
     }
+    if (widget.requireLocalPassphrase && client == null) {
+      final phrase = localPassphrase.text;
+      final error = phrase.length < 12 || phrase.length > 1024
+          ? 'Введите локальную фразу от 12 до 1024 символов.'
+          : !widget.resetPassword && phrase == password.text
+          ? 'Придумайте фразу, отличную от пароля аккаунта.'
+          : null;
+      setState(() => localPassphraseError = error);
+      if (error != null) return;
+    }
     setState(() => busy = true);
     try {
+      client ??= await widget.openClient(
+        widget.requireLocalPassphrase ? localPassphrase.text : null,
+      );
+      if (!mounted) return;
       if (sid == null) {
         final response = widget.resetPassword
-            ? await widget.client.requestTokenToResetPasswordEmail(
+            ? await client!.requestTokenToResetPasswordEmail(
                 clientSecret,
                 email.text.trim(),
                 1,
               )
-            : await widget.client.requestTokenToRegisterEmail(
+            : await client!.requestTokenToRegisterEmail(
                 clientSecret,
                 email.text.trim(),
                 1,
@@ -74,29 +98,29 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           ),
         );
         if (widget.resetPassword) {
-          await widget.client.changePassword(
+          await client!.changePassword(
             password.text,
             auth: auth,
             logoutDevices: true,
           );
         } else {
-          await widget.client.register(
+          await client!.register(
             username: username.text,
             password: password.text,
             initialDeviceDisplayName: 'VoiceChat',
             auth: auth,
           );
-          await widget.client.firstSyncReceived;
+          await client!.firstSyncReceived;
           if (displayName.text.trim().isNotEmpty) {
-            await widget.client.setProfileField(
-              widget.client.userID!,
-              'displayname',
-              {'displayname': displayName.text.trim()},
-            );
+            await client!.setProfileField(client!.userID!, 'displayname', {
+              'displayname': displayName.text.trim(),
+            });
           }
         }
         if (mounted) Navigator.pop(context, true);
       }
+    } on UserActionError catch (error) {
+      if (mounted) setState(() => status = error.message);
     } on mx.MatrixException catch (error) {
       session = error.session ?? session;
       if (mounted) {
@@ -133,7 +157,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     padding: const EdgeInsets.only(bottom: 12),
     child: TextField(
       controller: controller,
-      readOnly: sid != null,
+      readOnly: busy || sid != null,
       obscureText: secret,
       autocorrect: false,
       enableSuggestions: !secret,
@@ -159,6 +183,29 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             field(email, 'Электронная почта'),
             field(password, 'Пароль аккаунта · от 12 символов', secret: true),
             field(confirmation, 'Повторите пароль', secret: true),
+            if (widget.requireLocalPassphrase) ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: TextField(
+                  controller: localPassphrase,
+                  obscureText: true,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  readOnly: busy || client != null,
+                  decoration: InputDecoration(
+                    labelText: widget.resetPassword
+                        ? 'Локальная фраза этого профиля'
+                        : 'Локальная фраза · от 12 символов',
+                    helperText: widget.resetPassword
+                        ? 'Введите фразу, которой защищены данные этого браузера.'
+                        : 'Защищает переписку в этом браузере. Придумайте отдельную фразу и сохраните её в менеджере паролей.',
+                    helperMaxLines: 4,
+                    errorText: localPassphraseError,
+                    errorMaxLines: 3,
+                  ),
+                ),
+              ),
+            ],
             Text(status),
             const SizedBox(height: 16),
             if (widget.resetPassword)
@@ -184,7 +231,14 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   );
   @override
   void dispose() {
-    for (final c in [username, displayName, email, password, confirmation]) {
+    for (final c in [
+      username,
+      displayName,
+      email,
+      password,
+      confirmation,
+      localPassphrase,
+    ]) {
       c.clear();
       c.dispose();
     }

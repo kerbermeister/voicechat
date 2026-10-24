@@ -359,39 +359,56 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> registration({bool reset = false}) async {
-    final next = await MatrixProbe.open(
-      profile.text.trim(),
-      passphrase: kIsWeb ? vaultPassword.text : null,
-      remember: kIsWeb && rememberTab,
-    );
+    MatrixProbe? next;
+    Future<mx.Client>? preparing;
     var adopted = false;
     try {
-      if (next.client.isLogged()) {
-        throw UserActionError(
-          'Этот локальный профиль уже связан с аккаунтом. Используйте другое имя профиля для регистрации.',
-        );
-      }
-      await next.client.checkHomeserver(
-        secureEndpoint(server.text.trim()),
-        checkWellKnown: false,
-      );
-      if (!mounted) return;
       final completed = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              RegistrationScreen(client: next.client, resetPassword: reset),
+          builder: (_) => RegistrationScreen(
+            resetPassword: reset,
+            openClient: (passphrase) => preparing = () async {
+              final opened = await MatrixProbe.open(
+                profile.text.trim(),
+                passphrase: passphrase,
+                remember: kIsWeb && rememberTab,
+              );
+              try {
+                if (opened.client.isLogged()) {
+                  throw UserActionError(
+                    'Этот локальный профиль уже связан с аккаунтом. Используйте другое имя профиля для регистрации.',
+                  );
+                }
+                await opened.client.checkHomeserver(
+                  secureEndpoint(server.text.trim()),
+                  checkWellKnown: false,
+                );
+              } catch (_) {
+                await opened.close();
+                rethrow;
+              }
+              next = opened;
+              return opened.client;
+            }(),
+          ),
         ),
       );
-      if (completed == true && !reset) {
-        await connected(next);
+      if (completed == true && !reset && next != null) {
+        await connected(next!);
         adopted = true;
       }
       if (completed == true && reset) {
         report('Пароль изменён. Войдите снова и восстановите историю ключом.');
       }
     } finally {
-      if (!adopted) await next.close();
+      // Navigation can finish while the store is still opening.
+      try {
+        await preparing;
+      } catch (_) {
+        // The registration screen reports the opening error.
+      }
+      if (!adopted) await next?.close();
     }
   }
 
