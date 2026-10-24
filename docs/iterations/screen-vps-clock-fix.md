@@ -16,7 +16,9 @@ VPS опережал Mac на 28.796 s, погрешность оценки ±0.
 будущий invite +30 s не появился. После исправления все 13 tests файла
 `chat_actions_test.dart` PASS, Flutter analyze без замечаний. Проверены обычный
 invite/end, malformed session, 11-минутное событие, +2 min, чужой end, +30 s invite/end.
-Полный набор и web release выполняются штатным Build and deploy в режиме web.
+Полный набор и web release прошли штатный [Build and deploy №9](https://github.com/kerbermeister/voicechat/actions/runs/40127768357)
+в режиме web, SUCCESS. Публичный group screen smoke после выкладки PASS;
+[свидетельство](screen-vps-evidence/verification.json).
 
 Операционное включение screen preview и последующая VPS приёмка фиксируются
 отдельно; этот адресный тест не является доказательством Android/media-нагрузки.

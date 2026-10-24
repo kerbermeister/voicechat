@@ -1,0 +1,61 @@
+{
+  "note": "Harness attempts before the final PASS; no functional acceptance inferred",
+  "attempts": [
+    {
+      "source": "extended-attempt.json",
+      "result": "FAIL",
+      "stage": "SAS trust",
+      "failure": "TimeoutError: locator.waitFor: Timeout 30000ms exceeded.",
+      "disposable_accounts_deactivated": 3,
+      "authentication": "fixture password login forwarded through loopback-only SSH to the same Synapse; all remaining Matrix/API/RTC traffic uses public HTTPS/WSS"
+    },
+    {
+      "source": "initial-attempt.json",
+      "result": "FAIL",
+      "stage": null,
+      "failure": "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+      "disposable_accounts_deactivated": 3,
+      "authentication": "earlier wrapper; see preview report"
+    },
+    {
+      "source": "login-attempt.json",
+      "result": "FAIL",
+      "stage": "login 2",
+      "failure": "AssertionError: Expected values to be strictly equal:",
+      "disposable_accounts_deactivated": 3,
+      "authentication": "earlier wrapper; see preview report"
+    },
+    {
+      "source": "login-response-attempt.json",
+      "result": "FAIL",
+      "stage": "login 1",
+      "failure": "Error: response.json: Protocol error (Network.getResponseBody): No data found for resource with given identifier",
+      "disposable_accounts_deactivated": 3,
+      "authentication": "fixture password login forwarded through loopback-only SSH to the same Synapse; all remaining Matrix/API/RTC traffic uses public HTTPS/WSS"
+    },
+    {
+      "source": "sas-choice-attempt.json",
+      "result": "FAIL",
+      "stage": "SAS trust",
+      "failure": "TimeoutError: locator.waitFor: Timeout 30000ms exceeded.",
+      "disposable_accounts_deactivated": 3,
+      "authentication": "earlier wrapper; see preview report"
+    },
+    {
+      "source": "sas-dialog-attempt.json",
+      "result": "FAIL",
+      "stage": "SAS trust",
+      "failure": "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+      "disposable_accounts_deactivated": 3,
+      "authentication": "earlier wrapper; see preview report"
+    },
+    {
+      "source": "sas-render-attempt.json",
+      "result": "FAIL",
+      "stage": "SAS trust",
+      "failure": "AssertionError: Expected values to be strictly equal:",
+      "disposable_accounts_deactivated": 3,
+      "authentication": "fixture password login forwarded through loopback-only SSH to the same Synapse; all remaining Matrix/API/RTC traffic uses public HTTPS/WSS"
+    }
+  ]
+}

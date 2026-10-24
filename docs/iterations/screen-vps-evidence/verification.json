@@ -1,0 +1,45 @@
+{
+  "authentication": "preauthenticated disposable sessions issued by real Synapse shared-secret registration; login response fixture only; all subsequent Matrix/API/RTC requests use public HTTPS/WSS",
+  "result": "PASS",
+  "run": "2026-10-24T20:13:49.023Z",
+  "origin": "https://univc.duckdns.org",
+  "release_commit": "30e96d299b786006f3408b2f5615b6a5dd8527e1",
+  "scope": "published ordinary web with preauthenticated test sessions; real public Matrix/SFU and tab capture; synthetic microphone/camera; two browser participants",
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "main_dart_js_sha256": "6c3e65baf91c5e39955a36afe6520fae166e8bc904676b1f0aa6cd8d27594caa",
+  "browser": "156.0.8078.47",
+  "stage": "group screen",
+  "authenticated_capability_before": false,
+  "sas_numbers_present": true,
+  "sas_numbers_match": true,
+  "test_peer_devices_sas_verified": true,
+  "authenticated_capability_after": true,
+  "initial_source_pixels": true,
+  "calls": {
+    "direct": {
+      "result": "PASS",
+      "real_tab_capture": true,
+      "decoded_source_pixels": true,
+      "distinct_takeover_source_pixels": true,
+      "old_capture_stopped": true,
+      "stop_releases_capture": true,
+      "voice_packets_and_camera_frames_continue": true,
+      "voice_peer_connections_unchanged": true
+    },
+    "group": {
+      "result": "PASS",
+      "real_tab_capture": true,
+      "decoded_source_pixels": true,
+      "distinct_takeover_source_pixels": true,
+      "old_capture_stopped": true,
+      "stop_releases_capture": true,
+      "voice_packets_and_camera_frames_continue": true,
+      "voice_peer_connections_unchanged": true
+    }
+  },
+  "both_group_sfu_admissions_confirmed": true,
+  "temporary_cleanup_admin_deactivated": true,
+  "disposable_accounts_deactivated": 3,
+  "screen_enabled_for_owner_test": true
+}

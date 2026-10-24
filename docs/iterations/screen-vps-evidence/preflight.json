@@ -1,0 +1,88 @@
+{
+  "release": {
+    "release": "/srv/voicechat/releases/39abf2d492254a052addbd44f9fd0f50d287a112",
+    "manifest": {
+      "commit": "39abf2d492254a052addbd44f9fd0f50d287a112",
+      "schema": 1,
+      "origin": "https://univc.duckdns.org",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:ff8f0659bdb8330858df3ad199e460e25f13d4436c79668d5595197affca29d2",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:b693fc7b436519be89fda61a503dafa3b20c1bd55eef1fea6e5d31336d8e5799"
+    },
+    "backend": "07c363febb1fe77296b4d06f7c71010dddd2e32abd1a5c02c04d425019389218",
+    "backend_config": "0d68254b9f1e284c3f0380f1238b7c9c6d4f403026ac7c3af28043df572bc396"
+  },
+  "services": {
+    "web": {
+      "id": "4dcc7f24ab6aab3fdfcc9b4498f2185c522d27e864af461f2878b4bb9485b60a",
+      "started_at": "2026-10-24T18:44:35.365987739Z",
+      "restart_count": "0",
+      "status": "running"
+    },
+    "control": {
+      "id": "b2277b510e004d58e2b48b3dc11bc3ec62bc2c22de2d840dd05505a2c5589471",
+      "started_at": "2026-10-24T18:44:31.11029978Z",
+      "restart_count": "0",
+      "status": "running"
+    },
+    "synapse": {
+      "id": "1ec1fc073f5938b4bbe1a69991b56cb59c6faa3eaf808af3378eda183f40d345",
+      "started_at": "2026-10-24T18:44:30.906749587Z",
+      "restart_count": "0",
+      "status": "running"
+    },
+    "turn": {
+      "id": "507b88b118ad8c753473c5de94fca8b672c5046f6825818a21789e8dc8d588d5",
+      "started_at": "2026-10-24T18:44:33.126055791Z",
+      "restart_count": "0",
+      "status": "running"
+    },
+    "postgres": {
+      "id": "2e901809ce096555022310aa9a36adc9f962ea5586e63e02f38a17dce7e82e02",
+      "started_at": "2026-10-23T21:52:03.276018562Z",
+      "restart_count": "0",
+      "status": "running"
+    }
+  },
+  "screen_source_sha256": {
+    "prototype/screen_http.py": "d55d8e2be21e485cb36867bfd1ccb27a005f34c6e3945cff1e37ab96a91473ec",
+    "prototype/screen_protocol.py": "81c7b7593d68f1b65219e5ee24f237693586c6e1ff6f4de86097c245a49482d4",
+    "prototype/screen_control.py": "1b2e141d1d79179a6117c2a0f218b08b5e779049de8355014142e08e8b11b9c8",
+    "prototype/screen_transitions.py": "6b640771223da44faf95a19206cafae6d0c68545c39a002af8f0656c3679c189"
+  },
+  "latest_backup": "fced0ece",
+  "previous_release": "a37ddbf355355fc56d1c778f93650afe5fcc4542",
+  "screen_metadata_before": {
+    "schema": 2,
+    "sessions": {},
+    "retired_rooms": 0,
+    "pending_commands": 0,
+    "oldest_pending_seconds": null
+  },
+  "screen_flag_before": "absent; disabled",
+  "public_headers": {
+    "coop": "same-origin",
+    "coep": "require-corp",
+    "cache_control": "no-cache"
+  },
+  "public_routes": {
+    "root": 200,
+    "main.dart.js": 200,
+    "matrix_versions": 200,
+    "api_health": 200,
+    "unauthenticated_screen_capabilities": 401,
+    "external_matrix_admin": 404
+  },
+  "public_js_sha256": "10670941d241de3e8ece232e1642099564701a9b5c03a66d9917b6b00ed5cc77",
+  "rtc_settings": {
+    "tcp_port": 7981,
+    "port_range_start": 50300,
+    "port_range_end": 50400,
+    "use_external_ip": false,
+    "node_ip": "84.200.80.13"
+  },
+  "tcp_ports_reachable": [
+    7981,
+    3488
+  ],
+  "relay_media_and_mobile_networks": "NOT_TESTED"
+}
