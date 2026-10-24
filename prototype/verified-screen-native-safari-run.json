@@ -1,0 +1,48 @@
+{
+  "result": "PASS_VIEWER_ONLY",
+  "run": "2026-10-24T07:51:44.485661+00:00",
+  "browser": "Safari 18.3 (20620.2.4.11.5)",
+  "macos": "15.3.1",
+  "method": "Native Safari via CUA; pinned Flutter/LiveKit lab; real Chrome tab source",
+  "lab_source_sha256": "2f614ddbdc41222b01c681f741e743267c6e13fcc45bd7173c5adc7b3b4f5750",
+  "lab_js_sha256": "0d73b581b0b2596bd0b71a5d511ef441763b3de7a71209f14f002483b3561428",
+  "positive_samples": [
+    {
+      "screen": 101,
+      "camera": 90,
+      "decrypted": true,
+      "audio_packets": 452
+    },
+    {
+      "screen": 221,
+      "camera": 210,
+      "decrypted": true,
+      "audio_packets": 1050
+    }
+  ],
+  "missing_key": {
+    "screen": 0,
+    "camera": 0,
+    "decrypted": false
+  },
+  "wrong_key_installed_confirmed": true,
+  "wrong_key": {
+    "screen": 0,
+    "camera": 0,
+    "decrypted": false
+  },
+  "positive_control_after_negatives": {
+    "screen": 236,
+    "camera": 226,
+    "decrypted": true,
+    "audio_packets": 1132
+  },
+  "purple_source_and_green_camera_visually_confirmed": true,
+  "test_tab_closed": true,
+  "fixture_rooms_deleted": true,
+  "matrix_key_exchange": "NOT_TESTED",
+  "safari_sending_os_picker_stop": "NOT_TESTED",
+  "system_audio_exclusion": "NOT_TESTED",
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN"
+}

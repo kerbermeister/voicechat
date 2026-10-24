@@ -2,6 +2,45 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-12 — 24 октября 2026: дополнительные desktop браузеры
+
+Закреплённый Flutter/LiveKit lab на clean `55d8a77`, без текущего design/VPS diff.
+Последовательно, 2–3 участника, общий loopback SFU; настоящая вкладка Chrome/Edge,
+синтетические микрофон/камера. Matrix-доставка ключа здесь не проверяется.
+
+- Edge 156.0.4314.42 ↔ Chrome 156.0.8078.47: отправка и просмотр PASS.
+- Playwright WebKit 26.5: просмотр от Chrome PASS; это отдельная тестовая сборка,
+  она не заменяет установленный Safari.
+- Нативный Safari 18.3 (20620.2.4.11.5), macOS 15.3.1: просмотр через CUA PASS.
+  Видимые кадры источника/камеры и растущие счётчики; 101/90 → 221/210 кадров.
+- Firefox 153.0 (Playwright build 1538): FAIL при подготовке SDK media connection,
+  `failed:minified:ym`, нет принятой расшифровки/кадров. ScriptTransform/SAB присутствуют;
+  это не доказательство совместимости. Временный профиль с loopback ICE preference
+  также не прошёл. Причина не установлена; не объявлять весь Firefox несовместимым.
+
+Во всех принятых направлениях без ключа и после явной установки неверного ключа —
+0 screen/camera кадров. Автоматические прогоны также проверили продолжение camera
+и voice packet counters после удаления отдельной screen room. Safari: положительный
+контроль после отрицательных случаев снова показывает изображение. Это SDK/media
+проверки, не полная обычная UI/Matrix приёмка каждого браузера.
+
+Edge извлечён из официального vendor pkg во временный каталог, SHA256 сверен с
+официальным API; системный установщик не запускался. Firefox/WebKit загружены
+Playwright в `/tmp`; пользовательские профили не используются. Fixture rooms удалены,
+секретный fixture JSON удалён; безопасные записи — `verified-screen-browser-*-run.json`
+и `verified-screen-native-safari-run.json`. Повтор: собрать `lab_screen_main.dart`
+в каталог `/tmp/voicechat-screen-browser-probe-web`, запустить `serve_web.py` на 7362;
+`VOICECHAT_SCREEN_PROBE_DIRECTORY` задаёт тот же каталог, затем
+`NODE_PATH=<runtime node_modules> PLAYWRIGHT_BROWSERS_PATH=/tmp/voicechat-screen-browsers
+node prototype/check_screen_browsers.cjs <edge|firefox|webkit|safari> [sender|viewer]`.
+Для Edge путь к извлечённому `.app` хранится в `/tmp/voicechat-screen-browsers/edge-path`;
+`sender` допускается только для Edge; Safari требует ручного CUA наблюдения и Enter
+после него, автоматического PASS не выдаёт. Нативное наблюдение сохраняется отдельно.
+
+Ручной capture picker, window/monitor, системный Stop, Safari/Firefox отправка,
+обычный клиент/Matrix в этих браузерах, мобильные устройства и внешняя сеть остаются
+открытыми. Android и тяжёлая нагрузка не запускались. SS-12 PARTIAL; release BLOCKED.
+
 ## SS-16 — оставшаяся локальная регрессия обычного клиента
 
 **PASS** на чистом `4df481d` с одним исправлением production-кода: удалён

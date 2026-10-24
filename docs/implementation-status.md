@@ -47,6 +47,12 @@ scroll/fullscreen и сохранение voice PC/media PASS. Widget: 7 тем,
 reduced animations, Tab/Enter. Это Chrome/viewport-проверки; screen reader,
 физические платформы и release остаются вне приёмки.
 
+24 октября: SS-12 дополнена Edge 156 ↔ Chrome и просмотром E2EE screen/camera
+в Playwright WebKit 26.5 и нативном Safari 18.3. Без/неверный ключ — 0 кадров.
+Это SDK lab, отдельно от обычного Matrix клиента. Firefox 153 media connection
+FAIL, причина открыта; его кадры/расшифровка не приняты. Ручные picker/OS Stop,
+мобильные устройства и внешние сети остаются gate, релиз BLOCKED.
+
 SS-11 локально принят: stale commands, original/refreshed JWT, подмена JWT identity/
 publisher grant, raw SFU source/role отказы, duplicate/plaintext metadata guard,
 15 настоящих Matrix/Olm key negatives с проверкой реального worker setKey и видимых
