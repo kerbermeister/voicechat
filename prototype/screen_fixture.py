@@ -2,6 +2,7 @@
 """Одноразовые loopback fixtures SS-01; не использует аккаунты и ключи пользователей."""
 import base64
 import json
+import os
 import secrets
 import sys
 import time
@@ -10,7 +11,7 @@ from pathlib import Path
 from token_server import jwt, media_api
 
 root = Path(__file__).resolve().parents[1]
-directory = root / '.prototype/screen-probe-web'
+directory = Path(os.environ.get('VOICECHAT_SCREEN_PROBE_DIRECTORY', root / '.prototype/screen-probe-web'))
 
 
 def assert_room_absent(room):

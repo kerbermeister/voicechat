@@ -48,6 +48,7 @@ async function register(role) {
   const pages=[];
   let sensitiveVerification=false;
   let screenFaults;
+  let regressionPassed=false;
   try {
     if(screenTest && process.env.VOICECHAT_SCREEN_FAULT_TEST) {
       assert(process.env.VOICECHAT_SCREEN_DIRECT_ONLY==='1' && video);
@@ -581,6 +582,8 @@ async function register(role) {
       console.log('PASS: chat list and requested acceptance scenarios; no calls or microphone');
       return;
     }
+    if(process.env.VOICECHAT_SCREEN_REGRESSION==='1')
+      await require('./check_screen_regression.cjs')({a,b,bob,button,fill});
     if(!screenTest || process.env.VOICECHAT_SCREEN_GROUP_ONLY!=='1') {
       await a.bringToFront();
       await button(a,callButton).click();
@@ -642,7 +645,7 @@ async function register(role) {
     await button(a,'Завершить').click();
     await button(a,'Закрыть').click();
     await a.getByText('Люди',{exact:true}).click();
-    if(screenTest) return;
+    if(screenTest) {regressionPassed=true;return;}
     const c=await login(charlie);
     for(let i=0;i<60;i++) {
       const keys=await request(matrixUrl,'/_matrix/client/v3/keys/query',{device_keys:{[charlie.user_id]:[]}},alice.access_token);
@@ -729,7 +732,9 @@ async function register(role) {
         if(screenFaults) await screenFaults.close();
       } finally {
         if(process.env.VOICECHAT_SCHEDULE_TEST==='1' || screenTest) {
-          for(const account of [alice,bob,charlie]) await request(matrixUrl,'/_matrix/client/v3/account/deactivate',{auth:{type:'m.login.password',identifier:{type:'m.id.user',user:account.user_id},password:account.password},erase:true},account.access_token).catch(()=>{});
+          let cleaned=0;
+          for(const account of [alice,bob,charlie]) await request(matrixUrl,'/_matrix/client/v3/account/deactivate',{auth:{type:'m.login.password',identifier:{type:'m.id.user',user:account.user_id},password:account.password},erase:true},account.access_token).then(()=>cleaned++).catch(()=>{});
+          if(process.env.VOICECHAT_SCREEN_REGRESSION==='1')require('./check_screen_regression.cjs').finish(regressionPassed,cleaned);
         }
       }
     }

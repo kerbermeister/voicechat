@@ -1,0 +1,29 @@
+{
+  "result": "PASS_NATIVE_AX_AND_KEYBOARD_ONLY",
+  "run": "2026-10-24T08:02:29.734255+00:00",
+  "browser": "Safari 18.3 (20620.2.4.11.5)",
+  "macos": "15.3.1",
+  "scope": "production CallWindow/ScreenPanel, synthetic UI fixture, no media/network",
+  "lab_js_sha256": "2a3ec8e6622a84e1d1c81418a5f0500a1d47e2211bbd862480cdfce84eeb38f9",
+  "screen_panel_sha256_during_native_check": "a8c7e055f0ef7c7685e9f5d4a52c646e6def157cd2251c60b8f5a337d667f3b4",
+  "native_error_context_contains_status_and_capture_failure": true,
+  "fullscreen_escape_preserves_call": true,
+  "focus_returns_to_fullscreen_control": true,
+  "tab_moves_to_microphone": true,
+  "keyboard_opens_call_and_quality_menu": true,
+  "keyboard_changes_auto_to_low": true,
+  "keyboard_stop_updates_accessible_status": true,
+  "voiceover": {
+    "human_permission": true,
+    "initial_switch": "off",
+    "temporary_switch": "on",
+    "running_process_observed": true,
+    "native_vo_navigation_and_spoken_output": "NOT_ACCEPTED; VO key commands produced no observable cursor/action through the available native tool; no speech recording",
+    "restored_switch": "off",
+    "restore_confirmed_via_system_settings_ax": true,
+    "other_voiceover_settings_changed": false
+  },
+  "test_tab_closed": true,
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN"
+}

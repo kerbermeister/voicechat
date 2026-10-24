@@ -6,14 +6,18 @@ const crypto=require('node:crypto');
 const {execFileSync}=require('node:child_process');
 const {chromium}=require('playwright');
 const media=require('./check_screen_calls.cjs');
-const matrix='http://localhost:8008',ui='http://localhost:7363/';
-const mode=process.argv[2];assert(['commands','keys','publish','faults'].includes(mode));
+let matrix='http://localhost:8008',registrationUrl=matrix;
+const ui='http://localhost:7363/';
+const mode=process.argv[2];assert(['commands','keys','publish','faults','restore','operations'].includes(mode));
 const excluded=process.argv[3]||'';
-assert(mode==='faults' ? ['network','restart','kill_control','kill_sfu','pause_control','after_create','after_delete','lease'].includes(excluded) :
+assert(mode==='faults' ? ['network','restart','kill_control','kill_sfu','pause_control','after_create','after_delete','lease','kick'].includes(excluded) :
   ['','member','device'].includes(excluded) && (!excluded || mode==='commands'));
-if(mode==='faults' && !['after_create','after_delete','lease'].includes(excluded)) process.env.VOICECHAT_SCREEN_CONTAINER='1';
+if(mode==='faults' && !['after_create','after_delete','lease','kick'].includes(excluded)) process.env.VOICECHAT_SCREEN_CONTAINER='1';
+if(mode==='restore') process.env.VOICECHAT_SCREEN_RESTORE='1';
+if(mode==='operations') process.env.VOICECHAT_SCREEN_OPERATIONS='1';
 const root=path.join(__dirname,'..');
 const secrets=JSON.parse(fs.readFileSync(path.join(root,'.prototype/secrets.json')));
+let registrationSecret=secrets.registration;
 async function request(base,route,body,token,method=body ? 'POST' : 'GET') {
   const r=await fetch(base+route,{method,signal:AbortSignal.timeout(15000),
     headers:{'Content-Type':'application/json',...(token ? {Authorization:'Bearer '+token} : {})},
@@ -22,15 +26,22 @@ async function request(base,route,body,token,method=body ? 'POST' : 'GET') {
 }
 async function ok(...args) {const r=await request(...args);assert.equal(r.status,200,'Fixture request failed');return r.body;}
 async function register(role) {
-  const {nonce}=await ok(matrix,'/_synapse/admin/v1/register');
+  const {nonce}=await ok(registrationUrl,'/_synapse/admin/v1/register');
   const username='screen_negative_'+role+'_'+Date.now(),password=crypto.randomBytes(24).toString('base64url');
-  const mac=crypto.createHmac('sha1',secrets.registration).update([nonce,username,password,'notadmin'].join('\0')).digest('hex');
-  await ok(matrix,'/_synapse/admin/v1/register',{nonce,username,password,admin:false,mac});
+  const mac=crypto.createHmac('sha1',registrationSecret).update([nonce,username,password,'notadmin'].join('\0')).digest('hex');
+  await ok(registrationUrl,'/_synapse/admin/v1/register',{nonce,username,password,admin:false,mac});
   return {username,password,...await ok(matrix,'/_matrix/client/v3/login',{type:'m.login.password',user:username,password})};
 }
 async function cmd(page,data) {
-  const result=await page.evaluate(data=>window.screenLab(data),data);
-  assert(!result.error,'Lab command failed: '+data.action+' '+(result.kind||'')+' '+(result.step||''));return result;
+  const result=await page.evaluate(async data=>{
+    let timer;
+    try {
+      return await Promise.race([window.screenLab(data),new Promise((_,reject)=>{
+        timer=setTimeout(()=>reject(new Error('Lab command deadline exceeded')),60000);
+      })]);
+    } finally {clearTimeout(timer);}
+  },data);
+  assert(!result.error,'Lab command failed: '+data.action+' '+(result.kind||'')+' '+(result.state||'')+' '+(result.step||''));return result;
 }
 async function until(check,message,ms=20000) {
   const end=Date.now()+ms;
@@ -62,17 +73,22 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
   try {
     report.laboratory_source_sha256=crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'apps/client/lib/lab_screen_security_main.dart'))).digest('hex');
     report.laboratory_js_sha256=crypto.createHash('sha256').update(Buffer.from(await (await fetch(ui+'main.dart.js')).arrayBuffer())).digest('hex');
-    for(const role of ['a','b','outsider']) accounts.push(await register(role));
     process.env.VOICECHAT_ORIGINS=new URL(ui).origin;
-    fixture=await require('./check_screen_faults.cjs').start();
+    if(['restore','operations'].includes(mode)) {
+      fixture=await require('./check_screen_faults.cjs').start();
+      matrix=fixture.matrix;registrationUrl=fixture.registrationUrl;registrationSecret=fixture.registration;
+    }
+    for(const role of ['a','b','outsider']) accounts.push(await register(role));
+    if(!fixture)fixture=await require('./check_screen_faults.cjs').start();
     if(fixture.image)report.control_image_id=fixture.image;
     for(const peer of accounts.slice(1)) {
-      await ok('http://localhost:8090','/contacts',{action:'policy',allow_direct:true},peer.access_token);
+      const contacts=['restore','operations'].includes(mode) ? fixture.base : 'http://localhost:8090';
+      await ok(contacts,'/contacts',{action:'policy',allow_direct:true},peer.access_token);
       const dm=await ok(matrix,'/_matrix/client/v3/createRoom',{preset:'private_chat',is_direct:true,invite:[peer.user_id],initial_state:[
         {type:'m.room.encryption',state_key:'',content:{algorithm:'m.megolm.v1.aes-sha2'}},
         {type:'dev.voicechat.kind',state_key:'',content:{kind:'direct',owner:accounts[0].user_id,peer:peer.user_id}},
       ]},accounts[0].access_token);
-      await ok('http://localhost:8090','/contacts',{action:'request',recipient:peer.user_id,room_id:dm.room_id},accounts[0].access_token);
+      await ok(contacts,'/contacts',{action:'request',recipient:peer.user_id,room_id:dm.room_id},accounts[0].access_token);
       await ok(matrix,'/_matrix/client/v3/rooms/'+encodeURIComponent(dm.room_id)+'/join',{},peer.access_token);
     }
     const room=await ok(matrix,'/_matrix/client/v3/createRoom',{preset:'private_chat',invite:accounts.slice(1).map(a=>a.user_id),initial_state:[
@@ -98,38 +114,45 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
         };
       });
       await context.route('**/fixture.json',route=>route.fulfill({json:{profile:session+'-'+i,
-        username:account.username,password:account.password,room:room.room_id,session,api:fixture.base,livekit:fixture.livekit}}));
+        username:account.username,password:account.password,room:room.room_id,session,api:fixture.base,livekit:fixture.livekit,matrix}}));
       const page=await context.newPage();pages.push(page);
       page.on('request',r=>{
         if(r.url().startsWith(fixture.base) || r.url().includes('/sendToDevice/')) wire.push(r.postData()||'');
       });
-      page.on('response',async response=>{
-        try {
-          if(response.url().startsWith(fixture.base) && response.url().includes('/screen/'))responses.push({page:i,action:response.url().split('/').pop(),status:response.status(),method:response.request().method()});
-          if(response.status()===200 && response.request().method()==='POST' && response.url().endsWith('/_matrix/client/v3/login')) {
-            const login=await response.json();
-            if(typeof login.access_token==='string') logins.set(page,login);
+      await page.exposeFunction('screenLabObserve',record=>{
+        if(record.login){logins.set(page,record.body);return;}
+        const {action,body,auth,request:command}=record;
+        if(action==='bind')bindings.set(page,{...body,auth,request:command});
+        if(action==='claim' && (!claims.has(page) || command.expected_revision>=claims.get(page).command.expected_revision))
+          claims.set(page,{command,response:body});
+        if(action==='token' && (!tokens.has(page) || body.revision>=tokens.get(page).revision))
+          tokens.set(page,{...body,request:command});
+      });
+      await page.addInitScript(()=>{
+        const fetch=window.fetch.bind(window);
+        window.fetch=async(...args)=>{
+          const request=new Request(...args);
+          const watched=request.method==='POST' && (/\/screen\/(?:bind|[^/]+\/(?:claim|token))$/.test(request.url) || request.url.endsWith('/_matrix/client/v3/login'));
+          const body=watched ? request.clone().text() : null;
+          const response=await fetch(request);
+          if(watched && [200,202].includes(response.status)) {
+            const login=request.url.endsWith('/_matrix/client/v3/login');
+            await window.screenLabObserve({login,action:request.url.split('/').pop(),
+              body:await response.clone().json(),auth:request.headers.get('authorization'),
+              request:login ? null : JSON.parse(await body)});
           }
-          if(response.status()>=400 && response.url().startsWith(fixture.base)) {
-            const body=await response.json().catch(()=>({}));
-            console.log('Private control',response.url().split('/').pop(),response.status(),/^[a-z_]+$/.test(body.error||'') ? body.error : '');
-          }
-          if(![200,202].includes(response.status()) || !response.url().includes('/screen/'))return;
-          const action=response.url().split('/').pop();
-          if(!['bind','claim','token'].includes(action))return;
-          const body=await response.json().catch(()=>null);
-          if(!body){if(action==='bind')console.log('Bind observer: response body unavailable');return;}
-          const auth=response.request().headers().authorization;
-          if(action==='bind') bindings.set(page,{...body,auth,request:response.request().postDataJSON()});
-          if(action==='claim') {
-            const command=response.request().postDataJSON();
-            if(!claims.has(page) || command.expected_revision>=claims.get(page).command.expected_revision) claims.set(page,{command,response:body});
-          }
-          if(action==='token' && (!tokens.has(page) || body.revision>=tokens.get(page).revision)) tokens.set(page,{...body,request:response.request().postDataJSON()});
-        } catch (error) {
-          if(response.url().endsWith('/screen/bind'))console.log('Bind observer error',error.constructor.name);
-          // Observer reads can lose their body when the context closes. Main
-          // assertions still require the relevant grant/claim/login to arrive.
+          return response;
+        };
+      });
+      page.on('response',response=>{
+        if(mode==='operations' && response.url()===fixture.base+'/token' && response.status()>=400) {
+          response.json().then(body=>{
+            if(/^[a-z_]+$/.test(body.error))console.log('Voice admission',response.status(),body.error);
+          }).catch(()=>{});
+        }
+        if(response.url().startsWith(fixture.base) && response.url().includes('/screen/')) {
+          responses.push({page:i,action:response.url().split('/').pop(),status:response.status(),method:response.request().method()});
+          if(response.status()>=400)console.log('Private control',response.url().split('/').pop(),response.status());
         }
       });
       await page.goto(ui);await page.getByText('ready',{exact:true}).waitFor({timeout:60000});
@@ -138,8 +161,8 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
     const [a,b]=pages;
     const identities=await Promise.all(pages.map(page=>cmd(page,{action:'identity'})));
     for(const page of pages) for(const identity of identities) await cmd(page,{action:'trust',...identity});
-    await Promise.all(pages.slice(0,2).map(page=>cmd(page,{action:'connect'})));
-    try {await until(()=>bindings.size===2,'Both screen bindings required');}
+    await Promise.all(pages.slice(0,2).map(page=>cmd(page,{action:'connect',screen:mode!=='operations'})));
+    try {if(mode!=='operations')await until(()=>bindings.size===2,'Both screen bindings required');}
     catch(error) {console.log('Binding setup diagnostics',JSON.stringify({observed:bindings.size,responses:responses.slice(0,12)}));throw error;}
     const button=(page,name)=>page.getByRole('button',{name,exact:true});
     async function start(index) {
@@ -148,15 +171,16 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
       const previousCommand=claims.get(page)?.command.request_id;
       await button(page,await button(page,'Показать экран').isVisible() ? 'Показать экран' : 'Перехватить экран').click();
       await button(page,'Остановить показ').waitFor({timeout:20000});
-      await until(()=>tokens.get(page)?.role==='publisher' && tokens.get(page).generation!==previous,'Publisher grant required');
+      try {await until(()=>tokens.get(page)?.role==='publisher' && tokens.get(page).generation!==previous,'Publisher grant required');}
+      catch(error) {console.log('Publisher observer diagnostics',JSON.stringify({page:index,role:tokens.get(page)?.role,changed:tokens.get(page)?.generation!==previous,revision:tokens.get(page)?.revision,responses:responses.filter(r=>r.page===index).slice(-12)}));throw error;}
       await until(()=>claims.get(page)?.command.request_id && claims.get(page).command.request_id!==previousCommand,'Claim request required');
       return tokens.get(page);
     }
     async function api(page,suffix,body) {return request(fixture.base,'/screen/'+bindings.get(page).binding_id+'/'+suffix,body,bindings.get(page).auth.slice(7));}
-    const ctx={a,b,pages,accounts,fixture,report,cmd,until,media,button,start,api,identities,bindings,claims,tokens,request,absent,updatePermission,wire,logins,room:room.room_id,session};
+    const ctx={a,b,pages,sources,accounts,fixture,report,cmd,until,media,button,start,api,identities,bindings,claims,tokens,request,absent,updatePermission,wire,logins,room:room.room_id,session};
     await require('./check_screen_security_'+mode+'.cjs')(ctx);
     report.result='PASS';
-    console.log('PASS: '+(mode==='faults' ? 'SS-10/SS-16 '+excluded : 'SS-11 '+mode));
+    console.log('PASS: '+(mode==='faults' ? 'SS-10/SS-16 '+excluded : mode==='restore' ? 'SS-15 full restore' : mode==='operations' ? 'SS-15 upgrade/rollback' : 'SS-11 '+mode));
   } catch(error) {
     failed=true;throw error;
   } finally {
@@ -165,7 +189,6 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
       for(const page of pages) await cmd(page,{action:'close'}).catch(()=>{});
       await browser.close().catch(()=>{cleanupFailed=true;});
     }
-    if(fixture) await fixture.close().catch(()=>{cleanupFailed=true;});
     for(const a of accounts) {
       try {
         const r=await request(matrix,'/_matrix/client/v3/account/deactivate',{
@@ -173,6 +196,7 @@ with urllib.request.urlopen(req,timeout=5) as response:response.read()`],
         if(r.status!==200)cleanupFailed=true;
       } catch (_) {cleanupFailed=true;}
     }
+    if(fixture) await fixture.close().catch(()=>{cleanupFailed=true;});
     report.cleanup_completed=!cleanupFailed;
     if(cleanupFailed)report.result='FAIL';
     report.elapsed_seconds=(performance.now()-started)/1000;

@@ -194,14 +194,17 @@ class DeploymentTests(unittest.TestCase):
             root = Path(directory)
             (root/'runtime').mkdir()
             release = root/'releases'/('a'*40)
-            with patch.object(deploy,'execute') as execute:
+            names = ('synapse','control','media-config','certificates','caddy-config')
+            config = json.dumps({'volumes':{name:{'name':'isolated_'+name} for name in names}}).encode()
+            with patch.object(deploy.subprocess,'check_output',return_value=config), \
+                 patch.object(deploy,'execute') as execute:
                 deploy.backup(root, release, {})
             commands = [call.args[0] for call in execute.call_args_list]
             snapshot = next(args for args in commands if 'backup' in args)
-            for mount in ('voicechat_control:/snapshot/control:ro',
-                          'voicechat_synapse:/snapshot/synapse:ro',
-                          'voicechat_media-config:/snapshot/media-config:ro',
-                          'voicechat_certificates:/snapshot/certificates:ro',
+            for mount in ('isolated_control:/snapshot/control:ro',
+                          'isolated_synapse:/snapshot/synapse:ro',
+                          'isolated_media-config:/snapshot/media-config:ro',
+                          'isolated_certificates:/snapshot/certificates:ro',
                           f'{release}:/snapshot/release:ro',
                           f'{root}/current.json:/snapshot/current.json:ro',
                           f'{root}/runtime/stand.env:/snapshot/runtime/stand.env:ro'):

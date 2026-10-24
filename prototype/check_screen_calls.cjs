@@ -141,6 +141,8 @@ exports.check = async (a,b,button,transport,revokeDevice,faults) => {
     await button(a,'Показать экран').click();
     await button(a,'Остановить показ').waitFor({timeout:30000});
     await pixels(b);
+    if(process.env.VOICECHAT_SCREEN_REGRESSION==='1')
+      await require('./check_screen_regression.cjs').callLayout(a,b,button,transport);
     await a.bringToFront();
     await a.getByText('Экран: Авто',{exact:true}).click();
     await a.getByRole('menuitem',{name:'Экран: Низкое',exact:true}).click();

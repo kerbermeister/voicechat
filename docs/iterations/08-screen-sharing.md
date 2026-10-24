@@ -2,6 +2,291 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## 24 октября 2026: сверка оставшихся задач SS-12–SS-17
+
+Все шесть открытых блоков уже присутствовали в исполняемом плане. Уточнены отдельные
+checkbox для диагностики/исправления Firefox, ручного picker/отказа/отмены/позднего
+capture, системного Stop, отсутствия звука устройства и целевого upgrade/rollback.
+Уточнены мобильный web viewer-only, registry manifest и проверка старого клиента.
+Новых параллельных списков задач нет; существующие критерии приёмки сохранены.
+Проверены diff, ссылки и сохранение завершённых checkbox. Код и стенд не менялись;
+аппаратные/сетевые/нагрузочные проверки не запускались, release остаётся BLOCKED.
+
+## SS-16/A16 — 24 октября 2026: доступность статуса и клавиатуры
+
+В production `ScreenPanel` ошибка захвата была видна, но не входила в live region:
+новая widget assertion воспроизвела дефект до изменения. Исправление объединяет
+текущий статус и notice в одном отдельном semantics node; визуальный notice исключён
+из повторного чтения. Media, авторизация и lifecycle не изменялись.
+
+Локальный target `lab_screen_accessibility_main.dart` использует реальные
+CallWindow/ScreenPanel и синтетические viewer/owner/error/reconnecting состояния,
+без credentials, Matrix/SFU и медиапотоков. Это UI fixture, не media proof;
+в обычный релиз он не включается. Для повторения собрать этот target отдельно
+с `--no-web-resources-cdn`, отдать на 7358 и запустить
+`NODE_PATH=<runtime node_modules> PLAYWRIGHT_BROWSERS_PATH=/tmp/voicechat-screen-browsers
+node prototype/check_screen_accessibility.cjs`. Пути/версии браузеров — как в SS-12 ниже.
+Flutter web переносит announcement в временный `aria-live` text node на 300 ms;
+runner наблюдает реальные mutations, а не ищет aria-live на самом Text. Каждая
+проверка capture error очищает предыдущие сообщения, чтобы не принять старый статус.
+
+Chrome 156, Edge 156, Firefox 153 и Playwright WebKit 26.5 последовательно PASS:
+320×640 / 640×320 / 1280×900, named controls, динамический live error со статусом,
+fullscreen/Escape оставляет звонок, disabled takeover при reconnect, quality и stop.
+Каждый браузерный контекст подтвердил отсутствие backend/media requests.
+`prototype/verified-screen-accessibility-browsers-run.json` содержит версии и хеши.
+UI PASS Firefox не закрывает его отдельный media FAIL в SS-12.
+
+Widget: 7 тем × 2 ориентации, текст 200%, reduced animations, Tab/Enter fullscreen,
+Escape и восстановление фокуса, кнопка завершения остаётся в viewport. Отдельный
+тест проверяет 4.5:1 для onSurface/surface, primary/surface, onSurfaceVariant/surface,
+onError/error во всех семи принятых темах. Это точечные проверки, не полный WCAG audit.
+
+В нативном Safari 18.3 CUA подтвердил названия controls, статус с текстом ошибки,
+Escape из fullscreen без закрытия звонка, возврат фокуса, Tab к микрофону;
+клавиатурные открытие звонка, выбор Auto → Low и stop обновляют доступный статус.
+Нативная проверка использовала JS `2a3ec8e6…`, до добавления отдельной semantics
+границы; финальная browser/widget проверка имеет собственные хеши.
+VoiceOver временно включён с разрешения владельца (исходно off), процесс наблюдался;
+попытки VO navigation/action через текущий инструмент не дали проверяемого курсора
+или действия, speech не записан. Поэтому manual screen reader НЕ принят.
+VoiceOver возвращён off, подтверждено через AX System Settings; остальные настройки
+диктора не менялись, собственная Safari-вкладка закрыта. Свидетельство:
+`prototype/verified-screen-native-accessibility-run.json`.
+
+Чистая финальная копия клиента: все 136 Flutter tests, analyze и обычный release JS
+PASS. Отдельный fixture target не попал в `main.dart.js`; fixture.json/source.html
+отсутствуют. Lockfile и CallWindow совпадают с committed baseline; параллельный
+UI/VPS diff исключён. Артефакт — `/tmp/voicechat-screen-accessibility-release-web`,
+хеши и границы — `prototype/verified-screen-accessibility-build-run.json`.
+Генерированные crypto/scanner assets переиспользованы из закреплённого результата,
+холодная Rust/WASM сборка не проверялась.
+
+Очистка PASS: собственные 7358/7362 остановлены, fixture JSON/SS-01 SFU rooms/feature
+flags отсутствуют, metadata ended=60, active/pending/retired=0; общий Compose и тома
+сохранены, прежние два release JS не изменены. Свидетельство:
+`prototype/verified-screen-browser-accessibility-cleanup-run.json`.
+
+Android, физические мобильные браузеры, OS picker/Stop и тяжёлая нагрузка не
+запускались. SS-A16 остаётся PARTIAL до реального принятого озвучивания/VO-навигации
+и матрицы целевых устройств; release BLOCKED.
+
+## SS-12 — 24 октября 2026: дополнительные desktop браузеры
+
+Закреплённый Flutter/LiveKit lab на clean `55d8a77`, без текущего design/VPS diff.
+Последовательно, 2–3 участника, общий loopback SFU; настоящая вкладка Chrome/Edge,
+синтетические микрофон/камера. Matrix-доставка ключа здесь не проверяется.
+
+- Edge 156.0.4314.42 ↔ Chrome 156.0.8078.47: отправка и просмотр PASS.
+- Playwright WebKit 26.5: просмотр от Chrome PASS; это отдельная тестовая сборка,
+  она не заменяет установленный Safari.
+- Нативный Safari 18.3 (20620.2.4.11.5), macOS 15.3.1: просмотр через CUA PASS.
+  Видимые кадры источника/камеры и растущие счётчики; 101/90 → 221/210 кадров.
+- Firefox 153.0 (Playwright build 1538): FAIL при подготовке SDK media connection,
+  `failed:minified:ym`, нет принятой расшифровки/кадров. ScriptTransform/SAB присутствуют;
+  это не доказательство совместимости. Временный профиль с loopback ICE preference
+  также не прошёл. Причина не установлена; не объявлять весь Firefox несовместимым.
+
+Во всех принятых направлениях без ключа и после явной установки неверного ключа —
+0 screen/camera кадров. Автоматические прогоны также проверили продолжение camera
+и voice packet counters после удаления отдельной screen room. Safari: положительный
+контроль после отрицательных случаев снова показывает изображение. Это SDK/media
+проверки, не полная обычная UI/Matrix приёмка каждого браузера.
+
+Edge извлечён из официального vendor pkg во временный каталог, SHA256 сверен с
+официальным API; системный установщик не запускался. Firefox/WebKit загружены
+Playwright в `/tmp`; пользовательские профили не используются. Fixture rooms удалены,
+секретный fixture JSON удалён; безопасные записи — `verified-screen-browser-*-run.json`
+и `verified-screen-native-safari-run.json`. Повтор: собрать `lab_screen_main.dart`
+в каталог `/tmp/voicechat-screen-browser-probe-web`, запустить `serve_web.py` на 7362;
+`VOICECHAT_SCREEN_PROBE_DIRECTORY` задаёт тот же каталог, затем
+`NODE_PATH=<runtime node_modules> PLAYWRIGHT_BROWSERS_PATH=/tmp/voicechat-screen-browsers
+node prototype/check_screen_browsers.cjs <edge|firefox|webkit|safari> [sender|viewer]`.
+Для Edge путь к извлечённому `.app` хранится в `/tmp/voicechat-screen-browsers/edge-path`;
+`sender` допускается только для Edge; Safari требует ручного CUA наблюдения и Enter
+после него, автоматического PASS не выдаёт. Нативное наблюдение сохраняется отдельно.
+
+Ручной capture picker, window/monitor, системный Stop, Safari/Firefox отправка,
+обычный клиент/Matrix в этих браузерах, мобильные устройства и внешняя сеть остаются
+открытыми. Android и тяжёлая нагрузка не запускались. SS-12 PARTIAL; release BLOCKED.
+
+## SS-16 — оставшаяся локальная регрессия обычного клиента
+
+**PASS** на чистом `4df481d` с одним исправлением production-кода: удалён
+неиспользуемый hint списка качества видео. Flutter учитывал его ширину даже при
+выбранном значении, что давало overflow на 320 px при тексте 130%. Вариант с
+растягиванием списка нарушал компоновку обычного звонка и не принят. Итоговый
+вариант прошёл analyze, все **135 Flutter tests** и release web build (85.1 с).
+Чужие pending UI/VPS изменения, зависимости и lockfile не включены; готовые pinned
+crypto/scanner assets переиспользованы, cold Rust/WASM build не заявляется.
+
+Два обычных Chrome клиента: согласия/приглашения, direct replies/reactions,
+muted unread counts/read receipts, новый group text; файлы в direct и group
+скачаны через UI, расшифрованные bytes точно совпали с разными исходными payloads.
+Все 7 тем выбраны через UI: значения записаны в localStorage, PNG подтвердили
+7 разных основных цветов и ожидаемую светлую/тёмную яркость. Чат проверен на
+320×640, 390×844, 640×320. Для живого group screen на этих размерах кнопка
+«Завершить» остаётся видимой, screen-действия доступны через прокрутку content;
+fullscreen/возврат сохраняют звонок. A использует Midnight, B — Lavender Soft.
+
+Личный P2P и групповой video call: реальный tab capture, разные пиксели A/B,
+Matrix E2EE, cancel/takeover/stop/Low/Auto/fullscreen и feature off; voice peers
+сохраняются. В обоих звонках камера выключена/включена, mic muted/unmuted,
+screen pixels остаются. После republish сравнивается рост **новых** RTP counters,
+а не их абсолютное значение до замены stream; после resize media продолжаются.
+
+Widget-проверки обеих ориентаций расширены на все 7 тем; окно звонка — с text
+scale 1.3 и disableAnimations. Tab достигает fullscreen, Enter открывает его,
+возврат не закрывает screen controller. DOM activeElement у Flutter Canvas не
+используется как доказательство Flutter focus. Это не приёмка screen reader.
+Ранее принятые audio-only/mute/no-camera и Matrix device revoke не переписаны;
+их media/authorization controllers совпадают с принятым caecb3c.
+
+Команда: обычный clean web на 7358, local control 8090 с
+`VOICECHAT_SCREEN_FLAG=/tmp/voicechat-screen-test-enabled`, существующие Matrix/SFU;
+`NODE_PATH=/path/to/existing/node_modules python3 prototype/run_screen_regression.py`.
+Нужны Playwright/pngjs и установленный Chrome. Runner проверяет health до создания
+аккаунтов, сохраняет прежний calls report и удаляет временный flag в finally.
+Основной отчёт требует PASS обеих calls и деактивацию 3 fixture accounts.
+Три аккаунта раннего запуска без API и временный cleanup admin тоже деактивированы;
+первые FAIL и прерванные прогоны не считаются приёмкой.
+
+[Сквозная регрессия](../../prototype/verified-screen-regression-run.json),
+[источник/сборка](../../prototype/verified-screen-regression-build-run.json),
+[очистка](../../prototype/verified-screen-local-regression-cleanup-run.json).
+Постоянный flag отсутствует, release BLOCKED. Android, тяжёлая нагрузка, другие
+реальные браузеры/OS picker/Stop, screen reader и целевой VPS screen rollout не
+проверялись. SS-16 локально принят; полная межплатформенная приёмка остаётся PARTIAL.
+
+## SS-15 — локальное обновление существующих томов и безопасный откат
+
+**PASS, 193.480 с.** Реальный baseline control из pre-screen `c3e3f43` →
+текущий pinned local image → baseline. Отдельный Compose project с новыми тестовыми
+томами; при обеих сменах image используются **те же** named volumes. Перед каждой
+сменой writers остановлены, production backup/check выполнен, SQL counts,
+signing key и terminal tombstone сохранены. До upgrade в calls.sqlite подготовлена
+схема screen v1 с ended binding; текущий сервер мигрирует её до v2. Это metadata
+fixture на pre-screen коде, не действующая старая screen generation.
+
+До upgrade созданы настоящие encrypted text/file и E2EE voice/camera call.
+После upgrade: screen off, принудительное чтение серверной истории и реальный
+скачанный/decrypt файл; затем новые text/file, screen on и видимые пиксели у зрителя.
+Ранний ручной rollback отвергнут fixture при active screen. Flag=0 закрывает root
+capture/кадр и старую room, active/pending/retired=0, основные voice PC сохраняются.
+После следующего backup baseline запущен на тех же данных: **без restore старой БД
+и без downgrade v2**. Старый код корректно возвращает 404 capability, обычный звонок
+работает; оба набора encrypted text/file прочитаны после rollback, файл, созданный
+после upgrade, действительно скачан. Capture автоматически не начинается.
+
+Сохранены те же encrypted client vaults. При переключении flag пересоздаётся звонок,
+без лишнего reload Matrix-клиента; SDK-команды ограничены 60 с. Предварительные
+FAIL/прерванные прогоны на пересоздании lab-клиентов не засчитаны; принят полный
+повтор от пустого проекта с cleanup=true. 29 screen и 10 deployment tests PASS;
+lab analyze/release PASS. Все частные проекты/тома/аккаунты удалены.
+
+[Отчёт](../../prototype/verified-screen-security-operations-run.json),
+[команда и границы drill](../../infra/README.md#локальная-проверка-обновления-существующих-томов).
+Guard раннего rollback находится в fixture и проверяет **ручной runbook**;
+production deploy coordinator, registry manifest/target config и точная старая
+версия клиента не проверены. Общий stand и VPS не изменялись. Android и тяжёлая
+нагрузка не запускались; release BLOCKED и default off сохраняются.
+
+## SS-15 — полный локальный Compose backup/restore
+
+**PASS, 129.137 с**, отдельные source/target Compose projects и
+непересекающиеся новые тома; общий prototype/VPS не изменялись. Fresh installation
+подняла Synapse/PostgreSQL/control+SFU/Caddy/TURN и локальный mail sink. Два реальных
+SDK клиента создали encrypted text/file и живую E2EE screen generation.
+
+Пишущие сервисы остановлены; существующий production backup создал согласованный
+Restic snapshot и выполнил check. Исправлен реальный недостаток backup: вместо
+жёстких `voicechat_*` используются фактические volume names из Compose config,
+включая override/project name. Unit проверяет отдельный prefix; default deployment
+сохраняет прежние имена. Secret config JSON не выводится.
+
+Восстановлен конкретный snapshot ID: SQL в пустой PostgreSQL, пять файловых томов
+с byte-for-byte проверкой, UID/GID/permissions и signing key; три SQLite прошли
+integrity_check. Release, runtime env и compose override взяты **из backup**.
+Пароль Restic не находится в snapshot. До control startup flag принудительно=0.
+Snapshot действительно содержал active screen; после startup active/pending/retired=0,
+старой комнаты нет. Actual media keys не найдены в control SQLite/WAL и развёрнутом
+SQL (`pg_restore --file=-`), screen JWT отсутствует в control.
+
+Свежий password login успешен. После закрытия/reload SDK браузер принудительно
+прочитал encrypted events с восстановленного сервера, расшифровал текст и реально
+скачал/расшифровал файл (не только local cache). Сохранён исходный encrypted client
+vault; восстановление истории при его потере не заявлено. Основной group E2EE
+voice/camera работает при screen off. Reload не запускает capture.
+
+После явного screen enable создан **новый call_session**, новый показ виден зрителю.
+Выключение очищает screen и сохраняет основные voice PC/растущие media counters.
+Первая попытка неверно повторила terminal call_session: сервер правильно вернул
+410; она не засчитана. Полный повтор от новых пустых томов прошёл и удалил оба
+проекта/тома/аккаунты. Никаких пользовательских данных в drill нет.
+
+Для независимой проверки старой room через длительный restore JWT fixture меняет
+только expiry старого grant на 600 с, подписывая секретом **одноразового** SFU.
+До expiry независимый SDK отвергает этот токен после restore. Production TTL=60 с
+не менялся; предыдущие короткие fault-прогоны отвергали настоящие unmodified JWT.
+
+10 deployment unit tests PASS, 29 screen tests PASS, lab analyze PASS/release build
+65.7 с. [Полный безопасный отчёт](../../prototype/verified-screen-security-restore-run.json).
+Команда: `node prototype/check_screen_security.cjs restore` с существующим NODE_PATH,
+lab web на 7363 и локальными образами; подробности в infra runbook.
+
+**Принят полный локальный backend/application restore, не production rollout.**
+Registry manifest, отдельный upgrade/rollback на целевых volumes, точная старая
+клиентская версия, публичные DNS/SMTP/ACME/TURN остаются внешней приёмкой.
+Android и тяжёлая нагрузка не запускались; default off и release BLOCKED сохранены.
+[Финальная очистка](../../prototype/verified-screen-operations-cleanup-run.json):
+9 fault cohorts + full restore PASS, частные контейнеры/тома и lab server удалены,
+общий stand сохранён, active/pending/retired=0, production JS не изменён.
+
+## SS-10 / SS-16 — локальная fault-матрица завершена
+
+**PASS**: `network` 26.810 с, `after_create` 32.929 с, `after_delete` 33.893 с, `lease` 55.438 с, `kick` 23.510 с.
+
+Короткий реальный обрыв SFU WebSockets и HTTP A: после восстановления получен
+свежий grant, растут decoded frames, остаются прежние generation и root capture.
+При следующем отключении B перехватил экран; вернувшийся A закрыл capture,
+получил viewer grant и увидел пиксели B, без автоматического claim. Это отказ
+сигналинга/control, не измерение потерь UDP или внешней сети.
+
+Для CreateRoom/DeleteRoom production API wrapper вызывает настоящий pinned SFU,
+затем однократно теряет ответ уже выполненной операции. Клиент закрывает
+неопределённый capture; durable intent восстанавливается и компенсируется.
+Нет ложного success, active/pending/retired=0, старый root/кадр исчезают.
+Явный новый запуск B создаёт один рабочий encrypted screen, A видит B; основные
+voice PC не заменяются, voice/camera counters растут.
+
+Блокировка только screen HTTP A оставляет основной voice/video call живым:
+истекают клиентский допуск и серверный lease, capture закрыт, room удалена,
+независимый SDK отвергает unexpired old JWT. B может явно начать новый показ.
+Настоящий Matrix kick зрителя B ротирует screen generation/roster; ведущий A
+продолжает тот же capture, B не получает новый ключ/grant и не входит старым JWT.
+Вместе с предыдущими late join, добровольным leave и device revoke это закрывает
+локальный roster/recovery scope SS-10. OS Stop, Android и внешние сети остаются
+своими отдельными gate, нагрузка не запускалась.
+
+Observer исправлен окончательно: копия реального fetch response читается внутри
+тестовой вкладки до передачи SDK; body/JWT сохраняются только в памяти Node/browser.
+Это не proxy и не подмена ответов, offline продолжает блокировать реальные запросы.
+Чтение response body через DevTools иногда зависало, хотя SDK получал ответ.
+Первоначальное ожидание автоматической публикации после SFU 503 было ошибкой
+теста: безопасный контракт — локальный abort и компенсация, затем явный retry.
+Production-код не менялся. 29 Python screen tests повторно PASS.
+
+Все fixture accounts/rooms/private databases очищены. Lab target для kick
+прошёл analyzer и release build 65.7 с; хешы source/JS находятся в отчётах.
+Ранее четыре container fault-прогона сохранены отдельным коммитом 0d1bb10.
+Следующий этап — полный Compose backup/restore SS-15.
+
+- [network](../../prototype/verified-screen-security-faults-network-run.json)
+- [after_create](../../prototype/verified-screen-security-faults-after_create-run.json)
+- [after_delete](../../prototype/verified-screen-security-faults-after_delete-run.json)
+- [lease](../../prototype/verified-screen-security-faults-lease-run.json)
+- [kick](../../prototype/verified-screen-security-faults-kick-run.json)
+
 ## SS-10 / SS-16 — живые restart, crash и health watchdog
 
 **Локально PASS**: `restart` 32.996 с, `kill_control` 47.233 с, `kill_sfu` 50.911 с, `pause_control` 41.741 с.

@@ -53,6 +53,12 @@ def backup(root, release, env):
         if repository.exists(): raise RuntimeError('Backup key is missing; refusing to replace it')
         descriptor = os.open(password, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         with os.fdopen(descriptor, 'w') as output: output.write(secrets.token_urlsafe(48))
+    config = json.loads(subprocess.check_output(
+        compose_command(release, 'config', '--format', 'json'), env=env))
+    # Resolve actual names, including an isolated Compose project or external volumes.
+    volumes = config['volumes']
+    mounts = [item for name in ('synapse', 'control', 'media-config', 'certificates', 'caddy-config')
+              for item in ('-v', f"{volumes[name]['name']}:/snapshot/{name}:ro")]
     command = ['docker', 'run', '--rm', '-e', 'RESTIC_PASSWORD_FILE=/password',
         '-v', f'{password}:/password:ro', '-v', f'{repository}:/repository', RESTIC, '-r', '/repository']
     if not repository.exists():
@@ -73,10 +79,7 @@ def backup(root, release, env):
             '-v', f'{root}/runtime/stand.env:/snapshot/runtime/stand.env:ro',
             '-v', f'{root}/current.json:/snapshot/current.json:ro',
             '-v', f'{release}:/snapshot/release:ro', '-v', f'{directory}:/snapshot/database:ro',
-            '-v', 'voicechat_synapse:/snapshot/synapse:ro', '-v', 'voicechat_control:/snapshot/control:ro',
-            '-v', 'voicechat_media-config:/snapshot/media-config:ro',
-            '-v', 'voicechat_certificates:/snapshot/certificates:ro',
-            '-v', 'voicechat_caddy-config:/snapshot/caddy-config:ro',
+            *mounts,
             RESTIC, '-r', '/repository', 'backup', '/snapshot', '--tag', 'voicechat'])
     execute([*command, 'check'])
 

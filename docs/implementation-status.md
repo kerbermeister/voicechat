@@ -14,8 +14,8 @@ SFU подтверждены E2EE-пиксели, запрет viewer/wrong-sour
 перехват и stop. Личный и групповой video сценарии, Low, fullscreen и feature off прошли сквозную
 проверку с сохранением voice PC; личные и групповые аудиозвонки тоже прошли screen/mute без запроса камеры.
 Пройдены Flutter unit/analyze, Python control/миграции, read-only control image под
-UID10001 и SQLite backup/recovery без оживления screen leases. Это не заменяет
-полное восстановление приложения и аппаратную/сетевую/нагрузочную приёмку.
+UID10001 и SQLite backup/recovery без оживления screen leases. Полный локальный Compose restore также принят отдельной итерацией ниже; это не
+заменяет аппаратную/сетевую/нагрузочную и target release приёмку.
 
 Чистый кандидат caecb3c: 135 тестов проверены (один повтор после подготовки
 каталога тестового QR), analyze и release JS — PASS. Три web-клиента прошли поздний
@@ -27,7 +27,39 @@ API/SQLite пережил restart и отказ его Matrix-зависимос
 выключались. Исправлены гонка Matrix device refresh, пропуск subscriptions после
 полного SDK reconnect и устаревшая revision после picker. Локальная web-негативная матрица SS-11 принята отдельными итерациями ниже.
 Живые joint control/SFU restart, crash обоих процессов и health watchdog приняты
-в отдельном контейнере. Остальные локальные fault фазы и полный restore ещё проверяются.
+в отдельном контейнере. Локальная SS-10/SS-16 fault-матрица завершена: также
+short disconnect/loser reconnect, unknown SFU outcomes, silent lease и Matrix kick.
+Полный local application backup/restore принят: новые тома, restored release/runtime,
+SQL/3 SQLite/signing key/media, новый login, реальный decrypt history/file download,
+group voice/camera и новый screen call. Старые leases/capture не воскресли.
+Исправлен backup для фактических Compose volume names вместо жёсткого prefix.
+Сохранён client vault; потеря локальных E2EE keys не покрывается серверным backup.
+Локальный upgrade/rollback на существующих томах принят отдельно: pre-screen
+c3e3f43 → current → baseline, v1→v2 без downgrade, backup перед сменами,
+данные до/после upgrade читаются после rollback. Registry/target deployment,
+точная старая версия клиента и внешняя приёмка остаются открытыми.
+
+24 октября: оставшаяся локальная регрессия SS-16 принята на clean 4df481d с
+минимальным исправлением ширины quality dropdown (убран неиспользуемый hint).
+Analyze, все 135 Flutter tests и release JS PASS; ordinary UI direct/group
+text/file byte checks, 7 palettes и 3 viewport, live camera/mic toggles,
+scroll/fullscreen и сохранение voice PC/media PASS. Widget: 7 тем, text130%,
+reduced animations, Tab/Enter. Это Chrome/viewport-проверки; screen reader,
+физические платформы и release остаются вне приёмки.
+
+24 октября: SS-12 дополнена Edge 156 ↔ Chrome и просмотром E2EE screen/camera
+в Playwright WebKit 26.5 и нативном Safari 18.3. Без/неверный ключ — 0 кадров.
+Это SDK lab, отдельно от обычного Matrix клиента. Firefox 153 media connection
+FAIL, причина открыта; его кадры/расшифровка не приняты. Ручные picker/OS Stop,
+мобильные устройства и внешние сети остаются gate, релиз BLOCKED.
+
+24 октября: исправлен live region ScreenPanel — текущий статус и ошибка захвата
+доступны вместе, без дублирования визуального notice. 7 тем × 2 ориентации,
+text200%, reduced animations, contrast, Escape/возврат фокуса приняты widget-тестами.
+Нативный Safari AX/клавиатура PASS; VO navigation и озвучивание не подтверждены
+текущим инструментом. Разрешённый временный VoiceOver возвращён off. Manual screen
+reader и физические платформы остаются gate. UI fixture в Chrome/Edge/Firefox/WebKit на 3 viewport PASS, без media/сети.
+Финальная чистая копия: все 136 Flutter tests, analyze и ordinary release JS PASS.
 
 SS-11 локально принят: stale commands, original/refreshed JWT, подмена JWT identity/
 publisher grant, raw SFU source/role отказы, duplicate/plaintext metadata guard,
@@ -42,6 +74,10 @@ SS-17: локальный [preflight](../prototype/verified-screen-preflight-run
 включение/релиз — BLOCKED. Persistent flag отсутствует, active/pending/retired=0;
 screen fixtures удалены. Общий деплой на одной VPS можно готовить параллельно,
 сохраняя screen off до приёмки. Порядок и оставшиеся gate — в матрице.
+
+24 октября оставшиеся работы сверены в SS-12–SS-17: Firefox и ручные платформенные
+проверки, внешняя сеть, нагрузка, целевой upgrade/rollback, screen reader и включение.
+Непроверенные пункты сохранены открытыми; Android и нагрузка по-прежнему отложены.
 
 Источник статуса: [задачи SS-00–SS-17](tasks/08-screen-sharing.md),
 [журнал](iterations/08-screen-sharing.md), [матрица приёмки](screen-sharing-acceptance.md).

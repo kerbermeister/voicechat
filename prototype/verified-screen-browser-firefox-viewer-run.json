@@ -1,0 +1,49 @@
+{
+  "result": "FAIL",
+  "run": "2026-10-24T07:51:43.694Z",
+  "target": "firefox",
+  "direction": "viewer",
+  "scope": "real pinned SFU and Flutter SDK; lab entrypoint; synthetic microphone/camera; Matrix exchange not exercised",
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "source_commit": "55d8a77cffcfc01b33c9b1929f58526e506532e3",
+  "lab_source_sha256": "2f614ddbdc41222b01c681f741e743267c6e13fcc45bd7173c5adc7b3b4f5750",
+  "lab_js_sha256": "0d73b581b0b2596bd0b71a5d511ef441763b3de7a71209f14f002483b3561428",
+  "sender_browser": "156.0.8078.47",
+  "viewer_browser": "153.0",
+  "firefox_test_preferences": {
+    "loopback_ice": true
+  },
+  "apis": {
+    "secure": true,
+    "isolated": true,
+    "shared_array_buffer": true,
+    "script_transform": true,
+    "encoded_streams": false,
+    "display_media": true
+  },
+  "viewer_stage": "failed:minified:ym",
+  "peer_states": [
+    {
+      "ice": "closed",
+      "gathering": "new",
+      "connection": "closed"
+    },
+    {
+      "ice": "closed",
+      "gathering": "complete",
+      "connection": "closed"
+    },
+    {
+      "ice": "new",
+      "gathering": "new",
+      "connection": "new"
+    },
+    {
+      "ice": "new",
+      "gathering": "complete",
+      "connection": "new"
+    }
+  ],
+  "cleanup_completed": true
+}

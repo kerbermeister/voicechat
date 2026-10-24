@@ -275,8 +275,9 @@ python3 /srv/voicechat/releases/PREVIOUS_COMMIT/infra/deploy.py \
 ```
 
 Восстановление сначала отрепетируйте на **отдельной VPS** с закрытым входом,
-отключённой реальной почтой и push. Встроенное имя Compose и volume mounts backup
-фиксированы: просто другой рабочий каталог на том же хосте не изолирует данные.
+отключённой реальной почтой и push. По умолчанию Compose project называется `voicechat`; backup разрешает фактические
+volume names из Compose config. Просто другой каталог всё равно не изолирует
+данные/порты: нужны отдельный project name, новые тома и явная изоляция сетей.
 
 1. Закреплённым Restic из `infra/deploy.py` выполните `snapshots`, затем
    `restore SNAPSHOT_ID --target /restore` с внешним repo и сохранённым паролем.
@@ -314,6 +315,9 @@ python3 /srv/voicechat/releases/PREVIOUS_COMMIT/infra/deploy.py \
    два сервера с одной Matrix identity одновременно. Откат данных к snapshot
    теряет записи после его даты и требует отдельного решения.
 
-Восстановление описано как процедура оператора, но ещё не принято реальным
-restore drill. Фактические DNS, SMTP, ACME, TURN и физические устройства требуют
-проверки после предоставления доступа к VPS.
+Полный локальный Compose restore drill принят: [свидетельство](../prototype/verified-screen-security-restore-run.json),
+[воспроизведение](README.md#локальный-полный-restore-drill). Проверены новый вход,
+расшифровка истории/скачанного файла с сохранённым client vault, voice/camera и новый
+screen call. Это не приёмка registry manifest или целевого upgrade/rollback.
+Фактические DNS, SMTP, ACME, TURN и физические устройства требуют проверки
+после предоставления доступа к VPS.

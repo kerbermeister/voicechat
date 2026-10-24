@@ -1,0 +1,22 @@
+{
+  "result": "PASS",
+  "run": "2026-10-24T08:04:38.796918+00:00",
+  "source_base_commit": "c91e87408316788e767922304cf33d7327c0fe69",
+  "source_scope": "clean cached client from 4df481d + committed call_window hint removal + this screen_panel/test/isolated lab; unrelated design/VPS edits excluded",
+  "screen_panel_sha256": "e2e086a081bcb74689accadcd8e69331b56103c216e3b85e71e2757aa6a63b42",
+  "screen_panel_test_sha256": "b8f5c1330bcb11aac09e3976677203294746fac224d7fc6d89b6448d937794c8",
+  "flutter_tests_passed": 136,
+  "flutter_analyze": "PASS",
+  "ordinary_web_release": "PASS",
+  "main_dart_js_sha256": "fe0b1390b9bd123171acfe696447ec26eefe4eed4d61206c954c4a7da4e655e1",
+  "lab_fixture_literals_and_files_absent": true,
+  "lockfile_matches_committed": true,
+  "text_scale": 2,
+  "widget_variants": "7 palettes x 2 orientations, reduced animations, Tab/Enter/Escape and focus restoration",
+  "color_contrast": "4.5:1 or better for status, active screen text/control and end button color pairs; 7 palettes, no full WCAG audit claim",
+  "generated_crypto_scanner_assets": "reused pinned generated upstream outputs; cold Rust/WASM build not tested",
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "seconds": 80.4,
+  "local_artifact": "/tmp/voicechat-screen-accessibility-release-web"
+}

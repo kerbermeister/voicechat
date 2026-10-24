@@ -1,0 +1,14 @@
+{
+  "result": "MANUAL_SESSION_COMPLETE",
+  "run": "2026-10-24T07:47:44.813Z",
+  "target": "safari",
+  "direction": "viewer",
+  "scope": "real pinned SFU and Flutter SDK; lab entrypoint; synthetic microphone/camera; Matrix exchange not exercised",
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "source_commit": "55d8a77cffcfc01b33c9b1929f58526e506532e3",
+  "lab_source_sha256": "2f614ddbdc41222b01c681f741e743267c6e13fcc45bd7173c5adc7b3b4f5750",
+  "lab_js_sha256": "0d73b581b0b2596bd0b71a5d511ef441763b3de7a71209f14f002483b3561428",
+  "native_observation": "See separate native Safari/VoiceOver record; no automatic media PASS",
+  "cleanup_completed": true
+}

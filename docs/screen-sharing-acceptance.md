@@ -1,6 +1,6 @@
 # Приёмка демонстрации экрана
 
-Дата: 23 октября 2026. Релиз **не принят**. Реализация и лабораторное доказательство
+Дата: 24 октября 2026. Релиз **не принят**. Реализация и лабораторное доказательство
 отделены от аппаратной, сетевой и эксплуатационной приёмки.
 
 ## Платформы — SS-12
@@ -8,9 +8,10 @@
 | Среда | Захват | Encrypt / decrypt | Фон / системный Stop | Результат |
 | --- | --- | --- | --- | --- |
 | macOS, Chrome 156.0.8078.47, Flutter web JS, LiveKit SDK 2.13.1 | Реальная тестовая вкладка; выбор автоматизирован | Реальные E2EE-кадры совпадают с источником; без ключа 0 кадров | Ручной picker/Stop/monitor/window не проверены | PARTIAL PASS |
-| Desktop Edge | Не проверен, браузер недоступен | Не проверено | Не проверено | BLOCKED |
-| Desktop Firefox | Не проверен, браузер недоступен | Не проверено | Не проверено | BLOCKED |
-| Desktop Safari, macOS | Установлен; сквозной сценарий не выполнен | Не проверено | Не проверено | NOT TESTED |
+| macOS, Edge 156.0.4314.42 | Реальная тестовая вкладка → Chrome; автоматический выбор | Edge ↔ Chrome: реальные E2EE screen/camera, без/неверный ключ 0 кадров; SDK lab | Ручной picker/Stop не проверены | PARTIAL PASS |
+| macOS, Firefox 153.0, Playwright build 1538 | Не проверен | SDK media connection FAIL, кадры не приняты; причина не установлена | Не проверено | FAIL / OPEN |
+| macOS 15.3.1, Safari 18.3 (20620.2.4.11.5) | Отправка не проверена | Нативный просмотр от Chrome PASS: реальные E2EE screen/camera; без/неверный ключ 0 кадров, повторный положительный контроль | Не проверено | PARTIAL PASS |
+| macOS, Playwright WebKit 26.5 build 2336 | Отправка не проверена | SDK lab просмотр от Chrome PASS, key negatives и media continuity | Не проверено; не заменяет Safari | LAB PASS |
 | Физический Android APK | Реализация подготовлена; не запускалась | Не проверено | Не проверено | DEFERRED владельцем |
 | Android Chrome, мобильный веб | Отправка запрещена закреплённым SDK | Просмотр на реальном устройстве не проверен | Не проверено | BLOCKED |
 | iPhone Safari, мобильный веб | Отправка запрещена закреплённым SDK | Просмотр на реальном устройстве не проверен | Не проверено | BLOCKED |
@@ -59,10 +60,10 @@ PASS ниже относится только к явно указанной с�
 | A11 | WEB PASS | HTTP доступ/пара/роль/lease, source и kind; настоящий SFU отвергает viewer publish и owner camera, production metadata guard обнаруживает duplicate. В настоящем Matrix group call raw addTrack отвергнут для owner-camera, screen-in-voice и viewer-publish. Duplicate и raw plaintext приняты SFU, затем production watcher удалил generation и остановил capture. Для изоляции серверного guard screen roster=A, voice=A/B. Trusted idle SDK другого члена чата и второе trusted устройство участника не получили token/key; оба способны расшифровать контрольное Olm-сообщение. Подменённый identity/canPublish JWT отвергнут независимым SDK. |
 | A12 | WEB PASS | 15 доставленных Matrix/Olm отрицательных случаев: точный старый envelope, подменённые контексты/срок/устройство, plaintext, voice channel. Ни один не достиг screen setKey; voice key не изменился, 0 кадров до правильного ключа. Положительный контроль установил актуальный raw key и дал видимые пиксели. Физические платформы остаются в SS-12. |
 | A13 | PARTIAL PASS | Capture video-only и source grants, audio-kind отвергается до subscribe, голос в своей room. Воспроизведение системного звука с выключенным mic на физических устройствах не принято. |
-| A14 | PARTIAL PASS | Потерянный claim reply, fault/lease/fencing unit, настоящий fail-closed container и DeleteRoom. Живой E2EE screen прекращён при restart отдельного production control API/SQLite и отказе его Matrix-зависимости; unexpired JWT отвергнут, P2P голос/камера продолжаются. Общий Synapse не выключался. В отдельном control/SFU container живой экран безопасно прекращён при restart, SIGKILL каждого процесса и SIGSTOP control; unexpired JWT отвергнут после recovery. Короткий обрыв, unknown SFU outcomes и silent lease ещё проверяются. Исправлены гонка device refresh, пропуск subscriptions после SDK reconnect и revision до picker; результаты повторов — в журнале. |
+| A14 | WEB PASS | Локальные private control Matrix/restart, joint container restart/SIGKILL control/SIGKILL SFU/SIGSTOP watchdog, короткий signaling/control обрыв и возврат проигравшего viewer, unknown результат настоящих SFU CreateRoom/DeleteRoom, silent lease и настоящий Matrix kick. Захват/старый кадр закрыты, retired/pending очищены, unexpired old JWT отвергнут. Только screen faults сохраняют основные voice PC/media; crash общего SFU прерывает групповой голос. Внешняя сеть/UDP loss относятся к A15. |
 | A15 | BLOCKED | Нет внешнего VPS/NAT/целевых Wi-Fi/mobile сетей; TCP443-only не заявлен. |
-| A16 | PARTIAL PASS | Layout 320×640/640×320, fullscreen, Material focus/semantics; тема и реальный screen reader на каждой платформе ещё не приняты. |
-| A17 | PARTIAL PASS | Additive v1→v2, fresh/repeated migration, read-only image, SQLite backup/recovery, настоящий feature off сохраняет group voice/camera. Полный Compose application restore ещё не принят. |
+| A16 | PARTIAL PASS | Обычный Chrome: 7 тем через UI/localStorage/PNG, чат и live screen 320×640/390×844/640×320, scroll-доступ к screen controls, всегда видимое завершение, fullscreen/возврат. Direct/group mic/camera off/on сохраняют screen и voice PC, новые RTP streams продолжают декодироваться. Widget: 7 тем, text200%, reduced animations, Tab/Enter/Escape fullscreen и возврат фокуса; контраст используемых color pairs ≥4.5:1. Исправлен live status с ошибкой захвата; UI fixture в Chrome/Edge/Firefox/WebKit на 3 viewport PASS (без media). Нативный Safari AX/keyboard PASS; озвучивание и VO navigation не приняты, VoiceOver возвращён off. Целевые устройства остаются. |
+| A17 | PARTIAL PASS | Additive v1→v2, fresh/repeated migration, read-only image, SQLite backup/recovery, настоящий feature off сохраняет group voice/camera. Полный локальный Compose restore принят: новые тома, restored release/runtime, signing key, SQL/3 SQLite/media; новый login, принудительное чтение/decrypt истории и реальный download/decrypt файла, group voice/camera и новый screen call. Старые leases отозваны, capture не возобновляется. Сохранён client vault. Отдельный local upgrade pre-screen c3e3f43 → current → baseline на тех же томах: v1→v2, off/on, отказ ручного rollback при active screen, quiescence, backup перед обеими сменами; данные до/после upgrade и ordinary E2EE call сохранены. Registry/target release и старая клиентская версия остаются. |
 | A18 | BLOCKED | 50 fake metadata cycles без retired rooms; это не 30 минут media и не доказательство native/браузерных утечек. Тяжёлая нагрузка не разрешена. |
 
 Артефакты: [обычные video calls](../prototype/verified-screen-calls-run.json),
@@ -84,7 +85,12 @@ PASS ниже относится только к явно указанной с�
 [отрицательный SFU/E2EE](../prototype/verified-screen-web-run.json),
 [образ control](../prototype/verified-screen-control-image-run.json),
 [сверка исходников образа](../prototype/verified-screen-image-sources-run.json),
-[настоящий supervisor](../prototype/verified-screen-supervisor-run.json).
+[настоящий supervisor](../prototype/verified-screen-supervisor-run.json),
+[полный локальный Compose restore](../prototype/verified-screen-security-restore-run.json),
+[обновление томов и совместимый rollback](../prototype/verified-screen-security-operations-run.json),
+[оставшаяся обычная web-регрессия](../prototype/verified-screen-regression-run.json),
+[чистая сборка и 135 тестов](../prototype/verified-screen-regression-build-run.json),
+[финальная локальная очистка](../prototype/verified-screen-local-regression-cleanup-run.json).
 
 ## Локальная подготовка включения — SS-17
 
@@ -108,10 +114,9 @@ deployment manifest — другой маркер совместимости.
 controllers: новые свидетельства связаны выше. Это не полная аппаратная приёмка
 и не независимый security audit всей инфраструктуры.
 
-До включения остаются как внешние, так и локальные проверки: дополнительные fault
-фазы SS-10/SS-16 (A14), физический Android и браузеры, системный picker/Stop/
-доступность, внешние сети, разрешённая нагрузка, полный application restore/rollback
-и оставшаяся регрессия сообщений/файлов/тем. PARTIAL/BLOCKED сохраняются для них.
+До включения остаются как внешние, так и локальные проверки: физический Android и браузеры, системный picker/Stop/
+доступность, внешние сети, разрешённая нагрузка, target upgrade/rollback и registry manifest
+и совместимость старого клиента. Локальная Chrome регрессия сообщений/файлов/тем принята отдельно. PARTIAL/BLOCKED сохраняются для открытых gate.
 
 На целевом стенде порядок: совместимый сервер с flag off → web/APK и обычный
 звонок → обязательная приёмка в тестовом окне → решение о включении. Отключение:

@@ -1,0 +1,105 @@
+{
+  "result": "PASS",
+  "run": "2026-10-24T07:22:23.667Z",
+  "scope": "clean ordinary web client; local Matrix/SFU; real tab capture; synthetic microphone/camera",
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "screen_reader": "NOT_RUN",
+  "main_dart_js_sha256": "bfc4bd3da1271a9589b33459152b7abd1668349a82d38cb7d2275eef98ad149b",
+  "direct_and_group_attachment_bytes_match": true,
+  "group_text_decrypted_in_ordinary_ui": true,
+  "seven_themes_render_and_persist": true,
+  "keyboard_focus": "Flutter widget test; browser screen reader not accepted",
+  "chat_viewports": [
+    [
+      320,
+      640
+    ],
+    [
+      390,
+      844
+    ],
+    [
+      640,
+      320
+    ]
+  ],
+  "call_palettes": [
+    "Midnight",
+    "Lavender Soft"
+  ],
+  "call_controls": {
+    "direct": {
+      "camera_off_on": true,
+      "mute_unmute": true,
+      "screen_pixels_continue": true
+    },
+    "group": {
+      "camera_off_on": true,
+      "mute_unmute": true,
+      "screen_pixels_continue": true
+    }
+  },
+  "live_screen_viewports": [
+    [
+      320,
+      640
+    ],
+    [
+      390,
+      844
+    ],
+    [
+      640,
+      320
+    ]
+  ],
+  "resizing_and_fullscreen_preserve_voice_camera_and_screen": true,
+  "cleanup_accounts_deactivated": 3,
+  "direct_and_group_video_screen_calls": {
+    "result": "PASS",
+    "run": "2026-10-24T07:21:43.274Z",
+    "direct": {
+      "result": "PASS",
+      "elapsed_seconds": 21.132936167001724,
+      "capture": "real browser tab, automatic picker selection",
+      "camera_microphone": "synthetic",
+      "encrypted_matrix_key_exchange": true,
+      "decoded_source_pixels": true,
+      "cancel_preserves_owner": true,
+      "takeover_without_confirmation": true,
+      "old_capture_stopped": true,
+      "fullscreen_keeps_call": true,
+      "stop_releases_capture": true,
+      "low_encoder_limits_applied": true,
+      "voice_packets_increase": true,
+      "video_frames_increase": true,
+      "voice_peer_connections_unchanged": true,
+      "distinct_source_colours": true
+    },
+    "group": {
+      "result": "PASS",
+      "elapsed_seconds": 34.83962566699833,
+      "capture": "real browser tab, automatic picker selection",
+      "camera_microphone": "synthetic",
+      "encrypted_matrix_key_exchange": true,
+      "decoded_source_pixels": true,
+      "cancel_preserves_owner": true,
+      "takeover_without_confirmation": true,
+      "old_capture_stopped": true,
+      "fullscreen_keeps_call": true,
+      "stop_releases_capture": true,
+      "low_encoder_limits_applied": true,
+      "voice_packets_increase": true,
+      "video_frames_increase": true,
+      "voice_peer_connections_unchanged": true,
+      "feature_off_stops_capture_and_hides_frame": true,
+      "feature_off_preserves_voice_and_camera": true,
+      "distinct_source_colours": true
+    }
+  },
+  "unchanged_audio_and_revoke_evidence": [
+    "verified-screen-calls-audio-run.json",
+    "verified-screen-revoke-run.json"
+  ]
+}

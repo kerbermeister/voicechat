@@ -48,12 +48,8 @@
   },
   "remaining_gates": [
     {
-      "tasks": "SS-10 / SS-16 / A14",
-      "required": "Remaining joint container/media fault phases; local web SS-11 negatives accepted by separate evidence"
-    },
-    {
       "tasks": "SS-12 / A02,A09,A13,A16",
-      "required": "Physical Android deferred by owner; supported browser/mobile viewers, manual monitor/window picker and OS Stop, system audio exclusion, accessibility"
+      "required": "Physical Android deferred; mobile viewers, manual monitor/window picker and OS Stop, system audio exclusion; Firefox media connection failure unresolved, ordinary Matrix client in target browsers still not accepted. Edge ↔ Chrome and WebKit/native Safari SDK viewers accepted separately."
     },
     {
       "tasks": "SS-13 / A15",
@@ -65,11 +61,11 @@
     },
     {
       "tasks": "SS-15 / A17",
-      "required": "Full application fresh install, existing-volume upgrade and isolated backup/restore/rollback; registry images and target config"
+      "required": "Registry images, target config/deployment coordinator and exact old client compatibility; isolated local restore and same-volume upgrade/compatible rollback accepted separately"
     },
     {
       "tasks": "SS-16 / A16",
-      "required": "Remaining messages/files/theme/manual accessibility regression on target clients"
+      "required": "Actual screen reader speech/cursor navigation and target platform/browser acceptance; four browser synthetic UI and native Safari AX/keyboard accepted separately. VoiceOver restored off after unconfirmed VO command checks."
     },
     {
       "tasks": "SS-17",
@@ -83,5 +79,37 @@
     "verified-screen-security-commands-member-run.json",
     "verified-screen-security-commands-device-run.json",
     "verified-screen-security-cleanup-run.json"
-  ]
+  ],
+  "local_fault_acceptance_evidence": [
+    "prototype/verified-screen-security-faults-restart-run.json",
+    "prototype/verified-screen-security-faults-kill_control-run.json",
+    "prototype/verified-screen-security-faults-kill_sfu-run.json",
+    "prototype/verified-screen-security-faults-pause_control-run.json",
+    "prototype/verified-screen-security-faults-network-run.json",
+    "prototype/verified-screen-security-faults-after_create-run.json",
+    "prototype/verified-screen-security-faults-after_delete-run.json",
+    "prototype/verified-screen-security-faults-lease-run.json",
+    "prototype/verified-screen-security-faults-kick-run.json"
+  ],
+  "local_application_restore_evidence": "prototype/verified-screen-security-restore-run.json",
+  "local_operations_cleanup_evidence": "prototype/verified-screen-operations-cleanup-run.json",
+  "local_existing_volume_upgrade_rollback_evidence": "prototype/verified-screen-security-operations-run.json",
+  "local_remaining_regression_evidence": "prototype/verified-screen-regression-run.json",
+  "local_remaining_regression_build_evidence": "prototype/verified-screen-regression-build-run.json",
+  "local_remaining_regression_cleanup_evidence": "prototype/verified-screen-local-regression-cleanup-run.json",
+  "local_browser_media_evidence": [
+    "prototype/verified-screen-browser-edge-sender-run.json",
+    "prototype/verified-screen-browser-edge-viewer-run.json",
+    "prototype/verified-screen-browser-webkit-viewer-run.json",
+    "prototype/verified-screen-browser-firefox-viewer-run.json",
+    "prototype/verified-screen-browser-safari-viewer-run.json",
+    "prototype/verified-screen-native-safari-run.json"
+  ],
+  "local_accessibility_evidence": [
+    "prototype/verified-screen-accessibility-build-run.json",
+    "prototype/verified-screen-accessibility-browsers-run.json",
+    "prototype/verified-screen-native-accessibility-run.json",
+    "prototype/verified-screen-browser-accessibility-cleanup-run.json"
+  ],
+  "additional_browser_accessibility_scope": "Edge ↔ Chrome, WebKit and native Safari viewers SDK media PASS; Firefox media FAIL/unresolved. Four browser synthetic UI accessibility PASS; native Safari AX/keyboard PASS; VO speech/navigation NOT_ACCEPTED; temporary VoiceOver restored off. Android and heavy load NOT_RUN."
 }

@@ -1,0 +1,17 @@
+{
+  "result": "PASS",
+  "source_commit": "4df481dc180626736a2e9f76416d86a06066f4b0",
+  "source_scope": "clean git archive plus removal of unused video quality hint; no pending UI/VPS changes",
+  "call_window_sha256": "515f67c90357b867291d128cbbf3b1b78888f3fbe936647ec9dda6ce0e76172e",
+  "main_dart_js_sha256": "bfc4bd3da1271a9589b33459152b7abd1668349a82d38cb7d2275eef98ad149b",
+  "flutter_analyze": "PASS",
+  "flutter_tests_passed": 135,
+  "panel_variants": "7 palettes × 2 orientations; text130%, reduced animations; Tab/Enter fullscreen",
+  "fixture_bridge_and_secrets_absent": true,
+  "lockfile_unchanged": true,
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "crypto_scanner_assets": "reused pinned generated assets; cold Rust/WASM build not run",
+  "local_artifact": ".prototype/screen-regression-web",
+  "audio_revoke_controllers_unchanged_from": "caecb3c"
+}
