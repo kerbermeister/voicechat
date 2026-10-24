@@ -2,6 +2,65 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## SS-16/A16 — 24 октября 2026: доступность статуса и клавиатуры
+
+В production `ScreenPanel` ошибка захвата была видна, но не входила в live region:
+новая widget assertion воспроизвела дефект до изменения. Исправление объединяет
+текущий статус и notice в одном отдельном semantics node; визуальный notice исключён
+из повторного чтения. Media, авторизация и lifecycle не изменялись.
+
+Локальный target `lab_screen_accessibility_main.dart` использует реальные
+CallWindow/ScreenPanel и синтетические viewer/owner/error/reconnecting состояния,
+без credentials, Matrix/SFU и медиапотоков. Это UI fixture, не media proof;
+в обычный релиз он не включается. Для повторения собрать этот target отдельно
+с `--no-web-resources-cdn`, отдать на 7358 и запустить
+`NODE_PATH=<runtime node_modules> PLAYWRIGHT_BROWSERS_PATH=/tmp/voicechat-screen-browsers
+node prototype/check_screen_accessibility.cjs`. Пути/версии браузеров — как в SS-12 ниже.
+Flutter web переносит announcement в временный `aria-live` text node на 300 ms;
+runner наблюдает реальные mutations, а не ищет aria-live на самом Text. Каждая
+проверка capture error очищает предыдущие сообщения, чтобы не принять старый статус.
+
+Chrome 156, Edge 156, Firefox 153 и Playwright WebKit 26.5 последовательно PASS:
+320×640 / 640×320 / 1280×900, named controls, динамический live error со статусом,
+fullscreen/Escape оставляет звонок, disabled takeover при reconnect, quality и stop.
+Каждый браузерный контекст подтвердил отсутствие backend/media requests.
+`prototype/verified-screen-accessibility-browsers-run.json` содержит версии и хеши.
+UI PASS Firefox не закрывает его отдельный media FAIL в SS-12.
+
+Widget: 7 тем × 2 ориентации, текст 200%, reduced animations, Tab/Enter fullscreen,
+Escape и восстановление фокуса, кнопка завершения остаётся в viewport. Отдельный
+тест проверяет 4.5:1 для onSurface/surface, primary/surface, onSurfaceVariant/surface,
+onError/error во всех семи принятых темах. Это точечные проверки, не полный WCAG audit.
+
+В нативном Safari 18.3 CUA подтвердил названия controls, статус с текстом ошибки,
+Escape из fullscreen без закрытия звонка, возврат фокуса, Tab к микрофону;
+клавиатурные открытие звонка, выбор Auto → Low и stop обновляют доступный статус.
+Нативная проверка использовала JS `2a3ec8e6…`, до добавления отдельной semantics
+границы; финальная browser/widget проверка имеет собственные хеши.
+VoiceOver временно включён с разрешения владельца (исходно off), процесс наблюдался;
+попытки VO navigation/action через текущий инструмент не дали проверяемого курсора
+или действия, speech не записан. Поэтому manual screen reader НЕ принят.
+VoiceOver возвращён off, подтверждено через AX System Settings; остальные настройки
+диктора не менялись, собственная Safari-вкладка закрыта. Свидетельство:
+`prototype/verified-screen-native-accessibility-run.json`.
+
+Чистая финальная копия клиента: все 136 Flutter tests, analyze и обычный release JS
+PASS. Отдельный fixture target не попал в `main.dart.js`; fixture.json/source.html
+отсутствуют. Lockfile и CallWindow совпадают с committed baseline; параллельный
+UI/VPS diff исключён. Артефакт — `/tmp/voicechat-screen-accessibility-release-web`,
+хеши и границы — `prototype/verified-screen-accessibility-build-run.json`.
+Генерированные crypto/scanner assets переиспользованы из закреплённого результата,
+холодная Rust/WASM сборка не проверялась.
+
+Очистка PASS: собственные 7358/7362 остановлены, fixture JSON/SS-01 SFU rooms/feature
+flags отсутствуют, metadata ended=60, active/pending/retired=0; общий Compose и тома
+сохранены, прежние два release JS не изменены. Свидетельство:
+`prototype/verified-screen-browser-accessibility-cleanup-run.json`.
+
+Android, физические мобильные браузеры, OS picker/Stop и тяжёлая нагрузка не
+запускались. SS-A16 остаётся PARTIAL до реального принятого озвучивания/VO-навигации
+и матрицы целевых устройств; release BLOCKED.
+
 ## SS-12 — 24 октября 2026: дополнительные desktop браузеры
 
 Закреплённый Flutter/LiveKit lab на clean `55d8a77`, без текущего design/VPS diff.

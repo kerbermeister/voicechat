@@ -27,6 +27,21 @@ class PanelCall extends Fake implements VoiceCall {
 }
 
 void main() {
+  test('Контраст статуса и активных controls достаточен во всех темах', () {
+    for (final palette in AppPalette.values) {
+      final colors = palette.theme.colorScheme;
+      for (final pair in [
+        (colors.onSurface, colors.surface),
+        (colors.primary, colors.surface),
+        (colors.onSurfaceVariant, colors.surface),
+        (colors.onError, colors.error),
+      ]) {
+        final a = pair.$1.computeLuminance(), b = pair.$2.computeLuminance();
+        final ratio = ((a > b ? a : b) + .05) / ((a < b ? a : b) + .05);
+        expect(ratio, greaterThanOrEqualTo(4.5), reason: palette.name);
+      }
+    }
+  });
   testWidgets(
     'Экран остаётся отдельным, fullscreen закрывает только просмотр',
     (tester) async {
@@ -39,7 +54,8 @@ void main() {
               'ws://localhost:7880',
             )
             ..snapshot = ScreenSnapshot.parse(active())
-            ..phase = ScreenPhase.viewing;
+            ..phase = ScreenPhase.viewing
+            ..notice = 'Показ не начат. Проверьте разрешение на захват экрана.';
       for (final size in [const Size(320, 640), const Size(640, 320)]) {
         for (final palette in AppPalette.values) {
           tester.view.devicePixelRatio = 1;
@@ -57,6 +73,13 @@ void main() {
           await tester.pump();
           expect(find.text('Перехватить экран'), findsOneWidget);
           expect(find.byType(Semantics), findsWidgets);
+          final status = find.byWidgetPredicate(
+            (w) => w is Semantics && w.properties.liveRegion == true,
+          );
+          expect(
+            tester.getSemantics(status).label,
+            contains(controller.notice!),
+          );
           expect(tester.takeException(), isNull);
           await tester.ensureVisible(find.byTooltip('Развернуть экран'));
           FocusManager.instance.primaryFocus?.unfocus();
@@ -64,7 +87,9 @@ void main() {
           for (var i = 0; i < 4; i++) {
             await tester.sendKeyEvent(LogicalKeyboardKey.tab);
             await tester.pump();
-            if (Focus.of(tester.element(find.byIcon(Icons.fullscreen))).hasFocus) {
+            if (Focus.of(
+              tester.element(find.byIcon(Icons.fullscreen)),
+            ).hasFocus) {
               break;
             }
           }
@@ -75,9 +100,13 @@ void main() {
           await tester.sendKeyEvent(LogicalKeyboardKey.enter);
           await tester.pumpAndSettle();
           expect(find.byTooltip('Вернуться в звонок'), findsOneWidget);
-          await tester.tap(find.byTooltip('Вернуться в звонок'));
+          await tester.sendKeyEvent(LogicalKeyboardKey.escape);
           await tester.pumpAndSettle();
           expect(controller.isClosed, isFalse);
+          expect(
+            Focus.of(tester.element(find.byIcon(Icons.fullscreen))).hasFocus,
+            isTrue,
+          );
           expect(find.text('Перехватить экран'), findsOneWidget);
           expect(tester.takeException(), isNull);
         }
@@ -126,7 +155,7 @@ void main() {
               theme: palette.theme,
               builder: (context, child) => MediaQuery(
                 data: MediaQuery.of(context).copyWith(
-                  textScaler: const TextScaler.linear(1.3),
+                  textScaler: const TextScaler.linear(2),
                   disableAnimations: true,
                 ),
                 child: child!,

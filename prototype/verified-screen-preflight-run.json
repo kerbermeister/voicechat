@@ -49,7 +49,7 @@
   "remaining_gates": [
     {
       "tasks": "SS-12 / A02,A09,A13,A16",
-      "required": "Physical Android deferred by owner; supported browser/mobile viewers, manual monitor/window picker and OS Stop, system audio exclusion, accessibility"
+      "required": "Physical Android deferred; mobile viewers, manual monitor/window picker and OS Stop, system audio exclusion; Firefox media connection failure unresolved, ordinary Matrix client in target browsers still not accepted. Edge ↔ Chrome and WebKit/native Safari SDK viewers accepted separately."
     },
     {
       "tasks": "SS-13 / A15",
@@ -65,7 +65,7 @@
     },
     {
       "tasks": "SS-16 / A16",
-      "required": "Manual screen reader and target platform/browser acceptance; local ordinary Chrome messages/files/themes/three viewports and live call controls accepted separately"
+      "required": "Actual screen reader speech/cursor navigation and target platform/browser acceptance; four browser synthetic UI and native Safari AX/keyboard accepted separately. VoiceOver restored off after unconfirmed VO command checks."
     },
     {
       "tasks": "SS-17",
@@ -96,5 +96,20 @@
   "local_existing_volume_upgrade_rollback_evidence": "prototype/verified-screen-security-operations-run.json",
   "local_remaining_regression_evidence": "prototype/verified-screen-regression-run.json",
   "local_remaining_regression_build_evidence": "prototype/verified-screen-regression-build-run.json",
-  "local_remaining_regression_cleanup_evidence": "prototype/verified-screen-local-regression-cleanup-run.json"
+  "local_remaining_regression_cleanup_evidence": "prototype/verified-screen-local-regression-cleanup-run.json",
+  "local_browser_media_evidence": [
+    "prototype/verified-screen-browser-edge-sender-run.json",
+    "prototype/verified-screen-browser-edge-viewer-run.json",
+    "prototype/verified-screen-browser-webkit-viewer-run.json",
+    "prototype/verified-screen-browser-firefox-viewer-run.json",
+    "prototype/verified-screen-browser-safari-viewer-run.json",
+    "prototype/verified-screen-native-safari-run.json"
+  ],
+  "local_accessibility_evidence": [
+    "prototype/verified-screen-accessibility-build-run.json",
+    "prototype/verified-screen-accessibility-browsers-run.json",
+    "prototype/verified-screen-native-accessibility-run.json",
+    "prototype/verified-screen-browser-accessibility-cleanup-run.json"
+  ],
+  "additional_browser_accessibility_scope": "Edge ↔ Chrome, WebKit and native Safari viewers SDK media PASS; Firefox media FAIL/unresolved. Four browser synthetic UI accessibility PASS; native Safari AX/keyboard PASS; VO speech/navigation NOT_ACCEPTED; temporary VoiceOver restored off. Android and heavy load NOT_RUN."
 }

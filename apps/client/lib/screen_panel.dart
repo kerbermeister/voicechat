@@ -100,7 +100,13 @@ class ScreenPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Semantics(
+            container: true,
             liveRegion: true,
+            label: [
+              label,
+              if (controller.notice != null) controller.notice!,
+            ].join('. '),
+            excludeSemantics: true,
             child: Text(label, textAlign: TextAlign.center),
           ),
           if (active) ...[
@@ -108,9 +114,11 @@ class ScreenPanel extends StatelessWidget {
             AspectRatio(aspectRatio: 16 / 9, child: picture()),
           ],
           if (controller.notice != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(controller.notice!, textAlign: TextAlign.center),
+            ExcludeSemantics(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(controller.notice!, textAlign: TextAlign.center),
+              ),
             ),
           Wrap(
             alignment: WrapAlignment.center,

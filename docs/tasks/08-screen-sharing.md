@@ -391,6 +391,9 @@ pre-screen c3e3f43 → текущий control → c3e3f43, те же тома, v
   media/authorization controllers не менялись.
 - [ ] Дополнить manual screen reader и проверками целевых браузеров/устройств
   из SS-12; viewport/widget тесты не заменяют физическую приёмку.
+  24 октября: Safari AX/keyboard PASS; widget 7 тем × 2 ориентации, text200%,
+  contrast и focus/Escape PASS, исправлен live notice. Временный VoiceOver возвращён
+  off; speech/VO cursor через инструмент не подтверждены, manual gate остаётся.
 - [x] Документировать запуск, ограничения мобильного веба, системные разрешения,
   предупреждение об уведомлениях, перехват/stop и поведение после обрыва.
 - [x] Обновить README, requirements, architecture/calls, implementation-status,

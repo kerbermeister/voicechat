@@ -1,0 +1,38 @@
+{
+  "result": "PASS",
+  "run": "2026-10-24T08:05:25.737961+00:00",
+  "own_web_server_ports_stopped": [
+    7358,
+    7362
+  ],
+  "probe_fixture_json_absent": true,
+  "ss01_sfu_room_count": 0,
+  "feature_flags_absent": true,
+  "metadata_after_tests": {
+    "schema": 2,
+    "sessions": {
+      "ended": 60
+    },
+    "retired_rooms": 0,
+    "pending_commands": 0,
+    "oldest_pending_seconds": null
+  },
+  "shared_prototype_containers_retained": [
+    "synapse",
+    "livekit",
+    "turn",
+    "mailpit",
+    "postgres"
+  ],
+  "volumes_untouched": true,
+  "prior_web_artifacts_unchanged": {
+    ".prototype/screen-release-web/main.dart.js": "4a3af9a1c9d1f6ed10092e74cf048f6ca223506549af713f2f5c9e258032b790",
+    ".prototype/screen-regression-web/main.dart.js": "bfc4bd3da1271a9589b33459152b7abd1668349a82d38cb7d2275eef98ad149b"
+  },
+  "voiceover": "off restored and confirmed through native System Settings AX; see native accessibility record",
+  "native_safari_test_tabs_closed": true,
+  "matrix_accounts_created": 0,
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "release_acceptance": "BLOCKED"
+}

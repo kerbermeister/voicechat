@@ -1,0 +1,104 @@
+{
+  "result": "PASS",
+  "run": "2026-10-24T08:02:35.071Z",
+  "scope": "production CallWindow/ScreenPanel; synthetic call states, no credentials/media/network",
+  "screen_reader": "separate native VoiceOver record",
+  "android": "NOT_RUN",
+  "heavy_load": "NOT_RUN",
+  "browsers": {
+    "chrome": {
+      "result": "PASS",
+      "version": "156.0.8078.47",
+      "viewports": [
+        [
+          320,
+          640
+        ],
+        [
+          640,
+          320
+        ],
+        [
+          1280,
+          900
+        ]
+      ],
+      "live_error_and_status": true,
+      "fullscreen_escape_preserves_call": true,
+      "named_controls_and_disabled_reconnect": true,
+      "quality_selection_and_stop": true,
+      "no_backend_or_media_requests": true
+    },
+    "edge": {
+      "result": "PASS",
+      "version": "156.0.4314.42",
+      "viewports": [
+        [
+          320,
+          640
+        ],
+        [
+          640,
+          320
+        ],
+        [
+          1280,
+          900
+        ]
+      ],
+      "live_error_and_status": true,
+      "fullscreen_escape_preserves_call": true,
+      "named_controls_and_disabled_reconnect": true,
+      "quality_selection_and_stop": true,
+      "no_backend_or_media_requests": true
+    },
+    "firefox": {
+      "result": "PASS",
+      "version": "153.0",
+      "viewports": [
+        [
+          320,
+          640
+        ],
+        [
+          640,
+          320
+        ],
+        [
+          1280,
+          900
+        ]
+      ],
+      "live_error_and_status": true,
+      "fullscreen_escape_preserves_call": true,
+      "named_controls_and_disabled_reconnect": true,
+      "quality_selection_and_stop": true,
+      "no_backend_or_media_requests": true
+    },
+    "webkit": {
+      "result": "PASS",
+      "version": "26.5",
+      "viewports": [
+        [
+          320,
+          640
+        ],
+        [
+          640,
+          320
+        ],
+        [
+          1280,
+          900
+        ]
+      ],
+      "live_error_and_status": true,
+      "fullscreen_escape_preserves_call": true,
+      "named_controls_and_disabled_reconnect": true,
+      "quality_selection_and_stop": true,
+      "no_backend_or_media_requests": true
+    }
+  },
+  "lab_source_sha256": "51996826b833478b14f324cea728f49e5551e7162a186e6264ce74656ea39375",
+  "lab_js_sha256": "4609941d569674eae32bbba8caf5fcdc663d8dc337ab4adffcc9dd5413736c36"
+}

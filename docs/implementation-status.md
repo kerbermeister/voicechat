@@ -53,6 +53,14 @@ reduced animations, Tab/Enter. Это Chrome/viewport-проверки; screen r
 FAIL, причина открыта; его кадры/расшифровка не приняты. Ручные picker/OS Stop,
 мобильные устройства и внешние сети остаются gate, релиз BLOCKED.
 
+24 октября: исправлен live region ScreenPanel — текущий статус и ошибка захвата
+доступны вместе, без дублирования визуального notice. 7 тем × 2 ориентации,
+text200%, reduced animations, contrast, Escape/возврат фокуса приняты widget-тестами.
+Нативный Safari AX/клавиатура PASS; VO navigation и озвучивание не подтверждены
+текущим инструментом. Разрешённый временный VoiceOver возвращён off. Manual screen
+reader и физические платформы остаются gate. UI fixture в Chrome/Edge/Firefox/WebKit на 3 viewport PASS, без media/сети.
+Финальная чистая копия: все 136 Flutter tests, analyze и ordinary release JS PASS.
+
 SS-11 локально принят: stale commands, original/refreshed JWT, подмена JWT identity/
 publisher grant, raw SFU source/role отказы, duplicate/plaintext metadata guard,
 15 настоящих Matrix/Olm key negatives с проверкой реального worker setKey и видимых
