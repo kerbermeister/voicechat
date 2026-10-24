@@ -1,6 +1,7 @@
 """Deploy immutable images with a consistent encrypted backup; preserve all volumes."""
 import argparse
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -80,13 +81,58 @@ def backup(root, release, env):
     execute([*command, 'check'])
 
 
+def backend_config(configuration, release):
+    value = {**configuration, 'services': {name: service for name, service in
+             configuration['services'].items() if name != 'web'}}
+    # Compose resolves bind mounts under each immutable release directory.
+    normalized = json.dumps(value, sort_keys=True).replace(str(release), '$RELEASE')
+    return hashlib.sha256(normalized.encode()).hexdigest()
+
+
+def release_record(release, target, configuration):
+    record = {'release': str(release), 'manifest': target}
+    fingerprint = release/'backend.sha256'
+    if fingerprint.exists():
+        value = fingerprint.read_text().strip()
+        if not re.fullmatch(r'[0-9a-f]{64}', value):
+            raise ValueError('Invalid backend source fingerprint')
+        record.update(backend=value, backend_config=backend_config(configuration, release))
+    return record
+
+
+def web_deploy(root, release, old, target, env, configuration):
+    record = release_record(release, target, configuration)
+    if (not old or not record.get('backend') or
+            configuration['services'].get('web', {}).get('image') != target['web'] or
+            any(old.get(key) != record.get(key) for key in ('backend', 'backend_config')) or
+            any(old['manifest'][key] != target[key] for key in ('schema', 'origin', 'control'))):
+        raise SystemExit('Backend/configuration changed or baseline missing; use a full deployment')
+    prior_release = Path(old['release'])
+    prior_env = {**os.environ, 'CONTROL_IMAGE': old['manifest']['control'],
+                 'WEB_IMAGE': old['manifest']['web']}
+    compose(release, env, 'pull', 'web')
+    try:
+        compose(release, env, 'up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'web')
+    except Exception:
+        compose(prior_release, prior_env, 'up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'web')
+        raise
+    (root/'previous.json').write_text(json.dumps(old))
+    pending = root/'current.pending'
+    pending.write_text(json.dumps(record))
+    pending.replace(root/'current.json')
+    print('Web deployment healthy; backend containers and persistent data unchanged.')
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', required=True)
     parser.add_argument('--release')
     parser.add_argument('--backup-only', action='store_true',
                         help='Back up the current release with writers stopped, then resume it')
+    parser.add_argument('--web-only', action='store_true', help='Update only web after verifying the backend baseline')
     args = parser.parse_args()
+    if args.web_only and args.backup_only:
+        parser.error('--web-only cannot be combined with --backup-only')
     if args.backup_only == bool(args.release):
         parser.error('Choose either --release or --backup-only')
     root = Path(args.root).resolve()
@@ -101,10 +147,10 @@ def main():
             release = Path(old['release']).resolve()
         else:
             release = Path(args.release).resolve()
-        deploy(root, release, old, args.backup_only)
+        deploy(root, release, old, args.backup_only, args.web_only)
 
 
-def deploy(root, release, old, backup_only=False):
+def deploy(root, release, old, backup_only=False, web_only=False):
     if not release.is_relative_to(root/'releases'): raise SystemExit('Release must be inside root/releases')
     target = manifest(release/'release.json')
     runtime = root/'runtime'
@@ -117,8 +163,10 @@ def deploy(root, release, old, backup_only=False):
     env = {**os.environ, 'CONTROL_IMAGE': target['control'], 'WEB_IMAGE': target['web']}
     # Validate the configured public origin without printing the interpolated secrets.
     config = subprocess.check_output(compose_command(release, 'config', '--format', 'json'), env=env)
-    configured = json.loads(config)['services']['configure']['environment']['PUBLIC_URL']
+    configuration = json.loads(config)
+    configured = configuration['services']['configure']['environment']['PUBLIC_URL']
     if configured != target['origin']: raise SystemExit('Release origin differs from persistent server identity')
+    record = release_record(release, target, configuration)
     previous = root/'current.json'
     if old and old['manifest']['schema'] != target['schema']:
         raise SystemExit('Schema migration needs a separate maintenance procedure')
@@ -126,6 +174,9 @@ def deploy(root, release, old, backup_only=False):
         raise SystemExit('Current release manifest was modified')
     if shutil.disk_usage(root).free < 2 * 1024**3:
         raise SystemExit('At least 2 GiB free space required before deployment')
+    if web_only:
+        web_deploy(root, release, old, target, env, configuration)
+        return
     if not backup_only: compose(release, env, 'pull')
     execute(['docker', 'pull', RESTIC])
     running = subprocess.check_output(compose_command(release, 'ps', '-q', 'postgres'), env=env).strip()
@@ -147,7 +198,6 @@ def deploy(root, release, old, backup_only=False):
     if backup_only:
         print('Backup checked; current release resumed. Copy the encrypted repository off the VPS.')
         return
-    record = {'release': str(release), 'manifest': target}
     if old: (root/'previous.json').write_text(json.dumps(old))
     pending = root/'current.pending'
     pending.write_text(json.dumps(record))

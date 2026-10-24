@@ -32,6 +32,8 @@
         reverse_proxy control:7880
     }
     handle {
+        # Fixed entrypoint names must revalidate after a deployment.
+        header Cache-Control "no-cache"
         root * /srv
         try_files {path} /index.html
         file_server
