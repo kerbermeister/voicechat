@@ -143,7 +143,7 @@ Workflow **Build and deploy** имеет два режима: `full` (по ум�
 Изменение Compose, политик, backend, схем БД или неизвестного runtime-файла требует
 `full`; одного выбора `web` для обхода этого ограничения недостаточно.
 
-`web` выполняет `compose pull web` и `compose up --no-deps --wait web`. Backend и
+`web` выполняет `compose pull web` и `compose up --no-deps --wait web`. До и после переключения проверяются наличие и здоровье backend. Backend и
 БД не перезапускаются и не меняются, поэтому новое резервирование БД в этом режиме
 не требуется; регулярный backup и полный backup перед `full` сохраняются.
 Ошибка healthcheck возвращает прежний web; `current.json`/`previous.json` обновляются

@@ -15,6 +15,11 @@ from release_source import backend_fingerprint
 
 
 class DeploySpeedTests(unittest.TestCase):
+    def setUp(self):
+        self.health_patch = patch.object(deploy, 'require_backend_healthy')
+        self.health = self.health_patch.start()
+        self.addCleanup(self.health_patch.stop)
+
     def fixture(self, directory):
         root = Path(directory).resolve()
         (root/'runtime').mkdir()
@@ -47,6 +52,7 @@ class DeploySpeedTests(unittest.TestCase):
             self.assertEqual(commands[0], ('pull', 'web'))
             self.assertEqual(commands[1], ('up','-d','--no-deps','--wait','--wait-timeout','180','web'))
             backup.assert_not_called()
+            self.assertEqual(self.health.call_count, 2)
             self.assertEqual(json.loads((root/'previous.json').read_text()), old)
             current = json.loads((root/'current.json').read_text())
             self.assertEqual(current['manifest'], target)
@@ -117,6 +123,25 @@ class DeploySpeedTests(unittest.TestCase):
             backend = commit('prototype/screen_schema.sql')
             self.assertNotEqual(backend, initial)
             self.assertNotEqual(commit('unknown-runtime-file'), backend)
+
+    def test_missing_stopped_or_unhealthy_backend_prevents_web_update(self):
+        self.health_patch.stop()
+        running = {'Status':'running','Health':{'Status':'healthy'}}
+        cases = [
+            ([running,running,running,{'Status':'running'}], True),
+            ([running,running,running,{'Status':'exited'}], False),
+            ([running,running,running,{'Status':'running','Health':{'Status':'unhealthy'}}], False),
+            ([running,running], False),
+        ]
+        for states, healthy in cases:
+            output = b'\n'.join(json.dumps(state).encode() for state in states)
+            with self.subTest(states=states), patch.object(deploy.subprocess,'check_output',side_effect=[b'1\n2\n3\n4', output]):
+                if healthy:
+                    deploy.require_backend_healthy(Path('/release'),{})
+                else:
+                    with self.assertRaises(RuntimeError): deploy.require_backend_healthy(Path('/release'),{})
+        with patch.object(deploy.subprocess,'check_output',return_value=b'1\n2'):
+            with self.assertRaises(RuntimeError): deploy.require_backend_healthy(Path('/release'),{})
 
     def test_ssh_target_validation_rejects_shell_and_path_injection(self):
         values = {'DEPLOY_HOST':'84.200.80.13', 'DEPLOY_USER':'root', 'DEPLOY_ROOT':'/srv/voicechat'}

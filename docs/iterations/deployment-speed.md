@@ -24,4 +24,8 @@
 
 Повторный холодный [b868eb0](https://github.com/kerbermeister/voicechat/actions/runs/40117340480) — PASS: total 13m56s, job 13m52s. На VPS запущен тот же commit, записаны backend/config fingerprints. Оба кеша сохранены: tools 14 MB, assets 880 KB. HEAD-запросы `/`, `/main.dart.js`, `/flutter_bootstrap.js`, `/flutter_service_worker.js` подтвердили `Cache-Control: no-cache`.
 
-Перед web-only сохранены ID, StartedAt и RestartCount всех служб. Тёплый web-only запуск и сравнение контейнеров ещё ожидаются.
+Перед web-only сохранены ID, StartedAt и RestartCount всех служб. Тёплый [web-only 29520dd](https://github.com/kerbermeister/voicechat/actions/runs/40118510973) — PASS: total 5m03s, job 4m59s. Assets cache использован повторно (Last used 20:00), tools cache не запрашивался (Last used остался 19:56). Immutable control digest сохранён; ID, StartedAt и RestartCount PostgreSQL/Matrix/control/TURN до и после совпали побайтно; заменён только web.
+
+Реальная SSH preflight-проверка изменённых защищённых файлов отказала с требованием полного деплоя до любых изменений VPS. Финальная версия дополнительно проверяет наличие и здоровье backend перед web и после его healthcheck; изолированный Docker-прогон с четырьмя backend-контейнерами и откатом пройден повторно.
+
+Ожидается полный релиз после web-only: изменение документации генератора меняет ключ ассетов, но не ключ инструментов. Этот запуск проверит одновременно повторное использование tools cache, пересборку ассетов при изменении входа и совместимость полного backup/deploy после быстрого.

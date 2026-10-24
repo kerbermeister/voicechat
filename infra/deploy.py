@@ -100,6 +100,21 @@ def release_record(release, target, configuration):
     return record
 
 
+def require_backend_healthy(release, env):
+    services = ('postgres', 'synapse', 'control', 'turn')
+    identifiers = subprocess.check_output(
+        compose_command(release, 'ps', '-a', '-q', *services), env=env).decode().split()
+    if len(identifiers) != len(services):
+        raise RuntimeError('Backend services are missing; refusing web-only deployment')
+    output = subprocess.check_output(
+        ['docker', 'inspect', '--format', '{{json .State}}', *identifiers], env=env)
+    states = [json.loads(line) for line in output.splitlines()]
+    if len(states) != len(services) or any(
+            state.get('Status') != 'running' or
+            state.get('Health', {}).get('Status', 'healthy') != 'healthy' for state in states):
+        raise RuntimeError('Backend services are not healthy; refusing web-only deployment')
+
+
 def web_deploy(root, release, old, target, env, configuration):
     record = release_record(release, target, configuration)
     if (not old or not record.get('backend') or
@@ -110,9 +125,11 @@ def web_deploy(root, release, old, target, env, configuration):
     prior_release = Path(old['release'])
     prior_env = {**os.environ, 'CONTROL_IMAGE': old['manifest']['control'],
                  'WEB_IMAGE': old['manifest']['web']}
+    require_backend_healthy(prior_release, prior_env)
     compose(release, env, 'pull', 'web')
     try:
         compose(release, env, 'up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'web')
+        require_backend_healthy(prior_release, prior_env)
     except Exception:
         compose(prior_release, prior_env, 'up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'web')
         raise

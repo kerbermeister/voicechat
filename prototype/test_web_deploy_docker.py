@@ -27,7 +27,7 @@ class WebDeployDockerTests(unittest.TestCase):
             compose = {
                 'name':'${TEST_PROJECT}',
                 'services':{
-                    'backend':{'image':image, 'entrypoint':['/bin/sh','-c','sleep 600']},
+                    **{name:{'image':image, 'entrypoint':['/bin/sh','-c','sleep 600']} for name in ('postgres','synapse','control','turn')},
                     'web':{'image':image, 'command':['caddy','file-server','--root','/srv','--listen',':8080'],
                            'volumes':['../public:/srv:ro'],
                            'healthcheck':{'test':['CMD-SHELL','wget -q -O - http://localhost:8080/health | grep -qx ok'],
@@ -56,13 +56,13 @@ class WebDeployDockerTests(unittest.TestCase):
                 return original_compose(release,env,*args,**kwargs)
             try:
                 deploy.compose(previous,os.environ.copy(),'up','-d','--wait','--wait-timeout','30')
-                backend = container('backend')
+                backend = container('postgres')
                 started = subprocess.check_output(['docker','inspect','--format','{{.State.StartedAt}}',backend])
                 old = deploy.release_record(previous,target,config(previous))
                 (root/'current.json').write_text(json.dumps(old))
                 with patch.object(deploy,'compose',side_effect=checked_compose):
                     deploy.web_deploy(root,good,old,{**target,'commit':'1'*40},os.environ.copy(),config(good))
-                self.assertEqual(container('backend'),backend)
+                self.assertEqual(container('postgres'),backend)
                 current = (root/'current.json').read_bytes()
                 rollback = (root/'previous.json').read_bytes()
                 with patch.object(deploy,'compose',side_effect=checked_compose):
@@ -70,7 +70,7 @@ class WebDeployDockerTests(unittest.TestCase):
                         deploy.web_deploy(root,bad,json.loads(current),{**target,'commit':'2'*40},os.environ.copy(),config(bad))
                 self.assertEqual((root/'current.json').read_bytes(),current)
                 self.assertEqual((root/'previous.json').read_bytes(),rollback)
-                self.assertEqual(container('backend'),backend)
+                self.assertEqual(container('postgres'),backend)
                 self.assertEqual(subprocess.check_output(['docker','inspect','--format','{{.State.StartedAt}}',backend]),started)
                 self.assertEqual(subprocess.check_output(['docker','exec',container('web'),'wget','-q','-O','-','http://localhost:8080/version']),b'1')
                 print('REAL COMPOSE: healthy web update, failed health rollback, unchanged backend ID/start time and release records: PASS')
