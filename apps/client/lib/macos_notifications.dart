@@ -9,6 +9,7 @@ class MacOSNotifications {
   static bool get supported =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
   static const channel = MethodChannel('voicechat/notifications');
+  static MacOSNotifications? _current;
   final String account;
   final Future<void> Function(String) openRoom;
   final String session = List.generate(
@@ -21,6 +22,7 @@ class MacOSNotifications {
 
   Future<void> open() async {
     if (!supported) return;
+    _current = this;
     channel.setMethodCallHandler((call) async {
       final data = call.arguments;
       if (!_closed &&
@@ -102,7 +104,10 @@ class MacOSNotifications {
   Future<void> close() async {
     if (_closed || !supported) return;
     _closed = true;
+    if (identical(_current, this)) {
+      _current = null;
+      channel.setMethodCallHandler(null);
+    }
     await channel.invokeMethod<void>('end', {'session': session});
-    channel.setMethodCallHandler(null);
   }
 }

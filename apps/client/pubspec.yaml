@@ -44,6 +44,16 @@ dev_dependencies:
   integration_test:
     sdk: flutter
 
+# Matrix's optional sqlite3 backend is unused by our SQLCipher-backed native
+# store. Its prebuilt macOS binary requires 13; use the OS library only for that
+# optional backend, keeping sqflite_sqlcipher and all other platforms unchanged.
+hooks:
+  user_defines:
+    sqlite3:
+      source:
+        macos: system
+        default: sqlite3
+
 flutter:
   config:
     enable-swift-package-manager: false

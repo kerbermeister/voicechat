@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,9 +50,21 @@ void main() {
     final opened = <String>[];
     final first = MacOSNotifications('alice', (room) async => opened.add(room));
     await first.open();
-    await first.close();
+    final ended = Completer<void>();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(MacOSNotifications.channel, (call) async {
+          calls.add(call);
+          if (call.method == 'end' &&
+              call.arguments['session'] == first.session) {
+            await ended.future;
+          }
+          return null;
+        });
+    final closing = first.close();
     final second = MacOSNotifications('bob', (room) async => opened.add(room));
     await second.open();
+    ended.complete();
+    await closing;
     expect(first.session, isNot(second.session));
     Future<void> click(String session) async {
       await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

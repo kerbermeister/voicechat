@@ -22,7 +22,6 @@
 
 /* Begin PBXBuildFile section */
         AABBCC001122334455660010 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = AABBCC001122334455660012 /* Sparkle */; };
-        AABBCC001122334455660011 /* Sparkle in Embed Frameworks */ = {isa = PBXBuildFile; productRef = AABBCC001122334455660012 /* Sparkle */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		AABBCC001122334455660008 /* MacUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCC001122334455660007 /* MacUpdater.swift */; };
 		AABBCC001122334455660006 /* DesktopNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCC001122334455660005 /* DesktopNotifications.swift */; };
 		331C80D8294CF71000263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C80D7294CF71000263BE5 /* RunnerTests.swift */; };
@@ -61,7 +60,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-                AABBCC001122334455660011 /* Sparkle in Embed Frameworks */,
 			);
 			name = "Bundle Framework";
 			runOnlyForDeploymentPostprocessing = 0;
