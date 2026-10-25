@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "web_share_api_stub": "success, cancellation, unsupported; URL and user activation checked",
+  "closed_inbox": true,
+  "preview_no_consent": true,
+  "explicit_confirmation": true,
+  "real_e2ee_decrypt": true,
+  "lost_room_reply_recovered": true,
+  "lost_reply_retry": true,
+  "one_encrypted_event": true,
+  "other_account_rejected": true,
+  "reload": true,
+  "accounts_deactivated": 3,
+  "contact_fixtures_removed": true
+}

@@ -106,6 +106,77 @@ class AdmissionTests(unittest.TestCase):
                 state[-1]['content']['algorithm'] = 'plaintext'
                 self.assertEqual(self.request(request, path='/contacts')[0], 403)
 
+    def test_contact_link_boundary_and_lost_publication_reply(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = ContactStore(directory + '/contacts.sqlite')
+            owner, user = '@owner:local', '@user:local'
+            store.set_policy(owner, False)
+            caller = owner
+            device = 'ONE'
+            state = [
+                {'type': 'm.room.member', 'state_key': user, 'content': {'membership': 'join'}},
+                {'type': 'm.room.member', 'state_key': owner, 'content': {'membership': 'invite'}},
+                {'type': 'dev.voicechat.kind', 'state_key': '', 'content': {'kind': 'direct', 'owner': user, 'peer': owner}},
+                {'type': 'm.room.encryption', 'content': {'algorithm': 'm.megolm.v1.aes-sha2'}},
+                {'type': 'm.room.join_rules', 'content': {'join_rule': 'invite'}},
+            ]
+            def matrix(handler, path, body=None):
+                if handler.headers.get('Authorization') != 'Bearer test': raise ContactError('unauthorized')
+                if path == 'account/whoami': return {'user_id': caller, 'device_id': device}
+                if path == 'keys/query': return {'device_keys': {user: {device: {'keys': {'curve25519:' + device: 'A' * 43}}}}}
+                return state
+            calls = []
+            def publish(job):
+                calls.append(job.copy())
+                if len(calls) == 1: raise OSError('Reply lost after Synapse committed')
+                return '$same-event'
+            def request(body=None, auth='Bearer test'):
+                return self.request(body, auth=auth, path='/contact-links')
+            with patch.object(token_server, '_contacts', store), patch.object(token_server.Handler, 'matrix', matrix), patch.object(token_server, 'publish_scheduled', side_effect=publish):
+                self.assertEqual(request({'action': 'create'}, auth='')[0], 401)
+                self.assertEqual(request()[0], 404, 'GET/preview bots must never create or accept')
+                status, created = request({'action': 'create'})
+                self.assertEqual(status, 200)
+                token = created['token']
+                caller = user
+                preview = {'action': 'inspect', 'token': token}
+                self.assertFalse(request(preview)[1]['claimed'])
+                self.assertEqual(store.list(user), [])
+                accept = {'action': 'accept', 'token': token, 'room_id': '!room:local'}
+                marker = state.pop(2)
+                self.assertEqual(request(accept)[0], 403)
+                state.insert(2, marker)
+                state.append({'type': 'm.room.member', 'state_key': '@eve:local', 'content': {'membership': 'join'}})
+                self.assertEqual(request(accept)[0], 403)
+                state.pop()
+                state[-1]['content']['join_rule'] = 'public'
+                self.assertEqual(request(accept)[0], 403)
+                state[-1]['content']['join_rule'] = 'invite'
+                self.assertFalse(request(preview)[1]['claimed'])
+                status, receipt = request(accept)
+                self.assertEqual(status, 200)
+                self.assertTrue(store.accepted(owner, user))
+                self.assertFalse(store.policy(owner))
+                identifier = receipt['id']
+                caller = '@eve:local'
+                self.assertEqual(request(preview)[1]['error'], 'link_used')
+                self.assertEqual(request(accept)[0], 403)
+                self.assertEqual(request({'action': 'greet', 'id': identifier})[0], 403)
+                caller = user
+                self.assertEqual(request({'action': 'greet', 'id': identifier, 'payload': {'body': 'Привет'}, 'audience': 'a' * 64})[0], 400)
+                payload = {'algorithm': 'm.megolm.v1.aes-sha2', 'ciphertext': 'YWJj', 'session_id': 'B' * 43, 'sender_key': 'A' * 43, 'device_id': device}
+                status, _ = request({'action': 'greet', 'id': identifier, 'payload': payload, 'audience': 'a' * 64})
+                self.assertEqual(status, 503)
+                self.assertTrue(request(preview)[1]['prepared'])
+                device = 'TWO'
+                token_server._contacts = ContactStore(store.path)
+                status, sent = request({'action': 'greet', 'id': identifier})
+                self.assertEqual((status, sent), (200, {'event_id': '$same-event'}))
+                self.assertEqual(calls[0], calls[1], 'Retry uses the original device, ciphertext and transaction')
+                self.assertEqual(request({'action': 'greet', 'id': identifier}), (200, sent))
+                self.assertEqual(len(calls), 2)
+                self.assertEqual(request(accept)[1]['event_id'], '$same-event')
+
     def test_report_rejects_unknown_fields_and_non_strings(self):
         for body in [
             {'run': 'test', 'role': 'web', 'stage': 'ok', 'key': 'secret'},

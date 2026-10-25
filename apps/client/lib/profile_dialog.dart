@@ -192,6 +192,12 @@ class _ProfileDialogState extends State<ProfileDialog> {
             const SizedBox(height: 4),
             if (own)
               OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context, 'create-link'),
+                icon: const Icon(Icons.add_link),
+                label: const Text('Пригласить по ссылке'),
+              ),
+            if (own)
+              OutlinedButton.icon(
                 onPressed: () => Navigator.pop(context, 'avatar'),
                 icon: const Icon(Icons.edit_outlined),
                 label: const Text('Изменить аватар'),

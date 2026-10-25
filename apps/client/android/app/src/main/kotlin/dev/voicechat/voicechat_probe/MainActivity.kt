@@ -81,10 +81,19 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/links")
             .setMethodCallHandler { call, result ->
                 val uri = (call.arguments as? String)?.let(Uri::parse)
-                if (call.method != "open" || uri == null || uri.scheme !in listOf("http", "https") || uri.host.isNullOrEmpty() || uri.userInfo != null) {
+                if (call.method !in listOf("open", "share") || uri == null || uri.scheme !in listOf("http", "https") || uri.host.isNullOrEmpty() || uri.userInfo != null) {
                     result.error("invalid", "Invalid link", null)
                 } else try {
-                    startActivity(Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE))
+                    if (call.method == "share") {
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, uri.toString())
+                            putExtra(Intent.EXTRA_SUBJECT, "Приглашение в VoiceChat")
+                        }
+                        startActivity(Intent.createChooser(send, "Поделиться приглашением"))
+                    } else {
+                        startActivity(Intent(Intent.ACTION_VIEW, uri).addCategory(Intent.CATEGORY_BROWSABLE))
+                    }
                     result.success(null)
                 } catch (_: Exception) { result.error("open", "Cannot open browser", null) }
             }

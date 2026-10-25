@@ -246,6 +246,20 @@ class _InvitationsDialogState extends State<InvitationsDialog> {
             ),
           ),
           actions: [
+            TextButton.icon(
+              onPressed: busy
+                  ? null
+                  : () => Navigator.pop(context, 'create-link'),
+              icon: const Icon(Icons.add_link),
+              label: const Text('Пригласить по ссылке'),
+            ),
+            TextButton.icon(
+              onPressed: busy
+                  ? null
+                  : () => Navigator.pop(context, 'accept-link'),
+              icon: const Icon(Icons.link),
+              label: const Text('У меня есть ссылка'),
+            ),
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Закрыть'),

@@ -293,6 +293,69 @@ class Handler(BaseHTTPRequestHandler):
         if not encrypted or not direct or members.get(user) != 'join' or set(members) != {user, target}:
             raise ContactError('invalid_direct_room')
         return self.reply(200, store.request(user, target, room))
+    def contact_link_post(self):
+        try:
+            who = self.matrix('account/whoami')
+            user, device = who['user_id'], who.get('device_id')
+            if not isinstance(device, str) or not device: raise ContactError('unauthorized')
+            self.connection.settimeout(15)
+            size = int(self.headers.get('Content-Length', '0'))
+            if not 0 < size <= 8192: raise ValueError('invalid_size')
+            body = json.loads(self.rfile.read(size))
+            if not isinstance(body, dict): raise ValueError('invalid_request')
+            store = contact_store()
+            action = body.get('action')
+            if action == 'create' and set(body) == {'action'}:
+                return self.reply(200, {'token': store.create_link(user)})
+            if action == 'inspect' and set(body) == {'action', 'token'}:
+                return self.reply(200, store.inspect_link(user, body['token']))
+            if action == 'claim' and set(body) == {'action', 'token'}:
+                return self.reply(200, store.claim_link(user, body['token']))
+            if action == 'accept' and set(body) == {'action', 'token', 'room_id'}:
+                link = store.inspect_link(user, body['token'])
+                if link['accepted']: return self.reply(200, link)
+                room, owner = body['room_id'], link['owner']
+                ContactStore.pair(user, owner)
+                if not isinstance(room, str) or not room.startswith('!') or len(room) > 255: raise ValueError('invalid_room')
+                state = self.matrix('rooms/' + urllib.parse.quote(room, safe='') + '/state')
+                members = scheduled_audience(state)
+                if members != {user, owner} or not any(e['type'] == 'dev.voicechat.kind' for e in state):
+                    raise ContactError('invalid_direct_room')
+                if not any(e['type'] == 'm.room.member' and e['state_key'] == user and e['content'].get('membership') == 'join' for e in state):
+                    raise ContactError('invalid_direct_room')
+                if not any(e['type'] == 'm.room.encryption' and e['content'].get('algorithm') == 'm.megolm.v1.aes-sha2' for e in state):
+                    raise ContactError('invalid_direct_room')
+                if not any(e['type'] == 'm.room.join_rules' and e['content'].get('join_rule') == 'invite' for e in state):
+                    raise ContactError('invalid_direct_room')
+                return self.reply(200, store.accept_link(user, body['token'], room))
+            if action == 'greet' and set(body) in ({'action', 'id'}, {'action', 'id', 'payload', 'audience'}):
+                job = store.greeting(user, body['id'])
+                if job['event_id']: return self.reply(200, {'event_id': job['event_id']})
+                if job['payload'] is None:
+                    payload, audience = body.get('payload'), body.get('audience')
+                    # This endpoint carries a small greeting, with no plaintext or attachments.
+                    if not isinstance(payload, dict) or set(payload) != {'algorithm', 'ciphertext', 'session_id', 'sender_key', 'device_id'}:
+                        raise ValueError('invalid_payload')
+                    if not isinstance(audience, str) or len(audience) != 64: raise ValueError('invalid_audience')
+                    keys = self.matrix('keys/query', {'device_keys': {user: [device]}})
+                    if keys.get('failures'): raise ScheduleError('keys_unavailable', 503)
+                    curve = keys['device_keys'][user][device]['keys']['curve25519:' + device]
+                    from client_policy import load_policy
+                    validate_envelope(payload, device, curve, load_policy())
+                    job = store.prepare_greeting(user, body['id'], device, payload, audience)
+                # The existing Synapse publisher rechecks membership, consent, devices and
+                # audience; its durable transaction also covers a lost reply or restart.
+                event = job['event_id'] or publish_scheduled(job)
+                store.finish_greeting(user, body['id'], event)
+                return self.reply(200, {'event_id': event})
+            raise ValueError('invalid_request')
+        except ContactError as error:
+            return self.reply(401 if str(error) == 'unauthorized' else 403, {'error': str(error)})
+        except ScheduleError as error: return self.reply(error.status, {'error': str(error)})
+        except urllib.error.HTTPError as error:
+            return self.reply(401 if error.code == 401 else 503, {'error': 'matrix_unavailable'})
+        except (KeyError, ValueError, TypeError): return self.reply(400, {'error': 'invalid_request'})
+        except (OSError, sqlite3.Error): return self.reply(503, {'error': 'contacts_unavailable'})
     def reply(self, status, body):
         encoded = b'' if status == 204 else json.dumps(body).encode()
         self.send_response(status)
@@ -351,6 +414,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/reports' and laboratory: return self.reply(200, reports)
         self.reply(404, {'error': 'not_found'})
     def do_POST(self):
+        if self.path == '/contact-links': return self.contact_link_post()
         if self.path.startswith('/screen/'): return self.screen_request()
         if self.path == '/scheduled': return self.scheduled_request()
         if self.path == '/link-preview':

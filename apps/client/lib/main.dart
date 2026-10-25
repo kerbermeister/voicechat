@@ -22,6 +22,8 @@ import 'active_capture.dart';
 import 'first_keys.dart';
 import 'history_window.dart';
 import 'contact_service.dart';
+import 'contact_link.dart';
+import 'contact_link_dialog.dart';
 import 'invitations_dialog.dart';
 import 'storage_policy.dart';
 import 'storage_dialog.dart';
@@ -69,11 +71,17 @@ class VoiceChatApp extends StatefulWidget {
   State<VoiceChatApp> createState() => _VoiceChatAppState();
 }
 
-class _VoiceChatAppState extends State<VoiceChatApp> {
+class _VoiceChatAppState extends State<VoiceChatApp>
+    with WidgetsBindingObserver {
   AppPalette palette = AppPalette.halo;
+  String? invitation = kIsWeb && Uri.base.fragment.startsWith('/contact/')
+      ? Uri.base.toString()
+      : null;
+  int invitationRevision = 0;
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     SharedPreferences.getInstance().then((prefs) {
       final name = prefs.getString('palette');
       if (mounted) {
@@ -85,6 +93,26 @@ class _VoiceChatAppState extends State<VoiceChatApp> {
         );
       }
     });
+  }
+
+  @override
+  Future<bool> didPushRouteInformation(RouteInformation information) async {
+    // Hash navigation back to the app must not open a second copy of its local vault.
+    if (kIsWeb && information.uri.path == '/') return true;
+    if (!kIsWeb || !information.uri.path.startsWith('/contact/')) return false;
+    setState(() {
+      invitation = Uri.base
+          .replace(fragment: information.uri.toString())
+          .toString();
+      invitationRevision++;
+    });
+    return true;
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> setPalette(AppPalette next) async {
@@ -99,6 +127,7 @@ class _VoiceChatAppState extends State<VoiceChatApp> {
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'VoiceChat',
+    initialRoute: '/',
     locale: const Locale('ru'),
     supportedLocales: const [Locale('ru')],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -109,17 +138,26 @@ class _VoiceChatAppState extends State<VoiceChatApp> {
     theme: palette.theme,
     themeAnimationDuration: appMotionDuration,
     themeAnimationCurve: Curves.easeOutCubic,
-    home: ProbeScreen(palette: palette, onPalette: setPalette),
+    home: ProbeScreen(
+      palette: palette,
+      onPalette: setPalette,
+      invitation: invitation,
+      invitationRevision: invitationRevision,
+    ),
   );
 }
 
 class ProbeScreen extends StatefulWidget {
+  final String? invitation;
+  final int invitationRevision;
   final AppPalette palette;
   final ValueChanged<AppPalette> onPalette;
   const ProbeScreen({
     super.key,
     required this.palette,
     required this.onPalette,
+    this.invitation,
+    this.invitationRevision = 0,
   });
   @override
   State<ProbeScreen> createState() => _ProbeScreenState();
@@ -167,11 +205,28 @@ class _ProbeScreenState extends State<ProbeScreen> {
   bool savedAccount = false;
   bool linked = false;
   bool groupsTab = false;
+  String? incomingContactLink;
+
+  ContactLinks get contactLinks => ContactLinks(
+    probe!,
+    contacts!,
+    kIsWeb ? Uri.base : Uri.parse(server.text.trim()),
+  );
 
   @override
   void initState() {
     super.initState();
+    incomingContactLink = widget.invitation;
     unawaited(restoreSession());
+  }
+
+  @override
+  void didUpdateWidget(covariant ProbeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.invitation != oldWidget.invitation ||
+        widget.invitationRevision != oldWidget.invitationRevision) {
+      incomingContactLink = widget.invitation;
+    }
   }
 
   Future<void> restoreSession() async {
@@ -373,6 +428,13 @@ class _ProbeScreenState extends State<ProbeScreen> {
     );
     final room = next.client.getRoomById(roomId ?? '');
     if (room?.membership == mx.Membership.join) await select(room!);
+    final pendingInvite = await contactLinks.pending();
+    if (pendingInvite != null && incomingContactLink == null) {
+      incomingContactLink = contactLinkUrl(
+        contactLinks.origin,
+        pendingInvite,
+      ).toString();
+    }
   }
 
   Future<void> registration({bool reset = false}) async {
@@ -540,6 +602,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       ),
     );
     if (result == 'contact') await connectContact(user);
+    if (result == 'create-link') await contactLink(create: true);
     if (result == 'avatar') {
       await changeAvatar();
       if (mounted) await profileCard(user);
@@ -565,12 +628,40 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (service == null) return;
     await service.refresh();
     if (!mounted) return;
-    await showAppDialog<void>(
+    final result = await showAppDialog<String>(
       context: context,
       animationStyle: appAnimationStyle(context),
       builder: (_) => InvitationsDialog(contacts: service),
     );
+    if (result == 'create-link') await contactLink(create: true);
+    if (result == 'accept-link') await contactLink();
     if (mounted) setState(() {});
+  }
+
+  Future<void> contactLink({bool create = false}) async {
+    final room = await showAppDialog<mx.Room>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ContactLinkDialog(
+        links: contactLinks,
+        create: create,
+        initialLink: create ? null : incomingContactLink,
+      ),
+    );
+    if (room != null && mounted) {
+      setState(() => incomingContactLink = null);
+      await select(room);
+    } else if (mounted) {
+      final pending = await contactLinks.pending();
+      if (pending != null && mounted) {
+        setState(
+          () => incomingContactLink = contactLinkUrl(
+            contactLinks.origin,
+            pending,
+          ).toString(),
+        );
+      }
+    }
   }
 
   Future<void> roomSettings([mx.Room? target, String? chosenAction]) async {
@@ -2081,6 +2172,22 @@ class _ProbeScreenState extends State<ProbeScreen> {
               child: busy ? const LinearProgressIndicator(minHeight: 2) : null,
             ),
             callBanner(),
+            if (incomingContactLink != null)
+              ListTile(
+                leading: const Icon(Icons.person_add_outlined),
+                title: const Text('Приглашение в контакты'),
+                subtitle: const Text(
+                  'Откройте и подтвердите, чтобы добавить человека',
+                ),
+                onTap: busy ? null : () => run(() => contactLink()),
+                trailing: IconButton(
+                  tooltip: 'Скрыть приглашение',
+                  onPressed: busy
+                      ? null
+                      : () => setState(() => incomingContactLink = null),
+                  icon: const Icon(Icons.close),
+                ),
+              ),
             if (!online)
               Container(
                 width: double.infinity,
