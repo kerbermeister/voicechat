@@ -1,0 +1,133 @@
+{
+  "current": {
+    "release": "/srv/voicechat/releases/f2b62f2894c607a72613db6a4f70ed125f090664",
+    "manifest": {
+      "commit": "f2b62f2894c607a72613db6a4f70ed125f090664",
+      "schema": 1,
+      "origin": "https://univc.duckdns.org",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:aebdd2d72994a8047c7e5657f36f9400dc0e9ebdf145febf190b8ecd7daec874",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:03ceed4815a805349ba071286a192aa3529cdbe7a0482d21ed727c289880664a"
+    },
+    "backend": "29590658203d07248e633165c18c1f7b2c77211527fd0e0f97fcf77b98ceb221",
+    "backend_config": "88597b45805bf358aee1e054f0c226f5d9dd874dd93831981372ac63996b40fc"
+  },
+  "previous_commit": "c60a347542b6f1b72680b096da7121397d552137",
+  "previous_release_exists": true,
+  "containers": {
+    "voicechat-web-1": {
+      "id": "8cf7a142192f66b01ae3fbd0edb57733cc5b73a09c38b5c0fcbf64edbbd6681c",
+      "image": "ghcr.io/kerbermeister/voicechat/web@sha256:03ceed4815a805349ba071286a192aa3529cdbe7a0482d21ed727c289880664a",
+      "started": "2026-10-25T08:27:05.811501123Z",
+      "restart_count": 0,
+      "status": "running",
+      "health": "healthy"
+    },
+    "voicechat-control-1": {
+      "id": "fd52933b6fd84f105932a59acf22e572ba227cf93295dd67e452f6554b0f5ad5",
+      "image": "ghcr.io/kerbermeister/voicechat/control@sha256:aebdd2d72994a8047c7e5657f36f9400dc0e9ebdf145febf190b8ecd7daec874",
+      "started": "2026-10-25T08:27:01.227917179Z",
+      "restart_count": 0,
+      "status": "running",
+      "health": "healthy"
+    },
+    "voicechat-synapse-1": {
+      "id": "afb0ba8c5cd2bedd7fa18baa4d0c45e819ce232423dcd707a1897afae5d8524e",
+      "image": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+      "started": "2026-10-25T08:27:05.556340599Z",
+      "restart_count": 0,
+      "status": "running",
+      "health": "healthy"
+    },
+    "voicechat-postgres-1": {
+      "id": "2e901809ce096555022310aa9a36adc9f962ea5586e63e02f38a17dce7e82e02",
+      "image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "started": "2026-10-23T21:52:03.276018562Z",
+      "restart_count": 0,
+      "status": "running",
+      "health": "healthy"
+    },
+    "voicechat-turn-1": {
+      "id": "507b88b118ad8c753473c5de94fca8b672c5046f6825818a21789e8dc8d588d5",
+      "image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+      "started": "2026-10-25T08:27:03.39341987Z",
+      "restart_count": 0,
+      "status": "running",
+      "health": "running"
+    }
+  },
+  "volumes": {
+    "voicechat-web-1": [
+      {
+        "name": "voicechat_caddy-config",
+        "destination": "/config"
+      },
+      {
+        "name": "voicechat_certificates",
+        "destination": "/data"
+      }
+    ],
+    "voicechat-control-1": [
+      {
+        "name": "voicechat_media-config",
+        "destination": "/config"
+      },
+      {
+        "name": "voicechat_control",
+        "destination": "/work/.prototype"
+      }
+    ],
+    "voicechat-synapse-1": [
+      {
+        "name": "voicechat_synapse",
+        "destination": "/data"
+      }
+    ],
+    "voicechat-postgres-1": [
+      {
+        "name": "voicechat_postgres",
+        "destination": "/var/lib/postgresql/data"
+      }
+    ],
+    "voicechat-turn-1": [
+      {
+        "name": "voicechat_turn-config",
+        "destination": "/config"
+      },
+      {
+        "name": "515beb584fb9a8636f748482f646bcb8bdd3d97b8811690d2942012cabb84034",
+        "destination": "/var/lib/coturn"
+      }
+    ]
+  },
+  "main_js_sha256": "c57c66776a8b6f7f3f3edb9696d85b8c6dd0b039737f82731fca2ee76dc022e6",
+  "screen_flag": "1",
+  "screen_schema": 2,
+  "backup": {
+    "id": "b5953ce66ebec63d61ada92aaa71601b87a96b4348db4ec123cd4dc01d3f24a8",
+    "time": "2026-10-25T08:26:57.235080292Z",
+    "tags": [
+      "voicechat"
+    ]
+  },
+  "routes": {
+    "/": 200,
+    "/api/health": 200,
+    "/_matrix/client/versions": 200,
+    "/main.dart.js": 200,
+    "/e2ee.worker.dart.js": 200,
+    "/pkg/vodozemac_bindings_dart_bg.wasm": 200,
+    "/_synapse/admin/v1/server_version": 404,
+    "/api/internal/test": 404
+  },
+  "release_mode": "full",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/40176353782",
+  "limits": "No physical Android, live media call or production account submission in this verification.",
+  "offsite_backup": {
+    "encrypted_copy_saved": true,
+    "restic_check_read_data": "passed; 9 snapshots, 18 packs, no errors"
+  },
+  "browser_checks": [
+    "Production login loaded in the in-app browser",
+    "Registration and password recovery opened without form submission"
+  ]
+}
