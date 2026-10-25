@@ -140,7 +140,7 @@ class PersonAvatar extends StatelessWidget {
                     name.isEmpty ? '?' : name.characters.first.toUpperCase(),
                     style: TextStyle(
                       fontSize: size * .4,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       color: colors.onSurface,
                     ),
                   ),
@@ -314,7 +314,7 @@ class _ConversationListState extends State<ConversationList> {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: colors.onSurface,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -539,7 +539,7 @@ class _ConversationListState extends State<ConversationList> {
                                             overflow: TextOverflow.ellipsis,
                                             style: TextStyle(
                                               fontWeight: messageCount > 0
-                                                  ? FontWeight.w700
+                                                  ? FontWeight.w600
                                                   : FontWeight.w500,
                                             ),
                                           ),
@@ -660,7 +660,7 @@ class _ConversationListState extends State<ConversationList> {
                                                       : '$messageCount',
                                                   style: TextStyle(
                                                     color: colors.onPrimary,
-                                                    fontWeight: FontWeight.w700,
+                                                    fontWeight: FontWeight.w600,
                                                     fontSize: messageCount > 99
                                                         ? 10
                                                         : 12,

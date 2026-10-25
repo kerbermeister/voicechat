@@ -64,7 +64,7 @@ class RoomMembersDialog extends StatelessWidget {
                   user.displayName ?? user.id,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
                 subtitle: Column(
                   mainAxisSize: MainAxisSize.min,

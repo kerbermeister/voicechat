@@ -112,7 +112,7 @@ class _ProfileDialogState extends State<ProfileDialog> {
                     name,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w500,
                       letterSpacing: -.4,
                     ),
                   ),

@@ -98,7 +98,7 @@ class AuthPage extends StatelessWidget {
                                       'VoiceChat',
                                       style: TextStyle(
                                         fontSize: 18,
-                                        fontWeight: FontWeight.w700,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
@@ -161,7 +161,7 @@ class AuthPage extends StatelessWidget {
                                               style: TextStyle(
                                                 color: colors.primary,
                                                 fontSize: 12,
-                                                fontWeight: FontWeight.w600,
+                                                fontWeight: FontWeight.w500,
                                                 letterSpacing: 1.2,
                                               ),
                                             ),
@@ -176,7 +176,7 @@ class AuthPage extends StatelessWidget {
                                         style: TextStyle(
                                           fontSize: short ? 24 : 28,
                                           height: 1.15,
-                                          fontWeight: FontWeight.w700,
+                                          fontWeight: FontWeight.w500,
                                           letterSpacing: -.7,
                                         ),
                                       ),

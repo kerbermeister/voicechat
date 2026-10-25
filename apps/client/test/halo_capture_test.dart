@@ -52,11 +52,11 @@ void main() {
             return null;
           });
     }
-    final font = FontLoader('Roboto');
+    final font = FontLoader('Manrope');
     font.addFont(
       Future.value(
         ByteData.sublistView(
-          materialFontFile('Roboto-Regular.ttf').readAsBytesSync(),
+          File('assets/fonts/Manrope-Variable.ttf').readAsBytesSync(),
         ),
       ),
     );
@@ -239,7 +239,7 @@ void main() {
         final image = await boundary.toImage();
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
         final file = File(
-          '../../docs/design/halo-final/implementation-$name.png',
+          '../../docs/design/halo-typography/implementation-$name.png',
         );
         await file.writeAsBytes(bytes!.buffer.asUint8List());
         image.dispose();

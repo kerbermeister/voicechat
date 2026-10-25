@@ -1006,7 +1006,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                                         ? messageColors?.start ?? colors.primary
                                         : colors.surfaceContainerLowest,
                                   ),
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.w500,
                                 ),
                           ),
                           if (event.inReplyToEventId() != null)

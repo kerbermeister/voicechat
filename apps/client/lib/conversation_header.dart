@@ -80,7 +80,7 @@ class ConversationHeader extends StatelessWidget {
                                   style: Theme.of(context).textTheme.titleLarge
                                       ?.copyWith(
                                         fontSize: compact ? 18 : 20,
-                                        fontWeight: FontWeight.w700,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                 ),
                                 Text(

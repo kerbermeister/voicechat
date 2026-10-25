@@ -88,7 +88,7 @@ Future<DateTime?> chooseScheduledTime(
                         TimeOfDay.fromDateTime(chosen).format(context),
                         textAlign: TextAlign.center,
                         style: theme.textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                           letterSpacing: -1,
                         ),
                       ),
@@ -538,7 +538,7 @@ class _ScheduledQueueBarState extends State<ScheduledQueueBar> {
                         : 'Запланированные сообщения · $count',
                     style: TextStyle(
                       color: colors.onPrimaryContainer,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   subtitle: stale

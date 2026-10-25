@@ -62,7 +62,7 @@ extension PaletteTheme on AppPalette {
         0xFF8FA9DF,
         0xFF9CAFE7,
         0xFF101A35,
-        0xFFF1F3FA,
+        0xFFE0E6F2,
         0xFF2C3D60,
       ),
       AppPalette.lavender => (
@@ -157,7 +157,7 @@ extension PaletteTheme on AppPalette {
         surfaceContainer: const Color(0xFF1C2B4B),
         surfaceContainerHigh: const Color(0xFF2C3D60),
         surfaceContainerHighest: const Color(0xFF2C3D60),
-        onSurfaceVariant: const Color(0xFFBDC8E1),
+        onSurfaceVariant: const Color(0xFFAFBED8),
         tertiaryContainer: const Color(0xFF1C2B4B),
         secondaryContainer: const Color(0xFF2C3D60),
         outline: const Color(0xFF7C91B8),
@@ -170,11 +170,19 @@ extension PaletteTheme on AppPalette {
             ? const MessageColors(
                 Color(0xFF365B8B),
                 Color(0xFF304E77),
-                Color(0xFFF1F3FA),
+                Color(0xFFE0E6F2),
               )
             : MessageColors(scheme.primary, scheme.primary, scheme.onPrimary),
       ],
       useMaterial3: true,
+      fontFamily: 'Manrope',
+      textTheme: const TextTheme(
+        headlineLarge: TextStyle(fontWeight: FontWeight.w500),
+        headlineMedium: TextStyle(fontWeight: FontWeight.w500),
+        headlineSmall: TextStyle(fontWeight: FontWeight.w500),
+        titleLarge: TextStyle(fontWeight: FontWeight.w500),
+        titleMedium: TextStyle(fontWeight: FontWeight.w500),
+      ),
       pageTransitionsTheme: PageTransitionsTheme(
         builders: {
           for (final platform in TargetPlatform.values)
@@ -225,7 +233,7 @@ extension PaletteTheme on AppPalette {
         titleTextStyle: TextStyle(
           color: scheme.onSurface,
           fontSize: 22,
-          fontWeight: FontWeight.w700,
+          fontWeight: FontWeight.w500,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       ),
