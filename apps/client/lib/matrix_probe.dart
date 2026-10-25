@@ -1,6 +1,6 @@
 import 'device_added.dart';
+import 'device_name.dart';
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
 import 'package:matrix/encryption.dart';
@@ -70,9 +70,7 @@ class MatrixProbe {
         LoginType.mLoginPassword,
         identifier: AuthenticationUserIdentifier(user: username),
         password: password,
-        initialDeviceDisplayName: kIsWeb
-            ? 'VoiceChat · браузер'
-            : 'VoiceChat · Android',
+        initialDeviceDisplayName: await currentDeviceName(),
       );
       addedAt = DateTime.now();
     }

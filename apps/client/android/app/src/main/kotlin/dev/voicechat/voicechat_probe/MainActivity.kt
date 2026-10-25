@@ -78,6 +78,14 @@ class MainActivity : FlutterActivity() {
                 } catch (_: Exception) { result.error("background", "Cannot maintain the call in background", null) }
             }
         }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/device")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "description") { result.notImplemented(); return@setMethodCallHandler }
+                val manufacturer = Build.MANUFACTURER
+                val model = Build.MODEL
+                val name = if (model.startsWith(manufacturer, ignoreCase = true)) model else "$manufacturer $model".trim()
+                result.success("$name · Android ${Build.VERSION.RELEASE}")
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/links")
             .setMethodCallHandler { call, result ->
                 val uri = (call.arguments as? String)?.let(Uri::parse)

@@ -1,4 +1,5 @@
 import 'device_added.dart';
+import 'device_name.dart';
 import 'dart:math';
 import 'auth_layout.dart';
 import 'app_motion.dart';
@@ -109,7 +110,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           await client!.register(
             username: username.text,
             password: password.text,
-            initialDeviceDisplayName: 'VoiceChat',
+            initialDeviceDisplayName: await currentDeviceName(),
             auth: auth,
           );
           final addedAt = DateTime.now();

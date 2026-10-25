@@ -1,7 +1,45 @@
 import 'dart:typed_data';
+import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
+import 'package:web/web.dart' as web;
 import 'chunked_file.dart';
 import 'picked_file.dart';
+import 'file_save_result.dart';
+
+Future<FileSaveResult> saveTextFile(String name, String text) async {
+  final bytes = Uint8List.fromList(utf8.encode(text));
+  if (!_supportsSavePicker().toDart) {
+    // A tiny local Blob avoids putting the recovery secret through the streaming worker.
+    final blob = web.Blob(
+      [bytes.toJS].toJS,
+      web.BlobPropertyBag(type: 'text/plain;charset=utf-8'),
+    );
+    final url = web.URL.createObjectURL(blob);
+    final anchor = web.HTMLAnchorElement()
+      ..href = url
+      ..download = name;
+    try {
+      web.document.body!.append(anchor);
+      anchor.click();
+    } finally {
+      anchor.remove();
+      Timer(const Duration(seconds: 30), () => web.URL.revokeObjectURL(url));
+    }
+    // Browsers do not report whether a download was actually saved by the user.
+    return FileSaveResult.downloadStarted;
+  }
+  final id = (await _beginSave(name.toJS).toDart)?.toDart;
+  if (id == null) return FileSaveResult.cancelled;
+  var success = false;
+  try {
+    await _write(id.toJS, bytes.toJS).toDart;
+    success = true;
+  } finally {
+    await _finish(id.toJS, success.toJS).toDart;
+  }
+  return FileSaveResult.saved;
+}
 
 @JS('voicechatFiles.beginSave')
 external JSPromise<JSString?> _beginSave(JSString name);

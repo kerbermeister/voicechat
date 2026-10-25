@@ -1,3 +1,5 @@
+import 'recovery_key_dialog.dart';
+import 'device_name.dart';
 import 'scheduled_view.dart' show scheduledTime;
 import 'device_added.dart';
 import 'conversation_header.dart';
@@ -336,6 +338,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     password.clear();
     probe = next;
     linked = await deviceLinked(next.client);
+    await refreshCurrentDeviceName(next.client);
     enableFirstContactTrust(next.client);
     historyRecovery = HistoryRecovery(next.client, () {
       if (mounted) {
@@ -856,20 +859,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       await showAppDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          title: AppDialogTitle(
-            child: const Text('Сохраните ключ восстановления'),
-          ),
-          content: SelectableText(
-            'Он понадобится, если вы потеряете все устройства. Сохраните его в менеджере паролей.\n\n$key',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Я сохранил ключ'),
-            ),
-          ],
-        ),
+        builder: (_) => RecoveryKeyDialog(recoveryKey: key),
       );
       await markDeviceLinked(client);
       if (mounted) setState(() => linked = true);
@@ -956,20 +946,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     await showAppDialog<void>(
       context: context,
       animationStyle: appAnimationStyle(context),
-      builder: (context) => AlertDialog(
-        title: AppDialogTitle(
-          child: const Text('Сохраните ключ восстановления'),
-        ),
-        content: SelectableText(
-          'Сохраните отдельно от этого устройства. Не отправляйте в чат.\n\n$key',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Я сохранил ключ'),
-          ),
-        ],
-      ),
+      builder: (_) => RecoveryKeyDialog(recoveryKey: key),
     );
     report('Ключи созданы. Резервную копию можно обновить после переписки.');
   }
@@ -1379,7 +1356,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                     Card.outlined(
                       child: ListTile(
                         leading: const Icon(Icons.devices_outlined),
-                        title: Text(device.displayName ?? device.deviceId),
+                        title: Text(accountDeviceName(device)),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -1719,7 +1696,15 @@ class _ProbeScreenState extends State<ProbeScreen> {
             }
           }
 
+          final compact = MediaQuery.sizeOf(dialogContext).width < 500;
           return AlertDialog(
+            actionsPadding: compact
+                ? const EdgeInsets.fromLTRB(16, 0, 16, 8)
+                : null,
+            buttonPadding: compact ? EdgeInsets.zero : null,
+            contentPadding: compact
+                ? const EdgeInsets.fromLTRB(24, 16, 24, 8)
+                : null,
             insetPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 24,

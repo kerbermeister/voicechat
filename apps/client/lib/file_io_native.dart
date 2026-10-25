@@ -1,9 +1,30 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/services.dart';
 import 'chunked_file.dart';
 import 'picked_file.dart';
+import 'file_save_result.dart';
+
+Future<FileSaveResult> saveTextFile(String name, String text) async {
+  final id = await _channel.invokeMethod<String>('begin', {
+    'name': name,
+    'mime': 'text/plain',
+  });
+  if (id == null) return FileSaveResult.cancelled;
+  var success = false;
+  try {
+    await _channel.invokeMethod<void>('write', {
+      'id': id,
+      'bytes': Uint8List.fromList(utf8.encode(text)),
+    });
+    success = true;
+  } finally {
+    await _channel.invokeMethod<void>('finish', {'id': id, 'success': success});
+  }
+  return FileSaveResult.saved;
+}
 
 const _channel = MethodChannel('voicechat/save');
 Future<Directory> _recordingDirectory() async =>
