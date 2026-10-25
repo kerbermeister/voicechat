@@ -141,3 +141,28 @@ Production не обновлялся: первая настройка требу
 Финальный повтор после изменений notification lifecycle/native-assets:
 `flutter analyze` — no issues; **247 tests passed, 3 skipped**. Системная SQLite
 для optional backend не нарушила текущий общий Flutter-набор.
+
+## Итог локальной упаковки
+
+Фактическое железо: **Apple M1 Pro**, macOS 15.3.1. Тестовый development DMG/ZIP
+создан из чисто пересобранного обычного `main.dart`; `hdiutil verify` и `unzip -tq`
+прошли. Перед упаковкой output `.app` пересоздан после XCTest: внедрённые тестом
+библиотеки XCTest не должны попадать в пользовательский пакет.
+
+Локальные файлы (игнорируемый `.prototype`, не Git-артефакты):
+
+- `.prototype/macos-development-candidate/VoiceChat.dmg` — около 70 MiB,
+  SHA256 `01cee590da7229dec5802fc4edffe7ca1183fbc8387f239d0ac4fad7e02eea7a`.
+- `.prototype/macos-development-candidate/VoiceChat.zip` — около 61 MiB,
+  SHA256 `c70857f4ad545de3c8bb68de30f3698a33cadbc26cfd9a6fd69e66df32dae0fc`.
+
+Это **Debug/development**, `distributable=false`, `sourceDirty=true` (в рабочем
+дереве есть сторонние незакоммиченные файлы). По умолчанию сервер localhost,
+канал обновлений не задан. Пакет не опубликован и не является подписанным релизом.
+Для пользовательского релиза нужен Release с каноническим PUBLIC_URL, Developer ID,
+notarization, публичным ключом/feed и полной физической приёмкой. Упаковщик
+отдельно запрещает выдавать Debug/JIT `.app` за release даже при наличии подписи.
+
+Дополнительный тест реальным CryptoKit прошёл: проверка ZIP принимает подпись
+правильного публичного ключа и отвергает другой ключ/изменённые байты. Итого
+**6 Python-тестов macOS**, включая отказ для Debug/JIT release-кандидата; это не заменяет подписанный цикл Sparkle N → N+1.

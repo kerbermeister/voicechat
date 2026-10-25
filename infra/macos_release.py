@@ -57,6 +57,8 @@ def validate_info(info, release=False):
 def verify_app(app, release=False, team=None):
     info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
     validate_info(info, release)
+    if release and (app / 'Contents/Frameworks/App.framework/Resources/flutter_assets/kernel_blob.bin').exists():
+        raise ValueError('A debug/JIT app cannot be distributed as a release')
     found = 0
     for path in app.rglob('*'):
         if path.is_symlink() or not path.is_file():
