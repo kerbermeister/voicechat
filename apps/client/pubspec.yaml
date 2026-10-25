@@ -30,6 +30,7 @@ dependencies:
   record: ^7.1.2
   audioplayers: ^6.8.1
   flutter_webrtc: ^1.6.2+hotfix.4
+  camera_platform_interface: ^2.15.0
   camera: ^0.12.1
   video_player: ^2.14.1
   mobile_scanner: ^7.4.2
@@ -44,6 +45,8 @@ dev_dependencies:
     sdk: flutter
 
 flutter:
+  config:
+    enable-swift-package-manager: false
 
   uses-material-design: true
   fonts:

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'app_version.dart';
+import 'macos_update_dialog.dart';
 import 'app_update.dart';
 import 'update_platform.dart';
 
@@ -236,6 +237,9 @@ class _AppUpdateDialogState extends State<AppUpdateDialog>
 
   @override
   Widget build(BuildContext context) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
+      return MacOSUpdateDialog(prepareInstall: widget.prepareInstall);
+    }
     final version = installed?['versionName'] ?? appVersion;
     final build = installed?['versionCode'] ?? appBuild;
     return PopScope(

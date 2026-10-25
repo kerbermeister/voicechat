@@ -1,4 +1,7 @@
 import 'recovery_key_dialog.dart';
+import 'macos_camera.dart';
+import 'macos_notifications.dart';
+import 'package:camera_platform_interface/camera_platform_interface.dart';
 import 'device_name.dart';
 import 'scheduled_view.dart' show scheduledTime;
 import 'device_added.dart';
@@ -63,6 +66,9 @@ mx.CachedPresence? _roomPresenceSnapshot(mx.Room room) =>
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
+    CameraPlatform.instance = MacOSCamera();
+  }
   await cleanupRecordings();
   runApp(const VoiceChatApp());
 }
@@ -198,6 +204,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   StreamSubscription<dynamic>? sync;
   CallController? calls;
   AppSounds? sounds;
+  MacOSNotifications? desktopNotifications;
   Uri? ownAvatar;
   PresenceTracker? presenceTracker;
   RecordingActivity? recordingActivity;
@@ -407,7 +414,20 @@ class _ProbeScreenState extends State<ProbeScreen> {
     recordingActivity = RecordingActivity(next.client, () {
       if (mounted) setState(() {});
     })..start();
-    sounds = AppSounds(next.client);
+    if (MacOSNotifications.supported) {
+      desktopNotifications = MacOSNotifications(next.client.userID!, (
+        id,
+      ) async {
+        final room = next.client.getRoomById(id);
+        if (mounted &&
+            identical(probe, next) &&
+            room?.membership == mx.Membership.join) {
+          await select(room!);
+        }
+      });
+      await desktopNotifications!.open();
+    }
+    sounds = AppSounds(next.client, onReceived: desktopNotifications?.message);
     await sounds!.open();
     actions = ChatActions(
       next.client,
@@ -425,6 +445,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       if (mounted) {
         setState(() {});
         sounds?.updateCall(calls!);
+        desktopNotifications?.updateCalls(calls!);
         maybeShowCall();
       }
     });
@@ -1489,6 +1510,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     await calls?.close();
     await verifications?.close();
     verifications = null;
+    await desktopNotifications?.close();
+    desktopNotifications = null;
     await sounds?.close();
     await historyRecovery?.close();
     await presenceTracker?.close();
@@ -1516,6 +1539,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     unawaited(calls?.close());
     unawaited(verifications?.close());
     unawaited(historyRecovery?.close());
+    unawaited(desktopNotifications?.close());
     unawaited(sounds?.close());
     unawaited(presenceTracker?.close());
     unawaited(contacts?.close());
@@ -1730,6 +1754,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   Future<void> aboutApp() async {
     await showAppDialog<void>(
       context: context,
+      barrierDismissible: !MacOSNotifications.supported,
       animationStyle: appAnimationStyle(context),
       builder: (_) => AppUpdateDialog(
         prepareInstall: () async {
@@ -1893,14 +1918,16 @@ class _ProbeScreenState extends State<ProbeScreen> {
                       'Устройства и безопасность',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
-                    if (kIsWeb) ...[
+                    if (kIsWeb || MacOSNotifications.supported) ...[
                       ListTile(
                         leading: const Icon(
                           Icons.notifications_active_outlined,
                         ),
                         title: const Text('Включить уведомления'),
-                        subtitle: const Text(
-                          'На iPhone — из приложения на экране «Домой». iOS 16.4 и новее.',
+                        subtitle: Text(
+                          MacOSNotifications.supported
+                              ? 'Пока приложение работает, в том числе со скрытым окном.'
+                              : 'На iPhone — из приложения на экране «Домой». iOS 16.4 и новее.',
                         ),
                         onTap: () => openSetting('push-enable'),
                       ),
@@ -2004,17 +2031,21 @@ class _ProbeScreenState extends State<ProbeScreen> {
           sounds!.updateCall(calls!);
         case 'push-enable':
           report(
-            await enablePushNotifications(
-              tokenServer.text.trim(),
-              probe!.client.accessToken!,
-            ),
+            MacOSNotifications.supported
+                ? await desktopNotifications!.setEnabled(true)
+                : await enablePushNotifications(
+                    tokenServer.text.trim(),
+                    probe!.client.accessToken!,
+                  ),
           );
         case 'push-disable':
           report(
-            await disablePushNotifications(
-              tokenServer.text.trim(),
-              probe!.client.accessToken!,
-            ),
+            MacOSNotifications.supported
+                ? await desktopNotifications!.setEnabled(false)
+                : await disablePushNotifications(
+                    tokenServer.text.trim(),
+                    probe!.client.accessToken!,
+                  ),
           );
         case 'avatar':
           await changeAvatar();

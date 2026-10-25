@@ -11,6 +11,8 @@ void writeTabAccount(String? value) {}
 
 const vault = FlutterSecureStorage(
   aOptions: AndroidOptions(resetOnError: false),
+  // Single-app login Keychain: no sharing entitlement or provisioning profile.
+  mOptions: MacOsOptions(usesDataProtectionKeychain: false),
 );
 final _databases = <String, sql.Database>{};
 
@@ -79,6 +81,11 @@ Future<MatrixSdkDatabase> openStore(
     final random = Random.secure();
     password = base64Encode(List.generate(32, (_) => random.nextInt(256)));
     await vault.write(key: keyName, value: password);
+    if (await vault.read(key: keyName) != password) {
+      throw StateError(
+        'Database key was not persisted; database creation refused',
+      );
+    }
   }
   if (await sql.databaseExists(path)) {
     // Android's writable SQLite opener may recreate a file it cannot decrypt.

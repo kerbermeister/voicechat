@@ -34,7 +34,9 @@ Future<void> cleanupRecordings() async {
     followLinks: false,
   )) {
     if (entity is File &&
-        RegExp(r'^REC[0-9]+\.mp4$').hasMatch(entity.uri.pathSegments.last)) {
+        RegExp(
+          Platform.isMacOS ? r'^REC[0-9]+\.(mp4|mov)$' : r'^REC[0-9]+\.mp4$',
+        ).hasMatch(entity.uri.pathSegments.last)) {
       await entity.delete();
     }
   }
