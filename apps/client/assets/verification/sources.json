@@ -1,0 +1,327 @@
+{
+  "repository": "https://github.com/googlefonts/noto-emoji",
+  "revision": "22e564626297b4df0a40570ad81d6c05cc7c38bd",
+  "path": "png/128",
+  "images": [
+    {
+      "name": "Dog",
+      "file": "emoji_u1f436.png",
+      "sha256": "64d89dcb252701b0923e7d08fb9dddda7a4937b971595043d96d141288cf6d47"
+    },
+    {
+      "name": "Cat",
+      "file": "emoji_u1f431.png",
+      "sha256": "81cba1f23a3dfe65f9081f65f17deb3ac9c0d49a4eb00454438230a953fbdf32"
+    },
+    {
+      "name": "Lion",
+      "file": "emoji_u1f981.png",
+      "sha256": "c81e4d0b4f158f9ae9d6a246f633b031080328c9c053c4a3b20ca8986dc2c996"
+    },
+    {
+      "name": "Horse",
+      "file": "emoji_u1f40e.png",
+      "sha256": "731e17efd9712f22701d5d010ad7848ac8334df9c45f843df40d2d78a09da2ef"
+    },
+    {
+      "name": "Unicorn",
+      "file": "emoji_u1f984.png",
+      "sha256": "dcf1effa7beb50c726faa57fb6848cfec8afb591feadcdcf48ff90ad1bd43afa"
+    },
+    {
+      "name": "Pig",
+      "file": "emoji_u1f437.png",
+      "sha256": "8632f9c298175551b2cc0f2f881cadbb012b1b142421332e9835099955adbab8"
+    },
+    {
+      "name": "Elephant",
+      "file": "emoji_u1f418.png",
+      "sha256": "ae577a32ebb75efe61947fbb3a231315fdf994bbae0626cb56b48de87d0d17c1"
+    },
+    {
+      "name": "Rabbit",
+      "file": "emoji_u1f430.png",
+      "sha256": "5e82e58bbedc2892810b0cded7f6027f955ea761bfd8a5ddbc6648d8bb4f8e68"
+    },
+    {
+      "name": "Panda",
+      "file": "emoji_u1f43c.png",
+      "sha256": "8457712a07ec49049bd0f2bf63101d443f3cfb38a47ee1bc90f08997b5832cb7"
+    },
+    {
+      "name": "Rooster",
+      "file": "emoji_u1f413.png",
+      "sha256": "1038c5e0fe4d740a39e316ce5801ca12b2ad49722ab93dce3f1c9324d0cb16bf"
+    },
+    {
+      "name": "Penguin",
+      "file": "emoji_u1f427.png",
+      "sha256": "d71a470c07865c84c9385445f6c6194bc9556e7b533d45b9bd45e40be13e37da"
+    },
+    {
+      "name": "Turtle",
+      "file": "emoji_u1f422.png",
+      "sha256": "4489cffff80bd6e7b3599e754d5cdeedabee4a8fccc6e9ea97086f38205c66e8"
+    },
+    {
+      "name": "Fish",
+      "file": "emoji_u1f41f.png",
+      "sha256": "64170ffc41e71265a4566304ddc61c6c9f53f3ef0dae30d34f5aad043f1eea28"
+    },
+    {
+      "name": "Octopus",
+      "file": "emoji_u1f419.png",
+      "sha256": "2dd823adc724819fdfcf1f2054c8cb4a0254378b3384728261569001ac49d9ce"
+    },
+    {
+      "name": "Butterfly",
+      "file": "emoji_u1f98b.png",
+      "sha256": "db8bed6411a85cfb267f93f6fbf4daf63316e43121f4d864d313b8dcc3822dc6"
+    },
+    {
+      "name": "Flower",
+      "file": "emoji_u1f337.png",
+      "sha256": "79e0e9ee41430b0e4d13704787570fe4aab320a52163931c0e662e2cc6653861"
+    },
+    {
+      "name": "Tree",
+      "file": "emoji_u1f333.png",
+      "sha256": "d618e62abeffe30996bf3bcda6c7ba4868fe77ed15ec6bbc74107ce79d37e329"
+    },
+    {
+      "name": "Cactus",
+      "file": "emoji_u1f335.png",
+      "sha256": "b204898e56fc41864c1a2774c6638b98fd80e9689091601a6da522fad3863c8c"
+    },
+    {
+      "name": "Mushroom",
+      "file": "emoji_u1f344.png",
+      "sha256": "4350755b5053d609040ed4f32767b9482dbdef8697bb3c50c6e9d59024b08fc4"
+    },
+    {
+      "name": "Globe",
+      "file": "emoji_u1f30f.png",
+      "sha256": "11870b68ff34849546c4278d78edac67c5cf768c9d68d5c11a280f71666e50f1"
+    },
+    {
+      "name": "Moon",
+      "file": "emoji_u1f319.png",
+      "sha256": "1f8c7b12f29e745e72f8c90cf1cedcc3dad3176ce840e899affb7507f6b233ff"
+    },
+    {
+      "name": "Cloud",
+      "file": "emoji_u2601.png",
+      "sha256": "54d1d612d32f4174570ac7b4d7af0a8e7896d96c984e72a47329ded26614cfed"
+    },
+    {
+      "name": "Fire",
+      "file": "emoji_u1f525.png",
+      "sha256": "24bf25eb9bdb8b89a5254fe303b9d4d8f3f96d722b9a8eff1afdec5cf40369a5"
+    },
+    {
+      "name": "Banana",
+      "file": "emoji_u1f34c.png",
+      "sha256": "2753366e0877a0aef1437e2e1870400767f71747ebe828eb7dfcea4ab4278fcd"
+    },
+    {
+      "name": "Apple",
+      "file": "emoji_u1f34e.png",
+      "sha256": "8d7efa8b2352bce103c3de55bcc6eceb0faa0dd9f2f54adc6e21534eea99406a"
+    },
+    {
+      "name": "Strawberry",
+      "file": "emoji_u1f353.png",
+      "sha256": "f9b2624b01c200e3b5fb6f150f5b0878bf4c42feac1239e8b859d228b735c75c"
+    },
+    {
+      "name": "Corn",
+      "file": "emoji_u1f33d.png",
+      "sha256": "8fdcc4fec24102fd967a1b8696f27f6fb6fbb9bb84f41df51dae8a96d10a5b7b"
+    },
+    {
+      "name": "Pizza",
+      "file": "emoji_u1f355.png",
+      "sha256": "6e9339da5af40cbfbb04d87bd554d35f60dc9582ceffedcb7daa6c2e50e4d288"
+    },
+    {
+      "name": "Cake",
+      "file": "emoji_u1f382.png",
+      "sha256": "443132575b72424951acabf320b3498ccf22ac0ed657a18da4b5a299c468108a"
+    },
+    {
+      "name": "Heart",
+      "file": "emoji_u2764.png",
+      "sha256": "1d41a1bc85be895f01f0b07997e3a5619ab3f685e3edbf8c0ad6853d378e6fe0"
+    },
+    {
+      "name": "Smiley",
+      "file": "emoji_u1f600.png",
+      "sha256": "88df38e1a578f360c1df99b41387ec370bb568a58a6e846631422e39e6473530"
+    },
+    {
+      "name": "Robot",
+      "file": "emoji_u1f916.png",
+      "sha256": "562ebd6e0cdfedb3fcd699969e04b5e9d6a94338fe0d73cc30efe37cb4434a2b"
+    },
+    {
+      "name": "Hat",
+      "file": "emoji_u1f3a9.png",
+      "sha256": "f75d053747f3426bb0976332f4ee68f0d4c863d19e126fef7fd2641aba96d7fe"
+    },
+    {
+      "name": "Glasses",
+      "file": "emoji_u1f453.png",
+      "sha256": "fa9cbf3d302b32ff6eeedca4fdd143f18679e1403673ff260e35e317550914ed"
+    },
+    {
+      "name": "Spanner",
+      "file": "emoji_u1f527.png",
+      "sha256": "a7143f02c2f9c37c5200f25b0f02d3018c55056a8d7f6ebeffdad78ab9f1ab58"
+    },
+    {
+      "name": "Santa",
+      "file": "emoji_u1f385.png",
+      "sha256": "b698c994584e99f14c1da3e33fd45fd1e23028cc97b0aa566e003f5b91fbe261"
+    },
+    {
+      "name": "Thumbs Up",
+      "file": "emoji_u1f44d.png",
+      "sha256": "a17fcf51fee3abc247210f28b130802fc381e01971699bbefa40eaf89adb3a02"
+    },
+    {
+      "name": "Umbrella",
+      "file": "emoji_u2602.png",
+      "sha256": "bfe1f224fee55224945b1c8bc3acb20a3d1cc2c2c84169d1ca9416971dd87e31"
+    },
+    {
+      "name": "Hourglass",
+      "file": "emoji_u231b.png",
+      "sha256": "56c8ff0a7996d8ef89862e90e1a2939ad49d71a7af38361441c41ef0d1745581"
+    },
+    {
+      "name": "Clock",
+      "file": "emoji_u23f0.png",
+      "sha256": "18d1b80c94b6c3a54a4117fd2b051c02d818bcada1e234a5f78749496b5dcb79"
+    },
+    {
+      "name": "Gift",
+      "file": "emoji_u1f381.png",
+      "sha256": "bb3d856ad41f446ff7a1608c022d63a79c0bfd9711e20801ee8b28b88686608f"
+    },
+    {
+      "name": "Light Bulb",
+      "file": "emoji_u1f4a1.png",
+      "sha256": "3b57447c18ca9a6bd2df7f17fdf22fb5ee1135bd07fda592e2a34c705060c1c2"
+    },
+    {
+      "name": "Book",
+      "file": "emoji_u1f4d5.png",
+      "sha256": "8883ffefa308c92c3bc24d067306049cb56f1fc1942e3024fac59ab372025149"
+    },
+    {
+      "name": "Pencil",
+      "file": "emoji_u270f.png",
+      "sha256": "01766899ede0a34b13132faed154318d8d8765846de34ad7f504322e445acd3f"
+    },
+    {
+      "name": "Paperclip",
+      "file": "emoji_u1f4ce.png",
+      "sha256": "f80d57562a786e4f8c8248b9b5ef563bb49edf8dec1183bceaaa10ee6e907082"
+    },
+    {
+      "name": "Scissors",
+      "file": "emoji_u2702.png",
+      "sha256": "de8665e49d9f7a1d4abf3cdb141cd9f2bd3df74941b8526693778c232bd5e39c"
+    },
+    {
+      "name": "Lock",
+      "file": "emoji_u1f512.png",
+      "sha256": "ceb7dce999dc3487ae9598c66e546d72f04967eb65d9221faeacaa91f92be087"
+    },
+    {
+      "name": "Key",
+      "file": "emoji_u1f511.png",
+      "sha256": "1b74e064b98054fc363ac00c95ef017da051455af1ca787af10146d19a119e31"
+    },
+    {
+      "name": "Hammer",
+      "file": "emoji_u1f528.png",
+      "sha256": "737f5801dd1bd0a44c4b1ac4b695cb06f581e2ce674736452c6bff0cbec52053"
+    },
+    {
+      "name": "Telephone",
+      "file": "emoji_u260e.png",
+      "sha256": "d1105b320a543a2152662cb3c030fa1ad7c2027aa02e5de594458622abeacfdf"
+    },
+    {
+      "name": "Flag",
+      "file": "emoji_u1f3c1.png",
+      "sha256": "facba94cf215382714b36aa296952d317755f84e010afdb0d5639441e5de0813"
+    },
+    {
+      "name": "Train",
+      "file": "emoji_u1f682.png",
+      "sha256": "b9e973776f27b0f5117cf41039acd9a47428db17aa321af4b4874a39cf6e49f8"
+    },
+    {
+      "name": "Bicycle",
+      "file": "emoji_u1f6b2.png",
+      "sha256": "64a4b1cc8a369174b4c05d62f700bad8fbf27eeaf3c22212c3b31150f76285e6"
+    },
+    {
+      "name": "Aeroplane",
+      "file": "emoji_u2708.png",
+      "sha256": "d0129aa0203a92b9de4c4c170be221fc0e24e112259a0465ec2731a051d006a2"
+    },
+    {
+      "name": "Rocket",
+      "file": "emoji_u1f680.png",
+      "sha256": "d7818c5f67ff7eff8b281cc0944ef150cc7799c9b35c9fa769b7bd4e76ca96e6"
+    },
+    {
+      "name": "Trophy",
+      "file": "emoji_u1f3c6.png",
+      "sha256": "0bcb3953b021377ea5846997d19c4d7d988d7fec416312cf4633de4746e569b4"
+    },
+    {
+      "name": "Ball",
+      "file": "emoji_u26bd.png",
+      "sha256": "517e3321dbfec323eb9327dd3f5bddfc11a513705b51bef9af368107dbede1b7"
+    },
+    {
+      "name": "Guitar",
+      "file": "emoji_u1f3b8.png",
+      "sha256": "6f986c12825653c93b7f58cf44c05cfaf0f56cab692115ec5168f190abf4439c"
+    },
+    {
+      "name": "Trumpet",
+      "file": "emoji_u1f3ba.png",
+      "sha256": "b63788152c6a6735aeef06911ef534e58c15d51b95c92f4b626bbfe47733bfb6"
+    },
+    {
+      "name": "Bell",
+      "file": "emoji_u1f514.png",
+      "sha256": "546f1d98cd071a2b80c094b1e5c4b40f1bf3c963d94eca6a891ea624ae7bd8bd"
+    },
+    {
+      "name": "Anchor",
+      "file": "emoji_u2693.png",
+      "sha256": "e584249e222fef2e842d38169e5b8306bec70eb3551d4bd353dc3a0f0bf1c440"
+    },
+    {
+      "name": "Headphones",
+      "file": "emoji_u1f3a7.png",
+      "sha256": "e3371920f5e48c9bb2704f8e03b0a642144122965b2412ef9f1ecef230be3754"
+    },
+    {
+      "name": "Folder",
+      "file": "emoji_u1f4c1.png",
+      "sha256": "d223bf1b99bef385c8f6c3609a021e279023ba5c4562bfd6a80b472dfa3e928a"
+    },
+    {
+      "name": "Pin",
+      "file": "emoji_u1f4cc.png",
+      "sha256": "65d271cca2e326eb53f3e86aae11f6a8cd7352bc1f34c32783aaaf9d82dce9da"
+    }
+  ]
+}

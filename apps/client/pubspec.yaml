@@ -52,3 +52,4 @@ flutter:
         - asset: assets/fonts/Inter-Variable.ttf
   assets:
     - assets/sounds/
+    - assets/verification/

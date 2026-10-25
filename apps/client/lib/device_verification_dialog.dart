@@ -186,9 +186,14 @@ class _VerificationDialogState extends State<_VerificationDialog> {
                         for (final emoji in request.sasEmojis)
                           Tooltip(
                             message: emoji.name,
-                            child: Text(
-                              emoji.emoji,
-                              style: const TextStyle(fontSize: 34),
+                            // Bundle the SAS alphabet: web font fallback needs
+                            // an external download and can leave symbols blank.
+                            child: Image.asset(
+                              'assets/verification/emoji_u${emoji.emoji.runes.first.toRadixString(16)}.png',
+                              width: 40,
+                              height: 40,
+                              semanticLabel: emoji.name,
+                              errorBuilder: (_, _, _) => Text(emoji.name),
                             ),
                           ),
                       ],

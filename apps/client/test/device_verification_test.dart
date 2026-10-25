@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart';
 import 'package:matrix/encryption.dart';
@@ -103,6 +105,24 @@ class WaitingVerification extends KeyVerification {
 }
 
 void main() {
+  test('All 64 SAS symbols have distinct decodable bundled images', () async {
+    final assets = <String>{};
+    for (var number = 0; number < 64; number++) {
+      final emoji = KeyVerificationEmoji(number);
+      final points = emoji.emoji.runes.toList();
+      expect(points.skip(1).every((point) => point == 0xfe0f), isTrue);
+      final path =
+          'assets/verification/emoji_u${points.first.toRadixString(16)}.png';
+      expect(assets.add(path), isTrue);
+      final data = await rootBundle.load(path);
+      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      final frame = await codec.getNextFrame();
+      expect(frame.image.width, 128);
+      expect(frame.image.height, 128);
+      frame.image.dispose();
+      codec.dispose();
+    }
+  });
   test(
     'An invalid master cannot prove a device even when a signature-chain lookup succeeds',
     () async {
@@ -166,7 +186,7 @@ void main() {
     },
   );
   testWidgets(
-    'SAS codes and seven emoji fit a phone and remain accessible as text',
+    'SAS codes and seven bundled emoji fit a phone with accessible labels',
     (tester) async {
       final owner = DeviceVerifications(
         Client('sas-ui', database: OutboxDatabase()),
@@ -199,15 +219,21 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('1234  5678  9012'), findsNothing);
       for (final emoji in proof.sasEmojis) {
-        expect(find.text(emoji.emoji), findsOneWidget);
+        final image = tester.widget<Image>(
+          find.byWidgetPredicate(
+            (widget) => widget is Image && widget.semanticLabel == emoji.name,
+          ),
+        );
+        expect(
+          (image.image as AssetImage).assetName,
+          'assets/verification/emoji_u${emoji.emoji.runes.first.toRadixString(16)}.png',
+        );
       }
       await tester.ensureVisible(find.text('Код'));
       await tester.tap(find.text('Код'));
       await tester.pumpAndSettle();
       expect(find.text('1234  5678  9012'), findsOneWidget);
-      for (final emoji in proof.sasEmojis) {
-        expect(find.text(emoji.emoji), findsNothing);
-      }
+      expect(find.byType(Image), findsNothing);
       await tester.ensureVisible(find.text('Эмодзи'));
       await tester.tap(find.text('Эмодзи'));
       await tester.pumpAndSettle();
