@@ -3,6 +3,12 @@
 Дата: 24 октября 2026. Релиз **не принят**. Реализация и лабораторное доказательство
 отделены от аппаратной, сетевой и эксплуатационной приёмки.
 
+По запросу владельца 24 октября включён web preview на `https://univc.duckdns.org`
+в релизе `30e96d2` после исправления clock-skew group invite (web-only CI SUCCESS).
+Личный/групповой показ, перехват, stop и voice/camera continuity прошли на публичном
+адресе в двух Chrome. Runtime flag=1 не завершает обязательную приёмку.
+[Отдельный отчёт VPS](iterations/screen-vps-preview.md).
+
 ## Платформы — SS-12
 
 | Среда | Захват | Encrypt / decrypt | Фон / системный Stop | Результат |
@@ -23,16 +29,17 @@ HTTPS, codec и фактический E2EE decode должны проверят
 
 ## Внешние условия — SS-13/SS-14/SS-17
 
-- В этой итерации screen share не принят на целевом VPS и тестовых мобильных
-  сетях. Параллельная подготовка общего VPS deploy не заменяет эту приёмку.
-  Loopback SFU не доказывает работу firewall/NAT/TURN или сети только TCP 443.
+- На целевом VPS подтверждён публичный HTTPS/WSS screen smoke двух Chrome
+  через реальные Matrix/SFU: личный/групповой показ, перехват и stop.
+  Это не проверка relay-only, мобильных сетей или сети только TCP 443.
 - TURN/TLS на 443 сейчас не настроен. HTTP reverse proxy сам по себе не заменяет
   TURN. До проверки L4/SNI или отдельного разрешённого порта эта сеть не поддержана.
 - Ограничение владельца на тяжёлые тесты и параллельные сборки сохранено. Нагрузку
   10 участников, 30 минут, 50 циклов и несколько одновременных звонков не запускать
   до отдельного разрешения. Без замеров нельзя объявлять вместимость машины.
-- Production не обновлялся; включение функции на целевом стенде требует согласованной
-  среды и окна. До приёмки серверный flag остаётся off.
+- На VPS по явному запросу владельца опубликован web preview, runtime flag включён
+  для самостоятельного тестирования. Default off сохранён в коде; полная приёмка
+  и поддержка всех платформ этим исключением не закрываются.
 
 ## Связанные результаты
 
@@ -61,7 +68,7 @@ PASS ниже относится только к явно указанной с�
 | A12 | WEB PASS | 15 доставленных Matrix/Olm отрицательных случаев: точный старый envelope, подменённые контексты/срок/устройство, plaintext, voice channel. Ни один не достиг screen setKey; voice key не изменился, 0 кадров до правильного ключа. Положительный контроль установил актуальный raw key и дал видимые пиксели. Физические платформы остаются в SS-12. |
 | A13 | PARTIAL PASS | Capture video-only и source grants, audio-kind отвергается до subscribe, голос в своей room. Воспроизведение системного звука с выключенным mic на физических устройствах не принято. |
 | A14 | WEB PASS | Локальные private control Matrix/restart, joint container restart/SIGKILL control/SIGKILL SFU/SIGSTOP watchdog, короткий signaling/control обрыв и возврат проигравшего viewer, unknown результат настоящих SFU CreateRoom/DeleteRoom, silent lease и настоящий Matrix kick. Захват/старый кадр закрыты, retired/pending очищены, unexpired old JWT отвергнут. Только screen faults сохраняют основные voice PC/media; crash общего SFU прерывает групповой голос. Внешняя сеть/UDP loss относятся к A15. |
-| A15 | BLOCKED | Нет внешнего VPS/NAT/целевых Wi-Fi/mobile сетей; TCP443-only не заявлен. |
+| A15 | PARTIAL PASS | Публичный VPS HTTPS/WSS: два Chrome, личный/групповой screen smoke PASS. Relay-only, UDP-blocked, целевые Wi-Fi/mobile сети и TCP443-only не приняты. |
 | A16 | PARTIAL PASS | Обычный Chrome: 7 тем через UI/localStorage/PNG, чат и live screen 320×640/390×844/640×320, scroll-доступ к screen controls, всегда видимое завершение, fullscreen/возврат. Direct/group mic/camera off/on сохраняют screen и voice PC, новые RTP streams продолжают декодироваться. Widget: 7 тем, text200%, reduced animations, Tab/Enter/Escape fullscreen и возврат фокуса; контраст используемых color pairs ≥4.5:1. Исправлен live status с ошибкой захвата; UI fixture в Chrome/Edge/Firefox/WebKit на 3 viewport PASS (без media). Нативный Safari AX/keyboard PASS; озвучивание и VO navigation не приняты, VoiceOver возвращён off. Целевые устройства остаются. |
 | A17 | PARTIAL PASS | Additive v1→v2, fresh/repeated migration, read-only image, SQLite backup/recovery, настоящий feature off сохраняет group voice/camera. Полный локальный Compose restore принят: новые тома, restored release/runtime, signing key, SQL/3 SQLite/media; новый login, принудительное чтение/decrypt истории и реальный download/decrypt файла, group voice/camera и новый screen call. Старые leases отозваны, capture не возобновляется. Сохранён client vault. Отдельный local upgrade pre-screen c3e3f43 → current → baseline на тех же томах: v1→v2, off/on, отказ ручного rollback при active screen, quiescence, backup перед обеими сменами; данные до/после upgrade и ordinary E2EE call сохранены. Registry/target release и старая клиентская версия остаются. |
 | A18 | BLOCKED | 50 fake metadata cycles без retired rooms; это не 30 минут media и не доказательство native/браузерных утечек. Тяжёлая нагрузка не разрешена. |
@@ -114,7 +121,7 @@ deployment manifest — другой маркер совместимости.
 controllers: новые свидетельства связаны выше. Это не полная аппаратная приёмка
 и не независимый security audit всей инфраструктуры.
 
-До включения остаются как внешние, так и локальные проверки: физический Android и браузеры, системный picker/Stop/
+До полного выпуска остаются как внешние, так и локальные проверки: физический Android и браузеры, системный picker/Stop/
 доступность, внешние сети, разрешённая нагрузка, target upgrade/rollback и registry manifest
 и совместимость старого клиента. Локальная Chrome регрессия сообщений/файлов/тем принята отдельно. PARTIAL/BLOCKED сохраняются для открытых gate.
 

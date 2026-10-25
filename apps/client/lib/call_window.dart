@@ -95,7 +95,16 @@ class _CallWindowState extends State<CallWindow> {
       contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       titlePadding: const EdgeInsets.fromLTRB(20, 8, 8, 0),
-      title: AppDialogTitle(child: Align(alignment: Alignment.centerRight, child: IconButton(tooltip: 'Свернуть звонок', onPressed: () => Navigator.pop(context), icon: const Icon(Icons.expand_more)))),
+      title: AppDialogTitle(
+        child: Align(
+          alignment: Alignment.centerRight,
+          child: IconButton(
+            tooltip: 'Свернуть звонок',
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.expand_more),
+          ),
+        ),
+      ),
       content: SizedBox(
         width: video || calls.screen != null ? 850 : 500,
         height: math.min(MediaQuery.sizeOf(context).height * .65, 560),

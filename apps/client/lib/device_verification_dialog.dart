@@ -134,7 +134,11 @@ class _VerificationDialogState extends State<_VerificationDialog> {
         });
       }
       return AlertDialog(
-        title: AppDialogTitle(child: Text(completed ? 'Устройство подтверждено' : 'Проверка устройства')),
+        title: AppDialogTitle(
+          child: Text(
+            completed ? 'Устройство подтверждено' : 'Проверка устройства',
+          ),
+        ),
         content: SizedBox(
           width: 460,
           child: SingleChildScrollView(

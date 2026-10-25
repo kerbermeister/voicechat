@@ -6,6 +6,11 @@ on:
         description: Deploy to VPS after publishing images
         type: boolean
         default: true
+      mode:
+        description: Full release or web only (requires an unchanged deployed backend)
+        type: choice
+        options: [full, web]
+        default: full
 permissions:
   contents: read
   packages: write
@@ -14,13 +19,14 @@ concurrency:
   cancel-in-progress: false
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: production
     env:
       PUBLIC_URL: ${{ vars.PUBLIC_URL }}
       DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
       DEPLOY_USER: ${{ vars.DEPLOY_USER }}
       DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT }}
+      RELEASE_MODE: ${{ inputs.mode }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - name: Validate public deployment configuration
@@ -28,6 +34,20 @@ jobs:
           test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER" && test -n "$DEPLOY_ROOT"
           python3 infra/client_config.py "$PUBLIC_URL" /tmp/client.json
           python3 -c 'import json; assert json.load(open("/tmp/client.json"))["MATRIX_URL"].startswith("https://")'
+          python3 infra/release_source.py
+      - name: Set up pinned SSH identity
+        if: ${{ inputs.deploy || inputs.mode == 'web' }}
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Verify deployed backend for web-only release
+        if: ${{ inputs.mode == 'web' }}
+        run: python3 infra/ssh_deploy.py read
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           flutter-version: '3.47.7'
@@ -41,16 +61,58 @@ jobs:
           flutter pub get --enforce-lockfile
           flutter analyze
           flutter test
-      - name: Install locked crypto build tools
+      - name: Restore generated crypto assets
+        id: assets
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: |
+            apps/client/web/pkg
+            apps/client/web/e2ee.worker.dart.js*
+            apps/client/web/zxing
+            apps/client/web/zxing.js
+          key: crypto-assets-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('infra/crypto-tools.json', 'prototype/build_web_assets.py', 'prototype/build_qr_assets.py', 'apps/client/pubspec.yaml', 'apps/client/pubspec.lock', 'vendor/matrix/lib/**', 'vendor/matrix/pubspec.yaml', 'vendor/matrix/pubspec.lock') }}
+      - name: Restore crypto build tools
+        if: steps.assets.outputs.cache-hit != 'true'
+        id: tools
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: .prototype/crypto-tools
+          key: crypto-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('infra/crypto-tools.json') }}
+      - name: Install pinned crypto build tools on cache miss
+        if: steps.assets.outputs.cache-hit != 'true'
+        env:
+          TOOLS_CACHE_HIT: ${{ steps.tools.outputs.cache-hit }}
         run: |
-          rustup toolchain install nightly --component rust-src
-          rustup target add wasm32-unknown-unknown
-          cargo install --locked flutter_rust_bridge_codegen --version 2.13.0
-          cargo install --locked wasm-pack --version 0.15.0
-          cargo install --locked wasm-bindgen-cli --version 0.2.100
+          python3 - <<'PY'
+          import json,os,subprocess
+          from pathlib import Path
+          config=json.load(open('infra/crypto-tools.json'))
+          root=Path('.prototype/crypto-tools').resolve()
+          for toolchain in (config['rust'],config['nightly']):
+              subprocess.run(['rustup','toolchain','install',toolchain,'--profile','minimal','--component','rust-src'],check=True)
+          subprocess.run(['rustup','target','add','--toolchain',config['nightly'],'wasm32-unknown-unknown'],check=True)
+          if os.environ['TOOLS_CACHE_HIT']!='true':
+              for tool,version in config['tools'].items():
+                  subprocess.run(['cargo','+'+config['rust'],'install','--locked',tool,'--version',version,'--root',str(root)],check=True)
+          with open(os.environ['GITHUB_PATH'],'a') as output: output.write(str(root/'bin')+'\n')
+          PY
+      - name: Build crypto assets on cache miss
+        if: steps.assets.outputs.cache-hit != 'true'
+        run: python3 prototype/build_web_assets.py
+      - name: Validate generated assets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          web=Path('apps/client/web')
+          assert (web/'e2ee.worker.dart.js').stat().st_size>0
+          assert (web/'zxing.js').stat().st_size>0
+          wasm=list((web/'pkg').glob('*.wasm'))+[web/'zxing/zxing_reader.wasm']
+          assert len(wasm)>=2
+          for path in wasm:
+              with path.open('rb') as source: assert source.read(4)==b'\0asm',path
+          PY
       - name: Build ordinary web application
         run: |
-          python3 prototype/build_web_assets.py
           cd apps/client
           flutter build web --release --no-web-resources-cdn --target lib/main.dart --dart-define-from-file /tmp/client.json
           cd ../..
@@ -59,26 +121,35 @@ jobs:
           cp infra/Caddyfile .prototype/web-image/Caddyfile
       - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130
       - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
-      - name: Build immutable images and release manifest
+      - name: Login to GHCR
         env:
           REGISTRY_TOKEN: ${{ github.token }}
           REGISTRY_USER: ${{ github.actor }}
+        run: printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
+      - name: Build control image for full release
+        if: ${{ inputs.mode != 'web' }}
+        env:
           REPOSITORY: ${{ github.repository }}
         run: |
-          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
           repository="ghcr.io/${REPOSITORY,,}"
           docker buildx build --platform linux/amd64,linux/arm64 --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" -f infra/control.Dockerfile -t "$repository/control:$GITHUB_SHA" --push --metadata-file /tmp/control-image.json .
+      - name: Build web image and release manifest
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          repository="ghcr.io/${REPOSITORY,,}"
           docker buildx build --platform linux/amd64,linux/arm64 --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" -f infra/web.Dockerfile -t "$repository/web:$GITHUB_SHA" --push --metadata-file /tmp/web-image.json .prototype/web-image
           export IMAGE_REPOSITORY="$repository"
           python3 - <<'PY'
           import json,os
-          value={'commit':os.environ['GITHUB_SHA'],'schema':1,'origin':os.environ['PUBLIC_URL']}
-          for name in ('control','web'):
-              digest=json.load(open('/tmp/'+name+'-image.json'))['containerimage.digest']
-              value[name]=os.environ['IMAGE_REPOSITORY']+'/'+name+'@'+digest
+          repository=os.environ['IMAGE_REPOSITORY']
+          control=(json.load(open('/tmp/current-release.json'))['manifest']['control'] if os.environ['RELEASE_MODE']=='web'
+                   else repository+'/control@'+json.load(open('/tmp/control-image.json'))['containerimage.digest'])
+          value={'commit':os.environ['GITHUB_SHA'],'schema':1,'origin':os.environ['PUBLIC_URL'],'control':control,
+                 'web':repository+'/web@'+json.load(open('/tmp/web-image.json'))['containerimage.digest']}
           open('release.json','w').write(json.dumps(value))
           PY
-          tar --exclude=infra/runtime --exclude=infra/__pycache__ -czf /tmp/release.tar.gz infra prototype/voicechat_policy.py prototype/client_policy.py prototype/scheduled_messages.py prototype/client-policy.json release.json
+          tar --exclude=infra/runtime --exclude=infra/__pycache__ -czf /tmp/release.tar.gz infra prototype/voicechat_policy.py prototype/client_policy.py prototype/scheduled_messages.py prototype/client-policy.json backend.sha256 release.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: release-${{ github.sha }}
@@ -86,24 +157,9 @@ jobs:
           retention-days: 30
       - name: Deploy using pinned host identity
         if: ${{ inputs.deploy }}
-        env:
-          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
-          umask 077
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          python3 - <<'PY'
-          import os,re,shlex,subprocess
-          host,user,root=(os.environ[k] for k in ('DEPLOY_HOST','DEPLOY_USER','DEPLOY_ROOT'))
-          if not re.fullmatch(r'[a-zA-Z0-9.-]+',host) or not re.fullmatch(r'[a-z_][a-z0-9_-]*',user): raise SystemExit('Invalid SSH target')
-          if not re.fullmatch(r'/[a-zA-Z0-9/_-]+',root) or '..' in root.split('/'): raise SystemExit('Invalid persistent root')
-          destination=root+'/releases/'+os.environ['GITHUB_SHA']
-          target=user+'@'+host
-          ssh=['ssh','-o','StrictHostKeyChecking=yes','-o','BatchMode=yes',target]
-          subprocess.run([*ssh,'mkdir -p '+shlex.quote(root+'/releases')+' && mkdir '+shlex.quote(destination)],check=True)
-          subprocess.run(['scp','-o','StrictHostKeyChecking=yes','-o','BatchMode=yes','/tmp/release.tar.gz',target+':'+destination+'/release.tar.gz'],check=True)
-          command='cd '+shlex.quote(destination)+' && tar -xzf release.tar.gz && python3 infra/deploy.py --root '+shlex.quote(root)+' --release '+shlex.quote(destination)
-          subprocess.run([*ssh,command],check=True)
-          PY
+          if [ "$RELEASE_MODE" = web ]; then
+            python3 infra/ssh_deploy.py deploy --web-only
+          else
+            python3 infra/ssh_deploy.py deploy
+          fi

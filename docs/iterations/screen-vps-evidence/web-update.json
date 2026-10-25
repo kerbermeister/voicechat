@@ -1,0 +1,67 @@
+{
+  "current": {
+    "release": "/srv/voicechat/releases/30e96d299b786006f3408b2f5615b6a5dd8527e1",
+    "manifest": {
+      "commit": "30e96d299b786006f3408b2f5615b6a5dd8527e1",
+      "schema": 1,
+      "origin": "https://univc.duckdns.org",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:ff8f0659bdb8330858df3ad199e460e25f13d4436c79668d5595197affca29d2",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:342b6724d596a481dc1b17ffe7508f60159d1b415009d36c6e46ed81265def93"
+    },
+    "backend": "07c363febb1fe77296b4d06f7c71010dddd2e32abd1a5c02c04d425019389218",
+    "backend_config": "0d68254b9f1e284c3f0380f1238b7c9c6d4f403026ac7c3af28043df572bc396"
+  },
+  "previous": {
+    "release": "/srv/voicechat/releases/39abf2d492254a052addbd44f9fd0f50d287a112",
+    "manifest": {
+      "commit": "39abf2d492254a052addbd44f9fd0f50d287a112",
+      "schema": 1,
+      "origin": "https://univc.duckdns.org",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:ff8f0659bdb8330858df3ad199e460e25f13d4436c79668d5595197affca29d2",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:b693fc7b436519be89fda61a503dafa3b20c1bd55eef1fea6e5d31336d8e5799"
+    },
+    "backend": "07c363febb1fe77296b4d06f7c71010dddd2e32abd1a5c02c04d425019389218",
+    "backend_config": "0d68254b9f1e284c3f0380f1238b7c9c6d4f403026ac7c3af28043df572bc396"
+  },
+  "services": {
+    "web": {
+      "id": "841ede67bd4f83b04b9e05e1766b6c0ca0d371c2c3f5e3ddc96f3b4d16d889fd",
+      "started_at": "2026-10-24T20:05:18.262692377Z",
+      "restart_count": "0",
+      "status": "running"
+    },
+    "control": {
+      "id": "b2277b510e004d58e2b48b3dc11bc3ec62bc2c22de2d840dd05505a2c5589471",
+      "started_at": "2026-10-24T18:44:31.11029978Z",
+      "restart_count": "0",
+      "status": "running"
+    },
+    "synapse": {
+      "id": "1ec1fc073f5938b4bbe1a69991b56cb59c6faa3eaf808af3378eda183f40d345",
+      "started_at": "2026-10-24T18:44:30.906749587Z",
+      "restart_count": "0",
+      "status": "running"
+    },
+    "turn": {
+      "id": "507b88b118ad8c753473c5de94fca8b672c5046f6825818a21789e8dc8d588d5",
+      "started_at": "2026-10-24T18:44:33.126055791Z",
+      "restart_count": "0",
+      "status": "running"
+    },
+    "postgres": {
+      "id": "2e901809ce096555022310aa9a36adc9f962ea5586e63e02f38a17dce7e82e02",
+      "started_at": "2026-10-23T21:52:03.276018562Z",
+      "restart_count": "0",
+      "status": "running"
+    }
+  },
+  "main_dart_js_sha256": "6c3e65baf91c5e39955a36afe6520fae166e8bc904676b1f0aa6cd8d27594caa",
+  "result": "PASS",
+  "mode": "web",
+  "backend_container_id_started_at_restart_count_unchanged": true,
+  "public_js_matches_image": true,
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/40127768357",
+  "ci_status": "SUCCESS",
+  "clock_skew_seconds": 28.796,
+  "clock_measurement_uncertainty_seconds": 0.679
+}

@@ -112,7 +112,11 @@ void main() {
           body: LinkCards(
             text: text,
             previews: const [
-              {'url': 'https://example.com/a.mp4', 'title': 'Old clip', 'description': ''},
+              {
+                'url': 'https://example.com/a.mp4',
+                'title': 'Old clip',
+                'description': '',
+              },
             ],
           ),
         ),

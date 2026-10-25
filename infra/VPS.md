@@ -363,7 +363,7 @@ HTTPS/WSS origin. Изменения интерфейса в рабочем де
 
 ## Подключение устройств: web hotfix 24 октября 2026
 
-Опубликован web-only образ `voicechat-client:device-link-20261024`; основной
+Историческая ручная публикация: был опубликован web-only образ `voicechat-client:device-link-20261024`; основной
 release manifest не изменён. Дополнительный override и сведения об откате:
 `/srv/voicechat/runtime/compose.client-hotfix.yaml` и `client-hotfix.json`.
 Обычный последующий deploy заменит hotfix своим manifest-образом.
@@ -372,3 +372,5 @@ release manifest не изменён. Дополнительный override и �
 Подготовлены три отдельных демо-аккаунта и две группы; закрытые реквизиты
 на Mac: `.prototype/vps-device-link-demo.json` (0600, Git ignore).
 Физические устройства и звонки этой проверкой не покрываются.
+
+При объединении с ускоренным деплоем источником истины остаётся `current.json` и фактический image digest контейнера; наличие файлов прежнего hotfix не означает, что он активен.

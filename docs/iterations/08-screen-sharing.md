@@ -2,6 +2,19 @@
 
 Основание: [ТЗ](../screen-sharing-spec.md), [задачи](../tasks/08-screen-sharing.md).
 
+## 24 октября 2026: screen share включён на VPS для тестирования владельцем
+
+Другой агент развернул объединённый релиз `39abf2d`, уже содержащий изменения
+screen share. Проверены ancestry и хеши control, публичный JS, здоровье служб,
+SQLite v2, существующий encrypted backup и previous release. При проверке найден
+отказ group invite: VPS опережает Mac примерно на 29 s. Ограниченный допуск +1 min
+проверен regression assertions и опубликован как `30e96d2` штатным web-only deploy
+(CI SUCCESS). Обновился только web; backend container identities/start/restarts и
+fingerprints сохранены. Runtime flag включён атомарно UID10001/0600. Личный и
+групповой показ/перехват/stop прошли на публичном адресе с реальными пикселями,
+сохранив voice/camera. Полная приёмка остаётся BLOCKED.
+[Отчёт и свидетельства](screen-vps-preview.md).
+
 ## 24 октября 2026: сверка оставшихся задач SS-12–SS-17
 
 Все шесть открытых блоков уже присутствовали в исполняемом плане. Уточнены отдельные

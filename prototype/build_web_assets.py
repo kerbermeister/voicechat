@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Build upstream crypto assets using the dependencies locked by Flutter."""
+"""Build locked crypto assets; CI reuses outputs only when the input cache key matches.
+
+Keep this generator in the assets cache key. Local invocations intentionally rebuild.
+"""
 import json
 import shutil
 import subprocess
@@ -15,14 +18,16 @@ source = Path(unquote(urlparse(livekit['rootUri']).path)) / 'web/e2ee.worker.dar
 subprocess.run(['dart', 'compile', 'js', '--packages=.dart_tool/package_config.json',
                 str(source), '-o', 'web/e2ee.worker.dart.js', '-m'], cwd=app, check=True)
 checkout = root / '.prototype/vodozemac'
-commit = '774956e945a39451441e72f03195a1ad2e78c3a8'  # upstream 0.9.0
+tools = json.loads((root / 'infra/crypto-tools.json').read_text())
+commit = tools['vodozemac_commit']  # upstream 0.9.0
 if not checkout.exists():
     subprocess.run(['git', 'clone', '--depth', '1', '--branch', '0.9.0',
                     'https://github.com/famedly/dart-vodozemac.git', str(checkout)], check=True)
 actual = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=checkout, text=True).strip()
 if actual != commit: raise SystemExit('Unexpected vodozemac checkout; refusing build')
 subprocess.run(['flutter_rust_bridge_codegen', 'build-web', '--dart-root', 'dart',
-                '--rust-root', str(checkout / 'rust'), '--release'], cwd=checkout, check=True)
+                '--rust-root', str(checkout / 'rust'), '--release',
+                '--wasm-pack-rustup-toolchain', tools['nightly']], cwd=checkout, check=True)
 shutil.copytree(checkout / 'dart/web/pkg', app / 'web/pkg', dirs_exist_ok=True)
 subprocess.run([sys.executable, str(root / 'prototype/build_qr_assets.py')], check=True)
 print('Web crypto assets built. They are generated, not committed.')

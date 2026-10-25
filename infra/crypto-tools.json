@@ -1,0 +1,12 @@
+{
+  "runner": "ubuntu-24.04",
+  "flutter": "3.47.7",
+  "rust": "1.99.1",
+  "nightly": "nightly-2026-10-24",
+  "vodozemac_commit": "774956e945a39451441e72f03195a1ad2e78c3a8",
+  "tools": {
+    "flutter_rust_bridge_codegen": "2.13.0",
+    "wasm-pack": "0.15.0",
+    "wasm-bindgen-cli": "0.2.100"
+  }
+}
