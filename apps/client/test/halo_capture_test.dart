@@ -52,11 +52,11 @@ void main() {
             return null;
           });
     }
-    final font = FontLoader('Manrope');
+    final font = FontLoader('Inter');
     font.addFont(
       Future.value(
         ByteData.sublistView(
-          File('assets/fonts/Manrope-Variable.ttf').readAsBytesSync(),
+          File('assets/fonts/Inter-Variable.ttf').readAsBytesSync(),
         ),
       ),
     );

@@ -175,7 +175,7 @@ extension PaletteTheme on AppPalette {
             : MessageColors(scheme.primary, scheme.primary, scheme.onPrimary),
       ],
       useMaterial3: true,
-      fontFamily: 'Manrope',
+      fontFamily: 'Inter',
       textTheme: const TextTheme(
         headlineLarge: TextStyle(fontWeight: FontWeight.w500),
         headlineMedium: TextStyle(fontWeight: FontWeight.w500),
