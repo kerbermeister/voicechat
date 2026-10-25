@@ -1,0 +1,87 @@
+{
+  "current": {
+    "release": "/srv/voicechat/releases/7b63b0e97650fd228eb59d08c6349cfedb453d14",
+    "manifest": {
+      "commit": "7b63b0e97650fd228eb59d08c6349cfedb453d14",
+      "schema": 1,
+      "origin": "https://univc.duckdns.org",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:ff8f0659bdb8330858df3ad199e460e25f13d4436c79668d5595197affca29d2",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:3568f3b78665aa086e407f308c8c579752659e9c6173e6dc1303a908e32de111"
+    },
+    "backend": "07c363febb1fe77296b4d06f7c71010dddd2e32abd1a5c02c04d425019389218",
+    "backend_config": "0d68254b9f1e284c3f0380f1238b7c9c6d4f403026ac7c3af28043df572bc396"
+  },
+  "previous_commit": "30e96d299b786006f3408b2f5615b6a5dd8527e1",
+  "previous_release_exists": true,
+  "containers": {
+    "voicechat-web-1": {
+      "id": "d7f665df52aada3b3656dde93a44d9590826e9b8c6ed63a300d25e196d236a0e",
+      "image": "ghcr.io/kerbermeister/voicechat/web@sha256:3568f3b78665aa086e407f308c8c579752659e9c6173e6dc1303a908e32de111",
+      "started": "2026-10-25T06:21:32.620189475Z",
+      "restart_count": 0,
+      "status": "running",
+      "health": "healthy"
+    },
+    "voicechat-control-1": {
+      "id": "b2277b510e004d58e2b48b3dc11bc3ec62bc2c22de2d840dd05505a2c5589471",
+      "image": "ghcr.io/kerbermeister/voicechat/control@sha256:ff8f0659bdb8330858df3ad199e460e25f13d4436c79668d5595197affca29d2",
+      "started": "2026-10-25T03:30:14.879192176Z",
+      "restart_count": 0,
+      "status": "running",
+      "health": "healthy"
+    },
+    "voicechat-synapse-1": {
+      "id": "302ade9c35114cc7d8458022690e6100db45bae7829d2473a35f9993daa73bb2",
+      "image": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+      "started": "2026-10-25T03:30:18.533011667Z",
+      "restart_count": 0,
+      "status": "running",
+      "health": "healthy"
+    },
+    "voicechat-postgres-1": {
+      "id": "2e901809ce096555022310aa9a36adc9f962ea5586e63e02f38a17dce7e82e02",
+      "image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "started": "2026-10-23T21:52:03.276018562Z",
+      "restart_count": 0,
+      "status": "running",
+      "health": "healthy"
+    },
+    "voicechat-turn-1": {
+      "id": "507b88b118ad8c753473c5de94fca8b672c5046f6825818a21789e8dc8d588d5",
+      "image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+      "started": "2026-10-25T03:30:16.605964126Z",
+      "restart_count": 0,
+      "status": "running",
+      "health": "running"
+    }
+  },
+  "main_js_sha256": "729e0fdbdab2799d55fe443bfdf8033ab3fdeb6d36e60d06499a30ff0420289c",
+  "screen_flag": "1",
+  "screen_schema": 2,
+  "routes": {
+    "/": 200,
+    "/api/health": 200,
+    "/_matrix/client/versions": 200,
+    "/main.dart.js": 200,
+    "/e2ee.worker.dart.js": 200,
+    "/pkg/vodozemac_bindings_dart_bg.wasm": 200,
+    "/_synapse/admin/v1/server_version": 404,
+    "/api/internal/test": 404
+  },
+  "backend_unchanged": true,
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/40168449201",
+  "limits": "No physical Android, live media call or production account submission in this verification.",
+  "browser": {
+    "browser": "Codex in-app browser",
+    "viewport": {
+      "width": 65536,
+      "height": 4292542531
+    },
+    "login": true,
+    "registration": true,
+    "password_reset": true,
+    "forms_submitted": false,
+    "palette_changed": false,
+    "console_errors": []
+  }
+}
