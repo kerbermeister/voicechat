@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'infra'))
 import deploy
@@ -16,6 +17,9 @@ from release_source import backend_fingerprint
 
 class DeploySpeedTests(unittest.TestCase):
     def setUp(self):
+        disk = patch.object(deploy.shutil, 'disk_usage', return_value=SimpleNamespace(free=10 * 1024**3))
+        disk.start()
+        self.addCleanup(disk.stop)
         self.health_patch = patch.object(deploy, 'require_backend_healthy')
         self.health = self.health_patch.start()
         self.addCleanup(self.health_patch.stop)

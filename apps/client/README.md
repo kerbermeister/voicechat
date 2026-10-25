@@ -72,3 +72,57 @@ SDK имеет только просмотр. Не включать функци
 Новые группы используют общую историю; для передачи старых ключей новому
 участнику нужна независимая проверка устройства. История, отправленная при
 старой политике joined, задним числом не открывается и не переносится.
+
+## macOS / Apple Silicon
+
+Ветка macOS использует тот же `lib/main.dart`, темы и адаптивные экраны. Целевая
+система — **macOS 12+ на arm64 (M1 и новее)**. macOS 11 не входит в текущий
+контракт: закреплённый Flutter runner и Sparkle 2.10 требуют 12. Поддержка Intel
+не заявлена. Фактические результаты и непроверенные сценарии:
+[журнал macOS](../../docs/iterations/15-macos.md), [план](../../docs/tasks/15-macos.md).
+
+Сборка требует Xcode, CocoaPods и Flutter из `infra/crypto-tools.json`.
+Flutter-плагины подключаются CocoaPods; Sparkle закреплён отдельным SPM package.
+Использовать `LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8`, а не `LC_ALL=C`.
+Cargokit вызывает Rust stable; его версия должна совпадать с `rust` из того же JSON.
+Для сборки нужен запас свободного дискового места для Xcode, Flutter и Rust.
+
+Из корня, задав `PUBLIC_URL` каноническим HTTPS origin нужного сервера:
+
+```sh
+python3 infra/client_config.py "$PUBLIC_URL" /tmp/voicechat-macos.json
+cd apps/client
+../../.prototype/tools/flutter/bin/flutter pub get --enforce-lockfile
+../../.prototype/tools/flutter/bin/flutter run -d macos --target lib/main.dart --dart-define-from-file /tmp/voicechat-macos.json
+```
+
+Для release заменить `run -d macos` на `build macos --release`.
+Результат: `apps/client/build/macos/Build/Products/Release/VoiceChat.app`.
+Автономный ручной workflow **macOS checks and candidate** проверяет общий клиент,
+реальные Keychain/SQLCipher на одноразовом профиле, XCTest и release-сборку.
+Он создаёт **development** DMG/ZIP; без Developer ID/notarization это не
+пользовательский дистрибутив и не кандидат для публикации обновления.
+
+```sh
+python3 infra/macos_release.py --app apps/client/build/macos/Build/Products/Release/VoiceChat.app --output /tmp/voicechat-macos-candidate
+```
+
+Для файлов используются NSOpenPanel/NSSavePanel; запись завершается атомарной
+заменой после успешной загрузки. Камера/микрофон требуют системного разрешения.
+Видео YouTube открывается внешним браузером. Закрытие окна оставляет процесс
+работать; Dock возвращает окно. Cmd+Q завершает процесс, после этого системные
+уведомления не приходят. Уведомления включаются отдельно для аккаунта, не содержат
+текст сообщения и открывают чат только текущей сессии.
+
+Профиль хранится в sandbox контейнере `dev.voicechat.client`; точный каталог БД
+выбирает sqflite. Ключ SQLCipher — в login Keychain, временные записи — в
+`Library/Caches/VoiceChatRecordings` контейнера. Установщик меняет `.app`, а не
+контейнер или Keychain. Нельзя менять bundle ID/Team ID между выпусками или удалять
+контейнер для «починки» обновления. Физическая проверка сохранности профиля N → N+1
+обязательна перед публикацией.
+
+Обновления доступны через «О приложении → Проверить обновления». Нет фоновой
+проверки, загрузки или установки. Sparkle проверяет подписанный feed и архив;
+во время звонка/записи/отправки установка блокируется. Незаданные Xcode settings
+`VOICECHAT_UPDATE_FEED` и `VOICECHAT_UPDATE_PUBLIC_KEY` оставляют канал выключенным.
+[Подпись, упаковка и публикация](../../infra/MACOS.md).

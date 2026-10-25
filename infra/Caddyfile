@@ -32,6 +32,18 @@
             respond 404
         }
     }
+    handle_path /updates/macos/* {
+        root * /updates/macos
+        @macosFeed path /appcast.xml
+        header @macosFeed Cache-Control "no-cache"
+        @macosArchive path_regexp macosArchive ^/[1-9][0-9]*/VoiceChat\.(zip|dmg)$
+        header @macosArchive Cache-Control "public, max-age=31536000, immutable"
+        @macosPublished path_regexp macosPublished ^/(appcast\.xml|[1-9][0-9]*/VoiceChat\.(zip|dmg))$
+        route {
+            file_server @macosPublished
+            respond 404
+        }
+    }
     handle /_matrix/push/v1/notify {
         reverse_proxy control:8090
     }

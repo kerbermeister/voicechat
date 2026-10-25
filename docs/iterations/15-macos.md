@@ -107,3 +107,37 @@ Xcode сам встраивает framework SPM; ручная copy-фаза уд
 Нет Developer ID identities; настоящая подпись, notarization и переход N → N+1
 пока не выполнялись. Межплатформенные звонки, camera/mic, системные панели под
 sandbox и macOS 12–14 по-прежнему требуют отдельной приёмки.
+
+## Итерация 4: воспроизводимая поставка и серверный канал
+
+Добавлен ручной workflow `macos.yml`: общий анализ/tests, реальное disposable
+хранилище, XCTest, release build и development DMG/ZIP. Сам workflow ещё не
+запускался на GitHub. `macos_release.py` проверяет все Mach-O, bundle ID, minimum
+OS, manual-only updater и (в release-режиме) Developer ID/Team/hardened runtime.
+Подписанный путь выполняет notarization/stapling, проверяет ZIP по встроенному
+публичному ключу, сохраняет прежние совместимые items и подписывает appcast.
+
+`publish_macos.py` проверяет точный принятый build/hash, неизменяемость архивов,
+monotonic build даже после отзыва, исходный feed и атомарно меняет только feed
+после публикации ZIP/DMG. Добавлены mount/runtime-каталог и отдельный Caddy route.
+Production не обновлялся: первая настройка требует штатного full-релиза.
+
+Проверки:
+
+- 4 Python-теста контрактов/подготовки feed/публикации прошли. Они используют
+  fixture-пакеты, не доказывают notarization или криптографическую установку.
+- Реальный локальный Caddy в Docker: ZIP/DMG и Android APK доступны отдельно,
+  feed/latest no-cache, архивы immutable, служебные пути/missing URL дают 404;
+  SPA и Android-канал сохранены. Контейнер запускался без сети и удалён.
+- 19 тестов deployment/full/web/backup прошли. Fixtures больше не зависят от
+  свободного места ноутбука; отдельный тест подтверждает, что настоящий guard
+  `<2 GiB` останавливает deploy до изменения служб/manifest. Сам guard не изменён.
+- YAML Compose/workflow разобран Ruby YAML, Python-файлы компилируются.
+
+Инструкция подписи/публикации: `infra/MACOS.md`. Developer ID/notarization,
+подписанный update N → N+1, release-сборка, GitHub runner и реальные старые ОС
+остаются непроверенными до отдельного успешного выполнения.
+
+Финальный повтор после изменений notification lifecycle/native-assets:
+`flutter analyze` — no issues; **247 tests passed, 3 skipped**. Системная SQLite
+для optional backend не нарушила текущий общий Flutter-набор.

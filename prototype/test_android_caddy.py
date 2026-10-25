@@ -19,12 +19,18 @@ class AndroidCaddyTests(unittest.TestCase):
             (root/'updates/2/voicechat.apk').write_text('test-apk')
             (root/'updates/latest.json').write_text('{"versionCode":2}')
             (root/'updates/previous.json').write_text('private-pointer')
+            (root/'macos/2').mkdir(parents=True)
+            (root/'macos/2/VoiceChat.zip').write_text('test-mac-zip')
+            (root/'macos/2/VoiceChat.dmg').write_text('test-mac-dmg')
+            (root/'macos/appcast.xml').write_text('<rss/>')
+            (root/'macos/release.json').write_text('private-release')
             (root/'web').mkdir()
             (root/'web/index.html').write_text('SPA')
             try:
                 subprocess.run(['docker','run','-d','--name',name,'--network','none',
                     '-e','SITE=http://:80','-v',f'{repo}/infra/Caddyfile:/etc/caddy/Caddyfile:ro',
-                    '-v',f'{root}/updates:/updates/android:ro','-v',f'{root}/web:/srv:ro',image], check=True, capture_output=True)
+                    '-v',f'{root}/updates:/updates/android:ro','-v',f'{root}/macos:/updates/macos:ro',
+                    '-v',f'{root}/web:/srv:ro',image], check=True, capture_output=True)
                 import time
                 for _ in range(30):
                     probe = subprocess.run(['docker','exec',name,'wget','-q','-O','-','http://localhost:8080/health'],capture_output=True)
@@ -41,7 +47,14 @@ class AndroidCaddyTests(unittest.TestCase):
                 self.assertIn('immutable',apk.stderr)
                 latest=get('/updates/android/latest.json')
                 self.assertIn('no-cache',latest.stderr)
-                for path in ('/updates/android/missing.apk','/updates/android/previous.json','/updates/android/.publish.lock'):
+                self.assertIn('no-cache', get('/updates/macos/appcast.xml').stderr)
+                for extension in ('zip', 'dmg'):
+                    archive = get('/updates/macos/2/VoiceChat.' + extension)
+                    self.assertEqual(archive.returncode, 0, archive.stderr)
+                    self.assertEqual(archive.stdout, 'test-mac-' + extension)
+                    self.assertIn('immutable', archive.stderr)
+                for path in ('/updates/android/missing.apk','/updates/android/previous.json','/updates/android/.publish.lock',
+                             '/updates/macos/missing.zip', '/updates/macos/release.json', '/updates/macos/.publish.lock'):
                     response=get(path)
                     self.assertNotEqual(response.returncode,0)
                     self.assertIn('404',response.stderr)
