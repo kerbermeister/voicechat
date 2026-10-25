@@ -4,6 +4,9 @@ The 64 Matrix SAS emoji are bundled as unmodified 128px Noto Emoji PNGs so
 verification does not depend on a remote fallback font or platform emoji fonts.
 File names use the Unicode code point; optional U+FE0F selects emoji presentation
 and does not select a different image. The SDK still generates the SAS values.
+The UI deliberately shows the first six symbols (36 bits), approved by the
+product owner on 2026-10-25 after explaining Matrix's standard seven (42 bits).
+Decimal SAS is unchanged; use it with clients that display seven symbols.
 
 Source: [googlefonts/noto-emoji v2.047](https://github.com/googlefonts/noto-emoji/tree/22e564626297b4df0a40570ad81d6c05cc7c38bd/png/128).
 `sources.json` records every source filename and SHA-256. Copyright 2013 Google LLC.

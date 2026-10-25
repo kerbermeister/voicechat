@@ -186,7 +186,7 @@ void main() {
     },
   );
   testWidgets(
-    'SAS codes and seven bundled emoji fit a phone with accessible labels',
+    'SAS codes and six bundled emoji fit a phone with accessible labels',
     (tester) async {
       final owner = DeviceVerifications(
         Client('sas-ui', database: OutboxDatabase()),
@@ -218,7 +218,8 @@ void main() {
       await tester.tap(find.text('Start'));
       await tester.pumpAndSettle();
       expect(find.text('1234  5678  9012'), findsNothing);
-      for (final emoji in proof.sasEmojis) {
+      expect(find.byType(Image), findsNWidgets(6));
+      for (final emoji in proof.sasEmojis.take(6)) {
         final image = tester.widget<Image>(
           find.byWidgetPredicate(
             (widget) => widget is Image && widget.semanticLabel == emoji.name,
@@ -230,6 +231,14 @@ void main() {
         );
       }
       await tester.ensureVisible(find.text('Код'));
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Image &&
+              widget.semanticLabel == proof.sasEmojis.last.name,
+        ),
+        findsNothing,
+      );
       await tester.tap(find.text('Код'));
       await tester.pumpAndSettle();
       expect(find.text('1234  5678  9012'), findsOneWidget);
@@ -240,7 +249,7 @@ void main() {
       expect(find.text('1234  5678  9012'), findsNothing);
       expect(find.byType(SelectableText), findsNothing);
       expect(tester.takeException(), isNull);
-      await tester.tap(find.text('Отмена'));
+      await tester.tap(find.byIcon(Icons.close_rounded));
       await tester.pumpAndSettle();
       expect(proof.canceled, true);
       expect(verified, false);

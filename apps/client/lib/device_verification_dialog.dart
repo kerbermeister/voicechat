@@ -118,6 +118,18 @@ class _VerificationDialogState extends State<_VerificationDialog> {
     builder: (context, _) {
       final request = widget.request;
       final completed = widget.owner.completed.contains(request);
+      final comparing =
+          !request.isDone && request.state == KeyVerificationState.askSas;
+      final identity = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IdentityField(label: 'Аккаунт', value: request.userId),
+          if (request.deviceId case final String deviceId)
+            IdentityField(label: 'Устройство', value: deviceId)
+          else
+            const Text('Устройство: ожидаем ответ'),
+        ],
+      );
       final waitingMessage = switch (request.lastStep) {
         EventTypes.KeyVerificationReady ||
         EventTypes.KeyVerificationStart ||
@@ -126,6 +138,10 @@ class _VerificationDialogState extends State<_VerificationDialog> {
         _ => 'Ждём ответ и подтверждение на другом устройстве.',
       };
       return AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        titlePadding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+        contentPadding: const EdgeInsets.all(16),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         title: AppDialogTitle(
           child: Text(
             completed ? 'Устройство подтверждено' : 'Проверка устройства',
@@ -134,16 +150,13 @@ class _VerificationDialogState extends State<_VerificationDialog> {
         content: SizedBox(
           width: 460,
           child: SingleChildScrollView(
+            // A user may have scrolled the request details before SAS arrived.
+            key: ValueKey(comparing),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                IdentityField(label: 'Аккаунт', value: request.userId),
-                if (request.deviceId case final String deviceId)
-                  IdentityField(label: 'Устройство', value: deviceId)
-                else
-                  const Text('Устройство: ожидаем ответ'),
-                const SizedBox(height: 16),
+                if (!comparing) ...[identity, const SizedBox(height: 16)],
                 if (completed)
                   const Text(
                     'Ключ проверен независимо и сохранён на этом устройстве.',
@@ -164,10 +177,6 @@ class _VerificationDialogState extends State<_VerificationDialog> {
                     'На другом устройстве запросили независимую сверку ключей. Принимайте запрос, только если вы начали проверку с этим человеком.',
                   )
                 else if (request.state == KeyVerificationState.askSas) ...[
-                  const Text(
-                    'Выберите одинаковый способ и сравните все символы на обоих устройствах. Подтверждайте только при полном совпадении.',
-                  ),
-                  const SizedBox(height: 12),
                   SegmentedButton<bool>(
                     segments: const [
                       ButtonSegment(value: false, label: Text('Эмодзи')),
@@ -179,31 +188,40 @@ class _VerificationDialogState extends State<_VerificationDialog> {
                   ),
                   const SizedBox(height: 12),
                   if (!showNumbers)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                    Row(
                       children: [
-                        for (final emoji in request.sasEmojis)
-                          Tooltip(
-                            message: emoji.name,
-                            // Bundle the SAS alphabet: web font fallback needs
-                            // an external download and can leave symbols blank.
-                            child: Image.asset(
-                              'assets/verification/emoji_u${emoji.emoji.runes.first.toRadixString(16)}.png',
-                              width: 40,
-                              height: 40,
-                              semanticLabel: emoji.name,
-                              errorBuilder: (_, _, _) => Text(emoji.name),
+                        // Product decision: compare 36 SAS bits (six symbols)
+                        // instead of Matrix's standard 42. Decimal SAS is unchanged.
+                        for (final emoji in request.sasEmojis.take(6))
+                          Expanded(
+                            child: Tooltip(
+                              message: emoji.name,
+                              // Bundle the SAS alphabet: web font fallback needs
+                              // an external download and can leave symbols blank.
+                              child: Image.asset(
+                                'assets/verification/emoji_u${emoji.emoji.runes.first.toRadixString(16)}.png',
+                                width: 40,
+                                height: 40,
+                                semanticLabel: emoji.name,
+                                errorBuilder: (_, _, _) => Text(emoji.name),
+                              ),
                             ),
                           ),
                       ],
-                    ),
-                  const SizedBox(height: 12),
-                  if (showNumbers)
+                    )
+                  else
                     Text(
                       request.sasNumbers.join('  '),
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
+                  const SizedBox(height: 12),
+                  Text(
+                    showNumbers
+                        ? 'Сравните все три числа на обоих устройствах. Подтверждайте только при полном совпадении.'
+                        : 'Сравните все шесть эмодзи по порядку на обоих устройствах. Подтверждайте только при полном совпадении.',
+                  ),
+                  const SizedBox(height: 16),
+                  identity,
                 ] else if (request.state == KeyVerificationState.askChoice &&
                     request.userId == widget.owner.client.userID)
                   const Text(
@@ -267,10 +285,11 @@ class _VerificationDialogState extends State<_VerificationDialog> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(request.isDone ? 'Закрыть' : 'Отмена'),
-          ),
+          if (!comparing)
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(request.isDone ? 'Закрыть' : 'Отмена'),
+            ),
           if (!request.isDone &&
               request.state == KeyVerificationState.askAccept)
             FilledButton(
@@ -310,17 +329,40 @@ class _VerificationDialogState extends State<_VerificationDialog> {
                   : () => act(() => request.openSSSS(skip: true)),
               child: const Text('Продолжить сверку устройства'),
             ),
-          if (!request.isDone &&
-              request.state == KeyVerificationState.askSas) ...[
-            OutlinedButton(
-              onPressed: busy ? null : () => act(request.rejectSas),
-              child: const Text('Не совпадают'),
+          if (comparing)
+            OverflowBar(
+              alignment: MainAxisAlignment.spaceBetween,
+              overflowAlignment: OverflowBarAlignment.end,
+              spacing: 8,
+              overflowSpacing: 8,
+              children: [
+                OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 48),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                  ),
+                  onPressed: busy ? null : () => act(request.rejectSas),
+                  child: const Text(
+                    'Не совпадают',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 48),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                  ),
+                  onPressed: busy ? null : () => act(request.acceptSas),
+                  child: const Text('Совпадают', textAlign: TextAlign.center),
+                ),
+              ],
             ),
-            FilledButton(
-              onPressed: busy ? null : () => act(request.acceptSas),
-              child: const Text('Совпадают'),
-            ),
-          ],
         ],
       );
     },
