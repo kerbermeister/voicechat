@@ -209,7 +209,9 @@ class _VerificationDialogState extends State<_VerificationDialog> {
                     ),
                 ] else if (request.state == KeyVerificationState.askChoice &&
                     request.userId == widget.owner.client.userID)
-                  const Text('Ждём начало сверки на новом устройстве…')
+                  const Text(
+                    'Ждём начало сверки на новом устройстве. Если Safari и приложение открыты на одном iPhone, переключитесь в приложение, затем вернитесь сюда для сравнения эмодзи.',
+                  )
                 else if (request.state == KeyVerificationState.askChoice) ...[
                   const Text(
                     'Сравните эмодзи или сканируйте QR с другого устройства лично.',
@@ -243,8 +245,9 @@ class _VerificationDialogState extends State<_VerificationDialog> {
                     'Можно подтвердить это устройство без восстановления всей истории. Доступ к старым сообщениям восстанавливается отдельно в настройках.',
                   )
                 else
-                  const Text(
-                    'Ждём ответ и подтверждение на другом устройстве. Запрос действует не более 10 минут.',
+                  Text(
+                    'Ждём ответ и подтверждение на другом устройстве. Запрос действует не более 10 минут.'
+                    '${request.userId == widget.owner.client.userID ? '\n\nЕсли Safari и приложение открыты на одном iPhone, переключайтесь между ними, пока эмодзи не появятся в обоих окнах. Сравните их и подтвердите совпадение в каждом окне.' : ''}',
                   ),
                 if (busy)
                   const Padding(

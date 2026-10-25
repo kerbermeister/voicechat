@@ -296,10 +296,10 @@ class KeyVerification {
       }
       if (type != EventTypes.Reciprocate || qrChecksOut) {
         final method = _method = _makeVerificationMethod(type, this);
-        await method.sendStart();
         if (type == EventTypes.Sas) {
           setState(KeyVerificationState.waitingAccept);
         }
+        await method.sendStart();
       } else if (type == EventTypes.Reciprocate && !qrChecksOut) {
         Logs().e('[KeyVerification] qr did not check out');
         await cancel('m.invalid_key');
@@ -313,13 +313,20 @@ class KeyVerification {
   }
 
   Future<void> sendRequest() async {
-    await send(EventTypes.KeyVerificationRequest, {
-      'methods': knownVerificationMethods,
-      if (room == null) 'timestamp': DateTime.now().millisecondsSinceEpoch,
-    });
     startedVerification = true;
     setState(KeyVerificationState.waitingAccept);
     lastActivity = DateTime.now();
+    // A sync response can contain ready before the send HTTP response arrives.
+    encryption.keyVerificationManager.addRequest(this);
+    try {
+      await send(EventTypes.KeyVerificationRequest, {
+        'methods': knownVerificationMethods,
+        if (room == null) 'timestamp': DateTime.now().millisecondsSinceEpoch,
+      });
+    } catch (_) {
+      await cancel('m.unknown', true);
+      rethrow;
+    }
   }
 
   Future<void> start() async {
@@ -471,8 +478,8 @@ class KeyVerification {
                 possibleMethods.first,
                 this,
               );
-              await method.sendStart();
               setState(KeyVerificationState.waitingAccept);
+              await method.sendStart();
             }
           } else {
             // allow user to choose
@@ -657,13 +664,15 @@ class KeyVerification {
           );
         }
       }
-      // we need to send a ready event
+      // Prepare QR data before the peer can respond to ready with start.
+      qrCode = await generateQrCode();
       await send(EventTypes.KeyVerificationReady, {
         'methods': copyKnownVerificationMethods,
       });
-      // setup QRData from incoming request (outgoing ready)
-      qrCode = await generateQrCode();
-      setState(KeyVerificationState.askChoice);
+      // Incoming start/key may already have advanced the verification.
+      if (!isDone && lastStep == EventTypes.KeyVerificationRequest) {
+        setState(KeyVerificationState.askChoice);
+      }
     } else {
       // we need to send an accept event
       await _method!.handlePayload(

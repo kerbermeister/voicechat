@@ -117,7 +117,6 @@ class DeviceKeysList {
         deviceId: '*',
       );
       await request.start();
-      encryption.keyVerificationManager.addRequest(request);
       return request;
     }
   }
@@ -676,7 +675,6 @@ class DeviceKeys extends SignableKey {
     );
 
     await request.start();
-    encryption.keyVerificationManager.addRequest(request);
     return request;
   }
 
