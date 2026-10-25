@@ -1,3 +1,4 @@
+import 'test_fonts.dart';
 // Opt-in snapshots of real widgets with fictional local fixtures; no account login.
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -62,11 +63,7 @@ void main() {
       final font = FontLoader(name)
         ..addFont(
           Future.value(
-            ByteData.sublistView(
-              File(
-                '../../.prototype/tools/flutter/bin/cache/artifacts/material_fonts/$file',
-              ).readAsBytesSync(),
-            ),
+            ByteData.sublistView(materialFontFile(file).readAsBytesSync()),
           ),
         );
       await font.load();

@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'test_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,9 +17,7 @@ void main() {
         ..addFont(
           Future.value(
             ByteData.sublistView(
-              File(
-                '../../.prototype/tools/flutter/bin/cache/artifacts/material_fonts/Roboto-Regular.ttf',
-              ).readAsBytesSync(),
+              materialFontFile('Roboto-Regular.ttf').readAsBytesSync(),
             ),
           ),
         );

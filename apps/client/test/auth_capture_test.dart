@@ -1,3 +1,4 @@
+import 'test_fonts.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -23,11 +24,7 @@ void main() {
       final font = FontLoader(name)
         ..addFont(
           Future.value(
-            ByteData.sublistView(
-              File(
-                '../../.prototype/tools/flutter/bin/cache/artifacts/material_fonts/$file',
-              ).readAsBytesSync(),
-            ),
+            ByteData.sublistView(materialFontFile(file).readAsBytesSync()),
           ),
         );
       await font.load();

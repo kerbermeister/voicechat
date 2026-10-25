@@ -1,3 +1,4 @@
+import 'test_fonts.dart';
 // Opt-in visual capture of production widgets with local, fictional data.
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -55,9 +56,7 @@ void main() {
     font.addFont(
       Future.value(
         ByteData.sublistView(
-          File(
-            '../../.prototype/tools/flutter/bin/cache/artifacts/material_fonts/Roboto-Regular.ttf',
-          ).readAsBytesSync(),
+          materialFontFile('Roboto-Regular.ttf').readAsBytesSync(),
         ),
       ),
     );
@@ -66,9 +65,7 @@ void main() {
       ..addFont(
         Future.value(
           ByteData.sublistView(
-            File(
-              '../../.prototype/tools/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf',
-            ).readAsBytesSync(),
+            materialFontFile('MaterialIcons-Regular.otf').readAsBytesSync(),
           ),
         ),
       );
