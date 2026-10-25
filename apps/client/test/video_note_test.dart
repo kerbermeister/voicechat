@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,7 +79,7 @@ void main() {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
         const MethodChannel('voicechat/save'),
-        (_) async => '/private/tmp',
+        (_) async => Directory.systemTemp.path,
       );
   late NoteCamera camera;
   setUp(() {
@@ -146,7 +147,7 @@ void main() {
         cancelled.value = scenario == 'swipe';
         held!.value = false;
       }
-      for (var i = 0; i < 10; i++) {
+      for (var i = 0; i < 100 && !completed; i++) {
         await tester.pump(const Duration(milliseconds: 50));
         await tester.runAsync(
           () => Future<void>.delayed(const Duration(milliseconds: 5)),
