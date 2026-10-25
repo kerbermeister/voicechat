@@ -206,6 +206,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
   bool linked = false;
   bool groupsTab = false;
   String? incomingContactLink;
+  bool contactLinkOpen = false;
+  bool autoOpenContactLink = false;
 
   ContactLinks get contactLinks => ContactLinks(
     probe!,
@@ -217,6 +219,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   void initState() {
     super.initState();
     incomingContactLink = widget.invitation;
+    autoOpenContactLink = incomingContactLink != null;
     unawaited(restoreSession());
   }
 
@@ -226,6 +229,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (widget.invitation != oldWidget.invitation ||
         widget.invitationRevision != oldWidget.invitationRevision) {
       incomingContactLink = widget.invitation;
+      autoOpenContactLink = incomingContactLink != null;
     }
   }
 
@@ -434,6 +438,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
         contactLinks.origin,
         pendingInvite,
       ).toString();
+      autoOpenContactLink = true;
     }
   }
 
@@ -638,29 +643,59 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (mounted) setState(() {});
   }
 
-  Future<void> contactLink({bool create = false}) async {
-    final room = await showAppDialog<mx.Room>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => ContactLinkDialog(
-        links: contactLinks,
-        create: create,
-        initialLink: create ? null : incomingContactLink,
-      ),
-    );
-    if (room != null && mounted) {
-      setState(() => incomingContactLink = null);
-      await select(room);
-    } else if (mounted) {
-      final pending = await contactLinks.pending();
-      if (pending != null && mounted) {
-        setState(
-          () => incomingContactLink = contactLinkUrl(
-            contactLinks.origin,
-            pending,
-          ).toString(),
-        );
+  void maybeOpenContactLink() {
+    if (!autoOpenContactLink || contactLinkOpen) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          !autoOpenContactLink ||
+          contactLinkOpen ||
+          incomingContactLink == null ||
+          restoringSession ||
+          busy ||
+          probe == null ||
+          contacts == null ||
+          !linked ||
+          ModalRoute.of(context)?.isCurrent != true) {
+        return;
       }
+      autoOpenContactLink = false;
+      unawaited(run(() => contactLink()));
+    });
+  }
+
+  Future<void> contactLink({bool create = false}) async {
+    if (contactLinkOpen) return;
+    contactLinkOpen = true;
+    final invitation = incomingContactLink;
+    try {
+      final room = await showAppDialog<mx.Room>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => ContactLinkDialog(
+          links: contactLinks,
+          create: create,
+          initialLink: create ? null : invitation,
+        ),
+      );
+      if (room != null && mounted) {
+        if (incomingContactLink == invitation) {
+          setState(() => incomingContactLink = null);
+        }
+        await select(room);
+      } else if (mounted) {
+        final pending = await contactLinks.pending();
+        if (pending != null && mounted && incomingContactLink == null) {
+          setState(
+            () => incomingContactLink = contactLinkUrl(
+              contactLinks.origin,
+              pending,
+            ).toString(),
+          );
+        }
+      }
+    } finally {
+      contactLinkOpen = false;
+      if (mounted) setState(() {});
     }
   }
 
@@ -2113,6 +2148,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    maybeOpenContactLink();
     if (probe != null && !linked) {
       return Scaffold(
         appBar: AppBar(title: const Text('Подключить устройство')),

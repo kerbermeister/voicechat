@@ -47,7 +47,7 @@ async function first(page, account, url = web) {
   });
   await button(page,'Войти').click();
   await button(page,'Я сохранил ключ').waitFor({timeout:60000}); await button(page,'Я сохранил ключ').click();
-  await button(page,'Настройки').waitFor({timeout:30000});
+  await button(page,url.includes('/#/contact/') ? 'Добавить и отправить «Привет»' : 'Настройки').waitFor({timeout:30000});
   await page.unroute('**/_matrix/client/v3/login');
 }
 async function visible(page, text) {
@@ -107,7 +107,6 @@ async function visible(page, text) {
     console.log('PASS: recipient signed in from invitation URL');
     const rt = accounts[1].session.access_token;
     await visible(recipient,'Приглашение в контакты');
-    await recipient.getByRole('button',{name:/^Приглашение в контакты Откройте/}).click();
     await visible(recipient,accounts[0].session.user_id);
     let inspected = await good(control,'/contact-links',{action:'inspect',token},rt);
     assert.equal(inspected.claimed,false);
@@ -116,9 +115,8 @@ async function visible(page, text) {
     await button(recipient,'Скрыть приглашение').click();
     await recipient.evaluate(() => { location.hash = '/'; });
     await recipient.evaluate(value => { location.hash = '/contact/' + value; }, token);
-    await recipient.getByRole('button',{name:/^Приглашение в контакты Откройте/}).click();
     await visible(recipient,accounts[0].session.user_id);
-    console.log('PASS: preview does not consume; same-tab link opens again');
+    console.log('PASS: card opens automatically after login and same-tab navigation; preview does not consume');
     let lostRoomReply = false;
     const steps = [];
     recipient.on('response', response => {
@@ -177,7 +175,7 @@ async function visible(page, text) {
     await recipient.reload(); await semantics(recipient); await visible(recipient,'Привет');
     await owner.screenshot({path:path.join(output,'owner.png')});
     await recipient.screenshot({path:path.join(output,'recipient.png')});
-    Object.assign(report,{passed:true,closed_inbox:true,preview_no_consent:true,explicit_confirmation:true,real_e2ee_decrypt:true,lost_room_reply_recovered:true,lost_reply_retry:true,one_encrypted_event:true,other_account_rejected:true,reload:true});
+    Object.assign(report,{passed:true,closed_inbox:true,preview_no_consent:true,automatic_invitation_card:true,explicit_confirmation:true,real_e2ee_decrypt:true,lost_room_reply_recovered:true,lost_reply_retry:true,one_encrypted_event:true,other_account_rejected:true,reload:true});
     console.log('PASS: closed inbox, explicit invitation consent, real E2EE greeting, lost reply/retry, one event, other account rejected, reload');
   } catch(error) {
     for(let i=0;i<pages.length;i++) {
