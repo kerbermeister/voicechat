@@ -1,0 +1,129 @@
+{
+  "commit": "27849677d0f858f9e08815aceb3f85df600d2cf3",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/40188904749",
+  "mode": "web",
+  "tests": {
+    "passed": 216,
+    "optional_skipped": 3,
+    "analyze": "no issues",
+    "android_arm64_debug": "passed, all 64 PNG included",
+    "web_release": "passed",
+    "real_iphone": "not tested after this release"
+  },
+  "bootstrap_model": {
+    "stalled_registration_lookup": {
+      "before": {
+        "app_starts": 0,
+        "registration_checks": 1,
+        "timers_installed": 0
+      },
+      "after": {
+        "app_starts": 1,
+        "registration_checks": 0,
+        "timers_installed": 0
+      }
+    },
+    "limitation": "Actual SDK service-worker loader with a deliberately unresolved getRegistration; not a physical iPhone trace. Earlier three-navigation mock omitted SDK registration lookup and does not establish a reload loop."
+  },
+  "production": {
+    "current": {
+      "release": "/srv/voicechat/releases/27849677d0f858f9e08815aceb3f85df600d2cf3",
+      "manifest": {
+        "commit": "27849677d0f858f9e08815aceb3f85df600d2cf3",
+        "schema": 1,
+        "origin": "https://univc.duckdns.org",
+        "control": "ghcr.io/kerbermeister/voicechat/control@sha256:c4073fbda0603a0bc5620f5ab7af340b1951941fb4f0fad8583d50bf8dfad947",
+        "web": "ghcr.io/kerbermeister/voicechat/web@sha256:778755f639cb013e566a6196238d8ea94ba952d67e68eeed357d1fbd2166563b"
+      },
+      "backend": "387074a09a4d4b2f849629a7b3b202089ca87762a174b710b70c93333acc0c9f",
+      "backend_config": "22dc9c7213adc288cd47b178c380a71b92046691817bcb85b67ddde6b8c34091"
+    },
+    "previous_commit": "422ea4916d3693f2ea19afdea68c897a19805de5",
+    "previous_release_exists": true,
+    "containers": {
+      "voicechat-web-1": {
+        "image": "ghcr.io/kerbermeister/voicechat/web@sha256:778755f639cb013e566a6196238d8ea94ba952d67e68eeed357d1fbd2166563b",
+        "id": "81f5301e543f76f604f179999179432e4f71f090a3c28806ece8b44831606eaa",
+        "status": "running",
+        "health": "healthy",
+        "started": "2026-10-25T11:32:33.920439427Z",
+        "restarts": 0
+      },
+      "voicechat-synapse-1": {
+        "image": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+        "id": "a0d1e1708b92f7f6f42d36b7574fb57f81b6ddc4d4ca86fb974f84c44c262a9c",
+        "status": "running",
+        "health": "healthy",
+        "started": "2026-10-25T10:35:13.359884568Z",
+        "restarts": 0
+      },
+      "voicechat-control-1": {
+        "image": "ghcr.io/kerbermeister/voicechat/control@sha256:c4073fbda0603a0bc5620f5ab7af340b1951941fb4f0fad8583d50bf8dfad947",
+        "id": "561bc19bc48c4511c9c8a07415a7daf2032450bdf0139cc1b2a13736f16b0c67",
+        "status": "running",
+        "health": "healthy",
+        "started": "2026-10-25T10:35:13.556310067Z",
+        "restarts": 0
+      },
+      "voicechat-configure-1": {
+        "image": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+        "id": "3131d0e41841a66c75bf43aace1bff528e7ebb8f8fe3b9b1376e198957f3ef7e",
+        "status": "exited",
+        "health": null,
+        "started": "2026-10-25T10:35:10.90747977Z",
+        "restarts": 0
+      },
+      "voicechat-turn-1": {
+        "image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+        "id": "507b88b118ad8c753473c5de94fca8b672c5046f6825818a21789e8dc8d588d5",
+        "status": "running",
+        "health": null,
+        "started": "2026-10-25T10:35:11.580630238Z",
+        "restarts": 0
+      },
+      "voicechat-postgres-1": {
+        "image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+        "id": "2e901809ce096555022310aa9a36adc9f962ea5586e63e02f38a17dce7e82e02",
+        "status": "running",
+        "health": "healthy",
+        "started": "2026-10-23T21:52:03.276018562Z",
+        "restarts": 0
+      }
+    }
+  },
+  "backend_containers_unchanged": true,
+  "public_http": {
+    "images_verified": 64,
+    "/": {
+      "status": 200,
+      "sha256": "c206f41b3568ced54ee5253f006037f0d6b5077da2baa045071fc29689439a1d"
+    },
+    "/api/health": {
+      "status": 200,
+      "sha256": "6bc0da1f42f96fc37b8bd7ed20ba57606d2a0da5cda2b135c7854fbdc985b8a3"
+    },
+    "/_matrix/client/versions": {
+      "status": 200,
+      "sha256": "6f732739513ee059429df191856ddcbc800778b3eb423a297caf85b21d34d406"
+    },
+    "/flutter_bootstrap.js": {
+      "status": 200,
+      "sha256": "088674ea09417890a8198f35d5bff1023b0ddab236adc19f17c8f24dc01b8355",
+      "no_service_worker_settings": true
+    },
+    "/main.dart.js": {
+      "status": 200,
+      "sha256": "02763e44da7752f9a7149369b19c36e8af626a945d7c44d2ecffa1d42afa5a9c"
+    }
+  },
+  "container_main_sha256": "02763e44da7752f9a7149369b19c36e8af626a945d7c44d2ecffa1d42afa5a9c",
+  "local": {
+    "source_commit": "27849677d0f858f9e08815aceb3f85df600d2cf3",
+    "main_sha256": "64382bfe006bfdc990e4a4298404a5d8b1ad466311931ed1d19f99eaac85b29e",
+    "backup": "/Users/anton/IdeaProjects/VoiceChat/.prototype/local-web-before-sas-assets-20261025-123424",
+    "local_endpoints": true,
+    "no_service_worker_settings": true,
+    "emoji_count": 64
+  },
+  "browser": "Desktop in-app browser: login form visible, no captured warnings/errors, published dog PNG rendered. No new real-account SAS attempt."
+}
