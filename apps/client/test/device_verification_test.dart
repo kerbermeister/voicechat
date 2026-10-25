@@ -15,6 +15,8 @@ class Proof implements KeyVerification {
   @override
   String? canceledCode;
   @override
+  String? lastStep;
+  @override
   bool get isDone =>
       canceled ||
       {KeyVerificationState.done, KeyVerificationState.error}.contains(state);

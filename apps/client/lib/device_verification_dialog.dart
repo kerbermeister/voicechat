@@ -118,21 +118,13 @@ class _VerificationDialogState extends State<_VerificationDialog> {
     builder: (context, _) {
       final request = widget.request;
       final completed = widget.owner.completed.contains(request);
-      if (!busy &&
-          !request.isDone &&
-          request.userId == widget.owner.client.userID &&
-          (request.state == KeyVerificationState.askChoice &&
-                  request.startedVerification ||
-              request.state == KeyVerificationState.askSSSS)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted || busy || request.isDone) return;
-          if (request.state == KeyVerificationState.askChoice) {
-            act(() => request.continueVerification(EventTypes.Sas));
-          } else if (request.state == KeyVerificationState.askSSSS) {
-            act(() => request.openSSSS(skip: true));
-          }
-        });
-      }
+      final waitingMessage = switch (request.lastStep) {
+        EventTypes.KeyVerificationReady ||
+        EventTypes.KeyVerificationStart ||
+        EventTypes.KeyVerificationAccept =>
+          'Запрос принят. Обмениваемся данными для сверки эмодзи.',
+        _ => 'Ждём ответ и подтверждение на другом устройстве.',
+      };
       return AlertDialog(
         title: AppDialogTitle(
           child: Text(
@@ -246,10 +238,10 @@ class _VerificationDialogState extends State<_VerificationDialog> {
                   )
                 else
                   Text(
-                    'Ждём ответ и подтверждение на другом устройстве. Запрос действует не более 10 минут.'
+                    '$waitingMessage Запрос действует не более 10 минут.'
                     '${request.userId == widget.owner.client.userID ? '\n\nЕсли Safari и приложение открыты на одном iPhone, переключайтесь между ними, пока эмодзи не появятся в обоих окнах. Сравните их и подтвердите совпадение в каждом окне.' : ''}',
                   ),
-                if (busy)
+                if (busy || widget.owner.advancing.contains(request))
                   const Padding(
                     padding: EdgeInsets.only(top: 12),
                     child: LinearProgressIndicator(),

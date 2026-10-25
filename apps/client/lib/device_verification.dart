@@ -80,6 +80,7 @@ class DeviceVerifications extends ChangeNotifier {
       >{};
   final completed = <KeyVerification>{};
   final errors = <KeyVerification, String>{};
+  final advancing = <KeyVerification>{};
   final _finishing = <KeyVerification>{};
   final _deadlines = <KeyVerification, Timer>{};
   late final StreamSubscription<KeyVerification> _incoming;
@@ -168,6 +169,9 @@ class DeviceVerifications extends ChangeNotifier {
 
   Future<void> _changed(KeyVerification request) async {
     if (_closed || !requests.containsKey(request)) return;
+    if (!errors.containsKey(request)) {
+      unawaited(_continueOwnVerification(request));
+    }
     if (request.isDone) _deadlines.remove(request)?.cancel();
     if (request.canceled && viewing != request) {
       forget(request);
@@ -196,6 +200,45 @@ class DeviceVerifications extends ChangeNotifier {
       }
     }
     if (!_closed) notifyListeners();
+  }
+
+  Future<void> _continueOwnVerification(KeyVerification request) async {
+    if (_closed ||
+        !requests.containsKey(request) ||
+        request.userId != client.userID ||
+        request.isDone ||
+        (request.state != KeyVerificationState.askSSSS &&
+            !(request.state == KeyVerificationState.askChoice &&
+                request.startedVerification)) ||
+        !advancing.add(request)) {
+      return;
+    }
+    try {
+      while (!_closed && !request.isDone && requests.containsKey(request)) {
+        final state = request.state;
+        if (state != KeyVerificationState.askSSSS &&
+            !(state == KeyVerificationState.askChoice &&
+                request.startedVerification)) {
+          break;
+        }
+        if (!await request.verifyActivity() || _closed || request.isDone) break;
+        if (request.state != state) continue;
+        if (state == KeyVerificationState.askSSSS) {
+          await request.openSSSS(skip: true);
+        } else {
+          await request.continueVerification(EventTypes.Sas);
+        }
+        if (request.state == state) break;
+      }
+    } catch (_) {
+      if (!_closed && requests.containsKey(request)) {
+        errors[request] =
+            'Не удалось продолжить сверку. Отмените запрос и попробуйте снова.';
+      }
+    } finally {
+      advancing.remove(request);
+      if (!_closed) notifyListeners();
+    }
   }
 
   void forget(KeyVerification request) {
