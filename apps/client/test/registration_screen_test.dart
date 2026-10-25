@@ -11,6 +11,8 @@ class RegistrationClient implements mx.Client {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
   int requests = 0;
+  @override
+  bool isLogged() => false;
 
   @override
   Future<mx.RequestTokenResponse> requestTokenToRegisterEmail(
@@ -118,7 +120,12 @@ void main() {
       expect(opens, 1);
       expect(openedPhrase, 'separate local phrase');
       expect(client.requests, 1);
-      expect(find.text('Почта подтверждена · создать аккаунт'), findsOneWidget);
+      expect(
+        find.text(
+          'Ожидаем подтверждения почты. Вход произойдёт автоматически.',
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );

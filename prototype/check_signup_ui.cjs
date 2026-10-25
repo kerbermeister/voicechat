@@ -29,10 +29,12 @@ const {chromium} = require('playwright');
     await fill('Пароль аккаунта · от 12 символов', password);
     await fill('Повторите пароль', password);
     await button('Отправить письмо').click();
-    await button('Почта подтверждена · создать аккаунт').waitFor({timeout: 30000});
+    await page.getByText('Ожидаем подтверждения почты. Вход произойдёт автоматически.',{exact:true}).waitFor({timeout:30000});
+    if(await button('Почта подтверждена · создать аккаунт').count()) throw new Error('Manual registration confirmation must not be required');
     // Reuse the same local email/form verification helper as the backend acceptance test.
     execFileSync('python3', ['-c', 'import sys; from check_registration import validate_email; validate_email(sys.argv[1])', email], {cwd: __dirname, stdio: 'pipe'});
-    await button('Почта подтверждена · создать аккаунт').click();
+    await page.getByText('Добро пожаловать в VoiceChat!',{exact:true}).waitFor({timeout:60000});
+    await button('Продолжить').click();
     await button('Я сохранил ключ').waitFor({timeout: 60000});
     await button('Я сохранил ключ').click();
     await button('Настройки').waitFor({timeout: 60000});

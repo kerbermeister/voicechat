@@ -134,6 +134,8 @@ void main() {
       await tester.enterText(field('Повторите пароль'), 'new secure password');
       await send(tester);
       final confirm = find.text('Почта подтверждена · сменить пароль');
+      await tester.pump(const Duration(seconds: 15));
+      expect(client.resets, 0, reason: 'Password reset must remain explicit');
       await tester.ensureVisible(confirm);
       await tester.tap(confirm);
       await tester.pumpAndSettle();

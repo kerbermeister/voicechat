@@ -487,6 +487,27 @@ class _ProbeScreenState extends State<ProbeScreen> {
       if (completed == true && !reset && next != null) {
         await connected(next!);
         adopted = true;
+        if (mounted) {
+          await showAppDialog<void>(
+            context: context,
+            barrierDismissible: false,
+            builder: (dialogContext) => AlertDialog(
+              scrollable: true,
+              title: const AppDialogTitle(
+                child: Text('Добро пожаловать в VoiceChat!'),
+              ),
+              content: const Text(
+                'Почта подтверждена, аккаунт создан, и вы уже вошли. Теперь сохраните ключ восстановления, чтобы не потерять доступ к переписке.',
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Продолжить'),
+                ),
+              ],
+            ),
+          );
+        }
         if (mounted) await linkDevice(registrationPassword);
       }
       if (completed == true && reset) {

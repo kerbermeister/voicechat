@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "email_required": true,
+  "repeated_pending_checks": true,
+  "foreign_form_rejected": true,
+  "repeated_email_link": true,
+  "authenticated_registration": true,
+  "lost_reply_replay": true,
+  "one_device": true,
+  "account_deactivated": true
+}

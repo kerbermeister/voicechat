@@ -1,5 +1,6 @@
 import 'device_added.dart';
 import 'device_name.dart';
+import 'dart:async';
 import 'dart:math';
 import 'auth_layout.dart';
 import 'app_motion.dart';
@@ -24,7 +25,8 @@ class RegistrationScreen extends StatefulWidget {
   State<RegistrationScreen> createState() => _RegistrationScreenState();
 }
 
-class _RegistrationScreenState extends State<RegistrationScreen> {
+class _RegistrationScreenState extends State<RegistrationScreen>
+    with WidgetsBindingObserver {
   final localPassphrase = TextEditingController();
   mx.Client? client;
   String? localPassphraseError;
@@ -43,9 +45,50 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   String? status;
   final formKey = GlobalKey<FormState>();
   int sendAttempt = 0;
+  Timer? verificationTimer;
+  bool completed = false;
+  bool verificationStopped = false;
+  Duration retryDelay = const Duration(seconds: 3);
+  DateTime? retryAfter;
+  late final registrationDeviceId =
+      'voicechat-${List.generate(16, (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0')).join()}';
 
-  Future<void> submit() async {
-    if (busy) return;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  void scheduleVerification({Duration? delay}) {
+    verificationTimer?.cancel();
+    if (!mounted ||
+        widget.resetPassword ||
+        sid == null ||
+        completed ||
+        verificationStopped ||
+        busy) {
+      return;
+    }
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    if (lifecycle != null && lifecycle != AppLifecycleState.resumed) return;
+    var wait = delay ?? retryDelay;
+    final remaining = retryAfter?.difference(DateTime.now());
+    if (remaining != null && remaining > wait) wait = remaining;
+    verificationTimer = Timer(wait, () => unawaited(submit(automatic: true)));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      scheduleVerification(delay: Duration.zero);
+    } else {
+      verificationTimer?.cancel();
+    }
+  }
+
+  Future<void> submit({bool automatic = false}) async {
+    if (busy || completed) return;
+    verificationTimer?.cancel();
     if (sid == null) {
       final invalid = formKey.currentState!.validateGranularly();
       if (invalid.isNotEmpty) {
@@ -70,12 +113,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     setState(() {
       busy = true;
       status = null;
+      verificationStopped = false;
     });
     try {
       client ??= await widget.openClient(
         widget.requireLocalPassphrase ? localPassphrase.text : null,
       );
-      if (!mounted) return;
+      if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
       if (sid == null) {
         sendAttempt++;
         final response = widget.resetPassword
@@ -107,12 +151,17 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             logoutDevices: true,
           );
         } else {
-          await client!.register(
-            username: username.text,
-            password: password.text,
-            initialDeviceDisplayName: await currentDeviceName(),
-            auth: auth,
-          );
+          // A completed SDK login must not be registered again if a later sync/profile request fails.
+          if (!client!.isLogged()) {
+            await client!.register(
+              username: username.text,
+              password: password.text,
+              deviceId: registrationDeviceId,
+              initialDeviceDisplayName: await currentDeviceName(),
+              auth: auth,
+            );
+          }
+          if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
           final addedAt = DateTime.now();
           await client!.firstSyncReceived;
           await recordDeviceAdded(client!, addedAt);
@@ -122,36 +171,80 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             });
           }
         }
+        if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
+        completed = true;
         if (!widget.resetPassword) widget.onRegistered?.call(password.text);
-        if (mounted) Navigator.pop(context, true);
+        Navigator.pop(context, true);
       }
     } on UserActionError catch (error) {
+      verificationStopped = true;
       if (mounted) setState(() => status = error.message);
     } on mx.MatrixException catch (error) {
       session = error.session ?? session;
-      if (mounted) {
-        setState(
-          () => status = switch (error.errcode) {
-            'M_USER_IN_USE' =>
-              'Это имя уже занято. Вернитесь и выберите другое.',
-            'M_THREEPID_IN_USE' =>
-              'Эта почта уже зарегистрирована. Используйте вход или восстановление пароля.',
-            'M_THREEPID_AUTH_FAILED' =>
-              'Сначала подтвердите адрес по ссылке из письма.',
-            _ =>
-              'Сервер не завершил подтверждение. Проверьте письмо и повторите. Код: ${error.errcode}',
-          },
+      final pendingEmail =
+          [
+            'M_THREEPID_AUTH_FAILED',
+            'M_UNAUTHORIZED',
+          ].contains(error.errcode) ||
+          (error.requireAdditionalAuthentication &&
+              error.authenticationFlows?.any(
+                    (flow) => flow.stages.contains(
+                      mx.AuthenticationTypes.emailIdentity,
+                    ),
+                  ) ==
+                  true);
+      if (automatic && pendingEmail) {
+        retryDelay = const Duration(seconds: 3);
+      } else if (error.errcode == 'M_LIMIT_EXCEEDED') {
+        retryAfter = DateTime.now().add(
+          Duration(milliseconds: max(3000, error.retryAfterMs ?? 3000)),
         );
+        if (mounted) {
+          setState(
+            () => status = widget.resetPassword
+                ? 'Сервер просит подождать. Повторите смену пароля позже.'
+                : 'Сервер просит подождать. Проверка продолжится автоматически.',
+          );
+        }
+      } else if (error.errcode == 'M_UNKNOWN' ||
+          (error.response?.statusCode ?? 0) >= 500) {
+        retryDelay = Duration(seconds: min(30, retryDelay.inSeconds * 2));
+        if (mounted) {
+          setState(
+            () => status = widget.resetPassword
+                ? 'Сервер временно недоступен. Повторите смену пароля позже.'
+                : 'Сервер временно недоступен. Проверка продолжится автоматически.',
+          );
+        }
+      } else {
+        verificationStopped = !widget.resetPassword && !pendingEmail;
+        if (mounted) {
+          setState(
+            () => status = switch (error.errcode) {
+              'M_USER_IN_USE' =>
+                'Это имя уже занято. Вернитесь и выберите другое.',
+              'M_THREEPID_IN_USE' =>
+                'Эта почта уже зарегистрирована. Используйте вход или восстановление пароля.',
+              'M_THREEPID_AUTH_FAILED' =>
+                'Сначала подтвердите адрес по ссылке из письма.',
+              _ =>
+                'Сервер не завершил подтверждение. Проверьте письмо и повторите. Код: ${error.errcode}',
+            },
+          );
+        }
       }
     } catch (_) {
+      retryDelay = Duration(seconds: min(30, retryDelay.inSeconds * 2));
       if (mounted) {
         setState(
-          () =>
-              status = 'Не удалось связаться с сервером. Проверьте соединение.',
+          () => status = sid != null && !widget.resetPassword
+              ? 'Нет связи с сервером. Проверка продолжится автоматически после восстановления соединения.'
+              : 'Не удалось связаться с сервером. Проверьте соединение.',
         );
       }
     } finally {
       if (mounted) setState(() => busy = false);
+      scheduleVerification();
     }
   }
 
@@ -230,7 +323,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           ? 'Восстановить пароль'
           : 'Начнём знакомство',
       subtitle: sent
-          ? 'Откройте ссылку из письма. Затем вернитесь сюда, чтобы ${reset ? 'сохранить новый пароль' : 'завершить создание аккаунта'}.'
+          ? reset
+                ? 'Откройте ссылку из письма. Затем вернитесь сюда, чтобы сохранить новый пароль.'
+                : 'Откройте ссылку из письма. Здесь регистрация завершится автоматически — даже если письмо открыто на другом устройстве. Оставьте эту вкладку открытой.'
           : reset
           ? 'Укажите почту аккаунта и придумайте новый пароль. Мы отправим ссылку для подтверждения.'
           : 'Выберите имя, по которому вас найдут, и настройте доступ к вашим разговорам.',
@@ -348,29 +443,41 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   child: busy ? const LinearProgressIndicator() : null,
                 ),
                 const SizedBox(height: 9),
-                FilledButton.icon(
-                  onPressed: busy ? null : submit,
-                  icon: Icon(
-                    sent ? Icons.check_rounded : Icons.arrow_forward_rounded,
+                if (sent && !reset && !verificationStopped)
+                  const Text(
+                    'Ожидаем подтверждения почты. Вход произойдёт автоматически.',
+                    textAlign: TextAlign.center,
                   ),
-                  label: Text(
-                    !sent
-                        ? 'Отправить письмо'
-                        : reset
-                        ? 'Почта подтверждена · сменить пароль'
-                        : 'Почта подтверждена · создать аккаунт',
+                if (!sent || reset || verificationStopped)
+                  FilledButton.icon(
+                    onPressed: busy ? null : submit,
+                    icon: Icon(
+                      sent ? Icons.check_rounded : Icons.arrow_forward_rounded,
+                    ),
+                    label: Text(
+                      !sent
+                          ? 'Отправить письмо'
+                          : reset
+                          ? 'Почта подтверждена · сменить пароль'
+                          : 'Повторить проверку',
+                    ),
                   ),
-                ),
                 const SizedBox(height: 4),
                 if (sent)
                   TextButton(
                     onPressed: busy
                         ? null
-                        : () => setState(() {
-                            sid = null;
-                            session = null;
-                            status = null;
-                          }),
+                        : () {
+                            verificationTimer?.cancel();
+                            setState(() {
+                              sid = null;
+                              session = null;
+                              status = null;
+                              verificationStopped = false;
+                              retryAfter = null;
+                              retryDelay = const Duration(seconds: 3);
+                            });
+                          },
                     child: const Text('Изменить данные'),
                   )
                 else
@@ -390,6 +497,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   void dispose() {
+    verificationTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     for (final c in [
       username,
       displayName,
