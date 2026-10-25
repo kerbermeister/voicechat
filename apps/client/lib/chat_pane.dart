@@ -984,7 +984,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
                       padding: EdgeInsets.only(right: menu == null ? 0 : 36),
@@ -996,8 +996,10 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                             '${own ? 'Вы · ' : ''}${event.senderFromMemoryOrFallback.displayName ?? event.senderId}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
+                            style: Theme.of(context).textTheme.labelMedium
                                 ?.copyWith(
+                                  fontSize: 14,
+                                  height: 1.25,
                                   color: participantNameColor(
                                     nameColorSlots[event.senderId] ?? 0,
                                     own
@@ -1135,22 +1137,31 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    MessageMetadata(
-                      key: ValueKey('message-meta-${event.eventId}'),
-                      time: TimeOfDay.fromDateTime(
-                        event.originServerTs.toLocal(),
-                      ).format(context),
-                      status:
-                          '${TimeOfDay.fromDateTime(event.originServerTs.toLocal()).format(context)}${shown.eventId != event.eventId ? ' · изменено' : ''}${own ? (messageIsRead(event, widget.timeline) ? ' · прочитано' : ' · отправлено') : ''}',
-                      read: own ? messageIsRead(event, widget.timeline) : null,
-                      edited: shown.eventId != event.eventId,
-                      color: own
-                          ? colors.onPrimary.withValues(alpha: .8)
-                          : colors.onSurfaceVariant,
-                      reactions: reactions,
-                      onReaction: (emoji) => perform(() => react(event, emoji)),
+                    SizedBox(
+                      width: MessageMetadata.minimumWidth,
+                      height: MessageMetadata.rowHeight(context),
                     ),
                   ],
+                ),
+              ),
+              Positioned(
+                left: 10,
+                right: 10,
+                bottom: 4,
+                child: MessageMetadata(
+                  key: ValueKey('message-meta-${event.eventId}'),
+                  time: TimeOfDay.fromDateTime(
+                    event.originServerTs.toLocal(),
+                  ).format(context),
+                  status:
+                      '${TimeOfDay.fromDateTime(event.originServerTs.toLocal()).format(context)}${shown.eventId != event.eventId ? ' · изменено' : ''}${own ? (messageIsRead(event, widget.timeline) ? ' · прочитано' : ' · отправлено') : ''}',
+                  read: own ? messageIsRead(event, widget.timeline) : null,
+                  edited: shown.eventId != event.eventId,
+                  color: own
+                      ? colors.onPrimary.withValues(alpha: .8)
+                      : colors.onSurfaceVariant,
+                  reactions: reactions,
+                  onReaction: (emoji) => perform(() => react(event, emoji)),
                 ),
               ),
               if (menu != null) Positioned(top: 0, right: 0, child: menu),

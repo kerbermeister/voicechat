@@ -13,6 +13,14 @@ class MessageMetadata extends StatelessWidget {
     this.edited = false,
   });
 
+  static const minimumWidth = 190.0;
+
+  static double rowHeight(BuildContext context) =>
+      (MediaQuery.textScalerOf(context).scale(12) * 1.5).clamp(
+        24,
+        double.infinity,
+      );
+
   final String time, status;
   final Color color;
   final Map<String, List<String>> reactions;
@@ -22,11 +30,8 @@ class MessageMetadata extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 190,
-    height: (MediaQuery.textScalerOf(context).scale(12) * 1.5).clamp(
-      24,
-      double.infinity,
-    ),
+    width: minimumWidth,
+    height: rowHeight(context),
     child: Row(
       children: [
         Expanded(

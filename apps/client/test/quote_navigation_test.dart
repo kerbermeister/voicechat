@@ -5,6 +5,7 @@ import 'package:matrix/matrix.dart' as mx;
 import 'package:voicechat_probe/chat_actions.dart';
 import 'package:voicechat_probe/chat_pane.dart';
 import 'package:voicechat_probe/message_metadata.dart';
+import 'package:voicechat_probe/link_cards.dart';
 import 'package:voicechat_probe/theme.dart';
 import 'halo_capture_test.dart' show CaptureClient, CaptureTimeline;
 
@@ -200,8 +201,11 @@ void main() {
     (tester) async {
       final client = CaptureClient();
       final room = roomFor(client, '!reaction:local');
+      final wideMessage = event(room, 'first');
+      wideMessage.content['body'] =
+          'Длинное сообщение проверяет, что реакции начинаются у левого края всего пузыря, а время остаётся справа.';
       final timeline = QuoteTimeline(room)
-        ..events.addAll([event(room, 'first'), event(room, 'second')]);
+        ..events.addAll([wideMessage, event(room, 'second')]);
       final actions = ChatActions(client);
       await tester.pumpWidget(
         MaterialApp(
@@ -241,11 +245,126 @@ void main() {
       actions.notifyListeners();
       await tester.pumpAndSettle();
       expect(find.text('👍 1'), findsOneWidget);
+      final metadata = find.byKey(const ValueKey('message-meta-first'));
+      final bubble = find
+          .ancestor(
+            of: metadata,
+            matching: find.byWidgetPredicate(
+              (w) =>
+                  w is Container &&
+                  w.margin == const EdgeInsets.symmetric(vertical: 1),
+            ),
+          )
+          .first;
+      expect(
+        tester.getRect(find.widgetWithText(TextButton, '👍 1')).left,
+        closeTo(tester.getRect(bubble).left + 10, .1),
+      );
+      expect(
+        tester.getRect(metadata).right,
+        closeTo(tester.getRect(bubble).right - 10, .1),
+      );
       expect(tester.getRect(first), rect);
       expect(tester.getRect(second), neighbour);
       expect(find.byType(MessageMetadata), findsNWidgets(2));
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
+      actions.dispose();
+    },
+  );
+  testWidgets(
+    'Short own and incoming group messages align author and body to the bubble left edge, including temporary messages',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      final client = CaptureClient();
+      final room = roomFor(client, '!alignment:local');
+      room
+              .states[mx.EventTypes.RoomMember]![client.userID]!
+              .content['displayname'] =
+          'Я';
+      room
+              .states[mx.EventTypes.RoomMember]!['@friend:local']!
+              .content['displayname'] =
+          'Оля';
+      final actions = ChatActions(client);
+      for (final (size, scale) in [
+        (const Size(320, 640), 1.0),
+        (const Size(1000, 800), 1.0),
+        (const Size(320, 844), 2.0),
+      ]) {
+        tester.view.physicalSize = size;
+        for (final temporary in [false, true]) {
+          final timeline = QuoteTimeline(room)
+            ..events.addAll([
+              for (final (id, sender) in [
+                ('mine', client.userID),
+                ('theirs', '@friend:local'),
+              ])
+                mx.Event.fromJson({
+                  'event_id': id,
+                  'sender': sender,
+                  'type': mx.EventTypes.Message,
+                  'origin_server_ts': DateTime.now().millisecondsSinceEpoch,
+                  'content': {
+                    'msgtype': mx.MessageTypes.Text,
+                    'body': 'Да',
+                    if (temporary) 'dev.voicechat.ttl_seconds': 3600,
+                  },
+                }, room),
+            ]);
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: AppPalette.halo.theme,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(scale)),
+                child: child!,
+              ),
+              home: Scaffold(
+                body: ChatPane(
+                  room: room,
+                  timeline: timeline,
+                  actions: actions,
+                  header: const SizedBox(height: 40),
+                  report: (_) {},
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          for (final (id, name) in [('mine', 'Вы · Я'), ('theirs', 'Оля')]) {
+            final metadata = find.byKey(ValueKey('message-meta-$id'));
+            final bubble = find
+                .ancestor(
+                  of: metadata,
+                  matching: find.byWidgetPredicate(
+                    (w) =>
+                        w is Container &&
+                        w.margin == const EdgeInsets.symmetric(vertical: 1),
+                  ),
+                )
+                .first;
+            final body = find.descendant(
+              of: find.byKey(ValueKey(id)),
+              matching: find.byType(LinkedText),
+            );
+            expect(
+              tester.getTopLeft(find.text(name)).dx,
+              closeTo(tester.getRect(bubble).left + 10, .1),
+              reason: '$id temporary=$temporary at $size, text scale=$scale',
+            );
+            expect(
+              tester.getTopLeft(body).dx,
+              closeTo(tester.getTopLeft(find.text(name)).dx, .1),
+            );
+          }
+          expect(tester.takeException(), isNull);
+          await tester.pumpWidget(const SizedBox.shrink());
+        }
+      }
       actions.dispose();
     },
   );

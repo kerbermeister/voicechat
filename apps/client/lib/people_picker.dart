@@ -237,6 +237,21 @@ class _PeoplePickerState extends State<PeoplePicker> {
               children: [
                 for (final id in selected)
                   InputChip(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    avatarBoxConstraints: const BoxConstraints.tightFor(
+                      width: 24,
+                      height: 24,
+                    ),
+                    avatar: PersonAvatar(
+                      name: people[id]?.displayName ?? id,
+                      size: 24,
+                      client: widget.client,
+                      url: people[id]?.avatarUrl,
+                      showPresence: false,
+                    ),
                     label: Text(people[id]?.displayName ?? id),
                     onDeleted: busy
                         ? null
@@ -252,6 +267,13 @@ class _PeoplePickerState extends State<PeoplePicker> {
                 ListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
+                  leading: PersonAvatar(
+                    name: people[id]?.displayName ?? id,
+                    size: 32,
+                    client: widget.client,
+                    url: people[id]?.avatarUrl,
+                    showPresence: false,
+                  ),
                   title: Text(people[id]?.displayName ?? id, maxLines: 2),
                   subtitle: Text(
                     id,

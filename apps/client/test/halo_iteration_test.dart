@@ -5,7 +5,7 @@ import 'package:voicechat_probe/app_motion.dart';
 import 'package:voicechat_probe/device_added.dart';
 import 'package:voicechat_probe/message_metadata.dart';
 import 'package:voicechat_probe/conversation_list.dart'
-    show conversationDeliveryStatus;
+    show conversationDeliveryStatus, PersonAvatar;
 import 'package:voicechat_probe/matrix_probe.dart';
 import 'package:voicechat_probe/people_picker.dart';
 import 'package:voicechat_probe/theme.dart';
@@ -282,6 +282,21 @@ void main() {
         expect(find.text(client.userID), findsNothing);
         await tester.tap(find.widgetWithText(CheckboxListTile, 'alice'));
         await tester.pumpAndSettle();
+        final selectedPerson = size.width < 600
+            ? find.byType(InputChip)
+            : find.ancestor(
+                of: find.byTooltip('Убрать участника'),
+                matching: find.byType(ListTile),
+              );
+        final selectedAvatar = find.descendant(
+          of: selectedPerson,
+          matching: find.byType(PersonAvatar),
+        );
+        expect(selectedAvatar, findsOneWidget);
+        expect(
+          tester.getSize(selectedAvatar).shortestSide,
+          greaterThanOrEqualTo(24),
+        );
         await tester.ensureVisible(find.text('Создать'));
         await tester.tap(find.text('Создать'));
         await tester.pumpAndSettle();

@@ -92,7 +92,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     final client = PolishCaptureClient();
     final members = {
-      client.userID: 'Вы',
+      client.userID: 'Михаил',
       '@anna:local': 'Анна',
       '@sasha:local': 'Александра',
       '@ilya:local': 'Илья',
@@ -133,7 +133,7 @@ void main() {
     }
     final timeline = QuoteTimeline(room);
     final messages = [
-      'В субботу собираемся у нас?',
+      'Договорились.',
       'Да, я буду к пяти.',
       'Привезу десерт и чай.',
       'Отлично, до встречи!',
@@ -147,16 +147,13 @@ void main() {
           'event_id': '\$polish$i',
           'sender': members.keys.elementAt(i % members.length),
           'type': mx.EventTypes.Message,
-          'origin_server_ts': DateTime(
-            2026,
-            10,
-            24,
-            17,
-            i,
-          ).millisecondsSinceEpoch,
+          'origin_server_ts': DateTime.now()
+              .subtract(Duration(minutes: messages.length - i))
+              .millisecondsSinceEpoch,
           'content': {
             'body': messages[i],
             'msgtype': mx.MessageTypes.Text,
+            if (i == 0) 'dev.voicechat.ttl_seconds': 3600,
             if (i == 4)
               'm.relates_to': {
                 'm.in_reply_to': {'event_id': r'$polish2'},

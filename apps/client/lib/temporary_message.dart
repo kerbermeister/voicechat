@@ -133,6 +133,7 @@ class _TemporaryMessageState extends State<TemporaryMessage>
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -152,11 +153,13 @@ class _TemporaryMessageState extends State<TemporaryMessage>
                             ),
                           ),
                           const SizedBox(width: 5),
-                          Text(
-                            'Исчезнет через ${remaining ~/ 60}:${(remaining % 60).toString().padLeft(2, '0')}',
-                            style: TextStyle(
-                              color: colors.tertiary,
-                              fontSize: 12,
+                          Flexible(
+                            child: Text(
+                              'Исчезнет через ${remaining ~/ 60}:${(remaining % 60).toString().padLeft(2, '0')}',
+                              style: TextStyle(
+                                color: colors.tertiary,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ],
