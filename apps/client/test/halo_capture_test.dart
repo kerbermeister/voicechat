@@ -52,15 +52,7 @@ void main() {
             return null;
           });
     }
-    final font = FontLoader('Inter');
-    font.addFont(
-      Future.value(
-        ByteData.sublistView(
-          File('assets/fonts/Inter-Variable.ttf').readAsBytesSync(),
-        ),
-      ),
-    );
-    await font.load();
+    await loadAppFont();
     final icons = FontLoader('MaterialIcons')
       ..addFont(
         Future.value(

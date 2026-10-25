@@ -2284,7 +2284,7 @@ class _AttachmentViewState extends State<AttachmentView> {
           : colors.secondaryContainer;
       final foreground = own ? colors.onPrimary : colors.onSecondaryContainer;
       final waveAccent = colors.brightness == Brightness.dark
-          ? foreground
+          ? Color.lerp(foreground, Colors.white, .2)!
           : colors.primary;
       final caption = widget.event.content['dev.voicechat.caption'];
       return Container(

@@ -1,6 +1,5 @@
 import 'test_fonts.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voicechat_probe/main.dart';
@@ -13,15 +12,7 @@ void main() {
   testWidgets(
     'Auth screens stay centered and fit the viewport without scrolling',
     (tester) async {
-      final fonts = FontLoader('Roboto')
-        ..addFont(
-          Future.value(
-            ByteData.sublistView(
-              materialFontFile('Roboto-Regular.ttf').readAsBytesSync(),
-            ),
-          ),
-        );
-      await fonts.load();
+      await loadAppFont();
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);

@@ -1,3 +1,4 @@
+import 'test_fonts.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -62,6 +63,7 @@ void main() {
         });
   }
   setUpAll(() async {
+    await loadAppFont();
     final path = Platform.environment['VOICECHAT_PREVIEW_FONT'];
     if (path != null) {
       final font = FontLoader('VoicePreview')

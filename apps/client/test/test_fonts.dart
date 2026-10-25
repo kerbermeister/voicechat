@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/services.dart';
 
 /// flutter_tester runs from the active SDK's engine cache on both CI and local.
 File materialFontFile(String name) {
@@ -16,4 +17,11 @@ File materialFontFile(String name) {
     }
     directory = parent;
   }
+}
+
+/// Geometry checks must use the same Cyrillic glyph metrics as the application.
+Future<void> loadAppFont() async {
+  final font = FontLoader('Inter')
+    ..addFont(rootBundle.load('assets/fonts/Inter-Variable.ttf'));
+  await font.load();
 }

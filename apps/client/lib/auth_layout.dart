@@ -51,7 +51,7 @@ class AuthPage extends StatelessWidget {
                   (MediaQuery.textScalerOf(
                     context,
                   ).scale(24)).clamp(48.0, double.infinity) +
-                  8;
+                  4;
               return SingleChildScrollView(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
@@ -74,9 +74,9 @@ class AuthPage extends StatelessWidget {
                             child: Padding(
                               padding: EdgeInsets.fromLTRB(
                                 compact ? 16 : 24,
-                                4,
+                                2,
                                 compact ? 16 : 24,
-                                4,
+                                2,
                               ),
                               child: Row(
                                 children: [
@@ -129,9 +129,9 @@ class AuthPage extends StatelessWidget {
                               child: Padding(
                                 padding: EdgeInsets.all(
                                   short
-                                      ? 8
+                                      ? 4
                                       : compact
-                                      ? 16
+                                      ? 12
                                       : 24,
                                 ),
                                 child: Column(
