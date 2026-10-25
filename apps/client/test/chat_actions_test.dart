@@ -10,6 +10,7 @@ import 'package:matrix/matrix.dart';
 // ignore: implementation_imports
 import 'package:matrix/src/utils/cached_stream_controller.dart';
 import 'package:voicechat_probe/chat_actions.dart';
+import 'package:voicechat_probe/media_policy.dart';
 import 'package:voicechat_probe/call_controller.dart';
 import 'package:voicechat_probe/voice_recording.dart';
 import 'message_test.dart' show TestClient;
@@ -148,6 +149,7 @@ class SendingQueueRoom extends OutboxRoom {
   final String roomId;
   final Completer<String?>? gate;
   final sent = <String>[];
+  Object? failure;
   SendingQueueRoom(super.client, this.roomId, {this.gate});
   @override
   String get id => roomId;
@@ -159,12 +161,25 @@ class SendingQueueRoom extends OutboxRoom {
     if (invocation.memberName == #sendEvent ||
         invocation.memberName == #sendFileEvent) {
       sent.add(invocation.namedArguments[#txid] as String);
+      if (failure != null) return Future<String?>.error(failure!);
       return sent.length == 1 && gate != null
           ? gate!.future
           : Future<String?>.value('event-${sent.length}');
     }
     return super.noSuchMethod(invocation);
   }
+}
+
+class PolicyQueueClient extends SendingQueueClient {
+  bool available = false, valid = true;
+  @override
+  http.Client get httpClient => _policyHttp;
+  late final _policyHttp = MockClient(
+    (_) async => http.Response(
+      jsonEncode(valid ? const MediaPolicy().toJson() : {}),
+      available ? 200 : 503,
+    ),
+  );
 }
 
 class RotatingTurnClient extends Client {
@@ -208,6 +223,91 @@ void main() {
       logLevel: Level.error,
     );
   });
+  test(
+    'Temporary API outage keeps ordered transactions and recovers without new IDs',
+    () async {
+      final client = PolicyQueueClient();
+      final room = SendingQueueRoom(client, '!temporary:local');
+      client.roomsById[room.id] = room;
+      final actions = ChatActions(client, policyUrl: 'http://localhost:8090');
+      for (final id in ['temporary-id', 'ordinary-id']) {
+        actions.pending.add({
+          'id': id,
+          'room': room.id,
+          'type': EventTypes.Message,
+          'created': 0,
+          'content': {
+            'msgtype': MessageTypes.Text,
+            'body': id,
+            if (id == 'temporary-id') 'dev.voicechat.ttl_seconds': 10,
+          },
+        });
+      }
+      await actions.flush();
+      expect(room.sent, isEmpty);
+      expect(
+        actions.pending.first['error'],
+        contains('Сервис временных сообщений недоступен'),
+      );
+      expect(
+        actions.pendingStatus(actions.pending.last),
+        startsWith('Ожидает отправки предыдущего сообщения.'),
+      );
+      expect(
+        ((client.database as OutboxDatabase)
+                    .values['dev.voicechat.local.outbox']!['items']
+                as List)
+            .length,
+        2,
+      );
+      client.available = true;
+      client.valid = false;
+      await actions.flush();
+      expect(
+        room.sent,
+        isEmpty,
+        reason: 'Invalid policy must not bypass validation',
+      );
+      client.valid = true;
+      await actions.flush();
+      expect(room.sent, ['temporary-id', 'ordinary-id']);
+      expect(actions.pending, isEmpty);
+      await actions.close();
+    },
+  );
+
+  test(
+    'A server rejection is distinguished from a missing acknowledgement',
+    () async {
+      final client = PolicyQueueClient()..available = true;
+      final room = SendingQueueRoom(client, '!rejected:local')
+        ..failure = MatrixException.fromJson({'errcode': 'M_FORBIDDEN'});
+      client.roomsById[room.id] = room;
+      final actions = ChatActions(client, policyUrl: 'http://localhost:8090');
+      actions.pending.add({
+        'id': 'retained-id',
+        'room': room.id,
+        'type': EventTypes.Message,
+        'created': 0,
+        'content': {
+          'msgtype': MessageTypes.Text,
+          'body': 'temporary',
+          'dev.voicechat.ttl_seconds': 10,
+        },
+      });
+      await actions.flush();
+      expect(
+        actions.pending.single['error'],
+        startsWith('Сервер отклонил временное сообщение.'),
+      );
+      room.failure = null;
+      await actions.flush();
+      expect(room.sent, ['retained-id', 'retained-id']);
+      expect(actions.pending, isEmpty);
+      await actions.close();
+    },
+  );
+
   test(
     'Slow uploads do not block other chats; messages in one chat stay ordered',
     () async {
@@ -282,7 +382,7 @@ void main() {
       expect(actions.pending[1]['error'], isNull);
       expect(
         actions.pendingStatus(actions.pending[1]),
-        startsWith('Не отправлено.'),
+        startsWith('Ожидает отправки предыдущего сообщения.'),
       );
       expect(actions.pending[2]['error'], isNotNull);
       await actions.close();

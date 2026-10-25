@@ -384,9 +384,9 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
   test(
-    'All seven themes have readable primary text and preserve selected references',
+    'All eight themes have readable primary text and preserve selected references',
     () {
-      expect(AppPalette.values.length, 7);
+      expect(AppPalette.values.length, 8);
       for (final palette in AppPalette.values) {
         final colors = palette.theme.colorScheme;
         for (final pair in [

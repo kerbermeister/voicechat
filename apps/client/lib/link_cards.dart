@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'link_platform.dart';
@@ -151,8 +152,9 @@ class LinkCards extends StatelessWidget {
                       ),
                       if (video || youtube != null)
                         TextButton.icon(
-                          onPressed: () => showDialog<void>(
+                          onPressed: () => showAppDialog<void>(
                             context: context,
+                            animationStyle: appAnimationStyle(context),
                             builder: (_) => youtube == null
                                 ? MessageVideo.remote(url: url)
                                 : Dialog(

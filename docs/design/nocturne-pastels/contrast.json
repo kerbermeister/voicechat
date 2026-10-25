@@ -1,0 +1,82 @@
+[
+  {
+    "theme": "11 / Lavender Cloud",
+    "text": 11.07,
+    "secondary": 5.04,
+    "button": 9.72,
+    "accent": 6.79,
+    "secondaryAccent": 4.9
+  },
+  {
+    "theme": "12 / Mint Tea",
+    "text": 9.86,
+    "secondary": 4.98,
+    "button": 8.69,
+    "accent": 6.73,
+    "secondaryAccent": 5.0
+  },
+  {
+    "theme": "13 / Peach Milk",
+    "text": 9.98,
+    "secondary": 4.86,
+    "button": 8.37,
+    "accent": 6.09,
+    "secondaryAccent": 4.61
+  },
+  {
+    "theme": "14 / Sky Linen",
+    "text": 9.97,
+    "secondary": 4.59,
+    "button": 8.49,
+    "accent": 6.43,
+    "secondaryAccent": 4.98
+  },
+  {
+    "theme": "15 / Rosewater",
+    "text": 9.64,
+    "secondary": 4.63,
+    "button": 8.24,
+    "accent": 6.0,
+    "secondaryAccent": 5.07
+  },
+  {
+    "theme": "16 / Vanilla",
+    "text": 9.84,
+    "secondary": 4.8,
+    "button": 8.88,
+    "accent": 5.83,
+    "secondaryAccent": 5.46
+  },
+  {
+    "theme": "17 / Wisteria",
+    "text": 9.79,
+    "secondary": 4.78,
+    "button": 8.42,
+    "accent": 5.84,
+    "secondaryAccent": 5.36
+  },
+  {
+    "theme": "18 / Seafoam",
+    "text": 9.56,
+    "secondary": 4.78,
+    "button": 8.5,
+    "accent": 6.32,
+    "secondaryAccent": 5.72
+  },
+  {
+    "theme": "19 / Pistachio",
+    "text": 9.41,
+    "secondary": 4.68,
+    "button": 8.92,
+    "accent": 5.83,
+    "secondaryAccent": 5.76
+  },
+  {
+    "theme": "20 / Oat Silk",
+    "text": 9.57,
+    "secondary": 4.68,
+    "button": 8.42,
+    "accent": 5.9,
+    "secondaryAccent": 5.21
+  }
+]

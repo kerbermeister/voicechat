@@ -113,6 +113,24 @@ const {chromium} = require('playwright');
     await page.evaluate(([n,p]) => voicechatVault.open(n,p,false), [name,password]);
     await page.evaluate(n => voicechatVault.close(n), name);
     await page.evaluate(n => voicechatVault.erase(n), name);
+    const autoName = `auto-${Date.now()}`;
+    await page.evaluate(n => voicechatVault.open(n,null,false,true), autoName);
+    const autoCipher = await page.evaluate(n => voicechatVault.encrypt(n,'client','token','AUTO_PRIVATE'), autoName);
+    await page.reload(); await page.addScriptTag({url: `${url}/vault.js`});
+    await page.evaluate(n => voicechatVault.open(n,null,false,true), autoName);
+    assert.equal(await page.evaluate(([n,c]) => voicechatVault.decrypt(n,'client','token',c),[autoName,autoCipher]),'AUTO_PRIVATE');
+    await assert.rejects(other.evaluate(n => voicechatVault.open(n,null,false,true),autoName));
+    const extractable = await page.evaluate(async n => {
+      const req = indexedDB.open(`${n}.vault`);
+      const db = await new Promise(r => req.onsuccess=()=>r(req.result));
+      const get = db.transaction('meta').objectStore('meta').get('header');
+      const header = await new Promise(r => get.onsuccess=()=>r(get.result)); db.close();
+      return header.deviceKey.extractable;
+    },autoName);
+    assert.equal(extractable,false);
+    await page.evaluate(n => voicechatVault.close(n),autoName);
+    await page.evaluate(n => voicechatVault.erase(n),autoName);
+    console.log('PASS: automatic non-exportable device key, reload, exclusive tabs, erase');
     console.log('PASS: legacy preservation, missing-header refusal, vault encryption, tampering, record binding, lock, wrong password, reload, opt-in tab resume, lock clears resume, opt-out, version-1 compatibility, corrupt resume rejection, exclusive tabs, erase');
   } finally { await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode=1; });

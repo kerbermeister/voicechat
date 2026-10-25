@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
@@ -7,8 +8,9 @@ import 'temporary_message.dart';
 Future<({mx.Room room, String? event})?> searchHistory(
   BuildContext context,
   mx.Client client,
-) => showDialog<({mx.Room room, String? event})>(
+) => showAppDialog<({mx.Room room, String? event})>(
   context: context,
+  animationStyle: appAnimationStyle(context),
   builder: (_) => _HistorySearch(client: client),
 );
 
@@ -110,7 +112,7 @@ class _HistorySearchState extends State<_HistorySearch> {
             (a, b) => b.event.originServerTs.compareTo(a.event.originServerTs),
           );
     return AlertDialog(
-      title: const Text('Поиск'),
+      title: AppDialogTitle(child: const Text('Поиск')),
       content: SizedBox(
         width: 620,
         height: 510,

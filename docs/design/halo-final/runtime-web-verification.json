@@ -1,0 +1,23 @@
+{
+  "results": [
+    {
+      "width": 1440,
+      "errors": [],
+      "horizontalOverflow": false,
+      "registrationReached": true
+    },
+    {
+      "width": 390,
+      "errors": [],
+      "horizontalOverflow": false,
+      "registrationReached": true
+    },
+    {
+      "width": 320,
+      "errors": [],
+      "horizontalOverflow": false,
+      "registrationReached": true
+    }
+  ],
+  "limits": "Unauthenticated browser smoke only. No account forms submitted, no network workflows or calls verified."
+}

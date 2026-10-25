@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-22",
+  "baseline_commit": "c3e3f43ecafc60891efa85173d8c81caac338d4b",
+  "reference": "../lavender-soft.html",
+  "screens_per_platform": 35,
+  "platforms": [
+    "Android emulator API 35",
+    "Chrome mobile viewport 390x844"
+  ],
+  "screenshot_count": 140,
+  "flutter_tests": {
+    "full_suite_passed": 116,
+    "final_targeted_passed": 9
+  },
+  "flutter_analyze": "PASS",
+  "android_gallery": "PASS",
+  "web_gallery": "PASS",
+  "gallery_filters": "PASS",
+  "web_build": "normal release main.dart; no test credentials",
+  "android_build": "normal debug main.dart; no test credentials",
+  "native_dependency": "Existing unmodified arm64 vodozemac JNI reused; Rust was not rebuilt",
+  "native_dependency_source_sha256": "d3cedbc3375acf920830a1b300d3e6f09cce8ad483f5505a803d64f5c3454f89",
+  "fixtures": "Disposable isolated ui_* accounts. Synthetic voice data. Call windows use UI fixtures without any media connection.",
+  "not_verified": [
+    "Physical phones",
+    "Real camera or microphone capture",
+    "Real call media and media decryption",
+    "Operating system file picker screens"
+  ]
+}

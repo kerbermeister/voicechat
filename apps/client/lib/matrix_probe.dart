@@ -1,3 +1,4 @@
+import 'device_added.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
@@ -19,6 +20,7 @@ class MatrixProbe {
     String profile, {
     String? passphrase,
     bool remember = false,
+    bool automatic = false,
   }) async {
     _cryptoInit ??= vod.init();
     await _cryptoInit;
@@ -27,6 +29,7 @@ class MatrixProbe {
       name,
       passphrase: passphrase,
       remember: remember,
+      automatic: automatic,
     );
     final client = Client(
       name,
@@ -48,6 +51,7 @@ class MatrixProbe {
   }
 
   Future<void> login(String server, String username, String password) async {
+    DateTime? addedAt;
     if (client.isLogged()) {
       final requested = username.trim();
       final localpart = client.userID!.split(':').first.substring(1);
@@ -66,10 +70,14 @@ class MatrixProbe {
         LoginType.mLoginPassword,
         identifier: AuthenticationUserIdentifier(user: username),
         password: password,
-        initialDeviceDisplayName: kIsWeb ? 'Web probe' : 'Android probe',
+        initialDeviceDisplayName: kIsWeb
+            ? 'VoiceChat · браузер'
+            : 'VoiceChat · Android',
       );
+      addedAt = DateTime.now();
     }
     await client.firstSyncReceived;
+    if (addedAt != null) await recordDeviceAdded(client, addedAt);
     if (!client.encryptionEnabled) throw StateError('E2EE unavailable');
   }
 
@@ -166,12 +174,19 @@ class MatrixProbe {
   Future<String> createRoom(
     List<String> invitees, {
     String name = 'Тёплый круг',
+    Uri? avatar,
   }) => client.createRoom(
     name: name,
     powerLevelContentOverride: {'invite': 50, 'kick': 50, 'ban': 50},
     preset: CreateRoomPreset.privateChat,
     invite: invitees,
     initialState: [
+      if (avatar != null)
+        StateEvent(
+          type: EventTypes.RoomAvatar,
+          stateKey: '',
+          content: {'url': avatar.toString()},
+        ),
       StateEvent(
         type: EventTypes.Encryption,
         stateKey: '',

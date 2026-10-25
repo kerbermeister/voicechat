@@ -1,0 +1,12 @@
+{
+  "navigation": "composer-tools",
+  "search": 14,
+  "keyboard": {
+    "height": 33,
+    "scroll": 496
+  },
+  "narrow": {
+    "width": 320,
+    "document": 320
+  }
+}

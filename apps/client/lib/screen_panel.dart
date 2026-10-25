@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'screen_capture.dart';
@@ -49,7 +50,7 @@ class ScreenPanel extends StatelessWidget {
     );
   }
 
-  Future<void> expand(BuildContext context) => showDialog<void>(
+  Future<void> expand(BuildContext context) => showAppDialog<void>(
     context: context,
     builder: (context) => Dialog.fullscreen(
       child: SafeArea(

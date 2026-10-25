@@ -6,7 +6,13 @@ import 'package:voicechat_probe/call_controller.dart';
 import 'package:voicechat_probe/call_quality.dart';
 import 'package:voicechat_probe/call_window.dart';
 import 'package:voicechat_probe/voice_call.dart';
+import 'package:voicechat_probe/theme.dart';
 import 'chat_actions_test.dart' show OutboxDatabase;
+
+class WindowDatabase extends OutboxDatabase {
+  @override
+  Future<void> close() async {}
+}
 
 class CallRoom extends Room {
   CallRoom(Client client) : super(id: '!call:local', client: client);
@@ -26,13 +32,13 @@ class CallRoom extends Room {
 class WindowCall implements VoiceCall {
   @override
   final Room chat;
-  WindowCall(this.chat);
+  WindowCall(this.chat, {this.video = true});
   @override
   String get session => 'window-test';
   @override
   String get connection => 'Защищённое видео';
   @override
-  final bool video = true;
+  final bool video;
   @override
   bool cameraEnabled = true, muted = false, isClosed = false;
   @override
@@ -66,7 +72,7 @@ void main() {
   testWidgets(
     'Video controls and quality stay usable on a narrow and rotated screen',
     (tester) async {
-      final client = Client('window-test', database: OutboxDatabase());
+      final client = Client('window-test', database: WindowDatabase());
       final call = WindowCall(CallRoom(client));
       final calls = CallController(
         client,
@@ -79,6 +85,7 @@ void main() {
         tester.view.physicalSize = size;
         await tester.pumpWidget(
           MaterialApp(
+            theme: AppPalette.lavender.theme,
             home: CallWindow(calls: calls, audioOutput: () async {}),
           ),
         );
@@ -101,4 +108,52 @@ void main() {
       tester.view.resetDevicePixelRatio();
     },
   );
+  testWidgets('Voice call keeps avatar, name, time and real signal visible', (
+    tester,
+  ) async {
+    final client = Client('voice-window', database: WindowDatabase());
+    final room = CallRoom(client);
+    room.states[EventTypes.RoomName] = {
+      '': StrippedStateEvent(
+        type: EventTypes.RoomName,
+        stateKey: '',
+        senderId: '@peer:local',
+        content: {'name': 'Александра'},
+      ),
+    };
+    final calls = CallController(
+      client,
+      'http://localhost:8090',
+      'ws://localhost:7880',
+      (_) {},
+    )..active = WindowCall(room, video: false);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    for (final size in [const Size(320, 640), const Size(1440, 900)]) {
+      tester.view.physicalSize = size;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppPalette.lavender.theme,
+          home: Scaffold(
+            body: CallWindow(calls: calls, audioOutput: () async {}),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Александра'), findsOneWidget);
+      expect(find.text('0:42'), findsOneWidget);
+      expect(find.byType(CallAvatar), findsOneWidget);
+      expect(find.byType(CallQualityIndicator), findsOneWidget);
+      expect(
+        tester.getCenter(find.text('Александра')).dx,
+        closeTo(size.width / 2, 1),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    }
+    calls.active = null;
+    await tester.runAsync(calls.close);
+    await client.dispose();
+  });
 }

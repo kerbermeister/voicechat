@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 // Local accessibility fixture. Real production widgets, synthetic call state, no media/network.
 // Never publish this entrypoint as the application.
 import 'dart:convert';
@@ -197,7 +198,7 @@ class _PreviewState extends State<Preview> {
                 );
                 final screen = calls.screen! as PreviewScreen;
                 screen.scenario(scenario);
-                await showDialog<void>(
+                await showAppDialog<void>(
                   context: context,
                   builder: (_) =>
                       CallWindow(calls: calls, audioOutput: () async {}),

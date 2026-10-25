@@ -1,0 +1,147 @@
+{
+  "branch": "main",
+  "head": "978a1844b4834c1adf669fd031ee92d4bf1e7cb6",
+  "basis": "Current working main, including preexisting uncommitted changes. Not a clean-HEAD-only snapshot.",
+  "sources": {
+    "album_view.dart": {
+      "path": "apps/client/lib/album_view.dart",
+      "sha256": "633589ce18b6c7633e15fc7add5b62ce718f4a84a8e9abefb53a619fab565e34"
+    },
+    "app_sounds.dart": {
+      "path": "apps/client/lib/app_sounds.dart",
+      "sha256": "18398bb7d0cccc686b68e3efe37365b15aa861fae03b6820b5aba43a7ae416e3"
+    },
+    "avatar_editor.dart": {
+      "path": "apps/client/lib/avatar_editor.dart",
+      "sha256": "c565b639106d52845d65118e1b84f7ae7889e4de93cddbe55e2875223c5b670e"
+    },
+    "call_quality.dart": {
+      "path": "apps/client/lib/call_quality.dart",
+      "sha256": "1db03fa15e58f87d2c87eff6b44f9e15ddb7a2330c77f646ecc2e15cfcae7d66"
+    },
+    "call_video_grid.dart": {
+      "path": "apps/client/lib/call_video_grid.dart",
+      "sha256": "40247753707ba2b8ee5140b065e21ea6eb3e08c60e068ece7c0b833924a633c8"
+    },
+    "call_window.dart": {
+      "path": "apps/client/lib/call_window.dart",
+      "sha256": "54070d5aa120aab44655606170fb0737f4a49b45bb77451a14f701cb0885ba8e"
+    },
+    "chat_pane.dart": {
+      "path": "apps/client/lib/chat_pane.dart",
+      "sha256": "3fe0bb6f809ccacb1d71147a0ac44244f737882489c1be46ae0892c3bcc16954"
+    },
+    "conversation_list.dart": {
+      "path": "apps/client/lib/conversation_list.dart",
+      "sha256": "b3b03cc9527b9cfbe4670cf815ae7b1ddbcbe45500f8b1e6f38cc7b45b4ef561"
+    },
+    "device_link.dart": {
+      "path": "apps/client/lib/device_link.dart",
+      "sha256": "66ad0d98318103d958325450a97f8a330b23c7744b92d1c3aa4f09783bb2b032"
+    },
+    "device_qr_scanner.dart": {
+      "path": "apps/client/lib/device_qr_scanner.dart",
+      "sha256": "58bd29f1e74914c257011c8e36195ebec1550d102bcdb996bc1074e5d6b7080d"
+    },
+    "device_verification_dialog.dart": {
+      "path": "apps/client/lib/device_verification_dialog.dart",
+      "sha256": "d6d9bf7f55d8aedd15a3c4c6c5f41843310d554a573f9cca81a3f3f6ad21f4b0"
+    },
+    "embedded_video.dart": {
+      "path": "apps/client/lib/embedded_video.dart",
+      "sha256": "00f2771008048f8ef61f2dcaa28e55560d493902ca27c311181609bd8d347f13"
+    },
+    "emoji_picker.dart": {
+      "path": "apps/client/lib/emoji_picker.dart",
+      "sha256": "40d564cc0c157dde100f7d4e0d6b9b2de3cdab52b0b828dbf161290663c186de"
+    },
+    "file_view.dart": {
+      "path": "apps/client/lib/file_view.dart",
+      "sha256": "2343fdb49e2a617282fab4c1e014578c3c9e5df75b769dda943dcad7d3ae6dbd"
+    },
+    "history_recovery_dialog.dart": {
+      "path": "apps/client/lib/history_recovery_dialog.dart",
+      "sha256": "8e054da4786e4d42f8b85a3183435fa835068d3e239a8508164f4b445a68fbdc"
+    },
+    "history_search.dart": {
+      "path": "apps/client/lib/history_search.dart",
+      "sha256": "9f5bcc3faaf65e20d51abf54081ced953f92851de5897c854fbeb194766d7e10"
+    },
+    "identity_field.dart": {
+      "path": "apps/client/lib/identity_field.dart",
+      "sha256": "0c5549bc6d21914cf5a8cef4c0f52a9f5c27fc824c2e9962a93600d9e9ab1ce5"
+    },
+    "invitations_dialog.dart": {
+      "path": "apps/client/lib/invitations_dialog.dart",
+      "sha256": "a5970996e309a1416cc7803d0b8bccff3357a6e197a62fe51c6365700ab37778"
+    },
+    "link_cards.dart": {
+      "path": "apps/client/lib/link_cards.dart",
+      "sha256": "f6627f7f7018366a5f1ddf88266a5a13acf0962c66ed8fb6bc1507423aec6036"
+    },
+    "main.dart": {
+      "path": "apps/client/lib/main.dart",
+      "sha256": "18c3da6eb187e91192408f7de222d93c1103a83b9595424cd0a67c0ac3891a25"
+    },
+    "media_policy.dart": {
+      "path": "apps/client/lib/media_policy.dart",
+      "sha256": "0cd035de3d0829c474c46cf82cbb8b044563582194d7bae10aa093c0458b937f"
+    },
+    "people_picker.dart": {
+      "path": "apps/client/lib/people_picker.dart",
+      "sha256": "622b81f8c4f6a9dbd52e5ecaa79e98b0341df7544a7a7c926672174f358d1d0e"
+    },
+    "photo_viewer.dart": {
+      "path": "apps/client/lib/photo_viewer.dart",
+      "sha256": "add44cf7fc7c50b67fc91a64e88056034750b3d5627ab15cde72bffd98ee6358"
+    },
+    "profile_dialog.dart": {
+      "path": "apps/client/lib/profile_dialog.dart",
+      "sha256": "ed65221550bc442b3afd9ca436a73a7f04f96415431de544c05e89a0a2c92618"
+    },
+    "registration_screen.dart": {
+      "path": "apps/client/lib/registration_screen.dart",
+      "sha256": "4249c138016ace8105371cf9c8290ba3252022bdeeb8b064c922eb5654af894d"
+    },
+    "room_members_dialog.dart": {
+      "path": "apps/client/lib/room_members_dialog.dart",
+      "sha256": "08fcbab5060badf27e18e14aad4f7ac2fe5f5ab4f8241b8c7f7c5adec1266854"
+    },
+    "scheduled_view.dart": {
+      "path": "apps/client/lib/scheduled_view.dart",
+      "sha256": "5519abe321d574b92365773e02361c7d49021e87c7bd84cdb4f3d42eb559dd04"
+    },
+    "screen_capture.dart": {
+      "path": "apps/client/lib/screen_capture.dart",
+      "sha256": "e1d8b959c4e01f34e1ed568764201c2a98cdb402cc5d2798a246139e6ec586b0"
+    },
+    "screen_panel.dart": {
+      "path": "apps/client/lib/screen_panel.dart",
+      "sha256": "e2e086a081bcb74689accadcd8e69331b56103c216e3b85e71e2757aa6a63b42"
+    },
+    "storage_dialog.dart": {
+      "path": "apps/client/lib/storage_dialog.dart",
+      "sha256": "3b4ec1105141cf535ca76e4c04be8882258c77d45683d34f50b216d03a27925e"
+    },
+    "theme.dart": {
+      "path": "apps/client/lib/theme.dart",
+      "sha256": "631edd129681cb411f729a14de7a088d28b63f7018856a317c1b5d8bb4db1a78"
+    },
+    "user_action_error.dart": {
+      "path": "apps/client/lib/user_action_error.dart",
+      "sha256": "2cd1172c6d55905c06cb6baae68eaabefeb1ed4ff81280f8b5aaa36fd8d33d44"
+    },
+    "video_note.dart": {
+      "path": "apps/client/lib/video_note.dart",
+      "sha256": "408709561128d4d48f230ae324180d27d251feee4e2522bb1eee38773d7a0024"
+    },
+    "voice_recording.dart": {
+      "path": "apps/client/lib/voice_recording.dart",
+      "sha256": "c86b779b713835c65483773f3a07cf27c4843d786f2ee5ce0fdd95d18950ed11"
+    },
+    "waveform_view.dart": {
+      "path": "apps/client/lib/waveform_view.dart",
+      "sha256": "1d2821097b9407356770f85f4b9f26c93271b7198cd6c46a4e96d78ff84342ae"
+    }
+  }
+}

@@ -112,7 +112,7 @@ class _AlbumViewState extends State<AlbumView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 420,
+          width: 340,
           child: GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -120,7 +120,7 @@ class _AlbumViewState extends State<AlbumView> {
               crossAxisCount: visible == 1 ? 1 : 2,
               crossAxisSpacing: 5,
               mainAxisSpacing: 5,
-              childAspectRatio: visible == 1 ? 1.4 : 1.1,
+              childAspectRatio: visible == 1 ? 1.6 : 1.2,
             ),
             itemCount: visible,
             itemBuilder: (_, i) => tile(i),

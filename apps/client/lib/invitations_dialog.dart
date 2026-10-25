@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'contact_service.dart';
@@ -102,7 +103,7 @@ class _InvitationsDialogState extends State<InvitationsDialog> {
       return DefaultTabController(
         length: 2,
         child: AlertDialog(
-          title: const Text('Приглашения'),
+          title: AppDialogTitle(child: const Text('Приглашения')),
           content: SizedBox(
             width: 500,
             height: 420,

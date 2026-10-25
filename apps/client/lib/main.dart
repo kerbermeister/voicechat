@@ -1,5 +1,11 @@
+import 'scheduled_view.dart' show scheduledTime;
+import 'device_added.dart';
+import 'conversation_header.dart';
+import 'app_motion.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'identity_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart' as mx;
@@ -22,7 +28,7 @@ import 'storage_dialog.dart';
 import 'profile_dialog.dart';
 import 'conversation_list.dart';
 import 'room_members_dialog.dart';
-import 'welcome_panel.dart';
+import 'auth_layout.dart';
 import 'call_controller.dart';
 import 'chat_actions.dart';
 import 'chat_pane.dart';
@@ -35,6 +41,8 @@ import 'theme.dart';
 import 'user_action_error.dart';
 import 'transport.dart';
 import 'device_verification.dart';
+import 'device_link.dart';
+import 'dart:math';
 import 'device_verification_dialog.dart';
 import 'history_recovery.dart';
 import 'history_recovery_dialog.dart';
@@ -50,6 +58,11 @@ Future<void> main() async {
   runApp(const VoiceChatApp());
 }
 
+String newDeviceProfile() => List.generate(
+  24,
+  (_) => Random.secure().nextInt(256).toRadixString(16).padLeft(2, '0'),
+).join();
+
 class VoiceChatApp extends StatefulWidget {
   const VoiceChatApp({super.key});
   @override
@@ -57,7 +70,7 @@ class VoiceChatApp extends StatefulWidget {
 }
 
 class _VoiceChatAppState extends State<VoiceChatApp> {
-  AppPalette palette = AppPalette.lavender;
+  AppPalette palette = AppPalette.halo;
   @override
   void initState() {
     super.initState();
@@ -67,7 +80,7 @@ class _VoiceChatAppState extends State<VoiceChatApp> {
         setState(
           () => palette = AppPalette.values.firstWhere(
             (p) => p.name == name,
-            orElse: () => AppPalette.lavender,
+            orElse: () => AppPalette.halo,
           ),
         );
       }
@@ -86,11 +99,16 @@ class _VoiceChatAppState extends State<VoiceChatApp> {
   Widget build(BuildContext context) => MaterialApp(
     debugShowCheckedModeBanner: false,
     title: 'VoiceChat',
+    locale: const Locale('ru'),
+    supportedLocales: const [Locale('ru')],
+    localizationsDelegates: GlobalMaterialLocalizations.delegates,
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
       child: child!,
     ),
     theme: palette.theme,
+    themeAnimationDuration: appMotionDuration,
+    themeAnimationCurve: Curves.easeOutCubic,
     home: ProbeScreen(palette: palette, onPalette: setPalette),
   );
 }
@@ -126,10 +144,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
       defaultValue: 'ws://localhost:7880',
     ),
   );
-  final username = TextEditingController(text: 'alice');
+  final username = TextEditingController();
   final password = TextEditingController();
-  final vaultPassword = TextEditingController();
-  final profile = TextEditingController(text: 'device-1');
+  final profile = TextEditingController(text: newDeviceProfile());
   MatrixProbe? probe;
   mx.Room? selected;
   mx.Timeline? timeline;
@@ -148,8 +165,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
   bool online = true;
   bool restoringSession = true;
   bool savedAccount = false;
+  bool linked = false;
   bool groupsTab = false;
-  bool rememberTab = true;
 
   @override
   void initState() {
@@ -161,12 +178,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final stored = readTabAccount() ?? prefs.getString('lastAccount');
-      rememberTab = prefs.getBool('rememberTab') ?? true;
       if (stored == null) return;
       final data = jsonDecode(stored) as Map<String, dynamic>;
-      if (data['rememberTab'] is bool) {
-        rememberTab = data['rememberTab'] as bool;
-      }
       for (final entry in {
         'profile': profile,
         'username': username,
@@ -181,16 +194,13 @@ class _ProbeScreenState extends State<ProbeScreen> {
         entry.value.text = value;
       }
       savedAccount = true;
-      if (kIsWeb && rememberTab) {
-        try {
-          await login(resume: true);
-        } catch (_) {
-          status =
-              'Введите локальную фразу, чтобы открыть сохранённую переписку.';
-        }
+      try {
+        await login(resume: true);
+      } catch (_) {
+        status = 'Не удалось открыть сохранённый вход. Попробуйте снова.';
       }
     } catch (_) {
-      status = 'Откройте свой профиль. Локальные данные сохранены.';
+      status = 'Откройте свой аккаунт. Локальные данные сохранены.';
     } finally {
       if (mounted) setState(() => restoringSession = false);
     }
@@ -204,17 +214,15 @@ class _ProbeScreenState extends State<ProbeScreen> {
       'server': server.text.trim(),
       'tokenServer': tokenServer.text.trim(),
       'mediaServer': mediaServer.text.trim(),
-      'rememberTab': rememberTab,
     });
     writeTabAccount(account);
     await prefs.setString('lastAccount', account);
-    await prefs.setBool('rememberTab', rememberTab);
     savedAccount = true;
   }
 
   VoiceCall? get call => calls?.active;
   bool busy = false;
-  String status = 'Локальный стенд · тестовые данные';
+  String status = '';
 
   Future<void> run(Future<void> Function() action) async {
     if (busy) return;
@@ -246,11 +254,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> login({bool resume = false}) async {
-    final next = await MatrixProbe.open(
-      profile.text.trim(),
-      passphrase: kIsWeb && !resume ? vaultPassword.text : null,
-      remember: kIsWeb && rememberTab,
-    );
+    if (!savedAccount) profile.text = newDeviceProfile();
+    final accountPassword = password.text;
+    final next = await MatrixProbe.open(profile.text.trim(), automatic: true);
     try {
       if (!next.client.isLogged() && savedAccount) {
         savedAccount = false;
@@ -264,12 +270,13 @@ class _ProbeScreenState extends State<ProbeScreen> {
       rethrow;
     }
     await connected(next);
+    if (!linked && mounted) await linkDevice(accountPassword);
   }
 
   Future<void> connected(MatrixProbe next) async {
     password.clear();
-    vaultPassword.clear();
     probe = next;
+    linked = await deviceLinked(next.client);
     enableFirstContactTrust(next.client);
     historyRecovery = HistoryRecovery(next.client, () {
       if (mounted) {
@@ -280,6 +287,17 @@ class _ProbeScreenState extends State<ProbeScreen> {
     });
     verifications = DeviceVerifications(next.client, () {
       if (!mounted) return;
+      final owner = verifications;
+      if (owner != null && owner.pending.isNotEmpty && owner.viewing == null) {
+        unawaited(
+          showDeviceVerification(
+            context,
+            owner,
+            owner.pending.first,
+            call: call,
+          ),
+        );
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Получен запрос проверки устройства'),
@@ -355,52 +373,73 @@ class _ProbeScreenState extends State<ProbeScreen> {
     );
     final room = next.client.getRoomById(roomId ?? '');
     if (room?.membership == mx.Membership.join) await select(room!);
-    report('Локальный стенд · сквозное шифрование');
   }
 
   Future<void> registration({bool reset = false}) async {
-    final next = await MatrixProbe.open(
-      profile.text.trim(),
-      passphrase: kIsWeb ? vaultPassword.text : null,
-      remember: kIsWeb && rememberTab,
-    );
+    MatrixProbe? next;
+    Future<mx.Client>? preparing;
     var adopted = false;
+    String? registrationPassword;
+    profile.text = newDeviceProfile();
     try {
-      if (next.client.isLogged()) {
-        throw UserActionError(
-          'Этот локальный профиль уже связан с аккаунтом. Используйте другое имя профиля для регистрации.',
-        );
-      }
-      await next.client.checkHomeserver(
-        secureEndpoint(server.text.trim()),
-        checkWellKnown: false,
-      );
-      if (!mounted) return;
       final completed = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
-          builder: (_) =>
-              RegistrationScreen(client: next.client, resetPassword: reset),
+          builder: (_) => RegistrationScreen(
+            resetPassword: reset,
+            requireLocalPassphrase: false,
+            onRegistered: (value) => registrationPassword = value,
+            openClient: (passphrase) => preparing = () async {
+              final opened = await MatrixProbe.open(
+                profile.text.trim(),
+                automatic: true,
+              );
+              try {
+                if (opened.client.isLogged()) {
+                  throw UserActionError(
+                    'Не удалось создать новое хранилище. Повторите регистрацию.',
+                  );
+                }
+                await opened.client.checkHomeserver(
+                  secureEndpoint(server.text.trim()),
+                  checkWellKnown: false,
+                );
+              } catch (_) {
+                await opened.close();
+                rethrow;
+              }
+              next = opened;
+              return opened.client;
+            }(),
+          ),
         ),
       );
-      if (completed == true && !reset) {
-        await connected(next);
+      if (completed == true && !reset && next != null) {
+        await connected(next!);
         adopted = true;
+        if (mounted) await linkDevice(registrationPassword);
       }
       if (completed == true && reset) {
         report('Пароль изменён. Войдите снова и восстановите историю ключом.');
       }
     } finally {
-      if (!adopted) await next.close();
+      // Navigation can finish while the store is still opening.
+      try {
+        await preparing;
+      } catch (_) {
+        // The registration screen reports the opening error.
+      }
+      if (!adopted) await next?.close();
     }
   }
 
   Future<String?> askText(String title, {String initial = ''}) async {
     final input = TextEditingController(text: initial);
-    final value = await showDialog<String>(
+    final value = await showAppDialog<String>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
-        title: Text(title),
+        title: AppDialogTitle(child: Text(title, textAlign: TextAlign.center)),
         content: TextField(controller: input, autofocus: true),
         actions: [
           TextButton(
@@ -419,26 +458,38 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> newChat({bool group = false}) async {
-    final people = await showDialog<List<String>>(
-      context: context,
-      builder: (_) => PeoplePicker(
-        client: probe!.client,
-        multiple: group,
-        allowedUsers: group ? contacts!.acceptedUsers : null,
-        title: group ? 'Новая группа' : 'Найти человека',
-      ),
-    );
-    if (people == null || people.isEmpty) return;
-    String id;
     if (group) {
-      final name = await askText('Название группы');
-      if (name == null || name.isEmpty) return;
-      id = await probe!.createRoom(people, name: name);
-    } else {
-      await connectContact(people.single);
+      final draft = await showAppDialog<GroupDraft>(
+        context: context,
+        builder: (_) => PeoplePicker.group(
+          client: probe!.client,
+          allowedUsers: contacts!.acceptedUsers,
+        ),
+      );
+      if (draft == null) return;
+      final avatar = draft.avatar;
+      final url = avatar == null
+          ? null
+          : await probe!.client.uploadContent(
+              avatar.bytes,
+              filename: avatar.name,
+              contentType: avatar.mimeType,
+            );
+      final id = await probe!.createRoom(
+        draft.users,
+        name: draft.name,
+        avatar: url,
+      );
+      await select(await probe!.room(id));
       return;
     }
-    await select(await probe!.room(id));
+    final people = await showAppDialog<List<String>>(
+      context: context,
+      builder: (_) =>
+          PeoplePicker(client: probe!.client, title: 'Найти человека'),
+    );
+    if (people == null || people.isEmpty) return;
+    await connectContact(people.single);
   }
 
   Future<void> connectContact(String user) async {
@@ -478,8 +529,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
   Future<void> profileCard(String user) async {
     await presenceTracker?.refresh(user);
     if (!mounted) return;
-    final result = await showDialog<String>(
+    final result = await showAppDialog<String>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (_) => ProfileDialog(
         client: probe!.client,
         contacts: contacts!,
@@ -513,8 +565,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (service == null) return;
     await service.refresh();
     if (!mounted) return;
-    await showDialog<void>(
+    await showAppDialog<void>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (_) => InvitationsDialog(contacts: service),
     );
     if (mounted) setState(() {});
@@ -526,20 +579,51 @@ class _ProbeScreenState extends State<ProbeScreen> {
       await profileCard(room.directChatMatrixID!);
       return;
     }
-    final members = await room.requestParticipants();
+    var members = await room.requestParticipants();
     unawaited(presenceTracker?.refresh());
     if (!mounted) return;
-    final action =
-        chosenAction ??
-        await showDialog<String>(
-          context: context,
-          builder: (_) => RoomMembersDialog(room: room, members: members),
-        );
-    if (action?.startsWith('profile:') == true && mounted) {
-      await profileCard(action!.substring(8));
-    } else if (action == 'invite' && !room.isDirectChat && mounted) {
-      final users = await showDialog<List<String>>(
+    if (chosenAction == null) {
+      var acting = false;
+      await showAppDialog<void>(
         context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (dialogContext, updateMembers) => RoomMembersDialog(
+            room: room,
+            members: members,
+            onAction: (value) async {
+              if (acting) return;
+              acting = true;
+              try {
+                await roomSettings(room, value);
+                if (!dialogContext.mounted) return;
+                if (room.membership != mx.Membership.join) {
+                  Navigator.pop(dialogContext);
+                  return;
+                }
+                members = await room.requestParticipants();
+              } catch (error) {
+                report(
+                  error is UserActionError
+                      ? error.message
+                      : 'Не удалось выполнить действие. Проверьте соединение.',
+                );
+              } finally {
+                acting = false;
+                if (dialogContext.mounted) updateMembers(() {});
+              }
+            },
+          ),
+        ),
+      );
+      return;
+    }
+    final action = chosenAction;
+    if (action.startsWith('profile:') && mounted) {
+      await profileCard(action.substring(8));
+    } else if (action == 'invite' && !room.isDirectChat && mounted) {
+      final users = await showAppDialog<List<String>>(
+        context: context,
+        animationStyle: appAnimationStyle(context),
         builder: (_) => PeoplePicker(
           client: room.client,
           multiple: true,
@@ -560,7 +644,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       final name = await askText('Название', initial: roomDisplayName(room));
       if (name != null && name.isNotEmpty) await room.setName(name);
     } else if (!room.isDirectChat &&
-        (action == 'leave' || action?.startsWith('kick:') == true)) {
+        (action == 'leave' || action.startsWith('kick:'))) {
       final confirmed = await askText(
         action == 'leave'
             ? 'Введите ДА, чтобы покинуть чат'
@@ -579,7 +663,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
           });
         }
       } else {
-        await room.kick(action!.substring(5));
+        await room.kick(action.substring(5));
       }
     }
   }
@@ -623,18 +707,133 @@ class _ProbeScreenState extends State<ProbeScreen> {
       'lastRoom:${profile.text.trim()}',
       room.id,
     );
-    report('Локальный стенд · сквозное шифрование');
+  }
+
+  Future<void> linkDevice(String? accountPassword) async {
+    final client = probe!.client;
+    final identity = await client.getCryptoIdentityState();
+    if (!identity.initialized) {
+      final devices = await client.getDevices();
+      if (devices == null ||
+          devices.any((d) => d.deviceId != client.deviceID)) {
+        throw UserActionError(
+          'На аккаунте ещё не настроено восстановление. Создайте ключ на первом устройстве.',
+        );
+      }
+      final secret = accountPassword?.isNotEmpty == true
+          ? accountPassword
+          : await askPassword();
+      if (secret == null) return;
+      final key = await probe!.initializeRecovery(secret);
+      await client.encryption!.keyManager.uploadInboundGroupSessions();
+      if (!mounted) return;
+      await showAppDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: AppDialogTitle(
+            child: const Text('Сохраните ключ восстановления'),
+          ),
+          content: SelectableText(
+            'Он понадобится, если вы потеряете все устройства. Сохраните его в менеджере паролей.\n\n$key',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Я сохранил ключ'),
+            ),
+          ],
+        ),
+      );
+      await markDeviceLinked(client);
+      if (mounted) setState(() => linked = true);
+      return;
+    }
+    await client.updateUserDeviceKeys();
+    final devices =
+        client.userDeviceKeys[client.userID]?.deviceKeys.values
+            .where(
+              (d) => d.deviceId != client.deviceID && d.isValid && !d.blocked,
+            )
+            .toList() ??
+        [];
+    if (!mounted) return;
+    final device = devices.length == 1
+        ? devices.single
+        : await showAppDialog<mx.DeviceKeys>(
+            context: context,
+            builder: (dialogContext) => SimpleDialog(
+              title: const Text('Где подтвердить вход?'),
+              children: [
+                if (devices.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'Других устройств нет. Используйте ключ восстановления.',
+                    ),
+                  ),
+                for (final device in devices)
+                  SimpleDialogOption(
+                    onPressed: () => Navigator.pop(dialogContext, device),
+                    child: Text(
+                      '${device.deviceDisplayName ?? 'VoiceChat'} · ${device.deviceId}',
+                    ),
+                  ),
+              ],
+            ),
+          );
+    if (device == null || !mounted) return;
+    final owner = verifications!;
+    final request = await owner.start(device);
+    if (!mounted) return;
+    final verified = await showDeviceVerification(
+      context,
+      owner,
+      request,
+      call: call,
+    );
+    if (!verified ||
+        request.canceled ||
+        request.state != crypto.KeyVerificationState.done ||
+        !device.directVerified) {
+      throw UserActionError('Подключение не подтверждено. Повторите сверку.');
+    }
+    report('Получаем ключи и восстанавливаем историю…');
+    await receiveLinkedSecrets(client, device);
+    if (mounted) setState(() => linked = true);
   }
 
   Future<void> setupRecovery() async {
+    if ((await probe!.client.getCryptoIdentityState()).initialized) {
+      if (!mounted) return;
+      await showAppDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: AppDialogTitle(child: const Text('Ключ восстановления')),
+          content: const Text(
+            'Ключ был показан при первом входе. Используйте сохранённую копию из менеджера паролей. Новые устройства можно подключить подтверждением на этом устройстве. Создание другого ключа не требуется.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Понятно'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
     final secret = await askPassword();
     if (secret == null) return;
     final key = await probe!.initializeRecovery(secret);
     if (!mounted) return;
-    await showDialog<void>(
+    await showAppDialog<void>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
-        title: const Text('Сохраните ключ восстановления'),
+        title: AppDialogTitle(
+          child: const Text('Сохраните ключ восстановления'),
+        ),
         content: SelectableText(
           'Сохраните отдельно от этого устройства. Не отправляйте в чат.\n\n$key',
         ),
@@ -653,15 +852,26 @@ class _ProbeScreenState extends State<ProbeScreen> {
     await probe!.requireHistoryBackup();
     if (!mounted) return;
     final input = TextEditingController();
-    final value = await showDialog<String>(
+    final value = await showAppDialog<String>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
-        title: const Text('Вернуть историю'),
-        content: TextField(
-          controller: input,
-          obscureText: true,
-          decoration: const InputDecoration(
-            labelText: 'Ваш ключ восстановления',
+        title: AppDialogTitle(child: const Text('Вернуть историю')),
+        content: SizedBox(
+          width: 600,
+          child: TextField(
+            controller: input,
+            minLines: 3,
+            maxLines: 5,
+            autocorrect: false,
+            enableSuggestions: false,
+            keyboardType: TextInputType.visiblePassword,
+            textInputAction: TextInputAction.done,
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
+            decoration: const InputDecoration(
+              labelText: 'Ваш ключ восстановления',
+              alignLabelWithHint: true,
+            ),
           ),
         ),
         actions: [
@@ -679,6 +889,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     input.dispose();
     if (value == null) return;
     await probe!.restore(value);
+    await markDeviceLinked(probe!.client);
+    linked = true;
     report('Ключи восстановлены. Откройте чат для загрузки истории.');
   }
 
@@ -705,10 +917,13 @@ class _ProbeScreenState extends State<ProbeScreen> {
 
   Future<String?> askPassword() async {
     final input = TextEditingController();
-    final value = await showDialog<String>(
+    final value = await showAppDialog<String>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
-        title: const Text('Подтвердите паролем аккаунта'),
+        title: AppDialogTitle(
+          child: const Text('Подтвердите паролем аккаунта'),
+        ),
         content: TextField(
           controller: input,
           obscureText: true,
@@ -772,107 +987,150 @@ class _ProbeScreenState extends State<ProbeScreen> {
     report('Хранилище заблокировано. Для открытия введите локальную фразу.');
   }
 
-  Future<void> verifyDevices() async {
+  Future<void> verifyDevices({Object? choice}) async {
     final client = probe!.client;
     final users = selected == null
         ? <String>{client.userID!}
         : (await client.getJoinedMembersByRoom(selected!.id))!.keys.toSet();
     await refreshDevices(client, users);
-    final devices = users
+    var devices = users
         .expand((user) => client.userDeviceKeys[user]!.deviceKeys.values)
         .toList();
-    final independent = await independentlyVerifiedDevices(client, devices);
-    final ownIdentity =
-        'Это устройство: ${client.userID} / ${client.deviceID}\nВаш отпечаток:\n${client.fingerprintKey}';
+    var independent = await independentlyVerifiedDevices(client, devices);
     if (!mounted) return;
-    final chosen = await showDialog<Object>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Проверка личности устройств'),
-        content: SizedBox(
-          width: 500,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Semantics(
-                  container: true,
-                  label: ownIdentity,
-                  excludeSemantics: true,
-                  child: SelectableText(ownIdentity),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Выберите устройство и сравните коды на обоих экранах лично или по независимому каналу. Автоматически закреплённый ключ ещё не означает независимую проверку.',
-                ),
-                for (final request in verifications!.pending)
-                  ListTile(
-                    title: Text('Продолжить проверку ${request.userId}'),
-                    onTap: () => Navigator.pop(context, request),
-                  ),
-                ...devices.map(
-                  (device) => ListTile(
-                    title: Text('${device.userId} / ${device.deviceId}'),
-                    subtitle: Text(
-                      device.userId == client.userID &&
-                              device.deviceId == client.deviceID
-                          ? 'Это устройство'
-                          : independent.contains(device)
-                          ? 'Подтверждено независимой сверкой'
-                          : device.directVerified
-                          ? 'Ключ закреплён без отметки независимой сверки'
-                          : 'Не проверено',
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          independent.contains(device)
-                              ? Icons.verified_user
-                              : device.directVerified
-                              ? Icons.lock_outline
-                              : Icons.help_outline,
+    if (choice == null) {
+      var acting = false;
+      await showAppDialog<void>(
+        context: context,
+        animationStyle: appAnimationStyle(context),
+        builder: (context) => StatefulBuilder(
+          builder: (context, updateDevices) {
+            Future<void> choose(Object value) async {
+              if (acting) return;
+              acting = true;
+              try {
+                await verifyDevices(choice: value);
+                devices = users
+                    .expand(
+                      (user) => client.userDeviceKeys[user]!.deviceKeys.values,
+                    )
+                    .toList();
+                independent = await independentlyVerifiedDevices(
+                  client,
+                  devices,
+                );
+              } catch (error) {
+                report(
+                  error is UserActionError
+                      ? error.message
+                      : 'Не удалось проверить устройство. Повторите попытку.',
+                );
+              } finally {
+                acting = false;
+                if (context.mounted) updateDevices(() {});
+              }
+            }
+
+            return AlertDialog(
+              title: AppDialogTitle(
+                child: const Text('Проверка личности устройств'),
+              ),
+              content: SizedBox(
+                width: 500,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      IdentityField(label: 'Аккаунт', value: client.userID!),
+                      IdentityField(
+                        label: 'Это устройство',
+                        value: client.deviceID!,
+                      ),
+                      if (client.fingerprintKey case final String fingerprint)
+                        IdentityField(
+                          label: 'Ваш отпечаток',
+                          value: fingerprint,
                         ),
-                        if (!device.blocked &&
-                            !(device.userId == client.userID &&
-                                device.deviceId == client.deviceID))
-                          PopupMenuButton<String>(
-                            tooltip: 'Способ проверки',
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
-                                value: 'manual',
-                                child: Text('Сверить полный отпечаток'),
-                              ),
-                            ],
-                            onSelected: (_) => Navigator.pop(context, (
-                              device: device,
-                              manual: true,
-                            )),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Выберите устройство и сравните коды на обоих экранах лично или по независимому каналу. Автоматически закреплённый ключ ещё не означает независимую проверку.',
+                      ),
+                      for (final request in verifications!.pending)
+                        ListTile(
+                          title: Text('Продолжить проверку ${request.userId}'),
+                          onTap: () => choose(request),
+                        ),
+                      ...devices.map(
+                        (device) => Card.outlined(
+                          margin: const EdgeInsets.only(top: 10),
+                          child: ListTile(
+                            title: Text(device.userId),
+                            subtitle: Text(
+                              '${device.deviceId}\n${device.userId == client.userID && device.deviceId == client.deviceID
+                                  ? 'Это устройство'
+                                  : independent.contains(device)
+                                  ? 'Подтверждено независимой сверкой'
+                                  : device.directVerified
+                                  ? 'Ключ закреплён без отметки независимой сверки'
+                                  : 'Не проверено'}',
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  independent.contains(device)
+                                      ? Icons.verified_user
+                                      : device.directVerified
+                                      ? Icons.lock_outline
+                                      : Icons.help_outline,
+                                ),
+                                if (!device.blocked &&
+                                    !(device.userId == client.userID &&
+                                        device.deviceId == client.deviceID))
+                                  PopupMenuButton<String>(
+                                    popUpAnimationStyle: appAnimationStyle(
+                                      context,
+                                    ),
+                                    tooltip: 'Способ проверки',
+                                    itemBuilder: (_) => const [
+                                      PopupMenuItem(
+                                        value: 'manual',
+                                        child: Text('Сверить полный отпечаток'),
+                                      ),
+                                    ],
+                                    onSelected: (_) =>
+                                        choose((device: device, manual: true)),
+                                  ),
+                              ],
+                            ),
+                            onTap:
+                                device.blocked ||
+                                    device.userId == client.userID &&
+                                        device.deviceId == client.deviceID
+                                ? null
+                                : () => choose(device),
                           ),
-                      ],
-                    ),
-                    onTap:
-                        device.blocked ||
-                            device.userId == client.userID &&
-                                device.deviceId == client.deviceID
-                        ? null
-                        : () => Navigator.pop(context, device),
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Закрыть'),
                 ),
               ],
-            ),
-          ),
+            );
+          },
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
-          ),
-        ],
-      ),
-    );
-    if (chosen == null || !mounted) return;
+      );
+      return;
+    }
+    final chosen = choice;
+    if (!mounted) return;
     if (chosen case (device: final mx.DeviceKeys device, manual: true)) {
       await verifyFingerprint(device);
       return;
@@ -887,8 +1145,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> historyRequests() async {
-    await showDialog<void>(
+    await showAppDialog<void>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       barrierDismissible: false,
       builder: (_) => HistoryRecoveryDialog(
         owner: historyRecovery!,
@@ -900,14 +1159,18 @@ class _ProbeScreenState extends State<ProbeScreen> {
   Future<bool> verifyFingerprint(mx.DeviceKeys chosen) async {
     final client = probe!.client;
     final input = TextEditingController();
-    final fingerprint = await showDialog<String>(
+    final fingerprint = await showAppDialog<String>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
-        title: const Text('Введите отпечаток со второго устройства'),
+        title: AppDialogTitle(
+          child: const Text('Введите отпечаток со второго устройства'),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('${chosen.userId} / ${chosen.deviceId}'),
+            IdentityField(label: 'Аккаунт', value: chosen.userId),
+            IdentityField(label: 'Устройство', value: chosen.deviceId!),
             TextField(
               controller: input,
               autocorrect: false,
@@ -938,63 +1201,108 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> devices() async {
-    final items = await probe!.client.getDevices();
+    final client = probe!.client;
+    var items = await client.getDevices() ?? <mx.Device>[];
+    String? feedback;
+    bool revoking = false;
     if (!mounted) return;
-    final device = await showDialog<mx.Device>(
+    await showAppDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Устройства аккаунта'),
-        content: SizedBox(
-          width: 420,
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              const Text(
-                'Отзыв завершает сеанс. Уже полученные сообщения и скопированные ключи удалить удалённо нельзя.',
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, update) {
+          Future<void> revoke(mx.Device device) async {
+            if (revoking) return;
+            update(() {
+              revoking = true;
+              feedback = null;
+            });
+            try {
+              final secret = await askPassword();
+              if (secret == null) return;
+              await call?.close();
+              await probe!.revokeDevice(device.deviceId, secret);
+              items = await client.getDevices() ?? <mx.Device>[];
+              feedback =
+                  'Доступ устройства отозван. Старую скопированную историю это не удаляет.';
+            } catch (error) {
+              feedback = error is UserActionError
+                  ? error.message
+                  : 'Не удалось отозвать доступ. Проверьте соединение.';
+            } finally {
+              if (dialogContext.mounted) update(() => revoking = false);
+            }
+          }
+
+          return AlertDialog(
+            title: const AppDialogTitle(child: Text('Устройства аккаунта')),
+            content: SizedBox(
+              width: 480,
+              height: (MediaQuery.sizeOf(dialogContext).height * .5).clamp(
+                160,
+                480,
               ),
-              ...?items?.map(
-                (device) => ListTile(
-                  title: Text(device.displayName ?? device.deviceId),
-                  subtitle: Text(
-                    device.deviceId == probe!.client.deviceID
-                        ? 'Это устройство'
-                        : device.deviceId,
+              child: ListView(
+                children: [
+                  const Text(
+                    'Отзыв завершает сеанс. Уже полученные сообщения могут остаться на устройстве.',
                   ),
-                  trailing: device.deviceId == probe!.client.deviceID
-                      ? null
-                      : IconButton(
-                          tooltip: 'Отозвать доступ',
-                          icon: const Icon(Icons.no_accounts_outlined),
-                          onPressed: () => Navigator.pop(context, device),
+                  const SizedBox(height: 8),
+                  if (feedback != null)
+                    Semantics(liveRegion: true, child: Text(feedback!)),
+                  for (final device in items)
+                    Card.outlined(
+                      child: ListTile(
+                        leading: const Icon(Icons.devices_outlined),
+                        title: Text(device.displayName ?? device.deviceId),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${device.deviceId}${device.deviceId == client.deviceID ? ' · Это устройство' : ''}',
+                            ),
+                            Text(
+                              'Добавлено: ${deviceAddedAt(client, device.deviceId) == null ? 'дата не сохранена' : scheduledTime(deviceAddedAt(client, device.deviceId)!)}',
+                            ),
+                            if (device.lastSeenTs case final int timestamp)
+                              Text(
+                                'Последняя активность: ${scheduledTime(DateTime.fromMillisecondsSinceEpoch(timestamp))}',
+                              ),
+                          ],
                         ),
-                ),
+                        trailing: device.deviceId == client.deviceID
+                            ? null
+                            : IconButton(
+                                tooltip: 'Отозвать доступ',
+                                onPressed: revoking
+                                    ? null
+                                    : () => revoke(device),
+                                icon: const Icon(Icons.no_accounts_outlined),
+                              ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Закрыть'),
               ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
-          ),
-        ],
+          );
+        },
       ),
-    );
-    if (device == null) return;
-    final secret = await askPassword();
-    if (secret == null) return;
-    await call?.close();
-    await probe!.revokeDevice(device.deviceId, secret);
-    report(
-      'Доступ устройства отозван. Старую скопированную историю это не удаляет.',
     );
   }
 
   Future<void> logout() async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showAppDialog<bool>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       builder: (context) => AlertDialog(
-        title: const Text('Выйти и удалить локальные ключи?'),
+        title: AppDialogTitle(
+          child: const Text('Выйти и удалить локальные ключи?'),
+        ),
         content: const Text(
           'Для возвращения истории потребуется ключ восстановления или другое устройство. Убедитесь, что сохранили ключ.',
         ),
@@ -1032,6 +1340,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     writeTabAccount(null);
     savedAccount = false;
     await calls?.close();
+    await verifications?.close();
+    verifications = null;
     await sounds?.close();
     await historyRecovery?.close();
     await presenceTracker?.close();
@@ -1076,25 +1386,14 @@ class _ProbeScreenState extends State<ProbeScreen> {
       username,
       password,
       profile,
-      vaultPassword,
     ]) {
       c.dispose();
     }
     super.dispose();
   }
 
-  Widget field(TextEditingController c, String label, {bool secret = false}) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: TextField(
-          controller: c,
-          obscureText: secret,
-          autocorrect: !secret,
-          enableSuggestions: !secret,
-          decoration: InputDecoration(labelText: label),
-        ),
-      );
   Widget paletteMenu() => PopupMenuButton<AppPalette>(
+    popUpAnimationStyle: appAnimationStyle(context),
     tooltip: 'Цветовая схема',
     initialValue: widget.palette,
     onSelected: widget.onPalette,
@@ -1104,307 +1403,391 @@ class _ProbeScreenState extends State<ProbeScreen> {
         .toList(),
   );
 
-  Widget connection() {
-    final theme = Theme.of(context);
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  savedAccount ? 'С возвращением' : 'Добро пожаловать',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -.8,
-                  ),
-                ),
-              ),
-              paletteMenu(),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            savedAccount
-                ? username.text
-                : 'Войдите, чтобы быть на связи с близкими.',
-            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 28),
-          if (!savedAccount) ...[
-            field(username, 'Имя пользователя'),
-            field(password, 'Пароль аккаунта', secret: true),
-          ],
-          if (kIsWeb)
-            field(
-              vaultPassword,
-              'Отдельная локальная фраза (от 12 символов)',
-              secret: true,
-            ),
-          if (kIsWeb)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                savedAccount
-                    ? 'Это фраза, которую вы придумали при первом входе. Пароль аккаунта повторно не нужен.'
-                    : 'Придумайте отдельную фразу для защиты переписки в браузере. Для этого профиля её потребуется помнить.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          if (kIsWeb)
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              value: rememberTab,
-              onChanged: (value) => setState(() => rememberTab = value!),
-              title: const Text('Сохранять вход в этой вкладке'),
-              subtitle: const Text(
-                'Обновление страницы без повторного пароля. «Заблокировать» завершит разблокировку.',
-              ),
-            ),
-          const SizedBox(height: 20),
-          FilledButton.icon(
-            onPressed: busy ? null : () => run(login),
-            icon: Icon(
-              savedAccount
-                  ? Icons.lock_open_rounded
-                  : Icons.arrow_forward_rounded,
-            ),
-            label: Text(savedAccount ? 'Открыть переписку' : 'Войти'),
-          ),
-          const SizedBox(height: 12),
-          if (savedAccount)
-            TextButton(
-              onPressed: () => setState(() => savedAccount = false),
-              child: const Text('Другой аккаунт или профиль'),
-            )
-          else ...[
-            OutlinedButton(
-              onPressed: busy ? null : () => run(() => registration()),
-              child: const Text('Создать аккаунт'),
-            ),
-            TextButton(
-              onPressed: busy
-                  ? null
-                  : () => run(() => registration(reset: true)),
-              child: const Text('Забыли пароль?'),
-            ),
-          ],
-          const SizedBox(height: 12),
-          ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            title: const Text('Параметры подключения'),
-            children: [
-              field(profile, 'Профиль устройства'),
-              field(server, 'Matrix URL'),
-              field(tokenServer, 'Token API URL'),
-              field(mediaServer, 'LiveKit URL'),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Локальная версия · проверка безопасности ещё не завершена',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
+  final loginForm = GlobalKey<FormState>();
+  Future<void> submitLogin() async {
+    if (!savedAccount && !(loginForm.currentState?.validate() ?? false)) return;
+    await run(login);
   }
+
+  Future<void> connectionSettings() => showAppDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: AppDialogTitle(child: const Text('Параметры подключения')),
+      content: SizedBox(
+        width: 420,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final (controller, label) in [
+                (server, 'Matrix URL'),
+                (tokenServer, 'Token API URL'),
+                (mediaServer, 'LiveKit URL'),
+              ])
+                AuthField(
+                  controller: controller,
+                  label: label,
+                  keyboardType: TextInputType.url,
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Готово'),
+        ),
+      ],
+    ),
+  );
+
+  Widget connection() => AuthPage(
+    key: const ValueKey('halo-login'),
+    title: savedAccount ? 'Ваши разговоры ждут' : 'Снова на связи',
+    subtitle: savedAccount
+        ? 'Откройте переписку на этом устройстве.'
+        : 'Войдите в VoiceChat — и продолжите с того места, где остановились.',
+    eyebrow: savedAccount ? 'СОХРАНЁННЫЙ АККАУНТ' : 'ВАШЕ ПРОСТРАНСТВО',
+    icon: savedAccount ? Icons.forum_outlined : Icons.waving_hand_outlined,
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          tooltip: 'Параметры подключения',
+          onPressed: busy ? null : connectionSettings,
+          icon: const Icon(Icons.tune_rounded),
+        ),
+        paletteMenu(),
+      ],
+    ),
+    child: restoringSession
+        ? const Column(
+            children: [
+              LinearProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Открываем сохранённый вход…'),
+            ],
+          )
+        : AutofillGroup(
+            child: Form(
+              key: loginForm,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (savedAccount)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: AuthNotice(
+                        username.text,
+                        icon: Icons.account_circle_outlined,
+                      ),
+                    )
+                  else ...[
+                    AuthField(
+                      controller: username,
+                      label: 'Имя пользователя',
+                      autofillHints: const [AutofillHints.username],
+                      readOnly: busy,
+                      validator: (value) =>
+                          value == null || value.trim().isEmpty
+                          ? 'Введите имя пользователя.'
+                          : null,
+                    ),
+                    AuthField(
+                      controller: password,
+                      label: 'Пароль аккаунта',
+                      secret: true,
+                      autofillHints: const [AutofillHints.password],
+                      readOnly: busy,
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Введите пароль аккаунта.'
+                          : null,
+                      onSubmitted: submitLogin,
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: busy
+                            ? null
+                            : () => run(() => registration(reset: true)),
+                        child: const Text('Забыли пароль?'),
+                      ),
+                    ),
+                  ],
+                  SizedBox(
+                    height: 3,
+                    child: busy ? const LinearProgressIndicator() : null,
+                  ),
+                  const SizedBox(height: 1),
+                  FilledButton.icon(
+                    onPressed: busy ? null : submitLogin,
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: Text(savedAccount ? 'Открыть переписку' : 'Войти'),
+                  ),
+                  const SizedBox(height: 8),
+                  const AuthNotice(
+                    'Новое устройство: подтвердите вход на другом устройстве или ключом восстановления.',
+                    icon: Icons.devices_outlined,
+                  ),
+                  const SizedBox(height: 8),
+                  if (savedAccount)
+                    TextButton(
+                      onPressed: busy
+                          ? null
+                          : () => setState(() {
+                              savedAccount = false;
+                              profile.text = newDeviceProfile();
+                            }),
+                      child: const Text('Другой аккаунт'),
+                    )
+                  else ...[
+                    OutlinedButton(
+                      onPressed: busy ? null : () => run(() => registration()),
+                      child: const Text('Создать аккаунт'),
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  if (status.isNotEmpty)
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        status,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Локальная версия · проверка безопасности ещё не завершена',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+  );
 
   Future<void> settings() async {
     var privacyBusy = false;
     String? privacyError;
-    final chosen = await showDialog<String>(
+    await showAppDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        title: const Text('Настройки'),
-        content: SizedBox(
-          width: 460,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: PersonAvatar(
-                    name: username.text.replaceFirst('@', ''),
-                    client: probe!.client,
-                    url: ownAvatar,
-                    online: online,
-                  ),
-                  title: Text(probe!.client.userID!),
-                  subtitle: Text('Устройство: ${probe!.client.deviceID}'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.account_circle_outlined),
-                  title: const Text('Изменить аватар'),
-                  onTap: () => Navigator.pop(dialogContext, 'avatar'),
-                ),
-                if (contacts != null)
-                  StatefulBuilder(
-                    builder: (context, update) => Column(
-                      children: [
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text(
-                            'Мне могут писать без подтверждения',
-                          ),
-                          subtitle: const Text(
-                            'Если выключить, новые собеседники сначала отправляют запрос',
-                          ),
-                          value: contacts!.allowDirect,
-                          onChanged: privacyBusy || !contacts!.available
-                              ? null
-                              : (value) async {
-                                  update(() {
-                                    privacyBusy = true;
-                                    privacyError = null;
-                                  });
-                                  try {
-                                    await contacts!.setAllowDirect(value);
-                                  } catch (_) {
-                                    privacyError =
-                                        'Не удалось сохранить настройку. Проверьте соединение и повторите.';
-                                  } finally {
-                                    if (context.mounted) {
-                                      update(() => privacyBusy = false);
-                                    }
-                                  }
-                                },
+      animationStyle: appAnimationStyle(context),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, updateSettings) {
+          Future<void> openSetting(String choice) async {
+            await settingsAction(choice);
+            if (!dialogContext.mounted) return;
+            if (probe == null || !linked) {
+              Navigator.pop(dialogContext);
+            } else {
+              updateSettings(() {});
+            }
+          }
+
+          return AlertDialog(
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
+            ),
+            title: AppDialogTitle(child: const Text('Настройки')),
+            content: SizedBox(
+              width: 460,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: PersonAvatar(
+                        name: username.text.replaceFirst('@', ''),
+                        client: probe!.client,
+                        url: ownAvatar,
+                        online: online,
+                      ),
+                      title: Text(probe!.client.userID!),
+                      subtitle: Text('Устройство: ${probe!.client.deviceID}'),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.account_circle_outlined),
+                      title: const Text('Изменить аватар'),
+                      onTap: () => openSetting('avatar'),
+                    ),
+                    if (contacts != null)
+                      ListTile(
+                        leading: const Icon(Icons.mail_outline),
+                        title: const Text('История приглашений'),
+                        subtitle: const Text(
+                          'Входящие, исходящие и завершённые',
                         ),
-                        if (privacyError != null) Text(privacyError!),
+                        onTap: () => openSetting('invitations'),
+                      ),
+                    if (contacts != null)
+                      StatefulBuilder(
+                        builder: (context, update) => Column(
+                          children: [
+                            SwitchListTile(
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text(
+                                'Мне могут писать без подтверждения',
+                              ),
+                              subtitle: const Text(
+                                'Если выключить, новые собеседники сначала отправляют запрос',
+                              ),
+                              value: contacts!.allowDirect,
+                              onChanged: privacyBusy || !contacts!.available
+                                  ? null
+                                  : (value) async {
+                                      update(() {
+                                        privacyBusy = true;
+                                        privacyError = null;
+                                      });
+                                      try {
+                                        await contacts!.setAllowDirect(value);
+                                      } catch (_) {
+                                        privacyError =
+                                            'Не удалось сохранить настройку. Проверьте соединение и повторите.';
+                                      } finally {
+                                        if (context.mounted) {
+                                          update(() => privacyBusy = false);
+                                        }
+                                      }
+                                    },
+                            ),
+                            if (privacyError != null) Text(privacyError!),
+                          ],
+                        ),
+                      ),
+                    const Divider(height: 28),
+                    ListTile(
+                      leading: const Icon(Icons.storage_outlined),
+                      title: const Text('Локальное хранилище'),
+                      subtitle: const Text(
+                        'Объём, лимит и очистка старой локальной истории',
+                      ),
+                      onTap: () => openSetting('storage'),
+                    ),
+                    Row(
+                      children: [
+                        const Expanded(child: Text('Цветовая схема')),
+                        paletteMenu(),
                       ],
                     ),
-                  ),
-                const Divider(height: 28),
-                ListTile(
-                  leading: const Icon(Icons.storage_outlined),
-                  title: const Text('Локальное хранилище'),
-                  subtitle: const Text(
-                    'Объём, лимит и очистка старой локальной истории',
-                  ),
-                  onTap: () => Navigator.pop(dialogContext, 'storage'),
-                ),
-                Row(
-                  children: [
-                    const Expanded(child: Text('Цветовая схема')),
-                    paletteMenu(),
+                    ListTile(
+                      leading: Icon(
+                        sounds?.enabled == true
+                            ? Icons.volume_up_outlined
+                            : Icons.volume_off_outlined,
+                      ),
+                      title: Text(
+                        sounds?.enabled == true
+                            ? 'Звуки включены'
+                            : 'Звуки выключены',
+                      ),
+                      subtitle: Text(
+                        sounds?.blocked == true
+                            ? 'Браузер заблокировал звук. Разрешите воспроизведение для сайта.'
+                            : 'Сообщения и входящие / исходящие вызовы',
+                      ),
+                      onTap: () => openSetting('sounds'),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Устройства и безопасность',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.devices_outlined),
+                      title: const Text('Устройства'),
+                      subtitle: const Text('Сеансы и отзыв доступа'),
+                      onTap: () => openSetting('devices'),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.verified_user_outlined),
+                      title: const Text('Проверить устройства'),
+                      subtitle: const Text(
+                        'Независимая сверка устройств и ключей',
+                      ),
+                      onTap: () => openSetting('verify'),
+                    ),
+                    const Divider(height: 24),
+                    Text(
+                      'Доступ к истории',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.key_outlined),
+                      title: const Text('Ключ восстановления'),
+                      onTap: () => openSetting('recovery'),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.restore_rounded),
+                      title: const Text('Восстановить'),
+                      onTap: () => openSetting('restore'),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.swap_horiz_rounded),
+                      title: const Text('Запросы истории'),
+                      subtitle: Text(
+                        'Ожидают: ${historyRecovery?.pending.length ?? 0}',
+                      ),
+                      onTap: () => openSetting('historyRequests'),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.cloud_upload_outlined),
+                      title: const Text('Обновить backup'),
+                      onTap: () => openSetting('backup'),
+                    ),
+                    const Divider(height: 24),
+                    ListTile(
+                      leading: const Icon(Icons.logout_rounded),
+                      title: const Text('Выйти'),
+                      subtitle: const Text(
+                        'Завершить сеанс и удалить локальные ключи',
+                      ),
+                      onTap: () => openSetting('logout'),
+                    ),
                   ],
                 ),
-                ListTile(
-                  leading: Icon(
-                    sounds?.enabled == true
-                        ? Icons.volume_up_outlined
-                        : Icons.volume_off_outlined,
-                  ),
-                  title: Text(
-                    sounds?.enabled == true
-                        ? 'Звуки включены'
-                        : 'Звуки выключены',
-                  ),
-                  subtitle: Text(
-                    sounds?.blocked == true
-                        ? 'Браузер заблокировал звук. Разрешите воспроизведение для сайта.'
-                        : 'Сообщения и входящие / исходящие вызовы',
-                  ),
-                  onTap: () => Navigator.pop(dialogContext, 'sounds'),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Устройства и безопасность',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                ListTile(
-                  leading: const Icon(Icons.devices_outlined),
-                  title: const Text('Устройства'),
-                  subtitle: const Text('Сеансы и отзыв доступа'),
-                  onTap: () => Navigator.pop(dialogContext, 'devices'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.verified_user_outlined),
-                  title: const Text('Проверить устройства'),
-                  subtitle: const Text('Независимая сверка устройств и ключей'),
-                  onTap: () => Navigator.pop(dialogContext, 'verify'),
-                ),
-                const Divider(height: 24),
-                Text(
-                  'Доступ к истории',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                ListTile(
-                  leading: const Icon(Icons.key_outlined),
-                  title: const Text('Создать ключ'),
-                  onTap: () => Navigator.pop(dialogContext, 'recovery'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.restore_rounded),
-                  title: const Text('Восстановить'),
-                  onTap: () => Navigator.pop(dialogContext, 'restore'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.swap_horiz_rounded),
-                  title: const Text('Запросы истории'),
-                  subtitle: Text(
-                    'Ожидают: ${historyRecovery?.pending.length ?? 0}',
-                  ),
-                  onTap: () => Navigator.pop(dialogContext, 'historyRequests'),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.cloud_upload_outlined),
-                  title: const Text('Обновить backup'),
-                  onTap: () => Navigator.pop(dialogContext, 'backup'),
-                ),
-                const Divider(height: 24),
-                if (kIsWeb)
-                  ListTile(
-                    leading: const Icon(Icons.lock_outline),
-                    title: const Text('Заблокировать'),
-                    subtitle: const Text(
-                      'Закрыть локальные ключи в этой вкладке',
-                    ),
-                    onTap: () => Navigator.pop(dialogContext, 'lock'),
-                  ),
-                ListTile(
-                  leading: const Icon(Icons.logout_rounded),
-                  title: const Text('Выйти'),
-                  subtitle: const Text(
-                    'Завершить сеанс и удалить локальные ключи',
-                  ),
-                  onTap: () => Navigator.pop(dialogContext, 'logout'),
-                ),
-              ],
+              ),
             ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Закрыть'),
-          ),
-        ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Закрыть'),
+              ),
+            ],
+          );
+        },
       ),
     );
-    if (chosen == null || !mounted) return;
+  }
+
+  Future<void> settingsAction(String chosen) async {
+    if (!mounted) return;
     if (chosen == 'historyRequests') {
       await historyRequests();
       return;
     }
     await run(() async {
       switch (chosen) {
+        case 'invitations':
+          await invitations();
         case 'storage':
           await storagePolicy!.check();
           if (mounted) {
-            await showDialog<void>(
+            await showAppDialog<void>(
               context: context,
+              animationStyle: appAnimationStyle(context),
               builder: (_) => StorageDialog(policy: storagePolicy!),
             );
           }
@@ -1449,6 +1832,23 @@ class _ProbeScreenState extends State<ProbeScreen> {
     ownOnline: online,
     onProfile: () => run(() => profileCard(probe!.client.userID!)),
     contactInvites: contacts?.incomingCount ?? 0,
+    outgoingInvites:
+        (contacts?.requests
+                .where(
+                  (r) =>
+                      r.state == 'pending' && r.sender == probe!.client.userID,
+                )
+                .length ??
+            0) +
+        (contacts?.groups
+                .where(
+                  (g) =>
+                      g.state == 'pending' &&
+                      g.inviter == probe!.client.userID &&
+                      g.userId != probe!.client.userID,
+                )
+                .length ??
+            0),
     onChatMenu: (room, action) => run(() async {
       if (action == 'mute') {
         await room.setPushRuleState(
@@ -1511,111 +1911,40 @@ class _ProbeScreenState extends State<ProbeScreen> {
       );
     }
     return ChatPane(
-      key: ValueKey('${room.id}:$focusedEvent'),
+      key: ValueKey(room.id),
       room: room,
       timeline: timeline!,
       actions: actions!,
       report: report,
       initialEventId: focusedEvent,
+      onVoiceCall: busy || (call != null && !call!.isClosed)
+          ? null
+          : () => run(() => startCall()),
+      onVideoCall: busy || (call != null && !call!.isClosed)
+          ? null
+          : () => run(() => startCall(video: true)),
+      onRoomInfo: busy ? null : () => run(() => roomSettings()),
       completeHistory: completeHistory,
       onJump: (event) => run(() => select(room, eventId: event)),
-      header: Container(
-        padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.tertiaryContainer,
-        ),
-        child: Row(
-          children: [
-            IconButton(
-              tooltip: 'Закрыть чат',
-              onPressed: () => run(() async {
-                await stopActiveCapture();
-                if (mounted) setState(() => selected = null);
-              }),
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            InkWell(
-              borderRadius: BorderRadius.circular(24),
-              onTap: room.isDirectChat
-                  ? () => run(() => profileCard(room.directChatMatrixID!))
-                  : () => run(() => roomSettings()),
-              child: PersonAvatar(
-                name: roomDisplayName(room),
-                client: room.client,
-                url: roomAvatar(room),
-                group: !room.isDirectChat,
-                online: roomPresence(room) == 'В сети',
-                size: 42,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    roomDisplayName(room),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    roomPresence(room),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  if (room.isDirectChat &&
-                      lastSeen(
-                        _roomPresenceSnapshot(room),
-                        DateTime.now(),
-                      ).isNotEmpty)
-                    Text(
-                      lastSeen(_roomPresenceSnapshot(room), DateTime.now()),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                ],
-              ),
-            ),
-            IconButton(
-              tooltip: 'Участники и настройки чата',
-              onPressed: busy ? null : () => run(() => roomSettings()),
-              icon: const Icon(Icons.more_horiz_rounded),
-            ),
-            if (MediaQuery.sizeOf(context).width < 500)
-              PopupMenuButton<bool>(
-                tooltip: 'Позвонить',
-                enabled: !busy && (call == null || call!.isClosed),
-                icon: const Icon(Icons.call_outlined),
-                onSelected: (video) => run(() => startCall(video: video)),
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: false, child: Text('Голосовой звонок')),
-                  PopupMenuItem(value: true, child: Text('Видеозвонок')),
-                ],
-              )
-            else ...[
-              IconButton.filledTonal(
-                tooltip: 'Видеозвонок',
-                onPressed: busy || (call != null && !call!.isClosed)
-                    ? null
-                    : () => run(() => startCall(video: true)),
-                icon: const Icon(Icons.videocam_outlined),
-              ),
-              IconButton.filledTonal(
-                tooltip: 'Голосовой звонок',
-                onPressed: busy || (call != null && !call!.isClosed)
-                    ? null
-                    : () => run(() => startCall()),
-                icon: const Icon(Icons.call_outlined),
-              ),
-            ],
-          ],
-        ),
+      header: ConversationHeader(
+        room: room,
+        lastSeenLabel: room.isDirectChat
+            ? lastSeen(_roomPresenceSnapshot(room), DateTime.now())
+            : '',
+        onClose: () => run(() async {
+          await stopActiveCapture();
+          if (mounted) setState(() => selected = null);
+        }),
+        onProfile: room.isDirectChat
+            ? () => run(() => profileCard(room.directChatMatrixID!))
+            : () => run(() => roomSettings()),
+        onInfo: busy ? null : () => run(() => roomSettings()),
+        onVoiceCall: busy || (call != null && !call!.isClosed)
+            ? null
+            : () => run(() => startCall()),
+        onVideoCall: busy || (call != null && !call!.isClosed)
+            ? null
+            : () => run(() => startCall(video: true)),
       ),
     );
   }
@@ -1648,8 +1977,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
     try {
       await stopActiveCapture();
       if (!mounted) return;
-      await showDialog<void>(
+      await showAppDialog<void>(
         context: context,
+        animationStyle: appAnimationStyle(context),
         barrierDismissible: false,
         builder: (_) => CallWindow(calls: calls!, audioOutput: audioOutput),
       );
@@ -1692,180 +2022,148 @@ class _ProbeScreenState extends State<ProbeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final keyboardOpen = View.of(context).viewInsets.bottom > 0;
-    return Scaffold(
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, box) {
-            final wide = box.maxWidth >= 840;
-            return Padding(
-              padding: EdgeInsets.all(wide ? 24 : 0),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1480),
-                  child: Container(
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: colors.surface,
-                      borderRadius: BorderRadius.circular(wide ? 30 : 0),
-                      border: wide
-                          ? Border.all(
-                              color: colors.outlineVariant.withValues(
-                                alpha: .5,
-                              ),
-                            )
-                          : null,
-                      boxShadow: wide
-                          ? [
-                              BoxShadow(
-                                color: colors.primary.withValues(alpha: .06),
-                                blurRadius: 35,
-                                offset: const Offset(0, 14),
-                              ),
-                            ]
-                          : null,
+    if (probe != null && !linked) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Подключить устройство')),
+        body: SingleChildScrollView(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Подтвердите вход на устройстве, где уже открыта переписка. Держите оба устройства рядом.',
                     ),
-                    child: Material(
-                      color: colors.surface,
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: 2,
-                            child: busy || restoringSession
-                                ? const LinearProgressIndicator(minHeight: 2)
-                                : null,
-                          ),
-                          if (probe != null) callBanner(),
-                          if (probe != null && !online)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(8),
-                              color: colors.secondaryContainer,
-                              child: const Text(
-                                'Нет связи · сообщения сохраняются в зашифрованной очереди',
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                          Expanded(
-                            child: AbsorbPointer(
-                              absorbing: busy,
-                              child: restoringSession
-                                  ? const Center(
-                                      child: CircularProgressIndicator(),
-                                    )
-                                  : AnimatedSwitcher(
-                                      duration:
-                                          MediaQuery.disableAnimationsOf(
-                                            context,
-                                          )
-                                          ? Duration.zero
-                                          : const Duration(milliseconds: 240),
-                                      child: probe == null
-                                          ? (wide
-                                                ? Row(
-                                                    key: const ValueKey(
-                                                      'welcome-wide',
-                                                    ),
-                                                    children: [
-                                                      const Expanded(
-                                                        child: WelcomePanel(),
-                                                      ),
-                                                      Expanded(
-                                                        child: Center(
-                                                          child: ConstrainedBox(
-                                                            constraints:
-                                                                const BoxConstraints(
-                                                                  maxWidth: 500,
-                                                                ),
-                                                            child: connection(),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  )
-                                                : SingleChildScrollView(
-                                                    key: const ValueKey(
-                                                      'welcome-small',
-                                                    ),
-                                                    child: Column(
-                                                      children: [
-                                                        const SizedBox(
-                                                          width:
-                                                              double.infinity,
-                                                          child: WelcomePanel(
-                                                            compact: true,
-                                                          ),
-                                                        ),
-                                                        connection(),
-                                                      ],
-                                                    ),
-                                                  ))
-                                          : wide
-                                          ? Row(
-                                              key: const ValueKey(
-                                                'messenger-wide',
-                                              ),
-                                              children: [
-                                                SizedBox(
-                                                  width: 350,
-                                                  child: rooms(),
-                                                ),
-                                                VerticalDivider(
-                                                  width: 1,
-                                                  color: colors.outlineVariant
-                                                      .withValues(alpha: .5),
-                                                ),
-                                                Expanded(child: conversation()),
-                                              ],
-                                            )
-                                          : selected == null
-                                          ? KeyedSubtree(
-                                              key: const ValueKey('contacts'),
-                                              child: rooms(),
-                                            )
-                                          : KeyedSubtree(
-                                              key: const ValueKey(
-                                                'conversation',
-                                              ),
-                                              child: conversation(),
-                                            ),
-                                    ),
-                            ),
-                          ),
-                          if (probe == null)
-                            Container(
-                              width: double.infinity,
-                              height: keyboardOpen ? 28 : 48,
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: keyboardOpen ? 4 : 8,
-                              ),
-                              decoration: BoxDecoration(
-                                border: Border(
-                                  top: BorderSide(
-                                    color: colors.outlineVariant.withValues(
-                                      alpha: .4,
-                                    ),
+                    const SizedBox(height: 16),
+                    if (busy)
+                      const LinearProgressIndicator(
+                        semanticsLabel: 'Подключение и восстановление истории',
+                      ),
+                    FilledButton(
+                      onPressed: busy
+                          ? null
+                          : () => run(() => linkDevice(null)),
+                      child: const Text('Подтвердить на другом устройстве'),
+                    ),
+                    TextButton(
+                      onPressed: busy
+                          ? null
+                          : () => run(() async {
+                              await restore();
+                              if (mounted) setState(() {});
+                            }),
+                      child: const Text('У меня есть ключ восстановления'),
+                    ),
+                    TextButton(
+                      onPressed: busy ? null : () => run(lock),
+                      child: const Text('Вернуться ко входу'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    if (probe == null) return connection();
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      backgroundColor: colors.surface,
+      body: SafeArea(
+        child: Column(
+          children: [
+            SizedBox(
+              height: 2,
+              child: busy ? const LinearProgressIndicator(minHeight: 2) : null,
+            ),
+            callBanner(),
+            if (!online)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(8),
+                color: colors.secondaryContainer,
+                child: const Text(
+                  'Нет связи · сообщения сохраняются в зашифрованной очереди',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            Expanded(
+              child: AbsorbPointer(
+                absorbing: busy,
+                child: LayoutBuilder(
+                  builder: (context, box) => AnimatedSwitcher(
+                    duration: motionDuration(context),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: box.maxWidth >= 840
+                        ? Row(
+                            key: const ValueKey('messenger-wide'),
+                            children: [
+                              SizedBox(width: 300, child: rooms()),
+                              Container(
+                                width: 1,
+                                margin: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      colors.outlineVariant.withValues(
+                                        alpha: 0,
+                                      ),
+                                      colors.outlineVariant.withValues(
+                                        alpha: .8,
+                                      ),
+                                      colors.outlineVariant.withValues(
+                                        alpha: 0,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
-                              child: Text(
-                                status,
-                                maxLines: keyboardOpen ? 1 : 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(color: colors.onSurfaceVariant),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
+                              Expanded(child: conversation()),
+                            ],
+                          )
+                        : selected == null
+                        ? KeyedSubtree(
+                            key: const ValueKey('contacts'),
+                            child: rooms(),
+                          )
+                        : KeyedSubtree(
+                            key: ValueKey('conversation-${selected?.id}'),
+                            child: conversation(),
+                          ),
                   ),
                 ),
               ),
-            );
-          },
+            ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: colors.outlineVariant.withValues(alpha: .3),
+                  ),
+                ),
+              ),
+              child: Text(
+                'Локальный стенд · сквозное шифрование',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: colors.onSurface.withValues(alpha: .55),
+                  fontSize: 12,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

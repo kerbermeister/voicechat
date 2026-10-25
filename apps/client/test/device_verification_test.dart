@@ -172,6 +172,7 @@ void main() {
       );
       final proof = Proof(PinDevice('@peer:local', 'D', 'key'))
         ..state = KeyVerificationState.askSas;
+      bool? verified;
       tester.view.devicePixelRatio = 1;
       tester.view.physicalSize = const Size(320, 640);
       await tester.pumpWidget(
@@ -179,7 +180,13 @@ void main() {
           home: Builder(
             builder: (context) => Scaffold(
               body: TextButton(
-                onPressed: () => showDeviceVerification(context, owner, proof),
+                onPressed: () async {
+                  verified = await showDeviceVerification(
+                    context,
+                    owner,
+                    proof,
+                  );
+                },
                 child: const Text('Start'),
               ),
             ),
@@ -188,15 +195,27 @@ void main() {
       );
       await tester.tap(find.text('Start'));
       await tester.pumpAndSettle();
-      expect(find.text('1234  5678  9012'), findsOneWidget);
+      expect(find.text('1234  5678  9012'), findsNothing);
       for (final emoji in proof.sasEmojis) {
         expect(find.text(emoji.emoji), findsOneWidget);
       }
+      await tester.ensureVisible(find.text('Код'));
+      await tester.tap(find.text('Код'));
+      await tester.pumpAndSettle();
+      expect(find.text('1234  5678  9012'), findsOneWidget);
+      for (final emoji in proof.sasEmojis) {
+        expect(find.text(emoji.emoji), findsNothing);
+      }
+      await tester.ensureVisible(find.text('Эмодзи'));
+      await tester.tap(find.text('Эмодзи'));
+      await tester.pumpAndSettle();
+      expect(find.text('1234  5678  9012'), findsNothing);
       expect(find.byType(SelectableText), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.tap(find.text('Отмена'));
       await tester.pumpAndSettle();
       expect(proof.canceled, true);
+      expect(verified, false);
       await tester.runAsync(owner.close);
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();

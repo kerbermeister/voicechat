@@ -36,6 +36,7 @@ module.exports=async({a,b,alice,bob,request,fill,button,waitForAnnouncement,root
   await a.bringToFront();
   await a.setViewportSize({width:390,height:844});
   await a.waitForTimeout(500);
+  await button(a,'Дополнительные действия').click();
   await button(a,'Прикрепить файл или видео').click();
   const [chooser]=await Promise.all([a.waitForEvent('filechooser'),a.getByRole('menuitem',{name:'Файл',exact:true}).click()]);
   await chooser.setFiles({name:'scheduled.pdf',mimeType:'application/pdf',buffer:pdf});
@@ -74,11 +75,13 @@ module.exports=async({a,b,alice,bob,request,fill,button,waitForAnnouncement,root
   if(await button(a,'Закрыть чат').count()) await button(a,'Закрыть чат').click();
   await a.getByRole('button',{name:/^Группы(?: \d+)?$/}).click();
   await a.getByRole('button',{name:/^Расписание · приёмка /}).click();
+  await button(a,'Дополнительные действия').click();
   await button(a,'Временное сообщение').click(); await click(a,'Применить');
   await fill(a,'Написать сообщение…',groupText); await choose(); await button(a,'Запланировать').click();
   list=await waitJobs(3); assert.equal(list.filter(j=>j.state==='pending').length,2);
   await a.reload();
   await a.locator('flt-semantics-placeholder').evaluate(el=>el.click()).catch(()=>{});
+  await button(a,'Дополнительные действия').click();
   await button(a,'Отложенные сообщения').waitFor({timeout:30000});
   await button(a,'Отложенные сообщения').click();
   await a.getByRole('menuitem',{name:'Запланированные сообщения',exact:true}).click();

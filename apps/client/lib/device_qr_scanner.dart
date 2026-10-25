@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -38,8 +39,9 @@ Future<Uint8List?> scanDeviceQr(
         Uri.base.resolve('zxing.js').toString(),
       );
     }
-    return await showDialog<Uint8List>(
+    return await showAppDialog<Uint8List>(
       context: context,
+      animationStyle: appAnimationStyle(context),
       barrierDismissible: false,
       builder: (_) => _Scanner(owner: owner, request: request),
     );
@@ -158,7 +160,7 @@ class _ScannerState extends State<_Scanner> with WidgetsBindingObserver {
     },
     child: AlertDialog(
       scrollable: true,
-      title: const Text('Сканировать код устройства'),
+      title: AppDialogTitle(child: const Text('Сканировать код устройства')),
       content: SizedBox(
         width: 300,
         child: Column(

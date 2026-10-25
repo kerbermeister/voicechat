@@ -52,11 +52,11 @@
       return result;
     } finally { db.close(); }
   }
-  async function open(name, password, remember = false) {
+  async function open(name, password, remember = false, automatic = false) {
     if (!isSecureContext || !crypto.subtle || !navigator.locks || !indexedDB.databases) throw new Error('Secure context and a modern browser are required');
-    const resuming = password === null;
+    const resuming = password === null && !automatic;
     const resumeName = `voicechat.unlock:${name}`;
-    if (!resuming && (typeof password !== 'string' || password.length < 12 || password.length > 1024)) throw new Error('Use a separate passphrase of 12–1024 characters');
+    if (!automatic && !resuming && (typeof password !== 'string' || password.length < 12 || password.length > 1024)) throw new Error('Use a separate passphrase of 12–1024 characters');
     let release;
     const held = new Promise(resolve => { release = resolve; });
     let acquired;
@@ -78,7 +78,11 @@
       const salt = header ? unb64(header.salt) : bytes(16);
       if (salt.length !== 16 || (header && header.v !== 1)) throw new Error('Unsupported vault format');
       let raw;
-      if (resuming) {
+      let key;
+      if (automatic) {
+        if (header && !header.deviceKey) throw new Error('Use a new automatic profile');
+        key = header?.deviceKey || await crypto.subtle.generateKey({name: 'AES-GCM', length: 256}, false, ['encrypt', 'decrypt']);
+      } else if (resuming) {
         const saved = sessionStorage.getItem(resumeName);
         if (!header || !saved) throw new Error('Unlock the vault with your local passphrase');
         raw = unb64(saved);
@@ -86,21 +90,21 @@
         const material = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
         raw = new Uint8Array(await crypto.subtle.deriveBits({name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 600000}, material, 256));
       }
-      if (raw.length !== 32) throw new Error('Invalid session key');
-      const key = await crypto.subtle.importKey('raw', raw, {name: 'AES-GCM'}, false, ['encrypt', 'decrypt']);
-      const resumeKey = remember ? b64(raw) : null;
-      raw.fill(0);
+      if (!automatic && raw.length !== 32) throw new Error('Invalid session key');
+      if (!automatic) key = await crypto.subtle.importKey('raw', raw, {name: 'AES-GCM'}, false, ['encrypt', 'decrypt']);
+      const resumeKey = remember && !automatic ? b64(raw) : null;
+      raw?.fill(0);
       if (header) {
         if (await unseal(key, name, 'meta', 'header', header.check) !== 'voicechat-vault-v1') throw new Error('Invalid vault check');
       } else {
-        header = {v: 1, salt: b64(salt), check: await seal(key, name, 'meta', 'header', 'voicechat-vault-v1')};
+        header = {v: 1, ...(automatic ? {deviceKey: key} : {}), salt: b64(salt), check: await seal(key, name, 'meta', 'header', 'voicechat-vault-v1')};
         const txn = db.transaction('meta', 'readwrite');
         const done = completed(txn);
         txn.objectStore('meta').put(header, 'header');
         await done;
       }
       // Opt-in tab session only: never persist the account password or vault passphrase.
-      if (remember) sessionStorage.setItem(resumeName, resumeKey);
+      if (remember && !automatic) sessionStorage.setItem(resumeName, resumeKey);
       else sessionStorage.removeItem(resumeName);
       sessions.set(name, {key, release, lockTask});
     } catch (error) {

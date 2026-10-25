@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
@@ -45,8 +46,9 @@ Future<VideoNoteResult?> recordVideoNote(
     Overlay.of(context).insert(overlay);
     return completed.future;
   }
-  return showDialog<VideoNoteResult>(
+  return showAppDialog<VideoNoteResult>(
     context: context,
+    animationStyle: appAnimationStyle(context),
     barrierDismissible: false,
     builder: (_) =>
         _Recorder(maxSeconds: maxSeconds, held: held, onRecording: onRecording),
@@ -303,7 +305,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Видеокружок'),
+    title: AppDialogTitle(child: const Text('Видеокружок')),
     content: SizedBox(
       width: 320,
       child: Column(

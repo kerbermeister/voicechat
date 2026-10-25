@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -35,8 +36,9 @@ Future<MatrixFile?> editAvatar(BuildContext context) async {
     1,
   );
   if (photos.isEmpty || !context.mounted) return null;
-  final bytes = await showDialog<Uint8List>(
+  final bytes = await showAppDialog<Uint8List>(
     context: context,
+    animationStyle: appAnimationStyle(context),
     builder: (_) => _AvatarEditor(bytes: photos.single.bytes),
   );
   return bytes == null
@@ -56,7 +58,7 @@ class _AvatarEditorState extends State<_AvatarEditor> {
   late final dimensions = img.JpegDecoder().startDecode(widget.bytes)!;
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Аватар'),
+    title: AppDialogTitle(child: const Text('Аватар')),
     content: SizedBox(
       width: 340,
       child: SingleChildScrollView(

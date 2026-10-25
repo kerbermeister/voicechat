@@ -1,9 +1,31 @@
 import 'package:flutter/material.dart';
+import 'app_motion.dart';
 
 Color onlinePresenceColor(ColorScheme colors) =>
     colors.brightness == Brightness.dark
     ? const Color(0xFF42E67A)
     : const Color(0xFF007A38);
+
+@immutable
+class MessageColors extends ThemeExtension<MessageColors> {
+  final Color start, end, foreground;
+  const MessageColors(this.start, this.end, this.foreground);
+  @override
+  MessageColors copyWith({Color? start, Color? end, Color? foreground}) =>
+      MessageColors(
+        start ?? this.start,
+        end ?? this.end,
+        foreground ?? this.foreground,
+      );
+  @override
+  MessageColors lerp(covariant MessageColors? other, double t) => other == null
+      ? this
+      : MessageColors(
+          Color.lerp(start, other.start, t)!,
+          Color.lerp(end, other.end, t)!,
+          Color.lerp(foreground, other.foreground, t)!,
+        );
+}
 
 enum AppPalette {
   lavender,
@@ -13,10 +35,12 @@ enum AppPalette {
   reef,
   bioluminescence,
   sunset,
+  halo,
 }
 
 extension PaletteTheme on AppPalette {
   String get label => switch (this) {
+    AppPalette.halo => 'Halo',
     AppPalette.lavender => 'Lavender Soft',
     AppPalette.ocean => 'Ocean Calm',
     AppPalette.midnight => 'Midnight',
@@ -28,9 +52,19 @@ extension PaletteTheme on AppPalette {
 
   ThemeData get theme {
     final dark =
-        this == AppPalette.midnight || this == AppPalette.bioluminescence;
+        this == AppPalette.halo ||
+        this == AppPalette.midnight ||
+        this == AppPalette.bioluminescence;
     // Primary, gradient accent, warm accent, surface, text and soft surface from the selected references.
     final (a, b, c, bg, ink, soft) = switch (this) {
+      AppPalette.halo => (
+        0xFFC3D0FF,
+        0xFF8FA9DF,
+        0xFF9CAFE7,
+        0xFF101A35,
+        0xFFF1F3FA,
+        0xFF2C3D60,
+      ),
       AppPalette.lavender => (
         0xFF8055D7,
         0xFFAA8DF0,
@@ -97,27 +131,102 @@ extension PaletteTheme on AppPalette {
       seedColor: Color(c),
       brightness: base.brightness,
     );
-    final scheme = base.copyWith(
+    var scheme = base.copyWith(
       primary: primary,
+      onPrimary: dark ? Color(bg) : Colors.white,
       secondary: Color(b),
       tertiary: accent.primary,
       primaryContainer: Color(soft),
       onPrimaryContainer: Color(ink),
-      tertiaryContainer: Color.lerp(Color(bg), Color(c), dark ? .25 : .55),
+      tertiaryContainer: dark ? Color.lerp(Color(bg), Color(c), .25) : Color(c),
       onTertiaryContainer: Color(ink),
       secondaryContainer: Color.lerp(Color(bg), Color(b), .18),
       surface: Color(bg),
       onSurface: Color(ink),
+      onSurfaceVariant: dark
+          ? const Color(0xFFC9BED7)
+          : const Color(0xFF736A81),
+      surfaceContainerLowest: dark
+          ? Color.lerp(Color(bg), Colors.white, .04)
+          : Colors.white,
     );
+    if (this == AppPalette.halo) {
+      scheme = scheme.copyWith(
+        surfaceContainerLowest: const Color(0xFF1C2B4B),
+        surfaceContainerLow: const Color(0xFF1C2B4B),
+        surfaceContainer: const Color(0xFF1C2B4B),
+        surfaceContainerHigh: const Color(0xFF2C3D60),
+        surfaceContainerHighest: const Color(0xFF2C3D60),
+        onSurfaceVariant: const Color(0xFFBDC8E1),
+        tertiaryContainer: const Color(0xFF1C2B4B),
+        secondaryContainer: const Color(0xFF2C3D60),
+        outline: const Color(0xFF7C91B8),
+        outlineVariant: const Color(0xFF425577),
+      );
+    }
     return ThemeData(
+      extensions: [
+        this == AppPalette.halo
+            ? const MessageColors(
+                Color(0xFF365B8B),
+                Color(0xFF304E77),
+                Color(0xFFF1F3FA),
+              )
+            : MessageColors(scheme.primary, scheme.primary, scheme.onPrimary),
+      ],
       useMaterial3: true,
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          for (final platform in TargetPlatform.values)
+            platform: const AppPageTransitions(),
+        },
+      ),
       visualDensity: VisualDensity.standard,
       materialTapTargetSize: MaterialTapTargetSize.padded,
       colorScheme: scheme,
       scaffoldBackgroundColor: Color.lerp(scheme.surface, scheme.primary, .04),
       dividerColor: scheme.outlineVariant.withValues(alpha: .5),
+      appBarTheme: AppBarTheme(
+        backgroundColor: scheme.tertiaryContainer,
+        foregroundColor: scheme.onTertiaryContainer,
+        surfaceTintColor: Colors.transparent,
+        centerTitle: false,
+        toolbarHeight: 64,
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        color: scheme.surfaceContainerLowest,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: scheme.surface,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      listTileTheme: ListTileThemeData(iconColor: scheme.primary),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(0, 44),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
       dialogTheme: DialogThemeData(
         backgroundColor: scheme.surface,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: TextStyle(
+          color: scheme.onSurface,
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -150,9 +259,19 @@ extension PaletteTheme on AppPalette {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.surfaceContainerLowest,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 18,
+          vertical: 16,
+        ),
+        hintStyle: TextStyle(color: scheme.onSurfaceVariant, fontSize: 15),
+        floatingLabelBehavior: FloatingLabelBehavior.always,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(20),
           borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(color: scheme.primary, width: 2),
         ),
       ),
       cardTheme: CardThemeData(

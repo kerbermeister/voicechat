@@ -69,13 +69,13 @@ class DirectCall implements VoiceCall {
   ];
   @override
   String get connection => quality == CallQuality.lost && !isClosed
-      ? 'Восстанавливаем соединение WebRTC'
+      ? 'Восстанавливаем связь'
       : switch (call.state) {
           mx.CallState.kConnected =>
-            video ? 'WebRTC · защищённое видео' : 'WebRTC · защищённое аудио',
+            video ? 'Видеозвонок · разговор' : 'Голосовой звонок · разговор',
           mx.CallState.kRinging || mx.CallState.kInviteSent => 'Ожидаем ответ',
           mx.CallState.kEnded || mx.CallState.kEnding => 'Звонок завершён',
-          _ => 'Подключение WebRTC',
+          _ => 'Подключаем звонок',
         };
   Future<void> _render(mx.WrappedMediaStream stream) async {
     if (!kIsWeb && !video) {

@@ -1,3 +1,5 @@
+import 'message_receipts.dart';
+import 'app_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'typing_indicator.dart';
@@ -44,14 +46,16 @@ String lastMessage(mx.Room room) {
   final event = room.lastEvent;
   if (event == null) return 'Начните разговор';
   if (event.redacted) return 'Сообщение удалено';
-  if (event.content.containsKey('dev.voicechat.ttl_seconds')) return 'Временное сообщение';
+  if (event.content.containsKey('dev.voicechat.ttl_seconds')) {
+    return 'Временное сообщение';
+  }
   if (event.type == mx.EventTypes.Encrypted) return 'Зашифрованное сообщение';
   if (event.type == mx.EventTypes.CallInvite) {
     return callEventLabel(event);
   }
   final text = switch (event.messageType) {
     'dev.voicechat.call' || 'dev.voicechat.call_summary' => event.body,
-    mx.MessageTypes.Audio => '♫ Голосовое сообщение',
+    mx.MessageTypes.Audio => 'Голосовое сообщение',
     'dev.voicechat.album' =>
       event.content['caption'] is String &&
               (event.content['caption'] as String).isNotEmpty
@@ -63,6 +67,23 @@ String lastMessage(mx.Room room) {
   return event.senderId == room.client.userID ? 'Вы: $text' : text;
 }
 
+/// Only an exact receipt can acknowledge the latest event without a loaded timeline.
+/// Do not infer read state from receipt timestamps (they use a different clock).
+(IconData, String)? conversationDeliveryStatus(mx.Room room) {
+  final event = room.lastEvent;
+  if (event == null || event.senderId != room.client.userID) return null;
+  if (event.status == mx.EventStatus.error) {
+    return (Icons.error_outline, 'Не отправлено');
+  }
+  if (event.status == mx.EventStatus.sending) {
+    return (Icons.schedule, 'Отправляется');
+  }
+  final read = messageReadReceipts(
+    room,
+  ).any((receipt) => receipt.eventId == event.eventId);
+  return read ? (Icons.done_all, 'Прочитано') : (Icons.done, 'Отправлено');
+}
+
 class PersonAvatar extends StatelessWidget {
   final String name;
   final mx.Client? client;
@@ -70,6 +91,7 @@ class PersonAvatar extends StatelessWidget {
   final bool group;
   final bool online;
   final double size;
+  final bool showPresence;
   const PersonAvatar({
     super.key,
     required this.name,
@@ -78,6 +100,7 @@ class PersonAvatar extends StatelessWidget {
     this.group = false,
     this.online = false,
     this.size = 48,
+    this.showPresence = true,
   });
   @override
   Widget build(BuildContext context) {
@@ -101,7 +124,8 @@ class PersonAvatar extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: client != null && url != null
-                ? ClipOval(
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(size * .32),
                     child: AvatarImage(
                       client: client!,
                       url: url!,
@@ -121,7 +145,7 @@ class PersonAvatar extends StatelessWidget {
                     ),
                   ),
           ),
-          if (!group)
+          if (!group && showPresence)
             Positioned(
               right: 0,
               bottom: 0,
@@ -159,6 +183,7 @@ class ConversationList extends StatefulWidget {
   final VoidCallback? onProfile;
   final void Function(mx.Room, String)? onChatMenu;
   final int contactInvites;
+  final int outgoingInvites;
   final Set<String> hiddenDirectRooms;
   final bool groups;
   final ValueChanged<bool> onTabChanged;
@@ -177,6 +202,7 @@ class ConversationList extends StatefulWidget {
     this.onProfile,
     this.onChatMenu,
     this.contactInvites = 0,
+    this.outgoingInvites = 0,
     this.hiddenDirectRooms = const {},
     required this.groups,
     required this.onTabChanged,
@@ -188,10 +214,19 @@ class ConversationList extends StatefulWidget {
 class _ConversationListState extends State<ConversationList> {
   bool get groups => widget.groups;
   String query = '';
+  final peopleScroll = ScrollController(), groupsScroll = ScrollController();
+  @override
+  void dispose() {
+    peopleScroll.dispose();
+    groupsScroll.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
     final rooms =
         widget.client.rooms
             .where(
@@ -212,6 +247,7 @@ class _ConversationListState extends State<ConversationList> {
           );
     final invites =
         widget.contactInvites +
+        widget.outgoingInvites +
         widget.client.rooms
             .where(
               (r) => r.membership == mx.Membership.invite && !r.isDirectChat,
@@ -229,34 +265,47 @@ class _ConversationListState extends State<ConversationList> {
     Widget tab(String label, int count) => Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(label),
+        Flexible(
+          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        ),
         if (count > 0) ...[
           const SizedBox(width: 6),
           Badge(label: Text('$count')),
         ],
       ],
     );
-    final name = widget.client.userID!.split(':').first.substring(1);
-    return Column(
+    final name =
+        widget.client.rooms
+            .map(
+              (room) => room
+                  .getState(mx.EventTypes.RoomMember, widget.client.userID!)
+                  ?.content['displayname'],
+            )
+            .whereType<String>()
+            .where((name) => name.trim().isNotEmpty)
+            .firstOrNull ??
+        widget.client.userID!.split(':').first.substring(1);
+    final content = Column(
       children: [
         Container(
-          padding: const EdgeInsets.fromLTRB(24, 24, 16, 30),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Color.lerp(colors.primary, colors.secondary, .3)!,
-                colors.primary,
-              ],
-            ),
-          ),
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.graphic_eq_rounded, color: colors.onPrimary),
+                  IconButton(
+                    tooltip: 'Мой профиль',
+                    padding: const EdgeInsets.all(4),
+                    onPressed: widget.onProfile,
+                    icon: PersonAvatar(
+                      name: name,
+                      client: widget.client,
+                      url: widget.ownAvatar,
+                      online: widget.ownOnline,
+                      size: 48,
+                    ),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -264,85 +313,32 @@ class _ConversationListState extends State<ConversationList> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
-                        color: colors.onPrimary,
+                        color: colors.onSurface,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Приглашения',
-                    constraints: const BoxConstraints(
-                      minWidth: 40,
-                      minHeight: 40,
-                    ),
-                    padding: EdgeInsets.zero,
-                    onPressed: widget.onInvitations,
-                    icon: Badge(
-                      isLabelVisible: invites > 0,
-                      label: Text('$invites'),
-                      child: Icon(Icons.mail_outline, color: colors.onPrimary),
-                    ),
-                  ),
-                  IconButton(
                     tooltip: 'Поиск по чатам и сообщениям',
                     constraints: const BoxConstraints(
-                      minWidth: 40,
-                      minHeight: 40,
+                      minWidth: 48,
+                      minHeight: 48,
                     ),
                     padding: EdgeInsets.zero,
                     onPressed: widget.onSearch,
-                    icon: Icon(Icons.manage_search, color: colors.onPrimary),
+                    icon: Icon(Icons.manage_search, color: colors.onSurface),
                   ),
                   IconButton(
                     tooltip: 'Настройки',
                     constraints: const BoxConstraints(
-                      minWidth: 40,
-                      minHeight: 40,
+                      minWidth: 48,
+                      minHeight: 48,
                     ),
                     padding: EdgeInsets.zero,
                     onPressed: widget.onSettings,
                     icon: Icon(
                       Icons.settings_outlined,
-                      color: colors.onPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  InkWell(
-                    onTap: widget.onProfile,
-                    borderRadius: BorderRadius.circular(24),
-                    child: PersonAvatar(
-                      name: name,
-                      client: widget.client,
-                      url: widget.ownAvatar,
-                      online: widget.ownOnline,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Привет, $name!',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            color: colors.onPrimary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'Хороший день для разговора',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.onPrimary,
-                          ),
-                        ),
-                      ],
+                      color: colors.onSurface,
                     ),
                   ),
                 ],
@@ -355,11 +351,10 @@ class _ConversationListState extends State<ConversationList> {
             decoration: BoxDecoration(
               color: colors.surface,
               borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
+                top: Radius.circular(32),
               ),
             ),
-            transform: Matrix4.translationValues(0, -16, 0),
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 12),
             child: Column(
               children: [
                 SizedBox(
@@ -370,12 +365,16 @@ class _ConversationListState extends State<ConversationList> {
                       ButtonSegment(
                         value: false,
                         label: tab('Люди', unread(false)),
-                        icon: const Icon(Icons.person_outline),
+                        icon: largeText
+                            ? null
+                            : const Icon(Icons.person_outline),
                       ),
                       ButtonSegment(
                         value: true,
                         label: tab('Группы', unread(true)),
-                        icon: const Icon(Icons.group_outlined),
+                        icon: largeText
+                            ? null
+                            : const Icon(Icons.group_outlined),
                       ),
                     ],
                     selected: {groups},
@@ -383,7 +382,22 @@ class _ConversationListState extends State<ConversationList> {
                         widget.onTabChanged(value.single),
                   ),
                 ),
-                const SizedBox(height: 16),
+                AnimatedPanel(
+                  child: invites > 0
+                      ? Material(
+                          color: Colors.transparent,
+                          child: ListTile(
+                            key: const ValueKey('pending-invitations'),
+                            dense: true,
+                            leading: const Icon(Icons.mail_outline),
+                            title: const Text('Приглашения'),
+                            trailing: Badge(label: Text('$invites')),
+                            onTap: widget.onInvitations,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(height: 8),
                 TextField(
                   onChanged: (value) => setState(() => query = value),
                   decoration: const InputDecoration(
@@ -392,32 +406,13 @@ class _ConversationListState extends State<ConversationList> {
                     isDense: true,
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 18,
-                    horizontal: 4,
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        groups ? 'Ваши группы' : 'Недавние разговоры',
-                        style: theme.textTheme.labelLarge,
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${rooms.length}',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
+                Divider(
+                  height: 16,
+                  thickness: 1,
+                  color: colors.outlineVariant.withValues(alpha: .45),
                 ),
                 Expanded(
-                  child: AnimatedSwitcher(
-                    duration: MediaQuery.disableAnimationsOf(context)
-                        ? Duration.zero
-                        : const Duration(milliseconds: 180),
+                  child: ClipRect(
                     child: rooms.isEmpty
                         ? Center(
                             key: ValueKey('empty-$groups-$query'),
@@ -438,9 +433,11 @@ class _ConversationListState extends State<ConversationList> {
                           )
                         : ListView.separated(
                             key: ValueKey(groups),
+                            primary: false,
+                            controller: groups ? groupsScroll : peopleScroll,
                             itemCount: rooms.length,
                             separatorBuilder: (_, _) => Divider(
-                              height: 12,
+                              height: 1,
                               color: colors.outlineVariant.withValues(
                                 alpha: .45,
                               ),
@@ -452,11 +449,18 @@ class _ConversationListState extends State<ConversationList> {
                                   room.notificationCount;
                               final selected = room.id == widget.selected?.id;
                               final presence = roomPresence(room);
+                              final voice =
+                                  room.lastEvent?.messageType ==
+                                  mx.MessageTypes.Audio;
+                              final ownVoice =
+                                  voice &&
+                                  room.lastEvent?.senderId ==
+                                      widget.client.userID;
                               final name = roomDisplayName(room);
                               final time = room.lastEvent?.originServerTs
                                   .toLocal();
                               return AnimatedContainer(
-                                duration: const Duration(milliseconds: 160),
+                                duration: motionDuration(context),
                                 decoration: BoxDecoration(
                                   color: selected
                                       ? colors.primaryContainer.withValues(
@@ -469,9 +473,11 @@ class _ConversationListState extends State<ConversationList> {
                                   type: MaterialType.transparency,
                                   child: ListTile(
                                     contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 6,
+                                      horizontal: 8,
+                                      vertical: 2,
                                     ),
+                                    minVerticalPadding: 6,
+                                    horizontalTitleGap: 10,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
                                     ),
@@ -479,6 +485,8 @@ class _ConversationListState extends State<ConversationList> {
                                     trailing: widget.onChatMenu == null
                                         ? null
                                         : PopupMenuButton<String>(
+                                            popUpAnimationStyle:
+                                                appAnimationStyle(context),
                                             tooltip: 'Действия с чатом',
                                             onSelected: (action) =>
                                                 widget.onChatMenu!(
@@ -511,12 +519,16 @@ class _ConversationListState extends State<ConversationList> {
                                             ],
                                             icon: const Icon(Icons.more_horiz),
                                           ),
-                                    leading: PersonAvatar(
-                                      name: name,
-                                      client: widget.client,
-                                      url: roomAvatar(room),
-                                      group: groups,
-                                      online: presence == 'В сети',
+                                    leading: Tooltip(
+                                      message: presence,
+                                      child: PersonAvatar(
+                                        name: name,
+                                        size: 38,
+                                        client: widget.client,
+                                        url: roomAvatar(room),
+                                        group: groups,
+                                        online: presence == 'В сети',
+                                      ),
                                     ),
                                     title: Row(
                                       children: [
@@ -544,7 +556,7 @@ class _ConversationListState extends State<ConversationList> {
                                                 Icons
                                                     .notifications_off_outlined,
                                                 size: 16,
-                                                color: colors.onSurfaceVariant,
+                                                color: colors.error,
                                                 semanticLabel:
                                                     'Уведомления отключены',
                                               ),
@@ -567,39 +579,69 @@ class _ConversationListState extends State<ConversationList> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          presence,
-                                          style: theme.textTheme.labelSmall
-                                              ?.copyWith(
-                                                color: presence == 'В сети'
-                                                    ? onlinePresenceColor(
-                                                        colors,
-                                                      )
-                                                    : colors.onSurfaceVariant,
-                                              ),
-                                        ),
-                                        const SizedBox(height: 4),
+                                        const SizedBox(height: 1),
                                         Row(
                                           children: [
+                                            if (conversationDeliveryStatus(room)
+                                                case final status?) ...[
+                                              Tooltip(
+                                                message: status.$2,
+                                                child: Icon(
+                                                  status.$1,
+                                                  size: 16,
+                                                  color: colors.primary,
+                                                  semanticLabel: status.$2,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 4),
+                                            ],
                                             Expanded(
                                               child: TypingIndicator(
                                                 room: room,
                                                 compact: true,
-                                                fallback: Text(
-                                                  lastMessage(room),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: theme
-                                                      .textTheme
-                                                      .bodySmall
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            messageCount > 0
-                                                            ? FontWeight.w600
-                                                            : FontWeight.w400,
-                                                      ),
+                                                fallback: Container(
+                                                  padding: voice
+                                                      ? const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 1,
+                                                        )
+                                                      : EdgeInsets.zero,
+                                                  decoration: BoxDecoration(
+                                                    color: voice
+                                                        ? (ownVoice
+                                                              ? colors
+                                                                    .primaryContainer
+                                                              : colors
+                                                                    .tertiaryContainer)
+                                                        : null,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          10,
+                                                        ),
+                                                  ),
+                                                  child: Text(
+                                                    lastMessage(room),
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: theme
+                                                        .textTheme
+                                                        .bodySmall
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              messageCount > 0
+                                                              ? FontWeight.w600
+                                                              : FontWeight.w400,
+                                                          color: voice
+                                                              ? (ownVoice
+                                                                    ? colors
+                                                                          .onPrimaryContainer
+                                                                    : colors
+                                                                          .onTertiaryContainer)
+                                                              : colors
+                                                                    .onSurfaceVariant,
+                                                        ),
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -637,15 +679,21 @@ class _ConversationListState extends State<ConversationList> {
                           ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 60),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      backgroundColor: colors.tertiaryContainer,
+                      foregroundColor: colors.onTertiaryContainer,
+                    ),
                     onPressed: groups ? widget.onNewGroup : widget.onNewPerson,
                     icon: Icon(
-                      groups
-                          ? Icons.group_add_outlined
-                          : Icons.person_add_outlined,
+                      groups ? Icons.group_add_outlined : Icons.add_rounded,
                     ),
                     label: Text(groups ? 'Создать группу' : 'Найти человека'),
                   ),
@@ -655,6 +703,16 @@ class _ConversationListState extends State<ConversationList> {
           ),
         ),
       ],
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [colors.surfaceContainerLowest, colors.surface],
+        ),
+      ),
+      child: content,
     );
   }
 }

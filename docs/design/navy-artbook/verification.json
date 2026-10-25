@@ -1,0 +1,105 @@
+{
+  "mobileMockups": 60,
+  "desktopLayouts": 10,
+  "layout": [
+    {
+      "width": 320,
+      "pageOverflow": false,
+      "screens": [],
+      "overlaps": []
+    },
+    {
+      "width": 375,
+      "pageOverflow": false,
+      "screens": [],
+      "overlaps": []
+    },
+    {
+      "width": 390,
+      "pageOverflow": false,
+      "screens": [],
+      "overlaps": []
+    },
+    {
+      "width": 768,
+      "pageOverflow": false,
+      "screens": [],
+      "overlaps": []
+    },
+    {
+      "width": 1500,
+      "pageOverflow": false,
+      "screens": [],
+      "overlaps": []
+    }
+  ],
+  "desktopOverflow": [],
+  "missingActions": [],
+  "missingLinks": [],
+  "imageErrors": [],
+  "errors": [],
+  "contrastChecks": [
+    {
+      "variant": "haven",
+      "mutedOnRaised": 6.77,
+      "primaryOnRaised": 11.23,
+      "button": 10.16
+    },
+    {
+      "variant": "lumen",
+      "mutedOnRaised": 6.22,
+      "primaryOnRaised": 9.39,
+      "button": 12.04
+    },
+    {
+      "variant": "studio",
+      "mutedOnRaised": 6.59,
+      "primaryOnRaised": 10.53,
+      "button": 9.73
+    },
+    {
+      "variant": "cove",
+      "mutedOnRaised": 5.75,
+      "primaryOnRaised": 8.56,
+      "button": 11.3
+    },
+    {
+      "variant": "halo",
+      "mutedOnRaised": 6.44,
+      "primaryOnRaised": 9.9,
+      "button": 10.36
+    },
+    {
+      "variant": "frost",
+      "mutedOnRaised": 6.46,
+      "primaryOnRaised": 9.32,
+      "button": 11.47
+    },
+    {
+      "variant": "aurora",
+      "mutedOnRaised": 6.03,
+      "primaryOnRaised": 9.1,
+      "button": 10.87
+    },
+    {
+      "variant": "ribbon",
+      "mutedOnRaised": 6.4,
+      "primaryOnRaised": 9.8,
+      "button": 10.29
+    },
+    {
+      "variant": "pearl",
+      "mutedOnRaised": 5.78,
+      "primaryOnRaised": 8.18,
+      "button": 12.58
+    },
+    {
+      "variant": "meridian",
+      "mutedOnRaised": 5.88,
+      "primaryOnRaised": 8.7,
+      "button": 10.59
+    }
+  ],
+  "interactions": "filter, web/mobile, modal, Escape, direction passed",
+  "limits": "Static design studies; token contrast only, no native/hardware/media tests"
+}

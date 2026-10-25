@@ -4,6 +4,9 @@ import 'package:matrix/matrix.dart';
 import 'transport.dart';
 import 'user_action_error.dart';
 
+bool scheduledInQueue(Map<String, dynamic> job) =>
+    const {'pending', 'retry', 'sending', 'failed'}.contains(job['state']);
+
 void validateSchedule(DateTime due, int maximumSeconds, {DateTime? now}) {
   final remaining = due.difference(now ?? DateTime.now());
   if (remaining <= Duration.zero ||

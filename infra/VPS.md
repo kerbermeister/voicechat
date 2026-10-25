@@ -16,8 +16,9 @@ Caddy после подготовки приложения. Внешний Caddy
 до запуска верните его в общий runtime и восстановите внешнюю proxy-сеть/маршрут.
 Для ручных Compose-команд ниже на этой VPS добавляйте
 `-f infra/runtime/compose.override.yaml` после `-f infra/compose.yaml`.
-В GitHub создан environment `production` и четыре variables; SSH secrets ещё
-требуют настройки. Развёртывание использует уже предоставленного `root`;
+В GitHub настроен environment `production`, четыре variables, secrets
+`DEPLOY_SSH_KEY` и `DEPLOY_KNOWN_HOSTS`. SSH из Actions и чтение private GHCR
+проверены; первый production release описан в конце документа. Развёртывание использует уже предоставленного `root`;
 при установке backup service здесь замените `User=voicechat` на `User=root`.
 Существующие данные лаборатории этим процессом не переносятся.
 Повторная проверка DNS resolver 1.1.1.1 от 23 октября 2026: A возвращает
@@ -321,3 +322,53 @@ volume names из Compose config. Просто другой каталог вс�
 screen call. Это не приёмка registry manifest или целевого upgrade/rollback.
 Фактические DNS, SMTP, ACME, TURN и физические устройства требуют проверки
 после предоставления доступа к VPS.
+
+
+## Первый production release: проверенный результат
+
+Развёрнут commit `49f09a2dfc7b47e6204643a665916109b4b9c495` через
+[Build and deploy #2](https://github.com/kerbermeister/voicechat/actions/runs/40028425403).
+Сайт: https://univc.duckdns.org. Runtime env имеет права 0600, каталог — 0700.
+Почта Яндекса проверена: одно согласованное тестовое письмо дошло во «Входящие».
+
+Проверены HTTPS без отключения проверки сертификата, Matrix versions и client
+policy API, закрытые admin/internal routes, JS worker и WASM с COOP/COEP headers.
+С внешнего Mac доступны TCP 7981/3488 и UDP STUN binding на 3488. Все сервисы
+Compose прошли healthchecks. Screen flag выключен, фактическая SQLite schema v2,
+pending/retired очередь пуста. Это не проверка медиарасшифровки или relay-звонка.
+
+Первый snapshot Restic: `1183dfb5`. Пройдены `check --read-data`, восстановление
+двух SQLite с `integrity_check` и восстановление PostgreSQL (176 таблиц) в отдельном
+временном контейнере без сети и рабочих томов. Полный disaster recovery сайта на
+другой VPS и откат production release пока не проверялись.
+
+На Mac сохранены `stand.env`, `backup-password` и encrypted repository в
+`/Users/anton/IdeaProjects/VoiceChat/.prototype/vps-recovery/` (каталог 0700,
+секретные файлы 0600, Git ignore). Следующие snapshots пока остаются на VPS:
+ежедневная внешняя выгрузка не автоматизирована. `voicechat-backup.timer` включён
+на 03:30 UTC, сервис работает как root и останавливает VoiceChat на время копии.
+
+Маршрут добавлен в `/opt/avito-helper/deploy/Caddyfile` с сохранением bind-mount
+inode; Caddy перезагружен без остановки Avito Helper. Старый сайт после reload
+по-прежнему отвечает HTTP 200. При обновлении Avito Helper необходимо сохранять
+блок `univc.duckdns.org { reverse_proxy voicechat-web:80 }`; восстановительная копия
+исходного Caddyfile — `/srv/voicechat/bootstrap/edge-Caddyfile.before-voicechat`.
+
+В опубликованном интерфейсе остался статический текст «Локальный стенд» из
+исходного приложения. Проверено, что compiled endpoints используют production
+HTTPS/WSS origin. Изменения интерфейса в рабочем дереве в этот release не входят.
+Реальная регистрация через UI и звонки между физическими устройствами ещё требуют
+проверки пользователем.
+
+
+## Подключение устройств: web hotfix 24 октября 2026
+
+Опубликован web-only образ `voicechat-client:device-link-20261024`; основной
+release manifest не изменён. Дополнительный override и сведения об откате:
+`/srv/voicechat/runtime/compose.client-hotfix.yaml` и `client-hotfix.json`.
+Обычный последующий deploy заменит hotfix своим manifest-образом.
+Проверены публичный HTTPS-вход, emoji SAS двух браузеров, получение ключей,
+расшифровка старого сообщения и reload. [Результат](../prototype/verified-device-link-vps-run.json).
+Подготовлены три отдельных демо-аккаунта и две группы; закрытые реквизиты
+на Mac: `.prototype/vps-device-link-demo.json` (0600, Git ignore).
+Физические устройства и звонки этой проверкой не покрываются.

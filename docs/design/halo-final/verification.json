@@ -1,0 +1,90 @@
+{
+  "checks": [
+    {
+      "platform": "android",
+      "size": "390,844",
+      "scale": "1",
+      "count": 135,
+      "overflow": [],
+      "clippedFooters": []
+    },
+    {
+      "platform": "android",
+      "size": "390,844",
+      "scale": "1.25",
+      "count": 135,
+      "overflow": [],
+      "clippedFooters": []
+    },
+    {
+      "platform": "android",
+      "size": "320,568",
+      "scale": "1",
+      "count": 135,
+      "overflow": [],
+      "clippedFooters": []
+    },
+    {
+      "platform": "android",
+      "size": "320,568",
+      "scale": "1.25",
+      "count": 135,
+      "overflow": [],
+      "clippedFooters": []
+    },
+    {
+      "platform": "web",
+      "size": "390,844",
+      "scale": "1",
+      "count": 133,
+      "overflow": [],
+      "clippedFooters": []
+    },
+    {
+      "platform": "web",
+      "size": "390,844",
+      "scale": "1.25",
+      "count": 133,
+      "overflow": [],
+      "clippedFooters": []
+    },
+    {
+      "platform": "web",
+      "size": "320,568",
+      "scale": "1",
+      "count": 133,
+      "overflow": [],
+      "clippedFooters": []
+    },
+    {
+      "platform": "web",
+      "size": "320,568",
+      "scale": "1.25",
+      "count": 133,
+      "overflow": [],
+      "clippedFooters": []
+    },
+    {
+      "platform": "desktop",
+      "size": "390,844",
+      "scale": "1",
+      "count": 133,
+      "overflow": [],
+      "clippedFooters": []
+    },
+    {
+      "platform": "desktop",
+      "size": "390,844",
+      "scale": "1.25",
+      "count": 133,
+      "overflow": [],
+      "clippedFooters": []
+    }
+  ],
+  "errors": [],
+  "density": {
+    "fullyVisibleMessages": 8,
+    "allSigned": true
+  },
+  "limits": "Static HTML layout and navigation only; no real Android, server, crypto or calls tested"
+}

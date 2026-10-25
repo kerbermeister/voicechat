@@ -125,6 +125,7 @@ class _TemporaryMessageState extends State<TemporaryMessage>
                 ),
               )
             : Container(
+                margin: const EdgeInsets.symmetric(vertical: 1),
                 padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
                   border: Border.all(color: colors.tertiary, width: 2),

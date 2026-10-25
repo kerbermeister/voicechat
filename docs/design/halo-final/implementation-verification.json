@@ -1,0 +1,38 @@
+{
+  "branch": "codex/halo-design",
+  "baseHead": "978a1844b4834c1adf669fd031ee92d4bf1e7cb6",
+  "preexistingUncommittedChanges": "preserved; no merge or deployment",
+  "tests": {
+    "fullSuite": 164,
+    "optionalCaptureSkippedInSuite": 1,
+    "captureRunSeparately": "passed",
+    "finalTargetedTests": 14
+  },
+  "analyze": "No issues found",
+  "webBuild": "passed",
+  "androidBuild": {
+    "status": "blocked by local toolchain",
+    "reason": "rustup not found in PATH for flutter_vodozemac cargokit",
+    "attemptedEnvironment": {
+      "java": "installed JDK 21",
+      "locale": "en_US.UTF-8"
+    },
+    "apkVerified": false
+  },
+  "localPreview": "http://localhost:7362",
+  "sources": {
+    "theme.dart": "2230e1d0cfc44d4f4f84ed9bb697b32344df611228e593dcbdab03075d1ad5c3",
+    "conversation_list.dart": "f7f66827316abb0d85751abb40c2d171a335da9d18f096a30597e1953fc896ff",
+    "conversation_header.dart": "fcb238da6a4226532f63304dfdfe9e87e202f922c65d54acb75b5a634c43d2b9",
+    "chat_pane.dart": "feec925411efbdb54987c0aaba29c8dd8c8117eec828ab3a0d75a39e4d9a38ad",
+    "scheduled_view.dart": "63acfdd4b9aac5916a15027a71bb62216bf7a51af3251d714222e92e76ae5a85",
+    "app_motion.dart": "b49f8e0424d1980a05274aeedf0ce709c4962f4b5b06fa11ba65e40cf6ff1a32",
+    "main.dart": "5bc1e2bd102888f73d56cd369eb5216880d4d6d8b508a16e9ca2ae9ac3e55ffc"
+  },
+  "limits": [
+    "No merge to main",
+    "No VPS deployment",
+    "No physical-device animation/performance test",
+    "No real account messaging, calls, media E2EE or server queue operations performed"
+  ]
+}

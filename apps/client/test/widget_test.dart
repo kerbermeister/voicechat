@@ -6,7 +6,7 @@ import 'package:voicechat_probe/main.dart';
 
 void main() {
   testWidgets(
-    'Lavender is default; palette switch persists without overflow on narrow screen',
+    'Halo is default; palette switch persists without overflow on narrow screen',
     (tester) async {
       SharedPreferences.setMockInitialValues({});
       tester.view.physicalSize = const Size(390, 844);
@@ -16,6 +16,10 @@ void main() {
       await tester.pumpWidget(const VoiceChatApp());
       await tester.pumpAndSettle();
       expect(find.text('VoiceChat'), findsOneWidget);
+      expect(
+        Theme.of(tester.element(find.text('VoiceChat'))).colorScheme.surface,
+        const Color(0xFF101A35),
+      );
       await tester.tap(find.byTooltip('Цветовая схема'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Midnight'));
@@ -46,12 +50,16 @@ void main() {
       expect(find.text('@anna:local'), findsOneWidget);
       expect(find.text('Открыть переписку'), findsOneWidget);
       expect(find.widgetWithText(TextField, 'Пароль аккаунта'), findsNothing);
-      await tester.tap(find.text('Параметры подключения'));
+      await tester.tap(find.byTooltip('Параметры подключения'));
       await tester.pumpAndSettle();
       final fields = tester
           .widgetList<TextField>(find.byType(TextField))
           .toList();
-      expect(fields.any((f) => f.controller?.text == 'annas-browser'), true);
+      expect(
+        find.widgetWithText(TextField, 'Профиль устройства'),
+        findsNothing,
+      );
+      expect(fields.any((f) => f.controller?.text == 'annas-browser'), false);
       expect(
         fields.any((f) => f.controller?.text == 'http://localhost:8008'),
         true,

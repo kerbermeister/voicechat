@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 import 'package:matrix/encryption.dart';
@@ -96,7 +97,7 @@ class _HistoryRecoveryDialogState extends State<HistoryRecoveryDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Запросы истории'),
+    title: AppDialogTitle(child: const Text('Запросы истории')),
     content: SizedBox(
       width: 500,
       height: 360,

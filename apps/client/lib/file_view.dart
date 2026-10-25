@@ -1,3 +1,4 @@
+import 'app_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:video_player/video_player.dart';
@@ -57,15 +58,20 @@ class _FileViewState extends State<FileView> {
   Widget build(BuildContext context) {
     if (file == null) return Text(error!);
     final video = file!.mime.startsWith('video/');
-    final foreground = Theme.of(context).colorScheme.onSecondaryContainer;
+    final foreground = Theme.of(context).colorScheme.onSurface;
     return DefaultTextStyle.merge(
       style: TextStyle(color: foreground),
       child: IconTheme(
         data: IconThemeData(color: foreground),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.secondaryContainer,
+            border: Border.all(
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: .6),
+            ),
             borderRadius: BorderRadius.circular(file!.videoNote ? 32 : 16),
           ),
           child: Column(
@@ -73,8 +79,8 @@ class _FileViewState extends State<FileView> {
             children: [
               if (file!.videoNote)
                 SizedBox(
-                  width: 240,
-                  height: 280,
+                  width: 180,
+                  height: 224,
                   child: MessageVideo(file: file!, inline: true),
                 ),
               Row(
@@ -98,9 +104,11 @@ class _FileViewState extends State<FileView> {
                   if (video && !file!.videoNote)
                     IconButton(
                       tooltip: 'Смотреть видео',
+                      color: foreground,
                       icon: const Icon(Icons.play_circle_outline),
-                      onPressed: () => showDialog<void>(
+                      onPressed: () => showAppDialog<void>(
                         context: context,
+                        animationStyle: appAnimationStyle(context),
                         builder: (_) => MessageVideo(file: file!),
                       ),
                     ),
@@ -118,7 +126,9 @@ class _FileViewState extends State<FileView> {
               ),
               Text(
                 '${(file!.size / 1048576).toStringAsFixed(1)} МБ · ${file!.mime}',
-                style: Theme.of(context).textTheme.labelSmall,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: foreground.withValues(alpha: .8),
+                ),
               ),
               if (busy) LinearProgressIndicator(value: progress),
               if (error != null)
@@ -254,8 +264,9 @@ class _MessageVideoState extends State<MessageVideo> {
             'Предпросмотр видео · ${duration ~/ 60}:${(duration % 60).toString().padLeft(2, '0')}',
         button: true,
         child: InkWell(
-          onTap: () => showDialog<void>(
+          onTap: () => showAppDialog<void>(
             context: context,
+            animationStyle: appAnimationStyle(context),
             builder: (_) => MessageVideo.draft(
               file: widget.draft!,
               videoNote: widget.videoNote,
@@ -312,8 +323,8 @@ class _MessageVideoState extends State<MessageVideo> {
         ? value.position.inMilliseconds / value.duration.inMilliseconds
         : 0.0;
     final content = SizedBox(
-      width: widget.inline ? 240 : 800,
-      height: widget.inline ? 280 : 620,
+      width: widget.inline ? 180 : 800,
+      height: widget.inline ? 224 : 620,
       child: Column(
         children: [
           if (!widget.inline)

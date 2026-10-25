@@ -549,6 +549,7 @@ async function register(role) {
       await a.setViewportSize({width:390,height:844});
       if(process.env.VOICECHAT_SKIP_LINKS!=='1') await require('./check_link_cards.cjs')({page:a,fill,button,waitForAnnouncement,root});
       if(process.env.VOICECHAT_TEMPORARY_TEST==='1') {
+        await button(a,'Дополнительные действия').click();
         await a.getByRole('button',{name:/^Временное сообщение/}).click();
         await a.getByText('Исчезнет через 10 с',{exact:true}).waitFor();
         const apply=await button(a,'Применить').boundingBox();

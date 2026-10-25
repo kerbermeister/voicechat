@@ -1,0 +1,89 @@
+{
+  "errors": [],
+  "checks": [
+    {
+      "platform": "android",
+      "size": "390,844",
+      "scale": "1",
+      "count": 114,
+      "issues": []
+    },
+    {
+      "platform": "android",
+      "size": "390,844",
+      "scale": "1.25",
+      "count": 114,
+      "issues": []
+    },
+    {
+      "platform": "android",
+      "size": "360,800",
+      "scale": "1",
+      "count": 114,
+      "issues": []
+    },
+    {
+      "platform": "android",
+      "size": "360,800",
+      "scale": "1.25",
+      "count": 114,
+      "issues": []
+    },
+    {
+      "platform": "android",
+      "size": "320,568",
+      "scale": "1",
+      "count": 114,
+      "issues": []
+    },
+    {
+      "platform": "android",
+      "size": "320,568",
+      "scale": "1.25",
+      "count": 114,
+      "issues": []
+    },
+    {
+      "platform": "web",
+      "size": "390,844",
+      "scale": "1",
+      "count": 113,
+      "issues": []
+    },
+    {
+      "platform": "web",
+      "size": "390,844",
+      "scale": "1.25",
+      "count": 113,
+      "issues": []
+    },
+    {
+      "platform": "web",
+      "size": "360,800",
+      "scale": "1",
+      "count": 113,
+      "issues": []
+    },
+    {
+      "platform": "web",
+      "size": "360,800",
+      "scale": "1.25",
+      "count": 113,
+      "issues": []
+    },
+    {
+      "platform": "web",
+      "size": "320,568",
+      "scale": "1",
+      "count": 113,
+      "issues": []
+    },
+    {
+      "platform": "web",
+      "size": "320,568",
+      "scale": "1.25",
+      "count": 113,
+      "issues": []
+    }
+  ]
+}

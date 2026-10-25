@@ -1,14 +1,22 @@
+import 'device_added.dart';
 import 'dart:math';
+import 'auth_layout.dart';
+import 'app_motion.dart';
 import 'package:flutter/material.dart';
+import 'user_action_error.dart';
 import 'package:matrix/matrix.dart' as mx;
 
 /// Synapse handles email verification and UIA; the app never validates its own email token.
 class RegistrationScreen extends StatefulWidget {
-  final mx.Client client;
+  final Future<mx.Client> Function(String? passphrase) openClient;
+  final bool requireLocalPassphrase;
   final bool resetPassword;
+  final void Function(String password)? onRegistered;
   const RegistrationScreen({
     super.key,
-    required this.client,
+    required this.openClient,
+    this.requireLocalPassphrase = false,
+    this.onRegistered,
     this.resetPassword = false,
   });
   @override
@@ -16,6 +24,9 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen> {
+  final localPassphrase = TextEditingController();
+  mx.Client? client;
+  String? localPassphraseError;
   final username = TextEditingController();
   final displayName = TextEditingController();
   final email = TextEditingController();
@@ -28,42 +39,57 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   String? sid;
   String? session;
   bool busy = false;
-  String status = 'Подтвердите почту, затем завершите регистрацию.';
+  String? status;
+  final formKey = GlobalKey<FormState>();
+  int sendAttempt = 0;
 
   Future<void> submit() async {
     if (busy) return;
-    if (!email.text.contains('@') ||
-        password.text.length < 12 ||
-        password.text != confirmation.text ||
-        (!widget.resetPassword &&
-            !RegExp(r'^[a-z0-9._=-]{3,40}$').hasMatch(username.text))) {
-      setState(
-        () => status =
-            'Нужны почта, username (3–40 латинских символов) и совпадающие пароли от 12 символов.',
-      );
-      return;
+    if (sid == null) {
+      final invalid = formKey.currentState!.validateGranularly();
+      if (invalid.isNotEmpty) {
+        await Scrollable.ensureVisible(
+          invalid.first.context,
+          alignment: .2,
+          duration: motionDuration(context),
+        );
+        return;
+      }
     }
-    setState(() => busy = true);
+    if (widget.requireLocalPassphrase && client == null) {
+      final phrase = localPassphrase.text;
+      final error = phrase.length < 12 || phrase.length > 1024
+          ? 'Введите локальную фразу от 12 до 1024 символов.'
+          : !widget.resetPassword && phrase == password.text
+          ? 'Придумайте фразу, отличную от пароля аккаунта.'
+          : null;
+      setState(() => localPassphraseError = error);
+      if (error != null) return;
+    }
+    setState(() {
+      busy = true;
+      status = null;
+    });
     try {
+      client ??= await widget.openClient(
+        widget.requireLocalPassphrase ? localPassphrase.text : null,
+      );
+      if (!mounted) return;
       if (sid == null) {
+        sendAttempt++;
         final response = widget.resetPassword
-            ? await widget.client.requestTokenToResetPasswordEmail(
+            ? await client!.requestTokenToResetPasswordEmail(
                 clientSecret,
                 email.text.trim(),
-                1,
+                sendAttempt,
               )
-            : await widget.client.requestTokenToRegisterEmail(
+            : await client!.requestTokenToRegisterEmail(
                 clientSecret,
                 email.text.trim(),
-                1,
+                sendAttempt,
               );
         sid = response.sid;
-        if (mounted) {
-          setState(
-            () => status =
-                'Письмо отправлено. Откройте ссылку подтверждения, затем вернитесь сюда. На локальном стенде почта: http://localhost:8025',
-          );
-        }
+        if (mounted) setState(() => status = null);
       } else {
         final auth = mx.AuthenticationThreePidCreds(
           session: session,
@@ -74,29 +100,32 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           ),
         );
         if (widget.resetPassword) {
-          await widget.client.changePassword(
+          await client!.changePassword(
             password.text,
             auth: auth,
             logoutDevices: true,
           );
         } else {
-          await widget.client.register(
+          await client!.register(
             username: username.text,
             password: password.text,
             initialDeviceDisplayName: 'VoiceChat',
             auth: auth,
           );
-          await widget.client.firstSyncReceived;
+          final addedAt = DateTime.now();
+          await client!.firstSyncReceived;
+          await recordDeviceAdded(client!, addedAt);
           if (displayName.text.trim().isNotEmpty) {
-            await widget.client.setProfileField(
-              widget.client.userID!,
-              'displayname',
-              {'displayname': displayName.text.trim()},
-            );
+            await client!.setProfileField(client!.userID!, 'displayname', {
+              'displayname': displayName.text.trim(),
+            });
           }
         }
+        if (!widget.resetPassword) widget.onRegistered?.call(password.text);
         if (mounted) Navigator.pop(context, true);
       }
+    } on UserActionError catch (error) {
+      if (mounted) setState(() => status = error.message);
     } on mx.MatrixException catch (error) {
       session = error.session ?? session;
       if (mounted) {
@@ -125,66 +154,249 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     }
   }
 
+  String? validate(TextEditingController controller, String? value) {
+    final text = value ?? '';
+    if (controller == username &&
+        !RegExp(r'^[a-z0-9._=-]{3,40}$').hasMatch(text)) {
+      return 'От 3 до 40 символов: латинские буквы, цифры, . _ = -';
+    }
+    if (controller == email && !text.contains('@')) {
+      return 'Введите адрес электронной почты.';
+    }
+    if (controller == password && text.length < 12) {
+      return 'Используйте не менее 12 символов.';
+    }
+    if (controller == confirmation && text != password.text) {
+      return 'Пароли не совпадают.';
+    }
+    return null;
+  }
+
   Widget field(
     TextEditingController controller,
     String label, {
     bool secret = false,
-  }) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: TextField(
-      controller: controller,
-      readOnly: sid != null,
-      obscureText: secret,
-      autocorrect: false,
-      enableSuggestions: !secret,
-      decoration: InputDecoration(labelText: label),
-    ),
+    String? helper,
+    Iterable<String>? autofillHints,
+  }) => AuthField(
+    controller: controller,
+    label: label,
+    secret: secret,
+    helper: helper,
+    readOnly: busy || sid != null,
+    keyboardType: controller == email ? TextInputType.emailAddress : null,
+    autofillHints: autofillHints,
+    validator: (value) => validate(controller, value),
+    onSubmitted: controller == confirmation ? submit : null,
   );
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(
-        widget.resetPassword ? 'Восстановить пароль' : 'Создать аккаунт',
-      ),
-    ),
-    body: Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: ListView(
-          padding: const EdgeInsets.all(24),
+
+  Widget pair(Widget first, Widget second) =>
+      !widget.resetPassword &&
+          MediaQuery.sizeOf(context).width >= 900 &&
+          MediaQuery.textScalerOf(context).scale(16) <= 20
+      ? Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!widget.resetPassword)
-              field(username, 'Имя пользователя · латиницей'),
-            if (!widget.resetPassword) field(displayName, 'Отображаемое имя'),
-            field(email, 'Электронная почта'),
-            field(password, 'Пароль аккаунта · от 12 символов', secret: true),
-            field(confirmation, 'Повторите пароль', secret: true),
-            Text(status),
-            const SizedBox(height: 16),
-            if (widget.resetPassword)
-              const Text(
-                'Смена пароля отзовёт серверные сессии. Для истории по-прежнему нужен ключ восстановления; локальная фраза не меняется.',
-              ),
-            const SizedBox(height: 16),
-            if (busy) const LinearProgressIndicator(),
-            FilledButton(
-              onPressed: busy ? null : submit,
-              child: Text(
-                sid == null
-                    ? 'Отправить письмо'
-                    : widget.resetPassword
-                    ? 'Почта подтверждена · сменить пароль'
-                    : 'Почта подтверждена · создать аккаунт',
-              ),
-            ),
+            Expanded(child: first),
+            const SizedBox(width: 16),
+            Expanded(child: second),
           ],
+        )
+      : Column(children: [first, second]);
+
+  @override
+  Widget build(BuildContext context) {
+    final reset = widget.resetPassword;
+    final sent = sid != null;
+    final short = compactAuthHeight(context);
+    final colors = Theme.of(context).colorScheme;
+    return AuthPage(
+      maxWidth: reset ? 520 : 760,
+      onBack: () => Navigator.maybePop(context),
+      eyebrow: sent
+          ? '02 / ПОДТВЕРЖДЕНИЕ'
+          : reset
+          ? 'ВОССТАНОВЛЕНИЕ ДОСТУПА'
+          : '01 / НОВЫЙ АККАУНТ',
+      icon: sent
+          ? Icons.mark_email_unread_outlined
+          : reset
+          ? Icons.key_outlined
+          : Icons.person_add_outlined,
+      title: sent
+          ? 'Проверьте вашу почту'
+          : reset
+          ? 'Восстановить пароль'
+          : 'Начнём знакомство',
+      subtitle: sent
+          ? 'Откройте ссылку из письма. Затем вернитесь сюда, чтобы ${reset ? 'сохранить новый пароль' : 'завершить создание аккаунта'}.'
+          : reset
+          ? 'Укажите почту аккаунта и придумайте новый пароль. Мы отправим ссылку для подтверждения.'
+          : 'Выберите имя, по которому вас найдут, и настройте доступ к вашим разговорам.',
+      child: AutofillGroup(
+        child: Form(
+          key: formKey,
+          child: AuthStage(
+            child: Column(
+              key: ValueKey(sent ? 'verify-email' : 'account-details'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (sent) ...[
+                  AuthNotice(email.text.trim(), icon: Icons.alternate_email),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Не нашли письмо?',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Проверьте папку «Спам» и правильность адреса.',
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ] else ...[
+                  if (!reset) ...[
+                    if (!short)
+                      Text(
+                        'ПРОФИЛЬ',
+                        style: TextStyle(
+                          color: colors.primary,
+                          fontSize: 11,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    SizedBox(height: short ? 0 : 8),
+                    pair(
+                      field(
+                        username,
+                        'Имя пользователя · латиницей',
+                        helper: short
+                            ? null
+                            : '3–40 символов: латиница, цифры, . _ = -',
+                        autofillHints: const [AutofillHints.newUsername],
+                      ),
+                      field(
+                        displayName,
+                        'Отображаемое имя (необязательно)',
+                        autofillHints: const [AutofillHints.name],
+                      ),
+                    ),
+                    if (!short) const Divider(height: 16),
+                    if (!short)
+                      Text(
+                        'ДОСТУП',
+                        style: TextStyle(
+                          color: colors.primary,
+                          fontSize: 11,
+                          letterSpacing: 1.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    SizedBox(height: short ? 0 : 8),
+                  ],
+                  field(
+                    email,
+                    'Электронная почта',
+                    autofillHints: const [AutofillHints.email],
+                  ),
+                  pair(
+                    field(
+                      password,
+                      'Пароль аккаунта · от 12 символов',
+                      secret: true,
+                      autofillHints: const [AutofillHints.newPassword],
+                    ),
+                    field(
+                      confirmation,
+                      'Повторите пароль',
+                      secret: true,
+                      autofillHints: const [AutofillHints.newPassword],
+                    ),
+                  ),
+                  if (widget.requireLocalPassphrase)
+                    AuthField(
+                      controller: localPassphrase,
+                      label: reset
+                          ? 'Локальная фраза этого профиля'
+                          : 'Локальная фраза · от 12 символов',
+                      secret: true,
+                      readOnly: busy || client != null,
+                      error: localPassphraseError,
+                      helper: reset
+                          ? 'Введите фразу, которой защищены данные этого браузера.'
+                          : 'Защищает переписку в этом браузере. Придумайте отдельную фразу и сохраните её в менеджере паролей.',
+                    ),
+                ],
+                if (reset) ...[
+                  const AuthNotice(
+                    'Смена пароля завершит серверные сессии на устройствах. Для восстановления истории нужен ключ восстановления; локальные ключи сохраняются.',
+                    icon: Icons.devices_outlined,
+                  ),
+                  SizedBox(height: short ? 4 : 12),
+                ],
+                if (status != null) ...[
+                  AuthNotice(status!, error: true),
+                  const SizedBox(height: 16),
+                ],
+                SizedBox(
+                  height: 3,
+                  child: busy ? const LinearProgressIndicator() : null,
+                ),
+                const SizedBox(height: 9),
+                FilledButton.icon(
+                  onPressed: busy ? null : submit,
+                  icon: Icon(
+                    sent ? Icons.check_rounded : Icons.arrow_forward_rounded,
+                  ),
+                  label: Text(
+                    !sent
+                        ? 'Отправить письмо'
+                        : reset
+                        ? 'Почта подтверждена · сменить пароль'
+                        : 'Почта подтверждена · создать аккаунт',
+                  ),
+                ),
+                const SizedBox(height: 4),
+                if (sent)
+                  TextButton(
+                    onPressed: busy
+                        ? null
+                        : () => setState(() {
+                            sid = null;
+                            session = null;
+                            status = null;
+                          }),
+                    child: const Text('Изменить данные'),
+                  )
+                else
+                  TextButton(
+                    onPressed: () => Navigator.maybePop(context),
+                    child: Text(
+                      reset ? 'Вернуться ко входу' : 'Уже есть аккаунт? Войти',
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
+
   @override
   void dispose() {
-    for (final c in [username, displayName, email, password, confirmation]) {
+    for (final c in [
+      username,
+      displayName,
+      email,
+      password,
+      confirmation,
+      localPassphrase,
+    ]) {
       c.clear();
       c.dispose();
     }
