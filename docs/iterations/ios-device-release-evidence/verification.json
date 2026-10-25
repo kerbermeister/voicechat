@@ -1,0 +1,151 @@
+{
+  "current": {
+    "release": "/srv/voicechat/releases/c57e2faa94cef901c7167f5e1b803756f7a02860",
+    "manifest": {
+      "commit": "c57e2faa94cef901c7167f5e1b803756f7a02860",
+      "schema": 1,
+      "origin": "https://univc.duckdns.org",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:c4073fbda0603a0bc5620f5ab7af340b1951941fb4f0fad8583d50bf8dfad947",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:589e21102f32a2bd8596de4940a1c8f1a6591ead04e01cd0803148f93cf5e4dc"
+    },
+    "backend": "387074a09a4d4b2f849629a7b3b202089ca87762a174b710b70c93333acc0c9f",
+    "backend_config": "22dc9c7213adc288cd47b178c380a71b92046691817bcb85b67ddde6b8c34091"
+  },
+  "previous_commit": "d4b941e9970911c672ece0b0381ecd45b31a0f2c",
+  "previous_release_exists": true,
+  "containers": {
+    "voicechat-web-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/web@sha256:589e21102f32a2bd8596de4940a1c8f1a6591ead04e01cd0803148f93cf5e4dc",
+      "id": "82938deca56215e9b3b462e7a672d25c95528f879c436ab06717fef282e9ace8",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T10:35:15.51545853Z",
+      "restarts": 0
+    },
+    "voicechat-synapse-1": {
+      "image": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+      "id": "a0d1e1708b92f7f6f42d36b7574fb57f81b6ddc4d4ca86fb974f84c44c262a9c",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T10:35:13.359884568Z",
+      "restarts": 0
+    },
+    "voicechat-control-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/control@sha256:c4073fbda0603a0bc5620f5ab7af340b1951941fb4f0fad8583d50bf8dfad947",
+      "id": "561bc19bc48c4511c9c8a07415a7daf2032450bdf0139cc1b2a13736f16b0c67",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T10:35:13.556310067Z",
+      "restarts": 0
+    },
+    "voicechat-configure-1": {
+      "image": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+      "id": "3131d0e41841a66c75bf43aace1bff528e7ebb8f8fe3b9b1376e198957f3ef7e",
+      "status": "exited",
+      "health": null,
+      "started": "2026-10-25T10:35:10.90747977Z",
+      "restarts": 0
+    },
+    "voicechat-turn-1": {
+      "image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+      "id": "507b88b118ad8c753473c5de94fca8b672c5046f6825818a21789e8dc8d588d5",
+      "status": "running",
+      "health": null,
+      "started": "2026-10-25T10:35:11.580630238Z",
+      "restarts": 0
+    },
+    "voicechat-postgres-1": {
+      "image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "id": "2e901809ce096555022310aa9a36adc9f962ea5586e63e02f38a17dce7e82e02",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-23T21:52:03.276018562Z",
+      "restarts": 0
+    }
+  },
+  "data": {
+    "integrity": "ok",
+    "contacts": 20,
+    "screen_flag": "1"
+  },
+  "container_main_sha256": "e7ce6ad9ff9f73d6af925da49c28c7fcba43ae780630d52876869675dd954260",
+  "backup": {
+    "short_id": "ec7a138a",
+    "time": "2026-10-25T10:35:07.57886613Z",
+    "tags": [
+      "voicechat"
+    ]
+  },
+  "verified_at": "2026-10-25T11:38:09.508270+01:00",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/40185050684",
+  "workflow_status": "success",
+  "workflow_duration": "5m7s",
+  "mode": "full",
+  "http": {
+    "/": {
+      "status": 200,
+      "headers": {
+        "Cache-Control": "no-cache",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp"
+      }
+    },
+    "/api/health": {
+      "status": 200
+    },
+    "/_matrix/client/versions": {
+      "status": 200
+    },
+    "/main.dart.js": {
+      "status": 200,
+      "headers": {
+        "Cache-Control": "no-cache",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp"
+      },
+      "sha256": "e7ce6ad9ff9f73d6af925da49c28c7fcba43ae780630d52876869675dd954260"
+    },
+    "/e2ee.worker.dart.js": {
+      "status": 200
+    },
+    "/pkg/vodozemac_bindings_dart_bg.wasm": {
+      "status": 200
+    },
+    "/_synapse/admin/v1/server_version": {
+      "status": 404
+    },
+    "/api/internal/test": {
+      "status": 404
+    }
+  },
+  "local": {
+    "url": "http://localhost:7362",
+    "source_commit": "c57e2faa94cef901c7167f5e1b803756f7a02860",
+    "main_js_sha256": "a463dd7b8ba830511b07f3f5d13084877f5f56c5da00816b68309a3bd6e35072",
+    "http": 200,
+    "headers": {
+      "Server": "SimpleHTTP/0.6 Python/3.13.4",
+      "Date": "Sun, 25 Oct 2026 10:37:41 GMT",
+      "Content-type": "text/javascript",
+      "Content-Length": "7087421",
+      "Last-Modified": "Sun, 25 Oct 2026 10:37:04 GMT",
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Embedder-Policy": "require-corp",
+      "Cache-Control": "no-store"
+    }
+  },
+  "checks": {
+    "flutter_tests_passed": 211,
+    "optional_capture_tests_skipped": 3,
+    "analyze": "pass",
+    "release_web": "pass",
+    "debug_apk_arm64": "pass",
+    "delayed_response_race_tests": "4 passed",
+    "late_ready_after_send_failure": "rejected"
+  },
+  "limits": [
+    "Physical iPhone Safari/home-screen webapp switching not tested.",
+    "The reproduced SDK race is not proven to be the cause of the user session.",
+    "iOS may suspend the background page; alternate between Safari and webapp to finish SAS comparison and confirmation."
+  ]
+}
