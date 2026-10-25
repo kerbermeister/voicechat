@@ -1,0 +1,143 @@
+{
+  "current": {
+    "release": "/srv/voicechat/releases/422ea4916d3693f2ea19afdea68c897a19805de5",
+    "manifest": {
+      "commit": "422ea4916d3693f2ea19afdea68c897a19805de5",
+      "schema": 1,
+      "origin": "https://univc.duckdns.org",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:c4073fbda0603a0bc5620f5ab7af340b1951941fb4f0fad8583d50bf8dfad947",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:cb257fe1e069eb511240bcc22ee2cdf8c3da0266c9c4d9dc0f5c60eee7526385"
+    },
+    "backend": "387074a09a4d4b2f849629a7b3b202089ca87762a174b710b70c93333acc0c9f",
+    "backend_config": "22dc9c7213adc288cd47b178c380a71b92046691817bcb85b67ddde6b8c34091"
+  },
+  "previous_commit": "c57e2faa94cef901c7167f5e1b803756f7a02860",
+  "previous_release_exists": true,
+  "containers": {
+    "voicechat-web-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/web@sha256:cb257fe1e069eb511240bcc22ee2cdf8c3da0266c9c4d9dc0f5c60eee7526385",
+      "id": "70acb2fc2e593fa5927865a89ad03fba1abc376a65cb34c5cdc9bb1b9514e308",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T11:03:52.76964206Z",
+      "restarts": 0
+    },
+    "voicechat-synapse-1": {
+      "image": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+      "id": "a0d1e1708b92f7f6f42d36b7574fb57f81b6ddc4d4ca86fb974f84c44c262a9c",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T10:35:13.359884568Z",
+      "restarts": 0
+    },
+    "voicechat-control-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/control@sha256:c4073fbda0603a0bc5620f5ab7af340b1951941fb4f0fad8583d50bf8dfad947",
+      "id": "561bc19bc48c4511c9c8a07415a7daf2032450bdf0139cc1b2a13736f16b0c67",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T10:35:13.556310067Z",
+      "restarts": 0
+    },
+    "voicechat-configure-1": {
+      "image": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+      "id": "3131d0e41841a66c75bf43aace1bff528e7ebb8f8fe3b9b1376e198957f3ef7e",
+      "status": "exited",
+      "health": null,
+      "started": "2026-10-25T10:35:10.90747977Z",
+      "restarts": 0
+    },
+    "voicechat-turn-1": {
+      "image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+      "id": "507b88b118ad8c753473c5de94fca8b672c5046f6825818a21789e8dc8d588d5",
+      "status": "running",
+      "health": null,
+      "started": "2026-10-25T10:35:11.580630238Z",
+      "restarts": 0
+    },
+    "voicechat-postgres-1": {
+      "image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "id": "2e901809ce096555022310aa9a36adc9f962ea5586e63e02f38a17dce7e82e02",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-23T21:52:03.276018562Z",
+      "restarts": 0
+    }
+  },
+  "data": {
+    "integrity": "ok",
+    "contacts": 20,
+    "screen_flag": "1"
+  },
+  "container_main_sha256": "903cd40fc924931259315fc0631e87ae0ec57c535d2baf75f61003e5eb6d280d",
+  "backup": {
+    "short_id": "ec7a138a",
+    "time": "2026-10-25T10:35:07.57886613Z",
+    "tags": [
+      "voicechat"
+    ]
+  },
+  "verified_at": "2026-10-25T12:05:18.024435+01:00",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/40187018844",
+  "workflow_status": "success",
+  "workflow_duration": "4m16s",
+  "mode": "web",
+  "http": {
+    "/": {
+      "status": 200,
+      "headers": {
+        "Cache-Control": "no-cache",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp"
+      }
+    },
+    "/api/health": {
+      "status": 200
+    },
+    "/_matrix/client/versions": {
+      "status": 200
+    },
+    "/main.dart.js": {
+      "status": 200,
+      "headers": {
+        "Cache-Control": "no-cache",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp"
+      },
+      "sha256": "903cd40fc924931259315fc0631e87ae0ec57c535d2baf75f61003e5eb6d280d"
+    },
+    "/e2ee.worker.dart.js": {
+      "status": 200
+    },
+    "/pkg/vodozemac_bindings_dart_bg.wasm": {
+      "status": 200
+    },
+    "/_synapse/admin/v1/server_version": {
+      "status": 404
+    },
+    "/api/internal/test": {
+      "status": 404
+    }
+  },
+  "local": {
+    "source_commit": "422ea4916d3693f2ea19afdea68c897a19805de5",
+    "url": "http://localhost:7362",
+    "main_js_sha256": "7e2898a9bbfb1c006371535fd28f23ef713707433dd05868a6f5dc97ed62e51f",
+    "http": 200
+  },
+  "backend_containers_unchanged": true,
+  "checks": {
+    "flutter_tests_passed": 215,
+    "optional_capture_tests_skipped": 3,
+    "analyze": "pass",
+    "release_web": "pass",
+    "debug_apk_arm64": "pass",
+    "without_frames_regression": "fails on c57e2fa, passes on 422ea49",
+    "real_sdk_local_synapse": "matching SAS and seven emoji in active and alternating sync runs",
+    "published_web_baseline": "both clients reached SAS; seven emoji observed on new client; verification cancelled",
+    "temporary_accounts": "local and production probe accounts deactivated"
+  },
+  "limits": [
+    "Physical iPhone Safari/home-screen webapp retest pending.",
+    "Native protocol checks and desktop browser checks do not establish iOS behavior."
+  ]
+}

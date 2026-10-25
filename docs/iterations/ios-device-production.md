@@ -1,5 +1,9 @@
 # Проверка устройства Safari → webapp — 25 октября 2026
 
+После этого релиза пользователь сообщил о повторном зависании. Сценарий iPhone
+не закрыт; [следующая итерация](ios-verification-controller-production.md)
+убирает зависимость продолжения от отрисовки диалога.
+
 В `main`, на VPS и локальном стенде опубликован
 `c57e2faa94cef901c7167f5e1b803756f7a02860`.
 [Build and deploy #21](https://github.com/kerbermeister/voicechat/actions/runs/40185050684)
