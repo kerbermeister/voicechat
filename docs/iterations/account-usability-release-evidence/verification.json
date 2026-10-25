@@ -1,0 +1,136 @@
+{
+  "verified_at": "2026-10-25T10:32:00.338589+01:00",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/40180556846",
+  "workflow_status": "success",
+  "workflow_duration": "3m41s",
+  "mode": "web",
+  "current": {
+    "release": "/srv/voicechat/releases/30baeec657cb22bdaff39885a3c8f5ed9f998001",
+    "manifest": {
+      "commit": "30baeec657cb22bdaff39885a3c8f5ed9f998001",
+      "schema": 1,
+      "origin": "https://univc.duckdns.org",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:aebdd2d72994a8047c7e5657f36f9400dc0e9ebdf145febf190b8ecd7daec874",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:b969abfb98aaf5f5458a863f7527fd0b68af6cf7b74cebdaf43b3bda8090b372"
+    },
+    "backend": "29590658203d07248e633165c18c1f7b2c77211527fd0e0f97fcf77b98ceb221",
+    "backend_config": "88597b45805bf358aee1e054f0c226f5d9dd874dd93831981372ac63996b40fc"
+  },
+  "previous_commit": "3bfebcb143a26fa23dd513abeb5a6b3faaf27221",
+  "previous_release_exists": true,
+  "containers": {
+    "voicechat-web-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/web@sha256:b969abfb98aaf5f5458a863f7527fd0b68af6cf7b74cebdaf43b3bda8090b372",
+      "id": "b0c845fb19a888db92bf5ca6e00a29208004ff95927c1fb1f5e8c1bcc778faba",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T09:28:38.792536463Z",
+      "restarts": 0
+    },
+    "voicechat-synapse-1": {
+      "image": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+      "id": "afb0ba8c5cd2bedd7fa18baa4d0c45e819ce232423dcd707a1897afae5d8524e",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T08:27:05.556340599Z",
+      "restarts": 0
+    },
+    "voicechat-control-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/control@sha256:aebdd2d72994a8047c7e5657f36f9400dc0e9ebdf145febf190b8ecd7daec874",
+      "id": "fd52933b6fd84f105932a59acf22e572ba227cf93295dd67e452f6554b0f5ad5",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T08:27:01.227917179Z",
+      "restarts": 0
+    },
+    "voicechat-configure-1": {
+      "image": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+      "id": "bc9772efefaf9b53bead2c7b6f558fca658b1264eab27c64e0b951e2a2eadb17",
+      "status": "exited",
+      "health": null,
+      "started": "2026-10-25T08:27:00.54753812Z",
+      "restarts": 0
+    },
+    "voicechat-turn-1": {
+      "image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+      "id": "507b88b118ad8c753473c5de94fca8b672c5046f6825818a21789e8dc8d588d5",
+      "status": "running",
+      "health": null,
+      "started": "2026-10-25T08:27:03.39341987Z",
+      "restarts": 0
+    },
+    "voicechat-postgres-1": {
+      "image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "id": "2e901809ce096555022310aa9a36adc9f962ea5586e63e02f38a17dce7e82e02",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-23T21:52:03.276018562Z",
+      "restarts": 0
+    }
+  },
+  "backend_unchanged": true,
+  "main_js_matches_container": true,
+  "http": {
+    "/": {
+      "status": 200,
+      "headers": {
+        "Cache-Control": "no-cache",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp"
+      }
+    },
+    "/api/health": {
+      "status": 200
+    },
+    "/_matrix/client/versions": {
+      "status": 200
+    },
+    "/main.dart.js": {
+      "status": 200,
+      "headers": {
+        "Cache-Control": "no-cache",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp"
+      },
+      "sha256": "6f11450922a3dfa544611d7e9221c8c922e913f8dc3367b134d0897a014511e9"
+    },
+    "/e2ee.worker.dart.js": {
+      "status": 200
+    },
+    "/pkg/vodozemac_bindings_dart_bg.wasm": {
+      "status": 200
+    },
+    "/assets/assets/fonts/Inter-Variable.ttf": {
+      "status": 200
+    },
+    "/_synapse/admin/v1/server_version": {
+      "status": 404
+    },
+    "/api/internal/test": {
+      "status": 404
+    }
+  },
+  "local_checks": {
+    "flutter_tests_passed": 200,
+    "optional_capture_tests_skipped": 3,
+    "flutter_analyze": "pass",
+    "release_web": "pass",
+    "debug_android_arm64": "pass",
+    "local_web_updated": true,
+    "local_backend_healthy": true,
+    "synthetic_export_key_decodes_with_sdk": true,
+    "mobile_settings_footer_max_px": 64,
+    "mobile_button_min_px": 44
+  },
+  "limits": [
+    "Native save chooser and browser save/download on real devices not exercised; method-channel/widget tests and builds passed.",
+    "Browsers hide exact iPhone/Mac hardware models; available device type is shown.",
+    "Email confirmation auto-login remains a separate TODO."
+  ],
+  "browser": {
+    "name": "Codex in-app browser",
+    "login_loaded": true,
+    "forms_submitted": false,
+    "console_errors": []
+  }
+}
