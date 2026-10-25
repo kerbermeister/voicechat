@@ -465,7 +465,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                 const SizedBox(height: 4),
                 if (sent)
                   TextButton(
-                    onPressed: busy
+                    onPressed: busy || (!reset && client?.isLogged() == true)
                         ? null
                         : () {
                             verificationTimer?.cancel();

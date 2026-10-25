@@ -176,6 +176,14 @@ void main() {
       await tick(tester, const Duration(seconds: 3));
       expect(client.registrations, 1);
       expect(finished, 0);
+      expect(
+        tester
+            .widget<TextButton>(
+              find.widgetWithText(TextButton, 'Изменить данные'),
+            )
+            .onPressed,
+        isNull,
+      );
       await tick(tester, const Duration(seconds: 6));
       expect(client.registrations, 1);
       expect(finished, 1);
