@@ -1,0 +1,138 @@
+{
+  "verified_at": "2026-10-25T07:46:21.579662+01:00",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/40169758109",
+  "workflow_status": "success",
+  "mode": "full",
+  "backup_snapshot": "e0db4d90",
+  "current": {
+    "release": "/srv/voicechat/releases/c60a347542b6f1b72680b096da7121397d552137",
+    "manifest": {
+      "commit": "c60a347542b6f1b72680b096da7121397d552137",
+      "schema": 1,
+      "origin": "https://univc.duckdns.org",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:4f55e4ec78e1aea1b290de8abacf02abab48b2b6b557afdb745dcfca96fac463",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:cc7433abf7cf9dc09d69641c11f62ef61dfcf4b73d0a9328d619df5ae3f3c37f"
+    },
+    "backend": "b97fe72ab7fd4484b300f8f4d9024200cf64dfcb6cfe24f89549df34488e2895",
+    "backend_config": "7c9ed0826ddf0eded60a5f57bee3f00de64e23a7786389de73b93b48a93b17dc"
+  },
+  "previous_commit": "7b63b0e97650fd228eb59d08c6349cfedb453d14",
+  "previous_release_exists": true,
+  "containers": {
+    "voicechat-web-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/web@sha256:cc7433abf7cf9dc09d69641c11f62ef61dfcf4b73d0a9328d619df5ae3f3c37f",
+      "id": "c76e4ec524420f3dc612af49c129b799de93818ee059df24ec8fad2c8c2a9a9c",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T06:44:35.053639425Z",
+      "restarts": 0
+    },
+    "voicechat-synapse-1": {
+      "image": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+      "id": "1a09c6aa2e5b902f3238bdb34e78efc2bcf0524f39e02e8aca6814c2dbfe0832",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T06:44:33.270016498Z",
+      "restarts": 0
+    },
+    "voicechat-control-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/control@sha256:4f55e4ec78e1aea1b290de8abacf02abab48b2b6b557afdb745dcfca96fac463",
+      "id": "8edc00def50e4d6c4f97533b72501871b18a9661f737fb123b08112144c916c2",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-25T06:44:33.431926075Z",
+      "restarts": 0
+    },
+    "voicechat-configure-1": {
+      "image": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+      "id": "4357fef3fb63dece18b40e00cb049251afd5edac4109636ef73cfd3f2d21a016",
+      "status": "exited",
+      "health": null,
+      "started": "2026-10-25T06:44:32.630491312Z",
+      "restarts": 0
+    },
+    "voicechat-turn-1": {
+      "image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+      "id": "507b88b118ad8c753473c5de94fca8b672c5046f6825818a21789e8dc8d588d5",
+      "status": "running",
+      "health": null,
+      "started": "2026-10-25T06:44:35.300246932Z",
+      "restarts": 0
+    },
+    "voicechat-postgres-1": {
+      "image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "id": "2e901809ce096555022310aa9a36adc9f962ea5586e63e02f38a17dce7e82e02",
+      "status": "running",
+      "health": "healthy",
+      "started": "2026-10-23T21:52:03.276018562Z",
+      "restarts": 0
+    }
+  },
+  "data": {
+    "fixtures_removed": true,
+    "contacts_integrity": "ok",
+    "contact_count": 20,
+    "contact_links_table": true
+  },
+  "http": {
+    "/": {
+      "status": 200,
+      "headers": {
+        "Cache-Control": "no-cache",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp"
+      }
+    },
+    "/api/health": {
+      "status": 200
+    },
+    "/_matrix/client/versions": {
+      "status": 200
+    },
+    "/main.dart.js": {
+      "status": 200,
+      "headers": {
+        "Cache-Control": "no-cache",
+        "Cross-Origin-Opener-Policy": "same-origin",
+        "Cross-Origin-Embedder-Policy": "require-corp"
+      },
+      "sha256": "9c96a8d672c8cbd4d0f9c33f28747f1d49f2548046d07a65aeb2db44cc3d3276"
+    },
+    "/e2ee.worker.dart.js": {
+      "status": 200
+    },
+    "/pkg/vodozemac_bindings_dart_bg.wasm": {
+      "status": 200
+    },
+    "/_synapse/admin/v1/server_version": {
+      "status": 404
+    },
+    "/api/internal/test": {
+      "status": 404
+    },
+    "/api/contact-links": {
+      "status": 401
+    }
+  },
+  "api_smoke": {
+    "passed": true,
+    "public_https_authenticated_api": true,
+    "preview_no_consent": true,
+    "self_rejected": true,
+    "claim_retry": true,
+    "closed_policy_preserved": true,
+    "no_greeting_published": true,
+    "accounts_deactivated": 2
+  },
+  "main_js_matches_container": true,
+  "screen_flag_preserved": "1",
+  "browser": {
+    "name": "Codex in-app browser",
+    "login_loaded": true,
+    "console_errors": []
+  },
+  "limits": [
+    "No production E2EE greeting or physical Android messenger share in this release verification; real E2EE greeting and retry were verified on local Synapse before release.",
+    "Rollback pointer verified; intentional production rollback not run."
+  ]
+}
