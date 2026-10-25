@@ -90,15 +90,16 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
       await call!.connect();
       if (data['screen'] == false) break;
       step = 'screen-bind';
-      final api = ScreenApi(
-        fixture['api'] as String,
-        () => client.accessToken!,
-      );
+      final api = ScreenApi(fixture['api'] as String, () => client.accessToken!);
       if ((await api.request('capabilities'))['screen'] != true) {
         api.close();
         break;
       }
-      screen = ScreenShareController(call!, api, livekitUrl);
+      screen = ScreenShareController(
+        call!,
+        api,
+        livekitUrl,
+      );
       screen!.addListener(() => revision.value++);
       await screen!.connect();
     case 'rejoin':
@@ -111,32 +112,26 @@ Future<Map<String, dynamic>> command(Map<String, dynamic> data) async {
       final room = await probe!.room(fixture['room'] as String);
       final nonce = data['nonce'] as String;
       final text = await MatrixProbe.sendText(room, 'restore-text:$nonce');
-      final file = await room.sendFileEvent(
-        mx.MatrixFile(
-          bytes: Uint8List.fromList(utf8.encode('restore-file:$nonce')),
-          name: 'restore-fixture.txt',
-          mimeType: 'text/plain',
-        ),
-      );
+      final file = await room.sendFileEvent(mx.MatrixFile(
+        bytes: Uint8List.fromList(utf8.encode('restore-file:$nonce')),
+        name: 'restore-fixture.txt',
+        mimeType: 'text/plain',
+      ));
       return {'text': text, 'file': file};
     case 'readData':
       final room = await probe!.room(fixture['room'] as String);
       Future<mx.Event> read(String id) async {
         // Force a server read; a local timeline entry is not restore evidence.
         final wire = await client.getOneRoomEvent(room.id, id);
-        if (wire.type != mx.EventTypes.Encrypted)
-          throw StateError('Plaintext event');
-        return client.encryption!.decryptRoomEvent(
-          mx.Event.fromMatrixEvent(wire, room),
-        );
+        if (wire.type != mx.EventTypes.Encrypted) throw StateError('Plaintext event');
+        return client.encryption!.decryptRoomEvent(mx.Event.fromMatrixEvent(wire, room));
       }
       final text = await read(data['text'] as String);
       final event = await read(data['file'] as String);
       final file = await event.downloadAndDecryptAttachment(skipScanner: true);
       return {
         'text_matches': text.content['body'] == 'restore-text:${data['nonce']}',
-        'file_matches':
-            utf8.decode(file.bytes) == 'restore-file:${data['nonce']}',
+        'file_matches': utf8.decode(file.bytes) == 'restore-file:${data['nonce']}',
       };
     case 'gate':
       withhold = data['enabled'] == true;
@@ -323,22 +318,14 @@ Future<void> prepare() async {
               'error': 'lab-command-failed',
               'kind': error.runtimeType.toString(),
               'state': error is StateError
-                  ? const [
-                          'No element',
-                          'Too many elements',
-                          'Call closed during authorization',
-                          'Call closed during admission',
-                          'Device authorization refresh failed',
-                          'Call requires an encrypted Matrix room',
-                          'Call closed during key provider creation',
-                          'E2EE unavailable; refusing microphone',
-                          'Call ended during camera permission',
-                          'ReusableCompleter disposed',
-                          'Cannot add new events after calling close',
-                          'Future already completed',
-                        ].contains(error.message)
-                        ? error.message
-                        : 'other'
+                  ? const ['No element', 'Too many elements', 'Call closed during authorization', 'Call closed during admission',
+                           'Device authorization refresh failed', 'Call requires an encrypted Matrix room',
+                           'Call closed during key provider creation', 'E2EE unavailable; refusing microphone',
+                           'Call ended during camera permission', 'ReusableCompleter disposed',
+                           'Cannot add new events after calling close', 'Future already completed']
+                        .contains(error.message)
+                      ? error.message
+                      : 'other'
                   : null,
               'step': step,
             }.jsify();
