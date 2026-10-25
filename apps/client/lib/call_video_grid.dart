@@ -15,7 +15,10 @@ class CallVideoGrid extends StatelessWidget {
       tiles.add((
         identity: call.chat.client.userID!,
         video: direct.cameraEnabled && direct.localVideo != null
-            ? rtc.RTCVideoView(direct.localVideo!, mirror: true)
+            ? rtc.RTCVideoView(
+                direct.localVideo!,
+                mirror: direct.mirrorLocalVideo,
+              )
             : null,
       ));
       tiles.add((
@@ -64,65 +67,133 @@ class CallVideoGrid extends StatelessWidget {
         ));
       }
     }
-    return LayoutBuilder(
-      builder: (context, constraints) => GridView.builder(
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: constraints.maxWidth < 440
-              ? 1
-              : tiles.length > 4
-              ? 3
-              : 2,
-          childAspectRatio: 16 / 10,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-        ),
-        itemCount: tiles.length,
-        itemBuilder: (context, index) {
-          final tile = tiles[index];
-          final userId = tile.identity.split('/').first;
-          final user = call.chat
-              .getParticipants()
-              .where((u) => u.id == userId)
-              .firstOrNull;
-          final label = userId == call.chat.client.userID
-              ? 'Вы'
-              : user?.displayName ?? tile.identity;
-          return ClipRRect(
-            key: ValueKey(tile.identity),
-            borderRadius: BorderRadius.circular(18),
-            child: ColoredBox(
-              color: Colors.black87,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  tile.video ??
-                      const Center(
-                        child: Icon(
-                          Icons.videocam_off_outlined,
-                          color: Colors.white70,
-                          size: 32,
-                        ),
-                      ),
-                  Positioned(
-                    left: 8,
-                    right: 8,
-                    bottom: 8,
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        backgroundColor: Colors.black54,
-                      ),
+    Widget tileView(({String identity, Widget? video}) tile) {
+      final userId = tile.identity.split('/').first;
+      final user = call.chat
+          .getParticipants()
+          .where((u) => u.id == userId)
+          .firstOrNull;
+      final label = userId == call.chat.client.userID
+          ? 'Вы'
+          : user?.displayName ?? tile.identity;
+      return ClipRRect(
+        key: ValueKey(tile.identity),
+        borderRadius: BorderRadius.circular(18),
+        child: ColoredBox(
+          color: Colors.black87,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              tile.video ??
+                  const Center(
+                    child: Icon(
+                      Icons.videocam_off_outlined,
+                      color: Colors.white70,
+                      size: 32,
                     ),
                   ),
-                ],
+              Positioned(
+                left: 8,
+                right: 8,
+                bottom: 8,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    backgroundColor: Colors.black54,
+                  ),
+                ),
               ),
-            ),
-          );
-        },
-      ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final local = tiles
+        .where((t) => t.identity.split('/').first == call.chat.client.userID)
+        .firstOrNull;
+    return CallVideoLayout(
+      local: local == null ? null : tileView(local),
+      remote: [
+        for (final tile in tiles)
+          if (tile != local) tileView(tile),
+      ],
     );
   }
+}
+
+/// Hiding the preview never changes publication or camera capture.
+class CallVideoLayout extends StatefulWidget {
+  final Widget? local;
+  final List<Widget> remote;
+  const CallVideoLayout({super.key, this.local, required this.remote});
+  @override
+  State<CallVideoLayout> createState() => _CallVideoLayoutState();
+}
+
+class _CallVideoLayoutState extends State<CallVideoLayout> {
+  bool showSelf = true;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final remote = widget.remote;
+      return Stack(
+        fit: StackFit.expand,
+        children: [
+          if (remote.length == 1)
+            remote.single
+          else if (remote.isEmpty)
+            const ColoredBox(
+              color: Colors.black87,
+              child: Center(
+                child: Text(
+                  'Ждём собеседника',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            )
+          else
+            GridView.builder(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: constraints.maxWidth < 440
+                    ? 1
+                    : remote.length > 4
+                    ? 3
+                    : 2,
+                childAspectRatio: 16 / 10,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+              ),
+              itemCount: remote.length,
+              itemBuilder: (_, index) => remote[index],
+            ),
+          if (widget.local != null && showSelf)
+            Positioned(
+              right: 8,
+              bottom: 8,
+              width: (constraints.maxWidth * .24).clamp(56, 112),
+              height: (constraints.maxHeight * .28).clamp(40, 140),
+              child: IgnorePointer(child: widget.local!),
+            ),
+          if (widget.local != null)
+            Positioned(
+              right: 4,
+              top: 4,
+              child: IconButton.filledTonal(
+                tooltip: showSelf ? 'Скрыть своё видео' : 'Показать своё видео',
+                onPressed: () => setState(() => showSelf = !showSelf),
+                icon: Icon(
+                  showSelf
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                ),
+              ),
+            ),
+        ],
+      );
+    },
+  );
 }

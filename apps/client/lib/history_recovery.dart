@@ -7,6 +7,28 @@ import 'matrix_probe.dart';
 import 'user_action_error.dart';
 import 'temporary_message.dart';
 
+Future<void> ensureSharedGroupHistory(Room room) async {
+  if (room.isDirectChat ||
+      !room.encrypted ||
+      room.membership != Membership.join) {
+    throw UserActionError(
+      'Общая история доступна только в зашифрованной группе.',
+    );
+  }
+  final state = await room.client.getRoomStateWithKey(
+    room.id,
+    'm.room.history_visibility',
+    '',
+  );
+  if (state['history_visibility'] == 'shared') return;
+  if (!room.canChangeHistoryVisibility) {
+    throw UserActionError(
+      'Создатель группы должен разрешить историю до вступления.',
+    );
+  }
+  await room.setHistoryVisibility(HistoryVisibility.shared);
+}
+
 class HistoryRecovery extends ChangeNotifier {
   final Client client;
   final void Function() incoming;
@@ -63,6 +85,14 @@ class HistoryRecovery extends ChangeNotifier {
     );
     notifyListeners();
     if (first) incoming();
+    if (!request.room.isDirectChat &&
+        request.room.historyVisibility == HistoryVisibility.shared) {
+      unawaited(
+        approve(request, sharedGroupOnly: true).catchError((Object _) {
+          // Unverified devices stay in the existing explicit approval flow.
+        }),
+      );
+    }
   }
 
   bool _active(RoomKeyRequest request) =>
@@ -82,7 +112,10 @@ class HistoryRecovery extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> approve(RoomKeyRequest request) async {
+  Future<void> approve(
+    RoomKeyRequest request, {
+    bool sharedGroupOnly = false,
+  }) async {
     if (!_requests.containsKey(request) ||
         !_active(request) ||
         !_sending.add(request)) {
@@ -118,6 +151,24 @@ class HistoryRecovery extends ChangeNotifier {
       );
       if (!_active(request) || session?.isValid != true) {
         throw UserActionError('Запрос отменён или ключ больше недоступен.');
+      }
+      if (sharedGroupOnly) {
+        final state = await client.getRoomStateWithKey(
+          request.room.id,
+          'm.room.history_visibility',
+          '',
+        );
+        final currentMembers = await client.getJoinedMembersByRoom(
+          request.room.id,
+        );
+        if (!_active(request) ||
+            request.room.isDirectChat ||
+            !request.room.encrypted ||
+            state['history_visibility'] != 'shared' ||
+            currentMembers?.containsKey(client.userID) != true ||
+            currentMembers?.containsKey(device.userId) != true) {
+          throw UserActionError('Доступ к общей истории изменился.');
+        }
       }
       request.request.devices[0] = current;
       await request.forwardKey();

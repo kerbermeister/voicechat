@@ -85,7 +85,10 @@ python3 prototype/check_reports.py
 ## Быстрые проверки
 
 ```sh
-python3 -m unittest discover -s prototype -p 'test_*.py'
+python3 -m venv .prototype/python
+.prototype/python/bin/python -m pip install -r infra/push-requirements.txt
+.prototype/python/bin/python -m unittest discover -s prototype -p 'test_*.py'
+node --test prototype/test_mobile_web.cjs
 cd apps/client
 flutter analyze
 flutter test

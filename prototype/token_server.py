@@ -21,6 +21,7 @@ from pathlib import Path
 from screen_control import ScreenStore, ScreenError
 from screen_http import ScreenService
 from screen_protocol import ScreenRequestError
+from web_push import PushStore, PushError, APP_ID as PUSH_APP_ID
 
 _secrets = ({'livekit': os.environ['VOICECHAT_LIVEKIT_SECRET'], 'policy': os.environ['VOICECHAT_POLICY_SECRET']}
             if 'VOICECHAT_LIVEKIT_SECRET' in os.environ else
@@ -45,6 +46,16 @@ _screens = None
 _screens_lock = threading.Lock()
 _scheduled = None
 _scheduled_lock = threading.Lock()
+_push = None
+_push_lock = threading.Lock()
+
+
+def push_store():
+    global _push
+    with _push_lock:
+        if _push is None:
+            _push = PushStore(Path(__file__).resolve().parents[1] / '.prototype/push', origins[0])
+    return _push
 
 
 def publish_scheduled(job):
@@ -170,6 +181,42 @@ class Handler(BaseHTTPRequestHandler):
                                      None if body is None else json.dumps(body).encode(),
                                      headers={'Authorization': auth, 'Content-Type': 'application/json'})
         with urllib.request.urlopen(req, timeout=10) as response: return json.load(response)
+    def push_request(self):
+        try:
+            store = push_store()
+            if self.command == 'GET':
+                return self.reply(200, {'public_key': store.public_key})
+            self.connection.settimeout(10)
+            size = int(self.headers.get('Content-Length', '0'))
+            if not 0 < size <= 32768: raise PushError('invalid_size')
+            body = json.loads(self.rfile.read(size))
+            if self.path == '/_matrix/push/v1/notify':
+                return self.reply(200, store.notify(body))
+            who = self.matrix('account/whoami')
+            user, device = who['user_id'], who.get('device_id')
+            if not isinstance(device, str) or not device: raise PushError('device_required', 403)
+            if not isinstance(body, dict): raise PushError('invalid_request')
+            if body.get('action') == 'remove':
+                for token in store.remove(user, device):
+                    self.matrix('pushers/set', {'app_id': PUSH_APP_ID, 'pushkey': token, 'kind': None})
+                return self.reply(200, {'ok': True})
+            if body.get('action') != 'register': raise PushError('invalid_request')
+            previous = store.tokens(user, device)
+            token = store.register(user, device, body.get('subscription'))
+            for old in previous:
+                self.matrix('pushers/set', {'app_id': PUSH_APP_ID, 'pushkey': old, 'kind': None})
+            self.matrix('pushers/set', {
+                'app_id': PUSH_APP_ID, 'pushkey': token, 'kind': 'http',
+                'app_display_name': 'VoiceChat', 'device_display_name': 'Web app', 'lang': 'ru',
+                'append': False, 'data': {'url': os.environ.get('VOICECHAT_PUSH_GATEWAY_URL', origins[0].rstrip('/') + '/_matrix/push/v1/notify'), 'format': 'event_id_only'},
+            })
+            return self.reply(200, {'binding': token})
+        except PushError as error: return self.reply(error.status, {'error': str(error)})
+        except ContactError: return self.reply(401, {'error': 'unauthorized'})
+        except urllib.error.HTTPError as error:
+            return self.reply(401 if error.code == 401 else 503, {'error': 'push_unavailable'})
+        except (KeyError, TypeError, ValueError): return self.reply(400, {'error': 'invalid_request'})
+        except (OSError, sqlite3.Error, ImportError): return self.reply(503, {'error': 'push_unavailable'})
     def screen_request(self):
         try:
             raw=b''
@@ -372,6 +419,7 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError): pass
     def do_OPTIONS(self): self.reply(204, {})
     def do_GET(self):
+        if self.path == '/push/config': return self.push_request()
         if self.path.startswith('/screen/'): return self.screen_request()
         if self.path == '/scheduled' or self.path.startswith('/scheduled?'): return self.scheduled_request()
         if self.path == '/health':
@@ -414,6 +462,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/reports' and laboratory: return self.reply(200, reports)
         self.reply(404, {'error': 'not_found'})
     def do_POST(self):
+        if self.path in ('/push/subscribe', '/_matrix/push/v1/notify'): return self.push_request()
         if self.path == '/contact-links': return self.contact_link_post()
         if self.path.startswith('/screen/'): return self.screen_request()
         if self.path == '/scheduled': return self.scheduled_request()

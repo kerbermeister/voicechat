@@ -36,6 +36,28 @@ class ChatActions extends ChangeNotifier {
   Future<void> _writes = Future.value();
   ChatActions(this.client, {this.policyUrl, this.onSent});
   static const _storageKey = 'dev.voicechat.local.outbox';
+  static const _draftKey = 'dev.voicechat.local.drafts';
+  final Map<String, String> drafts = {};
+  Future<void> _draftWrites = Future.value();
+  bool get updateBusy =>
+      _sending.isNotEmpty || _preparing.isNotEmpty || _publishing.isNotEmpty;
+
+  Future<void> saveDraft(String roomId, String text) {
+    if (text.isEmpty) {
+      drafts.remove(roomId);
+    } else {
+      drafts[roomId] = text;
+    }
+    final snapshot = Map<String, String>.of(drafts);
+    return _draftWrites = _draftWrites
+        .catchError((Object _) {})
+        .then((_) => client.database.storeAccountData(_draftKey, snapshot));
+  }
+
+  Future<void> prepareUpdate() async {
+    await _writes;
+    await _draftWrites;
+  }
 
   Future<MediaPolicy> _fetchPolicy() async {
     final response = await client.httpClient
@@ -80,6 +102,13 @@ class ChatActions extends ChangeNotifier {
   }
 
   Future<void> open() async {
+    final storedDrafts =
+        (await client.database.getAccountData())[_draftKey]?.content;
+    if (storedDrafts != null) {
+      for (final entry in storedDrafts.entries) {
+        if (entry.value is String) drafts[entry.key] = entry.value as String;
+      }
+    }
     if (policyUrl != null) {
       final stored =
           (await client.database.getAccountData())['dev.voicechat.local.policy']
@@ -820,6 +849,7 @@ class ChatActions extends ChangeNotifier {
     await _sync?.cancel();
     try {
       await _writes;
+      await _draftWrites;
     } finally {
       dispose();
     }

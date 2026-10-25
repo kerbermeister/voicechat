@@ -80,7 +80,7 @@ void main() {
         if (!reset) {
           // Fill fields with scroll so the same test runs on mobile viewports.
           for (final (label, value) in [
-            ('Имя пользователя · латиницей', 'anton'),
+            ('Логин · строчные a–z', 'anton'),
             ('Электронная почта', 'anton@example.test'),
             ('Пароль аккаунта · от 12 символов', 'fictional password'),
             ('Повторите пароль', 'fictional password'),

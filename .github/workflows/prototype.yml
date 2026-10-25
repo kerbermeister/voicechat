@@ -13,7 +13,10 @@ jobs:
           channel: stable
           cache: true
       - run: python3 prototype/setup.py
+      - run: python3 infra/android_release.py check-version
+      - run: python3 -m pip install -r infra/push-requirements.txt
       - run: python3 -m unittest discover -s prototype -p 'test_*.py'
+      - run: node --test prototype/test_mobile_web.cjs
       - run: flutter pub get --enforce-lockfile
         working-directory: apps/client
       - run: flutter analyze

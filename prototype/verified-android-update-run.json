@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-25",
+  "status": "PASS_EMULATOR_ONLY",
+  "device": "Isolated Android emulator API 35 arm64; not physical hardware",
+  "entrypoint": "apps/client/integration_test/apk_update_fixture.dart",
+  "sourceVersion": {
+    "name": "9.0.0",
+    "code": 100
+  },
+  "targetVersion": {
+    "name": "9.0.1",
+    "code": 101
+  },
+  "checks": {
+    "manualCheckBeforeDownload": true,
+    "permissionReturnDoesNotInstall": true,
+    "systemConfirmationRequired": true,
+    "systemCancellationKeepsOldVersion": true,
+    "wrongSignerRejected": true,
+    "oldProfileReadableAfterRejection": true,
+    "installedViaPackageInstaller": true,
+    "accountAndDeviceIdsPreserved": true,
+    "syntheticTokenPreserved": true,
+    "vodozemacIdentityFingerprintPreserved": true,
+    "megolmCiphertextDecryptedAfterUpgrade": true,
+    "sqlCipherKeyFromKeystorePreserved": true,
+    "encryptedDatabaseBlobBytesPreserved": true,
+    "draftPreserved": true,
+    "allDataChecksPassAfterReboot": true
+  },
+  "limitations": [
+    "Synthetic local fixture, no real Matrix server account or media call",
+    "Test transport maps fixed HTTPS fixture origin to loopback HTTP; production TLS not exercised",
+    "Physical Android and minSdk API 24 installer not tested",
+    "Production GitHub Actions and VPS publication not run"
+  ],
+  "apkSha256": {
+    "100": "6523baaf1e9e454e1c2b67e2ab504add6ba72eaea87ea29413ca14ab765a5b81",
+    "101": "38489bee4130e8e3ec957f51e4f2786399860903aba88d28876c5f64f60ce452"
+  },
+  "ordinaryRelease": {
+    "version": "1.1.0+2",
+    "sha256": "f01767d91c5e50e1c14dde8fcb265af40f841f2177ecec991637a77e46bea665",
+    "sizeBytes": 156225201,
+    "releaseSigningVerified": true,
+    "debuggable": false,
+    "ordinaryEntrypointSmoke": "PASS",
+    "unconfiguredProductionChannel": "rejected with a readable error; no installation"
+  }
+}

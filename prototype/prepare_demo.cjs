@@ -152,7 +152,7 @@ async function group(key,name,owner,members,invited=[]) {
     const result = await matrix('createRoom',{name,preset:'private_chat',invite:[...members,...invited].map(id),
     power_level_content_override:{invite:50,kick:50,ban:50},initial_state:[
       {type:'m.room.encryption',state_key:'',content:{algorithm:'m.megolm.v1.aes-sha2'}},
-      {type:'m.room.history_visibility',state_key:'',content:{history_visibility:'joined'}},
+      {type:'m.room.history_visibility',state_key:'',content:{history_visibility:'shared'}},
     ]},owner);
     state.rooms[key] = result.room_id; save();
   }

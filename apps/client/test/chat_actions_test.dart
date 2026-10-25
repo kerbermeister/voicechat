@@ -50,6 +50,8 @@ class OutboxRoom implements Room {
   @override
   bool get isDirectChat => false;
   @override
+  HistoryVisibility get historyVisibility => HistoryVisibility.joined;
+  @override
   final receiptState = LatestReceiptState.empty();
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

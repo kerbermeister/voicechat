@@ -16,7 +16,10 @@ class DirectCall implements VoiceCall {
   rtc.RTCVideoRenderer? localVideo;
   rtc.RTCVideoRenderer? remoteVideo;
   rtc.RTCRtpSender? _cameraSender;
-  String? _cameraDevice;
+  String _cameraFacing = 'user';
+  bool get mirrorLocalVideo => _cameraFacing == 'user';
+  final _streams = <mx.WrappedMediaStream, rtc.RTCVideoRenderer>{};
+  final _renderedTracks = <rtc.RTCVideoRenderer, List<String>>{};
   final _statistics = CallStatistics();
   @override
   VideoQuality videoQuality = VideoQuality.auto;
@@ -38,6 +41,10 @@ class DirectCall implements VoiceCall {
   DirectCall(this.call, this.changed, this.report) {
     _subscriptions.add(
       call.onCallStateChanged.stream.listen((_) {
+        // onTrack can add audio after video, without emitting another onStreamAdd.
+        for (final entry in _streams.entries) {
+          _updateRenderer(entry.key, entry.value);
+        }
         if (call.state == mx.CallState.kConnected) _clock.start();
         changed();
         if (isClosed) unawaited(close());
@@ -88,10 +95,11 @@ class DirectCall implements VoiceCall {
         await renderer.dispose();
         return;
       }
-      renderer.srcObject = stream.stream;
+      _updateRenderer(stream, renderer);
       // Native muting controls the microphone and rejects remote streams; web muting only silences preview playback.
       if (kIsWeb) renderer.muted = stream.isLocal();
       _renderers.add(renderer);
+      _streams[stream] = renderer;
       if (video) {
         if (stream.isLocal()) {
           localVideo = renderer;
@@ -104,6 +112,20 @@ class DirectCall implements VoiceCall {
       await renderer.dispose();
       await close();
       report('Не удалось включить аудио.');
+    }
+  }
+
+  void _updateRenderer(
+    mx.WrappedMediaStream stream,
+    rtc.RTCVideoRenderer renderer,
+  ) {
+    final tracks =
+        stream.stream?.getTracks().map((track) => track.id!).toList() ??
+        <String>[];
+    tracks.sort();
+    if (!listEquals(_renderedTracks[renderer], tracks)) {
+      renderer.srcObject = stream.stream;
+      _renderedTracks[renderer] = tracks;
     }
   }
 
@@ -190,7 +212,7 @@ class DirectCall implements VoiceCall {
       final capture = await rtc.navigator.mediaDevices.getUserMedia({
         'audio': false,
         'video': {
-          if (_cameraDevice != null) 'deviceId': _cameraDevice,
+          'facingMode': kIsWeb ? {'exact': _cameraFacing} : _cameraFacing,
           'width': videoQuality.width,
           'height': videoQuality.height,
           'frameRate': videoQuality.fps,
@@ -202,7 +224,6 @@ class DirectCall implements VoiceCall {
         await stream.addTrack(track);
         await _cameraSender!.replaceTrack(track);
         await call.setLocalVideoMuted(false);
-        await setVideoQuality(videoQuality);
       } catch (_) {
         call.localUserMediaStream?.setVideoMuted(true);
         await _cameraSender!.replaceTrack(null);
@@ -225,17 +246,33 @@ class DirectCall implements VoiceCall {
   @override
   Future<void> switchCamera() async {
     if (!cameraEnabled) return;
-    final cameras = (await rtc.navigator.mediaDevices.enumerateDevices())
-        .where((d) => d.kind == 'videoinput')
-        .toList();
-    if (cameras.length < 2) return;
     final track = call.localUserMediaStream!.stream!.getVideoTracks().single;
-    final current = _cameraDevice ?? track.getSettings()['deviceId'];
-    final index = cameras.indexWhere((d) => d.deviceId == current);
-    final next = cameras[(index + 1) % cameras.length].deviceId;
+    final current = kIsWeb
+        ? track.getSettings()['facingMode'] as String? ?? _cameraFacing
+        : _cameraFacing;
+    final next = current == 'environment' ? 'user' : 'environment';
+    if (!kIsWeb) {
+      if (!await rtc.Helper.switchCamera(track)) {
+        throw StateError('Camera switch unavailable');
+      }
+      _cameraFacing = next;
+      changed();
+      return;
+    }
+    // iOS needs the previous camera released; enumeration may expose only one device.
     await camera(false);
-    _cameraDevice = next;
-    await camera(true);
+    _cameraFacing = next;
+    try {
+      await camera(true);
+    } catch (_) {
+      _cameraFacing = current;
+      try {
+        await camera(true);
+      } catch (_) {
+        report('Камера выключена. Проверьте разрешение и включите её снова.');
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -316,6 +353,8 @@ class DirectCall implements VoiceCall {
         renderer.srcObject = null;
         await renderer.dispose();
       }
+      _streams.clear();
+      _renderedTracks.clear();
       changed();
     }
   }

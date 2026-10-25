@@ -19,6 +19,22 @@
     @private path /_synapse/admin/* /_synapse/client/voicechat/* /api/internal/* /api/report /api/reports
     route {
     respond @private 404
+    handle_path /updates/android/* {
+        root * /updates/android
+        @metadata path /latest.json
+        header @metadata Cache-Control "no-cache"
+        @apk path_regexp apk ^/[0-9]+/voicechat\.apk$
+        header @apk Content-Type application/vnd.android.package-archive
+        header @apk Cache-Control "public, max-age=31536000, immutable"
+        @published path_regexp published ^/(latest\.json|[1-9][0-9]*/voicechat\.apk)$
+        route {
+            file_server @published
+            respond 404
+        }
+    }
+    handle /_matrix/push/v1/notify {
+        reverse_proxy control:8090
+    }
     handle /_matrix/* {
         reverse_proxy synapse:8008
     }

@@ -31,7 +31,7 @@ class RegistrationClient implements mx.Client {
 Finder field(String label) => find.widgetWithText(TextField, label);
 
 Future<void> fillAccount(WidgetTester tester) async {
-  await tester.enterText(field('Имя пользователя · латиницей'), 'testuser');
+  await tester.enterText(field('Логин · строчные a–z'), 'testuser');
   await tester.enterText(field('Электронная почта'), 'test@example.com');
   await tester.enterText(
     field('Пароль аккаунта · от 12 символов'),
@@ -47,6 +47,38 @@ Future<void> send(WidgetTester tester) async {
 }
 
 void main() {
+  testWidgets('Registration lowercases typing and pasted usernames only', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RegistrationScreen(openClient: (_) async => RegistrationClient()),
+      ),
+    );
+    final login = field('Логин · строчные a–z');
+    for (final value in ['Alice', 'PASTED.Name_42']) {
+      await tester.enterText(login, value);
+      expect(
+        tester.widget<TextField>(login).controller!.text,
+        value.toLowerCase(),
+      );
+    }
+    await tester.enterText(
+      field('Пароль аккаунта · от 12 символов'),
+      'SecretPASSWORD',
+    );
+    expect(
+      tester
+          .widget<TextField>(field('Пароль аккаунта · от 12 символов'))
+          .controller!
+          .text,
+      'SecretPASSWORD',
+    );
+    expect(
+      find.text('3–40 символов: строчные a–z, цифры, . _ = -'),
+      findsOneWidget,
+    );
+  });
   setUp(() {
     final view =
         TestWidgetsFlutterBinding.instance.platformDispatcher.views.single;

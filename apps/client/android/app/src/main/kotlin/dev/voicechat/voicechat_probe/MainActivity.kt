@@ -28,6 +28,7 @@ class MainActivity : FlutterActivity() {
         private val selectedFiles = mutableSetOf<String>()
         private var saveResult: MethodChannel.Result? = null
         private val saves = mutableMapOf<String, Pair<Uri, OutputStream>>()
+        fun hasPendingSave() = saveResult != null || saves.isNotEmpty()
 
     }
 
@@ -39,10 +40,16 @@ class MainActivity : FlutterActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
     }
 
+    override fun onResume() { super.onResume(); AppUpdater.foreground = true }
+    override fun onPause() { AppUpdater.foreground = false; super.onPause() }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         val first = FlutterEngineCache.getInstance().get(ENGINE_ID) == null
         super.configureFlutterEngine(flutterEngine)
         FlutterEngineCache.getInstance().put(ENGINE_ID, flutterEngine)
+        val updater = AppUpdater(this)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/update")
+            .setMethodCallHandler(updater::handle)
         if (first) {
             flutterEngine.platformViewsController.registry.registerViewFactory("voicechat/youtube", YouTubeFactory())
             val app = applicationContext

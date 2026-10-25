@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'browser_audio.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +20,7 @@ class AppSounds {
   Future<void> _ringWrites = Future.value();
   AppSounds(this.client);
   Future<void> open() async {
+    if (kIsWeb) prepareBrowserAudio();
     await effect.setAudioContext(
       AudioContext(
         android: const AudioContextAndroid(audioFocus: AndroidAudioFocus.none),
@@ -57,6 +60,14 @@ class AppSounds {
   Future<void> _play(AudioPlayer player, String asset) async {
     if (!enabled || _closed) return;
     try {
+      if (kIsWeb) {
+        blocked = !await playBrowserSound(
+          player == ringing ? 'ring' : 'effect',
+          asset,
+          player == ringing,
+        );
+        return;
+      }
       await player.play(AssetSource('sounds/$asset.wav'));
       blocked = false;
     } catch (_) {
@@ -87,6 +98,7 @@ class AppSounds {
     _ringWrites = _ringWrites.catchError((Object _) {}).then((_) async {
       if (_closed) return;
       await ringing.stop();
+      if (kIsWeb) stopBrowserSound('ring');
       if (_ring != null) await _play(ringing, _ring!);
     });
   }
@@ -101,12 +113,14 @@ class AppSounds {
       _ring = null;
       await effect.stop();
       await ringing.stop();
+      if (kIsWeb) closeBrowserAudio();
     }
   }
 
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    if (kIsWeb) closeBrowserAudio();
     await events?.cancel();
     await _ringWrites;
     await effect.dispose();

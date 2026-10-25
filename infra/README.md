@@ -227,3 +227,132 @@ terminal call_session после restore повторно не допускае�
 [Отчёт](../prototype/verified-screen-security-operations-run.json) относится к
 изолированным локальным Compose-проектам. Проверки registry/deploy coordinator,
 целевой конфигурации, точной старой версии клиента и публичной сети остаются отдельными.
+
+## Ручные Android-обновления
+
+Клиент проверяет `/updates/android/latest.json` только по кнопке в «О приложении».
+Загрузка требует подтверждения, установка — отдельного подтверждения Android.
+[Контракт и ограничения](../docs/android-apk-update-spec.md),
+[версии](../docs/app-versioning.md), [история изменений](../docs/app-changelog.md).
+
+Первое подключение раздачи требует **full**-релиза: меняются Compose и workflow.
+`deploy.py` создаёт постоянный `runtime/android-updates`; Caddy получает read-only
+mount. APK не входят в web-образ, последующий web-only deploy сохраняет этот каталог.
+Прежде чем публиковать manifest, проверить route Caddy и наличие mount на VPS.
+
+GitHub environment `production`:
+
+- Secrets: `ANDROID_KEYSTORE_BASE64` (base64 JKS), `ANDROID_STORE_PASSWORD`,
+  `ANDROID_KEY_PASSWORD`, `ANDROID_KEY_ALIAS`; существующие SSH credentials.
+- Variables: `ANDROID_SIGNING_SHA256` (SHA-256 сертификата, lowercase hex),
+  `PUBLIC_URL`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_ROOT`.
+- `ANDROID_ACCEPTED_BUILD` и `ANDROID_ACCEPTED_SHA256` — номер и точный hash APK,
+  для которого записана приёмка физического Android. Без них публикация заблокирована.
+
+Ключ подписи и пароль резервировать **вне этого компьютера и VPS**, в защищённом
+хранилище. Не хранить их в Git, артефактах или кеше CI. При утрате ключа обычное
+обновление ранее установленных APK новым ключом невозможно. Локально созданный
+ключ ещё не означает настройки секретов GitHub или наличия внешней копии.
+
+**Android release → Run workflow**, выбрать revision, `publish=false` для сборки
+кандидата. Workflow проверяет клиент/сервер, собирает обычный `lib/main.dart`,
+проверяет подпись, package/version/ABI и создаёт артефакт `android-<commit>`:
+APK, `latest.json`, `release.json`, отчёт `apksigner`. После приёмки настроить
+`ANDROID_ACCEPTED_BUILD`/`ANDROID_ACCEPTED_SHA256`, выбрать тот же revision и
+запустить workflow с `publish=true`, `source_run=<ID запуска кандидата>`.
+Он получает **тот же APK** через [gh run download](https://cli.github.com/manual/gh_run_download),
+повторно проверяет подпись и metadata, публикует его и тег `app-v<version>+<build>`.
+Для публикации повторная компиляция запрещена: приёмка относится к точным байтам.
+Номер опубликованного APK неизменяем; другой файл требует следующего BUILD и
+соответствующей записи истории. `source_run` должен принадлежать тому же commit.
+
+
+Для локальной сборки экспортировать четыре переменные подписи из защищённого
+хранилища, задать production `PUBLIC_URL`, сгенерировать конфигурацию через
+`infra/client_config.py` и выполнить из `apps/client`:
+
+```sh
+flutter pub get --enforce-lockfile
+flutter build apk --release --target lib/main.dart --dart-define-from-file /tmp/client.json
+```
+
+На macOS: `LC_ALL=en_US.UTF-8 LC_CTYPE=en_US.UTF-8 LANG=en_US.UTF-8` и существующий
+Rust toolchain в PATH. Без ключа release-сборка завершается ошибкой, debug fallback
+отсутствует. Проверка версии: `python3 infra/android_release.py check-version`.
+Упаковка из корня (выходной каталог должен отсутствовать):
+
+```sh
+python3 infra/android_release.py package \
+  --apk apps/client/build/app/outputs/flutter-apk/app-release.apk \
+  --tools "$ANDROID_HOME/build-tools/36.0.0" \
+  --certificate "$ANDROID_SIGNING_SHA256" --output /tmp/android-candidate
+```
+
+`release.json` фиксирует фактический commit, ожидаемый тег и `sourceDirty`.
+Локальные сборки с незакоммиченными изменениями — кандидаты, workflow их не
+публикует. Production всегда использует чистый выбранный revision.
+
+Публикация сериализуется серверным `.publish.lock`: APK сначала размещается по
+неизменяемому номеру, проверяется через публичный HTTPS, затем атомарно меняется
+`latest.json`; прежний manifest сохраняется в `previous.json`. Ошибка до переключения
+оставляет старый канал. Для отзыва на VPS:
+
+```sh
+python3 /srv/voicechat/releases/REVISION/infra/android_release.py withdraw \
+  --root /srv/voicechat/runtime/android-updates --origin https://YOUR-PUBLIC-HOST
+```
+
+При первом выпуске без предыдущего manifest канал отключается (404), иначе
+выбирается предыдущий. Отзыв не понижает версию на телефоне. Исправляющий APK
+получает больший versionCode; хранившиеся APK и номера не удаляются и не используются
+повторно. Не удалять release-каталоги, которые используются контейнерами.
+
+Проверки: `python3 -m unittest prototype/test_android_release.py`;
+`VOICECHAT_DOCKER_TESTS=1 python3 -m unittest prototype/test_android_caddy.py`
+проверяет настоящий Caddy в изолированном контейнере. Fixture
+`apps/client/integration_test/apk_update_fixture.dart` предназначен только для
+эмулятора и требует `UPDATE_FIXTURE=true`: его HTTP transport заменён на loopback,
+он не входит в обычный APK и не служит проверкой production TLS/физического телефона.
+
+## Web Push для iPhone и браузеров
+
+Кандидат реализации: [задачи MC-07/08 и проверки](../docs/iterations/14-mobile-calls-and-messaging.md).
+Это изменение control и web: первый выпуск требует `mode=full`, а не web-only.
+Production-доставка и физический iPhone ещё не приняты.
+
+- На iPhone требуется iOS 16.4+, установка на домашний экран и разрешение по
+  кнопке «Настройки → Включить уведомления». При отказе разрешение меняют в iOS.
+- Web Push использует Matrix HTTP pusher с `format=event_id_only` и gateway
+  `/_matrix/push/v1/notify`. Клиент регистрирует/отзывает свою подписку
+  через `/api/push/subscribe` с действующим Matrix access token; user/device
+  определяются сервером через whoami. `GET /api/push/config` отдаёт публичный VAPID key.
+- Постоянный P-256 VAPID key автоматически создаётся один раз в control volume:
+  `/work/.prototype/push/vapid.pem` (0600); там же `subscriptions.sqlite` (0600).
+  Существующий согласованный full-backup включает весь control volume при
+  остановленных writers. Не удалять ключ при обычном выпуске: его замена потребует
+  переподписки устройств. Endpoint/auth подписок и приватный VAPID key не логировать.
+- Control-образ устанавливает закреплённые зависимости из `infra/push-requirements.txt`.
+  Они реализуют стандартные VAPID и RFC 8291; своя криптография не написана.
+- Исходящий HTTPS разрешён только к push-провайдерам Apple, Google и Mozilla;
+  redirects запрещены. Дубликаты event_id подавляются, ошибки доставки повторяет
+  Synapse, 404/410 отзывают подписку. Push не содержит текста, отправителя, room_id,
+  event_id или пользовательских E2EE-ключей. Уведомление нейтральное:
+  «Новое сообщение или входящий звонок». Его binding проверяется worker для
+  защиты от отложенного уведомления прежнего аккаунта.
+- В фоне iOS воспроизводит системный звук уведомления по настройкам iPhone/Focus.
+  Длинный пользовательский ringtone/экран CallKit web-приложению не предоставлен.
+  Ringtone в открытом приложении воспроизводится через разблокированный Web Audio;
+  в окне разговора есть кнопка «Включить звук» для восстановления web-аудио.
+- Проверить после full-релиза: включение/отказ/выключение, сообщение и вызов при
+  открытом/закрытом webapp и заблокированном iPhone, выход/смену аккаунта, отсутствие
+  дублей, сохранность VAPID key после рестарта. Service worker не кеширует переписку;
+  Flutter startup уже не запускает deprecated cache worker. Сохранить no-cache.
+
+Для локального prototype, где Synapse находится в Docker, а control запущен на
+host, задайте `VOICECHAT_PUSH_GATEWAY_URL=http://host.docker.internal:8090/_matrix/push/v1/notify`.
+В локальном Synapse разрешите в `ip_range_whitelist` только конкретный IP этого
+host callback; не переносите это исключение в production. Путь gateway должен быть
+именно `/_matrix/push/v1/notify`: Synapse отвергает префикс `/api` в pusher URL.
+Сквозная проверка на отдельных локальных тестовых аккаунтах:
+`VOICECHAT_PUSH_SYNAPSE_TEST=1 .prototype/python/bin/python -m unittest discover -s prototype -p test_web_push_synapse.py`.
+Она проверяет реальный pusher/callback/revoke, но подменяет внешний push provider.

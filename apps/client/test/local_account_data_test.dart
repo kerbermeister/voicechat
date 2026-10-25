@@ -18,6 +18,7 @@ void main() {
         'dev.voicechat.local.first_keys',
         'dev.voicechat.local.contacts',
         'dev.voicechat.local.outbox',
+        'dev.voicechat.local.drafts',
         'dev.voicechat.local.history:!room:local',
       ];
       for (final type in local) {

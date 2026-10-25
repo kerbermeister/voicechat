@@ -85,7 +85,7 @@ services:
     image: ${WEB_IMAGE:?Build or pull the web image}
     environment: {SITE: '${SITE:?}'}
     ports: ['${BIND}:${HTTP_PORT}:80', '${BIND}:${HTTPS_PORT}:443']
-    volumes: [certificates:/data, caddy-config:/config]
+    volumes: [certificates:/data, caddy-config:/config, './runtime/android-updates:/updates/android:ro']
     restart: unless-stopped
     depends_on: [synapse, control]
     healthcheck:

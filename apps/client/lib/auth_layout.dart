@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'app_motion.dart';
 
 bool compactAuthHeight(BuildContext context) {
@@ -237,6 +238,7 @@ class AuthField extends StatefulWidget {
   final String? helper, error;
   final bool secret, readOnly;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   final Iterable<String>? autofillHints;
   final String? Function(String?)? validator;
   final VoidCallback? onSubmitted;
@@ -249,6 +251,7 @@ class AuthField extends StatefulWidget {
     this.secret = false,
     this.readOnly = false,
     this.keyboardType,
+    this.inputFormatters,
     this.autofillHints,
     this.validator,
     this.onSubmitted,
@@ -269,6 +272,7 @@ class _AuthFieldState extends State<AuthField> {
       autocorrect: false,
       enableSuggestions: !widget.secret,
       keyboardType: widget.keyboardType,
+      inputFormatters: widget.inputFormatters,
       autofillHints: widget.autofillHints,
       textInputAction: widget.onSubmitted == null
           ? TextInputAction.next

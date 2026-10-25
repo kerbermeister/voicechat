@@ -193,7 +193,7 @@ class MatrixProbe {
       StateEvent(
         type: 'm.room.history_visibility',
         stateKey: '',
-        content: {'history_visibility': 'joined'},
+        content: {'history_visibility': 'shared'},
       ),
     ],
   );

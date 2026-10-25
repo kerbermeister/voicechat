@@ -17,10 +17,15 @@ import 'avatar_editor.dart';
 import 'history_search.dart';
 import 'call_window.dart';
 import 'app_sounds.dart';
+import 'browser_audio.dart';
+import 'push_notifications.dart';
+import 'call_probe.dart';
 import 'file_io.dart';
 import 'presence_tracker.dart';
 import 'recording_activity.dart';
 import 'active_capture.dart';
+import 'app_update_dialog.dart';
+import 'update_safety.dart';
 import 'first_keys.dart';
 import 'history_window.dart';
 import 'contact_service.dart';
@@ -781,6 +786,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
         ),
       );
       for (final user in users ?? <String>[]) {
+        await ensureSharedGroupHistory(room);
         await room.invite(user);
       }
     } else if (action == 'avatar' && !room.isDirectChat) {
@@ -850,6 +856,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
     timeline?.cancelSubscriptions();
     selected = nextRoom;
     timeline = nextTimeline;
+    if (!nextRoom.isDirectChat &&
+        nextRoom.historyVisibility == mx.HistoryVisibility.shared) {
+      unawaited(
+        requestMissingHistory(nextTimeline).catchError((Object _) => 0),
+      );
+    }
     focusedEvent = eventId;
     groupsTab = !nextRoom.isDirectChat;
     completeHistory = eventId == null && window.complete;
@@ -1025,17 +1037,22 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> audioOutput() async {
-    if (!kIsWeb) {
-      await lk.AudioManager.instance.setSpeakerOutputPreferred(
-        !lk.AudioManager.instance.isSpeakerOutputPreferred,
-      );
+    if (kIsWeb) {
+      final resumed = resumeBrowserAudio();
+      final current = calls?.active;
+      if (current is CallProbe) await current.media?.startAudio();
       report(
-        'Переключён динамик/обычный аудиомаршрут. Гарнитурой управляет система.',
+        await resumed
+            ? 'Звук включён. Громкость и гарнитура — в настройках iPhone.'
+            : 'Нажмите ещё раз, чтобы разрешить звук браузеру.',
       );
       return;
     }
+    await lk.AudioManager.instance.setSpeakerOutputPreferred(
+      !lk.AudioManager.instance.isSpeakerOutputPreferred,
+    );
     report(
-      'В браузере аудиовыход выбирается в настройках браузера или операционной системы.',
+      'Переключён динамик/обычный аудиомаршрут. Гарнитурой управляет система.',
     );
   }
 
@@ -1452,6 +1469,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
     await storagePolicy?.close();
     storagePolicy = null;
     try {
+      if (kIsWeb) {
+        await disablePushNotifications(
+          tokenServer.text.trim(),
+          probe!.client.accessToken!,
+        );
+      }
       await probe!.logout();
     } catch (_) {
       storagePolicy = StoragePolicy(probe!.client, () => selected?.id);
@@ -1578,6 +1601,11 @@ class _ProbeScreenState extends State<ProbeScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         IconButton(
+          tooltip: 'О приложении',
+          onPressed: aboutApp,
+          icon: const Icon(Icons.info_outline),
+        ),
+        IconButton(
           tooltip: 'Параметры подключения',
           onPressed: busy ? null : connectionSettings,
           icon: const Icon(Icons.tune_rounded),
@@ -1699,6 +1727,28 @@ class _ProbeScreenState extends State<ProbeScreen> {
           ),
   );
 
+  Future<void> aboutApp() async {
+    await showAppDialog<void>(
+      context: context,
+      animationStyle: appAnimationStyle(context),
+      builder: (_) => AppUpdateDialog(
+        prepareInstall: () async {
+          if (busy ||
+              restoringSession ||
+              hasActiveCapture ||
+              (call != null && !call!.isClosed) ||
+              actions?.updateBusy == true) {
+            return 'Завершите звонок, запись или текущую отправку перед установкой.';
+          }
+          final reason = await checkUpdateGuards();
+          if (reason != null) return reason;
+          await actions?.prepareUpdate();
+          return null;
+        },
+      ),
+    );
+  }
+
   Future<void> settings() async {
     var privacyBusy = false;
     String? privacyError;
@@ -1738,6 +1788,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    ListTile(
+                      leading: const Icon(Icons.info_outline),
+                      title: const Text('О приложении'),
+                      subtitle: const Text('Версия и обновления'),
+                      onTap: aboutApp,
+                    ),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: PersonAvatar(
@@ -1837,6 +1893,25 @@ class _ProbeScreenState extends State<ProbeScreen> {
                       'Устройства и безопасность',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
+                    if (kIsWeb) ...[
+                      ListTile(
+                        leading: const Icon(
+                          Icons.notifications_active_outlined,
+                        ),
+                        title: const Text('Включить уведомления'),
+                        subtitle: const Text(
+                          'На iPhone — из приложения на экране «Домой». iOS 16.4 и новее.',
+                        ),
+                        onTap: () => openSetting('push-enable'),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.notifications_off_outlined),
+                        title: const Text(
+                          'Выключить уведомления на этом устройстве',
+                        ),
+                        onTap: () => openSetting('push-disable'),
+                      ),
+                    ],
                     ListTile(
                       leading: const Icon(Icons.devices_outlined),
                       title: const Text('Устройства'),
@@ -1924,8 +1999,23 @@ class _ProbeScreenState extends State<ProbeScreen> {
             );
           }
         case 'sounds':
+          if (kIsWeb) unawaited(resumeBrowserAudio());
           await sounds!.setEnabled(!sounds!.enabled);
           sounds!.updateCall(calls!);
+        case 'push-enable':
+          report(
+            await enablePushNotifications(
+              tokenServer.text.trim(),
+              probe!.client.accessToken!,
+            ),
+          );
+        case 'push-disable':
+          report(
+            await disablePushNotifications(
+              tokenServer.text.trim(),
+              probe!.client.accessToken!,
+            ),
+          );
         case 'avatar':
           await changeAvatar();
         case 'devices':

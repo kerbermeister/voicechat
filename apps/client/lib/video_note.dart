@@ -13,6 +13,7 @@ Future<VideoNoteResult?> recordVideoNote(
   BuildContext context,
   int maxSeconds, {
   ValueNotifier<bool>? held,
+  ValueNotifier<bool>? cancelled,
   void Function(bool)? onRecording,
 }) async {
   await stopActiveCapture();
@@ -30,6 +31,7 @@ Future<VideoNoteResult?> recordVideoNote(
             child: _Recorder(
               maxSeconds: maxSeconds,
               held: held,
+              cancelled: cancelled,
               onRecording: onRecording,
               onComplete: (result) {
                 if (completed.isCompleted) return;
@@ -58,11 +60,13 @@ Future<VideoNoteResult?> recordVideoNote(
 class _Recorder extends StatefulWidget {
   final int maxSeconds;
   final ValueNotifier<bool>? held;
+  final ValueNotifier<bool>? cancelled;
   final void Function(bool)? onRecording;
   final void Function(VideoNoteResult?)? onComplete;
   const _Recorder({
     required this.maxSeconds,
     this.held,
+    this.cancelled,
     this.onRecording,
     this.onComplete,
   });
@@ -76,6 +80,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
   Future<void>? cameraDisposal;
   bool busy = false;
   bool _completed = false;
+  bool _discard = false;
   String? error;
   final clock = Stopwatch();
   Timer? timer;
@@ -111,8 +116,8 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
       );
       if (index < 0) index = 0;
       await open();
-      if (mounted && widget.held != null) {
-        if (widget.held!.value) {
+      if (mounted) {
+        if (widget.held?.value != false) {
           await start();
         } else {
           complete();
@@ -192,7 +197,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
 
   void releaseHold() {
     if (mounted && widget.held?.value == false && clock.isRunning && !busy) {
-      unawaited(finish());
+      unawaited(finish(discard: widget.cancelled?.value == true));
     }
   }
 
@@ -231,6 +236,11 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
       await camera!.startVideoRecording().timeout(const Duration(seconds: 15));
       if (!mounted) return;
       clock.start();
+      if (_discard) {
+        busy = false;
+        await finish(discard: true);
+        return;
+      }
       widget.onRecording?.call(true);
       timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
         if (mounted) setState(() {});
@@ -255,7 +265,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
         const Duration(seconds: 15),
       );
       final size = await recorded.length();
-      if (discard || !mounted) {
+      if (discard || _discard || !mounted) {
         await deleteRecording(recorded.path);
         complete();
         return;
@@ -305,14 +315,15 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
+    scrollable: true,
     title: AppDialogTitle(child: const Text('Видеокружок')),
     content: SizedBox(
       width: 320,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          AspectRatio(
-            aspectRatio: 1,
+          SizedBox.square(
+            dimension: (MediaQuery.sizeOf(context).height * .38).clamp(80, 320),
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -330,15 +341,23 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 16),
           Text('${clock.elapsed.inSeconds} с / ${widget.maxSeconds} с'),
+          Text(
+            widget.held == null
+                ? 'Нажмите «Отправить», когда закончите.'
+                : 'Отпустите, чтобы отправить. Сдвиньте влево для отмены.',
+          ),
           if (error != null) Text(error!),
         ],
       ),
     ),
     actions: [
       TextButton(
-        onPressed: busy
-            ? () => complete()
-            : () => clock.isRunning ? finish(discard: true) : complete(),
+        onPressed: () {
+          _discard = true;
+          if (!busy) {
+            clock.isRunning ? finish(discard: true) : complete();
+          }
+        },
         child: const Text('Отмена'),
       ),
       if (error != null && !clock.isRunning)
@@ -356,7 +375,7 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
         onPressed: busy || camera?.value.isInitialized != true
             ? null
             : () => clock.isRunning ? finish() : start(),
-        child: Text(clock.isRunning ? 'Прикрепить' : 'Записать'),
+        child: Text(clock.isRunning ? 'Отправить' : 'Записать'),
       ),
     ],
   );

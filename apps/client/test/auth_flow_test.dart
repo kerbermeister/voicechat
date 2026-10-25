@@ -88,7 +88,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<TextField>(field('Имя пользователя · латиницей'))
+            .widget<TextField>(field('Логин · строчные a–z'))
             .controller!
             .text,
         'testuser',
@@ -125,7 +125,7 @@ void main() {
           ),
         ),
       );
-      expect(field('Имя пользователя · латиницей'), findsNothing);
+      expect(field('Логин · строчные a–z'), findsNothing);
       await tester.enterText(field('Электронная почта'), 'reset@example.com');
       await tester.enterText(
         field('Пароль аккаунта · от 12 символов'),

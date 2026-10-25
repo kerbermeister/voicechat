@@ -174,6 +174,7 @@ def deploy(root, release, old, backup_only=False, web_only=False):
     if not release.is_relative_to(root/'releases'): raise SystemExit('Release must be inside root/releases')
     target = manifest(release/'release.json')
     runtime = root/'runtime'
+    (runtime/'android-updates').mkdir(mode=0o755, parents=True, exist_ok=True)
     if not (runtime/'stand.env').is_file(): raise SystemExit('Bootstrap the persistent runtime/stand.env first')
     runtime.chmod(0o700)
     (runtime/'stand.env').chmod(0o600)

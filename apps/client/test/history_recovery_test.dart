@@ -64,6 +64,14 @@ class RecoveryClient extends PinClient {
   @override
   late final encryption = RecoveryEncryption(manager);
   bool joined = true;
+  String history = 'shared';
+  @override
+  Future<Map<String, Object?>> getRoomStateWithKey(
+    String roomId,
+    String eventType,
+    String stateKey, {
+    Format? format,
+  }) async => {'history_visibility': history};
   Completer<void>? refreshing;
   @override
   Future<void> updateUserDeviceKeys({Set<String>? additionalUsers}) async {
@@ -79,9 +87,15 @@ class RecoveryClient extends PinClient {
   ) async => {userID: RoomMember(), if (joined) '@alice:local': RoomMember()};
 }
 
+class SharedHistoryRoom extends OutboxRoom {
+  SharedHistoryRoom(super.client);
+  @override
+  HistoryVisibility get historyVisibility => HistoryVisibility.shared;
+}
+
 class HistoryRequest extends RoomKeyRequest {
   int sent = 0;
-  HistoryRequest(RecoveryClient client, DeviceKeys device)
+  HistoryRequest(RecoveryClient client, DeviceKeys device, {Room? room})
     : super.fromToDeviceEvent(
         ToDeviceEvent(
           sender: device.userId,
@@ -91,7 +105,7 @@ class HistoryRequest extends RoomKeyRequest {
         client.manager,
         KeyManagerKeyShareRequest(
           requestId: 'request',
-          room: OutboxRoom(client),
+          room: room ?? OutboxRoom(client),
           sessionId: 'session',
           devices: [device],
         ),
@@ -126,6 +140,46 @@ class MissingEvent extends Event {
 }
 
 void main() {
+  for (final scenario in [
+    'verified',
+    'unverified',
+    'left',
+    'policy changed',
+    'left while loading',
+  ]) {
+    test(
+      'Shared group automatically forwards old keys only when safe: $scenario',
+      () async {
+        final client = RecoveryClient();
+        enableFirstContactTrust(client);
+        final device = RecoveryDevice()..directVerified = true;
+        client.userDeviceKeys[device.userId] = DeviceKeysList(
+          device.userId,
+          client,
+          deviceKeys: {device.deviceId: device},
+        );
+        if (scenario != 'unverified') {
+          await pinManuallyVerifiedDevice(client, device);
+        }
+        if (scenario == 'left') client.joined = false;
+        if (scenario == 'policy changed') client.history = 'joined';
+        if (scenario == 'left while loading') {
+          client.manager.loading = () => client.joined = false;
+        }
+        final owner = HistoryRecovery(client, () {});
+        final request = HistoryRequest(
+          client,
+          device,
+          room: SharedHistoryRoom(client),
+        );
+        client.onRoomKeyRequest.add(request);
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(request.sent, scenario == 'verified' ? 1 : 0);
+        expect(owner.pending.length, scenario == 'verified' ? 0 : 1);
+        await owner.close();
+      },
+    );
+  }
   test(
     'TOFU alone cannot release old keys; independent exact-device proof can',
     () async {

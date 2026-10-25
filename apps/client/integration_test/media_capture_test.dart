@@ -27,32 +27,6 @@ void main() {
       );
       await tester.tap(find.text('Камера'));
       await tester.pumpAndSettle();
-      for (
-        var i = 0;
-        i < 30 &&
-            !tester
-                .widget<FilledButton>(
-                  find.widgetWithText(FilledButton, 'Записать'),
-                )
-                .enabled;
-        i++
-      ) {
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(milliseconds: 300)),
-        );
-        await tester.pump();
-      }
-      final switcher = find.byTooltip('Переключить камеру');
-      if (switcher.evaluate().isNotEmpty) {
-        await tester.tap(switcher);
-        await tester.pumpAndSettle();
-        await tester.runAsync(
-          () => Future<void>.delayed(const Duration(seconds: 1)),
-        );
-        await tester.pumpAndSettle();
-      }
-      await tester.tap(find.text('Записать'));
-      await tester.pump();
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(seconds: 4)),
       );
@@ -72,8 +46,6 @@ void main() {
         () => Future<void>.delayed(const Duration(seconds: 1)),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Записать'));
-      await tester.pump();
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 700)),
       );

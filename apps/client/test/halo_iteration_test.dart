@@ -73,7 +73,7 @@ void main() {
   );
 
   test(
-    'Group avatar preserves encryption, joined history and invitation permissions',
+    'Group avatar preserves encryption, shared history and invitation permissions',
     () async {
       final client = MetadataClient();
       await MatrixProbe(client).createRoom(
@@ -100,7 +100,7 @@ void main() {
         state
             .firstWhere((e) => e.type == 'm.room.history_visibility')
             .content['history_visibility'],
-        'joined',
+        'shared',
       );
       expect(
         state

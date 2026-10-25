@@ -2,6 +2,7 @@ import 'app_motion.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'call_controller.dart';
 import 'direct_call.dart';
@@ -90,6 +91,20 @@ class _CallWindowState extends State<CallWindow> {
                       : 'Звонок завершён'));
     final colors = Theme.of(context).colorScheme;
     final video = current?.video ?? direct?.video ?? group?.video ?? false;
+    final qualityMenu = video && current != null
+        ? PopupMenuButton<VideoQuality>(
+            tooltip: 'Качество видео',
+            initialValue: current.videoQuality,
+            enabled: !busy,
+            onSelected: (value) =>
+                perform(() => current.setVideoQuality(value)),
+            itemBuilder: (_) => [
+              for (final quality in VideoQuality.values)
+                PopupMenuItem(value: quality, child: Text(quality.label)),
+            ],
+            icon: const Icon(Icons.tune),
+          )
+        : null;
     return AlertDialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
@@ -107,9 +122,45 @@ class _CallWindowState extends State<CallWindow> {
       ),
       content: SizedBox(
         width: video || calls.screen != null ? 850 : 500,
-        height: math.min(MediaQuery.sizeOf(context).height * .65, 560),
+        height: math.min(
+          MediaQuery.sizeOf(context).height * (video ? .85 : .65),
+          video ? 900 : 560,
+        ),
         child: LayoutBuilder(
           builder: (context, box) {
+            if (video &&
+                current != null &&
+                calls.screen == null &&
+                box.maxHeight > 160) {
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          room?.getLocalizedDisplayname() ?? 'Видеозвонок',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Text(
+                        '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
+                      ),
+                      if (qualityMenu != null) qualityMenu,
+                    ],
+                  ),
+                  Expanded(
+                    child: CallVideoGrid(
+                      key: ValueKey(current.session),
+                      call: current,
+                    ),
+                  ),
+                  CallQualityIndicator(quality: current.quality),
+                  if (error != null)
+                    Text(error!, style: TextStyle(color: colors.error)),
+                ],
+              );
+            }
             final compact = video || box.maxHeight < 330;
             final name =
                 room?.getLocalizedDisplayname() ??
@@ -198,28 +249,16 @@ class _CallWindowState extends State<CallWindow> {
                         ),
                       ),
                     if (video && current != null) ...[
-                      DropdownButton<VideoQuality>(
-                        value: current.videoQuality,
-                        items: [
-                          for (final quality in VideoQuality.values)
-                            DropdownMenuItem(
-                              value: quality,
-                              child: Text(quality.label),
-                            ),
-                        ],
-                        onChanged: busy
-                            ? null
-                            : (value) {
-                                if (value != null) {
-                                  perform(() => current.setVideoQuality(value));
-                                }
-                              },
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: qualityMenu,
                       ),
                       SizedBox(
-                        height: calls.screen?.snapshot?.state == 'active'
-                            ? 160
-                            : math.max(120, box.maxHeight - 210),
-                        child: CallVideoGrid(call: current),
+                        height: 160,
+                        child: CallVideoGrid(
+                          key: ValueKey(current.session),
+                          call: current,
+                        ),
                       ),
                     ] else if (room?.isDirectChat == false)
                       FutureBuilder<List<mx.User>>(
@@ -312,7 +351,7 @@ class _CallWindowState extends State<CallWindow> {
                   icon: Icon(current.muted ? Icons.mic_off : Icons.mic),
                 ),
                 IconButton(
-                  tooltip: 'Аудиовыход',
+                  tooltip: kIsWeb ? 'Включить звук' : 'Аудиовыход',
                   onPressed: busy ? null : () => perform(widget.audioOutput),
                   icon: const Icon(Icons.speaker_outlined),
                 ),

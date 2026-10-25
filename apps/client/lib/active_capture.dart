@@ -3,6 +3,7 @@ import 'user_action_error.dart';
 
 Future<void> Function()? _cancel;
 Future<void>? _stopping;
+bool get hasActiveCapture => _cancel != null || _stopping != null;
 
 void registerCapture(Future<void> Function() cancel) => _cancel = cancel;
 void releaseCapture(Future<void> Function() cancel) {

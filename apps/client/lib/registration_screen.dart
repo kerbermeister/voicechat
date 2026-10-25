@@ -5,6 +5,7 @@ import 'dart:math';
 import 'auth_layout.dart';
 import 'app_motion.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'user_action_error.dart';
 import 'package:matrix/matrix.dart' as mx;
 
@@ -252,7 +253,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
     final text = value ?? '';
     if (controller == username &&
         !RegExp(r'^[a-z0-9._=-]{3,40}$').hasMatch(text)) {
-      return 'От 3 до 40 символов: латинские буквы, цифры, . _ = -';
+      return 'От 3 до 40 символов: строчные латинские буквы, цифры, . _ = -';
     }
     if (controller == email && !text.contains('@')) {
       return 'Введите адрес электронной почты.';
@@ -279,6 +280,13 @@ class _RegistrationScreenState extends State<RegistrationScreen>
     helper: helper,
     readOnly: busy || sid != null,
     keyboardType: controller == email ? TextInputType.emailAddress : null,
+    inputFormatters: controller == username
+        ? [
+            TextInputFormatter.withFunction(
+              (_, value) => value.copyWith(text: value.text.toLowerCase()),
+            ),
+          ]
+        : null,
     autofillHints: autofillHints,
     validator: (value) => validate(controller, value),
     onSubmitted: controller == confirmation ? submit : null,
@@ -369,10 +377,10 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                     pair(
                       field(
                         username,
-                        'Имя пользователя · латиницей',
+                        'Логин · строчные a–z',
                         helper: short
                             ? null
-                            : '3–40 символов: латиница, цифры, . _ = -',
+                            : '3–40 символов: строчные a–z, цифры, . _ = -',
                         autofillHints: const [AutofillHints.newUsername],
                       ),
                       field(

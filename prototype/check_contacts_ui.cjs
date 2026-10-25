@@ -281,7 +281,7 @@ async function register(role) {
         name:'Проверка экрана втроём',preset:'private_chat',invite:[bob.user_id,charlie.user_id],
         power_level_content_override:{invite:50,kick:50,ban:50},initial_state:[
           {type:'m.room.encryption',state_key:'',content:{algorithm:'m.megolm.v1.aes-sha2'}},
-          {type:'m.room.history_visibility',state_key:'',content:{history_visibility:'joined'}},
+          {type:'m.room.history_visibility',state_key:'',content:{history_visibility:'shared'}},
         ],
       },alice.access_token);
       for(const account of [bob,charlie]) await request(matrixUrl,'/_matrix/client/v3/rooms/'+encodeURIComponent(room_id)+'/join',{},account.access_token);

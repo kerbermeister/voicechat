@@ -28,6 +28,7 @@ import 'call_window.dart';
 import 'history_window.dart';
 import 'recording_activity.dart';
 import 'active_capture.dart';
+import 'update_safety.dart';
 import 'link_preview.dart';
 import 'link_cards.dart';
 import 'history_recovery.dart';
@@ -103,6 +104,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   final linkPreviews = <Uri, LinkPreview>{};
   bool loadingPreview = false;
   final heldVideo = ValueNotifier(false);
+  final cancelledVideo = ValueNotifier(false);
   PickedFile? get draftFile => draftFiles.firstOrNull;
   int? draftVideoDuration;
   bool draftIsVideoNote = false;
@@ -126,6 +128,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    input.text = widget.actions.drafts[widget.room.id] ?? '';
+    input.addListener(saveDraft);
+    updateGuards.add(prepareUpdate);
     focusedEvent = widget.initialEventId;
     highlightedEvent = focusedEvent;
     if (focusedEvent != null) messageKeys[focusedEvent!] = GlobalKey();
@@ -137,6 +142,39 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     });
     scroll.addListener(markRead);
     WidgetsBinding.instance.addPostFrameCallback((_) => markRead());
+  }
+
+  void saveDraft() {
+    unawaited(
+      widget.actions.saveDraft(widget.room.id, input.text).catchError((
+        Object _,
+      ) {
+        if (mounted) {
+          widget.report(
+            'Не удалось сохранить черновик. Обновление пока недоступно.',
+          );
+        }
+      }),
+    );
+  }
+
+  Future<String?> prepareUpdate() async {
+    if (working ||
+        recording ||
+        stopping ||
+        voiceOpening != null ||
+        heldVideo.value ||
+        draftFiles.isNotEmpty ||
+        draftPhotos.isNotEmpty ||
+        unsentVoice != null ||
+        reply != null ||
+        edit != null ||
+        scheduledFor != null ||
+        temporarySeconds != null) {
+      return 'Сначала отправьте или отмените вложение, запись, ответ или редактирование сообщения.';
+    }
+    await widget.actions.saveDraft(widget.room.id, input.text);
+    return null;
   }
 
   @override
@@ -563,6 +601,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         context,
         widget.actions.policy.videoNoteMaxSeconds,
         held: hold ? heldVideo : null,
+        cancelled: hold ? cancelledVideo : null,
         onRecording: (value) => RecordingActivity.of(
           widget.room.client,
         )?.set(widget.room, value ? 'video' : null),
@@ -599,7 +638,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       draftIsVideoNote = kind == 'note';
       draftVideoDuration = duration;
     });
-    if (hold && !interrupted) {
+    if (kind == 'note' && !interrupted) {
       final caption = input.text;
       try {
         input.clear();
@@ -1371,6 +1410,11 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                 ? null
                 : () => perform(() async {
                     await widget.timeline.requestHistory(historyCount: 100);
+                    if (!widget.room.isDirectChat &&
+                        widget.room.historyVisibility ==
+                            mx.HistoryVisibility.shared) {
+                      await requestMissingHistory(widget.timeline);
+                    }
                     if (widget.initialEventId == null) {
                       await rememberHistory(widget.timeline);
                     }
@@ -1869,13 +1913,23 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                         final video = GestureDetector(
                           onLongPressStart: (_) {
                             if (working) return;
+                            cancelledVideo.value = false;
                             heldVideo.value = true;
                             unawaited(
                               perform(() => attachFile('note', hold: true)),
                             );
                           },
                           onLongPressEnd: (_) => heldVideo.value = false,
-                          onLongPressCancel: () => heldVideo.value = false,
+                          onLongPressMoveUpdate: (details) {
+                            if (details.offsetFromOrigin.dx < -80) {
+                              cancelledVideo.value = true;
+                              heldVideo.value = false;
+                            }
+                          },
+                          onLongPressCancel: () {
+                            cancelledVideo.value = true;
+                            heldVideo.value = false;
+                          },
                           child: Tooltip(
                             message: 'Видеокружок · удерживайте для записи',
                             triggerMode: TooltipTriggerMode.manual,
@@ -2178,10 +2232,13 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
 
   @override
   void dispose() {
+    updateGuards.remove(prepareUpdate);
+    input.removeListener(saveDraft);
     releaseCapture(voiceCancellation);
     RecordingActivity.of(widget.room.client)?.set(widget.room, null);
     heldVideo.value = false;
     heldVideo.dispose();
+    cancelledVideo.dispose();
     cancelFile = true;
     if (fileProgress == null) {
       for (final source in draftFiles) {

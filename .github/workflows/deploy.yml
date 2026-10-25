@@ -55,8 +55,11 @@ jobs:
           cache: true
       - name: Test server and client
         run: |
+          python3 infra/android_release.py check-version
           python3 prototype/setup.py
+          python3 -m pip install -r infra/push-requirements.txt
           python3 -m unittest discover -s prototype -p 'test_*.py'
+          node --test prototype/test_mobile_web.cjs
           cd apps/client
           flutter pub get --enforce-lockfile
           flutter analyze

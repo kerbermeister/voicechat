@@ -109,7 +109,7 @@ async function run() {
     for(const name of ['Семейный круг','Планы на выходные']) {
       const room=await api('/_matrix/client/v3/createRoom',{name,preset:'private_chat',invite:sessions.slice(1).map(s=>s.user_id),initial_state:[
         {type:'m.room.encryption',state_key:'',content:{algorithm:'m.megolm.v1.aes-sha2'}},
-        {type:'m.room.history_visibility',state_key:'',content:{history_visibility:'joined'}}]},primary.access_token);
+        {type:'m.room.history_visibility',state_key:'',content:{history_visibility:'shared'}}]},primary.access_token);
       for(const peer of sessions.slice(1)) await api('/_matrix/client/v3/join/'+encodeURIComponent(room.room_id),{},peer.access_token);
       rooms.push(room.room_id);
     }
