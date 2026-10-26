@@ -182,8 +182,16 @@ void main() {
     tester.platformDispatcher.clearAccessibilityFeaturesTestValue();
     expect(tester.takeException(), isNull);
     await screenshot('before-held-video-note');
+    await tester.tap(
+      find.byTooltip('Голосовое · нажмите для видео, удерживайте для записи'),
+    );
+    await tester.pump();
     final gesture = await tester.startGesture(
-      tester.getCenter(find.byTooltip('Видеокружок · удерживайте для записи')),
+      tester.getCenter(
+        find.byTooltip(
+          'Видеокружок · нажмите для аудио, удерживайте для записи',
+        ),
+      ),
     );
     await tester.pump(const Duration(milliseconds: 700));
     await screenshot('starting-held-video-note');
