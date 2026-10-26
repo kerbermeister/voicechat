@@ -24,8 +24,14 @@ Future<void> followLink(BuildContext context, Uri url) async {
 
 class LinkedText extends StatefulWidget {
   final String text;
+  final bool selectable;
   final TextStyle style;
-  const LinkedText({super.key, required this.text, required this.style});
+  const LinkedText({
+    super.key,
+    required this.text,
+    required this.style,
+    this.selectable = true,
+  });
   @override
   State<LinkedText> createState() => _LinkedTextState();
 }
@@ -54,6 +60,13 @@ class _LinkedTextState extends State<LinkedText> {
       start = index + url.toString().length;
     }
     spans.add(TextSpan(text: widget.text.substring(start)));
+    if (!widget.selectable) {
+      return Text.rich(
+        TextSpan(children: spans),
+        style: widget.style,
+        semanticsLabel: widget.text,
+      );
+    }
     return SelectableText.rich(
       TextSpan(children: spans),
       style: widget.style,

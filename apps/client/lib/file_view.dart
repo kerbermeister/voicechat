@@ -75,7 +75,9 @@ class _FileViewState extends State<FileView> {
             borderRadius: BorderRadius.circular(file!.videoNote ? 32 : 16),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: file!.videoNote
+                ? CrossAxisAlignment.center
+                : CrossAxisAlignment.start,
             children: [
               if (file!.videoNote)
                 SizedBox(
@@ -85,18 +87,23 @@ class _FileViewState extends State<FileView> {
                 ),
               Row(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    file!.videoNote
-                        ? Icons.video_camera_front
-                        : video
-                        ? Icons.movie_outlined
-                        : Icons.insert_drive_file_outlined,
-                  ),
-                  const SizedBox(width: 8),
+                  if (file!.videoNote)
+                    const SizedBox(width: 48)
+                  else
+                    Icon(
+                      video
+                          ? Icons.movie_outlined
+                          : Icons.insert_drive_file_outlined,
+                    ),
+                  if (!file!.videoNote) const SizedBox(width: 8),
                   Flexible(
                     child: Text(
                       file!.videoNote ? 'Видеокружок' : file!.name,
+                      textAlign: file!.videoNote
+                          ? TextAlign.center
+                          : TextAlign.start,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -126,6 +133,7 @@ class _FileViewState extends State<FileView> {
               ),
               Text(
                 '${(file!.size / 1048576).toStringAsFixed(1)} МБ · ${file!.mime}',
+                textAlign: file!.videoNote ? TextAlign.center : TextAlign.start,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: foreground.withValues(alpha: .8),
                 ),
@@ -401,7 +409,9 @@ class _MessageVideoState extends State<MessageVideo> {
             tooltip: value?.isPlaying == true
                 ? 'Пауза видео'
                 : 'Воспроизвести видео',
-            color: Colors.white,
+            color: widget.inline && widget.videoNote
+                ? Theme.of(context).colorScheme.onSecondaryContainer
+                : Colors.white,
             onPressed: loading && !ready
                 ? null
                 : () => !ready
@@ -436,7 +446,9 @@ class _MessageVideoState extends State<MessageVideo> {
       ),
     );
     return widget.inline
-        ? ColoredBox(color: Colors.black, child: content)
+        ? widget.videoNote
+              ? Center(child: content)
+              : ColoredBox(color: Colors.black, child: content)
         : Dialog(backgroundColor: Colors.black, child: content);
   }
 

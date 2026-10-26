@@ -2181,6 +2181,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
       onRoomInfo: busy ? null : () => run(() => roomSettings()),
       completeHistory: completeHistory,
       onJump: (event) => run(() => select(room, eventId: event)),
+      onForward: (target) async {
+        await select(target);
+        if (mounted) setState(() {});
+      },
       header: ConversationHeader(
         room: room,
         lastSeenLabel: room.isDirectChat
@@ -2251,6 +2255,18 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Widget callBanner() {
+    final remote = calls?.devices.remote.values.firstOrNull;
+    if (remote != null && calls?.active?.isClosed != false) {
+      return TextButton.icon(
+        onPressed: showCallWindow,
+        icon: const Icon(Icons.devices),
+        label: Text(
+          'Идёт звонок с ${roomDisplayName(remote.room)}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }
     final available =
         calls != null &&
         (calls!.starting ||

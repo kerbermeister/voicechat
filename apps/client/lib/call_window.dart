@@ -61,6 +61,7 @@ class _CallWindowState extends State<CallWindow> {
     final current = active != null && !active.isClosed ? active : null;
     final direct = calls.directInvitations.firstOrNull;
     final group = calls.invitations.values.firstOrNull;
+    final remote = calls.devices.remote.values.firstOrNull;
     final nextRoom =
         current?.chat ??
         (calls.starting || calls.dialError != null
@@ -68,6 +69,7 @@ class _CallWindowState extends State<CallWindow> {
             : null) ??
         direct?.chat ??
         group?.room ??
+        remote?.room ??
         active?.chat;
     if (room != nextRoom) {
       room = nextRoom;
@@ -88,6 +90,8 @@ class _CallWindowState extends State<CallWindow> {
             : current?.connection ??
                   (direct != null || group != null
                       ? 'Входящий звонок'
+                      : remote != null
+                      ? 'Идёт звонок с ${roomDisplayName(remote.room)} на другом устройстве'
                       : 'Звонок завершён'));
     final colors = Theme.of(context).colorScheme;
     final video = current?.video ?? direct?.video ?? group?.video ?? false;
@@ -123,14 +127,14 @@ class _CallWindowState extends State<CallWindow> {
       ),
       child: LayoutBuilder(
         builder: (context, box) {
-          if (video && current != null && calls.screen == null) {
+          if (video && current != null) {
             return Column(
               children: [
                 Row(
                   children: [
                     Expanded(
                       child: Text(
-                        room?.getLocalizedDisplayname() ?? 'Видеозвонок',
+                        room == null ? 'Видеозвонок' : roomDisplayName(room!),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -142,10 +146,14 @@ class _CallWindowState extends State<CallWindow> {
                   ],
                 ),
                 Expanded(
-                  child: CallVideoGrid(
-                    key: ValueKey(current.session),
-                    call: current,
-                  ),
+                  child: calls.screen?.snapshot?.state == 'active'
+                      ? SingleChildScrollView(
+                          child: ScreenPanel(controller: calls.screen!),
+                        )
+                      : CallVideoGrid(
+                          key: ValueKey(current.session),
+                          call: current,
+                        ),
                 ),
                 CallQualityIndicator(quality: current.quality),
                 if (error != null)
@@ -153,10 +161,10 @@ class _CallWindowState extends State<CallWindow> {
               ],
             );
           }
-          final compact = video || box.maxHeight < 330;
-          final name =
-              room?.getLocalizedDisplayname() ??
-              (video ? 'Видеозвонок' : 'Голосовой звонок');
+          final compact = current != null && (video || box.maxHeight < 330);
+          final name = room == null
+              ? (video ? 'Видеозвонок' : 'Голосовой звонок')
+              : roomDisplayName(room!);
           final incoming =
               current == null &&
               !calls.starting &&
@@ -202,6 +210,26 @@ class _CallWindowState extends State<CallWindow> {
                 ),
               ],
               if (current != null) ...[
+                if (calls.screen != null)
+                  IconButton(
+                    tooltip: 'Демонстрация экрана',
+                    icon: const Icon(Icons.screen_share_outlined),
+                    onPressed: () => showAppDialog<void>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Демонстрация экрана'),
+                        content: SingleChildScrollView(
+                          child: ScreenPanel(controller: calls.screen!),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Закрыть'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 8),
                 CallQualityIndicator(quality: current.quality),
               ],
@@ -248,7 +276,7 @@ class _CallWindowState extends State<CallWindow> {
                         call: current,
                       ),
                     ),
-                  ] else if (room?.isDirectChat == false)
+                  ] else if (room?.isDirectChat == false && !incoming)
                     FutureBuilder<List<mx.User>>(
                       future: members,
                       builder: (_, snapshot) {
@@ -300,8 +328,9 @@ class _CallWindowState extends State<CallWindow> {
             .clamp(100, 850)
             .toDouble(),
         child: Wrap(
-          alignment: WrapAlignment.end,
-          spacing: 4,
+          alignment: WrapAlignment.center,
+          spacing: 12,
+          runSpacing: 12,
           children: [
             if (current != null) ...[
               if (video) ...[
@@ -392,7 +421,7 @@ class _CallWindowState extends State<CallWindow> {
         ),
       ),
     ];
-    if (video && current != null && calls.screen == null) {
+    if ((video && current != null) || MediaQuery.sizeOf(context).width < 600) {
       return Dialog.fullscreen(
         child: SafeArea(
           child: Column(

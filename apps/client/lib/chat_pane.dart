@@ -1,5 +1,6 @@
 import 'participant_colors.dart';
 import 'forward_message.dart';
+import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'forward_picker.dart';
 import 'message_metadata.dart';
 import 'app_motion.dart';
@@ -18,7 +19,6 @@ import 'typing_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/services.dart';
-import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:matrix/matrix.dart' as mx;
 import 'package:record/record.dart';
 import 'chat_actions.dart';
@@ -60,6 +60,7 @@ class ChatPane extends StatefulWidget {
   final String? initialEventId;
   final bool completeHistory;
   final Future<void> Function(String?)? onJump;
+  final Future<void> Function(mx.Room)? onForward;
   const ChatPane({
     super.key,
     required this.room,
@@ -70,6 +71,7 @@ class ChatPane extends StatefulWidget {
     this.initialEventId,
     this.completeHistory = false,
     this.onJump,
+    this.onForward,
     this.onVoiceCall,
     this.onVideoCall,
     this.onRoomInfo,
@@ -93,6 +95,8 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   DateTime? scheduledFor;
   mx.Event? edit;
   bool working = false;
+  bool preserveDraft = false;
+  final forwarded = <String, String>{};
   bool toolsOpen = false;
   bool detailsOpen = true;
   bool recording = false;
@@ -108,9 +112,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   final draftFiles = <PickedFile>[];
   final linkPreviews = <Uri, LinkPreview>{};
   bool loadingPreview = false;
-  bool videoPointerGesture = false;
-  int? videoPointer;
-  Offset videoOrigin = Offset.zero;
+  bool videoRecordMode = false;
   final heldVideo = ValueNotifier(false);
   final cancelledVideo = ValueNotifier(false);
   PickedFile? get draftFile => draftFiles.firstOrNull;
@@ -137,6 +139,20 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     input.text = widget.actions.drafts[widget.room.id] ?? '';
+    final draft = widget.actions.composerDrafts.remove(widget.room.id);
+    if (draft != null) {
+      draftFiles.addAll(draft.files);
+      draftPhotos.addAll(draft.photos);
+      unsentVoice = draft.voice;
+      unsentWave = draft.wave;
+      reply = draft.reply;
+      edit = draft.edit;
+      voiceReply = draft.voiceReply;
+      draftIsVideoNote = draft.videoNote;
+      draftVideoDuration = draft.videoDuration;
+      temporarySeconds = draft.temporarySeconds;
+      scheduledFor = draft.scheduledFor;
+    }
     input.addListener(saveDraft);
     updateGuards.add(prepareUpdate);
     focusedEvent = widget.initialEventId;
@@ -770,7 +786,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       );
     }
     FocusManager.instance.primaryFocus?.unfocus();
-    if (!await recorder.hasPermission()) {
+    if (!kIsWeb && !await recorder.hasPermission()) {
       throw UserActionError(
         'Для голосового сообщения разрешите доступ к микрофону.',
       );
@@ -933,11 +949,50 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         if (!target.canSendDefaultMessages) {
           throw UserActionError('Отправка в этот чат недоступна.');
         }
-        await widget.actions.enqueue(
+        final key = '${event.eventId}/${target.id}';
+        final transaction = forwarded[key] ??= await widget.actions.enqueue(
           target,
           forwardMessageContent(event.getDisplayEvent(widget.timeline)),
         );
+        await widget.actions.waitForDelivery(transaction);
+        if (!mounted ||
+            target.id == widget.room.id ||
+            widget.onForward == null) {
+          return;
+        }
+        await widget.actions.saveDraft(widget.room.id, input.text);
+        widget.actions.composerDrafts[widget.room.id] = ComposerDraft(
+          files: List.of(draftFiles),
+          photos: List.of(draftPhotos),
+          voice: unsentVoice,
+          wave: unsentWave,
+          reply: reply,
+          edit: edit,
+          voiceReply: voiceReply,
+          videoNote: draftIsVideoNote,
+          videoDuration: draftVideoDuration,
+          temporarySeconds: temporarySeconds,
+          scheduledFor: scheduledFor,
+        );
+        preserveDraft = true;
+        try {
+          await widget.onForward!(target);
+        } catch (_) {
+          preserveDraft = false;
+          widget.actions.composerDrafts.remove(widget.room.id);
+          rethrow;
+        }
       }
+      return;
+    }
+    if (action == 'copy') {
+      await Clipboard.setData(
+        ClipboardData(
+          text: event
+              .getDisplayEvent(widget.timeline)
+              .calcUnlocalizedBody(hideReply: true),
+        ),
+      );
       return;
     }
     if (action == 'reply') {
@@ -1036,16 +1091,45 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   reaction.senderId,
       );
     }
+    PopupMenuItem<String> menuItem(String value, String label, IconData icon) =>
+        PopupMenuItem(
+          value: value,
+          child: Row(
+            children: [
+              Icon(icon, size: 20),
+              const SizedBox(width: 12),
+              Text(label),
+            ],
+          ),
+        );
     final menuItems = <PopupMenuEntry<String>>[
-      const PopupMenuItem(value: 'reply', child: Text('Ответить')),
+      menuItem('reply', 'Ответить', Icons.reply),
+      if (shown.messageType == mx.MessageTypes.Text)
+        menuItem('copy', 'Скопировать', Icons.copy_outlined),
       if (canForwardMessage(shown))
-        const PopupMenuItem(value: 'forward', child: Text('Переслать')),
+        menuItem('forward', 'Переслать', Icons.forward),
       if (own && shown.messageType == mx.MessageTypes.Text)
-        const PopupMenuItem(value: 'edit', child: Text('Редактировать')),
-      if (event.canRedact)
-        const PopupMenuItem(value: 'delete', child: Text('Удалить')),
-      const PopupMenuItem(value: 'react', child: Text('Реакция…')),
+        menuItem('edit', 'Редактировать', Icons.edit_outlined),
+      if (event.canRedact) menuItem('delete', 'Удалить', Icons.delete_outline),
+      menuItem('react', 'Реакция…', Icons.add_reaction_outlined),
     ];
+    Future<void> openMenu(Offset position) async {
+      final overlay =
+          Overlay.of(context).context.findRenderObject()! as RenderBox;
+      final local = overlay.globalToLocal(position);
+      final action = await showMenu<String>(
+        context: context,
+        position: RelativeRect.fromRect(
+          Rect.fromLTWH(local.dx, local.dy, 0, 0),
+          Offset.zero & overlay.size,
+        ),
+        items: menuItems,
+      );
+      if (action != null && mounted) {
+        await perform(() => eventAction(event, action));
+      }
+    }
+
     final menu = !event.redacted && event.type != mx.EventTypes.Encrypted
         ? PopupMenuButton<String>(
             popUpAnimationStyle: appAnimationStyle(context),
@@ -1248,6 +1332,10 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                             )
                           else
                             LinkedText(
+                              selectable: !{
+                                TargetPlatform.iOS,
+                                TargetPlatform.android,
+                              }.contains(defaultTargetPlatform),
                               text: shown.calcUnlocalizedBody(hideReply: true),
                               style: TextStyle(
                                 fontSize: shown.onlyEmotes ? 26 : 14,
@@ -1309,34 +1397,22 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             child: Listener(
               onPointerDown: menu == null
                   ? null
-                  : (details) async {
-                      if (details.buttons != kSecondaryMouseButton) return;
-                      final overlay =
-                          Overlay.of(context).context.findRenderObject()!
-                              as RenderBox;
-                      final action = await showMenu<String>(
-                        context: context,
-                        position: RelativeRect.fromRect(
-                          Rect.fromLTWH(
-                            details.position.dx,
-                            details.position.dy,
-                            0,
-                            0,
-                          ),
-                          Offset.zero & overlay.size,
-                        ),
-                        items: menuItems,
-                      );
-                      if (action != null && mounted) {
-                        await perform(() => eventAction(event, action));
+                  : (details) {
+                      if (details.buttons == kSecondaryMouseButton) {
+                        openMenu(details.position);
                       }
                     },
-              child: messageExpiry(event) == null
-                  ? content
-                  : ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 526),
-                      child: TemporaryMessage(event: event, child: content),
-                    ),
+              child: GestureDetector(
+                onLongPressStart: menu == null
+                    ? null
+                    : (details) => openMenu(details.globalPosition),
+                child: messageExpiry(event) == null
+                    ? content
+                    : ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 526),
+                        child: TemporaryMessage(event: event, child: content),
+                      ),
+              ),
             ),
           ),
         ),
@@ -2017,68 +2093,59 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                             ),
                           ),
                         );
-                        final voice = IconButton.filledTonal(
-                          tooltip: 'Записать голосовое',
-                          onPressed: working
+                        final voice = GestureDetector(
+                          onLongPressStart: working
                               ? null
-                              : () => perform(startRecording),
-                          icon: const Icon(Icons.mic_none),
-                        );
-                        final video = Listener(
-                          onPointerDown: (event) {
-                            if (working ||
-                                heldVideo.value ||
-                                event.buttons != 1) {
-                              return;
-                            }
-                            videoPointerGesture = true;
-                            videoPointer = event.pointer;
-                            videoOrigin = event.position;
-                            cancelledVideo.value = false;
-                            heldVideo.value = true;
-                            unawaited(
-                              perform(() => attachFile('note', hold: true)),
-                            );
-                          },
-                          onPointerUp: (event) {
-                            if (event.pointer != videoPointer) return;
-                            videoPointer = null;
-                            heldVideo.value = false;
-                            scheduleMicrotask(
-                              () => videoPointerGesture = false,
-                            );
-                          },
-                          onPointerMove: (event) {
-                            if (event.pointer == videoPointer &&
-                                event.position.dx - videoOrigin.dx < -80) {
+                              : (_) {
+                                  if (videoRecordMode) {
+                                    cancelledVideo.value = false;
+                                    heldVideo.value = true;
+                                    unawaited(
+                                      perform(
+                                        () => attachFile('note', hold: true),
+                                      ),
+                                    );
+                                  } else {
+                                    unawaited(perform(startRecording));
+                                  }
+                                },
+                          onLongPressEnd: (_) => heldVideo.value = false,
+                          onLongPressMoveUpdate: (details) {
+                            if (details.offsetFromOrigin.dx < -80) {
                               cancelledVideo.value = true;
                               heldVideo.value = false;
                             }
                           },
-                          onPointerCancel: (event) {
-                            if (event.pointer != videoPointer) return;
+                          onLongPressCancel: () {
                             cancelledVideo.value = true;
                             heldVideo.value = false;
-                            videoPointer = null;
-                            scheduleMicrotask(
-                              () => videoPointerGesture = false,
-                            );
                           },
-                          child: Tooltip(
-                            message: 'Видеокружок · удерживайте для записи',
-                            triggerMode: TooltipTriggerMode.manual,
-                            child: IconButton(
-                              // Keyboard and assistive activation keep an explicit finish action.
-                              onPressed: working
-                                  ? null
-                                  : () {
-                                      if (videoPointerGesture) {
-                                        videoPointerGesture = false;
-                                        return;
-                                      }
-                                      perform(() => attachFile('note'));
-                                    },
-                              icon: const Icon(Icons.videocam_outlined),
+                          child: Semantics(
+                            onLongPress: working
+                                ? null
+                                : () => perform(
+                                    videoRecordMode
+                                        ? () => attachFile('note')
+                                        : startRecording,
+                                  ),
+                            child: Tooltip(
+                              triggerMode: TooltipTriggerMode.manual,
+                              message: videoRecordMode
+                                  ? 'Видеокружок · нажмите для аудио, удерживайте для записи'
+                                  : 'Голосовое · нажмите для видео, удерживайте для записи',
+                              child: IconButton.filledTonal(
+                                onPressed: working
+                                    ? null
+                                    : () => setState(
+                                        () =>
+                                            videoRecordMode = !videoRecordMode,
+                                      ),
+                                icon: Icon(
+                                  videoRecordMode
+                                      ? Icons.videocam_outlined
+                                      : Icons.mic_none,
+                                ),
+                              ),
                             ),
                           ),
                         );
@@ -2185,7 +2252,6 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                                               files,
                                               temporary,
                                               schedule,
-                                              video,
                                             ],
                                           )
                                         : null,
@@ -2201,7 +2267,6 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                                   schedule,
                                   field,
                                   voice,
-                                  video,
                                   sendButton,
                                 ],
                               );
@@ -2385,7 +2450,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     heldVideo.dispose();
     cancelledVideo.dispose();
     cancelFile = true;
-    if (fileProgress == null) {
+    if (fileProgress == null && !preserveDraft) {
       for (final source in draftFiles) {
         unawaited(source.release());
       }

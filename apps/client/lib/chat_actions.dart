@@ -38,6 +38,7 @@ class ChatActions extends ChangeNotifier {
   static const _storageKey = 'dev.voicechat.local.outbox';
   static const _draftKey = 'dev.voicechat.local.drafts';
   final Map<String, String> drafts = {};
+  final composerDrafts = <String, ComposerDraft>{};
   Future<void> _draftWrites = Future.value();
   bool get updateBusy =>
       _sending.isNotEmpty || _preparing.isNotEmpty || _publishing.isNotEmpty;
@@ -52,6 +53,27 @@ class ChatActions extends ChangeNotifier {
     return _draftWrites = _draftWrites
         .catchError((Object _) {})
         .then((_) => client.database.storeAccountData(_draftKey, snapshot));
+  }
+
+  Future<void> waitForDelivery(String id) async {
+    final done = Completer<void>();
+    void check() {
+      if (done.isCompleted) return;
+      final item = pending.where((item) => item['id'] == id).firstOrNull;
+      if (item == null) {
+        done.complete();
+      } else if (item['error'] != null) {
+        done.completeError(UserActionError(item['error'] as String));
+      }
+    }
+
+    addListener(check);
+    try {
+      check();
+      await done.future.timeout(const Duration(seconds: 30));
+    } finally {
+      removeListener(check);
+    }
   }
 
   Future<void> prepareUpdate() async {
@@ -845,6 +867,12 @@ class ChatActions extends ChangeNotifier {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    for (final draft in composerDrafts.values) {
+      for (final file in draft.files) {
+        await file.release();
+      }
+    }
+    composerDrafts.clear();
     _retry?.cancel();
     await _sync?.cancel();
     try {
@@ -933,5 +961,30 @@ bool messageIsRead(Event event, Timeline timeline) {
       (e) => e.eventId == receipt.eventId,
     );
     return readIndex >= 0 && readIndex <= index;
+  });
+}
+
+/// In-memory media drafts retained only when forwarding changes the open chat.
+class ComposerDraft {
+  final List<PickedFile> files;
+  final List<MatrixImageFile> photos;
+  final MatrixAudioFile? voice;
+  final List<int>? wave;
+  final Event? reply, edit, voiceReply;
+  final bool videoNote;
+  final int? videoDuration, temporarySeconds;
+  final DateTime? scheduledFor;
+  ComposerDraft({
+    required this.files,
+    required this.photos,
+    this.voice,
+    this.wave,
+    this.reply,
+    this.edit,
+    this.voiceReply,
+    required this.videoNote,
+    this.videoDuration,
+    this.temporarySeconds,
+    this.scheduledFor,
   });
 }

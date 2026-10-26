@@ -75,7 +75,7 @@ class CallVideoGrid extends StatelessWidget {
           .firstOrNull;
       final label = userId == call.chat.client.userID
           ? 'Вы'
-          : user?.displayName ?? tile.identity;
+          : user?.displayName ?? 'Собеседник';
       return ClipRRect(
         key: ValueKey(tile.identity),
         borderRadius: BorderRadius.circular(18),
