@@ -54,10 +54,10 @@ def validate_info(info, release=False):
             raise ValueError('Invalid Sparkle public key')
 
 
-def verify_app(app, release=False, team=None):
+def verify_app(app, release=False, team=None, personal=False):
     info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
-    validate_info(info, release)
-    if release and (app / 'Contents/Frameworks/App.framework/Resources/flutter_assets/kernel_blob.bin').exists():
+    validate_info(info, release or personal)
+    if (release or personal) and (app / 'Contents/Frameworks/App.framework/Resources/flutter_assets/kernel_blob.bin').exists():
         raise ValueError('A debug/JIT app cannot be distributed as a release')
     found = 0
     for path in app.rglob('*'):
@@ -86,6 +86,10 @@ def verify_app(app, release=False, team=None):
         details = run('codesign', '-d', '--verbose=4', app)
         if f'TeamIdentifier={team}' not in details or 'Authority=Developer ID Application:' not in details or 'runtime' not in details:
             raise ValueError('Expected Developer ID signature and hardened runtime')
+    if personal:
+        details = run("codesign", "-d", "--verbose=4", app)
+        if "Signature=adhoc" not in details or "TeamIdentifier=not set" not in details:
+            raise ValueError("Personal release requires the existing ad-hoc signing mode")
     return info
 
 
@@ -125,15 +129,18 @@ def create_feed(info, archive, signature, notes, previous=None):
 
 
 def package(args):
-    info = verify_app(args.app, args.release, args.team)
+    distributable = args.release or args.personal
+    info = verify_app(args.app, args.release, args.team, args.personal)
     commit = run('git', '-C', ROOT, 'rev-parse', 'HEAD')
     dirty = bool(run('git', '-C', ROOT, 'status', '--porcelain', '--untracked-files=normal'))
-    if args.release and dirty:
+    if distributable and dirty:
         raise ValueError('Release requires a clean revision')
     if args.output.exists():
         raise ValueError('Output already exists; use a new candidate directory')
-    if args.release and not all((args.notary_profile, args.sparkle_bin, args.sparkle_key, args.notes)):
-        raise ValueError('Release needs notarization profile, Sparkle tools/key and release notes')
+    if distributable and not all((args.sparkle_bin, args.sparkle_key, args.notes)):
+        raise ValueError('Release needs Sparkle tools/key and release notes')
+    if args.release and not args.notary_profile:
+        raise ValueError('Developer ID release needs a notarization profile')
     args.output.mkdir(parents=True)
     # Work on a copy: stapling must not mutate the input .app or invalidate a build cache.
     with tempfile.TemporaryDirectory(prefix='voicechat-package-') as temporary:
@@ -158,7 +165,7 @@ def package(args):
             run('xcrun', 'stapler', 'staple', dmg)
             run('xcrun', 'stapler', 'validate', dmg)
     previous = args.previous_feed.read_bytes() if args.previous_feed else None
-    if args.release:
+    if distributable:
         # Validate before invoking Sparkle: malformed-key errors can echo private input.
         secret = base64.b64decode(args.sparkle_key.read_text().strip(), validate=True)
         if len(secret) not in (32, 96):
@@ -173,7 +180,8 @@ def package(args):
         feed.write_bytes(create_feed(info, archive, signature, args.notes.read_text(), previous))
         run(signer, '--ed-key-file', args.sparkle_key, feed)
         run(signer, '--ed-key-file', args.sparkle_key, '--verify', feed)
-    manifest = {'commit': commit, 'sourceDirty': dirty, 'distributable': args.release,
+    manifest = {'commit': commit, 'sourceDirty': dirty, 'distributable': distributable,
+                'signingMode': 'personal-adhoc' if args.personal else ('developer-id' if args.release else 'development'),
                 'build': info['CFBundleVersion'], 'version': info['CFBundleShortVersionString'],
                 'minimumOS': info['LSMinimumSystemVersion'], 'architecture': 'arm64',
                 'feedURL': info.get('SUFeedURL'),
@@ -186,7 +194,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--app', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--release', action='store_true')
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument('--release', action='store_true')
+    mode.add_argument('--personal', action='store_true',
+                      help='Personal ad-hoc app with signed Sparkle archives/feed; no Apple notarization')
     parser.add_argument('--team')
     parser.add_argument('--notary-profile')
     parser.add_argument('--sparkle-bin', type=Path)

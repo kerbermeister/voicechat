@@ -44,6 +44,22 @@ class MacOSReleaseTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'debug/JIT'):
                 m.verify_app(app, release=True, team='ABCDEFGHIJ')
 
+    def test_personal_release_still_requires_configured_feed_and_aot(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = Path(directory) / 'VoiceChat.app'
+            contents = app / 'Contents'
+            contents.mkdir(parents=True)
+            info = {**self.info, 'SUPublicEDKey': ''}
+            (contents / 'Info.plist').write_bytes(plistlib.dumps(info))
+            with self.assertRaisesRegex(ValueError, 'public key'):
+                m.verify_app(app, personal=True)
+            (contents / 'Info.plist').write_bytes(plistlib.dumps(self.info))
+            kernel = contents / 'Frameworks/App.framework/Resources/flutter_assets/kernel_blob.bin'
+            kernel.parent.mkdir(parents=True)
+            kernel.write_bytes(b'jit')
+            with self.assertRaisesRegex(ValueError, 'debug/JIT'):
+                m.verify_app(app, personal=True)
+
     def test_feed_preserves_old_compatible_release_and_refuses_rollback(self):
         with tempfile.TemporaryDirectory() as directory:
             archive = Path(directory) / 'VoiceChat.zip'
