@@ -210,26 +210,6 @@ class _CallWindowState extends State<CallWindow> {
                 ),
               ],
               if (current != null) ...[
-                if (calls.screen != null)
-                  IconButton(
-                    tooltip: 'Демонстрация экрана',
-                    icon: const Icon(Icons.screen_share_outlined),
-                    onPressed: () => showAppDialog<void>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Демонстрация экрана'),
-                        content: SingleChildScrollView(
-                          child: ScreenPanel(controller: calls.screen!),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Закрыть'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 const SizedBox(height: 8),
                 CallQualityIndicator(quality: current.quality),
               ],
@@ -364,6 +344,26 @@ class _CallWindowState extends State<CallWindow> {
                     : () => perform(() => current.mute(!current.muted)),
                 icon: Icon(current.muted ? Icons.mic_off : Icons.mic),
               ),
+              if (calls.screen != null)
+                IconButton(
+                  tooltip: 'Демонстрация экрана',
+                  icon: const Icon(Icons.screen_share_outlined),
+                  onPressed: () => showAppDialog<void>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Демонстрация экрана'),
+                      content: SingleChildScrollView(
+                        child: ScreenPanel(controller: calls.screen!),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Закрыть'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               IconButton(
                 tooltip: kIsWeb ? 'Включить звук' : 'Аудиовыход',
                 onPressed: busy ? null : () => perform(widget.audioOutput),

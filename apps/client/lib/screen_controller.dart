@@ -43,6 +43,7 @@ class ScreenShareController extends ChangeNotifier {
   ScreenQuality quality = ScreenQuality.auto;
   ScreenQuality? _appliedQuality;
   bool _closed = false, _polling = false, _acting = false;
+  bool reconnectAllowed = false;
   bool _bindingPending = false;
   bool _bindingInFlight = false;
   bool _preparingCapture = false;
@@ -79,6 +80,13 @@ class ScreenShareController extends ChangeNotifier {
   bool get isClosed => _closed;
   bool get hasBinding => _binding != null;
   bool get busy => _acting;
+  bool get canShare =>
+      !_closed &&
+      !_acting &&
+      _pending == null &&
+      !_bindingPending &&
+      snapshot != null &&
+      _capture == null;
   lk.VideoTrack? get displayTrack => _closed
       ? null
       : snapshot?.owner == identity
@@ -131,8 +139,10 @@ class ScreenShareController extends ChangeNotifier {
       });
       _authorized.start();
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (call.isClosed ||
-            _authorized.elapsed >= const Duration(seconds: 25)) {
+        if (call.isClosed) {
+          unawaited(close());
+        } else if (_authorized.elapsed >= const Duration(seconds: 25)) {
+          reconnectAllowed = true;
           unawaited(close());
         } else {
           unawaited(poll());
@@ -171,6 +181,9 @@ class ScreenShareController extends ChangeNotifier {
     } on ScreenApiError catch (error) {
       if ([401, 403, 404, 410].contains(error.status) ||
           error.code == 'screen_disabled') {
+        reconnectAllowed =
+            error.code == 'lease_expired' ||
+            error.code == 'screen_access_denied';
         await close();
       } else {
         phase = ScreenPhase.reconnecting;
@@ -204,14 +217,7 @@ class ScreenShareController extends ChangeNotifier {
   }
 
   Future<void> share() async {
-    if (_closed ||
-        _acting ||
-        _pending != null ||
-        snapshot == null ||
-        _bindingPending ||
-        _capture != null) {
-      return;
-    }
+    if (!canShare) return;
     _acting = true;
     _preparingCapture = true;
     notice = null;
@@ -220,7 +226,20 @@ class ScreenShareController extends ChangeNotifier {
     _changed();
     try {
       // Capture запускается до сетевых await, сохраняя browser user activation.
-      final capture = await captureFactory();
+      var abandoned = false;
+      final selection = captureFactory();
+      unawaited(
+        selection.then<void>((capture) async {
+          if (abandoned) await capture.close();
+        }, onError: (Object _, StackTrace __) {}),
+      );
+      final capture = await selection.timeout(
+        const Duration(seconds: 60),
+        onTimeout: () {
+          abandoned = true;
+          throw TimeoutException('Screen selection');
+        },
+      );
       if (_closed || call.isClosed) {
         await capture.close();
         return;
@@ -235,7 +254,21 @@ class ScreenShareController extends ChangeNotifier {
         unawaited(stop());
       });
       capture.source.mediaStreamTrack.onEnded = () {
+        if (_capture != capture || _closed) return;
+        notice = 'Браузер или система завершили захват. Начните показ снова.';
         unawaited(stop());
+      };
+      const pausedNotice =
+          'Браузер приостановил захват экрана. Вернитесь в приложение для продолжения.';
+      capture.source.mediaStreamTrack.onMute = () {
+        if (_capture != capture || _closed) return;
+        notice = pausedNotice;
+        _changed();
+      };
+      capture.source.mediaStreamTrack.onUnMute = () {
+        if (_capture != capture || _closed || notice != pausedNotice) return;
+        notice = null;
+        _changed();
       };
       await (() async {
         await _pollFinished?.future;
@@ -256,12 +289,10 @@ class ScreenShareController extends ChangeNotifier {
       _preparation?.cancel();
       await captured?.close();
       if (captured != null) await _disposeMedia();
-      notice = error is UnsupportedError
-          ? 'В этой среде недоступен захват экрана.'
-          : error is TimeoutException
+      notice = error is TimeoutException
           ? 'Не удалось подключить показ вовремя. Попробуйте ещё раз.'
           : captured == null
-          ? 'Показ не начат. Проверьте разрешение на захват экрана.'
+          ? screenCaptureNotice(error)
           : 'Показ остановлен. Проверьте сеть и защищённое соединение.';
       phase = captured == null ? previousPhase : ScreenPhase.error;
     } finally {

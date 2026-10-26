@@ -209,10 +209,10 @@ class _MessageVideoState extends State<MessageVideo> {
   @override
   void initState() {
     super.initState();
-    if (!widget.inline) load();
+    load(autoplay: !widget.inline && !widget.thumbnail);
   }
 
-  Future<void> load() async {
+  Future<void> load({bool autoplay = true}) async {
     if (loading || player != null) return;
     setState(() {
       loading = true;
@@ -240,7 +240,17 @@ class _MessageVideoState extends State<MessageVideo> {
       await next.initialize();
       if (!mounted) return;
       next.addListener(refresh);
-      if (!widget.thumbnail) await next.play();
+      if (autoplay) {
+        await next.play();
+      } else {
+        // Seeking decodes a still frame without autoplay or microphone access.
+        await next.seekTo(
+          Duration(
+            milliseconds: next.value.duration.inMilliseconds.clamp(0, 100),
+          ),
+        );
+      }
+      if (mounted) loading = false;
       refresh();
     } catch (_) {
       await player?.dispose();

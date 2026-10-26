@@ -107,7 +107,12 @@ class CallController extends ChangeNotifier
   }
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (kIsWeb || _closed) return;
+    if (_closed) return;
+    if (state == AppLifecycleState.resumed) {
+      unawaited(screen?.poll());
+      _refresh();
+    }
+    if (kIsWeb) return;
     final call = active;
     if (call == null || call.isClosed || !call.video) return;
     if (state == AppLifecycleState.inactive && call.cameraEnabled) {
@@ -181,7 +186,8 @@ class CallController extends ChangeNotifier
   Future<void> _prepareScreen() async {
     final call = active;
     if (_screenChecking ||
-        call == _screenCall ||
+        (call == _screenCall &&
+            !(screen?.isClosed == true && screen!.reconnectAllowed)) ||
         (_screenRetryAt != null && DateTime.now().isBefore(_screenRetryAt!))) {
       return;
     }
@@ -199,7 +205,7 @@ class CallController extends ChangeNotifier
     _screenCall = call;
     final previous = screen;
     screen = null;
-    unawaited(previous?.close());
+    await previous?.close();
     previous?.dispose();
     final api = ScreenApi(tokenUrl, () => client.accessToken ?? '');
     ScreenShareController? next;
@@ -219,6 +225,10 @@ class CallController extends ChangeNotifier
         parties: _screenParties,
       );
       screen = next;
+      if (previous?.reconnectAllowed == true) {
+        next.notice =
+            'Демонстрация переподключена после паузы. Для своего экрана нажмите «Показать экран».';
+      }
       await next.connect();
       if (_closed || active != call || call.isClosed) await next.close();
     } catch (_) {

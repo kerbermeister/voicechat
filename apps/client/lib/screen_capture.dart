@@ -4,6 +4,27 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 
+String screenCaptureNotice(Object error) {
+  if (error is UnsupportedError) {
+    return 'Эта версия браузера или ОС не поддерживает захват экрана.';
+  }
+  final code = RegExp(
+    r'\b(NotAllowedError|InvalidStateError|NotReadableError|NotFoundError|NotSupportedError|AbortError)\b',
+  ).firstMatch(error.toString())?.group(1);
+  return switch (code) {
+    'NotAllowedError' =>
+      'Доступ к экрану не разрешён. Повторите показ и подтвердите системный запрос.',
+    'InvalidStateError' =>
+      'Вернитесь в webapp и снова нажмите «Показать экран».',
+    'NotReadableError' =>
+      'Система не смогла начать захват. Остановите прежний показ и повторите попытку.',
+    'NotFoundError' || 'NotSupportedError' =>
+      'Эта версия браузера или ОС не предоставляет экран для показа.',
+    'AbortError' => 'Системный выбор экрана прерван. Можно начать показ снова.',
+    _ => 'Показ не начат. Проверьте разрешение на захват экрана.',
+  };
+}
+
 /// Исходный захват живёт отдельно от публикаций сменяемых SFU-поколений.
 class ScreenCapture {
   static bool get supported => kIsWeb

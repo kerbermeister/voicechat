@@ -157,7 +157,7 @@ class ScreenPanel extends StatelessWidget {
               else if (ScreenCapture.supported)
                 TextButton.icon(
                   onPressed:
-                      controller.isClosed ||
+                      !controller.canShare ||
                           waiting ||
                           state == null ||
                           state.roster.isEmpty
