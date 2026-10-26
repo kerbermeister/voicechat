@@ -68,7 +68,39 @@ flutter test --no-pub --platform chrome test/video_note_browser_test.dart`.
 
 Перед выбором артефактов прочитан production commit из `/srv/voicechat/current.json`:
 `5b86730af3d89ea1740f7883207b0ae19e41039a`. Diff всей ветки относительно него включает
-предшествующие macOS/Compose/deploy изменения, поэтому eventual release требует
-`full`, если guard не подтвердит другую baseline. Эта итерация меняет клиент и
-документацию; серверные артефакты, APK и production release не собирались, VPS не
-обновлялся. Web-код компилировался и выполнялся browser-тестами; это не release build.
+предшествующие macOS/Compose/deploy изменения, поэтому выпуск выполнен в режиме `full`. Результат выпуска приведён ниже.
+
+
+## Production release
+
+По явному разрешению пользователя изменения слиты в актуальный GitHub `main`:
+`5f140c0240ed287f53e86d3d903de03c6fc3abf2`. Родитель `419a9a9` включает доработки
+другого агента по ускорению Safari (`81d596a`) и сжатию на native build platform
+(`99e3d17`). `index.html`, Caddyfile и web.Dockerfile совпадают с этим родителем;
+клиентское дерево после merge совпадает с проверенной feature-веткой.
+
+- [Build and deploy #29](https://github.com/kerbermeister/voicechat/actions/runs/40368472780):
+  `main`, `mode=full`, `deploy=true`, Success, 8m 40s.
+- [Prototype checks #39](https://github.com/kerbermeister/voicechat/actions/runs/40368267246): Success.
+- VPS `current.json` и image digests работающих web/control совпадают с manifest.
+  Backend fingerprint совпадает с исходниками релиза.
+- Web, control, Synapse, PostgreSQL healthy; TURN running.
+- Restic snapshot `14354203`, `2026-10-26T17:33:43.088977692Z`.
+- `previous.json` указывает на `5b86730af3d89ea1740f7883207b0ae19e41039a`;
+  предыдущий release-каталог сохранён. Фактический откат не запускался.
+- HTTPS `/`, `/api/health`, Matrix versions и push config возвращают 200;
+  закрытый Synapse admin endpoint и previous update manifests — 404.
+- `main.dart.js`: gzip 1 941 830 байт, Brotli 1 430 525 байт; оба ответа с
+  `Cache-Control: no-cache`. SHA-256 распакованного gzip совпадает с файлом
+  работающего контейнера. Стартовый HTML содержит загрузочный интерфейс.
+- Существовавший runtime screen flag `1` временно остановлен на время релиза
+  и восстановлен после проверки здоровья; default-off в коде не менялся.
+  После восстановления: 13 ended sessions, 0 retired rooms, 0 pending commands.
+
+Проверки физических устройств и реальных аккаунтов, перечисленные выше, остаются
+открытыми: успешный релиз не заменяет их.
+
+Immutable images:
+
+- Control: `ghcr.io/kerbermeister/voicechat/control@sha256:2197e37f261868ae0e61231987bf9d7b5dacec42906377593129d85cdf794cac`
+- Web: `ghcr.io/kerbermeister/voicechat/web@sha256:00bcaa66cd969e7f3ffdcae385c08cf4a4d31cf21724064351e4a42eb745d3cc`
