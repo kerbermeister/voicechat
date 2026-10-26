@@ -45,3 +45,27 @@ Apple описывает непрерывный native capture через Screen
 
 Полный список ручных сценариев всех итераций: [26 проверок](mobile-acceptance-checklist.md).
 Перехват разговора между своими устройствами и Windows adapter остаются вне итераций.
+
+## Проверки и выпуск
+
+- Финальные `flutter analyze`: замечаний нет; 13 адресных тестов picker,
+  допуска, controls, source cleanup и preview прошли. Полный локальный прогон
+  нашёл два fixture без новых onMute/onUnMute; fixture обновлён, оба сценария
+  повторно прошли. Полный тестовый этап production workflow также прошёл.
+- [Web release 40406338260](https://github.com/kerbermeister/voicechat/actions/runs/40406338260)
+  завершён успешно на `5a5028cea60f0aaf40f1a462c0a184414342cf48`, mode=web.
+  Guard подтвердил существующую backend baseline. После публикации проверены
+  commit/digests, здоровье служб, rollback pointer, immutable assets и no-cache.
+  У всех backend-контейнеров прежние ID/StartedAt/RestartCount и image digest.
+  Существующий screen flag 1 не менялся.
+- macOS AOT собран из того же чистого commit. ZIP и read-only DMG прошли
+  codesign --verify --deep --strict; DMG checksum VALID. Кандидат 8 ещё не опубликован.
+- До проверки сохранены закрытый профиль и установленная 1.5.0(7).
+  Новый кандидат ждёт системного подтверждения Keychain. Предыдущая 1.5.0
+  открывает тот же профиль; данные/ключи не очищались, entitlements совпадают.
+  UI-инструмент запрещает доступ к SecurityAgent, поэтому подтверждение запрошено
+  у владельца. Открытие истории точным кандидатом, публикация и установка 7 → 8
+  остаются обязательными невыполненными шагами.
+- Подписанный кандидат: ZIP SHA256
+  `34c279c42ca48dcc96cd467081f5cea50d5113e65232c1ca7138a4bd085b695e`, DMG SHA256
+  `66ce4bd8378021943c39f0016f45b4c67ee98d8d0865c8932c2d5b8f7226a69a`.
