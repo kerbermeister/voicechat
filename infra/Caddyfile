@@ -52,7 +52,9 @@
         header Cache-Control "no-cache"
         root * /srv
         try_files {path} /index.html
-        file_server
+        file_server {
+            precompressed br gzip
+        }
     }
     }
 }
