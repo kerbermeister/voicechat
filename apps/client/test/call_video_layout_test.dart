@@ -3,6 +3,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:voicechat_probe/call_video_grid.dart';
 
 void main() {
+  testWidgets(
+    'Self preview expands and two-person tiles fit without overflow',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: CallVideoLayout(
+              local: ColoredBox(key: ValueKey('self'), color: Colors.blue),
+              remote: [ColoredBox(key: ValueKey('peer'), color: Colors.red)],
+            ),
+          ),
+        ),
+      );
+      final small = tester.getSize(find.byKey(const ValueKey('self')));
+      await tester.tap(find.bySemanticsLabel('Развернуть своё видео'));
+      await tester.pump();
+      expect(
+        tester.getSize(find.byKey(const ValueKey('self'))).width,
+        greaterThan(small.width),
+      );
+      await tester.tap(find.byTooltip('Показать плиткой'));
+      await tester.pump();
+      expect(find.byType(GridView), findsOneWidget);
+      expect(find.byKey(const ValueKey('peer')), findsOneWidget);
+      expect(find.byKey(const ValueKey('self')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets('Peer fills the stage; hiding preview preserves the peer', (
     tester,
   ) async {

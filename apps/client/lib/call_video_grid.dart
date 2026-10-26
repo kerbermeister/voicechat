@@ -136,16 +136,28 @@ class CallVideoLayout extends StatefulWidget {
 
 class _CallVideoLayoutState extends State<CallVideoLayout> {
   bool showSelf = true;
+  bool expandedSelf = false;
+  bool tiled = false;
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final remote = widget.remote;
+      final gridTiles = [
+        ...remote,
+        if (tiled && widget.local != null && showSelf) widget.local!,
+      ];
+      final columns = (constraints.maxWidth > constraints.maxHeight ? 3 : 2)
+          .clamp(1, gridTiles.length.clamp(1, 100));
+      final rows = (gridTiles.length / columns).ceil().clamp(1, 100);
+      final tileWidth = (constraints.maxWidth - (columns - 1) * 8) / columns;
+      final tileHeight = ((constraints.maxHeight - (rows - 1) * 8) / rows)
+          .clamp(120.0, constraints.maxHeight.clamp(120.0, double.infinity));
       return Stack(
         fit: StackFit.expand,
         children: [
-          if (remote.length == 1)
+          if (remote.length == 1 && !tiled)
             remote.single
-          else if (remote.isEmpty)
+          else if (gridTiles.isEmpty)
             const ColoredBox(
               color: Colors.black87,
               child: Center(
@@ -158,38 +170,76 @@ class _CallVideoLayoutState extends State<CallVideoLayout> {
           else
             GridView.builder(
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: constraints.maxWidth < 440
-                    ? 1
-                    : remote.length > 4
-                    ? 3
-                    : 2,
-                childAspectRatio: 16 / 10,
+                crossAxisCount: columns,
+                childAspectRatio: tileWidth / tileHeight,
                 mainAxisSpacing: 8,
                 crossAxisSpacing: 8,
               ),
-              itemCount: remote.length,
-              itemBuilder: (_, index) => remote[index],
+              itemCount: gridTiles.length,
+              itemBuilder: (_, index) => gridTiles[index],
             ),
-          if (widget.local != null && showSelf)
+          if (widget.local != null && showSelf && !tiled)
             Positioned(
               right: 8,
               bottom: 8,
-              width: (constraints.maxWidth * .24).clamp(56, 112),
-              height: (constraints.maxHeight * .28).clamp(40, 140),
-              child: IgnorePointer(child: widget.local!),
+              width: expandedSelf
+                  ? constraints.maxWidth * .6
+                  : (constraints.maxWidth * .24).clamp(56, 112),
+              height: expandedSelf
+                  ? constraints.maxHeight * .6
+                  : (constraints.maxHeight * .28).clamp(48, 140),
+              child: Semantics(
+                button: true,
+                label: expandedSelf
+                    ? 'Уменьшить своё видео'
+                    : 'Развернуть своё видео',
+                child: InkWell(
+                  onTap: () => setState(() => expandedSelf = !expandedSelf),
+                  child: widget.local!,
+                ),
+              ),
             ),
+          Positioned(
+            left: 4,
+            top: 4,
+            child: IconButton.filledTonal(
+              tooltip: tiled ? 'Собеседник на весь экран' : 'Показать плиткой',
+              onPressed: () => setState(() => tiled = !tiled),
+              icon: Icon(tiled ? Icons.fullscreen : Icons.grid_view),
+            ),
+          ),
           if (widget.local != null)
             Positioned(
               right: 4,
               top: 4,
-              child: IconButton.filledTonal(
-                tooltip: showSelf ? 'Скрыть своё видео' : 'Показать своё видео',
-                onPressed: () => setState(() => showSelf = !showSelf),
-                icon: Icon(
-                  showSelf
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (showSelf && !tiled)
+                    IconButton.filledTonal(
+                      tooltip: expandedSelf
+                          ? 'Уменьшить превью'
+                          : 'Развернуть превью',
+                      onPressed: () =>
+                          setState(() => expandedSelf = !expandedSelf),
+                      icon: Icon(
+                        expandedSelf
+                            ? Icons.close_fullscreen
+                            : Icons.open_in_full,
+                      ),
+                    ),
+                  IconButton.filledTonal(
+                    tooltip: showSelf
+                        ? 'Скрыть своё видео'
+                        : 'Показать своё видео',
+                    onPressed: () => setState(() => showSelf = !showSelf),
+                    icon: Icon(
+                      showSelf
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
