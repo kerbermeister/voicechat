@@ -52,6 +52,108 @@ class DeadlineCapture extends ScreenCapture {
 }
 
 void main() {
+  testWidgets(
+    'Зависший системный picker допускает повтор; поздний захват закрывается',
+    (tester) async {
+      final client = Client('picker-timeout', database: LifecycleDatabase());
+      final call = LifecycleCall(Room(id: '!picker:local', client: client));
+      final selection = Completer<ScreenCapture>();
+      final api = ScreenApi(
+        'http://localhost',
+        () => '',
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/bind')) {
+            return http.Response(
+              jsonEncode({
+                'binding_id': '22222222-2222-4222-8222-222222222222',
+                'lease_id': 'b' * 64,
+                'binding_state': 'open',
+                'snapshot': {
+                  'protocol_version': 1,
+                  'binding_id': '22222222-2222-4222-8222-222222222222',
+                  'state': 'idle',
+                  'revision': 0,
+                  'roster_version': 0,
+                  'roster': [],
+                  'owner_identity': null,
+                  'generation': null,
+                },
+              }),
+              200,
+            );
+          }
+          return http.Response('{}', 200);
+        }),
+      );
+      final screen = ScreenShareController(
+        call,
+        api,
+        'ws://localhost:7880',
+        captureFactory: () => selection.future,
+      );
+      await tester.runAsync(screen.connect);
+      final sharing = screen.share();
+      expect(screen.canShare, isFalse);
+      await tester.pump(const Duration(seconds: 61));
+      await sharing;
+      expect(screen.busy, isFalse);
+      expect(screen.canShare, isTrue);
+      expect(screen.notice, contains('вовремя'));
+      final capture = DeadlineCapture(DeadlineVideo());
+      selection.complete(capture);
+      await tester.pump();
+      expect(capture.closes, 1);
+      await tester.runAsync(screen.close);
+      screen.dispose();
+      await client.dispose();
+    },
+  );
+  testWidgets(
+    'После истечения допуска экран разрешает новую проверку, но выключатель — нет',
+    (tester) async {
+      final client = Client('resume-screen', database: LifecycleDatabase());
+      final call = LifecycleCall(Room(id: '!resume:local', client: client));
+      final api = ScreenApi(
+        'http://localhost',
+        () => '',
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/bind')) {
+            return http.Response(
+              jsonEncode({
+                'binding_id': '22222222-2222-4222-8222-222222222222',
+                'lease_id': 'b' * 64,
+                'binding_state': 'open',
+                'snapshot': {
+                  'protocol_version': 1,
+                  'binding_id': '22222222-2222-4222-8222-222222222222',
+                  'state': 'idle',
+                  'revision': 0,
+                  'roster_version': 0,
+                  'roster': [],
+                  'owner_identity': null,
+                  'generation': null,
+                },
+              }),
+              200,
+            );
+          }
+          if (request.url.path.endsWith('/heartbeat')) {
+            return http.Response('{"error":"screen_access_denied"}', 403);
+          }
+          return http.Response('{}', 200);
+        }),
+      );
+      final screen = ScreenShareController(call, api, 'ws://localhost:7880');
+      await tester.runAsync(screen.connect);
+      await tester.runAsync(screen.poll);
+      expect(screen.isClosed, isTrue);
+      expect(screen.reconnectAllowed, isTrue);
+      expect(screen.displayTrack, isNull);
+      await tester.runAsync(screen.close);
+      screen.dispose();
+      await client.dispose();
+    },
+  );
   test(
     'После picker claim использует свежий roster; отказ проверки закрывает capture',
     () async {

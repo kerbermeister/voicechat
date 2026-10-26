@@ -119,6 +119,38 @@ void main() {
       tester.view.resetDevicePixelRatio();
     },
   );
+  testWidgets('Кнопка экрана доступна в видеозвонке до начала показа', (
+    tester,
+  ) async {
+    final client = Client('video-screen-control', database: PanelDatabase());
+    final call = WindowCall(CallRoom(client));
+    final screen = ScreenShareController(
+      call,
+      ScreenApi('http://localhost', () => ''),
+      'ws://localhost:7880',
+    );
+    final calls =
+        CallController(
+            client,
+            'http://localhost',
+            'ws://localhost:7880',
+            (_) {},
+          )
+          ..active = call
+          ..screen = screen;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: CallWindow(calls: calls, audioOutput: () async {}),
+      ),
+    );
+    await tester.tap(find.byTooltip('Демонстрация экрана'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ScreenPanel), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.runAsync(calls.close);
+    await client.dispose();
+  });
   testWidgets(
     'Экран встроен в окно звонка, основные controls помещаются на телефоне',
     (tester) async {

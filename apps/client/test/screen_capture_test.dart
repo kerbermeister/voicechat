@@ -9,6 +9,10 @@ class CaptureTrack extends Fake implements rtc.MediaStreamTrack {
   @override
   void Function()? onEnded;
   @override
+  void Function()? onMute;
+  @override
+  void Function()? onUnMute;
+  @override
   String get id => 'screen';
   @override
   String get kind => 'video';
@@ -28,6 +32,28 @@ class CaptureStream extends Fake implements rtc.MediaStream {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('Ошибки picker имеют понятные сообщения без вывода исходных данных', () {
+    expect(
+      screenCaptureNotice('Unable to getDisplayMedia: InvalidStateError'),
+      contains('снова нажмите'),
+    );
+    expect(
+      screenCaptureNotice('NotReadableError: private details'),
+      contains('прежний показ'),
+    );
+    expect(
+      screenCaptureNotice('NotAllowedError: private details'),
+      contains('не разрешён'),
+    );
+    expect(
+      screenCaptureNotice('NotSupportedError'),
+      contains('не предоставляет'),
+    );
+    expect(
+      screenCaptureNotice(StateError('private token')),
+      isNot(contains('private')),
+    );
+  });
   test(
     'Disposal native-публикации не останавливает единственный root capture',
     () async {
