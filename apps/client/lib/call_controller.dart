@@ -42,7 +42,7 @@ class CallController extends ChangeNotifier
   final invitations = <String, CallInvitation>{};
   final declined = <String>{};
   final _endedInvitations =
-      <String, ({String room, String sender, DateTime time})>{};
+      <({String room, String sender, String session}), DateTime>{};
   late final CallDevices devices;
   VoiceCall? active;
   ScreenShareController? screen;
@@ -251,12 +251,16 @@ class CallController extends ChangeNotifier
       return;
     }
     _endedInvitations.removeWhere(
-      (_, end) =>
-          DateTime.now().difference(end.time) >= const Duration(minutes: 10),
+      (_, time) =>
+          DateTime.now().difference(time) >= const Duration(minutes: 10),
     );
-    final ended = _endedInvitations[id];
+    final invitationKey = (
+      room: event.room.id,
+      sender: event.senderId,
+      session: id,
+    );
     if (content['action'] == 'invite' &&
-        !(ended?.room == event.room.id && ended?.sender == event.senderId) &&
+        !_endedInvitations.containsKey(invitationKey) &&
         event.senderId != client.userID &&
         !declined.contains(id) &&
         !devices.answered(event.room.id, id)) {
@@ -275,16 +279,15 @@ class CallController extends ChangeNotifier
       unawaited(active!.close());
       report('Собеседник отклонил вызов.');
     } else if (content['action'] == 'end') {
-      _endedInvitations[id] = (
-        room: event.room.id,
-        sender: event.senderId,
-        time: event.originServerTs,
-      );
+      _endedInvitations[invitationKey] = event.originServerTs;
       if (_endedInvitations.length > 128) {
         _endedInvitations.remove(_endedInvitations.keys.first);
       }
       // Only the initiating user can cancel their invitation.
-      if (invitations[id]?.sender == event.senderId) invitations.remove(id);
+      if (invitations[id]?.sender == event.senderId &&
+          invitations[id]?.room.id == event.room.id) {
+        invitations.remove(id);
+      }
       if (active?.session == id &&
           active?.chat.id == event.room.id &&
           event.room.isDirectChat &&

@@ -2093,57 +2093,74 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                             ),
                           ),
                         );
-                        final voice = GestureDetector(
-                          onLongPressStart: working
-                              ? null
-                              : (_) {
-                                  if (videoRecordMode) {
-                                    cancelledVideo.value = false;
-                                    heldVideo.value = true;
-                                    unawaited(
-                                      perform(
-                                        () => attachFile('note', hold: true),
-                                      ),
-                                    );
-                                  } else {
-                                    unawaited(perform(startRecording));
-                                  }
-                                },
-                          onLongPressEnd: (_) => heldVideo.value = false,
-                          onLongPressMoveUpdate: (details) {
-                            if (details.offsetFromOrigin.dx < -80) {
+                        final voice = CallbackShortcuts(
+                          bindings: {
+                            const SingleActivator(
+                              LogicalKeyboardKey.enter,
+                              control: true,
+                            ): () {
+                              if (!working) {
+                                perform(
+                                  videoRecordMode
+                                      ? () => attachFile('note')
+                                      : startRecording,
+                                );
+                              }
+                            },
+                          },
+                          child: GestureDetector(
+                            onLongPressStart: working
+                                ? null
+                                : (_) {
+                                    if (videoRecordMode) {
+                                      cancelledVideo.value = false;
+                                      heldVideo.value = true;
+                                      unawaited(
+                                        perform(
+                                          () => attachFile('note', hold: true),
+                                        ),
+                                      );
+                                    } else {
+                                      unawaited(perform(startRecording));
+                                    }
+                                  },
+                            onLongPressEnd: (_) => heldVideo.value = false,
+                            onLongPressMoveUpdate: (details) {
+                              if (details.offsetFromOrigin.dx < -80) {
+                                cancelledVideo.value = true;
+                                heldVideo.value = false;
+                              }
+                            },
+                            onLongPressCancel: () {
                               cancelledVideo.value = true;
                               heldVideo.value = false;
-                            }
-                          },
-                          onLongPressCancel: () {
-                            cancelledVideo.value = true;
-                            heldVideo.value = false;
-                          },
-                          child: Semantics(
-                            onLongPress: working
-                                ? null
-                                : () => perform(
+                            },
+                            child: Semantics(
+                              hint: 'Ctrl+Enter начинает запись',
+                              onLongPress: working
+                                  ? null
+                                  : () => perform(
+                                      videoRecordMode
+                                          ? () => attachFile('note')
+                                          : startRecording,
+                                    ),
+                              child: Tooltip(
+                                triggerMode: TooltipTriggerMode.manual,
+                                message: videoRecordMode
+                                    ? 'Видеокружок · нажмите для аудио, удерживайте для записи'
+                                    : 'Голосовое · нажмите для видео, удерживайте для записи',
+                                child: IconButton.filledTonal(
+                                  onPressed: working
+                                      ? null
+                                      : () => setState(
+                                          () => videoRecordMode =
+                                              !videoRecordMode,
+                                        ),
+                                  icon: Icon(
                                     videoRecordMode
-                                        ? () => attachFile('note')
-                                        : startRecording,
+                                        ? Icons.videocam_outlined
+                                        : Icons.mic_none,
                                   ),
-                            child: Tooltip(
-                              triggerMode: TooltipTriggerMode.manual,
-                              message: videoRecordMode
-                                  ? 'Видеокружок · нажмите для аудио, удерживайте для записи'
-                                  : 'Голосовое · нажмите для видео, удерживайте для записи',
-                              child: IconButton.filledTonal(
-                                onPressed: working
-                                    ? null
-                                    : () => setState(
-                                        () =>
-                                            videoRecordMode = !videoRecordMode,
-                                      ),
-                                icon: Icon(
-                                  videoRecordMode
-                                      ? Icons.videocam_outlined
-                                      : Icons.mic_none,
                                 ),
                               ),
                             ),
