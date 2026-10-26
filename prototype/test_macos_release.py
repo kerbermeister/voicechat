@@ -6,6 +6,7 @@ import unittest
 import subprocess
 import sys
 import plistlib
+from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
 spec = importlib.util.spec_from_file_location('macos_release', Path(__file__).resolve().parents[1] / 'infra/macos_release.py')
@@ -59,6 +60,29 @@ class MacOSReleaseTests(unittest.TestCase):
             kernel.write_bytes(b'jit')
             with self.assertRaisesRegex(ValueError, 'debug/JIT'):
                 m.verify_app(app, personal=True)
+
+    def test_personal_signature_does_not_weaken_developer_id_release(self):
+        with tempfile.TemporaryDirectory() as directory:
+            app = Path(directory) / 'VoiceChat.app'
+            contents = app / 'Contents'
+            contents.mkdir(parents=True)
+            (contents / 'Info.plist').write_bytes(plistlib.dumps(self.info))
+            (contents / 'binary').write_bytes(bytes.fromhex('cffaedfe'))
+            def tool(*args):
+                if args[0] == 'lipo': return 'arm64'
+                if args[0] == 'xcrun': return 'minos 12.0'
+                if args[0:2] == ('codesign', '-d'):
+                    return 'Signature=adhoc\nTeamIdentifier=not set'
+                return ''
+            with patch.object(m, 'run', side_effect=tool) as commands:
+                self.assertEqual(m.verify_app(app, personal=True), self.info)
+                commands.assert_any_call('codesign', '--verify', '--deep', '--strict', app)
+                with self.assertRaisesRegex(ValueError, 'Developer ID signature'):
+                    m.verify_app(app, release=True, team='ABCDEFGHIJ')
+            with patch.object(m, 'run', side_effect=lambda *args: 'arm64' if args[0] == 'lipo' else
+                              ('minos 12.0' if args[0] == 'xcrun' else 'Authority=another signer')):
+                with self.assertRaisesRegex(ValueError, 'ad-hoc'):
+                    m.verify_app(app, personal=True)
 
     def test_feed_preserves_old_compatible_release_and_refuses_rollback(self):
         with tempfile.TemporaryDirectory() as directory:
