@@ -18,7 +18,8 @@ class AppSounds {
   bool _closed = false;
   String? _ring;
   Future<void> _ringWrites = Future.value();
-  AppSounds(this.client);
+  final Future<void> Function(String room, String event)? onReceived;
+  AppSounds(this.client, {this.onReceived});
   Future<void> open() async {
     if (kIsWeb) prepareBrowserAudio();
     await effect.setAudioContext(
@@ -53,6 +54,7 @@ class AppSounds {
       }
       if (seen.length > 2000) seen.remove(seen.first);
       if (event.room.pushRuleState == mx.PushRuleState.dontNotify) return;
+      unawaited(onReceived?.call(event.room.id, event.eventId));
       unawaited(_play(effect, 'received'));
     });
   }

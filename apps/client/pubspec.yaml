@@ -30,6 +30,7 @@ dependencies:
   record: ^7.1.2
   audioplayers: ^6.8.1
   flutter_webrtc: ^1.6.2+hotfix.4
+  camera_platform_interface: ^2.15.0
   camera: ^0.12.1
   video_player: ^2.14.1
   mobile_scanner: ^7.4.2
@@ -43,7 +44,19 @@ dev_dependencies:
   integration_test:
     sdk: flutter
 
+# Matrix's optional sqlite3 backend is unused by our SQLCipher-backed native
+# store. Its prebuilt macOS binary requires 13; use the OS library only for that
+# optional backend, keeping sqflite_sqlcipher and all other platforms unchanged.
+hooks:
+  user_defines:
+    sqlite3:
+      source:
+        macos: system
+        default: sqlite3
+
 flutter:
+  config:
+    enable-swift-package-manager: false
 
   uses-material-design: true
   fonts:

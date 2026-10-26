@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
 infra=Path(__file__).resolve().parents[1]/'infra'
 sys.path.insert(0,str(infra))
@@ -19,6 +20,33 @@ import deploy
 import setup_yandex
 
 class DeploymentTests(unittest.TestCase):
+    def setUp(self):
+        # Deployment fixtures must not depend on the developer machine's free disk.
+        disk = patch.object(deploy.shutil, 'disk_usage', return_value=SimpleNamespace(free=10 * 1024**3))
+        self.disk = disk.start()
+        self.addCleanup(disk.stop)
+
+    def test_update_directories_and_low_space_guard(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            runtime = root/'runtime'; runtime.mkdir()
+            (runtime/'stand.env').write_text("PUBLIC_URL='https://chat.example.com'\n")
+            release = root/'releases'/('a'*40); (release/'infra').mkdir(parents=True)
+            target = {'commit':'a'*40, 'schema':1, 'origin':'https://chat.example.com',
+                      'control':'ghcr.io/owner/chat/control@sha256:'+'b'*64,
+                      'web':'ghcr.io/owner/chat/web@sha256:'+'c'*64}
+            (release/'release.json').write_text(json.dumps(target))
+            config = json.dumps({'services':{'configure':{'environment':{'PUBLIC_URL':target['origin']}}}}).encode()
+            self.disk.return_value = SimpleNamespace(free=1024)
+            with patch.object(deploy.subprocess, 'check_output', return_value=config), \
+                 patch.object(deploy, 'execute') as execute:
+                with self.assertRaisesRegex(SystemExit, '2 GiB'):
+                    deploy.deploy(root, release, None)
+            execute.assert_not_called()
+            self.assertTrue((runtime/'android-updates').is_dir())
+            self.assertTrue((runtime/'macos-updates').is_dir())
+            self.assertFalse((root/'current.json').exists())
+
     def test_yandex_bootstrap_requires_verified_smtp_login(self):
         for failure in (None, setup_yandex.smtplib.SMTPAuthenticationError(535, b'echoed-secret'),
                         OSError('echoed-secret'), setup_yandex.smtplib.SMTPException('echoed-secret')):

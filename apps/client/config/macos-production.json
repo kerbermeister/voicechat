@@ -1,0 +1,5 @@
+{
+  "MATRIX_URL": "https://univc.duckdns.org",
+  "TOKEN_URL": "https://univc.duckdns.org/api",
+  "LIVEKIT_URL": "wss://univc.duckdns.org"
+}
