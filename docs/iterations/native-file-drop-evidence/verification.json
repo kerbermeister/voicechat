@@ -1,0 +1,32 @@
+{
+  "release": {
+    "commit": "a641d7601359b87e94136b55ff9522bdbcf0f2ff",
+    "sourceDirty": false,
+    "distributable": true,
+    "signingMode": "personal-adhoc",
+    "build": "6",
+    "version": "1.4.0",
+    "minimumOS": "12.0",
+    "architecture": "arm64",
+    "feedURL": "https://univc.duckdns.org/updates/macos/appcast.xml",
+    "previousFeedSha256": "2a0a4617de02c31d2aa86df5f3de829ebdf46070327675dc643db32f1d806131",
+    "files": {
+      "VoiceChat.dmg": "1dd32b0d800db49000bd5b0bff25d1070fdd6004b67780afd1cd7c9202c9a440",
+      "VoiceChat.zip": "961abd047043123d2bf11c37bcd0950e304aa3d2e1e272e89c959e1425a8ca86",
+      "appcast.xml": "b7913b4f93d0860959f17ebd9231cad4118b7b0500b2880a0f688ae263931d6a"
+    }
+  },
+  "realFinderDrop": "User confirmed both photo and file attached after NSDraggingDestination fix",
+  "xctest": "3 passed arm64 Release",
+  "flutter": "264 passed, 3 skipped; one QR output-directory failure; all 4 QR tests passed on rerun",
+  "analyze": "No issues",
+  "update": "Installed 5 to 6 via application button",
+  "installedBundleMatchesAcceptedZip": true,
+  "accountAndDevicePreserved": true,
+  "historyVisible": true,
+  "backup": "~/Library/Application Support/VoiceChatRelease/before-update-6",
+  "limits": [
+    "Windows adapter not implemented; requirement recorded",
+    "Mixed attachments delivery to second client not exercised"
+  ]
+}
