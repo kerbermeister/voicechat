@@ -1,4 +1,7 @@
 import 'dart:io';
+import 'package:image/image.dart' as img;
+import 'package:voicechat_probe/file_drop.dart';
+import 'package:voicechat_probe/picked_file.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:camera_platform_interface/camera_platform_interface.dart';
@@ -39,6 +42,47 @@ class ForwardActions extends ChatActions {
   }
 }
 
+class DropActions extends ForwardActions {
+  DropActions(super.client);
+  @override
+  Future<void> saveDraft(String roomId, String text) async {
+    drafts[roomId] = text;
+  }
+
+  int albums = 0, files = 0;
+  String? albumCaption;
+  bool failFile = true;
+  @override
+  Future<void> album(
+    mx.Room room,
+    List<mx.MatrixImageFile> photos,
+    String caption, {
+    mx.Event? reply,
+    int? ttlSeconds,
+    DateTime? scheduledFor,
+  }) async {
+    albums++;
+    albumCaption = caption;
+  }
+
+  @override
+  Future<void> file(
+    mx.Room room,
+    PickedFile source,
+    String caption, {
+    mx.Event? reply,
+    bool videoNote = false,
+    int? duration,
+    void Function(double)? progress,
+    bool Function()? cancelled,
+    int? ttlSeconds,
+    DateTime? scheduledFor,
+  }) async {
+    if (failFile) throw StateError('test upload failure');
+    files++;
+  }
+}
+
 class DelayedPolicyActions extends ForwardActions {
   DelayedPolicyActions(super.client);
   final policyReady = Completer<void>();
@@ -74,6 +118,76 @@ void main() {
           });
     }
   });
+  testWidgets(
+    'Mixed drop keeps the draft and does not resend photos after a file retry',
+    (tester) async {
+      final client = CaptureClient();
+      final room = ForwardRoom(client, '!drop:local');
+      final actions = DropActions(client);
+      final errors = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ChatPane(
+              room: room,
+              timeline: CaptureTimeline(room),
+              actions: actions,
+              header: const SizedBox(height: 50),
+              report: errors.add,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final field = find.byType(TextField).last;
+      await tester.enterText(field, 'Caption stays here');
+      final png = Uint8List.fromList(
+        img.encodePng(img.Image(width: 20, height: 12)),
+      );
+      var releases = 0;
+      PickedFile file(String name, String mime, Uint8List bytes) => PickedFile(
+        name: name,
+        mime: mime,
+        size: bytes.length,
+        read: (start, end) async => bytes.sublist(start, end),
+        release: () async {
+          releases++;
+        },
+      );
+      tester.widget<FileDrop>(find.byType(FileDrop)).onDrop([
+        file('photo.png', 'image/png', png),
+        file('report.pdf', 'application/pdf', Uint8List(4)),
+      ]);
+      for (var i = 0; i < 100; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+        if (tester.widget<FileDrop>(find.byType(FileDrop)).enabled) break;
+      }
+      await tester.pumpAndSettle();
+      expect(errors, isEmpty);
+      expect(find.text('report.pdf'), findsOneWidget);
+      expect(find.textContaining('Прикреплено фото: 1'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(field).controller!.text,
+        'Caption stays here',
+      );
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pumpAndSettle();
+      expect(actions.albums, 1);
+      expect(actions.albumCaption, 'Caption stays here');
+      expect(errors, hasLength(1));
+      expect(find.text('report.pdf'), findsOneWidget);
+      actions.failFile = false;
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pumpAndSettle();
+      expect(actions.albums, 1);
+      expect(actions.files, 1);
+      expect(releases, 2);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   testWidgets(
     'Press begins recording before long-press timeout; swipe cancels without sending',
     (tester) async {
@@ -218,15 +332,15 @@ void main() {
           expect(find.byType(AdaptiveTextSelectionToolbar), findsNothing);
           await tester.tap(find.text('Переслать'));
           await tester.pumpAndSettle();
-          final index = rooms.indexOf(target);
-          // Direct chats share the peer name; use picker row order for exact targets.
+          if (!target.isDirectChat) {
+            await tester.tap(find.text('Группы'));
+            await tester.pumpAndSettle();
+          }
           await tester.tap(
-            find
-                .descendant(
-                  of: find.byType(AlertDialog),
-                  matching: find.byType(ListTile),
-                )
-                .at(index),
+            find.descendant(
+              of: find.byType(AlertDialog),
+              matching: find.byKey(ValueKey(target.id)),
+            ),
           );
           await tester.pumpAndSettle();
           expect(actions.sent.last.$1, target.id);
