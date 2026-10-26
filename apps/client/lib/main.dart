@@ -12,6 +12,7 @@ import 'dart:convert';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'identity_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show BrowserContextMenu;
 import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,6 +67,7 @@ mx.CachedPresence? _roomPresenceSnapshot(mx.Room room) =>
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kIsWeb) await BrowserContextMenu.disableContextMenu();
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
     CameraPlatform.instance = MacOSCamera();
   }

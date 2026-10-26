@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import 'picked_file.dart';
 import 'file_io.dart';
 import 'active_capture.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'video_note_web_stub.dart'
+    if (dart.library.js_interop) 'video_note_web.dart';
 
 typedef VideoNoteResult = ({PickedFile file, int duration, bool interrupted});
 
@@ -18,6 +21,15 @@ Future<VideoNoteResult?> recordVideoNote(
 }) async {
   await stopActiveCapture();
   if (!context.mounted) return null;
+  if (kIsWeb) {
+    return recordWebVideoNote(
+      context,
+      maxSeconds,
+      held: held,
+      cancelled: cancelled,
+      onRecording: onRecording,
+    );
+  }
   if (held != null) {
     // A Navigator route cancels the original pointer; an overlay preserves hold/release.
     final completed = Completer<VideoNoteResult?>();
