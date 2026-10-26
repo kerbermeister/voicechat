@@ -113,12 +113,28 @@ void main() {
   ) async {
     final client = Client('voice-window', database: WindowDatabase());
     final room = CallRoom(client);
+    client.accountData['m.direct'] = BasicEvent(
+      type: 'm.direct',
+      content: {
+        '@peer:example.org': [room.id],
+      },
+    );
+    room.states[EventTypes.RoomMember] = {
+      '@peer:example.org': StrippedStateEvent(
+        type: EventTypes.RoomMember,
+        stateKey: '@peer:example.org',
+        senderId: '@peer:example.org',
+        content: {'membership': 'join', 'displayname': 'Александра'},
+      ),
+    };
     room.states[EventTypes.RoomName] = {
       '': StrippedStateEvent(
         type: EventTypes.RoomName,
         stateKey: '',
-        senderId: '@peer:local',
-        content: {'name': 'Александра'},
+        senderId: '@peer:example.org',
+        content: {
+          'name': 'voicechat contact 12345678-1234-1234-1234-123456789012',
+        },
       ),
     };
     final calls = CallController(
@@ -142,6 +158,7 @@ void main() {
       );
       await tester.pump();
       expect(find.text('Александра'), findsOneWidget);
+      expect(find.textContaining('voicechat contact'), findsNothing);
       expect(find.text('0:42'), findsOneWidget);
       expect(find.byType(CallAvatar), findsOneWidget);
       expect(find.byType(CallQualityIndicator), findsOneWidget);

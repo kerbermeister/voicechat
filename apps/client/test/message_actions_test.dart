@@ -27,6 +27,11 @@ class ForwardActions extends ChatActions {
   ForwardActions(super.client);
   final sent = <(String, Map<String, dynamic>)>[];
   @override
+  Future<void> saveDraft(String roomId, String text) async {
+    drafts[roomId] = text;
+  }
+
+  @override
   Future<String> enqueue(
     mx.Room room,
     Map<String, dynamic> content, {
@@ -189,7 +194,7 @@ void main() {
     },
   );
   testWidgets(
-    'Press begins recording before long-press timeout; swipe cancels without sending',
+    'Tap switches recording mode; hold starts video and swipe cancels',
     (tester) async {
       final old = CameraPlatform.instance;
       final camera = NoteCamera();
@@ -211,9 +216,19 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.videocam_outlined), findsNothing);
+      await tester.tap(find.byIcon(Icons.mic_none));
+      await tester.pump();
+      expect(camera.starts, 0);
+      await tester.tap(find.byIcon(Icons.videocam_outlined));
+      await tester.pump();
+      expect(find.byIcon(Icons.mic_none), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.mic_none));
+      await tester.pump();
       final press = await tester.startGesture(
         tester.getCenter(find.byIcon(Icons.videocam_outlined)),
       );
+      await tester.pump(const Duration(milliseconds: 600));
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 20));
         await tester.runAsync(
@@ -273,6 +288,7 @@ void main() {
         };
       }
       final actions = ForwardActions(client);
+      final opened = <String>[];
       for (final source in [rooms[0], rooms[2]]) {
         final timeline = CaptureTimeline(source)
           ..events.add(
@@ -292,6 +308,9 @@ void main() {
             home: Scaffold(
               body: ChatPane(
                 key: ValueKey(source.id),
+                onForward: (target) async {
+                  opened.add(target.id);
+                },
                 room: source,
                 timeline: timeline,
                 actions: actions,
@@ -310,6 +329,12 @@ void main() {
             )
             .map((w) => w.value)
             .toList();
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pumpAndSettle();
+        await tester.longPress(find.text('Forward me'));
+        await tester.pumpAndSettle();
+        expect(find.text('Ответить'), findsOneWidget);
+        expect(find.byIcon(Icons.reply), findsOneWidget);
         await tester.tapAt(const Offset(10, 10));
         await tester.pumpAndSettle();
         for (final target in rooms) {
@@ -343,12 +368,14 @@ void main() {
             ),
           );
           await tester.pumpAndSettle();
+          if (source != target) expect(opened.last, target.id);
           expect(actions.sent.last.$1, target.id);
           expect(actions.sent.last.$2[forwardedAuthorKey], 'Alice');
           expect(actions.sent.last.$2['body'], 'Forward me');
         }
       }
       expect(actions.sent, hasLength(8));
+      expect(opened, hasLength(6));
       await tester.pumpWidget(const SizedBox());
     },
   );

@@ -644,7 +644,7 @@ void main() {
           event('@alice:local', {
             'msgtype': 'dev.voicechat.call',
             'action': action,
-            'session': id,
+            'session': 'fedcba9876543210fedcba9876543210',
           }, timestamp: DateTime.now().add(const Duration(seconds: 30))),
         );
         expect(calls.invitations, hasLength(action == 'invite' ? 1 : 0));

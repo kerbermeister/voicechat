@@ -74,7 +74,12 @@ void main() {
           await tester.pump();
           final field = find.widgetWithText(TextField, 'Написать сообщение…');
           expect(tester.getSize(field).width, greaterThanOrEqualTo(100));
-          expect(find.byTooltip('Записать голосовое'), findsOneWidget);
+          expect(
+            find.byTooltip(
+              'Голосовое · нажмите для видео, удерживайте для записи',
+            ),
+            findsOneWidget,
+          );
           expect(find.byTooltip('Отправить изображение'), findsNothing);
           await tester.enterText(field, 'Черновик остаётся на месте');
           await tester.tap(find.byTooltip('Дополнительные действия'));
@@ -85,7 +90,6 @@ void main() {
             'Прикрепить файл или видео',
             'Временное сообщение',
             'Отложенные сообщения',
-            'Видеокружок · удерживайте для записи',
           ]) {
             expect(find.byTooltip(tooltip), findsOneWidget);
           }
