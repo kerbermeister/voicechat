@@ -17,6 +17,7 @@
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="VoiceChat — локальный прототип защищённого общения">
 
@@ -31,12 +32,63 @@
 
   <title>VoiceChat</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="preload" href="main.dart.js" as="script">
+  <style>
+    body { margin: 0; background: #f3f0fb; }
+    #startup { position: fixed; inset: 0; display: grid; place-content: center;
+      padding: 24px; text-align: center; font: 16px/1.5 system-ui, sans-serif;
+      color: #302c3b; background: #f3f0fb; z-index: 1; }
+    #startup h1 { font-size: 24px; margin: 0 0 12px; }
+    #startup p { max-width: 32em; margin: 0 0 20px; }
+    #startup button { min-height: 48px; padding: 12px 24px; border: 0;
+      border-radius: 16px; background: #7854cd; color: white;
+      font: inherit; cursor: pointer; }
+    #startup button:focus-visible { outline: 3px solid #302c3b; outline-offset: 4px; }
+  </style>
 </head>
 <body>
-  <script src="vault.js"></script>
-  <script src="files.js"></script>
-  <script src="media_audio.js"></script>
-  <script src="push_client.js"></script>
-  <script src="flutter_bootstrap.js" async></script>
+  <div id="startup">
+    <h1>VoiceChat</h1>
+    <p id="startup-status" role="status" aria-live="polite">Открываем приложение…</p>
+    <button id="startup-retry" hidden>Повторить загрузку</button>
+    <noscript>Для работы VoiceChat включите JavaScript в браузере.</noscript>
+  </div>
+  <script>
+    (() => {
+      const shell = document.getElementById('startup');
+      const status = document.getElementById('startup-status');
+      const retry = document.getElementById('startup-retry');
+      let finished = false;
+      let failed = false;
+      const slow = setTimeout(() => {
+        if (finished || failed) return;
+        status.textContent = 'Загрузка занимает больше времени. Проверьте подключение к интернету.';
+        retry.hidden = false;
+      }, 15000);
+      retry.addEventListener('click', () => window.location.reload());
+      window.voicechatStartup = {
+        stage(message) { if (!finished && !failed) status.textContent = message; },
+        fail() {
+          if (finished) return;
+          failed = true;
+          clearTimeout(slow);
+          status.textContent = 'Не удалось загрузить приложение. Проверьте подключение и попробуйте снова.';
+          retry.hidden = false;
+        },
+      };
+      window.addEventListener('error', () => window.voicechatStartup.fail(), true);
+      // runApp resolves before Flutter paints; keep the shell until the actual first frame.
+      window.addEventListener('flutter-first-frame', () => {
+        finished = true;
+        clearTimeout(slow);
+        shell.remove();
+      }, {once: true});
+    })();
+  </script>
+  <script src="vault.js" defer></script>
+  <script src="files.js" defer></script>
+  <script src="media_audio.js" defer></script>
+  <script src="push_client.js" defer></script>
+  <script src="flutter_bootstrap.js" defer></script>
 </body>
 </html>
