@@ -6,6 +6,7 @@ import 'package:matrix/matrix.dart' as mx;
 import 'matrix_probe.dart';
 import 'voice_call.dart';
 import 'call_quality.dart';
+import 'camera_capture.dart';
 
 /// Matrix authenticates SDP/ICE; WebRTC supplies DTLS-SRTP end to end, including over TURN.
 class DirectCall implements VoiceCall {
@@ -203,33 +204,36 @@ class DirectCall implements VoiceCall {
     if (_cameraSender == null) throw StateError('Camera sender unavailable');
     if (!enabled) {
       await call.setLocalVideoMuted(true);
-      await _cameraSender!.replaceTrack(null);
+      await replaceCameraTrack(_cameraSender!, null);
       for (final track in stream.getVideoTracks()) {
         await stream.removeTrack(track);
         await track.stop();
       }
     } else {
-      final capture = await rtc.navigator.mediaDevices.getUserMedia({
-        'audio': false,
-        'video': {
-          'facingMode': kIsWeb ? {'exact': _cameraFacing} : _cameraFacing,
-          'width': videoQuality.width,
-          'height': videoQuality.height,
-          'frameRate': videoQuality.fps,
-        },
-      });
+      final capture = await captureCamera(_cameraFacing, videoQuality);
       try {
         if (isClosed) throw StateError('Call ended during camera permission');
         final track = capture.getVideoTracks().single;
         await stream.addTrack(track);
-        await _cameraSender!.replaceTrack(track);
-        await call.setLocalVideoMuted(false);
+        await replaceCameraTrack(_cameraSender!, track);
+        // Capture and sender replacement are complete; do not reacquire the
+        // default camera/microphone through Matrix's audio-only upgrade path.
+        call.localUserMediaStream?.setVideoMuted(false);
+        await call.updateMuteStatus();
       } catch (_) {
         call.localUserMediaStream?.setVideoMuted(true);
-        await _cameraSender!.replaceTrack(null);
-        for (final track in capture.getTracks()) {
-          await stream.removeTrack(track);
-          await track.stop();
+        try {
+          await replaceCameraTrack(_cameraSender!, null);
+        } catch (_) {
+          // A closed peer connection cannot detach, but capture still must stop.
+        } finally {
+          for (final track in capture.getTracks()) {
+            try {
+              await stream.removeTrack(track);
+            } finally {
+              await track.stop();
+            }
+          }
         }
         rethrow;
       } finally {

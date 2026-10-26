@@ -50,11 +50,12 @@ String lastMessage(mx.Room room) {
     return 'Временное сообщение';
   }
   if (event.type == mx.EventTypes.Encrypted) return 'Зашифрованное сообщение';
-  if (event.type == mx.EventTypes.CallInvite) {
+  if (event.type.startsWith('m.call.')) {
     return callEventLabel(event);
   }
   final text = switch (event.messageType) {
-    'dev.voicechat.call' || 'dev.voicechat.call_summary' => event.body,
+    'dev.voicechat.call' ||
+    'dev.voicechat.call_summary' => callEventLabel(event),
     mx.MessageTypes.Audio => 'Голосовое сообщение',
     'dev.voicechat.album' =>
       event.content['caption'] is String &&

@@ -1,4 +1,5 @@
 import 'participant_colors.dart';
+import 'forward_message.dart';
 import 'message_metadata.dart';
 import 'app_motion.dart';
 import 'theme.dart';
@@ -16,6 +17,7 @@ import 'typing_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:matrix/matrix.dart' as mx;
 import 'package:record/record.dart';
 import 'chat_actions.dart';
@@ -103,6 +105,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   final draftFiles = <PickedFile>[];
   final linkPreviews = <Uri, LinkPreview>{};
   bool loadingPreview = false;
+  bool videoPointerGesture = false;
+  int? videoPointer;
+  Offset videoOrigin = Offset.zero;
   final heldVideo = ValueNotifier(false);
   final cancelledVideo = ValueNotifier(false);
   PickedFile? get draftFile => draftFiles.firstOrNull;
@@ -585,7 +590,12 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         kind == 'note' && draftFile != null) {
       throw UserActionError('Сначала отправьте или удалите текущие вложения.');
     }
-    await widget.actions.refreshPolicy();
+    if (kind == 'note') {
+      // Begin capture on press with cached limits; uploading validates policy again.
+      unawaited(widget.actions.refreshPolicy());
+    } else {
+      await widget.actions.refreshPolicy();
+    }
     final remaining = widget.actions.policy.fileMaxCount - draftFiles.length;
     if (remaining <= 0) {
       throw UserActionError(
@@ -859,6 +869,57 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   }
 
   Future<void> eventAction(mx.Event event, String action) async {
+    if (action == 'forward') {
+      final rooms = widget.room.client.rooms
+          .where(
+            (room) =>
+                room.membership == mx.Membership.join &&
+                room.encrypted &&
+                room.canSendDefaultMessages,
+          )
+          .toList();
+      final target = await showAppDialog<mx.Room>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: AppDialogTitle(child: const Text('Переслать сообщение')),
+          content: SizedBox(
+            width: 420,
+            height: 360,
+            child: rooms.isEmpty
+                ? const Text('Нет доступных чатов')
+                : ListView.builder(
+                    itemCount: rooms.length,
+                    itemBuilder: (_, index) {
+                      final room = rooms[index];
+                      return ListTile(
+                        title: Text(roomDisplayName(room)),
+                        subtitle: room.id == widget.room.id
+                            ? const Text('Этот же чат')
+                            : null,
+                        onTap: () => Navigator.pop(context, room),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Отмена'),
+            ),
+          ],
+        ),
+      );
+      if (target != null) {
+        if (!target.canSendDefaultMessages) {
+          throw UserActionError('Отправка в этот чат недоступна.');
+        }
+        await widget.actions.enqueue(
+          target,
+          forwardMessageContent(event.getDisplayEvent(widget.timeline)),
+        );
+      }
+      return;
+    }
     if (action == 'reply') {
       setState(() {
         reply = event;
@@ -955,23 +1016,23 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   reaction.senderId,
       );
     }
+    final menuItems = <PopupMenuEntry<String>>[
+      const PopupMenuItem(value: 'reply', child: Text('Ответить')),
+      if (canForwardMessage(shown))
+        const PopupMenuItem(value: 'forward', child: Text('Переслать')),
+      if (own && shown.messageType == mx.MessageTypes.Text)
+        const PopupMenuItem(value: 'edit', child: Text('Редактировать')),
+      if (event.canRedact)
+        const PopupMenuItem(value: 'delete', child: Text('Удалить')),
+      const PopupMenuItem(value: 'react', child: Text('Реакция…')),
+    ];
     final menu = !event.redacted && event.type != mx.EventTypes.Encrypted
         ? PopupMenuButton<String>(
             popUpAnimationStyle: appAnimationStyle(context),
             style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
             tooltip: 'Действия с сообщением',
             onSelected: (action) => perform(() => eventAction(event, action)),
-            itemBuilder: (_) => [
-              const PopupMenuItem(value: 'reply', child: Text('Ответить')),
-              if (own && shown.messageType == mx.MessageTypes.Text)
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Text('Редактировать'),
-                ),
-              if (event.canRedact)
-                const PopupMenuItem(value: 'delete', child: Text('Удалить')),
-              const PopupMenuItem(value: 'react', child: Text('Реакция…')),
-            ],
+            itemBuilder: (_) => menuItems,
           )
         : null;
     final content = Container(
@@ -1048,6 +1109,13 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                                   fontWeight: FontWeight.w500,
                                 ),
                           ),
+                          if (forwardedAuthor(shown) case final author?)
+                            Text(
+                              'Переслано от $author',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           if (event.inReplyToEventId() != null)
                             FutureBuilder<mx.Event?>(
                               future: event.getReplyEvent(widget.timeline),
@@ -1218,12 +1286,38 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
           alignment: own ? Alignment.centerRight : Alignment.centerLeft,
           child: Theme(
             data: theme.copyWith(colorScheme: colors),
-            child: messageExpiry(event) == null
-                ? content
-                : ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 526),
-                    child: TemporaryMessage(event: event, child: content),
-                  ),
+            child: Listener(
+              onPointerDown: menu == null
+                  ? null
+                  : (details) async {
+                      if (details.buttons != kSecondaryMouseButton) return;
+                      final overlay =
+                          Overlay.of(context).context.findRenderObject()!
+                              as RenderBox;
+                      final action = await showMenu<String>(
+                        context: context,
+                        position: RelativeRect.fromRect(
+                          Rect.fromLTWH(
+                            details.position.dx,
+                            details.position.dy,
+                            0,
+                            0,
+                          ),
+                          Offset.zero & overlay.size,
+                        ),
+                        items: menuItems,
+                      );
+                      if (action != null && mounted) {
+                        await perform(() => eventAction(event, action));
+                      }
+                    },
+              child: messageExpiry(event) == null
+                  ? content
+                  : ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 526),
+                      child: TemporaryMessage(event: event, child: content),
+                    ),
+            ),
           ),
         ),
       ),
@@ -1910,39 +2004,61 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                               : () => perform(startRecording),
                           icon: const Icon(Icons.mic_none),
                         );
-                        final video = GestureDetector(
-                          onLongPressStart: (_) {
-                            if (working) return;
+                        final video = Listener(
+                          onPointerDown: (event) {
+                            if (working ||
+                                heldVideo.value ||
+                                event.buttons != 1) {
+                              return;
+                            }
+                            videoPointerGesture = true;
+                            videoPointer = event.pointer;
+                            videoOrigin = event.position;
                             cancelledVideo.value = false;
                             heldVideo.value = true;
                             unawaited(
                               perform(() => attachFile('note', hold: true)),
                             );
                           },
-                          onLongPressEnd: (_) => heldVideo.value = false,
-                          onLongPressMoveUpdate: (details) {
-                            if (details.offsetFromOrigin.dx < -80) {
+                          onPointerUp: (event) {
+                            if (event.pointer != videoPointer) return;
+                            videoPointer = null;
+                            heldVideo.value = false;
+                            scheduleMicrotask(
+                              () => videoPointerGesture = false,
+                            );
+                          },
+                          onPointerMove: (event) {
+                            if (event.pointer == videoPointer &&
+                                event.position.dx - videoOrigin.dx < -80) {
                               cancelledVideo.value = true;
                               heldVideo.value = false;
                             }
                           },
-                          onLongPressCancel: () {
+                          onPointerCancel: (event) {
+                            if (event.pointer != videoPointer) return;
                             cancelledVideo.value = true;
                             heldVideo.value = false;
+                            videoPointer = null;
+                            scheduleMicrotask(
+                              () => videoPointerGesture = false,
+                            );
                           },
                           child: Tooltip(
                             message: 'Видеокружок · удерживайте для записи',
                             triggerMode: TooltipTriggerMode.manual,
-                            excludeFromSemantics: true,
                             child: IconButton(
+                              // Keyboard and assistive activation keep an explicit finish action.
                               onPressed: working
                                   ? null
-                                  : () => perform(() => attachFile('note')),
-                              icon: const Icon(
-                                Icons.videocam_outlined,
-                                semanticLabel:
-                                    'Видеокружок · удерживайте для записи',
-                              ),
+                                  : () {
+                                      if (videoPointerGesture) {
+                                        videoPointerGesture = false;
+                                        return;
+                                      }
+                                      perform(() => attachFile('note'));
+                                    },
+                              icon: const Icon(Icons.videocam_outlined),
                             ),
                           ),
                         );

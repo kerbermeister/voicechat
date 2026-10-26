@@ -105,310 +105,322 @@ class _CallWindowState extends State<CallWindow> {
             icon: const Icon(Icons.tune),
           )
         : null;
+    final title = AppDialogTitle(
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: IconButton(
+          tooltip: 'Свернуть звонок',
+          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.expand_more),
+        ),
+      ),
+    );
+    final content = SizedBox(
+      width: video || calls.screen != null ? 850 : 500,
+      height: math.min(
+        MediaQuery.sizeOf(context).height * (video ? .85 : .65),
+        video ? 900 : 560,
+      ),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          if (video && current != null && calls.screen == null) {
+            return Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        room?.getLocalizedDisplayname() ?? 'Видеозвонок',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
+                    ),
+                    if (qualityMenu != null) qualityMenu,
+                  ],
+                ),
+                Expanded(
+                  child: CallVideoGrid(
+                    key: ValueKey(current.session),
+                    call: current,
+                  ),
+                ),
+                CallQualityIndicator(quality: current.quality),
+                if (error != null)
+                  Text(error!, style: TextStyle(color: colors.error)),
+              ],
+            );
+          }
+          final compact = video || box.maxHeight < 330;
+          final name =
+              room?.getLocalizedDisplayname() ??
+              (video ? 'Видеозвонок' : 'Голосовой звонок');
+          final incoming =
+              current == null &&
+              !calls.starting &&
+              (direct != null || group != null);
+          final avatar = CallAvatar(
+            incoming: incoming,
+            child: PersonAvatar(
+              name: name,
+              client: calls.client,
+              url: room == null ? null : roomAvatar(room!),
+              group: room?.isDirectChat == false,
+              showPresence: false,
+              size: compact ? 64 : 104,
+            ),
+          );
+          final details = Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                name,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                status,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: colors.onSurfaceVariant),
+              ),
+              if (current != null || active != null && !calls.starting) ...[
+                const SizedBox(height: 8),
+                Semantics(
+                  label: 'Время разговора',
+                  child: Text(
+                    '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ),
+              ],
+              if (current != null) ...[
+                const SizedBox(height: 8),
+                CallQualityIndicator(quality: current.quality),
+              ],
+            ],
+          );
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: box.maxHeight),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (compact)
+                    Row(
+                      children: [
+                        avatar,
+                        const SizedBox(width: 12),
+                        Expanded(child: details),
+                      ],
+                    )
+                  else ...[
+                    avatar,
+                    const SizedBox(height: 22),
+                    details,
+                  ],
+                  if (current != null && calls.screen != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: ScreenPanel(controller: calls.screen!),
+                    ),
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        error!,
+                        style: TextStyle(color: colors.error),
+                      ),
+                    ),
+                  if (video && current != null) ...[
+                    Align(alignment: Alignment.centerRight, child: qualityMenu),
+                    SizedBox(
+                      height: 160,
+                      child: CallVideoGrid(
+                        key: ValueKey(current.session),
+                        call: current,
+                      ),
+                    ),
+                  ] else if (room?.isDirectChat == false)
+                    FutureBuilder<List<mx.User>>(
+                      future: members,
+                      builder: (_, snapshot) {
+                        final people = (snapshot.data ?? <mx.User>[])
+                            .where(
+                              (u) => [
+                                mx.Membership.join,
+                                mx.Membership.invite,
+                              ].contains(u.membership),
+                            )
+                            .toList();
+                        return Column(
+                          children: [
+                            if (people.isNotEmpty) const SizedBox(height: 20),
+                            for (final user in people)
+                              ListTile(
+                                leading: PersonAvatar(
+                                  name: user.displayName ?? user.id,
+                                  client: calls.client,
+                                  url: user.avatarUrl,
+                                  online: connected.contains(user.id),
+                                  size: 36,
+                                ),
+                                title: Text(user.displayName ?? user.id),
+                                subtitle: Text(
+                                  connected.contains(user.id)
+                                      ? 'В звонке'
+                                      : user.membership == mx.Membership.invite
+                                      ? 'Ещё не вступил в чат'
+                                      : current == null && !calls.starting
+                                      ? 'Не подключён'
+                                      : 'Ждём подключения',
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    final actions = <Widget>[
+      SizedBox(
+        width: (MediaQuery.sizeOf(context).width - 32)
+            .clamp(100, 850)
+            .toDouble(),
+        child: Wrap(
+          alignment: WrapAlignment.end,
+          spacing: 4,
+          children: [
+            if (current != null) ...[
+              if (video) ...[
+                IconButton(
+                  tooltip: current.cameraEnabled
+                      ? 'Выключить камеру'
+                      : 'Включить камеру',
+                  onPressed: busy
+                      ? null
+                      : () => perform(
+                          () => current.camera(!current.cameraEnabled),
+                        ),
+                  icon: Icon(
+                    current.cameraEnabled ? Icons.videocam : Icons.videocam_off,
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Переключить камеру',
+                  onPressed: busy || !current.cameraEnabled
+                      ? null
+                      : () => perform(current.switchCamera),
+                  icon: const Icon(Icons.cameraswitch_outlined),
+                ),
+              ],
+              IconButton(
+                tooltip: current.muted
+                    ? 'Включить микрофон'
+                    : 'Выключить микрофон',
+                onPressed: busy
+                    ? null
+                    : () => perform(() => current.mute(!current.muted)),
+                icon: Icon(current.muted ? Icons.mic_off : Icons.mic),
+              ),
+              IconButton(
+                tooltip: kIsWeb ? 'Включить звук' : 'Аудиовыход',
+                onPressed: busy ? null : () => perform(widget.audioOutput),
+                icon: const Icon(Icons.speaker_outlined),
+              ),
+            ],
+            if (current == null && !calls.starting && direct != null) ...[
+              OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => perform(() => calls.declineDirect(direct)),
+                icon: const Icon(Icons.call_end),
+                label: const Text('Отклонить'),
+              ),
+              FilledButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => perform(() => calls.acceptDirect(direct)),
+                icon: const Icon(Icons.call),
+                label: const Text('Принять'),
+              ),
+            ] else if (current == null && !calls.starting && group != null) ...[
+              OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => perform(() => calls.decline(group)),
+                icon: const Icon(Icons.call_end),
+                label: const Text('Отклонить'),
+              ),
+              FilledButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => perform(
+                        () => calls.start(group.room, invitation: group),
+                      ),
+                icon: const Icon(Icons.call),
+                label: const Text('Принять'),
+              ),
+            ] else if (current != null || calls.starting)
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: colors.error,
+                  foregroundColor: colors.onError,
+                ),
+                onPressed: busy ? null : () => perform(calls.end),
+                icon: const Icon(Icons.call_end),
+                label: const Text('Завершить'),
+              )
+            else
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Закрыть'),
+              ),
+          ],
+        ),
+      ),
+    ];
+    if (video && current != null && calls.screen == null) {
+      return Dialog.fullscreen(
+        child: SafeArea(
+          child: Column(
+            children: [
+              title,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: content,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Wrap(alignment: WrapAlignment.center, children: actions),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return AlertDialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       contentPadding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
       titlePadding: const EdgeInsets.fromLTRB(20, 8, 8, 0),
-      title: AppDialogTitle(
-        child: Align(
-          alignment: Alignment.centerRight,
-          child: IconButton(
-            tooltip: 'Свернуть звонок',
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.expand_more),
-          ),
-        ),
-      ),
-      content: SizedBox(
-        width: video || calls.screen != null ? 850 : 500,
-        height: math.min(
-          MediaQuery.sizeOf(context).height * (video ? .85 : .65),
-          video ? 900 : 560,
-        ),
-        child: LayoutBuilder(
-          builder: (context, box) {
-            if (video &&
-                current != null &&
-                calls.screen == null &&
-                box.maxHeight > 160) {
-              return Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          room?.getLocalizedDisplayname() ?? 'Видеозвонок',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Text(
-                        '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
-                      ),
-                      if (qualityMenu != null) qualityMenu,
-                    ],
-                  ),
-                  Expanded(
-                    child: CallVideoGrid(
-                      key: ValueKey(current.session),
-                      call: current,
-                    ),
-                  ),
-                  CallQualityIndicator(quality: current.quality),
-                  if (error != null)
-                    Text(error!, style: TextStyle(color: colors.error)),
-                ],
-              );
-            }
-            final compact = video || box.maxHeight < 330;
-            final name =
-                room?.getLocalizedDisplayname() ??
-                (video ? 'Видеозвонок' : 'Голосовой звонок');
-            final incoming =
-                current == null &&
-                !calls.starting &&
-                (direct != null || group != null);
-            final avatar = CallAvatar(
-              incoming: incoming,
-              child: PersonAvatar(
-                name: name,
-                client: calls.client,
-                url: room == null ? null : roomAvatar(room!),
-                group: room?.isDirectChat == false,
-                showPresence: false,
-                size: compact ? 64 : 104,
-              ),
-            );
-            final details = Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  name,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  status,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: colors.onSurfaceVariant),
-                ),
-                if (current != null || active != null && !calls.starting) ...[
-                  const SizedBox(height: 8),
-                  Semantics(
-                    label: 'Время разговора',
-                    child: Text(
-                      '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
-                      style: Theme.of(context).textTheme.headlineMedium
-                          ?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                    ),
-                  ),
-                ],
-                if (current != null) ...[
-                  const SizedBox(height: 8),
-                  CallQualityIndicator(quality: current.quality),
-                ],
-              ],
-            );
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: box.maxHeight),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (compact)
-                      Row(
-                        children: [
-                          avatar,
-                          const SizedBox(width: 12),
-                          Expanded(child: details),
-                        ],
-                      )
-                    else ...[
-                      avatar,
-                      const SizedBox(height: 22),
-                      details,
-                    ],
-                    if (current != null && calls.screen != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: ScreenPanel(controller: calls.screen!),
-                      ),
-                    if (error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          error!,
-                          style: TextStyle(color: colors.error),
-                        ),
-                      ),
-                    if (video && current != null) ...[
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: qualityMenu,
-                      ),
-                      SizedBox(
-                        height: 160,
-                        child: CallVideoGrid(
-                          key: ValueKey(current.session),
-                          call: current,
-                        ),
-                      ),
-                    ] else if (room?.isDirectChat == false)
-                      FutureBuilder<List<mx.User>>(
-                        future: members,
-                        builder: (_, snapshot) {
-                          final people = (snapshot.data ?? <mx.User>[])
-                              .where(
-                                (u) => [
-                                  mx.Membership.join,
-                                  mx.Membership.invite,
-                                ].contains(u.membership),
-                              )
-                              .toList();
-                          return Column(
-                            children: [
-                              if (people.isNotEmpty) const SizedBox(height: 20),
-                              for (final user in people)
-                                ListTile(
-                                  leading: PersonAvatar(
-                                    name: user.displayName ?? user.id,
-                                    client: calls.client,
-                                    url: user.avatarUrl,
-                                    online: connected.contains(user.id),
-                                    size: 36,
-                                  ),
-                                  title: Text(user.displayName ?? user.id),
-                                  subtitle: Text(
-                                    connected.contains(user.id)
-                                        ? 'В звонке'
-                                        : user.membership ==
-                                              mx.Membership.invite
-                                        ? 'Ещё не вступил в чат'
-                                        : current == null && !calls.starting
-                                        ? 'Не подключён'
-                                        : 'Ждём подключения',
-                                  ),
-                                ),
-                            ],
-                          );
-                        },
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-      actions: [
-        SizedBox(
-          width: (MediaQuery.sizeOf(context).width - 80)
-              .clamp(100, 850)
-              .toDouble(),
-          child: Wrap(
-            alignment: WrapAlignment.end,
-            spacing: 4,
-            children: [
-              if (current != null) ...[
-                if (video) ...[
-                  IconButton(
-                    tooltip: current.cameraEnabled
-                        ? 'Выключить камеру'
-                        : 'Включить камеру',
-                    onPressed: busy
-                        ? null
-                        : () => perform(
-                            () => current.camera(!current.cameraEnabled),
-                          ),
-                    icon: Icon(
-                      current.cameraEnabled
-                          ? Icons.videocam
-                          : Icons.videocam_off,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Переключить камеру',
-                    onPressed: busy || !current.cameraEnabled
-                        ? null
-                        : () => perform(current.switchCamera),
-                    icon: const Icon(Icons.cameraswitch_outlined),
-                  ),
-                ],
-                IconButton(
-                  tooltip: current.muted
-                      ? 'Включить микрофон'
-                      : 'Выключить микрофон',
-                  onPressed: busy
-                      ? null
-                      : () => perform(() => current.mute(!current.muted)),
-                  icon: Icon(current.muted ? Icons.mic_off : Icons.mic),
-                ),
-                IconButton(
-                  tooltip: kIsWeb ? 'Включить звук' : 'Аудиовыход',
-                  onPressed: busy ? null : () => perform(widget.audioOutput),
-                  icon: const Icon(Icons.speaker_outlined),
-                ),
-              ],
-              if (current == null && !calls.starting && direct != null) ...[
-                OutlinedButton.icon(
-                  onPressed: busy
-                      ? null
-                      : () => perform(() => calls.declineDirect(direct)),
-                  icon: const Icon(Icons.call_end),
-                  label: const Text('Отклонить'),
-                ),
-                FilledButton.icon(
-                  onPressed: busy
-                      ? null
-                      : () => perform(() => calls.acceptDirect(direct)),
-                  icon: const Icon(Icons.call),
-                  label: const Text('Принять'),
-                ),
-              ] else if (current == null &&
-                  !calls.starting &&
-                  group != null) ...[
-                OutlinedButton.icon(
-                  onPressed: busy
-                      ? null
-                      : () => perform(() => calls.decline(group)),
-                  icon: const Icon(Icons.call_end),
-                  label: const Text('Отклонить'),
-                ),
-                FilledButton.icon(
-                  onPressed: busy
-                      ? null
-                      : () => perform(
-                          () => calls.start(group.room, invitation: group),
-                        ),
-                  icon: const Icon(Icons.call),
-                  label: const Text('Принять'),
-                ),
-              ] else if (current != null || calls.starting)
-                FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: colors.error,
-                    foregroundColor: colors.onError,
-                  ),
-                  onPressed: busy ? null : () => perform(calls.end),
-                  icon: const Icon(Icons.call_end),
-                  label: const Text('Завершить'),
-                )
-              else
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Закрыть'),
-                ),
-            ],
-          ),
-        ),
-      ],
+      title: title,
+      content: content,
+      actions: actions,
     );
   }
 

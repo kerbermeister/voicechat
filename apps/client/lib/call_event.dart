@@ -13,4 +13,14 @@ String callEventLabel(Event event) => event.type == EventTypes.CallInvite
     ? isVideoCallEvent(event)
           ? 'Видеозвонок'
           : 'Голосовой звонок'
-    : event.body;
+    : switch (event.type) {
+        EventTypes.CallHangup => 'Звонок завершён',
+        'm.call.reject' => 'Звонок отклонён',
+        'm.call.answer' => 'Ответ на звонок',
+        _ =>
+          event.content['body'] is String && event.text.isNotEmpty
+              ? event.text
+              : isVideoCallEvent(event)
+              ? 'Видеозвонок'
+              : 'Голосовой звонок',
+      };
