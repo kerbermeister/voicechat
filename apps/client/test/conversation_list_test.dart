@@ -24,6 +24,46 @@ class ListClient implements Client {
 }
 
 void main() {
+  test(
+    'Call signalling and summaries never show unknown format in direct or group preview',
+    () {
+      final client = ListClient();
+      final room = Room(id: '!calls:local', client: client);
+      for (final direct in [true, false]) {
+        client.directChats.clear();
+        if (direct) client.directChats['@friend:local'] = [room.id];
+        for (final type in [
+          'm.call.hangup',
+          'm.call.reject',
+          'm.call.answer',
+          'm.call.candidates',
+        ]) {
+          room.lastEvent = Event.fromJson({
+            'type': type,
+            'sender': '@friend:local',
+            'content': {},
+          }, room);
+          expect(lastMessage(room), isNot(contains('Unknown')));
+          if (type == 'm.call.hangup') {
+            expect(lastMessage(room), 'Звонок завершён');
+          }
+        }
+        for (final video in [true, false]) {
+          final label = video ? 'Видеозвонок завершён' : 'Звонок завершён';
+          room.lastEvent = Event.fromJson({
+            'type': EventTypes.Message,
+            'sender': '@friend:local',
+            'content': {
+              'msgtype': 'dev.voicechat.call_summary',
+              'body': label,
+              'video': video,
+            },
+          }, room);
+          expect(lastMessage(room), label);
+        }
+      }
+    },
+  );
   testWidgets(
     'Own voice previews use lavender; peer previews use the reply accent',
     (tester) async {
