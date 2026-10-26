@@ -20,7 +20,7 @@ PickedFile fileSource(Map<String, dynamic> file) {
   final uri = file['uri'] as String;
   return PickedFile(
     name: file['name'] as String,
-    mime: file['mime'] as String,
+    mime: attachmentMime(file['name'] as String, file['mime'] as String),
     size: file['size'] as int,
     read: (start, end) async => (await _channel.invokeMethod<Uint8List>(
       'read',
