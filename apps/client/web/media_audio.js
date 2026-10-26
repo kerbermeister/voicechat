@@ -10,7 +10,7 @@
     return context ??= new AudioContext();
   }
   async function load(name) {
-    if (!['sent', 'received', 'ringtone', 'ringback'].includes(name)) throw new Error('Unknown sound');
+    if (!['sent', 'received', 'ringtone', 'ringback', 'ended'].includes(name)) throw new Error('Unknown sound');
     if (!buffers.has(name)) buffers.set(name, (async () => {
       const response = await fetch(new URL(`assets/assets/sounds/${name}.wav`, document.baseURI));
       if (!response.ok) throw new Error('Sound unavailable');
@@ -64,7 +64,7 @@
     void resumeCalls();
   }
   window.VoiceChatAudio = {
-    prepare() { for (const name of ['sent', 'received', 'ringtone', 'ringback']) void load(name).catch(() => {}); },
+    prepare() { for (const name of ['sent', 'received', 'ringtone', 'ringback', 'ended']) void load(name).catch(() => {}); },
     async play(channel, name, loop) {
       const ok = await play(channel, name, loop);
       const request = wanted.get(channel);
