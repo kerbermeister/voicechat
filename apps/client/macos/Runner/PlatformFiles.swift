@@ -67,16 +67,8 @@ final class PlatformFiles {
         var added: [String] = []
         do {
           var files: [[String: Any]] = []
-          for url in panel.urls {
-            let id = UUID().uuidString
-            let scoped = url.startAccessingSecurityScopedResource()
-            self.selections[id] = Selection(url: url, scoped: scoped)
-            added.append(id)
-            let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey, .contentTypeKey])
-            guard values.isRegularFile == true, let size = values.fileSize else { throw self.invalid() }
-            files.append(["uri": id, "name": url.lastPathComponent, "size": size,
-                          "mime": values.contentType?.preferredMIMEType ?? "application/octet-stream"])
-          }
+          files = try self.select(panel.urls)
+          added = files.compactMap { $0["uri"] as? String }
           result(channel == "images" ? added : files)
         } catch {
           for id in added { self.release(id) }
@@ -164,11 +156,33 @@ final class PlatformFiles {
     }
   }
 
+  /// Finder drops use the same scoped handles, range checks and release as NSOpenPanel.
+  func select(_ urls: [URL]) throws -> [[String: Any]] {
+    var added: [String] = []
+    do {
+      guard !urls.isEmpty, urls.count <= 84 else { throw invalid() }
+      return try urls.map { url in
+        guard url.isFileURL else { throw invalid() }
+        let id = UUID().uuidString
+        let scoped = url.startAccessingSecurityScopedResource()
+        selections[id] = Selection(url: url, scoped: scoped)
+        added.append(id)
+        let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey, .contentTypeKey])
+        guard values.isRegularFile == true, let size = values.fileSize else { throw invalid() }
+        return ["uri": id, "name": url.lastPathComponent, "size": size,
+                "mime": values.contentType?.preferredMIMEType ?? "application/octet-stream"]
+      }
+    } catch {
+      for id in added { release(id) }
+      throw error
+    }
+  }
+
   static func validRange(start: Int, end: Int, size: UInt64) -> Bool {
     start >= 0 && end > start && end - start <= 4 * 1024 * 1024 && UInt64(end) <= size
   }
   private func invalid() -> NSError { NSError(domain: "VoiceChatFiles", code: 1) }
-  private func release(_ id: String) {
+  func release(_ id: String) {
     if let selected = selections.removeValue(forKey: id), selected.scoped {
       selected.url.stopAccessingSecurityScopedResource()
     }
