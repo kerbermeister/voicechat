@@ -126,3 +126,16 @@ python3 infra/macos_release.py --app apps/client/build/macos/Build/Products/Rele
 во время звонка/записи/отправки установка блокируется. Незаданные Xcode settings
 `VOICECHAT_UPDATE_FEED` и `VOICECHAT_UPDATE_PUBLIC_KEY` оставляют канал выключенным.
 [Подпись, упаковка и публикация](../../infra/MACOS.md).
+
+### macOS-кандидат с нашим сервером
+
+Публичная конфигурация `config/macos-production.json` указывает Matrix/API/LiveKit
+на `https://univc.duckdns.org` (LiveKit — WSS). Секретов в ней нет. Из `apps/client`:
+
+```sh
+../../.prototype/tools/flutter/bin/flutter build macos --release --target lib/main.dart --dart-define-from-file config/macos-production.json
+```
+
+Это включает адрес сервера в сам клиент, не меняя localhost-настройки локальной
+разработки и другие платформы. Без Developer ID/notarization пакет остаётся
+тестовым, даже если собран в Release. Канал Sparkle настраивается отдельно.
