@@ -166,3 +166,42 @@ notarization, публичным ключом/feed и полной физиче�
 Дополнительный тест реальным CryptoKit прошёл: проверка ZIP принимает подпись
 правильного публичного ключа и отвергает другой ключ/изменённые байты. Итого
 **6 Python-тестов macOS**, включая отказ для Debug/JIT release-кандидата; это не заменяет подписанный цикл Sparkle N → N+1.
+
+## 26 октября: установочная Release-сборка с production-сервером
+
+По запросу владельца в той же ветке добавлен публичный build config
+`apps/client/config/macos-production.json`; исходный commit `e08db86`.
+Адреса: Matrix `https://univc.duckdns.org`, API `https://univc.duckdns.org/api`,
+LiveKit `wss://univc.duckdns.org`. Endpoint `/_matrix/client/versions` успешно
+проверен по HTTPS. Серверные службы/production и main не изменялись.
+
+Перед сборкой проверен diff относительно production baseline `5fd75f4` из
+журнала серверного выпуска; для этой задачи собран только macOS-клиент.
+Выполнен `flutter build macos --release --target lib/main.dart
+--dart-define-from-file config/macos-production.json --no-pub` с закреплённым
+Flutter/Rust и локальным Xcode 16.4. Размер `.app` — 89.4 MB; версия 1.1.0+2.
+Локальный override отключал debug symbols и explicit compiler modules для
+ограниченного диска; режим компиляции приложения — Release/AOT, не Debug.
+
+Проверено: все три значения присутствуют в Xcode DART_DEFINES и AOT-бинарнике;
+Debug kernel отсутствует. Упаковщик проверил Mach-O arm64/minimum OS ≤12 и
+целостность локальной code signature. После упаковки проверены DMG checksum,
+ZIP CRC и SHA256 файлов. DMG смонтирован только для чтения: внутри повторно
+проверены подпись, arm64, production-адреса и ссылка Applications; образ отключён.
+Общий Dart-код не менялся, полный прежний набор тестов повторно не запускался.
+
+Установочные файлы:
+
+- `.prototype/macos-server-candidate-20261026/VoiceChat.dmg` — около 39 MiB,
+  SHA256 `49754928f06126c14e02b673b329cb78de39b7a4d8eec08bfa177818cd184036`.
+- `.prototype/macos-server-candidate-20261026/VoiceChat.zip` — около 35 MiB,
+  SHA256 `820e7faaa94fff6564a70013ba34b46bf16d8acd0a8327d1ec49e2ce049e7185`.
+
+Открыть DMG и перенести VoiceChat.app в Applications. Сохранённый ранее вход,
+если он есть, сохраняет собственные адреса аккаунта: его не перезаписываем
+новыми compile-time defaults. Для нового входа уже выбран production-сервер.
+
+Это тестовый установочный пакет Release, без Developer ID/notarization и без
+публикации в Sparkle (`distributable=false`, feed пустой). `sourceDirty=true`
+честно отражает посторонние незакоммиченные файлы рабочего дерева; они не входили
+в наши коммиты. Вход под аккаунтом владельца, звонки и macOS 12–14 не проверялись.
