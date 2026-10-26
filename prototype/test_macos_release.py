@@ -18,7 +18,7 @@ class MacOSReleaseTests(unittest.TestCase):
     def setUp(self):
         self.info = {'CFBundleIdentifier': 'dev.voicechat.client', 'CFBundleVersion': '2',
                      'CFBundleShortVersionString': '1.1.0', 'LSMinimumSystemVersion': '12.0',
-                     'SURequireSignedFeed': True, 'SUEnableAutomaticChecks': False,
+                     'SUVerifyUpdateBeforeExtraction': True, 'SURequireSignedFeed': True, 'SUEnableAutomaticChecks': False,
                      'SUAutomaticallyUpdate': False, 'SUAllowsAutomaticUpdates': False,
                      'SUEnableSystemProfiling': False,
                      'SUFeedURL': 'https://example.com/updates/macos/appcast.xml',
@@ -28,7 +28,7 @@ class MacOSReleaseTests(unittest.TestCase):
         m.validate_info(self.info, True)
         for key, value in [('CFBundleIdentifier', 'another.app'), ('CFBundleVersion', '0'),
                            ('LSMinimumSystemVersion', '13.0'), ('SUEnableAutomaticChecks', True),
-                           ('SURequireSignedFeed', False), ('SUPublicEDKey', ''),
+                           ('SURequireSignedFeed', False), ('SUVerifyUpdateBeforeExtraction', False), ('SUPublicEDKey', ''),
                            ('SUFeedURL', 'http://example.com/updates/macos/appcast.xml'),
                            ('SUFeedURL', 'https://user@example.com/updates/macos/appcast.xml')]:
             info = {**self.info, key: value}

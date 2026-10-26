@@ -43,6 +43,8 @@ def validate_info(info, release=False):
     for name in ('SUEnableAutomaticChecks', 'SUAutomaticallyUpdate', 'SUAllowsAutomaticUpdates', 'SUEnableSystemProfiling'):
         if info.get(name) is not False:
             raise ValueError('Automatic updates/telemetry must be explicitly disabled')
+    if info.get('SUVerifyUpdateBeforeExtraction') is not True:
+        raise ValueError('Archive verification before extraction is required')
     if info.get('SURequireSignedFeed') is not True:
         raise ValueError('Signed appcast is required')
     if release:

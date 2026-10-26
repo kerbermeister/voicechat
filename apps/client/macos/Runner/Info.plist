@@ -46,6 +46,8 @@
 	<string>$(VOICECHAT_UPDATE_FEED)</string>
 	<key>SUPublicEDKey</key>
 	<string>$(VOICECHAT_UPDATE_PUBLIC_KEY)</string>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 	<key>SURequireSignedFeed</key>
 	<true/>
 </dict>
