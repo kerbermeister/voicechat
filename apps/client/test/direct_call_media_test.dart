@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:matrix/matrix.dart' as mx;
 import 'package:voicechat_probe/direct_call.dart';
+import 'package:voicechat_probe/camera_capture.dart';
+import 'package:voicechat_probe/call_quality.dart';
 import 'chat_actions_test.dart' show VideoSession, OutboxRoom, OutboxDatabase;
 
 class MediaTrack implements rtc.MediaStreamTrack {
@@ -62,6 +64,19 @@ class MediaSession extends VideoSession {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'Rear selection is strict, front permits desktop cameras without facingMode, audio is untouched',
+    () {
+      for (final quality in VideoQuality.values) {
+        final rear = cameraConstraints('environment', quality);
+        final front = cameraConstraints('user', quality);
+        expect(rear['audio'], false);
+        expect((rear['video'] as Map)['facingMode'], {'exact': 'environment'});
+        expect((front['video'] as Map)['facingMode'], {'ideal': 'user'});
+        expect((rear['video'] as Map)['width'], {'ideal': quality.width});
+      }
+    },
+  );
   test(
     'Switch camera toggles preview mirroring twice without touching audio',
     () async {
