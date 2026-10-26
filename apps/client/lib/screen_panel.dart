@@ -94,6 +94,7 @@ class ScreenPanel extends StatelessWidget {
         ScreenPhase.preparing => 'Готовим демонстрацию',
         ScreenPhase.connecting => 'Подключаем защищённый экран',
         ScreenPhase.reconnecting => 'Восстанавливаем демонстрацию',
+        ScreenPhase.error => 'Не удалось получить изображение экрана',
         ScreenPhase.closed => 'Демонстрация недоступна до следующего звонка',
         _ => active ? 'Экран показывает: $ownerLabel' : 'Демонстрация экрана',
       };
@@ -125,6 +126,12 @@ class ScreenPanel extends StatelessWidget {
             alignment: WrapAlignment.center,
             spacing: 8,
             children: [
+              if (active && !mine && controller.phase == ScreenPhase.error)
+                TextButton.icon(
+                  onPressed: controller.busy ? null : controller.retryViewing,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Повторить подключение'),
+                ),
               if (mine)
                 DropdownButton<ScreenQuality>(
                   value: controller.quality,

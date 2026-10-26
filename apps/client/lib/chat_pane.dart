@@ -1,5 +1,6 @@
 import 'participant_colors.dart';
 import 'forward_message.dart';
+import 'forward_picker.dart';
 import 'message_metadata.dart';
 import 'app_motion.dart';
 import 'theme.dart';
@@ -24,6 +25,8 @@ import 'chat_actions.dart';
 import 'voice_recording.dart';
 import 'user_action_error.dart';
 import 'file_source.dart';
+import 'file_drop.dart';
+import 'dropped_attachments.dart';
 import 'file_view.dart';
 import 'video_note.dart';
 import 'call_window.dart';
@@ -415,6 +418,21 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         'Временное сообщение уже исчезло. Отправьте новое сообщение.',
       );
     }
+    // Mixed drops share one caption; completed photos must not resend if a file fails.
+    if (draftPhotos.isNotEmpty && draftFiles.isNotEmpty) {
+      final caption = input.text;
+      await widget.actions.album(
+        widget.room,
+        List.of(draftPhotos),
+        caption,
+        ttlSeconds: temporarySeconds,
+        scheduledFor: scheduledFor,
+        reply: reply,
+      );
+      draftPhotos.clear();
+      if (input.text == caption) input.clear();
+      if (mounted) setState(() {});
+    }
     final text = input.text;
     if (unsentVoice != null) {
       await sendVoiceDraft();
@@ -561,6 +579,43 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     );
     if (mounted && chosen != null) {
       setState(() => temporarySeconds = chosen == 0 ? null : chosen);
+    }
+  }
+
+  Future<void> dropFiles(List<PickedFile> sources) async {
+    final retained = <PickedFile>{};
+    final room = widget.room;
+    try {
+      if (edit != null ||
+          unsentVoice != null ||
+          recording ||
+          stopping ||
+          voiceOpening != null ||
+          heldVideo.value ||
+          (draftIsVideoNote && draftFile != null)) {
+        throw UserActionError(
+          'Сначала завершите запись или редактирование сообщения.',
+        );
+      }
+      await widget.actions.refreshPolicy();
+      final prepared = await prepareDroppedFiles(
+        sources,
+        widget.actions.policy,
+        photoCount: draftPhotos.length,
+        fileCount: draftFiles.length,
+      );
+      if (!mounted || widget.room != room) return;
+      setState(() {
+        draftPhotos.addAll(prepared.photos);
+        draftFiles.addAll(prepared.files);
+        retained.addAll(prepared.files);
+        draftIsVideoNote = false;
+        draftVideoDuration = null;
+      });
+    } finally {
+      for (final source in sources) {
+        if (!retained.contains(source)) await source.release();
+      }
     }
   }
 
@@ -870,44 +925,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
 
   Future<void> eventAction(mx.Event event, String action) async {
     if (action == 'forward') {
-      final rooms = widget.room.client.rooms
-          .where(
-            (room) =>
-                room.membership == mx.Membership.join &&
-                room.encrypted &&
-                room.canSendDefaultMessages,
-          )
-          .toList();
       final target = await showAppDialog<mx.Room>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: AppDialogTitle(child: const Text('Переслать сообщение')),
-          content: SizedBox(
-            width: 420,
-            height: 360,
-            child: rooms.isEmpty
-                ? const Text('Нет доступных чатов')
-                : ListView.builder(
-                    itemCount: rooms.length,
-                    itemBuilder: (_, index) {
-                      final room = rooms[index];
-                      return ListTile(
-                        title: Text(roomDisplayName(room)),
-                        subtitle: room.id == widget.room.id
-                            ? const Text('Этот же чат')
-                            : null,
-                        onTap: () => Navigator.pop(context, room),
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
-            ),
-          ],
-        ),
+        builder: (_) => ForwardPicker(currentRoom: widget.room),
       );
       if (target != null) {
         if (!target.canSendDefaultMessages) {
@@ -2193,156 +2213,165 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       ],
     );
     final colors = Theme.of(context).colorScheme;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide =
-            constraints.maxWidth >= 850 &&
-            MediaQuery.textScalerOf(context).scale(16) <= 24;
-        return Row(
-          children: [
-            Expanded(
-              child: ColoredBox(
-                color: colors.surface,
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: widget.header),
-                        if (wide)
-                          Semantics(
-                            expanded: detailsOpen,
-                            child: IconButton.filledTonal(
-                              key: const ValueKey('chat-details-toggle'),
-                              tooltip: detailsOpen
-                                  ? 'Свернуть панель чата'
-                                  : 'Открыть панель чата',
-                              isSelected: detailsOpen,
-                              onPressed: () =>
-                                  setState(() => detailsOpen = !detailsOpen),
-                              icon: const Icon(Icons.view_sidebar_outlined),
-                              selectedIcon: const Icon(
-                                Icons.view_sidebar_rounded,
+    return FileDrop(
+      enabled: !working && widget.room.canSendDefaultMessages,
+      onDrop: (files) => unawaited(perform(() => dropFiles(files))),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide =
+              constraints.maxWidth >= 850 &&
+              MediaQuery.textScalerOf(context).scale(16) <= 24;
+          return Row(
+            children: [
+              Expanded(
+                child: ColoredBox(
+                  color: colors.surface,
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: widget.header),
+                          if (wide)
+                            Semantics(
+                              expanded: detailsOpen,
+                              child: IconButton.filledTonal(
+                                key: const ValueKey('chat-details-toggle'),
+                                tooltip: detailsOpen
+                                    ? 'Свернуть панель чата'
+                                    : 'Открыть панель чата',
+                                isSelected: detailsOpen,
+                                onPressed: () =>
+                                    setState(() => detailsOpen = !detailsOpen),
+                                icon: const Icon(Icons.view_sidebar_outlined),
+                                selectedIcon: const Icon(
+                                  Icons.view_sidebar_rounded,
+                                ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                    Expanded(child: body),
-                  ],
+                        ],
+                      ),
+                      Expanded(child: body),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            if (wide)
-              AnimatedPanel(
-                axis: Axis.horizontal,
-                child: detailsOpen
-                    ? SizedBox(
-                        key: const ValueKey('chat-details-panel'),
-                        width: 264,
-                        child: Material(
-                          color: colors.surfaceContainerLowest,
-                          shape: Border(
-                            left: BorderSide(color: colors.outlineVariant),
-                          ),
-                          child: ListView(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 24,
+              if (wide)
+                AnimatedPanel(
+                  axis: Axis.horizontal,
+                  child: detailsOpen
+                      ? SizedBox(
+                          key: const ValueKey('chat-details-panel'),
+                          width: 264,
+                          child: Material(
+                            color: colors.surfaceContainerLowest,
+                            shape: Border(
+                              left: BorderSide(color: colors.outlineVariant),
                             ),
-                            children: [
-                              Center(
-                                child: PersonAvatar(
-                                  name: roomDisplayName(widget.room),
-                                  client: widget.room.client,
-                                  url: roomAvatar(widget.room),
-                                  group: !widget.room.isDirectChat,
-                                  online: roomPresence(widget.room) == 'В сети',
-                                  size: 64,
+                            child: ListView(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 24,
+                              ),
+                              children: [
+                                Center(
+                                  child: PersonAvatar(
+                                    name: roomDisplayName(widget.room),
+                                    client: widget.room.client,
+                                    url: roomAvatar(widget.room),
+                                    group: !widget.room.isDirectChat,
+                                    online:
+                                        roomPresence(widget.room) == 'В сети',
+                                    size: 64,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                roomDisplayName(widget.room),
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
-                              Text(
-                                roomPresence(widget.room),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: roomPresence(widget.room) == 'В сети'
-                                      ? onlinePresenceColor(colors)
-                                      : colors.onSurfaceVariant,
+                                const SizedBox(height: 12),
+                                Text(
+                                  roomDisplayName(widget.room),
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context).textTheme.titleLarge,
                                 ),
-                              ),
-                              const SizedBox(height: 24),
-                              ListTile(
-                                leading: const Icon(Icons.call_outlined),
-                                title: const Text('Голосовой звонок'),
-                                onTap: widget.onVoiceCall,
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.videocam_outlined),
-                                title: const Text('Видеозвонок'),
-                                onTap: widget.onVideoCall,
-                              ),
-                              const Divider(),
-                              ListTile(
-                                leading: const Icon(Icons.search),
-                                title: const Text('Поиск в переписке'),
-                                onTap: searchFocus.requestFocus,
-                              ),
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.calendar_month_outlined,
+                                Text(
+                                  roomPresence(widget.room),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: roomPresence(widget.room) == 'В сети'
+                                        ? onlinePresenceColor(colors)
+                                        : colors.onSurfaceVariant,
+                                  ),
                                 ),
-                                title: const Text('Перейти к дате'),
-                                onTap: working ? null : () => perform(calendar),
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.info_outline),
-                                title: Text(
-                                  widget.room.isDirectChat
-                                      ? 'Информация о чате'
-                                      : 'Участники и настройки',
+                                const SizedBox(height: 24),
+                                ListTile(
+                                  leading: const Icon(Icons.call_outlined),
+                                  title: const Text('Голосовой звонок'),
+                                  onTap: widget.onVoiceCall,
                                 ),
-                                onTap: widget.onRoomInfo,
-                              ),
-                              if (widget.actions.policyUrl
-                                  case final String url) ...[
+                                ListTile(
+                                  leading: const Icon(Icons.videocam_outlined),
+                                  title: const Text('Видеозвонок'),
+                                  onTap: widget.onVideoCall,
+                                ),
                                 const Divider(),
                                 ListTile(
+                                  leading: const Icon(Icons.search),
+                                  title: const Text('Поиск в переписке'),
+                                  onTap: searchFocus.requestFocus,
+                                ),
+                                ListTile(
                                   leading: const Icon(
-                                    Icons.schedule_send_outlined,
+                                    Icons.calendar_month_outlined,
                                   ),
-                                  title: const Text(
-                                    'Запланированные сообщения',
+                                  title: const Text('Перейти к дате'),
+                                  onTap: working
+                                      ? null
+                                      : () => perform(calendar),
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.info_outline),
+                                  title: Text(
+                                    widget.room.isDirectChat
+                                        ? 'Информация о чате'
+                                        : 'Участники и настройки',
                                   ),
-                                  subtitle: const Text(
-                                    'Время отправки и состояние очереди',
-                                  ),
-                                  onTap: () => showAppDialog<void>(
-                                    context: context,
-                                    animationStyle: appAnimationStyle(context),
-                                    builder: (_) => ScheduledView(
-                                      service: ScheduledMessages(
-                                        widget.room.client,
-                                        url,
+                                  onTap: widget.onRoomInfo,
+                                ),
+                                if (widget.actions.policyUrl
+                                    case final String url) ...[
+                                  const Divider(),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.schedule_send_outlined,
+                                    ),
+                                    title: const Text(
+                                      'Запланированные сообщения',
+                                    ),
+                                    subtitle: const Text(
+                                      'Время отправки и состояние очереди',
+                                    ),
+                                    onTap: () => showAppDialog<void>(
+                                      context: context,
+                                      animationStyle: appAnimationStyle(
+                                        context,
                                       ),
-                                      roomId: widget.room.id,
+                                      builder: (_) => ScheduledView(
+                                        service: ScheduledMessages(
+                                          widget.room.client,
+                                          url,
+                                        ),
+                                        roomId: widget.room.id,
+                                      ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      )
-                    : null,
-              ),
-          ],
-        );
-      },
+                        )
+                      : null,
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 

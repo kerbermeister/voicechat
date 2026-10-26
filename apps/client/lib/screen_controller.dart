@@ -10,6 +10,7 @@ import 'screen_capture.dart';
 import 'screen_state.dart';
 import 'screen_key.dart';
 import 'screen_quality.dart';
+import 'screen_receive_deadline.dart';
 import 'call_quality.dart';
 import 'matrix_probe.dart';
 import 'transport.dart';
@@ -51,6 +52,17 @@ class ScreenShareController extends ChangeNotifier {
   int _serial = 0;
   Timer? _timer;
   Timer? _preparation;
+  late final _reception = ScreenReceiveDeadline(() {
+    if (_closed || displayTrack != null) return;
+    phase = ScreenPhase.error;
+    notice = !_receivedKey
+        ? 'Не получен ключ защищённого экрана. Повторите подключение.'
+        : remoteTrack == null
+        ? 'Видеопоток экрана не поступает. Повторите подключение.'
+        : 'Не удалось расшифровать изображение экрана. Повторите подключение.';
+    _changed();
+  });
+  bool _receivedKey = false;
   ScreenCapture? _capture;
   lk.LocalVideoTrack? _publication;
   lk.BaseKeyProvider? _keys;
@@ -419,6 +431,44 @@ class ScreenShareController extends ChangeNotifier {
     }
   }
 
+  void _waitForImage() {
+    if (_closed || snapshot?.owner == identity) return;
+    _reception.start();
+  }
+
+  void _receptionChanged() {
+    if (decoded && remoteTrack != null) {
+      _reception.reset();
+      phase = ScreenPhase.viewing;
+      notice = null;
+    } else {
+      if (phase != ScreenPhase.error) phase = ScreenPhase.connecting;
+      _waitForImage();
+    }
+    _changed();
+  }
+
+  Future<void> retryViewing() async {
+    if (_closed || _acting || snapshot?.owner == identity) return;
+    _acting = true;
+    _changed();
+    try {
+      await _pollFinished?.future;
+      if (_closed) return;
+      await _disposeMedia();
+      notice = null;
+      phase = ScreenPhase.connecting;
+    } catch (_) {
+      phase = ScreenPhase.error;
+      notice = 'Не удалось повторно подключить экран. Попробуйте ещё раз.';
+      return;
+    } finally {
+      _acting = false;
+      _changed();
+    }
+    await poll();
+  }
+
   Future<void> _connectMedia(ScreenSnapshot next) async {
     // Повторное подключение того же поколения сохраняет его sender key.
     final previousKey = _generation == next.generation
@@ -429,7 +479,9 @@ class ScreenShareController extends ChangeNotifier {
     final serial = _serial;
     _generation = next.generation;
     phase = ScreenPhase.connecting;
+    notice = null;
     decoded = false;
+    _waitForImage();
     final keys = await lk.BaseKeyProvider.create(
       sharedKey: false,
       discardFrameWhenCryptorNotReady: true,
@@ -464,30 +516,34 @@ class ScreenShareController extends ChangeNotifier {
         return;
       }
       remoteTrack = e.track as lk.VideoTrack;
-      _changed();
+      _receptionChanged();
     });
     _events!.on<lk.TrackUnsubscribedEvent>((e) {
       if (serial != _serial || remoteTrack != e.track) return;
       remoteTrack = null;
       decoded = false;
-      phase = ScreenPhase.connecting;
-      _changed();
+      _receptionChanged();
     });
     _events!.on<lk.TrackE2EEStateEvent>((e) {
       if (serial != _serial ||
           e.participant.identity == identity ||
-          e.participant.identity != snapshot?.owner) {
+          e.participant.identity != snapshot?.owner ||
+          e.publication is! lk.RemoteTrackPublication ||
+          !_allowed(
+            e.publication as lk.RemoteTrackPublication,
+            e.participant.identity,
+          )) {
         return;
       }
       decoded = e.state == lk.E2EEState.kOk;
-      phase = decoded ? ScreenPhase.viewing : ScreenPhase.connecting;
-      _changed();
+      _receptionChanged();
     });
     _events!.on<lk.RoomReconnectingEvent>((_) {
       if (serial != _serial) return;
       decoded = false;
       remoteTrack = null;
       phase = ScreenPhase.reconnecting;
+      _waitForImage();
       _changed();
     });
     _events!.on<lk.RoomDisconnectedEvent>((_) {
@@ -495,6 +551,7 @@ class ScreenShareController extends ChangeNotifier {
       decoded = false;
       remoteTrack = null;
       phase = ScreenPhase.reconnecting;
+      _waitForImage();
       _changed();
     });
     final token = await api.request('$_binding/token', {
@@ -674,9 +731,12 @@ class ScreenShareController extends ChangeNotifier {
       Uint8List.fromList(key),
       participantId: current.owner!,
     );
+    if (!_closed && keys == _keys) _receivedKey = true;
   }
 
   Future<void> _disposeMedia() async {
+    _reception.reset();
+    _receivedKey = false;
     _serial++;
     _generation = null;
     _senderKey?.fillRange(0, _senderKey!.length, 0);
