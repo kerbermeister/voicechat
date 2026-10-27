@@ -16,7 +16,7 @@ class ResizableChatLayout extends StatefulWidget {
 class _ResizableChatLayoutState extends State<ResizableChatLayout> {
   static const preference = 'chat_sidebar_fraction';
   double? fraction;
-  bool changed = false;
+  bool changed = false, hovering = false, dragging = false;
   @override
   void initState() {
     super.initState();
@@ -24,7 +24,7 @@ class _ResizableChatLayoutState extends State<ResizableChatLayout> {
       final stored = preferences.get(preference);
       final value = stored is num ? stored.toDouble() : null;
       if (mounted && !changed && value != null && value.isFinite) {
-        setState(() => fraction = value.clamp(.07, 1 / 3));
+        setState(() => fraction = value.clamp(.16, 1 / 3));
       }
     });
   }
@@ -51,11 +51,11 @@ class _ResizableChatLayoutState extends State<ResizableChatLayout> {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, box) {
-      final current = (fraction ?? 300 / box.maxWidth).clamp(.07, 1 / 3);
+      final current = (fraction ?? 300 / box.maxWidth).clamp(.16, 1 / 3);
       final width = box.maxWidth * current;
       void resize(double next) => setState(() {
         changed = true;
-        fraction = next.clamp(.07, 1 / 3);
+        fraction = next.clamp(.16, 1 / 3);
       });
       return Row(
         children: [
@@ -64,9 +64,9 @@ class _ResizableChatLayoutState extends State<ResizableChatLayout> {
             label: 'Ширина списка людей и групп',
             value: '${(current * 100).round()}%',
             increasedValue:
-                '${((current + .02).clamp(.07, 1 / 3) * 100).round()}%',
+                '${((current + .02).clamp(.16, 1 / 3) * 100).round()}%',
             decreasedValue:
-                '${((current - .02).clamp(.07, 1 / 3) * 100).round()}%',
+                '${((current - .02).clamp(.16, 1 / 3) * 100).round()}%',
             onIncrease: () {
               resize(current + .02);
               save();
@@ -77,20 +77,38 @@ class _ResizableChatLayoutState extends State<ResizableChatLayout> {
             },
             child: MouseRegion(
               cursor: SystemMouseCursors.resizeColumn,
+              onEnter: (_) => setState(() => hovering = true),
+              onExit: (_) => setState(() => hovering = false),
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
+                onHorizontalDragStart: (_) => setState(() => dragging = true),
                 onHorizontalDragUpdate: (details) => resize(
                   (fraction ?? current) + details.delta.dx / box.maxWidth,
                 ),
-                onHorizontalDragEnd: (_) => save(),
-                onHorizontalDragCancel: save,
+                onHorizontalDragEnd: (_) {
+                  setState(() => dragging = false);
+                  save();
+                },
+                onHorizontalDragCancel: () {
+                  setState(() => dragging = false);
+                  save();
+                },
                 child: SizedBox(
-                  width: 8,
-                  child: Center(
-                    child: Container(
-                      width: 1,
-                      margin: const EdgeInsets.symmetric(vertical: 12),
-                      color: Theme.of(context).colorScheme.outlineVariant,
+                  width: 24,
+                  child: ColoredBox(
+                    color: hovering || dragging
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: .10)
+                        : Colors.transparent,
+                    child: Center(
+                      child: Container(
+                        width: hovering || dragging ? 3 : 1,
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        color: hovering || dragging
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outlineVariant,
+                      ),
                     ),
                   ),
                 ),

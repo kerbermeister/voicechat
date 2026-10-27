@@ -77,6 +77,26 @@ String lastMessage(mx.Room room) {
   return event.senderId == room.client.userID ? 'Вы: $text' : text;
 }
 
+IconData? lastCallIcon(mx.Room room) {
+  final event = room.lastEvent;
+  if (event == null ||
+      event.redacted ||
+      messageHidden(event) ||
+      event.content.containsKey('dev.voicechat.ttl_seconds')) {
+    return null;
+  }
+  if (!event.type.startsWith('m.call.') &&
+      !{
+        'dev.voicechat.call',
+        'dev.voicechat.call_summary',
+      }.contains(event.messageType)) {
+    return null;
+  }
+  return isVideoCallEvent(event)
+      ? Icons.videocam_outlined
+      : Icons.call_outlined;
+}
+
 /// Only an exact receipt can acknowledge the latest event without a loaded timeline.
 /// Do not infer read state from receipt timestamps (they use a different clock).
 (IconData, String)? conversationDeliveryStatus(mx.Room room) {
@@ -853,31 +873,45 @@ class _ConversationListState extends State<ConversationList> {
                                                               10,
                                                             ),
                                                       ),
-                                                      child: Text(
-                                                        lastMessage(room),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                        style: theme
-                                                            .textTheme
-                                                            .bodySmall
-                                                            ?.copyWith(
-                                                              fontWeight:
-                                                                  messageCount >
-                                                                      0
-                                                                  ? FontWeight
-                                                                        .w600
-                                                                  : FontWeight
-                                                                        .w400,
-                                                              color: voice
-                                                                  ? (ownVoice
-                                                                        ? colors
-                                                                              .onPrimaryContainer
-                                                                        : colors
-                                                                              .onTertiaryContainer)
-                                                                  : colors
-                                                                        .onSurfaceVariant,
+                                                      child: Row(
+                                                        children: [
+                                                          if (lastCallIcon(room)
+                                                              case final icon?) ...[
+                                                            Icon(
+                                                              icon,
+                                                              size: 14,
+                                                              color: colors
+                                                                  .onSurfaceVariant,
                                                             ),
+                                                            const SizedBox(
+                                                              width: 4,
+                                                            ),
+                                                          ],
+                                                          Expanded(
+                                                            child: Text(
+                                                              lastMessage(room),
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                              style: theme.textTheme.bodySmall?.copyWith(
+                                                                fontWeight:
+                                                                    messageCount >
+                                                                        0
+                                                                    ? FontWeight
+                                                                          .w600
+                                                                    : FontWeight
+                                                                          .w400,
+                                                                color: voice
+                                                                    ? (ownVoice
+                                                                          ? colors.onPrimaryContainer
+                                                                          : colors.onTertiaryContainer)
+                                                                    : colors
+                                                                          .onSurfaceVariant,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                   ),

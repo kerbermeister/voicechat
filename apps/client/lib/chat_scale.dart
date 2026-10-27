@@ -115,6 +115,11 @@ class ChatScaleDialog extends StatelessWidget {
       }
 
       return AlertDialog(
+        backgroundColor: Theme.of(
+          context,
+        ).colorScheme.surface.withValues(alpha: .70),
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
         title: AppDialogTitle(child: const Text('Масштаб')),
         content: SizedBox(
           width: 420,

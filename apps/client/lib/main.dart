@@ -1797,9 +1797,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> settings() async {
+    Future<dynamic>? settingsClosed;
     var privacyBusy = false;
     String? privacyError;
-    await showAppDialog<void>(
+    final choice = await showAppDialog<String>(
       context: context,
       animationStyle: appAnimationStyle(context),
       builder: (dialogContext) => StatefulBuilder(
@@ -1915,13 +1916,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
                       leading: const Icon(Icons.zoom_in_outlined),
                       title: const Text('Масштаб'),
                       subtitle: const Text('Сообщения, люди и группы'),
-                      onTap: () => showAppDialog<void>(
-                        context: dialogContext,
-                        animationStyle: appAnimationStyle(dialogContext),
-                        builder: (_) => ChatScaleDialog(
-                          scale: ChatScaleScope.of(dialogContext)!,
-                        ),
-                      ),
+                      onTap: () {
+                        settingsClosed = ModalRoute.of(
+                          dialogContext,
+                        )?.completed;
+                        Navigator.pop(dialogContext, 'scale');
+                      },
                     ),
                     Row(
                       children: [
@@ -2038,6 +2038,15 @@ class _ProbeScreenState extends State<ProbeScreen> {
         },
       ),
     );
+    if (choice == 'scale') {
+      await settingsClosed;
+      if (!mounted) return;
+      await showAppDialog<void>(
+        context: context,
+        clearBackdrop: true,
+        builder: (_) => ChatScaleDialog(scale: ChatScaleScope.of(context)!),
+      );
+    }
   }
 
   Future<void> settingsAction(String chosen) async {

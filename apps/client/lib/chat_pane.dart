@@ -1,3 +1,4 @@
+import 'personal_room.dart';
 import 'message_media_cache.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:ui' as ui;
@@ -2636,16 +2637,20 @@ class _ChatPaneState extends State<ChatPane>
                                   ),
                                 ),
                                 const SizedBox(height: 24),
-                                ListTile(
-                                  leading: const Icon(Icons.call_outlined),
-                                  title: const Text('Голосовой звонок'),
-                                  onTap: widget.onVoiceCall,
-                                ),
-                                ListTile(
-                                  leading: const Icon(Icons.videocam_outlined),
-                                  title: const Text('Видеозвонок'),
-                                  onTap: widget.onVideoCall,
-                                ),
+                                if (!isPersonalRoom(widget.room))
+                                  ListTile(
+                                    leading: const Icon(Icons.call_outlined),
+                                    title: const Text('Голосовой звонок'),
+                                    onTap: widget.onVoiceCall,
+                                  ),
+                                if (!isPersonalRoom(widget.room))
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.videocam_outlined,
+                                    ),
+                                    title: const Text('Видеозвонок'),
+                                    onTap: widget.onVideoCall,
+                                  ),
                                 const Divider(),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -2818,18 +2823,38 @@ class _AttachmentViewState extends State<AttachmentView> {
   late final player = AudioPlayer();
   Future<mx.MatrixFile>? download;
   Uint8List? playbackBytes;
-  bool playing = false;
+  bool playing = false, loading = false;
   Duration position = Duration.zero;
   StreamSubscription<Duration>? positionUpdates;
+  Duration get duration {
+    final value = widget.event.infoMap['duration'];
+    return Duration(
+      milliseconds: value is num && value.isFinite && value > 0
+          ? value.toInt()
+          : 0,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     if (widget.event.messageType != mx.MessageTypes.Audio) return;
     positionUpdates = player.onPositionChanged.listen((value) {
-      if (mounted) setState(() => position = value);
+      if (mounted)
+        setState(
+          () => position = player.state == PlayerState.completed
+              ? duration
+              : value,
+        );
     });
     player.onPlayerComplete.listen((_) {
-      if (mounted) setState(() => playing = false);
+      messagePlayback.closed(this);
+      if (mounted) {
+        setState(() {
+          playing = false;
+          position = duration;
+        });
+      }
     });
   }
 
@@ -2858,9 +2883,11 @@ class _AttachmentViewState extends State<AttachmentView> {
     if (mounted) setState(() => playing = false);
   }
 
-  Future<void> play() async {
+  Future<void> play({Duration? at, bool pauseAfter = false}) async {
+    if (loading) return;
+    setState(() => loading = true);
     try {
-      if (playing) {
+      if (playing && at == null) {
         await messagePlayback.pause(this);
         return;
       }
@@ -2870,16 +2897,25 @@ class _AttachmentViewState extends State<AttachmentView> {
       playbackBytes ??= normalizedVoice(file.bytes);
       await messagePlayback.start(this, request, () async {
         await player.setVolume(widget.volume);
-        if (player.state == PlayerState.paused) {
-          await player.resume();
+        if (player.source != null && player.state == PlayerState.paused) {
+          if (at != null) await player.seek(at);
+          if (!pauseAfter) await player.resume();
+        } else if (pauseAfter) {
+          await player.setSource(
+            BytesSource(playbackBytes!, mimeType: file.mimeType),
+          );
+          await player.seek(at ?? Duration.zero);
+          await player.pause();
         } else {
           await player.play(
             BytesSource(playbackBytes!, mimeType: file.mimeType),
+            position: at,
           );
         }
-        if (mounted) setState(() => playing = true);
+        if (mounted) setState(() => playing = !pauseAfter);
       }, pause);
     } catch (_) {
+      download = null; // Allow a transient failed download to be retried.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -2889,15 +2925,14 @@ class _AttachmentViewState extends State<AttachmentView> {
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.event.messageType == mx.MessageTypes.Audio) {
-      final duration = Duration(
-        milliseconds: (widget.event.infoMap['duration'] as num? ?? 0).toInt(),
-      );
       final raw = widget.event.content['dev.voicechat.waveform'];
       final wave =
           raw is List &&
@@ -2913,7 +2948,7 @@ class _AttachmentViewState extends State<AttachmentView> {
           : colors.secondaryContainer;
       final foreground = own ? colors.onPrimary : colors.onSecondaryContainer;
       final waveAccent = colors.brightness == Brightness.dark
-          ? Color.lerp(foreground, Colors.white, .2)!
+          ? Color.lerp(colors.onSurface, Colors.white, .5)!
           : colors.primary;
       final caption = widget.event.content['dev.voicechat.caption'];
       return Container(
@@ -2935,17 +2970,26 @@ class _AttachmentViewState extends State<AttachmentView> {
               children: [
                 IconButton.filledTonal(
                   tooltip: playing ? 'Приостановить' : 'Прослушать',
-                  onPressed: play,
+                  onPressed: loading ? null : () => play(),
                   style: IconButton.styleFrom(
                     backgroundColor: colors.surfaceContainerLowest.withValues(
                       alpha: .8,
                     ),
                     foregroundColor: waveAccent,
                   ),
-                  icon: Icon(
-                    playing ? Icons.pause : Icons.play_arrow,
-                    color: waveAccent,
-                  ),
+                  icon: loading
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: waveAccent,
+                          ),
+                        )
+                      : Icon(
+                          playing ? Icons.pause : Icons.play_arrow,
+                          color: waveAccent,
+                        ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -2958,17 +3002,26 @@ class _AttachmentViewState extends State<AttachmentView> {
                           context,
                         ).textTheme.labelSmall?.copyWith(color: foreground),
                       ),
-                      if (wave.isNotEmpty)
-                        WaveformView(
-                          levels: wave,
-                          color: waveAccent,
-                          progress: duration.inMilliseconds <= 0
-                              ? 0
-                              : position.inMilliseconds /
-                                    duration.inMilliseconds,
-                        )
-                      else
-                        Icon(Icons.graphic_eq, color: foreground),
+                      WaveformView(
+                        levels: wave.isEmpty ? List.filled(32, 96) : wave,
+                        onSeek: loading || duration.inMilliseconds <= 0
+                            ? null
+                            : (fraction) {
+                                final target = Duration(
+                                  milliseconds:
+                                      (duration.inMilliseconds * fraction)
+                                          .round(),
+                                );
+                                setState(() => position = target);
+                                unawaited(
+                                  play(at: target, pauseAfter: !playing),
+                                );
+                              },
+                        color: waveAccent,
+                        progress: duration.inMilliseconds <= 0
+                            ? 0
+                            : position.inMilliseconds / duration.inMilliseconds,
+                      ),
                       Text(
                         '${mediaTime(position)} / ${mediaTime(duration)}',
                         style: Theme.of(
@@ -3029,7 +3082,18 @@ class _AttachmentViewState extends State<AttachmentView> {
   void dispose() {
     if (widget.event.messageType == mx.MessageTypes.Audio) {
       unawaited(positionUpdates?.cancel());
-      unawaited(messagePlayback.pause(this).whenComplete(player.dispose));
+      unawaited(
+        messagePlayback
+            .pause(this)
+            .whenComplete(() async {
+              try {
+                await player.dispose();
+              } finally {
+                messagePlayback.closed(this);
+              }
+            })
+            .catchError((Object _) {}),
+      );
     }
     super.dispose();
   }
