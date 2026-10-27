@@ -1,0 +1,52 @@
+{
+  "version": "1.10.1+19",
+  "sourceCommit": "03ab4d6e6415fa86735f9f05d072884fb2a9ebe0",
+  "mergeCommit": "940d3f21c753dd63f689f216b12b0d766aced4b0",
+  "pullRequest": "https://github.com/kerbermeister/voicechat/pull/4",
+  "fullWorkflow": 40544644275,
+  "webWorkflow": 40547842633,
+  "pushCI": 40547607101,
+  "prCI": 40547616033,
+  "webOnlyBackendPreserved": true,
+  "controlDigest": "sha256:599629e7cae958ebbf470ca433ac4b403c949a93ac742ba11781967bb6613603",
+  "webDigest": "sha256:094543f36e129857085cc278c68724d080bfe951696188758db20ae73769c03d",
+  "macOS": {
+    "signingMode": "personal-adhoc",
+    "sourceDirty": false,
+    "published": true,
+    "candidateAcceptance": {
+      "accountMatches": true,
+      "deviceMatches": true,
+      "matchingOldMessageTexts": 3,
+      "p2pPanel": true,
+      "publicLimits": true,
+      "nativeFilePickerDraft": true,
+      "friendSelector": true,
+      "testMessagesSent": 0
+    },
+    "packageFilesAndLinks": 285,
+    "https": {
+      "version": "1.10.1+19",
+      "commit": "03ab4d6e6415fa86735f9f05d072884fb2a9ebe0",
+      "httpsHashes": {
+        "appcast.xml": {
+          "sha256": "4545dad3fed7d7aca6c6279449d9ff5c57f90fce0c8e0528a4ef4f4d8e0349ec",
+          "bytes": 18508
+        },
+        "VoiceChat.zip": {
+          "sha256": "9553b4c9ac80162b57233216cae6621946eac7768c4af3e9b27a15f69a10a026",
+          "bytes": 37110972
+        },
+        "VoiceChat.dmg": {
+          "sha256": "8a3649eac9701bb468151d2b0db72c92eaf28a5e65c020f885fb3fbf7614011a",
+          "bytes": 41904864
+        }
+      },
+      "fullHttpsHashVantage": "VPS fetching canonical public HTTPS origin with certificate verification",
+      "externalHttpsHeadVerified": true,
+      "oldClientKeyVerified": true,
+      "enclosureVerified": true
+    },
+    "standardUpdateVerified": false
+  }
+}

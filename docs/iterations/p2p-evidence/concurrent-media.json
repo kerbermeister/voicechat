@@ -1,0 +1,19 @@
+{
+  "name": "four-relay-with-media",
+  "bytesPerRecipient": 33554432,
+  "recipients": 4,
+  "outcome": "PASS",
+  "elapsedMs": 10293,
+  "errors": [],
+  "concurrentMedia": [
+    {
+      "kind": "audio",
+      "bytesReceived": 35607
+    },
+    {
+      "kind": "video",
+      "bytesReceived": 78503,
+      "framesDecoded": 260
+    }
+  ]
+}

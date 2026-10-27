@@ -1,0 +1,17 @@
+{
+  "environment": "local isolated Chrome on macOS; no TURN in direct-only data connections",
+  "directWithSyntheticMedia": {
+    "status": "failed",
+    "reason": "peer timeout after repeated disconnected/connected states"
+  },
+  "directWithoutMedia": {
+    "status": "stopped",
+    "reason": "same low throughput and reconnects without media; not counted as a pass",
+    "observationSeconds": 120
+  },
+  "turnTcpWithSyntheticMedia": {
+    "status": "passed",
+    "evidence": "concurrent-media.json"
+  },
+  "interpretation": "Network-dependent direct UDP reliability remains unaccepted; relay result does not establish all-network coverage."
+}
