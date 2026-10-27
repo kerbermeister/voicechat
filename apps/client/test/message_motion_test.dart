@@ -6,6 +6,54 @@ import 'package:voicechat_probe/people_picker.dart';
 import 'halo_capture_test.dart' show CaptureClient;
 
 void main() {
+  testWidgets(
+    'An expired snapshot never resurfaces, including during an in-flight deletion',
+    (tester) async {
+      final key = GlobalKey();
+      late BuildContext context;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (value) {
+              context = value;
+              return Center(
+                child: RepaintBoundary(
+                  key: key,
+                  child: const ColoredBox(
+                    color: Colors.blue,
+                    child: SizedBox(width: 120, height: 60),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final snapshot = await tester.runAsync(
+        () => MessageSnapshot.capture(key),
+      );
+      expect(snapshot, isNotNull);
+      final controller = AnimationController(
+        vsync: tester,
+        duration: const Duration(milliseconds: 320),
+      );
+      final animation = snapshot!.animate(context, controller, deleting: true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(find.byType(RawImage), findsOneWidget);
+      snapshot.expiresAt = DateTime.now().subtract(const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(find.byType(RawImage), findsNothing);
+      await tester.pumpAndSettle();
+      await animation;
+      await snapshot.animate(context, controller);
+      await tester.pump();
+      expect(find.byType(RawImage), findsNothing);
+      controller.dispose();
+      snapshot.dispose();
+    },
+  );
   testWidgets('New group footer stays compact on a narrow window', (
     tester,
   ) async {
