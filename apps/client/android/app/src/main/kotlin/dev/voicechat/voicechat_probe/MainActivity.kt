@@ -1,5 +1,10 @@
 package dev.voicechat.voicechat_probe
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.provider.MediaStore
+import androidx.core.content.FileProvider
+import java.io.File
 import android.content.Intent
 import android.content.Context
 import android.os.Build
@@ -19,6 +24,8 @@ class MainActivity : FlutterActivity() {
     // The call engine can outlive its window; selected media handles must outlive it too.
     companion object {
         const val ENGINE_ID = "voicechat-call-engine"
+        private var cameraPhoto: File? = null
+        private var cameraUri: Uri? = null
         private var imageResult: MethodChannel.Result? = null
         private val imageRequest = 7501
         private var maxImageCount = 24
@@ -51,6 +58,8 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/update")
             .setMethodCallHandler(updater::handle)
         if (first) {
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/clipboard")
+                .setMethodCallHandler(ClipboardFiles(applicationContext)::handle)
             flutterEngine.platformViewsController.registry.registerViewFactory("voicechat/youtube", YouTubeFactory())
             val app = applicationContext
             MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/screen").setMethodCallHandler { call, result ->
@@ -209,6 +218,12 @@ class MainActivity : FlutterActivity() {
                 if (maxImageCount !in 1..64) { result.error("invalid", "Invalid image count", null); return@setMethodCallHandler }
                 if (imageResult != null) { result.error("busy", "Picker is already open", null); return@setMethodCallHandler }
                 imageResult = result
+                if (call.argument<Boolean>("camera") == true) {
+                    if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(arrayOf(Manifest.permission.CAMERA), 7505)
+                    } else capturePhoto()
+                    return@setMethodCallHandler
+                }
                 try {
                     startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).apply {
                         type = "image/*"
@@ -224,6 +239,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onDestroy() {
         imageResult?.success(null); imageResult = null
+        cameraPhoto?.delete(); cameraPhoto = null; cameraUri = null
         fileResult?.success(null); fileResult = null
         saveResult?.success(null); saveResult = null
         if (!CallService.running && !ScreenService.running) {
@@ -273,6 +289,19 @@ class MainActivity : FlutterActivity() {
             } catch (_: Exception) { result.error("invalid", "Invalid file count, unavailable file or larger than 300 MB", null) }
             return
         }
+        if (requestCode == 7504) {
+            val result = imageResult
+            imageResult = null
+            val uri = cameraUri
+            if (resultCode != RESULT_OK || uri == null || result == null) {
+                cameraPhoto?.delete(); cameraPhoto = null; cameraUri = null
+                result?.success(null)
+            } else {
+                selectedImages = selectedImages + uri.toString()
+                result.success(listOf(uri.toString()))
+            }
+            return
+        }
         if (requestCode != imageRequest) { super.onActivityResult(requestCode, resultCode, data); return }
         val result = imageResult ?: return
         imageResult = null
@@ -285,6 +314,32 @@ class MainActivity : FlutterActivity() {
         }
         selectedImages = uris.map { it.toString() }.toSet()
         result.success(uris.map { it.toString() })
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        if (requestCode != 7505) { super.onRequestPermissionsResult(requestCode, permissions, grantResults); return }
+        if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) capturePhoto()
+        else { imageResult?.error("camera_denied", "Доступ к камере не разрешён.", null); imageResult = null }
+    }
+
+    private fun capturePhoto() {
+        try {
+            val root = File(cacheDir, "VoiceChatCamera").apply { check(mkdirs() || isDirectory) }
+            root.listFiles()?.filter { it.lastModified() < System.currentTimeMillis() - 86400000 }?.forEach { it.delete() }
+            cameraPhoto?.delete()
+            val photo = File.createTempFile("photo-", ".jpg", root)
+            cameraPhoto = photo
+            val uri = FileProvider.getUriForFile(this, packageName + ".camera", photo)
+            cameraUri = uri
+            startActivityForResult(Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                putExtra(MediaStore.EXTRA_OUTPUT, uri)
+                clipData = android.content.ClipData.newRawUri("Photo", uri)
+                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }, 7504)
+        } catch (_: Exception) {
+            cameraPhoto?.delete(); cameraPhoto = null; cameraUri = null
+            imageResult?.error("camera_unavailable", "Не удалось открыть камеру.", null); imageResult = null
+        }
     }
 
     private fun readImage(value: String, maxImageBytes: Int, result: MethodChannel.Result) {
@@ -312,6 +367,10 @@ class MainActivity : FlutterActivity() {
                 runOnUiThread { result.success(mapOf("name" to name, "bytes" to bytes)) }
             } catch (error: Exception) {
                 runOnUiThread { result.error("image_unavailable", "Cannot read image (maximum 10 MB)", null) }
+            } finally {
+                if (value == cameraUri?.toString()) {
+                    cameraPhoto?.delete(); cameraPhoto = null; cameraUri = null
+                }
             }
         }.start()
     }
