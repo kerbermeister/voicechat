@@ -344,7 +344,8 @@ void main() {
               ),
             ),
           );
-          await tester.pumpAndSettle();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 500));
           for (final (id, name) in [('mine', 'Вы · Я'), ('theirs', 'Оля')]) {
             final metadata = find.byKey(ValueKey('message-meta-$id'));
             final bubble = find

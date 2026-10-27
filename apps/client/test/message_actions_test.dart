@@ -164,11 +164,11 @@ void main() {
       await tester.pumpAndSettle();
       final field = find.byType(TextField).last;
       await tester.enterText(field, 'Keep this draft');
-      for (final label in ['Сделать фото', 'Выбрать из библиотеки']) {
-        await tester.tap(find.byTooltip('Отправить изображение'));
+      for (final label in ['Сделать фото', 'Изображение из библиотеки']) {
+        await tester.tap(find.byTooltip('Вложения и отправка'));
         await tester.pumpAndSettle();
         expect(find.text('Сделать фото'), findsOneWidget);
-        expect(find.text('Выбрать из библиотеки'), findsOneWidget);
+        expect(find.text('Изображение из библиотеки'), findsOneWidget);
         await tester.tap(find.text(label));
         await tester.pumpAndSettle();
         expect(choices.last['camera'], label == 'Сделать фото');

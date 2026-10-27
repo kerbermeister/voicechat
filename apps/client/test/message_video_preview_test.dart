@@ -1,3 +1,4 @@
+import 'package:voicechat_probe/message_media_cache.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,7 +11,8 @@ import 'package:voicechat_probe/file_view.dart';
 import 'screen_panel_test.dart' show PanelDatabase;
 
 class PreviewPlayer extends VideoPlayerPlatform {
-  final events = StreamController<VideoEvent>();
+  final events = <int, StreamController<VideoEvent>>{};
+  int created = 0;
   int plays = 0, disposals = 0;
   Duration? sought;
   final volumes = <double>[];
@@ -18,18 +20,20 @@ class PreviewPlayer extends VideoPlayerPlatform {
   Future<void> init() async {}
   @override
   Future<int?> createWithOptions(VideoCreationOptions options) async {
-    events.add(
+    final id = ++created;
+    events[id] = StreamController<VideoEvent>();
+    events[id]!.add(
       VideoEvent(
         eventType: VideoEventType.initialized,
         duration: const Duration(seconds: 5),
         size: const Size(320, 320),
       ),
     );
-    return 1;
+    return id;
   }
 
   @override
-  Stream<VideoEvent> videoEventsFor(int playerId) => events.stream;
+  Stream<VideoEvent> videoEventsFor(int playerId) => events[playerId]!.stream;
   @override
   Future<void> play(int playerId) async {
     plays++;
@@ -59,7 +63,7 @@ class PreviewPlayer extends VideoPlayerPlatform {
   @override
   Future<void> dispose(int playerId) async {
     disposals++;
-    await events.close();
+    await events.remove(playerId)!.close();
   }
 }
 
@@ -113,17 +117,48 @@ void main() {
       expect(find.text('Видеокружок'), findsNothing);
       expect(find.textContaining('МБ'), findsNothing);
       expect(tester.getSize(find.byType(FileView)).width, 220);
-      final circles = find.byType(ClipOval);
+      final circles = find.byType(ClipOval).first;
       expect(tester.getSize(circles).width, 220);
-      expect(tester.getSize(find.byType(FileView)).height, 268);
+      expect(tester.getSize(find.byType(FileView)).height, 220);
 
       final play = tester.getRect(find.byTooltip('Воспроизвести видео'));
-      final save = tester.getRect(find.byTooltip('Сохранить файл'));
-      expect(play.center.dy, save.center.dy);
-      expect(save.left - play.right, lessThanOrEqualTo(8));
+      final circle = tester.getRect(find.byType(MessageVideo));
+      expect((play.center - circle.center).distance, lessThan(.1));
+      expect(find.byTooltip('Сохранить файл'), findsNothing);
 
       expect(find.byKey(const ValueKey('decoded-preview')), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 30)),
+      );
+      await tester.pump();
+      final retained = MessageMediaCache.of(
+        client,
+      ).frame('${room.id}/${event.eventId}');
+      expect(retained, isNotNull);
+      retained!.dispose();
+      await tester.pumpWidget(const SizedBox());
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 30)),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: FileView(event: event, volume: .35)),
+        ),
+      );
+      await tester.pump();
+      expect(
+        platform.created,
+        1,
+        reason: 'Returning to a cached circle must not reopen its decoder',
+      );
+      expect(find.byType(RawImage), findsOneWidget);
+      expect(platform.plays, 0);
       await tester.tap(find.byTooltip('Воспроизвести видео'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 30)),
+      );
       await tester.pump();
       expect(platform.plays, 1);
       await tester.pumpWidget(
@@ -134,6 +169,10 @@ void main() {
       await tester.pump();
       expect(platform.volumes.last, 0);
       expect(platform.plays, 1);
+      await tester.tapAt(
+        tester.getCenter(find.byType(MessageVideo)) + const Offset(60, 0),
+      );
+      await tester.pump();
       unawaited(showFileInfo(tester.element(find.byType(FileView)), event));
       await tester.pumpAndSettle();
       expect(find.text('Информация'), findsOneWidget);
@@ -144,7 +183,7 @@ void main() {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 20)),
       );
-      expect(platform.disposals, 1);
+      expect(platform.disposals, 2);
       await client.dispose();
     },
   );

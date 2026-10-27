@@ -196,7 +196,8 @@ void main() {
               isNot(equals(before)),
               reason: '${palette.name} own=$own reduced=$reduced',
             );
-            expect(reports.last, 'Скопировано в буфер обмена');
+            expect(find.text('Скопировано в буфер обмена'), findsOneWidget);
+            expect(reports, isEmpty);
             expect(copied.last, own ? 'Мой пример' : 'Пример собеседника');
             expect(tester.widget<CopyFeedback>(feedback).pulse, greaterThan(0));
             var changedEdge = 0;

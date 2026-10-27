@@ -18,14 +18,14 @@ void main() {
       final original = Uint8List.fromList(source);
       final result = normalizedVoice(source);
       final data = ByteData.sublistView(result);
-      expect(data.getInt16(44, Endian.little), 4000);
-      expect(data.getInt16(46, Endian.little), -8000);
+      expect(data.getInt16(44, Endian.little), 12000);
+      expect(data.getInt16(46, Endian.little), -24000);
       expect(source, original);
       expect(result.sublist(0, 44), source.sublist(0, 44));
       final limited = ByteData.sublistView(
         normalizedVoice(wav([-10000, 5000])),
       );
-      expect(limited.getInt16(44, Endian.little), -27524);
+      expect(limited.getInt16(44, Endian.little), -31456);
     },
   );
   test(
