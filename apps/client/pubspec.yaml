@@ -2,7 +2,7 @@ name: voicechat_probe
 description: "VoiceChat Android/web E2EE prototype."
 publish_to: 'none'
 
-version: 1.6.1+10
+version: 1.7.0+11
 
 environment:
   sdk: ">=3.11.0 <4.0.0"
@@ -36,6 +36,7 @@ dependencies:
   mobile_scanner: ^7.4.2
   qr_flutter: ^4.1.0
 
+  dart_webrtc: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -64,5 +65,6 @@ flutter:
       fonts:
         - asset: assets/fonts/Inter-Variable.ttf
   assets:
+    - assets/branding/
     - assets/sounds/
     - assets/verification/
