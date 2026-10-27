@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:voicechat_probe/message_motion.dart';
 import 'package:image/image.dart' as img;
 import 'package:voicechat_probe/file_drop.dart';
 import 'package:voicechat_probe/picked_file.dart';
@@ -45,6 +46,53 @@ class ForwardActions extends ChatActions {
   }) async {
     sent.add((room.id, content));
     return 'queued';
+  }
+}
+
+class MotionActions extends ChatActions {
+  MotionActions(super.client, {super.onDeleted});
+  final delivered = <String, String>{};
+  bool failDeletion = false;
+  @override
+  String? deliveredEvent(String transaction) => delivered[transaction];
+  @override
+  Future<void> saveDraft(String roomId, String text) async {}
+  @override
+  Future<void> hideMessage(mx.Event event) async {
+    if (failDeletion) throw StateError('offline');
+  }
+
+  @override
+  Future<String> enqueue(
+    mx.Room room,
+    Map<String, dynamic> content, {
+    String type = mx.EventTypes.Message,
+    mx.Event? reply,
+    String? edit,
+    bool preparing = false,
+    int? ttlSeconds,
+    DateTime? scheduledFor,
+  }) async {
+    const id = 'motion-transaction';
+    pending.add({'id': id, 'room': room.id, 'type': type, 'content': content});
+    notifyListeners();
+    return id;
+  }
+
+  void confirm(CaptureTimeline timeline) {
+    final item = pending.removeLast();
+    delivered[item['id'] as String] = r'$delivered';
+    timeline.events.insert(
+      0,
+      mx.Event.fromJson({
+        'type': mx.EventTypes.Message,
+        'event_id': r'$delivered',
+        'sender': client.userID,
+        'origin_server_ts': DateTime.now().millisecondsSinceEpoch,
+        'content': item['content'],
+      }, timeline.room),
+    );
+    notifyListeners();
   }
 }
 
@@ -124,6 +172,119 @@ void main() {
           });
     }
   });
+  testWidgets(
+    'Text keeps a real pending state, then flies to one delivered message and cleans overlays',
+    (tester) async {
+      final client = CaptureClient();
+      final room = ForwardRoom(client, '!motion:local');
+      room.states[mx.EventTypes.RoomMember] = {
+        client.userID: mx.StrippedStateEvent(
+          type: mx.EventTypes.RoomMember,
+          stateKey: client.userID,
+          senderId: client.userID,
+          content: {'displayname': 'Me', 'membership': 'join'},
+        ),
+      };
+      final timeline = CaptureTimeline(room);
+      final actions = MotionActions(client);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ChatPane(
+              room: room,
+              timeline: timeline,
+              actions: actions,
+              header: const SizedBox(height: 40),
+              report: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, 'Motion message');
+      await tester.pumpAndSettle();
+      await tester.runAsync(() async {
+        await tester.tap(find.byTooltip('Отправить'));
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+      });
+      await tester.pump();
+      expect(actions.pending.length, 1);
+      expect(find.text('Motion message'), findsOneWidget);
+      actions.confirm(timeline);
+      await tester.pump();
+      await tester.runAsync(() async {
+        await Future<void>.delayed(const Duration(milliseconds: 40));
+      });
+      await tester.pump();
+      expect(actions.pending, isEmpty);
+      expect(find.text('Motion message'), findsOneWidget);
+      expect(find.byType(RawImage), findsWidgets);
+      await tester.pumpWidget(const MaterialApp(home: SizedBox()));
+      await tester.pumpAndSettle();
+      expect(find.byType(RawImage), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'Failed deletion keeps the message and produces no success sound',
+    (tester) async {
+      final client = CaptureClient();
+      final room = ForwardRoom(client, '!delete:local');
+      room.states[mx.EventTypes.RoomMember] = {
+        '@peer:local': mx.StrippedStateEvent(
+          type: mx.EventTypes.RoomMember,
+          stateKey: '@peer:local',
+          senderId: '@peer:local',
+          content: {'displayname': 'Peer', 'membership': 'join'},
+        ),
+      };
+      final timeline = CaptureTimeline(room)
+        ..events.add(
+          mx.Event.fromJson({
+            'type': mx.EventTypes.Message,
+            'event_id': r'$delete',
+            'sender': '@peer:local',
+            'origin_server_ts': DateTime.now().millisecondsSinceEpoch,
+            'content': {
+              'msgtype': mx.MessageTypes.Text,
+              'body': 'Keep on failure',
+            },
+          }, room),
+        );
+      var sounds = 0;
+      final reports = <String>[];
+      final actions = MotionActions(client, onDeleted: () => sounds++)
+        ..failDeletion = true;
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: ChatPane(
+              room: room,
+              timeline: timeline,
+              actions: actions,
+              header: const SizedBox(height: 40),
+              report: reports.add,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Действия с сообщением'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Удалить'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Удалить у меня'));
+      await tester.pumpAndSettle();
+      expect(sounds, 0);
+      expect(reports, isNotEmpty);
+      expect(find.text('Keep on failure'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets(
     'Phone photo menu distinguishes library and camera; cancellation preserves the draft',
     (tester) async {
@@ -454,6 +615,15 @@ void main() {
         await tester.longPress(find.text('Forward me'));
         await tester.pumpAndSettle();
         expect(find.text('Ответить'), findsOneWidget);
+        expect(
+          tester
+              .widgetList<MessageMenuHighlight>(
+                find.byType(MessageMenuHighlight),
+              )
+              .where((widget) => widget.selected)
+              .length,
+          1,
+        );
         expect(find.byIcon(Icons.reply), findsOneWidget);
         await tester.tapAt(const Offset(10, 10));
         await tester.pumpAndSettle();

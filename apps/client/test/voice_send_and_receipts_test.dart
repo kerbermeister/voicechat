@@ -252,7 +252,14 @@ void main() {
       expect(find.textContaining('Голосовое ·'), findsOneWidget);
       expect(
         tester
-            .widget<AnimatedMessageBorder>(find.byType(AnimatedMessageBorder))
+            .widget<AnimatedMessageBorder>(
+              find
+                  .ancestor(
+                    of: find.textContaining('Голосовое ·'),
+                    matching: find.byType(AnimatedMessageBorder),
+                  )
+                  .first,
+            )
             .active,
         true,
       );
@@ -262,7 +269,14 @@ void main() {
       expect(find.textContaining('Голосовое ·'), findsOneWidget);
       expect(
         tester
-            .widget<AnimatedMessageBorder>(find.byType(AnimatedMessageBorder))
+            .widget<AnimatedMessageBorder>(
+              find
+                  .ancestor(
+                    of: find.textContaining('Голосовое ·'),
+                    matching: find.byType(AnimatedMessageBorder),
+                  )
+                  .first,
+            )
             .active,
         false,
       );
