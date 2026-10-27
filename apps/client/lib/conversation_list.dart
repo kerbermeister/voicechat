@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'chat_scale.dart';
 import 'package:flutter/gestures.dart';
 import 'hidden_messages.dart';
@@ -332,6 +333,7 @@ class _ConversationListState extends State<ConversationList> {
             return time != 0 ? time : a.id.compareTo(b.id);
           });
     if (widget.compact) {
+      final factor = (ChatScaleScope.of(context)?.contacts ?? 80) / 80;
       Widget action(String label, IconData icon, VoidCallback? onPressed) =>
           IconButton(
             tooltip: label,
@@ -359,36 +361,80 @@ class _ConversationListState extends State<ConversationList> {
               itemBuilder: (context, index) {
                 final room = rooms[index];
                 final name = roomDisplayName(room);
-                return Tooltip(
-                  message: name,
-                  child: GestureDetector(
-                    onSecondaryTapDown: widget.onChatMenu == null
-                        ? null
-                        : (details) =>
-                              openRoomMenu(room, details.globalPosition),
-                    onLongPressStart: widget.onChatMenu == null
-                        ? null
-                        : (details) =>
-                              openRoomMenu(room, details.globalPosition),
-                    child: IconButton(
-                      tooltip: name,
-                      onPressed: () => widget.onSelect(room),
-                      style: IconButton.styleFrom(
-                        backgroundColor: room.id == widget.selected?.id
-                            ? colors.primaryContainer
-                            : null,
+                final unread =
+                    room.unreadMessageCount ?? room.notificationCount;
+                return LayoutBuilder(
+                  builder: (context, box) {
+                    final avatarSize = math.min(
+                      34 * factor,
+                      math.max(1.0, box.maxWidth - 16),
+                    );
+                    return SizedBox(
+                      height: 48 * factor,
+                      child: Tooltip(
+                        message: name,
+                        child: GestureDetector(
+                          onSecondaryTapDown: widget.onChatMenu == null
+                              ? null
+                              : (details) =>
+                                    openRoomMenu(room, details.globalPosition),
+                          onLongPressStart: widget.onChatMenu == null
+                              ? null
+                              : (details) =>
+                                    openRoomMenu(room, details.globalPosition),
+                          child: Badge.count(
+                            count: unread,
+                            maxCount: 99,
+                            isLabelVisible: unread > 0,
+                            offset: const Offset(-4, 2),
+                            child: IconButton(
+                              tooltip: name,
+                              onPressed: () => widget.onSelect(room),
+                              style: IconButton.styleFrom(
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                backgroundColor: room.id == widget.selected?.id
+                                    ? colors.primaryContainer
+                                    : null,
+                              ),
+                              icon: SizedBox.square(
+                                dimension: avatarSize,
+                                child: Stack(
+                                  children: [
+                                    SizedBox.expand(
+                                      child: FittedBox(
+                                        child: PersonAvatar(
+                                          name: name,
+                                          size: 34,
+                                          client: widget.client,
+                                          url: roomAvatar(room),
+                                          group: groups,
+                                          personal: isPersonalRoom(room),
+                                          online:
+                                              roomPresence(room) == 'В сети',
+                                        ),
+                                      ),
+                                    ),
+                                    if (room.isFavourite)
+                                      Positioned(
+                                        left: 0,
+                                        top: 0,
+                                        child: Icon(
+                                          Icons.push_pin,
+                                          size: 12,
+                                          color: colors.primary,
+                                          semanticLabel: 'Чат закреплён',
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                      icon: PersonAvatar(
-                        name: name,
-                        size: 34,
-                        client: widget.client,
-                        url: roomAvatar(room),
-                        group: groups,
-                        personal: isPersonalRoom(room),
-                        online: roomPresence(room) == 'В сети',
-                      ),
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             ),
