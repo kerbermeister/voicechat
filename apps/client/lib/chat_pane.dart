@@ -813,6 +813,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         encoder: AudioEncoder.pcm16bits,
         sampleRate: 16000,
         numChannels: 1,
+        autoGain: true,
       ),
     );
     recordingStream = stream.listen(
@@ -997,6 +998,10 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       }
       return;
     }
+    if (action == 'info') {
+      await showFileInfo(context, event.getDisplayEvent(widget.timeline));
+      return;
+    }
     if (action == 'copy') {
       await copyMessage(event.getDisplayEvent(widget.timeline));
       if (mounted) {
@@ -1088,6 +1093,10 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     }
     final own = event.senderId == widget.room.client.userID;
     final shown = event.getDisplayEvent(widget.timeline);
+    final videoNote =
+        shown.messageType == 'dev.voicechat.file' &&
+        shown.content['video_note'] == true;
+    final mediaVolume = own ? 1.0 : widget.actions.mediaVolume(widget.room.id);
     final theme = Theme.of(context);
     final messageColors = theme.extension<MessageColors>();
     final baseColors = theme.colorScheme;
@@ -1124,6 +1133,8 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         );
     final menuItems = <PopupMenuEntry<String>>[
       menuItem('reply', 'Ответить', Icons.reply),
+      if (shown.messageType == 'dev.voicechat.file')
+        menuItem('info', 'Информация', Icons.info_outline),
       if (!event.redacted && event.type != mx.EventTypes.Encrypted)
         menuItem('copy', 'Скопировать', Icons.copy_outlined),
       if (canForwardMessage(shown))
@@ -1167,7 +1178,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
               borderRadius: BorderRadius.circular(18),
             )
           : null,
-      constraints: const BoxConstraints(maxWidth: 520),
+      constraints: BoxConstraints(maxWidth: videoNote ? 240 : 520),
       margin: const EdgeInsets.symmetric(vertical: 1),
       decoration: BoxDecoration(
         color: own ? colors.primary : colors.surfaceContainerLowest,
@@ -1211,27 +1222,35 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: EdgeInsets.only(right: menu == null ? 0 : 36),
+                      padding: EdgeInsets.only(
+                        right: menu == null || videoNote ? 0 : 36,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            '${own ? 'Вы · ' : ''}${event.senderFromMemoryOrFallback.displayName ?? event.senderId}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(
-                                  fontSize: 14,
-                                  height: 1.25,
-                                  color: participantNameColor(
-                                    nameColorSlots[event.senderId] ?? 0,
-                                    own
-                                        ? messageColors?.start ?? colors.primary
-                                        : colors.surfaceContainerLowest,
+                          Padding(
+                            padding: EdgeInsets.only(
+                              right: videoNote && menu != null ? 36 : 0,
+                            ),
+                            child: Text(
+                              '${own ? 'Вы · ' : ''}${event.senderFromMemoryOrFallback.displayName ?? event.senderId}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    fontSize: 14,
+                                    height: 1.25,
+                                    color: participantNameColor(
+                                      nameColorSlots[event.senderId] ?? 0,
+                                      own
+                                          ? messageColors?.start ??
+                                                colors.primary
+                                          : colors.surfaceContainerLowest,
+                                    ),
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            ),
                           ),
                           if (forwardedAuthor(shown) case final author?)
                             Text(
@@ -1346,7 +1365,11 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                               event: shown,
                             )
                           else if (shown.messageType == 'dev.voicechat.file')
-                            FileView(key: ValueKey(shown.eventId), event: shown)
+                            FileView(
+                              key: ValueKey(shown.eventId),
+                              event: shown,
+                              volume: mediaVolume,
+                            )
                           else if ({
                             mx.MessageTypes.Image,
                             mx.MessageTypes.Audio,
@@ -1354,6 +1377,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                             AttachmentView(
                               key: ValueKey(shown.eventId),
                               event: shown,
+                              volume: mediaVolume,
                             )
                           else
                             LinkedText(
@@ -1436,6 +1460,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                     ? null
                     : (details) => openMenu(details.globalPosition),
                 child: CopyFeedback(
+                  color: own ? colors.onPrimary : colors.primary,
                   pulse: copyPulses[event.eventId] ?? 0,
                   child: messageExpiry(event) == null
                       ? content
@@ -2174,6 +2199,12 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                             },
                           },
                           child: GestureDetector(
+                            excludeFromSemantics: true,
+                            onTap: working
+                                ? null
+                                : () => setState(
+                                    () => videoRecordMode = !videoRecordMode,
+                                  ),
                             onLongPressStart: working
                                 ? null
                                 : (_) {
@@ -2201,6 +2232,16 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                               heldVideo.value = false;
                             },
                             child: Semantics(
+                              button: true,
+                              enabled: !working,
+                              label: videoRecordMode
+                                  ? 'Видеокружок'
+                                  : 'Голосовое сообщение',
+                              onTap: working
+                                  ? null
+                                  : () => setState(
+                                      () => videoRecordMode = !videoRecordMode,
+                                    ),
                               hint: 'Ctrl+Enter начинает запись',
                               onLongPress: working
                                   ? null
@@ -2214,17 +2255,19 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                                 message: videoRecordMode
                                     ? 'Видеокружок · нажмите для аудио, удерживайте для записи'
                                     : 'Голосовое · нажмите для видео, удерживайте для записи',
-                                child: IconButton.filledTonal(
-                                  onPressed: working
-                                      ? null
-                                      : () => setState(
-                                          () => videoRecordMode =
-                                              !videoRecordMode,
-                                        ),
-                                  icon: Icon(
-                                    videoRecordMode
-                                        ? Icons.videocam_outlined
-                                        : Icons.mic_none,
+                                child: IgnorePointer(
+                                  child: IconButton.filledTonal(
+                                    onPressed: working
+                                        ? null
+                                        : () => setState(
+                                            () => videoRecordMode =
+                                                !videoRecordMode,
+                                          ),
+                                    icon: Icon(
+                                      videoRecordMode
+                                          ? Icons.videocam_outlined
+                                          : Icons.mic_none,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -2458,6 +2501,49 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                                   onTap: widget.onVideoCall,
                                 ),
                                 const Divider(),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Громкость сообщений · ${(widget.actions.mediaVolume(widget.room.id) * 100).round()}%',
+                                      ),
+                                      Slider(
+                                        label: 'Аудио- и видеосообщения',
+                                        value: widget.actions.mediaVolume(
+                                          widget.room.id,
+                                        ),
+                                        divisions: 20,
+                                        onChanged: (value) => unawaited(
+                                          widget.actions
+                                              .setMediaVolume(
+                                                widget.room.id,
+                                                value,
+                                              )
+                                              .catchError((Object e) {
+                                                widget.report(
+                                                  'Не удалось сохранить громкость сообщений.',
+                                                );
+                                              }),
+                                        ),
+                                      ),
+                                      Text(
+                                        'Только аудио- и видеосообщения. Громкость аудио- и видеозвонков регулируется отдельно во время звонка.',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: colors.onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Divider(),
                                 ListTile(
                                   leading: const Icon(Icons.search),
                                   title: const Text('Поиск в переписке'),
@@ -2556,7 +2642,8 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
 
 class AttachmentView extends StatefulWidget {
   final mx.Event event;
-  const AttachmentView({super.key, required this.event});
+  final double volume;
+  const AttachmentView({super.key, required this.event, this.volume = 1});
   @override
   State<AttachmentView> createState() => _AttachmentViewState();
 }
@@ -2564,6 +2651,7 @@ class AttachmentView extends StatefulWidget {
 class _AttachmentViewState extends State<AttachmentView> {
   late final player = AudioPlayer();
   Future<mx.MatrixFile>? download;
+  Uint8List? playbackBytes;
   bool playing = false;
   Duration position = Duration.zero;
   StreamSubscription<Duration>? positionUpdates;
@@ -2577,6 +2665,15 @@ class _AttachmentViewState extends State<AttachmentView> {
     player.onPlayerComplete.listen((_) {
       if (mounted) setState(() => playing = false);
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant AttachmentView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.volume != oldWidget.volume &&
+        widget.event.messageType == mx.MessageTypes.Audio) {
+      unawaited(player.setVolume(widget.volume));
+    }
   }
 
   Future<mx.MatrixFile> load() async {
@@ -2596,7 +2693,10 @@ class _AttachmentViewState extends State<AttachmentView> {
         await player.pause();
       } else {
         final file = await (download ??= load());
-        await player.play(BytesSource(file.bytes, mimeType: file.mimeType));
+        if (!mounted) return;
+        playbackBytes ??= normalizedVoice(file.bytes);
+        await player.setVolume(widget.volume);
+        await player.play(BytesSource(playbackBytes!, mimeType: file.mimeType));
       }
       if (mounted) setState(() => playing = !playing);
     } catch (_) {

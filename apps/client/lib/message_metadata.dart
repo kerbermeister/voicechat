@@ -14,11 +14,11 @@ class MessageMetadata extends StatelessWidget {
     this.onCopy,
   });
 
-  static const minimumWidth = 240.0;
+  static const minimumWidth = 190.0;
 
   static double rowHeight(BuildContext context) =>
       (MediaQuery.textScalerOf(context).scale(12) * 1.5).clamp(
-        48,
+        24,
         double.infinity,
       );
 
@@ -39,7 +39,13 @@ class MessageMetadata extends StatelessWidget {
         IconButton(
           tooltip: 'Скопировать сообщение',
           onPressed: onCopy,
-          icon: const Icon(Icons.copy_outlined, size: 19),
+          style: IconButton.styleFrom(
+            minimumSize: const Size(24, 24),
+            maximumSize: const Size(24, 24),
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          icon: const Icon(Icons.copy_outlined, size: 10),
           color: color,
         ),
         Expanded(

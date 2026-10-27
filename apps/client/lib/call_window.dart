@@ -1,4 +1,5 @@
 import 'participant_quality.dart';
+import 'speaking_avatar.dart';
 import 'app_motion.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -172,13 +173,20 @@ class _CallWindowState extends State<CallWindow> {
               (direct != null || group != null);
           final avatar = CallAvatar(
             incoming: incoming,
-            child: PersonAvatar(
-              name: name,
-              client: calls.client,
-              url: room == null ? null : roomAvatar(room!),
-              group: room?.isDirectChat == false,
-              showPresence: false,
-              size: compact ? 64 : 104,
+            child: SpeakingAvatar(
+              call: current is DirectCall ? current : null,
+              identity: current is DirectCall
+                  ? current.call.remoteUserId ?? ''
+                  : '',
+              enabled: calls.screen?.snapshot?.state != 'active',
+              child: PersonAvatar(
+                name: name,
+                client: calls.client,
+                url: room == null ? null : roomAvatar(room!),
+                group: room?.isDirectChat == false,
+                showPresence: false,
+                size: compact ? 64 : 104,
+              ),
             ),
           );
           final details = Column(
@@ -280,12 +288,18 @@ class _CallWindowState extends State<CallWindow> {
                             if (people.isNotEmpty) const SizedBox(height: 20),
                             for (final user in people)
                               ListTile(
-                                leading: PersonAvatar(
-                                  name: user.displayName ?? user.id,
-                                  client: calls.client,
-                                  url: user.avatarUrl,
-                                  online: connected.contains(user.id),
-                                  size: 36,
+                                leading: SpeakingAvatar(
+                                  call: current,
+                                  identity: user.id,
+                                  enabled:
+                                      calls.screen?.snapshot?.state != 'active',
+                                  child: PersonAvatar(
+                                    name: user.displayName ?? user.id,
+                                    client: calls.client,
+                                    url: user.avatarUrl,
+                                    online: connected.contains(user.id),
+                                    size: 36,
+                                  ),
                                 ),
                                 trailing:
                                     current != null &&

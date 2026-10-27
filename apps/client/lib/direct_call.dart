@@ -7,6 +7,7 @@ import 'matrix_probe.dart';
 import 'voice_call.dart';
 import 'call_quality.dart';
 import 'camera_capture.dart';
+import 'audio_levels.dart';
 
 /// Matrix authenticates SDP/ICE; WebRTC supplies DTLS-SRTP end to end, including over TURN.
 class DirectCall implements VoiceCall {
@@ -23,6 +24,33 @@ class DirectCall implements VoiceCall {
   final _streams = <mx.WrappedMediaStream, rtc.RTCVideoRenderer>{};
   final _renderedTracks = <rtc.RTCVideoRenderer, List<String>>{};
   final _statistics = CallStatistics();
+  final audioLevels = AudioLevels();
+  bool _readingLevels = false;
+  DateTime _levelsReadAt = DateTime(1970);
+
+  Future<void> pollAudioLevels() async {
+    if (isClosed || call.state != mx.CallState.kConnected) {
+      audioLevels.read([]);
+      return;
+    }
+    if (_readingLevels ||
+        DateTime.now().difference(_levelsReadAt).inMilliseconds < 100) {
+      return;
+    }
+    _readingLevels = true;
+    _levelsReadAt = DateTime.now();
+    try {
+      final reports =
+          await (call.pc?.getStats() ?? Future.value(<rtc.StatsReport>[]))
+              .timeout(const Duration(milliseconds: 800));
+      audioLevels.read(isClosed ? [] : reports);
+    } catch (_) {
+      audioLevels.read([]);
+    } finally {
+      _readingLevels = false;
+    }
+  }
+
   @override
   VideoQuality videoQuality = VideoQuality.auto;
   @override

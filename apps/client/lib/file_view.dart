@@ -9,7 +9,8 @@ import 'link_platform.dart';
 
 class FileView extends StatefulWidget {
   final mx.Event event;
-  const FileView({super.key, required this.event});
+  final double volume;
+  const FileView({super.key, required this.event, this.volume = 1});
   @override
   State<FileView> createState() => _FileViewState();
 }
@@ -57,6 +58,34 @@ class _FileViewState extends State<FileView> {
   @override
   Widget build(BuildContext context) {
     if (file == null) return Text(error!);
+    if (file!.videoNote) {
+      final caption = file!.content['caption'] as String? ?? '';
+      return SizedBox(
+        width: 220,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            MessageVideo(
+              file: file!,
+              inline: true,
+              volume: widget.volume,
+              trailingControl: IconButton(
+                tooltip: busy ? 'Отменить загрузку файла' : 'Сохранить файл',
+                icon: Icon(busy ? Icons.close : Icons.download),
+                onPressed: busy ? () => setState(() => cancelled = true) : save,
+              ),
+            ),
+            if (busy) LinearProgressIndicator(value: progress),
+            if (error != null)
+              Text(
+                error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            if (caption.isNotEmpty) SelectableText(caption),
+          ],
+        ),
+      );
+    }
     final video = file!.mime.startsWith('video/');
     final foreground = Theme.of(context).colorScheme.onSurface;
     return DefaultTextStyle.merge(
@@ -72,43 +101,30 @@ class _FileViewState extends State<FileView> {
                 context,
               ).colorScheme.outline.withValues(alpha: .6),
             ),
-            borderRadius: BorderRadius.circular(file!.videoNote ? 32 : 16),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
-            crossAxisAlignment: file!.videoNote
-                ? CrossAxisAlignment.center
-                : CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (file!.videoNote)
-                SizedBox(
-                  width: 180,
-                  height: 224,
-                  child: MessageVideo(file: file!, inline: true),
-                ),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (file!.videoNote)
-                    const SizedBox(width: 48)
-                  else
-                    Icon(
-                      video
-                          ? Icons.movie_outlined
-                          : Icons.insert_drive_file_outlined,
-                    ),
-                  if (!file!.videoNote) const SizedBox(width: 8),
+                  Icon(
+                    video
+                        ? Icons.movie_outlined
+                        : Icons.insert_drive_file_outlined,
+                  ),
+                  const SizedBox(width: 8),
                   Flexible(
                     child: Text(
-                      file!.videoNote ? 'Видеокружок' : file!.name,
-                      textAlign: file!.videoNote
-                          ? TextAlign.center
-                          : TextAlign.start,
+                      file!.name,
+                      textAlign: TextAlign.start,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (video && !file!.videoNote)
+                  if (video)
                     IconButton(
                       tooltip: 'Смотреть видео',
                       color: foreground,
@@ -116,7 +132,8 @@ class _FileViewState extends State<FileView> {
                       onPressed: () => showAppDialog<void>(
                         context: context,
                         animationStyle: appAnimationStyle(context),
-                        builder: (_) => MessageVideo(file: file!),
+                        builder: (_) =>
+                            MessageVideo(file: file!, volume: widget.volume),
                       ),
                     ),
                   IconButton(
@@ -133,7 +150,7 @@ class _FileViewState extends State<FileView> {
               ),
               Text(
                 '${(file!.size / 1048576).toStringAsFixed(1)} МБ · ${file!.mime}',
-                textAlign: file!.videoNote ? TextAlign.center : TextAlign.start,
+                textAlign: TextAlign.start,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: foreground.withValues(alpha: .8),
                 ),
@@ -174,28 +191,38 @@ class MessageVideo extends StatefulWidget {
   final bool inline;
   final bool thumbnail;
   final bool draftVideoNote;
-  const MessageVideo({super.key, required this.file, this.inline = false})
-    : draft = null,
-      remote = null,
-      thumbnail = false,
-      draftVideoNote = false;
+  final double volume;
+  final Widget? trailingControl;
+  const MessageVideo({
+    super.key,
+    required this.file,
+    this.inline = false,
+    this.volume = 1,
+    this.trailingControl,
+  }) : draft = null,
+       remote = null,
+       thumbnail = false,
+       draftVideoNote = false;
   const MessageVideo.draft({
     super.key,
     required PickedFile file,
     required bool videoNote,
     this.thumbnail = true,
+    this.volume = 1,
   }) : file = null,
        draft = file,
        remote = null,
        inline = false,
-       draftVideoNote = videoNote;
-  const MessageVideo.remote({super.key, required Uri url})
+       draftVideoNote = videoNote,
+       trailingControl = null;
+  const MessageVideo.remote({super.key, required Uri url, this.volume = 1})
     : file = null,
       draft = null,
       remote = url,
       inline = false,
       thumbnail = false,
-      draftVideoNote = false;
+      draftVideoNote = false,
+      trailingControl = null;
   bool get videoNote => file?.videoNote ?? draftVideoNote;
   @override
   State<MessageVideo> createState() => _MessageVideoState();
@@ -239,6 +266,7 @@ class _MessageVideoState extends State<MessageVideo> {
       player = next;
       await next.initialize();
       if (!mounted) return;
+      await next.setVolume(widget.volume);
       next.addListener(refresh);
       if (autoplay) {
         await next.play();
@@ -265,6 +293,12 @@ class _MessageVideoState extends State<MessageVideo> {
         });
       }
     }
+  }
+
+  @override
+  void didUpdateWidget(covariant MessageVideo oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.volume != oldWidget.volume) player?.setVolume(widget.volume);
   }
 
   void refresh() {
@@ -341,8 +375,8 @@ class _MessageVideoState extends State<MessageVideo> {
         ? value.position.inMilliseconds / value.duration.inMilliseconds
         : 0.0;
     final content = SizedBox(
-      width: widget.inline ? 180 : 800,
-      height: widget.inline ? 224 : 620,
+      width: widget.inline ? 220 : 800,
+      height: widget.inline ? 268 : 620,
       child: Column(
         children: [
           if (!widget.inline)
@@ -415,25 +449,31 @@ class _MessageVideoState extends State<MessageVideo> {
               allowScrubbing: true,
               padding: const EdgeInsets.all(12),
             ),
-          IconButton(
-            tooltip: value?.isPlaying == true
-                ? 'Пауза видео'
-                : 'Воспроизвести видео',
-            color: widget.inline && widget.videoNote
-                ? Theme.of(context).colorScheme.onSecondaryContainer
-                : Colors.white,
-            onPressed: loading && !ready
-                ? null
-                : () => !ready
-                      ? load()
-                      : value!.isPlaying
-                      ? player!.pause()
-                      : player!.play(),
-            icon: Icon(
-              value?.isPlaying == true
-                  ? Icons.pause
-                  : Icons.play_circle_outline,
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: value?.isPlaying == true
+                    ? 'Пауза видео'
+                    : 'Воспроизвести видео',
+                color: widget.inline && widget.videoNote
+                    ? IconTheme.of(context).color
+                    : Colors.white,
+                onPressed: loading && !ready
+                    ? null
+                    : () => !ready
+                          ? load()
+                          : value!.isPlaying
+                          ? player!.pause()
+                          : player!.play(),
+                icon: Icon(
+                  value?.isPlaying == true
+                      ? Icons.pause
+                      : Icons.play_circle_outline,
+                ),
+              ),
+              if (widget.trailingControl != null) widget.trailingControl!,
+            ],
           ),
           if (widget.remote != null)
             TextButton(
@@ -468,5 +508,28 @@ class _MessageVideoState extends State<MessageVideo> {
     player?.dispose();
     closeSource?.call();
     super.dispose();
+  }
+}
+
+Future<void> showFileInfo(BuildContext context, mx.Event event) async {
+  final file = ChunkedFile(event.room.client, event.content);
+  try {
+    await showAppDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Информация'),
+        content: SelectableText(
+          '${file.name}\n${file.size} байт\n${file.mime}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
+  } finally {
+    file.clear();
   }
 }

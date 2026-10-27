@@ -38,6 +38,28 @@ class ChatActions extends ChangeNotifier {
   ChatActions(this.client, {this.policyUrl, this.onSent});
   static const _storageKey = 'dev.voicechat.local.outbox';
   static const _draftKey = 'dev.voicechat.local.drafts';
+  static const _mediaVolumeKey = 'dev.voicechat.local.media_volumes';
+  final _mediaVolumes = <String, double>{};
+  double mediaVolume(String roomId) => _mediaVolumes[roomId] ?? 1;
+
+  Future<void> setMediaVolume(String roomId, double volume) {
+    if (_closed ||
+        roomId.isEmpty ||
+        !volume.isFinite ||
+        volume < 0 ||
+        volume > 1) {
+      throw ArgumentError('Invalid media volume');
+    }
+    final write = _writes.catchError((Object _) {}).then((_) async {
+      final next = {..._mediaVolumes, roomId: volume};
+      await client.database.storeAccountData(_mediaVolumeKey, next);
+      _mediaVolumes.addAll(next);
+      if (!_closed) notifyListeners();
+    });
+    _writes = write.catchError((Object _) {});
+    return write;
+  }
+
   final Map<String, String> drafts = {};
   final composerDrafts = <String, ComposerDraft>{};
   Future<void> _draftWrites = Future.value();
@@ -156,6 +178,18 @@ class ChatActions extends ChangeNotifier {
   }
 
   Future<void> open() async {
+    final volumes =
+        (await client.database.getAccountData())[_mediaVolumeKey]?.content;
+    for (final entry in volumes?.entries ?? <MapEntry<String, dynamic>>[]) {
+      final value = entry.value;
+      if (entry.key.isNotEmpty &&
+          value is num &&
+          value.isFinite &&
+          value >= 0 &&
+          value <= 1) {
+        _mediaVolumes[entry.key] = value.toDouble();
+      }
+    }
     final storedDrafts =
         (await client.database.getAccountData())[_draftKey]?.content;
     if (storedDrafts != null) {

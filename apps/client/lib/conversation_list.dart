@@ -252,29 +252,36 @@ class _ConversationListState extends State<ConversationList> {
     super.dispose();
   }
 
-  List<PopupMenuEntry<String>> roomMenu(mx.Room room) => [
-    PopupMenuItem(
-      value: 'pin',
-      child: Row(
-        children: [
-          Icon(room.isFavourite ? Icons.push_pin_outlined : Icons.push_pin),
-          const SizedBox(width: 10),
-          Text(room.isFavourite ? 'Открепить' : 'Закрепить сверху'),
-        ],
+  List<PopupMenuEntry<String>> roomMenu(mx.Room room) {
+    PopupMenuItem<String> item(String value, String label, IconData icon) =>
+        PopupMenuItem(
+          value: value,
+          child: Row(
+            children: [
+              Icon(icon, size: 20),
+              const SizedBox(width: 12),
+              Flexible(child: Text(label)),
+            ],
+          ),
+        );
+    final muted = room.pushRuleState == mx.PushRuleState.dontNotify;
+    return [
+      item(
+        'pin',
+        room.isFavourite ? 'Открепить' : 'Закрепить сверху',
+        room.isFavourite ? Icons.push_pin_outlined : Icons.push_pin,
       ),
-    ),
-    const PopupMenuItem(value: 'info', child: Text('Информация')),
-    PopupMenuItem(
-      value: 'mute',
-      child: Text(
-        room.pushRuleState == mx.PushRuleState.dontNotify
-            ? 'Включить уведомления'
-            : 'Отключить уведомления',
+      item('info', 'Информация', Icons.info_outline),
+      item(
+        'mute',
+        muted ? 'Включить уведомления' : 'Отключить уведомления',
+        muted
+            ? Icons.notifications_active_outlined
+            : Icons.notifications_off_outlined,
       ),
-    ),
-    if (!room.isDirectChat)
-      const PopupMenuItem(value: 'leave', child: Text('Покинуть группу')),
-  ];
+      if (!room.isDirectChat) item('leave', 'Покинуть группу', Icons.logout),
+    ];
+  }
 
   Future<void> openRoomMenu(mx.Room room, Offset point) async {
     final overlay =

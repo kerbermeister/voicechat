@@ -123,6 +123,10 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
     try {
       cameras = await availableCameras().timeout(const Duration(seconds: 10));
       if (!mounted) return;
+      if (widget.held?.value == false || widget.cancelled?.value == true) {
+        complete();
+        return;
+      }
       index = cameras.indexWhere(
         (c) => c.lensDirection == CameraLensDirection.front,
       );

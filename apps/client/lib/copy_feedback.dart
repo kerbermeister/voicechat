@@ -5,7 +5,13 @@ import 'package:flutter/material.dart';
 class CopyFeedback extends StatefulWidget {
   final int pulse;
   final Widget child;
-  const CopyFeedback({super.key, required this.pulse, required this.child});
+  final Color? color;
+  const CopyFeedback({
+    super.key,
+    required this.pulse,
+    required this.child,
+    this.color,
+  });
   @override
   State<CopyFeedback> createState() => _CopyFeedbackState();
 }
@@ -14,7 +20,7 @@ class _CopyFeedbackState extends State<CopyFeedback>
     with SingleTickerProviderStateMixin {
   late final animation = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 800),
+    duration: const Duration(milliseconds: 1100),
   );
   Timer? still;
   bool highlighted = false;
@@ -23,6 +29,8 @@ class _CopyFeedbackState extends State<CopyFeedback>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.pulse == widget.pulse) return;
     still?.cancel();
+    animation.stop();
+    highlighted = false;
     if (MediaQuery.disableAnimationsOf(context)) {
       highlighted = true;
       still = Timer(const Duration(milliseconds: 650), () {
@@ -41,13 +49,15 @@ class _CopyFeedbackState extends State<CopyFeedback>
       final strength = highlighted
           ? 1.0
           : animation.isAnimating
-          ? (animation.value < .2
-                ? animation.value / .2
-                : (1 - animation.value) / .8)
+          ? (animation.value < .08
+                ? animation.value / .08
+                : animation.value < .35
+                ? 1.0
+                : (1 - animation.value) / .65)
           : 0.0;
       return CustomPaint(
         foregroundPainter: _CopyBorder(
-          Theme.of(context).colorScheme.primary,
+          widget.color ?? Theme.of(context).colorScheme.primary,
           strength,
         ),
         child: child,
@@ -76,16 +86,17 @@ class _CopyBorder extends CustomPainter {
     canvas.drawRRect(
       rect,
       Paint()
-        ..color = color.withValues(alpha: strength * .3)
+        ..color = color.withValues(alpha: strength * .5)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 7,
+        ..strokeWidth = 6
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
     );
     canvas.drawRRect(
       rect,
       Paint()
         ..color = color.withValues(alpha: strength)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
+        ..strokeWidth = 2.5,
     );
   }
 

@@ -1,4 +1,6 @@
 import 'participant_quality.dart';
+import 'speaking_avatar.dart';
+import 'conversation_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:livekit_client/livekit_client.dart' as lk;
@@ -86,11 +88,17 @@ class CallVideoGrid extends StatelessWidget {
             fit: StackFit.expand,
             children: [
               tile.video ??
-                  const Center(
-                    child: Icon(
-                      Icons.videocam_off_outlined,
-                      color: Colors.white70,
-                      size: 32,
+                  Center(
+                    child: SpeakingAvatar(
+                      call: call,
+                      identity: tile.identity,
+                      child: PersonAvatar(
+                        name: label,
+                        client: call.chat.client,
+                        url: user?.avatarUrl,
+                        showPresence: false,
+                        size: 64,
+                      ),
                     ),
                   ),
               Positioned(
