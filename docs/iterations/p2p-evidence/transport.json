@@ -1,0 +1,37 @@
+[
+  {
+    "name": "four-direct",
+    "query": "peers=4&bytes=262144",
+    "outcome": "PASS",
+    "elapsedMs": 7846,
+    "errors": []
+  },
+  {
+    "name": "cancel-one",
+    "query": "peers=4&cancel=1&relay=1",
+    "outcome": "PASS",
+    "elapsedMs": 3206,
+    "errors": []
+  },
+  {
+    "name": "corrupt-one",
+    "query": "peers=4&corrupt=1&relay=1",
+    "outcome": "PASS",
+    "elapsedMs": 3129,
+    "errors": []
+  },
+  {
+    "name": "four-relay",
+    "query": "peers=4&relay=1&storage=1",
+    "outcome": "PASS",
+    "elapsedMs": 6021,
+    "errors": []
+  },
+  {
+    "name": "empty",
+    "query": "peers=1&bytes=0",
+    "outcome": "PASS",
+    "elapsedMs": 1375,
+    "errors": []
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-27",
+  "flutter": "3.47.7",
+  "platform": "macOS arm64",
+  "checks": {
+    "matrix_native": "PASS",
+    "safari_desktop_turn_encrypted_storage": "PASS",
+    "browser_streaming_export_bytes": 5000000000,
+    "browser_encrypted_block_tamper_and_relocation": "rejected"
+  },
+  "physical_android": false,
+  "physical_iphone": false
+}

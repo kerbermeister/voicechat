@@ -1,0 +1,9 @@
+[
+  {
+    "name": "5GB-relay-storage",
+    "query": "peers=1&bytes=5000000000&relay=1&storage=1",
+    "outcome": "PASS",
+    "elapsedMs": 540403,
+    "errors": []
+  }
+]

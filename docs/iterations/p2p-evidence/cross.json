@@ -1,0 +1,30 @@
+[
+  {
+    "web": {
+      "passed": true,
+      "files": 10,
+      "bytes": 4194357,
+      "route": "relay"
+    },
+    "native": {
+      "passed": true,
+      "files": 10,
+      "bytes": 4194357,
+      "route": "relay"
+    }
+  },
+  {
+    "native": {
+      "passed": true,
+      "files": 10,
+      "bytes": 4194357,
+      "route": "relay"
+    },
+    "web": {
+      "passed": true,
+      "files": 10,
+      "bytes": 4194357,
+      "route": "relay"
+    }
+  }
+]
