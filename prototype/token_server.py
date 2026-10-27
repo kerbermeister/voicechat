@@ -531,8 +531,9 @@ class Handler(BaseHTTPRequestHandler):
             room = body['room_id']
             session = body['session']
             video = body.get('video', False)
-            if (type(video) is not bool or body.get('protocol_version') != 1 or
-                set(body) - {'room_id', 'session', 'video', 'protocol_version', 'lease_id', 'reconnect'}):
+            camera_capable = body.get('camera_capable', False)
+            if (type(video) is not bool or type(camera_capable) is not bool or body.get('protocol_version') != 1 or
+                set(body) - {'room_id', 'session', 'video', 'protocol_version', 'lease_id', 'reconnect', 'camera_capable'}):
                 return self.reply(400, {'error': 'invalid_call_mode'})
             if not isinstance(room, str) or not room.startswith('!') or len(room) > 255:
                 return self.reply(400, {'error': 'invalid_room'})
@@ -548,6 +549,8 @@ class Handler(BaseHTTPRequestHandler):
             if who['user_id'] not in members: return self.reply(403, {'error': 'not_joined'})
             if self.matrix(prefix + 'm.room.encryption/').get('algorithm') != 'm.megolm.v1.aes-sha2':
                 return self.reply(403, {'error': 'unencrypted_room'})
+            if self.matrix(prefix + 'm.room.create/').get('type') == 'dev.voicechat.personal':
+                return self.reply(403, {'error': 'personal_room_no_calls'})
             store = call_store()
             wanted = {who['user_id']: [who['device_id']]}
             observed = store.roster(room, session)
@@ -570,13 +573,13 @@ class Handler(BaseHTTPRequestHandler):
                     values = candidate.get('keys', {})
                     valid[user + '/' + identifier] = (values.get('curve25519:' + identifier), values.get('ed25519:' + identifier))
             admission = store.admission(room, session, video, who, curve, ed, lease, reconnect, valid,
-                                        {peer['id'] for peer in observed})
+                                        {peer['id'] for peer in observed}, camera_capable=camera_capable)
             now = int(time.time())
             token = jwt({'iss': 'prototype', 'sub': admission['identity'], 'nbf': now - 5, 'exp': now + 60,
                          'video': {'roomJoin': True, 'room': admission['generation'],
                                    'canPublish': True, 'canSubscribe': True,
                                    'canPublishData': False,
-                                   'canPublishSources': ['microphone', 'camera'] if video else ['microphone']}})
+                                   'canPublishSources': ['microphone', 'camera'] if admission.get('camera_allowed', video) else ['microphone']}})
             self.reply(200, {**admission, 'token': token})
         except ContactError:
             self.reply(401, {'error': 'unauthorized'})

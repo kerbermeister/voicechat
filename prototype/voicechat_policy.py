@@ -16,6 +16,11 @@ from client_policy import expiry_content
 from scheduled_messages import ScheduleError, audience_digest, scheduled_audience, validate_envelope
 
 KIND = 'dev.voicechat.kind'
+PERSONAL = 'dev.voicechat.personal'
+
+def personal_owner(state):
+    creation = state.get(('m.room.create', ''))
+    return creation.sender if creation and creation.content.get('type') == PERSONAL else None
 
 class ContactPolicy:
     def __init__(self, config, api):
@@ -33,9 +38,18 @@ class ContactPolicy:
         if not isinstance(config.get('url'), str) or not isinstance(config.get('secret'), str) or len(config['secret']) < 32: raise ValueError('Contact policy endpoint and secret required')
         return config
     async def state(self, room):
-        return await self.api.get_room_state(room, [(KIND,''),('m.room.member',None)])
+        return await self.api.get_room_state(room, [(KIND,''),('m.room.create',''),('m.room.member',None)])
     async def check_event_allowed(self, event, state):
         content = event.content
+        owner = personal_owner(state)
+        if owner:
+            creation = state[('m.room.create', '')]
+            if event.type == 'm.room.redaction' and (getattr(event, 'redacts', None) or content.get('redacts')) == creation.event_id:
+                return False, None
+            if event.type == 'm.room.member' and (event.state_key != owner or event.sender != owner):
+                return False, None
+            if event.type.startswith('m.call.') or event.type.startswith('org.matrix.msc3401.call'):
+                return False, None
         relation = content.get('m.relates_to', {})
         editing = isinstance(relation, Mapping) and relation.get('rel_type') == 'm.replace'
         temporary = 'dev.voicechat.ttl_seconds' in content or 'org.matrix.self_destruct_after' in content
@@ -66,6 +80,7 @@ class ContactPolicy:
         return isinstance(content, Mapping) and content.get('kind') == 'direct' and isinstance(content.get('owner'),str) and isinstance(content.get('peer'),str) and content['owner'] != content['peer']
     async def user_may_invite(self, inviter, invitee, room_id):
         state = await self.state(room_id)
+        if personal_owner(state): return Codes.FORBIDDEN
         marker = state.get((KIND,''))
         if marker and self.direct(marker.content):
             pair = {marker.content['owner'], marker.content['peer']}

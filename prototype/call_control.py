@@ -32,6 +32,9 @@ class CallStore:
                 identity TEXT NOT NULL UNIQUE, curve TEXT NOT NULL, ed TEXT NOT NULL,
                 expires REAL NOT NULL);
               CREATE TABLE IF NOT EXISTS retired(name TEXT PRIMARY KEY);
+              CREATE TABLE IF NOT EXISTS call_camera(lease_id TEXT PRIMARY KEY, supported INTEGER NOT NULL);
+              CREATE TRIGGER IF NOT EXISTS delete_call_camera AFTER DELETE ON leases
+                BEGIN DELETE FROM call_camera WHERE lease_id=OLD.id; END;
             ''')
         self.path.chmod(0o600)
 
@@ -80,7 +83,7 @@ class CallStore:
         with self.db() as db:
             return [dict(row) for row in db.execute('SELECT l.* FROM leases l JOIN calls c ON c.id=l.call_id WHERE c.room=? AND c.session=?', (room, session))]
 
-    def admission(self, room, session, video, who, curve, ed, lease=None, reconnect=None, valid=None, checked=None):
+    def admission(self, room, session, video, who, curve, ed, lease=None, reconnect=None, valid=None, checked=None, camera_capable=False):
         identity = who['user_id'] + '/' + who['device_id']
         with self.lock:
             self.sweep()
@@ -121,16 +124,25 @@ class CallStore:
                         db.execute('INSERT INTO leases VALUES(?,?,?,?,?,?,?)',
                                    (lease, call['id'], who['user_id'], identity, curve, ed, self.clock() + self.lease_seconds))
                         self._rotate(db, call)
+                previous_camera = db.execute('SELECT supported FROM call_camera WHERE lease_id=?', (lease,)).fetchone()
+                if (previous_camera is not None and bool(previous_camera['supported']) != camera_capable
+                        or previous_camera is None and camera_capable and current is not None):
+                    self._rotate(db, call)
+                db.execute('INSERT INTO call_camera VALUES(?,?) ON CONFLICT(lease_id) DO UPDATE SET supported=excluded.supported',
+                           (lease, int(camera_capable)))
             self._cleanup()
             with self.db() as db:
                 call = db.execute('SELECT * FROM calls WHERE id=?', (call['id'],)).fetchone()
                 roster = [dict(row) for row in db.execute('SELECT identity,curve,ed FROM leases WHERE call_id=? ORDER BY identity', (call['id'],))]
+                camera_allowed = bool(call['video']) or not db.execute(
+                    'SELECT 1 FROM leases l LEFT JOIN call_camera v ON v.lease_id=l.id WHERE l.call_id=? AND COALESCE(v.supported,0)=0',
+                    (call['id'],)).fetchone()
             # A short settling window coalesces simultaneous joins into one transport rebuild.
             if self.clock() < call['ready_at']: raise CallError('generation_settling', 409)
             self.media_api('CreateRoom', {'name': call['generation'], 'max_participants': self.limit,
                                          'empty_timeout': 60, 'departure_timeout': 30})
             return {'lease_id': lease, 'generation': call['generation'], 'roster': roster,
-                    'lease_seconds': self.lease_seconds, 'identity': identity}
+                    'lease_seconds': self.lease_seconds, 'identity': identity, 'camera_allowed': camera_allowed}
 
     def leave(self, who, lease):
         with self.lock:
