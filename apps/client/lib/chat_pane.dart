@@ -1,5 +1,19 @@
+import 'personal_room.dart';
+import 'message_media_cache.dart';
+import 'package:flutter/rendering.dart';
+import 'dart:ui' as ui;
+import 'animated_message_border.dart';
+import 'chat_scale.dart';
+import 'delete_message_dialog.dart';
+import 'transient_notice.dart';
+import 'message_playback.dart';
+import 'copy_feedback.dart';
+import 'message_clipboard.dart';
+import 'hidden_messages.dart';
 import 'participant_colors.dart';
 import 'forward_message.dart';
+import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
+import 'forward_picker.dart';
 import 'message_metadata.dart';
 import 'app_motion.dart';
 import 'theme.dart';
@@ -17,13 +31,14 @@ import 'typing_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform;
 import 'package:flutter/services.dart';
-import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'package:matrix/matrix.dart' as mx;
 import 'package:record/record.dart';
 import 'chat_actions.dart';
 import 'voice_recording.dart';
 import 'user_action_error.dart';
 import 'file_source.dart';
+import 'file_drop.dart';
+import 'dropped_attachments.dart';
 import 'file_view.dart';
 import 'video_note.dart';
 import 'call_window.dart';
@@ -57,6 +72,7 @@ class ChatPane extends StatefulWidget {
   final String? initialEventId;
   final bool completeHistory;
   final Future<void> Function(String?)? onJump;
+  final Future<void> Function(mx.Room)? onForward;
   const ChatPane({
     super.key,
     required this.room,
@@ -67,6 +83,7 @@ class ChatPane extends StatefulWidget {
     this.initialEventId,
     this.completeHistory = false,
     this.onJump,
+    this.onForward,
     this.onVoiceCall,
     this.onVideoCall,
     this.onRoomInfo,
@@ -75,7 +92,8 @@ class ChatPane extends StatefulWidget {
   State<ChatPane> createState() => _ChatPaneState();
 }
 
-class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
+class _ChatPaneState extends State<ChatPane>
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   Map<String, int> nameColorSlots = {};
   final input = TextEditingController();
   final search = TextEditingController();
@@ -90,7 +108,8 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   DateTime? scheduledFor;
   mx.Event? edit;
   bool working = false;
-  bool toolsOpen = false;
+  bool preserveDraft = false;
+  final forwarded = <String, String>{};
   bool detailsOpen = true;
   bool recording = false;
   bool stopping = false;
@@ -105,9 +124,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   final draftFiles = <PickedFile>[];
   final linkPreviews = <Uri, LinkPreview>{};
   bool loadingPreview = false;
-  bool videoPointerGesture = false;
-  int? videoPointer;
-  Offset videoOrigin = Offset.zero;
+  bool videoRecordMode = false;
   final heldVideo = ValueNotifier(false);
   final cancelledVideo = ValueNotifier(false);
   PickedFile? get draftFile => draftFiles.firstOrNull;
@@ -120,12 +137,20 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   final viewportKey = GlobalKey();
   final messageKeys = <String, GlobalKey>{};
   bool jumping = false;
+  final copyPulses = <String, int>{};
   bool completeHistory = false;
   mx.MatrixAudioFile? unsentVoice;
   List<int>? unsentWave;
   mx.Event? voiceReply;
   final voicePreview = AudioPlayer();
   bool previewPlaying = false;
+  bool voiceSending = false;
+  String? voiceTransaction, voiceFlightEvent;
+  final voicePreviewKey = GlobalKey();
+  late final voiceFlight = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
   final recordingClock = Stopwatch();
   Timer? recordingMeter;
   PcmLevelMeter liveMeter = PcmLevelMeter();
@@ -134,6 +159,21 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     input.text = widget.actions.drafts[widget.room.id] ?? '';
+    final draft = widget.actions.composerDrafts.remove(widget.room.id);
+    if (draft != null) {
+      draftFiles.addAll(draft.files);
+      draftPhotos.addAll(draft.photos);
+      unsentVoice = draft.voice;
+      voiceTransaction = draft.voiceTransaction;
+      unsentWave = draft.wave;
+      reply = draft.reply;
+      edit = draft.edit;
+      voiceReply = draft.voiceReply;
+      draftIsVideoNote = draft.videoNote;
+      draftVideoDuration = draft.videoDuration;
+      temporarySeconds = draft.temporarySeconds;
+      scheduledFor = draft.scheduledFor;
+    }
     input.addListener(saveDraft);
     updateGuards.add(prepareUpdate);
     focusedEvent = widget.initialEventId;
@@ -221,6 +261,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   }
 
   Future<void> jumpToQuote(String? eventId) async {
+    if (hiddenMessages(widget.room).contains(eventId)) {
+      throw UserActionError('Сообщение удалено у вас.');
+    }
     if (eventId != null && eventId == focusedEvent && scroll.hasClients) {
       jumping = true;
       try {
@@ -374,8 +417,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   }
 
   KeyEventResult composerKey(FocusNode node, KeyEvent event) {
-    if (!kIsWeb ||
-        !{
+    if (!{
           TargetPlatform.macOS,
           TargetPlatform.windows,
           TargetPlatform.linux,
@@ -389,7 +431,10 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       return KeyEventResult.ignored;
     }
     final keyboard = HardwareKeyboard.instance;
-    if (keyboard.isMetaPressed) {
+    final newline = defaultTargetPlatform == TargetPlatform.macOS
+        ? keyboard.isMetaPressed
+        : keyboard.isControlPressed;
+    if (newline) {
       final selection = input.selection;
       final start = selection.isValid ? selection.start : input.text.length;
       final end = selection.isValid ? selection.end : start;
@@ -414,6 +459,21 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       throw UserActionError(
         'Временное сообщение уже исчезло. Отправьте новое сообщение.',
       );
+    }
+    // Mixed drops share one caption; completed photos must not resend if a file fails.
+    if (draftPhotos.isNotEmpty && draftFiles.isNotEmpty) {
+      final caption = input.text;
+      await widget.actions.album(
+        widget.room,
+        List.of(draftPhotos),
+        caption,
+        ttlSeconds: temporarySeconds,
+        scheduledFor: scheduledFor,
+        reply: reply,
+      );
+      draftPhotos.clear();
+      if (input.text == caption) input.clear();
+      if (mounted) setState(() {});
     }
     final text = input.text;
     if (unsentVoice != null) {
@@ -564,7 +624,44 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> image() async {
+  Future<void> dropFiles(List<PickedFile> sources) async {
+    final retained = <PickedFile>{};
+    final room = widget.room;
+    try {
+      if (edit != null ||
+          unsentVoice != null ||
+          recording ||
+          stopping ||
+          voiceOpening != null ||
+          heldVideo.value ||
+          (draftIsVideoNote && draftFile != null)) {
+        throw UserActionError(
+          'Сначала завершите запись или редактирование сообщения.',
+        );
+      }
+      await widget.actions.refreshPolicy();
+      final prepared = await prepareDroppedFiles(
+        sources,
+        widget.actions.policy,
+        photoCount: draftPhotos.length,
+        fileCount: draftFiles.length,
+      );
+      if (!mounted || widget.room != room) return;
+      setState(() {
+        draftPhotos.addAll(prepared.photos);
+        draftFiles.addAll(prepared.files);
+        retained.addAll(prepared.files);
+        draftIsVideoNote = false;
+        draftVideoDuration = null;
+      });
+    } finally {
+      for (final source in sources) {
+        if (!retained.contains(source)) await source.release();
+      }
+    }
+  }
+
+  Future<void> image({bool camera = false}) async {
     if (draftFile != null || unsentVoice != null) {
       throw UserActionError(
         'Сначала отправьте или удалите прикреплённый файл.',
@@ -573,14 +670,19 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     if (edit != null) {
       throw UserActionError('Сначала завершите редактирование сообщения.');
     }
-    await widget.actions.refreshPolicy();
     final policy = widget.actions.policy;
     final remaining = policy.photoMaxCount - draftPhotos.length;
     if (remaining <= 0) {
       throw UserActionError('Максимум ${policy.photoMaxCount} фотографий.');
     }
-    final photos = await chooseImages(policy, remaining);
-    if (mounted) setState(() => draftPhotos.addAll(photos));
+    final room = widget.room;
+    // Open the system picker within the tap; network awaits lose iOS activation.
+    final selection = chooseImages(policy, remaining, camera: camera);
+    unawaited(widget.actions.refreshPolicy());
+    final photos = await selection;
+    if (mounted && widget.room == room) {
+      setState(() => draftPhotos.addAll(photos));
+    }
   }
 
   Future<void> attachFile(String kind, {bool hold = false}) async {
@@ -715,7 +817,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       );
     }
     FocusManager.instance.primaryFocus?.unfocus();
-    if (!await recorder.hasPermission()) {
+    if (!kIsWeb && !await recorder.hasPermission()) {
       throw UserActionError(
         'Для голосового сообщения разрешите доступ к микрофону.',
       );
@@ -730,6 +832,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         encoder: AudioEncoder.pcm16bits,
         sampleRate: 16000,
         numChannels: 1,
+        autoGain: true,
       ),
     );
     recordingStream = stream.listen(
@@ -821,21 +924,105 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   Future<void> sendVoiceDraft() async {
     final file = unsentVoice;
     if (file == null) return;
-    await widget.actions.attachment(
-      widget.room,
-      file,
-      reply: voiceReply,
-      waveform: unsentWave,
-      ttlSeconds: temporarySeconds,
-      scheduledFor: scheduledFor,
-      caption: input.text,
-    );
-    await voicePreview.stop();
-    previewPlaying = false;
-    unsentVoice = null;
-    unsentWave = null;
-    voiceReply = null;
-    if (mounted) setState(() {});
+    setState(() => voiceSending = true);
+    try {
+      await messagePlayback.pause(voicePreview);
+      voiceTransaction ??= await widget.actions.attachment(
+        widget.room,
+        file,
+        reply: voiceReply,
+        waveform: unsentWave,
+        ttlSeconds: temporarySeconds,
+        scheduledFor: scheduledFor,
+        caption: input.text,
+      );
+      final transaction = voiceTransaction!;
+      final pending = widget.actions.pending
+          .where((item) => item['id'] == transaction)
+          .firstOrNull;
+      if (pending?['error'] != null) await widget.actions.flush();
+      await widget.actions.waitForDelivery(transaction);
+      final event = widget.actions.deliveredEvent(transaction);
+      if (event == null) {
+        throw UserActionError(
+          'Отправка отменена. Запись сохранена в предпросмотре.',
+        );
+      }
+      if (!mounted) return;
+      if (scheduledFor == null) {
+        messageKeys.putIfAbsent(event, GlobalKey.new);
+        setState(() => voiceFlightEvent = event);
+        await WidgetsBinding.instance.endOfFrame;
+        if (mounted) await flyVoicePreview(event);
+      }
+      if (!mounted) return;
+      setState(() {
+        previewPlaying = false;
+        unsentVoice = null;
+        unsentWave = null;
+        voiceReply = null;
+        voiceTransaction = null;
+        voiceFlightEvent = null;
+      });
+    } finally {
+      if (mounted) setState(() => voiceSending = false);
+    }
+  }
+
+  Future<void> flyVoicePreview(String event) async {
+    if (MediaQuery.disableAnimationsOf(context)) return;
+    final boundary = voicePreviewKey.currentContext?.findRenderObject();
+    if (boundary is! RenderRepaintBoundary || boundary.debugNeedsPaint) return;
+    final overlay = Overlay.of(context);
+    final overlayBox = overlay.context.findRenderObject()! as RenderBox;
+    Rect? rect(GlobalKey key) {
+      final box = key.currentContext?.findRenderObject();
+      if (box is! RenderBox || !box.attached || !box.hasSize) return null;
+      return Rect.fromPoints(
+        overlayBox.globalToLocal(box.localToGlobal(Offset.zero)),
+        overlayBox.globalToLocal(
+          box.localToGlobal(box.size.bottomRight(Offset.zero)),
+        ),
+      );
+    }
+
+    final source = rect(voicePreviewKey);
+    if (source == null || rect(messageKeys[event]!) == null) return;
+    ui.Image? image;
+    OverlayEntry? entry;
+    try {
+      image = await boundary.toImage(pixelRatio: 1.5);
+      if (!mounted) return;
+      final snapshot = image;
+      voiceFlight.value = 0;
+      entry = OverlayEntry(
+        builder: (_) => AnimatedBuilder(
+          animation: voiceFlight,
+          builder: (_, _) {
+            final progress = Curves.easeInOutCubic.transform(voiceFlight.value);
+            final destination = rect(messageKeys[event]!) ?? source;
+            return Positioned.fromRect(
+              rect: Rect.lerp(source, destination, progress)!,
+              child: IgnorePointer(
+                child: Opacity(
+                  opacity: (2 - 2 * voiceFlight.value).clamp(0.0, 1.0),
+                  child: RawImage(image: snapshot, fit: BoxFit.fill),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+      overlay.insert(entry);
+      setState(() => unsentVoice = null);
+      await voiceFlight.forward().orCancel;
+    } on TickerCanceled {
+      // The room closed during the transition; the delivered message stays in history.
+    } finally {
+      entry?.remove();
+      image?.dispose();
+      if (mounted) setState(() => voiceFlightEvent = null);
+    }
   }
 
   Future<void> react(mx.Event event, String emoji) async {
@@ -870,54 +1057,64 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
 
   Future<void> eventAction(mx.Event event, String action) async {
     if (action == 'forward') {
-      final rooms = widget.room.client.rooms
-          .where(
-            (room) =>
-                room.membership == mx.Membership.join &&
-                room.encrypted &&
-                room.canSendDefaultMessages,
-          )
-          .toList();
       final target = await showAppDialog<mx.Room>(
         context: context,
-        builder: (context) => AlertDialog(
-          title: AppDialogTitle(child: const Text('Переслать сообщение')),
-          content: SizedBox(
-            width: 420,
-            height: 360,
-            child: rooms.isEmpty
-                ? const Text('Нет доступных чатов')
-                : ListView.builder(
-                    itemCount: rooms.length,
-                    itemBuilder: (_, index) {
-                      final room = rooms[index];
-                      return ListTile(
-                        title: Text(roomDisplayName(room)),
-                        subtitle: room.id == widget.room.id
-                            ? const Text('Этот же чат')
-                            : null,
-                        onTap: () => Navigator.pop(context, room),
-                      );
-                    },
-                  ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
-            ),
-          ],
-        ),
+        builder: (_) => ForwardPicker(currentRoom: widget.room),
       );
       if (target != null) {
         if (!target.canSendDefaultMessages) {
           throw UserActionError('Отправка в этот чат недоступна.');
         }
-        await widget.actions.enqueue(
+        final key = '${event.eventId}/${target.id}';
+        final transaction = forwarded[key] ??= await widget.actions.enqueue(
           target,
           forwardMessageContent(event.getDisplayEvent(widget.timeline)),
         );
+        await widget.actions.waitForDelivery(transaction);
+        if (!mounted ||
+            target.id == widget.room.id ||
+            widget.onForward == null) {
+          return;
+        }
+        await widget.actions.saveDraft(widget.room.id, input.text);
+        widget.actions.composerDrafts[widget.room.id] = ComposerDraft(
+          files: List.of(draftFiles),
+          photos: List.of(draftPhotos),
+          voice: unsentVoice,
+          voiceTransaction: voiceTransaction,
+          wave: unsentWave,
+          reply: reply,
+          edit: edit,
+          voiceReply: voiceReply,
+          videoNote: draftIsVideoNote,
+          videoDuration: draftVideoDuration,
+          temporarySeconds: temporarySeconds,
+          scheduledFor: scheduledFor,
+        );
+        preserveDraft = true;
+        try {
+          await widget.onForward!(target);
+        } catch (_) {
+          preserveDraft = false;
+          widget.actions.composerDrafts.remove(widget.room.id);
+          rethrow;
+        }
       }
+      return;
+    }
+    if (action == 'info') {
+      await showFileInfo(context, event.getDisplayEvent(widget.timeline));
+      return;
+    }
+    if (action == 'copy') {
+      await copyMessage(event.getDisplayEvent(widget.timeline));
+      if (mounted) {
+        setState(
+          () =>
+              copyPulses[event.eventId] = (copyPulses[event.eventId] ?? 0) + 1,
+        );
+      }
+      if (mounted) showTransientNotice(context, 'Скопировано в буфер обмена');
       return;
     }
     if (action == 'reply') {
@@ -938,27 +1135,22 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       return;
     }
     if (action == 'delete') {
-      final confirmed = await showAppDialog<bool>(
+      final choice = await showAppDialog<String>(
         context: context,
-        animationStyle: appAnimationStyle(context),
-        builder: (context) => AlertDialog(
-          title: AppDialogTitle(child: const Text('Удалить сообщение у всех?')),
-          content: const Text(
-            'У собеседника могут оставаться сохранённые копии.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Отмена'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Удалить'),
-            ),
-          ],
-        ),
+        builder: (_) => DeleteMessageDialog(allowAll: event.canRedact),
       );
-      if (confirmed == true) await event.redactEvent(redactAllEdits: true);
+      if (choice == 'mine') await widget.actions.hideMessage(event);
+      if (choice == 'all' && event.canRedact) {
+        await event.redactEvent(redactAllEdits: true);
+      }
+      if (choice == 'mine' || choice == 'all' && event.canRedact) {
+        MessageMediaCache.of(
+          event.room.client,
+        ).removeFrame('${event.room.id}/${event.eventId}');
+        MessageMediaCache.of(event.room.client).removeFrame(
+          '${event.room.id}/${event.getDisplayEvent(widget.timeline).eventId}',
+        );
+      }
       return;
     }
     if (action == 'react') {
@@ -993,6 +1185,10 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     }
     final own = event.senderId == widget.room.client.userID;
     final shown = event.getDisplayEvent(widget.timeline);
+    final videoNote =
+        shown.messageType == 'dev.voicechat.file' &&
+        shown.content['video_note'] == true;
+    final mediaVolume = widget.actions.mediaVolume(widget.room.id);
     final theme = Theme.of(context);
     final messageColors = theme.extension<MessageColors>();
     final baseColors = theme.colorScheme;
@@ -1016,16 +1212,48 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   reaction.senderId,
       );
     }
+    PopupMenuItem<String> menuItem(String value, String label, IconData icon) =>
+        PopupMenuItem(
+          value: value,
+          child: Row(
+            children: [
+              Icon(icon, size: 20),
+              const SizedBox(width: 12),
+              Text(label),
+            ],
+          ),
+        );
     final menuItems = <PopupMenuEntry<String>>[
-      const PopupMenuItem(value: 'reply', child: Text('Ответить')),
+      menuItem('reply', 'Ответить', Icons.reply),
+      if (shown.messageType == 'dev.voicechat.file' ||
+          shown.messageType == mx.MessageTypes.Audio)
+        menuItem('info', 'Информация', Icons.info_outline),
+      if (!event.redacted && event.type != mx.EventTypes.Encrypted)
+        menuItem('copy', 'Скопировать', Icons.copy_outlined),
       if (canForwardMessage(shown))
-        const PopupMenuItem(value: 'forward', child: Text('Переслать')),
+        menuItem('forward', 'Переслать', Icons.forward),
       if (own && shown.messageType == mx.MessageTypes.Text)
-        const PopupMenuItem(value: 'edit', child: Text('Редактировать')),
-      if (event.canRedact)
-        const PopupMenuItem(value: 'delete', child: Text('Удалить')),
-      const PopupMenuItem(value: 'react', child: Text('Реакция…')),
+        menuItem('edit', 'Редактировать', Icons.edit_outlined),
+      menuItem('delete', 'Удалить', Icons.delete_outline),
+      menuItem('react', 'Реакция…', Icons.add_reaction_outlined),
     ];
+    Future<void> openMenu(Offset position) async {
+      final overlay =
+          Overlay.of(context).context.findRenderObject()! as RenderBox;
+      final local = overlay.globalToLocal(position);
+      final action = await showMenu<String>(
+        context: context,
+        position: RelativeRect.fromRect(
+          Rect.fromLTWH(local.dx, local.dy, 0, 0),
+          Offset.zero & overlay.size,
+        ),
+        items: menuItems,
+      );
+      if (action != null && mounted) {
+        await perform(() => eventAction(event, action));
+      }
+    }
+
     final menu = !event.redacted && event.type != mx.EventTypes.Encrypted
         ? PopupMenuButton<String>(
             popUpAnimationStyle: appAnimationStyle(context),
@@ -1043,7 +1271,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
               borderRadius: BorderRadius.circular(18),
             )
           : null,
-      constraints: const BoxConstraints(maxWidth: 520),
+      constraints: BoxConstraints(maxWidth: videoNote ? 240 : 520),
       margin: const EdgeInsets.symmetric(vertical: 1),
       decoration: BoxDecoration(
         color: own ? colors.primary : colors.surfaceContainerLowest,
@@ -1087,27 +1315,35 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: EdgeInsets.only(right: menu == null ? 0 : 36),
+                      padding: EdgeInsets.only(
+                        right: menu == null || videoNote ? 0 : 36,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            '${own ? 'Вы · ' : ''}${event.senderFromMemoryOrFallback.displayName ?? event.senderId}',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(
-                                  fontSize: 14,
-                                  height: 1.25,
-                                  color: participantNameColor(
-                                    nameColorSlots[event.senderId] ?? 0,
-                                    own
-                                        ? messageColors?.start ?? colors.primary
-                                        : colors.surfaceContainerLowest,
+                          Padding(
+                            padding: EdgeInsets.only(
+                              right: videoNote && menu != null ? 36 : 0,
+                            ),
+                            child: Text(
+                              '${own ? 'Вы · ' : ''}${event.senderFromMemoryOrFallback.displayName ?? event.senderId}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    fontSize: 14,
+                                    height: 1.25,
+                                    color: participantNameColor(
+                                      nameColorSlots[event.senderId] ?? 0,
+                                      own
+                                          ? messageColors?.start ??
+                                                colors.primary
+                                          : colors.surfaceContainerLowest,
+                                    ),
+                                    fontWeight: FontWeight.w500,
                                   ),
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            ),
                           ),
                           if (forwardedAuthor(shown) case final author?)
                             Text(
@@ -1179,6 +1415,11 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                                                       ) !=
                                                       null
                                               ? 'Временное сообщение'
+                                              : snapshot.data != null &&
+                                                    messageHidden(
+                                                      snapshot.data!,
+                                                    )
+                                              ? 'Сообщение удалено у вас'
                                               : snapshot.data?.redacted == true
                                               ? 'Удалённое сообщение'
                                               : snapshot.data
@@ -1217,7 +1458,12 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                               event: shown,
                             )
                           else if (shown.messageType == 'dev.voicechat.file')
-                            FileView(key: ValueKey(shown.eventId), event: shown)
+                            FileView(
+                              key: ValueKey(shown.eventId),
+                              event: shown,
+                              originalEvent: event,
+                              volume: mediaVolume,
+                            )
                           else if ({
                             mx.MessageTypes.Image,
                             mx.MessageTypes.Audio,
@@ -1225,9 +1471,14 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                             AttachmentView(
                               key: ValueKey(shown.eventId),
                               event: shown,
+                              volume: mediaVolume,
                             )
                           else
                             LinkedText(
+                              selectable: !{
+                                TargetPlatform.iOS,
+                                TargetPlatform.android,
+                              }.contains(defaultTargetPlatform),
                               text: shown.calcUnlocalizedBody(hideReply: true),
                               style: TextStyle(
                                 fontSize: shown.onlyEmotes ? 26 : 14,
@@ -1269,6 +1520,19 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                       : colors.onSurfaceVariant,
                   reactions: reactions,
                   onReaction: (emoji) => perform(() => react(event, emoji)),
+                  saveButton: videoNote && !event.redacted
+                      ? SaveMessageFile(
+                          event: shown,
+                          compact: true,
+                          color: own
+                              ? colors.onPrimary
+                              : colors.onSurfaceVariant,
+                        )
+                      : null,
+                  onCopy:
+                      event.redacted || event.type == mx.EventTypes.Encrypted
+                      ? null
+                      : () => perform(() => eventAction(event, 'copy')),
                 ),
               ),
               if (menu != null) Positioned(top: 0, right: 0, child: menu),
@@ -1289,34 +1553,26 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             child: Listener(
               onPointerDown: menu == null
                   ? null
-                  : (details) async {
-                      if (details.buttons != kSecondaryMouseButton) return;
-                      final overlay =
-                          Overlay.of(context).context.findRenderObject()!
-                              as RenderBox;
-                      final action = await showMenu<String>(
-                        context: context,
-                        position: RelativeRect.fromRect(
-                          Rect.fromLTWH(
-                            details.position.dx,
-                            details.position.dy,
-                            0,
-                            0,
-                          ),
-                          Offset.zero & overlay.size,
-                        ),
-                        items: menuItems,
-                      );
-                      if (action != null && mounted) {
-                        await perform(() => eventAction(event, action));
+                  : (details) {
+                      if (details.buttons == kSecondaryMouseButton) {
+                        openMenu(details.position);
                       }
                     },
-              child: messageExpiry(event) == null
-                  ? content
-                  : ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 526),
-                      child: TemporaryMessage(event: event, child: content),
-                    ),
+              child: GestureDetector(
+                onLongPressStart: menu == null
+                    ? null
+                    : (details) => openMenu(details.globalPosition),
+                child: CopyFeedback(
+                  color: own ? colors.onPrimary : colors.primary,
+                  pulse: copyPulses[event.eventId] ?? 0,
+                  child: messageExpiry(event) == null
+                      ? content
+                      : ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 526),
+                          child: TemporaryMessage(event: event, child: content),
+                        ),
+                ),
+              ),
             ),
           ),
         ),
@@ -1345,6 +1601,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         .where(
           (p) =>
               p['room'] == widget.room.id &&
+              p['id'] != voiceTransaction &&
               (p['error'] != null ||
                   p['type'] != mx.EventTypes.Reaction && p['edit'] == null),
         )
@@ -1436,7 +1693,27 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
             tween: Tween(begin: 0, end: 1),
             builder: (_, opacity, child) =>
                 Opacity(opacity: opacity, child: child),
-            child: bubble(event),
+            child: AnimatedBuilder(
+              animation: voiceFlight,
+              builder: (_, child) => Opacity(
+                opacity: voiceFlightEvent == event.eventId
+                    ? (2 * voiceFlight.value - 1).clamp(0.0, 1.0)
+                    : voiceTransaction != null &&
+                          (event.unsigned?['transaction_id'] ==
+                                  voiceTransaction ||
+                              widget.actions.deliveredEvent(
+                                    voiceTransaction!,
+                                  ) ==
+                                  event.eventId)
+                    ? 0
+                    : 1,
+                child: child,
+              ),
+              child: ChatScaled(
+                percent: ChatScaleScope.of(context)?.messages ?? 80,
+                child: bubble(event),
+              ),
+            ),
           ),
         ],
       );
@@ -1878,48 +2155,91 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         ),
         AnimatedPanel(
           child: unsentVoice != null && !recording
-              ? ListTile(
-                  leading: IconButton(
-                    tooltip: previewPlaying
-                        ? 'Остановить предпросмотр'
-                        : 'Прослушать запись',
-                    icon: Icon(previewPlaying ? Icons.stop : Icons.play_arrow),
-                    onPressed: () => perform(() async {
-                      if (previewPlaying) {
-                        await voicePreview.stop();
-                      } else {
-                        await voicePreview.play(
-                          BytesSource(
-                            unsentVoice!.bytes,
-                            mimeType: 'audio/wav',
-                          ),
-                        );
-                      }
-                      if (mounted) {
-                        setState(() => previewPlaying = !previewPlaying);
-                      }
-                    }),
-                  ),
-                  title: Text(
-                    'Голосовое · ${mediaTime(Duration(milliseconds: unsentVoice!.duration ?? 0))}',
-                  ),
-                  subtitle: keyboardOpen
-                      ? null
-                      : WaveformView(levels: unsentWave ?? [0]),
-                  trailing: Wrap(
-                    children: [
-                      IconButton(
-                        tooltip: 'Удалить готовую запись',
-                        onPressed: () => setState(() {
-                          unawaited(voicePreview.stop());
-                          previewPlaying = false;
-                          unsentVoice = null;
-                          unsentWave = null;
-                          voiceReply = null;
-                        }),
-                        icon: const Icon(Icons.delete_outline),
+              ? RepaintBoundary(
+                  key: voicePreviewKey,
+                  child: AnimatedMessageBorder(
+                    active: voiceSending,
+                    padding: 6,
+                    child: ListTile(
+                      leading: IconButton(
+                        tooltip: previewPlaying
+                            ? 'Остановить предпросмотр'
+                            : 'Прослушать запись',
+                        icon: Icon(
+                          previewPlaying ? Icons.stop : Icons.play_arrow,
+                        ),
+                        onPressed: working
+                            ? null
+                            : () => perform(() async {
+                                if (previewPlaying) {
+                                  await messagePlayback.pause(voicePreview);
+                                } else {
+                                  final request = messagePlayback.request(
+                                    voicePreview,
+                                  );
+                                  await messagePlayback.start(
+                                    voicePreview,
+                                    request,
+                                    () async {
+                                      await voicePreview.setVolume(
+                                        widget.actions.mediaVolume(
+                                          widget.room.id,
+                                        ),
+                                      );
+                                      await voicePreview.play(
+                                        BytesSource(
+                                          unsentVoice!.bytes,
+                                          mimeType: 'audio/wav',
+                                        ),
+                                      );
+                                      if (mounted) {
+                                        setState(() => previewPlaying = true);
+                                      }
+                                    },
+                                    () async {
+                                      await voicePreview.pause();
+                                      if (mounted) {
+                                        setState(() => previewPlaying = false);
+                                      }
+                                    },
+                                  );
+                                }
+                              }),
                       ),
-                    ],
+                      title: Text(
+                        'Голосовое · ${mediaTime(Duration(milliseconds: unsentVoice!.duration ?? 0))}',
+                      ),
+                      subtitle: keyboardOpen
+                          ? null
+                          : WaveformView(levels: unsentWave ?? [0]),
+                      trailing: Wrap(
+                        children: [
+                          IconButton(
+                            tooltip: 'Удалить готовую запись',
+                            onPressed: working
+                                ? null
+                                : () => perform(() async {
+                                    if (voiceTransaction != null) {
+                                      await widget.actions.cancel(
+                                        voiceTransaction!,
+                                      );
+                                    }
+                                    await messagePlayback.pause(voicePreview);
+                                    await voicePreview.stop();
+                                    if (!mounted) return;
+                                    setState(() {
+                                      voiceTransaction = null;
+                                      previewPlaying = false;
+                                      unsentVoice = null;
+                                      unsentWave = null;
+                                      voiceReply = null;
+                                    });
+                                  }),
+                            icon: const Icon(Icons.delete_outline),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 )
               : null,
@@ -1936,7 +2256,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                     onStop: () => finishRecording(),
                   )
                 : Container(
-                    margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                    margin: const EdgeInsets.fromLTRB(8, 8, 8, 12),
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       color: Theme.of(
@@ -1946,11 +2266,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                     ),
                     child: LayoutBuilder(
                       builder: (_, box) {
-                        final photo = IconButton(
-                          tooltip: 'Отправить изображение',
-                          onPressed: working ? null : () => perform(image),
-                          icon: const Icon(Icons.image_outlined),
-                        );
+                        final mobilePhoto =
+                            defaultTargetPlatform == TargetPlatform.iOS ||
+                            defaultTargetPlatform == TargetPlatform.android;
                         final emojiButton = IconButton(
                           tooltip: 'Эмодзи',
                           onPressed: working ? null : emoji,
@@ -1958,22 +2276,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                             Icons.sentiment_satisfied_alt_outlined,
                           ),
                         );
-                        final files = PopupMenuButton<String>(
-                          popUpAnimationStyle: appAnimationStyle(context),
-                          tooltip: 'Прикрепить файл или видео',
-                          enabled: !working,
-                          icon: const Icon(Icons.attach_file),
-                          onSelected: (kind) => perform(() => attachFile(kind)),
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(
-                              value: 'video',
-                              child: Text('Видеофайл'),
-                            ),
-                            PopupMenuItem(value: 'file', child: Text('Файл')),
-                          ],
-                        );
                         final field = Expanded(
                           child: TextField(
+                            readOnly: voiceTransaction != null,
                             controller: input,
                             focusNode: composerFocus,
                             onChanged: (value) {
@@ -1997,68 +2302,94 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                             ),
                           ),
                         );
-                        final voice = IconButton.filledTonal(
-                          tooltip: 'Записать голосовое',
-                          onPressed: working
-                              ? null
-                              : () => perform(startRecording),
-                          icon: const Icon(Icons.mic_none),
-                        );
-                        final video = Listener(
-                          onPointerDown: (event) {
-                            if (working ||
-                                heldVideo.value ||
-                                event.buttons != 1) {
-                              return;
-                            }
-                            videoPointerGesture = true;
-                            videoPointer = event.pointer;
-                            videoOrigin = event.position;
-                            cancelledVideo.value = false;
-                            heldVideo.value = true;
-                            unawaited(
-                              perform(() => attachFile('note', hold: true)),
-                            );
+                        final voice = CallbackShortcuts(
+                          bindings: {
+                            const SingleActivator(
+                              LogicalKeyboardKey.enter,
+                              control: true,
+                            ): () {
+                              if (!working) {
+                                perform(
+                                  videoRecordMode
+                                      ? () => attachFile('note')
+                                      : startRecording,
+                                );
+                              }
+                            },
                           },
-                          onPointerUp: (event) {
-                            if (event.pointer != videoPointer) return;
-                            videoPointer = null;
-                            heldVideo.value = false;
-                            scheduleMicrotask(
-                              () => videoPointerGesture = false,
-                            );
-                          },
-                          onPointerMove: (event) {
-                            if (event.pointer == videoPointer &&
-                                event.position.dx - videoOrigin.dx < -80) {
+                          child: GestureDetector(
+                            excludeFromSemantics: true,
+                            onTap: working
+                                ? null
+                                : () => setState(
+                                    () => videoRecordMode = !videoRecordMode,
+                                  ),
+                            onLongPressStart: working
+                                ? null
+                                : (_) {
+                                    if (videoRecordMode) {
+                                      cancelledVideo.value = false;
+                                      heldVideo.value = true;
+                                      unawaited(
+                                        perform(
+                                          () => attachFile('note', hold: true),
+                                        ),
+                                      );
+                                    } else {
+                                      unawaited(perform(startRecording));
+                                    }
+                                  },
+                            onLongPressEnd: (_) => heldVideo.value = false,
+                            onLongPressMoveUpdate: (details) {
+                              if (details.offsetFromOrigin.dx < -80) {
+                                cancelledVideo.value = true;
+                                heldVideo.value = false;
+                              }
+                            },
+                            onLongPressCancel: () {
                               cancelledVideo.value = true;
                               heldVideo.value = false;
-                            }
-                          },
-                          onPointerCancel: (event) {
-                            if (event.pointer != videoPointer) return;
-                            cancelledVideo.value = true;
-                            heldVideo.value = false;
-                            videoPointer = null;
-                            scheduleMicrotask(
-                              () => videoPointerGesture = false,
-                            );
-                          },
-                          child: Tooltip(
-                            message: 'Видеокружок · удерживайте для записи',
-                            triggerMode: TooltipTriggerMode.manual,
-                            child: IconButton(
-                              // Keyboard and assistive activation keep an explicit finish action.
-                              onPressed: working
+                            },
+                            child: Semantics(
+                              button: true,
+                              enabled: !working,
+                              label: videoRecordMode
+                                  ? 'Видеокружок'
+                                  : 'Голосовое сообщение',
+                              onTap: working
                                   ? null
-                                  : () {
-                                      if (videoPointerGesture) {
-                                        videoPointerGesture = false;
-                                        return;
-                                      }
-                                      perform(() => attachFile('note'));
-                                    },
-                              icon: const Icon(Icons.videocam_outlined),
+                                  : () => setState(
+                                      () => videoRecordMode = !videoRecordMode,
+                                    ),
+                              hint: 'Ctrl+Enter начинает запись',
+                              onLongPress: working
+                                  ? null
+                                  : () => perform(
+                                      videoRecordMode
+                                          ? () => attachFile('note')
+                                          : startRecording,
+                                    ),
+                              child: Tooltip(
+                                triggerMode: TooltipTriggerMode.manual,
+                                message: videoRecordMode
+                                    ? 'Видеокружок · нажмите для аудио, удерживайте для записи'
+                                    : 'Голосовое · нажмите для видео, удерживайте для записи',
+                                child: IgnorePointer(
+                                  child: IconButton.filledTonal(
+                                    onPressed: working
+                                        ? null
+                                        : () => setState(
+                                            () => videoRecordMode =
+                                                !videoRecordMode,
+                                          ),
+                                    icon: Icon(
+                                      videoRecordMode
+                                          ? Icons.videocam_outlined
+                                          : Icons.mic_none,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         );
@@ -2077,114 +2408,120 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                           ),
                           icon: const Icon(Icons.arrow_upward),
                         );
-                        final schedule = PopupMenuButton<String>(
+                        PopupMenuItem<String> action(
+                          String value,
+                          String label,
+                          IconData icon, {
+                          bool enabled = true,
+                        }) => PopupMenuItem(
+                          value: value,
+                          enabled: enabled,
+                          child: Row(
+                            children: [
+                              Icon(icon, size: 20),
+                              const SizedBox(width: 12),
+                              Flexible(child: Text(label)),
+                            ],
+                          ),
+                        );
+                        final attachments = PopupMenuButton<String>(
                           popUpAnimationStyle: appAnimationStyle(context),
-                          tooltip: 'Отложенные сообщения',
-                          enabled: !working && widget.actions.policyUrl != null,
+                          tooltip: 'Вложения и отправка',
+                          enabled: !working,
                           icon: Icon(
-                            Icons.schedule,
-                            color: scheduledFor == null
-                                ? null
-                                : Theme.of(context).colorScheme.primary,
+                            Icons.attach_file,
+                            color:
+                                temporarySeconds != null || scheduledFor != null
+                                ? Theme.of(context).colorScheme.primary
+                                : null,
                           ),
                           onSelected: (value) => perform(() async {
-                            if (value == 'choose') {
-                              await chooseSchedule();
-                            } else {
-                              await showAppDialog<void>(
-                                context: context,
-                                animationStyle: appAnimationStyle(context),
-                                builder: (_) => ScheduledView(
-                                  service: ScheduledMessages(
-                                    widget.room.client,
-                                    widget.actions.policyUrl!,
+                            switch (value) {
+                              case 'image':
+                                await image();
+                              case 'camera':
+                                await image(camera: true);
+                              case 'file':
+                              case 'video':
+                                await attachFile(value);
+                              case 'temporary':
+                                await chooseTemporaryDuration();
+                              case 'schedule':
+                                await chooseSchedule();
+                              case 'scheduled':
+                                await showAppDialog<void>(
+                                  context: context,
+                                  animationStyle: appAnimationStyle(context),
+                                  builder: (_) => ScheduledView(
+                                    service: ScheduledMessages(
+                                      widget.room.client,
+                                      widget.actions.policyUrl!,
+                                    ),
+                                    roomId: widget.room.id,
                                   ),
-                                  roomId: widget.room.id,
-                                ),
-                              );
+                                );
                             }
                           }),
                           itemBuilder: (_) => [
-                            PopupMenuItem(
-                              value: 'choose',
-                              enabled: edit == null,
-                              child: const Text('Выбрать время отправки'),
+                            action(
+                              'image',
+                              mobilePhoto
+                                  ? 'Изображение из библиотеки'
+                                  : 'Отправить изображение',
+                              Icons.photo_library_outlined,
                             ),
-                            const PopupMenuItem(
-                              value: 'list',
-                              child: Text('Запланированные сообщения'),
+                            if (mobilePhoto)
+                              action(
+                                'camera',
+                                'Сделать фото',
+                                Icons.photo_camera_outlined,
+                              ),
+                            action(
+                              'file',
+                              'Прикрепить файл',
+                              Icons.insert_drive_file_outlined,
+                            ),
+                            action(
+                              'video',
+                              'Прикрепить видео',
+                              Icons.video_file_outlined,
+                            ),
+                            const PopupMenuDivider(),
+                            action(
+                              'temporary',
+                              temporarySeconds == null
+                                  ? 'Временное сообщение'
+                                  : 'Временное сообщение · $temporarySeconds с',
+                              Icons.timer_outlined,
+                              enabled: edit == null,
+                            ),
+                            action(
+                              'schedule',
+                              scheduledFor == null
+                                  ? 'Отложить отправку'
+                                  : 'Изменить время отправки',
+                              Icons.schedule,
+                              enabled:
+                                  edit == null &&
+                                  widget.actions.policyUrl != null,
+                            ),
+                            action(
+                              'scheduled',
+                              'Запланированные сообщения',
+                              Icons.event_note_outlined,
+                              enabled: widget.actions.policyUrl != null,
                             ),
                           ],
                         );
-                        final temporary = IconButton(
-                          tooltip: temporarySeconds == null
-                              ? 'Временное сообщение'
-                              : 'Временное сообщение · $temporarySeconds с',
-                          color: temporarySeconds == null
-                              ? null
-                              : Theme.of(context).colorScheme.tertiary,
-                          onPressed: working || edit != null
-                              ? null
-                              : chooseTemporaryDuration,
-                          icon: Icon(
-                            temporarySeconds == null
-                                ? Icons.timer_outlined
-                                : Icons.timer,
-                          ),
+                        return Row(
+                          children: [
+                            attachments,
+                            emojiButton,
+                            field,
+                            voice,
+                            sendButton,
+                          ],
                         );
-                        return box.maxWidth < 500
-                            ? Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Row(
-                                    children: [
-                                      IconButton.filledTonal(
-                                        tooltip: 'Дополнительные действия',
-                                        isSelected: toolsOpen,
-                                        onPressed: () => setState(
-                                          () => toolsOpen = !toolsOpen,
-                                        ),
-                                        icon: Icon(
-                                          toolsOpen
-                                              ? Icons.close_rounded
-                                              : Icons.add_rounded,
-                                        ),
-                                      ),
-                                      field,
-                                      voice,
-                                      sendButton,
-                                    ],
-                                  ),
-                                  AnimatedPanel(
-                                    child: toolsOpen
-                                        ? Wrap(
-                                            alignment: WrapAlignment.center,
-                                            children: [
-                                              emojiButton,
-                                              photo,
-                                              files,
-                                              temporary,
-                                              schedule,
-                                              video,
-                                            ],
-                                          )
-                                        : null,
-                                  ),
-                                ],
-                              )
-                            : Row(
-                                children: [
-                                  photo,
-                                  emojiButton,
-                                  files,
-                                  temporary,
-                                  schedule,
-                                  field,
-                                  voice,
-                                  video,
-                                  sendButton,
-                                ],
-                              );
                       },
                     ),
                   ),
@@ -2193,161 +2530,249 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       ],
     );
     final colors = Theme.of(context).colorScheme;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide =
-            constraints.maxWidth >= 850 &&
-            MediaQuery.textScalerOf(context).scale(16) <= 24;
-        return Row(
-          children: [
-            Expanded(
-              child: ColoredBox(
-                color: colors.surface,
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(child: widget.header),
-                        if (wide)
-                          Semantics(
-                            expanded: detailsOpen,
-                            child: IconButton.filledTonal(
-                              key: const ValueKey('chat-details-toggle'),
-                              tooltip: detailsOpen
-                                  ? 'Свернуть панель чата'
-                                  : 'Открыть панель чата',
-                              isSelected: detailsOpen,
-                              onPressed: () =>
-                                  setState(() => detailsOpen = !detailsOpen),
-                              icon: const Icon(Icons.view_sidebar_outlined),
-                              selectedIcon: const Icon(
-                                Icons.view_sidebar_rounded,
+    return FileDrop(
+      enabled: !working && widget.room.canSendDefaultMessages,
+      onDrop: (files) => unawaited(perform(() => dropFiles(files))),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final wide =
+              constraints.maxWidth >= 850 &&
+              MediaQuery.textScalerOf(context).scale(16) <= 24;
+          return Row(
+            children: [
+              Expanded(
+                child: ColoredBox(
+                  color: colors.surface,
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: widget.header),
+                          if (wide)
+                            Semantics(
+                              expanded: detailsOpen,
+                              child: IconButton.filledTonal(
+                                key: const ValueKey('chat-details-toggle'),
+                                tooltip: detailsOpen
+                                    ? 'Свернуть панель чата'
+                                    : 'Открыть панель чата',
+                                isSelected: detailsOpen,
+                                onPressed: () =>
+                                    setState(() => detailsOpen = !detailsOpen),
+                                icon: const Icon(Icons.view_sidebar_outlined),
+                                selectedIcon: const Icon(
+                                  Icons.view_sidebar_rounded,
+                                ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                    Expanded(child: body),
-                  ],
+                        ],
+                      ),
+                      Expanded(child: body),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            if (wide)
-              AnimatedPanel(
-                axis: Axis.horizontal,
-                child: detailsOpen
-                    ? SizedBox(
-                        key: const ValueKey('chat-details-panel'),
-                        width: 264,
-                        child: Material(
-                          color: colors.surfaceContainerLowest,
-                          shape: Border(
-                            left: BorderSide(color: colors.outlineVariant),
-                          ),
-                          child: ListView(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 24,
+              if (wide)
+                AnimatedPanel(
+                  axis: Axis.horizontal,
+                  child: detailsOpen
+                      ? SizedBox(
+                          key: const ValueKey('chat-details-panel'),
+                          width: 264,
+                          child: Material(
+                            color: colors.surfaceContainerLowest,
+                            shape: Border(
+                              left: BorderSide(color: colors.outlineVariant),
                             ),
-                            children: [
-                              Center(
-                                child: PersonAvatar(
-                                  name: roomDisplayName(widget.room),
-                                  client: widget.room.client,
-                                  url: roomAvatar(widget.room),
-                                  group: !widget.room.isDirectChat,
-                                  online: roomPresence(widget.room) == 'В сети',
-                                  size: 64,
-                                ),
+                            child: ListView(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 24,
                               ),
-                              const SizedBox(height: 12),
-                              Text(
-                                roomDisplayName(widget.room),
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
-                              Text(
-                                roomPresence(widget.room),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: roomPresence(widget.room) == 'В сети'
-                                      ? onlinePresenceColor(colors)
-                                      : colors.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: 24),
-                              ListTile(
-                                leading: const Icon(Icons.call_outlined),
-                                title: const Text('Голосовой звонок'),
-                                onTap: widget.onVoiceCall,
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.videocam_outlined),
-                                title: const Text('Видеозвонок'),
-                                onTap: widget.onVideoCall,
-                              ),
-                              const Divider(),
-                              ListTile(
-                                leading: const Icon(Icons.search),
-                                title: const Text('Поиск в переписке'),
-                                onTap: searchFocus.requestFocus,
-                              ),
-                              ListTile(
-                                leading: const Icon(
-                                  Icons.calendar_month_outlined,
-                                ),
-                                title: const Text('Перейти к дате'),
-                                onTap: working ? null : () => perform(calendar),
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.info_outline),
-                                title: Text(
-                                  widget.room.isDirectChat
-                                      ? 'Информация о чате'
-                                      : 'Участники и настройки',
-                                ),
-                                onTap: widget.onRoomInfo,
-                              ),
-                              if (widget.actions.policyUrl
-                                  case final String url) ...[
-                                const Divider(),
-                                ListTile(
-                                  leading: const Icon(
-                                    Icons.schedule_send_outlined,
-                                  ),
-                                  title: const Text(
-                                    'Запланированные сообщения',
-                                  ),
-                                  subtitle: const Text(
-                                    'Время отправки и состояние очереди',
-                                  ),
-                                  onTap: () => showAppDialog<void>(
-                                    context: context,
-                                    animationStyle: appAnimationStyle(context),
-                                    builder: (_) => ScheduledView(
-                                      service: ScheduledMessages(
-                                        widget.room.client,
-                                        url,
-                                      ),
-                                      roomId: widget.room.id,
+                              children: [
+                                InkWell(
+                                  onTap: widget.onRoomInfo,
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Semantics(
+                                    button: true,
+                                    label: widget.room.isDirectChat
+                                        ? 'Открыть профиль'
+                                        : 'Открыть информацию о группе',
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Center(
+                                          child: PersonAvatar(
+                                            name: roomDisplayName(widget.room),
+                                            client: widget.room.client,
+                                            url: roomAvatar(widget.room),
+                                            group: !widget.room.isDirectChat,
+                                            online:
+                                                roomPresence(widget.room) ==
+                                                'В сети',
+                                            size: 64,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          roomDisplayName(widget.room),
+                                          textAlign: TextAlign.center,
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleLarge,
+                                        ),
+                                        Text(
+                                          roomPresence(widget.room),
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color:
+                                                roomPresence(widget.room) ==
+                                                    'В сети'
+                                                ? onlinePresenceColor(colors)
+                                                : colors.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
+                                const SizedBox(height: 24),
+                                if (!isPersonalRoom(widget.room))
+                                  ListTile(
+                                    leading: const Icon(Icons.call_outlined),
+                                    title: const Text('Голосовой звонок'),
+                                    onTap: widget.onVoiceCall,
+                                  ),
+                                if (!isPersonalRoom(widget.room))
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.videocam_outlined,
+                                    ),
+                                    title: const Text('Видеозвонок'),
+                                    onTap: widget.onVideoCall,
+                                  ),
+                                const Divider(),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.volume_up_outlined,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Громкость сообщений · ${(widget.actions.mediaVolume(widget.room.id) * 100).round()}%',
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      Slider(
+                                        label: 'Аудио- и видеосообщения',
+                                        value: widget.actions.mediaVolume(
+                                          widget.room.id,
+                                        ),
+                                        divisions: 20,
+                                        onChanged: (value) => unawaited(
+                                          widget.actions
+                                              .setMediaVolume(
+                                                widget.room.id,
+                                                value,
+                                              )
+                                              .catchError((Object e) {
+                                                widget.report(
+                                                  'Не удалось сохранить громкость сообщений.',
+                                                );
+                                              }),
+                                        ),
+                                      ),
+                                      Text(
+                                        'Только аудио- и видеосообщения. Громкость аудио- и видеозвонков регулируется отдельно во время звонка.',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: colors.onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Divider(),
+                                ListTile(
+                                  leading: const Icon(Icons.search),
+                                  title: const Text('Поиск в переписке'),
+                                  onTap: searchFocus.requestFocus,
+                                ),
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.calendar_month_outlined,
+                                  ),
+                                  title: const Text('Перейти к дате'),
+                                  onTap: working
+                                      ? null
+                                      : () => perform(calendar),
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.info_outline),
+                                  title: Text(
+                                    widget.room.isDirectChat
+                                        ? 'Информация о чате'
+                                        : 'Участники и настройки',
+                                  ),
+                                  onTap: widget.onRoomInfo,
+                                ),
+                                if (widget.actions.policyUrl
+                                    case final String url) ...[
+                                  const Divider(),
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.schedule_send_outlined,
+                                    ),
+                                    title: const Text(
+                                      'Запланированные сообщения',
+                                    ),
+                                    subtitle: const Text(
+                                      'Время отправки и состояние очереди',
+                                    ),
+                                    onTap: () => showAppDialog<void>(
+                                      context: context,
+                                      animationStyle: appAnimationStyle(
+                                        context,
+                                      ),
+                                      builder: (_) => ScheduledView(
+                                        service: ScheduledMessages(
+                                          widget.room.client,
+                                          url,
+                                        ),
+                                        roomId: widget.room.id,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                      )
-                    : null,
-              ),
-          ],
-        );
-      },
+                        )
+                      : null,
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
 
   @override
   void dispose() {
+    voiceFlight.dispose();
     updateGuards.remove(prepareUpdate);
     input.removeListener(saveDraft);
     releaseCapture(voiceCancellation);
@@ -2356,7 +2781,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     heldVideo.dispose();
     cancelledVideo.dispose();
     cancelFile = true;
-    if (fileProgress == null) {
+    if (fileProgress == null && !preserveDraft) {
       for (final source in draftFiles) {
         unawaited(source.release());
       }
@@ -2367,7 +2792,15 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     recordingMeter?.cancel();
     unawaited(recordingStream?.cancel());
     unawaited(recorder.dispose());
-    unawaited(voicePreview.dispose());
+    unawaited(
+      messagePlayback
+          .pause(voicePreview)
+          .whenComplete(() async {
+            await voicePreview.dispose();
+            messagePlayback.closed(voicePreview);
+          })
+          .catchError((Object _) {}),
+    );
     unawaited(widget.room.setTyping(false).catchError((Object _) {}));
     input.dispose();
     searchFocus.dispose();
@@ -2380,7 +2813,8 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
 
 class AttachmentView extends StatefulWidget {
   final mx.Event event;
-  const AttachmentView({super.key, required this.event});
+  final double volume;
+  const AttachmentView({super.key, required this.event, this.volume = 1});
   @override
   State<AttachmentView> createState() => _AttachmentViewState();
 }
@@ -2388,19 +2822,50 @@ class AttachmentView extends StatefulWidget {
 class _AttachmentViewState extends State<AttachmentView> {
   late final player = AudioPlayer();
   Future<mx.MatrixFile>? download;
-  bool playing = false;
+  Uint8List? playbackBytes;
+  bool playing = false, loading = false;
   Duration position = Duration.zero;
   StreamSubscription<Duration>? positionUpdates;
+  Duration get duration {
+    final value = widget.event.infoMap['duration'];
+    return Duration(
+      milliseconds: value is num && value.isFinite && value > 0
+          ? value.toInt()
+          : 0,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     if (widget.event.messageType != mx.MessageTypes.Audio) return;
     positionUpdates = player.onPositionChanged.listen((value) {
-      if (mounted) setState(() => position = value);
+      if (mounted) {
+        setState(
+          () => position = player.state == PlayerState.completed
+              ? duration
+              : value,
+        );
+      }
     });
     player.onPlayerComplete.listen((_) {
-      if (mounted) setState(() => playing = false);
+      messagePlayback.closed(this);
+      if (mounted) {
+        setState(() {
+          playing = false;
+          position = duration;
+        });
+      }
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant AttachmentView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.volume != oldWidget.volume &&
+        widget.event.messageType == mx.MessageTypes.Audio) {
+      unawaited(player.setVolume(widget.volume));
+    }
   }
 
   Future<mx.MatrixFile> load() async {
@@ -2414,16 +2879,44 @@ class _AttachmentViewState extends State<AttachmentView> {
     return widget.event.downloadAndDecryptAttachment();
   }
 
-  Future<void> play() async {
+  Future<void> pause() async {
+    await player.pause();
+    if (mounted) setState(() => playing = false);
+  }
+
+  Future<void> play({Duration? at, bool pauseAfter = false}) async {
+    if (loading) return;
+    setState(() => loading = true);
     try {
-      if (playing) {
-        await player.pause();
-      } else {
-        final file = await (download ??= load());
-        await player.play(BytesSource(file.bytes, mimeType: file.mimeType));
+      if (playing && at == null) {
+        await messagePlayback.pause(this);
+        return;
       }
-      if (mounted) setState(() => playing = !playing);
+      final request = messagePlayback.request(this);
+      final file = await (download ??= load());
+      if (!mounted) return;
+      playbackBytes ??= normalizedVoice(file.bytes);
+      await messagePlayback.start(this, request, () async {
+        await player.setVolume(widget.volume);
+        if (player.source != null && player.state == PlayerState.paused) {
+          if (at != null) await player.seek(at);
+          if (!pauseAfter) await player.resume();
+        } else if (pauseAfter) {
+          await player.setSource(
+            BytesSource(playbackBytes!, mimeType: file.mimeType),
+          );
+          await player.seek(at ?? Duration.zero);
+          await player.pause();
+        } else {
+          await player.play(
+            BytesSource(playbackBytes!, mimeType: file.mimeType),
+            position: at,
+          );
+        }
+        if (mounted) setState(() => playing = !pauseAfter);
+      }, pause);
     } catch (_) {
+      download = null; // Allow a transient failed download to be retried.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -2433,15 +2926,14 @@ class _AttachmentViewState extends State<AttachmentView> {
           ),
         );
       }
+    } finally {
+      if (mounted) setState(() => loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.event.messageType == mx.MessageTypes.Audio) {
-      final duration = Duration(
-        milliseconds: (widget.event.infoMap['duration'] as num? ?? 0).toInt(),
-      );
       final raw = widget.event.content['dev.voicechat.waveform'];
       final wave =
           raw is List &&
@@ -2457,7 +2949,7 @@ class _AttachmentViewState extends State<AttachmentView> {
           : colors.secondaryContainer;
       final foreground = own ? colors.onPrimary : colors.onSecondaryContainer;
       final waveAccent = colors.brightness == Brightness.dark
-          ? Color.lerp(foreground, Colors.white, .2)!
+          ? Color.lerp(colors.onSurface, Colors.white, .5)!
           : colors.primary;
       final caption = widget.event.content['dev.voicechat.caption'];
       return Container(
@@ -2479,17 +2971,26 @@ class _AttachmentViewState extends State<AttachmentView> {
               children: [
                 IconButton.filledTonal(
                   tooltip: playing ? 'Приостановить' : 'Прослушать',
-                  onPressed: play,
+                  onPressed: loading ? null : () => play(),
                   style: IconButton.styleFrom(
                     backgroundColor: colors.surfaceContainerLowest.withValues(
                       alpha: .8,
                     ),
                     foregroundColor: waveAccent,
                   ),
-                  icon: Icon(
-                    playing ? Icons.pause : Icons.play_arrow,
-                    color: waveAccent,
-                  ),
+                  icon: loading
+                      ? SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: waveAccent,
+                          ),
+                        )
+                      : Icon(
+                          playing ? Icons.pause : Icons.play_arrow,
+                          color: waveAccent,
+                        ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -2502,17 +3003,26 @@ class _AttachmentViewState extends State<AttachmentView> {
                           context,
                         ).textTheme.labelSmall?.copyWith(color: foreground),
                       ),
-                      if (wave.isNotEmpty)
-                        WaveformView(
-                          levels: wave,
-                          color: waveAccent,
-                          progress: duration.inMilliseconds <= 0
-                              ? 0
-                              : position.inMilliseconds /
-                                    duration.inMilliseconds,
-                        )
-                      else
-                        Icon(Icons.graphic_eq, color: foreground),
+                      WaveformView(
+                        levels: wave.isEmpty ? List.filled(32, 96) : wave,
+                        onSeek: loading || duration.inMilliseconds <= 0
+                            ? null
+                            : (fraction) {
+                                final target = Duration(
+                                  milliseconds:
+                                      (duration.inMilliseconds * fraction)
+                                          .round(),
+                                );
+                                setState(() => position = target);
+                                unawaited(
+                                  play(at: target, pauseAfter: !playing),
+                                );
+                              },
+                        color: waveAccent,
+                        progress: duration.inMilliseconds <= 0
+                            ? 0
+                            : position.inMilliseconds / duration.inMilliseconds,
+                      ),
                       Text(
                         '${mediaTime(position)} / ${mediaTime(duration)}',
                         style: Theme.of(
@@ -2573,7 +3083,18 @@ class _AttachmentViewState extends State<AttachmentView> {
   void dispose() {
     if (widget.event.messageType == mx.MessageTypes.Audio) {
       unawaited(positionUpdates?.cancel());
-      unawaited(player.dispose());
+      unawaited(
+        messagePlayback
+            .pause(this)
+            .whenComplete(() async {
+              try {
+                await player.dispose();
+              } finally {
+                messagePlayback.closed(this);
+              }
+            })
+            .catchError((Object _) {}),
+      );
     }
     super.dispose();
   }

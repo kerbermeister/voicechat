@@ -1,3 +1,5 @@
+import 'participant_quality.dart';
+import 'speaking_avatar.dart';
 import 'app_motion.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -61,6 +63,7 @@ class _CallWindowState extends State<CallWindow> {
     final current = active != null && !active.isClosed ? active : null;
     final direct = calls.directInvitations.firstOrNull;
     final group = calls.invitations.values.firstOrNull;
+    final remote = calls.devices.remote.values.firstOrNull;
     final nextRoom =
         current?.chat ??
         (calls.starting || calls.dialError != null
@@ -68,6 +71,7 @@ class _CallWindowState extends State<CallWindow> {
             : null) ??
         direct?.chat ??
         group?.room ??
+        remote?.room ??
         active?.chat;
     if (room != nextRoom) {
       room = nextRoom;
@@ -88,6 +92,8 @@ class _CallWindowState extends State<CallWindow> {
             : current?.connection ??
                   (direct != null || group != null
                       ? 'Входящий звонок'
+                      : remote != null
+                      ? 'Идёт звонок с ${roomDisplayName(remote.room)} на другом устройстве'
                       : 'Звонок завершён'));
     final colors = Theme.of(context).colorScheme;
     final video = current?.video ?? direct?.video ?? group?.video ?? false;
@@ -123,14 +129,14 @@ class _CallWindowState extends State<CallWindow> {
       ),
       child: LayoutBuilder(
         builder: (context, box) {
-          if (video && current != null && calls.screen == null) {
+          if (video && current != null) {
             return Column(
               children: [
                 Row(
                   children: [
                     Expanded(
                       child: Text(
-                        room?.getLocalizedDisplayname() ?? 'Видеозвонок',
+                        room == null ? 'Видеозвонок' : roomDisplayName(room!),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -142,10 +148,14 @@ class _CallWindowState extends State<CallWindow> {
                   ],
                 ),
                 Expanded(
-                  child: CallVideoGrid(
-                    key: ValueKey(current.session),
-                    call: current,
-                  ),
+                  child: calls.screen?.snapshot?.state == 'active'
+                      ? SingleChildScrollView(
+                          child: ScreenPanel(controller: calls.screen!),
+                        )
+                      : CallVideoGrid(
+                          key: ValueKey(current.session),
+                          call: current,
+                        ),
                 ),
                 CallQualityIndicator(quality: current.quality),
                 if (error != null)
@@ -153,23 +163,30 @@ class _CallWindowState extends State<CallWindow> {
               ],
             );
           }
-          final compact = video || box.maxHeight < 330;
-          final name =
-              room?.getLocalizedDisplayname() ??
-              (video ? 'Видеозвонок' : 'Голосовой звонок');
+          final compact = current != null && (video || box.maxHeight < 330);
+          final name = room == null
+              ? (video ? 'Видеозвонок' : 'Голосовой звонок')
+              : roomDisplayName(room!);
           final incoming =
               current == null &&
               !calls.starting &&
               (direct != null || group != null);
           final avatar = CallAvatar(
             incoming: incoming,
-            child: PersonAvatar(
-              name: name,
-              client: calls.client,
-              url: room == null ? null : roomAvatar(room!),
-              group: room?.isDirectChat == false,
-              showPresence: false,
-              size: compact ? 64 : 104,
+            child: SpeakingAvatar(
+              call: current is DirectCall ? current : null,
+              identity: current is DirectCall
+                  ? current.call.remoteUserId ?? ''
+                  : '',
+              enabled: calls.screen?.snapshot?.state != 'active',
+              child: PersonAvatar(
+                name: name,
+                client: calls.client,
+                url: room == null ? null : roomAvatar(room!),
+                group: room?.isDirectChat == false,
+                showPresence: false,
+                size: compact ? 64 : 104,
+              ),
             ),
           );
           final details = Column(
@@ -203,7 +220,13 @@ class _CallWindowState extends State<CallWindow> {
               ],
               if (current != null) ...[
                 const SizedBox(height: 8),
-                CallQualityIndicator(quality: current.quality),
+                if (current is DirectCall)
+                  ParticipantStatusBadge(
+                    call: current,
+                    identity: current.call.remoteUserId ?? '',
+                  )
+                else
+                  CallQualityIndicator(quality: current.quality),
               ],
             ],
           );
@@ -248,7 +271,7 @@ class _CallWindowState extends State<CallWindow> {
                         call: current,
                       ),
                     ),
-                  ] else if (room?.isDirectChat == false)
+                  ] else if (room?.isDirectChat == false && !incoming)
                     FutureBuilder<List<mx.User>>(
                       future: members,
                       builder: (_, snapshot) {
@@ -265,13 +288,27 @@ class _CallWindowState extends State<CallWindow> {
                             if (people.isNotEmpty) const SizedBox(height: 20),
                             for (final user in people)
                               ListTile(
-                                leading: PersonAvatar(
-                                  name: user.displayName ?? user.id,
-                                  client: calls.client,
-                                  url: user.avatarUrl,
-                                  online: connected.contains(user.id),
-                                  size: 36,
+                                leading: SpeakingAvatar(
+                                  call: current,
+                                  identity: user.id,
+                                  enabled:
+                                      calls.screen?.snapshot?.state != 'active',
+                                  child: PersonAvatar(
+                                    name: user.displayName ?? user.id,
+                                    client: calls.client,
+                                    url: user.avatarUrl,
+                                    online: connected.contains(user.id),
+                                    size: 36,
+                                  ),
                                 ),
+                                trailing:
+                                    current != null &&
+                                        connected.contains(user.id)
+                                    ? ParticipantStatusBadge(
+                                        call: current,
+                                        identity: user.id,
+                                      )
+                                    : null,
                                 title: Text(user.displayName ?? user.id),
                                 subtitle: Text(
                                   connected.contains(user.id)
@@ -300,20 +337,48 @@ class _CallWindowState extends State<CallWindow> {
             .clamp(100, 850)
             .toDouble(),
         child: Wrap(
-          alignment: WrapAlignment.end,
-          spacing: 4,
+          alignment: WrapAlignment.center,
+          spacing: 12,
+          runSpacing: 12,
           children: [
             if (current != null) ...[
-              if (video) ...[
+              ...[
                 IconButton(
                   tooltip: current.cameraEnabled
                       ? 'Выключить камеру'
                       : 'Включить камеру',
-                  onPressed: busy
+                  onPressed: busy || calls.screen?.sharing == true
                       ? null
-                      : () => perform(
-                          () => current.camera(!current.cameraEnabled),
-                        ),
+                      : () => perform(() async {
+                          final enable = !current.cameraEnabled;
+                          if (enable) {
+                            final confirmed = await showAppDialog<bool>(
+                              context: context,
+                              builder: (dialogContext) => AlertDialog(
+                                title: const Text(
+                                  'Вы действительно хотите включить камеру?',
+                                ),
+                                content: const Text(
+                                  'Включится только ваша камера.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, false),
+                                    child: const Text('Отмена'),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, true),
+                                    child: const Text('Включить'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmed != true) return;
+                          }
+                          await current.camera(enable);
+                        }),
                   icon: Icon(
                     current.cameraEnabled ? Icons.videocam : Icons.videocam_off,
                   ),
@@ -334,6 +399,111 @@ class _CallWindowState extends State<CallWindow> {
                     ? null
                     : () => perform(() => current.mute(!current.muted)),
                 icon: Icon(current.muted ? Icons.mic_off : Icons.mic),
+              ),
+              if (calls.screen != null)
+                IconButton(
+                  tooltip: 'Демонстрация экрана',
+                  icon: const Icon(Icons.screen_share_outlined),
+                  onPressed: () => showAppDialog<void>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Демонстрация экрана'),
+                      content: SingleChildScrollView(
+                        child: ScreenPanel(controller: calls.screen!),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Закрыть'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              IconButton(
+                tooltip: 'Громкость собеседников',
+                icon: const Icon(Icons.volume_up_outlined),
+                onPressed: () => showAppDialog<void>(
+                  context: context,
+                  builder: (dialogContext) => StatefulBuilder(
+                    builder: (_, update) => AlertDialog(
+                      title: const Text('Громкость собеседников'),
+                      content: SizedBox(
+                        width: 420,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              for (final user in calls.audio.people(
+                                current,
+                              )) ...[
+                                Text(
+                                  current.chat
+                                          .getParticipants()
+                                          .where((p) => p.id == user)
+                                          .firstOrNull
+                                          ?.displayName ??
+                                      user
+                                          .split(':')
+                                          .first
+                                          .replaceFirst('@', ''),
+                                ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Slider(
+                                        min: 0,
+                                        max: 3,
+                                        divisions: 60,
+                                        value: calls.audio.level(user),
+                                        label:
+                                            '${(calls.audio.level(user) * 100).round()}%',
+                                        onChanged: (value) {
+                                          final change = calls.audio.set(
+                                            current,
+                                            user,
+                                            value,
+                                          );
+                                          update(() {});
+                                          unawaited(
+                                            change.catchError((Object _) {
+                                              if (mounted) {
+                                                setState(
+                                                  () => error =
+                                                      'Не удалось изменить громкость.',
+                                                );
+                                              }
+                                            }),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                    SizedBox(
+                                      width: 48,
+                                      child: Text(
+                                        '${(calls.audio.level(user) * 100).round()}%',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              const Text(
+                                '0% — не слышать, 100% — обычный уровень, до 300% — усиление.',
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          child: const Text('Закрыть'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
               IconButton(
                 tooltip: kIsWeb ? 'Включить звук' : 'Аудиовыход',
@@ -392,7 +562,7 @@ class _CallWindowState extends State<CallWindow> {
         ),
       ),
     ];
-    if (video && current != null && calls.screen == null) {
+    if ((video && current != null) || MediaQuery.sizeOf(context).width < 600) {
       return Dialog.fullscreen(
         child: SafeArea(
           child: Column(

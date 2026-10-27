@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -74,21 +75,32 @@ void main() {
           await tester.pump();
           final field = find.widgetWithText(TextField, 'Написать сообщение…');
           expect(tester.getSize(field).width, greaterThanOrEqualTo(100));
-          expect(find.byTooltip('Записать голосовое'), findsOneWidget);
+          expect(
+            find.byTooltip(
+              'Голосовое · нажмите для видео, удерживайте для записи',
+            ),
+            findsOneWidget,
+          );
           expect(find.byTooltip('Отправить изображение'), findsNothing);
           await tester.enterText(field, 'Черновик остаётся на месте');
-          await tester.tap(find.byTooltip('Дополнительные действия'));
+          await tester.tap(find.byTooltip('Вложения и отправка'));
           await tester.pump();
-          for (final tooltip in [
-            'Эмодзи',
-            'Отправить изображение',
-            'Прикрепить файл или видео',
+          for (final label in [
+            defaultTargetPlatform == TargetPlatform.iOS ||
+                    defaultTargetPlatform == TargetPlatform.android
+                ? 'Изображение из библиотеки'
+                : 'Отправить изображение',
+            'Прикрепить файл',
+            'Прикрепить видео',
             'Временное сообщение',
-            'Отложенные сообщения',
-            'Видеокружок · удерживайте для записи',
+            'Отложить отправку',
+            'Запланированные сообщения',
           ]) {
-            expect(find.byTooltip(tooltip), findsOneWidget);
+            expect(find.text(label), findsOneWidget);
           }
+          expect(find.byTooltip('Эмодзи'), findsOneWidget);
+          await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+          await tester.pumpAndSettle();
           expect(
             tester.widget<TextField>(field).controller!.text,
             'Черновик остаётся на месте',

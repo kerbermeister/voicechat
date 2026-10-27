@@ -13,6 +13,8 @@ class MediaTrack implements rtc.MediaStreamTrack {
   @override
   final String kind;
   bool stopped = false;
+  @override
+  bool enabled = true;
   MediaTrack(this.id, this.kind);
   @override
   Map<String, dynamic> getSettings() => {'facingMode': 'front'};
@@ -44,10 +46,14 @@ class MediaStream implements rtc.MediaStream {
 }
 
 class Feed implements mx.WrappedMediaStream {
+  final bool local;
+  Feed({this.local = true});
+  @override
+  bool videoMuted = false;
   @override
   final MediaStream stream = MediaStream();
   @override
-  bool isLocal() => true;
+  bool isLocal() => local;
   @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
@@ -62,8 +68,58 @@ class MediaSession extends VideoSession {
   bool get isLocalVideoMuted => false;
 }
 
+class UpgradeSession extends MediaSession {
+  UpgradeSession(super.room);
+  @override
+  mx.CallType get type => mx.CallType.kVoice;
+  @override
+  final Feed remoteUserMediaStream = Feed(local: false);
+  @override
+  List<mx.WrappedMediaStream> get getRemoteStreams => [remoteUserMediaStream];
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'Late remote video upgrades an audio call on feed events without a call state change',
+    () async {
+      var texture = 0;
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('FlutterWebRTC.Method'),
+        (method) async {
+          if (method.method == 'createVideoRenderer') {
+            return {'textureId': ++texture};
+          }
+          return null;
+        },
+      );
+      final client = mx.Client('upgrade', database: OutboxDatabase());
+      final session = UpgradeSession(OutboxRoom(client));
+      session.localUserMediaStream.stream.tracks.clear();
+      session.remoteUserMediaStream.stream.tracks.clear();
+      final call = DirectCall(session, () {}, (_) {});
+      expect(call.video, false);
+      session.remoteUserMediaStream.stream.tracks.add(
+        MediaTrack('late-video', 'video'),
+      );
+      session.onCallStreamsChanged.add(session);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(call.video, true);
+      expect(call.remoteVideo, isNotNull);
+      expect(call.cameraEnabled, false);
+      session.remoteUserMediaStream.videoMuted = true;
+      session.onCallStreamsChanged.add(session);
+      await Future<void>.delayed(Duration.zero);
+      expect(call.video, false);
+      await call.close();
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('FlutterWebRTC.Method'),
+        null,
+      );
+    },
+  );
   test(
     'Rear selection is strict, front permits desktop cameras without facingMode, audio is untouched',
     () {

@@ -7,12 +7,14 @@ import 'matrix_probe.dart';
 import 'voice_call.dart';
 import 'call_quality.dart';
 import 'camera_capture.dart';
+import 'audio_levels.dart';
 
 /// Matrix authenticates SDP/ICE; WebRTC supplies DTLS-SRTP end to end, including over TURN.
 class DirectCall implements VoiceCall {
   final mx.CallSession call;
   final void Function() changed;
   final void Function(String) report;
+  final _rendering = <mx.WrappedMediaStream>{};
   final _renderers = <rtc.RTCVideoRenderer>[];
   rtc.RTCVideoRenderer? localVideo;
   rtc.RTCVideoRenderer? remoteVideo;
@@ -22,14 +24,51 @@ class DirectCall implements VoiceCall {
   final _streams = <mx.WrappedMediaStream, rtc.RTCVideoRenderer>{};
   final _renderedTracks = <rtc.RTCVideoRenderer, List<String>>{};
   final _statistics = CallStatistics();
+  final audioLevels = AudioLevels();
+  bool _readingLevels = false;
+  DateTime _levelsReadAt = DateTime(1970);
+
+  Future<void> pollAudioLevels() async {
+    if (isClosed || call.state != mx.CallState.kConnected) {
+      audioLevels.read([]);
+      return;
+    }
+    if (_readingLevels ||
+        DateTime.now().difference(_levelsReadAt).inMilliseconds < 100) {
+      return;
+    }
+    _readingLevels = true;
+    _levelsReadAt = DateTime.now();
+    try {
+      final reports =
+          await (call.pc?.getStats() ?? Future.value(<rtc.StatsReport>[]))
+              .timeout(const Duration(milliseconds: 800));
+      audioLevels.read(isClosed ? [] : reports);
+    } catch (_) {
+      audioLevels.read([]);
+    } finally {
+      _readingLevels = false;
+    }
+  }
+
   @override
   VideoQuality videoQuality = VideoQuality.auto;
   @override
   CallQuality quality = CallQuality.unknown;
   @override
-  bool get video => call.type == mx.CallType.kVideo;
+  bool get video =>
+      call.type == mx.CallType.kVideo ||
+      cameraEnabled ||
+      (call.remoteUserMediaStream?.stream?.getVideoTracks().isNotEmpty ==
+              true &&
+          call.remoteUserMediaStream?.videoMuted != true);
   @override
-  bool get cameraEnabled => video && !call.isLocalVideoMuted;
+  bool get cameraEnabled =>
+      !call.isLocalVideoMuted &&
+      (call.localUserMediaStream?.stream?.getVideoTracks().any(
+            (t) => t.enabled,
+          ) ??
+          false);
   final _subscriptions = <StreamSubscription<dynamic>>[];
   Timer? _authorizationTimer;
   Set<String>? _devices;
@@ -42,13 +81,16 @@ class DirectCall implements VoiceCall {
   DirectCall(this.call, this.changed, this.report) {
     _subscriptions.add(
       call.onCallStateChanged.stream.listen((_) {
-        // onTrack can add audio after video, without emitting another onStreamAdd.
-        for (final entry in _streams.entries) {
-          _updateRenderer(entry.key, entry.value);
-        }
+        _refreshStreams();
         if (call.state == mx.CallState.kConnected) _clock.start();
         changed();
         if (isClosed) unawaited(close());
+      }),
+    );
+    _subscriptions.add(
+      call.onCallStreamsChanged.stream.listen((_) {
+        _refreshStreams();
+        changed();
       }),
     );
     _subscriptions.add(
@@ -59,6 +101,21 @@ class DirectCall implements VoiceCall {
       }),
     );
   }
+  void _refreshStreams() {
+    // SDK feed changes include late tracks and mute metadata without a new call state.
+    for (final entry in _streams.entries) {
+      _updateRenderer(entry.key, entry.value);
+    }
+    if (video) {
+      for (final stream in [
+        ...call.getLocalStreams,
+        ...call.getRemoteStreams,
+      ]) {
+        if (!_streams.containsKey(stream)) unawaited(_render(stream));
+      }
+    }
+  }
+
   @override
   mx.Room get chat => call.room;
   @override
@@ -86,9 +143,11 @@ class DirectCall implements VoiceCall {
           _ => 'Подключаем звонок',
         };
   Future<void> _render(mx.WrappedMediaStream stream) async {
+    if (_streams.containsKey(stream)) return;
     if (!kIsWeb && !video) {
       return; // Native WebRTC renders audio itself; web needs a media element.
     }
+    if (!_rendering.add(stream)) return;
     final renderer = rtc.RTCVideoRenderer();
     try {
       await renderer.initialize();
@@ -113,6 +172,8 @@ class DirectCall implements VoiceCall {
       await renderer.dispose();
       await close();
       report('Не удалось включить аудио.');
+    } finally {
+      _rendering.remove(stream);
     }
   }
 
@@ -127,6 +188,13 @@ class DirectCall implements VoiceCall {
     if (!listEquals(_renderedTracks[renderer], tracks)) {
       renderer.srcObject = stream.stream;
       _renderedTracks[renderer] = tracks;
+    }
+    if (video) {
+      if (stream.isLocal()) {
+        localVideo = renderer;
+      } else {
+        remoteVideo = renderer;
+      }
     }
   }
 
@@ -194,17 +262,17 @@ class DirectCall implements VoiceCall {
 
   @override
   Future<void> camera(bool enabled) async {
-    if (!video || isClosed || enabled == cameraEnabled) return;
+    if (isClosed || enabled == cameraEnabled) return;
+    if (enabled) await authorize();
     final stream = call.localUserMediaStream?.stream;
     if (stream == null) throw StateError('Camera stream unavailable');
     final senders = await call.pc!.getSenders();
     _cameraSender ??= senders
         .where((s) => s.track?.kind == 'video')
         .firstOrNull;
-    if (_cameraSender == null) throw StateError('Camera sender unavailable');
     if (!enabled) {
       await call.setLocalVideoMuted(true);
-      await replaceCameraTrack(_cameraSender!, null);
+      if (_cameraSender != null) await replaceCameraTrack(_cameraSender!, null);
       for (final track in stream.getVideoTracks()) {
         await stream.removeTrack(track);
         await track.stop();
@@ -215,7 +283,11 @@ class DirectCall implements VoiceCall {
         if (isClosed) throw StateError('Call ended during camera permission');
         final track = capture.getVideoTracks().single;
         await stream.addTrack(track);
-        await replaceCameraTrack(_cameraSender!, track);
+        if (_cameraSender == null) {
+          _cameraSender = await call.pc!.addTrack(track, stream);
+        } else {
+          await replaceCameraTrack(_cameraSender!, track);
+        }
         // Capture and sender replacement are complete; do not reacquire the
         // default camera/microphone through Matrix's audio-only upgrade path.
         call.localUserMediaStream?.setVideoMuted(false);
@@ -223,7 +295,9 @@ class DirectCall implements VoiceCall {
       } catch (_) {
         call.localUserMediaStream?.setVideoMuted(true);
         try {
-          await replaceCameraTrack(_cameraSender!, null);
+          if (_cameraSender != null) {
+            await replaceCameraTrack(_cameraSender!, null);
+          }
         } catch (_) {
           // A closed peer connection cannot detach, but capture still must stop.
         } finally {
@@ -242,6 +316,9 @@ class DirectCall implements VoiceCall {
         }
         await capture.dispose();
       }
+    }
+    if (enabled && localVideo == null && call.localUserMediaStream != null) {
+      await _render(call.localUserMediaStream!);
     }
     localVideo?.srcObject = stream;
     changed();

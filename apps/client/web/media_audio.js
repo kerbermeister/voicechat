@@ -4,13 +4,15 @@
   const buffers = new Map();
   const sources = new Map();
   const wanted = new Map();
+  const callLevels = new Map();
+  const callGraphs = new WeakMap();
   function audioContext() {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) throw new Error('Web Audio unavailable');
     return context ??= new AudioContext();
   }
   async function load(name) {
-    if (!['sent', 'received', 'ringtone', 'ringback'].includes(name)) throw new Error('Unknown sound');
+    if (!['sent', 'received', 'ringtone', 'ringback', 'ended'].includes(name)) throw new Error('Unknown sound');
     if (!buffers.has(name)) buffers.set(name, (async () => {
       const response = await fetch(new URL(`assets/assets/sounds/${name}.wav`, document.baseURI));
       if (!response.ok) throw new Error('Sound unavailable');
@@ -40,7 +42,28 @@
     return true;
   }
   function callElements() {
-    return [...document.querySelectorAll('audio')].filter(e => e.srcObject && !e.muted);
+    return [...document.querySelectorAll('audio,video')].filter(e => e.srcObject && !e.muted);
+  }
+  async function syncCallVolumes() {
+    for (const element of callElements()) {
+      if (typeof element.srcObject.getAudioTracks !== 'function') continue;
+      const track = element.srcObject.getAudioTracks().find(t => callLevels.has(t.id));
+      if (!track) continue;
+      const level = callLevels.get(track.id);
+      let graph = callGraphs.get(element);
+      if (!graph && level <= 1) { element.volume = level; continue; }
+      const ctx = audioContext();
+      if (ctx.state !== 'running') await ctx.resume();
+      graph = callGraphs.get(element);
+      if (!graph) {
+        const source = ctx.createMediaElementSource(element);
+        const gain = ctx.createGain();
+        source.connect(gain); gain.connect(ctx.destination);
+        graph = {source, gain}; callGraphs.set(element, graph);
+      }
+      element.volume = 1;
+      graph.gain.gain.setTargetAtTime(level, ctx.currentTime, 0.02);
+    }
   }
   async function resumeCalls() {
     const results = await Promise.allSettled(callElements().map(e => e.play()));
@@ -64,7 +87,7 @@
     void resumeCalls();
   }
   window.VoiceChatAudio = {
-    prepare() { for (const name of ['sent', 'received', 'ringtone', 'ringback']) void load(name).catch(() => {}); },
+    prepare() { for (const name of ['sent', 'received', 'ringtone', 'ringback', 'ended']) void load(name).catch(() => {}); },
     async play(channel, name, loop) {
       const ok = await play(channel, name, loop);
       const request = wanted.get(channel);
@@ -72,6 +95,12 @@
       return ok;
     },
     stop,
+    async setCallVolume(id, level) {
+      if (typeof id !== 'string' || !Number.isFinite(level) || level < 0 || level > 3) throw new Error('Invalid receiver volume');
+      callLevels.set(id, level);
+      await syncCallVolumes();
+    },
+    forgetCallVolume(id) { callLevels.delete(id); },
     async resume() { unlock(); return resumeCalls(); },
     close() { stop('ring'); stop('effect'); },
   };
@@ -81,7 +110,10 @@
   document.addEventListener('click', unlock, true);
   document.addEventListener('keydown', unlock, true);
   document.addEventListener('loadedmetadata', event => {
-    if (event.target.tagName === 'AUDIO' && event.target.srcObject && !event.target.muted) void resumeCalls();
+    if (['AUDIO', 'VIDEO'].includes(event.target.tagName) && event.target.srcObject && !event.target.muted) {
+      void resumeCalls();
+      void syncCallVolumes().catch(() => {});
+    }
   }, true);
-  new MutationObserver(() => { void resumeCalls(); }).observe(document.body, {childList: true, subtree: true});
+  new MutationObserver(() => { void resumeCalls(); void syncCallVolumes().catch(() => {}); }).observe(document.body, {childList: true, subtree: true});
 })();

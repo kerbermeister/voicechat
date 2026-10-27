@@ -48,7 +48,7 @@ Future<List<PickedFile>> chooseFiles({
 
 PickedFile fileSource(web.File file) => PickedFile(
   name: file.name,
-  mime: file.type.isEmpty ? 'application/octet-stream' : file.type,
+  mime: attachmentMime(file.name, file.type),
   size: file.size,
   read: (start, end) async =>
       (await file.slice(start, end).arrayBuffer().toDart).toDart.asUint8List(),

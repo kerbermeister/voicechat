@@ -1,12 +1,34 @@
 import 'package:livekit_client/livekit_client.dart' as lk;
+import 'screen_capture_support.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 
+String screenCaptureNotice(Object error) {
+  if (error is UnsupportedError) {
+    return 'Эта версия браузера или ОС не поддерживает захват экрана.';
+  }
+  final code = RegExp(
+    r'\b(NotAllowedError|InvalidStateError|NotReadableError|NotFoundError|NotSupportedError|AbortError)\b',
+  ).firstMatch(error.toString())?.group(1);
+  return switch (code) {
+    'NotAllowedError' =>
+      'Доступ к экрану не разрешён. Повторите показ и подтвердите системный запрос.',
+    'InvalidStateError' =>
+      'Вернитесь в webapp и снова нажмите «Показать экран».',
+    'NotReadableError' =>
+      'Система не смогла начать захват. Остановите прежний показ и повторите попытку.',
+    'NotFoundError' || 'NotSupportedError' =>
+      'Эта версия браузера или ОС не предоставляет экран для показа.',
+    'AbortError' => 'Системный выбор экрана прерван. Можно начать показ снова.',
+    _ => 'Показ не начат. Проверьте разрешение на захват экрана.',
+  };
+}
+
 /// Исходный захват живёт отдельно от публикаций сменяемых SFU-поколений.
 class ScreenCapture {
   static bool get supported => kIsWeb
-      ? !lk.lkPlatformIsWebMobile()
+      ? browserScreenCaptureSupported
       : defaultTargetPlatform == TargetPlatform.android;
   final lk.LocalVideoTrack source;
   bool _closed = false;
@@ -25,12 +47,35 @@ class ScreenCapture {
       await _native.invokeMethod<void>('start');
     }
     try {
-      final track = await lk.LocalVideoTrack.createScreenShareTrack(
-        const lk.ScreenShareCaptureOptions(
-          captureScreenAudio: false,
-          maxFrameRate: 15,
-        ),
+      const options = lk.ScreenShareCaptureOptions(
+        captureScreenAudio: false,
+        maxFrameRate: 15,
       );
+      final lk.LocalVideoTrack track;
+      if (kIsWeb) {
+        // shortcut: LiveKit 2.13 rejects every mobile browser before API detection.
+        // Use the same track factory until its mobile restriction is removed.
+        final stream = await rtc.navigator.mediaDevices.getDisplayMedia({
+          'audio': false,
+          'video': {'frameRate': 15},
+        });
+        if (stream.getVideoTracks().isEmpty) {
+          for (final item in stream.getTracks()) {
+            await item.stop();
+          }
+          await stream.dispose();
+          throw StateError('Screen capture returned no video');
+        }
+        // ignore: invalid_use_of_internal_member
+        track = lk.LocalVideoTrack(
+          lk.TrackSource.screenShareVideo,
+          stream,
+          stream.getVideoTracks().single,
+          options,
+        );
+      } else {
+        track = await lk.LocalVideoTrack.createScreenShareTrack(options);
+      }
       if (track.mediaStream.getAudioTracks().isNotEmpty) {
         await track.dispose();
         throw StateError('Unexpected screen audio');

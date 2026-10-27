@@ -127,3 +127,39 @@ test('Worker persists account binding, ignores old-account push and displays gen
   assert.equal(focused, true);
   assert.equal(opened, undefined);
 });
+
+
+test('Receiver gain reuses the existing element, isolates participants and reapplies on replacement', async () => {
+  let observer;
+  const graphs = [];
+  const alice = {srcObject: {getAudioTracks: () => [{id: 'alice'}]}, muted: false, volume: 1, play: async () => {}};
+  const bob = {srcObject: {getAudioTracks: () => [{id: 'bob'}]}, muted: false, volume: 1, play: async () => {}};
+  const elements = [alice, bob];
+  class AudioContext {
+    constructor() { this.state = 'running'; this.destination = {}; this.currentTime = 0; }
+    resume() { return Promise.resolve(); }
+    createMediaElementSource(element) { const node = {element, connect() {}}; graphs.push(node); return node; }
+    createGain() { const node = {value: 1, connect() {}, gain: {setTargetAtTime(value) {node.value = value;}}}; graphs[graphs.length - 1].gain = node; return node; }
+  }
+  const document = {body: {}, querySelectorAll: () => elements, addEventListener() {}};
+  const window = {AudioContext};
+  vm.runInNewContext(code('media_audio.js'), {window, document, Promise, Map, WeakMap,
+    MutationObserver: class {constructor(fn) {observer = fn;} observe() {}}});
+  const api = window.VoiceChatAudio;
+  await api.setCallVolume('alice', 3);
+  assert.equal(graphs.length, 1);
+  assert.equal(graphs[0].element, alice);
+  assert.equal(graphs[0].gain.value, 3);
+  assert.equal(bob.volume, 1);
+  await api.setCallVolume('alice', 0);
+  assert.equal(graphs.length, 1);
+  assert.equal(graphs[0].gain.value, 0);
+  assert.equal(alice.muted, false);
+  const replacement = {...alice}; elements.push(replacement);
+  observer(); await tick();
+  assert.equal(replacement.volume, 0);
+  await assert.rejects(api.setCallVolume('bob', 4), /Invalid/);
+  await api.setCallVolume('bob', .5);
+  assert.equal(bob.volume, .5);
+  assert.equal(graphs[0].gain.value, 0);
+});

@@ -258,7 +258,17 @@ void main() {
           .first;
       expect(
         tester.getRect(find.widgetWithText(TextButton, '👍 1')).left,
-        closeTo(tester.getRect(bubble).left + 10, .1),
+        closeTo(
+          tester
+              .getRect(
+                find.descendant(
+                  of: metadata,
+                  matching: find.byType(IconButton),
+                ),
+              )
+              .right,
+          .1,
+        ),
       );
       expect(
         tester.getRect(metadata).right,
@@ -334,7 +344,8 @@ void main() {
               ),
             ),
           );
-          await tester.pumpAndSettle();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 500));
           for (final (id, name) in [('mine', 'Вы · Я'), ('theirs', 'Оля')]) {
             final metadata = find.byKey(ValueKey('message-meta-$id'));
             final bubble = find

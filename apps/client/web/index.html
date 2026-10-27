@@ -58,6 +58,8 @@
       const shell = document.getElementById('startup');
       const status = document.getElementById('startup-status');
       const retry = document.getElementById('startup-retry');
+      const mark = name => window.performance?.mark?.('voicechat-' + name);
+      mark('shell');
       let finished = false;
       let failed = false;
       const slow = setTimeout(() => {
@@ -67,6 +69,7 @@
       }, 15000);
       retry.addEventListener('click', () => window.location.reload());
       window.voicechatStartup = {
+        mark,
         stage(message) { if (!finished && !failed) status.textContent = message; },
         fail() {
           if (finished) return;
@@ -80,6 +83,7 @@
       // runApp resolves before Flutter paints; keep the shell until the actual first frame.
       window.addEventListener('flutter-first-frame', () => {
         finished = true;
+        mark('first-frame');
         clearTimeout(slow);
         shell.remove();
       }, {once: true});

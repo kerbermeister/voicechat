@@ -70,6 +70,46 @@ void main() {
         (_) async => null,
       );
   testWidgets(
+    'Audio camera requires confirmation; cancel preserves microphone and camera',
+    (tester) async {
+      final client = Client('audio-camera', database: WindowDatabase());
+      final call = WindowCall(CallRoom(client), video: false)
+        ..cameraEnabled = false;
+      final calls = CallController(
+        client,
+        'http://localhost:8090',
+        'ws://localhost:7880',
+        (_) {},
+      )..active = call;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CallWindow(calls: calls, audioOutput: () async {}),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.byTooltip('Включить камеру'));
+      await tester.pump();
+      expect(
+        find.text('Вы действительно хотите включить камеру?'),
+        findsOneWidget,
+      );
+      expect(call.cameraEnabled, false);
+      await tester.tap(find.text('Отмена'));
+      await tester.pump();
+      expect(call.cameraEnabled, false);
+      await tester.tap(find.byTooltip('Включить камеру'));
+      await tester.pump();
+      await tester.tap(find.text('Включить'));
+      await tester.pump();
+      expect(call.cameraEnabled, true);
+      expect(call.muted, false);
+      await tester.pumpWidget(const SizedBox.shrink());
+      calls.active = null;
+      await tester.runAsync(calls.close);
+      await client.dispose();
+    },
+  );
+  testWidgets(
     'Video controls and quality stay usable on a narrow and rotated screen',
     (tester) async {
       final client = Client('window-test', database: WindowDatabase());
@@ -113,12 +153,28 @@ void main() {
   ) async {
     final client = Client('voice-window', database: WindowDatabase());
     final room = CallRoom(client);
+    client.accountData['m.direct'] = BasicEvent(
+      type: 'm.direct',
+      content: {
+        '@peer:example.org': [room.id],
+      },
+    );
+    room.states[EventTypes.RoomMember] = {
+      '@peer:example.org': StrippedStateEvent(
+        type: EventTypes.RoomMember,
+        stateKey: '@peer:example.org',
+        senderId: '@peer:example.org',
+        content: {'membership': 'join', 'displayname': 'Александра'},
+      ),
+    };
     room.states[EventTypes.RoomName] = {
       '': StrippedStateEvent(
         type: EventTypes.RoomName,
         stateKey: '',
-        senderId: '@peer:local',
-        content: {'name': 'Александра'},
+        senderId: '@peer:example.org',
+        content: {
+          'name': 'voicechat contact 12345678-1234-1234-1234-123456789012',
+        },
       ),
     };
     final calls = CallController(
@@ -142,6 +198,7 @@ void main() {
       );
       await tester.pump();
       expect(find.text('Александра'), findsOneWidget);
+      expect(find.textContaining('voicechat contact'), findsNothing);
       expect(find.text('0:42'), findsOneWidget);
       expect(find.byType(CallAvatar), findsOneWidget);
       expect(find.byType(CallQualityIndicator), findsOneWidget);

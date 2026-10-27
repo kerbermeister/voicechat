@@ -1,3 +1,5 @@
+import 'call_audio.dart';
+import 'personal_room.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
@@ -6,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:matrix/matrix.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'call_probe.dart';
+import 'call_devices.dart';
 import 'direct_call.dart';
 import 'voice_call.dart';
 import 'screen_api.dart';
@@ -40,7 +43,11 @@ class CallController extends ChangeNotifier
   final void Function(String) report;
   final invitations = <String, CallInvitation>{};
   final declined = <String>{};
+  final _endedInvitations =
+      <({String room, String sender, String session}), DateTime>{};
+  late final CallDevices devices;
   VoiceCall? active;
+  final audio = CallAudio();
   ScreenShareController? screen;
   VoiceCall? _screenCall;
   bool _screenChecking = false;
@@ -56,6 +63,7 @@ class CallController extends ChangeNotifier
   final directInvitations = <DirectCall>[];
   final _directCalls = <String, DirectCall>{};
   StreamSubscription<Event>? _events;
+  StreamSubscription<dynamic>? _lateEvents;
   Timer? _expiry;
   Timer? _ringTimeout;
   bool _closed = false;
@@ -67,6 +75,7 @@ class CallController extends ChangeNotifier
   bool get _android =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   CallController(this.client, this.tokenUrl, this.mediaUrl, this.report) {
+    devices = CallDevices(client, _refresh);
     WidgetsBinding.instance.addObserver(this);
     if (_android) {
       _nativeCalls.setMethodCallHandler((call) async {
@@ -84,6 +93,14 @@ class CallController extends ChangeNotifier
     _screenSignals = client.onCallEvents.stream.listen(_screenParties.observe);
     voip = VoIP(client, this);
     _events = client.onTimelineEvent.stream.listen(receive);
+    // Matrix 14.2 does not emit late-decrypted messages on onTimelineEvent.
+    // Listen only to that missing update, without replaying historical calls.
+    // ignore: deprecated_member_use
+    _lateEvents = client.onEvent.stream.listen((update) {
+      if (update.type != EventUpdateType.decryptedTimelineQueue) return;
+      final room = client.getRoomById(update.roomID);
+      if (room != null) receive(Event.fromJson(update.content, room));
+    });
     _expiry = Timer.periodic(const Duration(seconds: 5), (_) {
       invitations.removeWhere(
         (_, call) => DateTime.now().difference(call.created).inMinutes >= 10,
@@ -93,7 +110,12 @@ class CallController extends ChangeNotifier
   }
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (kIsWeb || _closed) return;
+    if (_closed) return;
+    if (state == AppLifecycleState.resumed) {
+      unawaited(screen?.poll());
+      _refresh();
+    }
+    if (kIsWeb) return;
     final call = active;
     if (call == null || call.isClosed || !call.video) return;
     if (state == AppLifecycleState.inactive && call.cameraEnabled) {
@@ -120,6 +142,14 @@ class CallController extends ChangeNotifier
   }
 
   void _refresh() {
+    unawaited(audio.sync(active).catchError((Object _) {}));
+    devices.update(active);
+    invitations.removeWhere(
+      (id, invitation) => devices.answered(invitation.room.id, id),
+    );
+    directInvitations.removeWhere(
+      (call) => devices.answered(call.chat.id, call.session),
+    );
     if (!_closed) unawaited(_prepareScreen());
     if (_android) {
       final call = active;
@@ -160,7 +190,8 @@ class CallController extends ChangeNotifier
   Future<void> _prepareScreen() async {
     final call = active;
     if (_screenChecking ||
-        call == _screenCall ||
+        (call == _screenCall &&
+            !(screen?.isClosed == true && screen!.reconnectAllowed)) ||
         (_screenRetryAt != null && DateTime.now().isBefore(_screenRetryAt!))) {
       return;
     }
@@ -178,7 +209,7 @@ class CallController extends ChangeNotifier
     _screenCall = call;
     final previous = screen;
     screen = null;
-    unawaited(previous?.close());
+    await previous?.close();
     previous?.dispose();
     final api = ScreenApi(tokenUrl, () => client.accessToken ?? '');
     ScreenShareController? next;
@@ -198,6 +229,10 @@ class CallController extends ChangeNotifier
         parties: _screenParties,
       );
       screen = next;
+      if (previous?.reconnectAllowed == true) {
+        next.notice =
+            'Демонстрация переподключена после паузы. Для своего экрана нажмите «Показать экран».';
+      }
       await next.connect();
       if (_closed || active != call || call.isClosed) await next.close();
     } catch (_) {
@@ -229,9 +264,20 @@ class CallController extends ChangeNotifier
         age >= const Duration(minutes: 10)) {
       return;
     }
+    _endedInvitations.removeWhere(
+      (_, time) =>
+          DateTime.now().difference(time) >= const Duration(minutes: 10),
+    );
+    final invitationKey = (
+      room: event.room.id,
+      sender: event.senderId,
+      session: id,
+    );
     if (content['action'] == 'invite' &&
+        !_endedInvitations.containsKey(invitationKey) &&
         event.senderId != client.userID &&
-        !declined.contains(id)) {
+        !declined.contains(id) &&
+        !devices.answered(event.room.id, id)) {
       invitations[id] = CallInvitation(
         event.room,
         id,
@@ -241,14 +287,23 @@ class CallController extends ChangeNotifier
       );
     } else if (content['action'] == 'decline' &&
         active?.session == id &&
+        active?.chat.id == event.room.id &&
         event.room.isDirectChat &&
         event.senderId != client.userID) {
       unawaited(active!.close());
       report('Собеседник отклонил вызов.');
     } else if (content['action'] == 'end') {
+      _endedInvitations[invitationKey] = event.originServerTs;
+      if (_endedInvitations.length > 128) {
+        _endedInvitations.remove(_endedInvitations.keys.first);
+      }
       // Only the initiating user can cancel their invitation.
-      if (invitations[id]?.sender == event.senderId) invitations.remove(id);
+      if (invitations[id]?.sender == event.senderId &&
+          invitations[id]?.room.id == event.room.id) {
+        invitations.remove(id);
+      }
       if (active?.session == id &&
+          active?.chat.id == event.room.id &&
           event.room.isDirectChat &&
           event.senderId != client.userID) {
         unawaited(active!.close());
@@ -293,6 +348,9 @@ class CallController extends ChangeNotifier
     CallInvitation? invitation,
     bool video = false,
   }) async {
+    if (isPersonalRoom(room)) {
+      throw UserActionError('В личной комнате звонки недоступны.');
+    }
     video = invitation?.video ?? video;
     if (starting) throw UserActionError('Вызов уже запускается.');
     if (active != null && !active!.isClosed) {
@@ -378,6 +436,7 @@ class CallController extends ChangeNotifier
             }
           });
         }
+        if (invitation != null) devices.accept(call);
         invitations.remove(id);
       } catch (_) {
         await call.close();
@@ -472,10 +531,13 @@ class CallController extends ChangeNotifier
     mediaDevices.ondevicechange =
         null; // Release the SDK callback retaining this client after lock/logout.
     await _events?.cancel();
+    await _lateEvents?.cancel();
     await _screenSignals?.cancel();
     final screenClose = screen?.close();
     await active?.close();
     await screenClose;
+    await devices.close();
+    audio.reset(null);
     screen?.dispose();
     for (final call in _directCalls.values) {
       await call.close();
@@ -493,6 +555,7 @@ class CallController extends ChangeNotifier
     active = call;
     try {
       await call.answer();
+      devices.accept(call);
     } catch (_) {
       await call.close();
       rethrow;

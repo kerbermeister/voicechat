@@ -120,6 +120,7 @@ jobs:
           flutter build web --release --no-web-resources-cdn --target lib/main.dart --dart-define-from-file /tmp/client.json
           cd ../..
           mkdir -p .prototype/web-image
+          python3 apps/client/tool/version_web_assets.py apps/client/build/web
           cp -R apps/client/build/web .prototype/web-image/web
           cp infra/Caddyfile .prototype/web-image/Caddyfile
       - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130

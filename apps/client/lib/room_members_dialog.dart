@@ -1,3 +1,4 @@
+import 'personal_room.dart';
 import 'app_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
@@ -96,38 +97,59 @@ class RoomMembersDialog extends StatelessWidget {
               );
             },
           );
+    final personal = isPersonalRoom(room);
     return DefaultTabController(
-      length: 2,
+      length: personal ? 1 : 2,
       child: AlertDialog(
         scrollable: true,
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        title: AppDialogTitle(child: Text(room.getLocalizedDisplayname())),
-        content: SizedBox(
-          width: 480,
-          height: (MediaQuery.sizeOf(context).height * .42).clamp(100, 380),
+        title: AppDialogTitle(
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              TabBar(
-                isScrollable: true,
-                tabAlignment: TabAlignment.start,
-                labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-                tabs: [
-                  Tab(text: 'Вступили · ${joined.length}'),
-                  Tab(text: 'Приглашены · ${invited.length}'),
-                ],
+              PersonAvatar(
+                name: roomDisplayName(room),
+                client: room.client,
+                url: roomAvatar(room),
+                personal: isPersonalRoom(room),
+                group: true,
+                showPresence: false,
+                size: 96,
               ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    list(joined, 'Никто ещё не вступил'),
-                    list(invited, 'Нет ожидающих приглашений'),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 12),
+              Text(roomDisplayName(room), textAlign: TextAlign.center),
             ],
           ),
         ),
+        content: SizedBox(
+          width: 480,
+          height: (MediaQuery.sizeOf(context).height * .42).clamp(100, 380),
+          child: personal
+              ? list(joined, 'Личная комната')
+              : Column(
+                  children: [
+                    TabBar(
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                      tabs: [
+                        Tab(text: 'Вступили · ${joined.length}'),
+                        Tab(text: 'Приглашены · ${invited.length}'),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          list(joined, 'Никто ещё не вступил'),
+                          list(invited, 'Нет ожидающих приглашений'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
         actionsPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         actions: [
           Container(
@@ -160,7 +182,9 @@ class RoomMembersDialog extends StatelessWidget {
                           value: 'avatar',
                           danger: false,
                         ),
-                      if (!room.isDirectChat && room.canInvite)
+                      if (!room.isDirectChat &&
+                          !isPersonalRoom(room) &&
+                          room.canInvite)
                         (
                           label: 'Пригласить',
                           icon: Icons.person_add_alt,
@@ -214,14 +238,14 @@ class RoomMembersDialog extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(action.icon),
+                              Icon(action.icon, size: 28),
                               const SizedBox(height: 6),
                               Text(
                                 action.label,
                                 textAlign: TextAlign.center,
                                 style: Theme.of(
                                   context,
-                                ).textTheme.labelSmall?.copyWith(fontSize: 10),
+                                ).textTheme.labelSmall?.copyWith(fontSize: 12),
                               ),
                             ],
                           ),

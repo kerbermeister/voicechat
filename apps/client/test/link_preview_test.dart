@@ -112,7 +112,11 @@ void main() {
           body: LinkCards(
             text: text,
             previews: const [
-              {'url': 'https://example.com/a.mp4', 'title': 'Old clip', 'description': ''},
+              {
+                'url': 'https://example.com/a.mp4',
+                'title': 'Old clip',
+                'description': '',
+              },
             ],
           ),
         ),
@@ -120,7 +124,8 @@ void main() {
     );
     await render('https://example.com/a.mp4');
     expect(find.text('Old clip'), findsOneWidget);
-    expect(find.text('Смотреть видео'), findsOneWidget);
+    expect(find.text('Смотреть видео'), findsNothing);
+    expect(find.byType(InkWell), findsWidgets);
     await render('https://example.com/new.txt');
     expect(find.text('Old clip'), findsNothing);
     expect(find.text('Смотреть видео'), findsNothing);
@@ -153,7 +158,8 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Смотреть видео'), findsOneWidget);
+      expect(find.text('Смотреть видео'), findsNothing);
+      expect(find.byType(InkWell), findsWidgets);
       expect(tester.takeException(), isNull);
     }
   });

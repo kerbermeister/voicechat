@@ -15,13 +15,21 @@ final class PlatformFiles {
     let handle: FileHandle
     let scoped: Bool
   }
+  private struct ClipboardTransfer {
+    let url: URL
+    let handle: FileHandle
+    let size: Int
+    let mime: String
+    var written: Int
+  }
+  private var clipboardTransfers: [String: ClipboardTransfer] = [:]
   private var selections: [String: Selection] = [:]
   private var saves: [String: Save] = [:]
   private var pickerOpen = false
   private var channels: [FlutterMethodChannel] = []
 
   init(messenger: FlutterBinaryMessenger) {
-    for name in ["files", "images", "save", "links"] {
+    for name in ["files", "images", "save", "links", "clipboard"] {
       let channel = FlutterMethodChannel(name: "voicechat/\(name)", binaryMessenger: messenger)
       channel.setMethodCallHandler { [weak self] call, result in
         guard let self = self else { return }
@@ -34,6 +42,10 @@ final class PlatformFiles {
 
   private func handle(_ channel: String, _ call: FlutterMethodCall, _ result: @escaping FlutterResult) throws {
     let args = call.arguments as? [String: Any] ?? [:]
+    if channel == "clipboard" {
+      try clipboard(call.method, args, result)
+      return
+    }
     if channel == "links" {
       guard let value = call.arguments as? String, let url = URL(string: value),
             ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
@@ -67,16 +79,8 @@ final class PlatformFiles {
         var added: [String] = []
         do {
           var files: [[String: Any]] = []
-          for url in panel.urls {
-            let id = UUID().uuidString
-            let scoped = url.startAccessingSecurityScopedResource()
-            self.selections[id] = Selection(url: url, scoped: scoped)
-            added.append(id)
-            let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey, .contentTypeKey])
-            guard values.isRegularFile == true, let size = values.fileSize else { throw self.invalid() }
-            files.append(["uri": id, "name": url.lastPathComponent, "size": size,
-                          "mime": values.contentType?.preferredMIMEType ?? "application/octet-stream"])
-          }
+          files = try self.select(panel.urls)
+          added = files.compactMap { $0["uri"] as? String }
           result(channel == "images" ? added : files)
         } catch {
           for id in added { self.release(id) }
@@ -164,16 +168,105 @@ final class PlatformFiles {
     }
   }
 
+  private func clipboard(_ method: String, _ args: [String: Any], _ result: FlutterResult) throws {
+    let manager = FileManager.default
+    switch method {
+    case "begin":
+      guard clipboardTransfers.count < 64, let name = args["name"] as? String,
+            name.count <= 1024, let mime = args["mime"] as? String,
+            let size = args["size"] as? Int, size > 0,
+            clipboardTransfers.values.reduce(size, { $0 + $1.size }) <= 300 * 1024 * 1024 else { throw invalid() }
+      let root = try manager.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        .appendingPathComponent("VoiceChatClipboard", isDirectory: true)
+      try manager.createDirectory(at: root, withIntermediateDirectories: true)
+      for entry in try manager.contentsOfDirectory(at: root, includingPropertiesForKeys: [.contentModificationDateKey]) {
+        if let date = try entry.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+           date.timeIntervalSinceNow < -86400 { try? manager.removeItem(at: entry) }
+      }
+      let filename = URL(fileURLWithPath: name.replacingOccurrences(of: "\\", with: "/")).lastPathComponent
+      guard !filename.isEmpty, filename != ".", filename != ".." else { throw invalid() }
+      let id = UUID().uuidString
+      let directory = root.appendingPathComponent(id, isDirectory: true)
+      try manager.createDirectory(at: directory, withIntermediateDirectories: false,
+                                  attributes: [.posixPermissions: 0o700])
+      let url = directory.appendingPathComponent(filename)
+      guard manager.createFile(atPath: url.path, contents: nil, attributes: [.posixPermissions: 0o600]) else { throw invalid() }
+      clipboardTransfers[id] = ClipboardTransfer(url: url, handle: try FileHandle(forWritingTo: url), size: size, mime: mime, written: 0)
+      result(id)
+    case "write":
+      guard let id = args["id"] as? String, var transfer = clipboardTransfers[id],
+            let data = args["bytes"] as? FlutterStandardTypedData,
+            data.data.count <= 4 * 1024 * 1024, transfer.written + data.data.count <= transfer.size else { throw invalid() }
+      try transfer.handle.write(contentsOf: data.data)
+      transfer.written += data.data.count
+      clipboardTransfers[id] = transfer
+      result(nil)
+    case "commit", "cancel":
+      guard let ids = args["ids"] as? [String], !ids.isEmpty, ids.count <= 64,
+            Set(ids).count == ids.count else { throw invalid() }
+      if method == "commit" {
+        let items: [NSPasteboardItem] = try ids.map { id in
+          guard let transfer = clipboardTransfers[id], transfer.written == transfer.size else { throw invalid() }
+          try transfer.handle.synchronize()
+          let item = NSPasteboardItem()
+          item.setString(transfer.url.absoluteString, forType: .fileURL)
+          if transfer.mime == "image/png" && transfer.size <= 10 * 1024 * 1024 {
+            item.setData(try Data(contentsOf: transfer.url), forType: .png)
+          } else if transfer.mime == "image/jpeg" && transfer.size <= 10 * 1024 * 1024 {
+            item.setData(try Data(contentsOf: transfer.url), forType: NSPasteboard.PasteboardType("public.jpeg"))
+          }
+          return item
+        }
+        NSPasteboard.general.clearContents()
+        guard NSPasteboard.general.writeObjects(items) else { throw invalid() }
+      }
+      for id in ids {
+        if let transfer = clipboardTransfers.removeValue(forKey: id) {
+          try? transfer.handle.close()
+          if method == "cancel" { try? manager.removeItem(at: transfer.url.deletingLastPathComponent()) }
+        }
+      }
+      result(nil)
+    default: result(FlutterMethodNotImplemented)
+    }
+  }
+
+  /// Finder drops use the same scoped handles, range checks and release as NSOpenPanel.
+  func select(_ urls: [URL]) throws -> [[String: Any]] {
+    var added: [String] = []
+    do {
+      guard !urls.isEmpty, urls.count <= 84 else { throw invalid() }
+      return try urls.map { url in
+        guard url.isFileURL else { throw invalid() }
+        let id = UUID().uuidString
+        let scoped = url.startAccessingSecurityScopedResource()
+        selections[id] = Selection(url: url, scoped: scoped)
+        added.append(id)
+        let values = try url.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey, .contentTypeKey])
+        guard values.isRegularFile == true, let size = values.fileSize else { throw invalid() }
+        return ["uri": id, "name": url.lastPathComponent, "size": size,
+                "mime": values.contentType?.preferredMIMEType ?? "application/octet-stream"]
+      }
+    } catch {
+      for id in added { release(id) }
+      throw error
+    }
+  }
+
   static func validRange(start: Int, end: Int, size: UInt64) -> Bool {
     start >= 0 && end > start && end - start <= 4 * 1024 * 1024 && UInt64(end) <= size
   }
   private func invalid() -> NSError { NSError(domain: "VoiceChatFiles", code: 1) }
-  private func release(_ id: String) {
+  func release(_ id: String) {
     if let selected = selections.removeValue(forKey: id), selected.scoped {
       selected.url.stopAccessingSecurityScopedResource()
     }
   }
   deinit {
+    for transfer in clipboardTransfers.values {
+      try? transfer.handle.close()
+      try? FileManager.default.removeItem(at: transfer.url.deletingLastPathComponent())
+    }
     for id in Array(selections.keys) { release(id) }
     for save in saves.values {
       try? save.handle.close()

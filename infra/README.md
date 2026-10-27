@@ -30,6 +30,7 @@ flutter pub get --enforce-lockfile
 # После установки закреплённых Rust/wasm-инструментов, как в deploy.yml:
 python3 ../../prototype/build_web_assets.py
 flutter build web --release --no-web-resources-cdn --target lib/main.dart --dart-define-from-file ../../.prototype/deploy-client.json
+python3 tool/version_web_assets.py build/web
 cd ../..
 mkdir -p .prototype/web-image
 cp -R apps/client/build/web .prototype/web-image/web

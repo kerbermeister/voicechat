@@ -23,6 +23,15 @@ class LifecycleRoom extends Fake implements lk.Room {
 
 class LifecycleCall extends Fake implements CallProbe {
   @override
+  bool cameraEnabled = false;
+  final cameraChanges = <bool>[];
+  @override
+  Future<void> camera(bool enabled) async {
+    cameraEnabled = enabled;
+    cameraChanges.add(enabled);
+  }
+
+  @override
   final Room chat;
   LifecycleCall(this.chat);
   @override
@@ -52,6 +61,181 @@ class DeadlineCapture extends ScreenCapture {
 }
 
 void main() {
+  test(
+    'Screen capture pauses only an enabled camera and restores once on system stop',
+    () async {
+      for (final camera in [false, true]) {
+        final client = Client('restore-camera', database: LifecycleDatabase());
+        final call = LifecycleCall(Room(id: '!restore:local', client: client))
+          ..cameraEnabled = camera;
+        const binding = '22222222-2222-4222-8222-222222222222';
+        final snapshot = {
+          'protocol_version': 1,
+          'binding_id': binding,
+          'state': 'idle',
+          'revision': 0,
+          'roster_version': 0,
+          'roster': [],
+          'owner_identity': null,
+          'generation': null,
+        };
+        final claimed = Completer<void>();
+        final release = Completer<http.Response>();
+        final api = ScreenApi(
+          'http://localhost',
+          () => '',
+          client: MockClient((request) async {
+            if (request.url.path.endsWith('/bind')) {
+              return http.Response(
+                jsonEncode({
+                  'binding_id': binding,
+                  'lease_id': 'b' * 64,
+                  'binding_state': 'open',
+                  'snapshot': snapshot,
+                }),
+                200,
+              );
+            }
+            if (request.url.path.endsWith('/heartbeat')) {
+              return http.Response(jsonEncode({'snapshot': snapshot}), 200);
+            }
+            if (request.url.path.endsWith('/claim')) {
+              claimed.complete();
+              return release.future;
+            }
+            return http.Response('{}', 200);
+          }),
+        );
+        final capture = DeadlineCapture(DeadlineVideo());
+        final screen = ScreenShareController(
+          call,
+          api,
+          'ws://localhost:7880',
+          captureFactory: () async => capture,
+        );
+        await screen.connect();
+        final sharing = screen.share();
+        await claimed.future;
+        expect(call.cameraEnabled, false);
+        expect(call.cameraChanges, camera ? [false] : isEmpty);
+        capture.source.mediaStreamTrack.onEnded!();
+        await Future<void>.delayed(Duration.zero);
+        expect(call.cameraEnabled, camera);
+        release.complete(
+          http.Response('{"error":"screen_revision_conflict"}', 409),
+        );
+        await sharing;
+        expect(call.cameraChanges, camera ? [false, true] : isEmpty);
+        await screen.stop();
+        expect(call.cameraChanges, camera ? [false, true] : isEmpty);
+        await screen.close();
+        screen.dispose();
+        await client.dispose();
+      }
+    },
+  );
+  testWidgets(
+    'Зависший системный picker допускает повтор; поздний захват закрывается',
+    (tester) async {
+      final client = Client('picker-timeout', database: LifecycleDatabase());
+      final call = LifecycleCall(Room(id: '!picker:local', client: client));
+      final selection = Completer<ScreenCapture>();
+      final api = ScreenApi(
+        'http://localhost',
+        () => '',
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/bind')) {
+            return http.Response(
+              jsonEncode({
+                'binding_id': '22222222-2222-4222-8222-222222222222',
+                'lease_id': 'b' * 64,
+                'binding_state': 'open',
+                'snapshot': {
+                  'protocol_version': 1,
+                  'binding_id': '22222222-2222-4222-8222-222222222222',
+                  'state': 'idle',
+                  'revision': 0,
+                  'roster_version': 0,
+                  'roster': [],
+                  'owner_identity': null,
+                  'generation': null,
+                },
+              }),
+              200,
+            );
+          }
+          return http.Response('{}', 200);
+        }),
+      );
+      final screen = ScreenShareController(
+        call,
+        api,
+        'ws://localhost:7880',
+        captureFactory: () => selection.future,
+      );
+      await tester.runAsync(screen.connect);
+      final sharing = screen.share();
+      expect(screen.canShare, isFalse);
+      await tester.pump(const Duration(seconds: 61));
+      await sharing;
+      expect(screen.busy, isFalse);
+      expect(screen.canShare, isTrue);
+      expect(screen.notice, contains('вовремя'));
+      final capture = DeadlineCapture(DeadlineVideo());
+      selection.complete(capture);
+      await tester.pump();
+      expect(capture.closes, 1);
+      await tester.runAsync(screen.close);
+      screen.dispose();
+      await client.dispose();
+    },
+  );
+  testWidgets(
+    'После истечения допуска экран разрешает новую проверку, но выключатель — нет',
+    (tester) async {
+      final client = Client('resume-screen', database: LifecycleDatabase());
+      final call = LifecycleCall(Room(id: '!resume:local', client: client));
+      final api = ScreenApi(
+        'http://localhost',
+        () => '',
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/bind')) {
+            return http.Response(
+              jsonEncode({
+                'binding_id': '22222222-2222-4222-8222-222222222222',
+                'lease_id': 'b' * 64,
+                'binding_state': 'open',
+                'snapshot': {
+                  'protocol_version': 1,
+                  'binding_id': '22222222-2222-4222-8222-222222222222',
+                  'state': 'idle',
+                  'revision': 0,
+                  'roster_version': 0,
+                  'roster': [],
+                  'owner_identity': null,
+                  'generation': null,
+                },
+              }),
+              200,
+            );
+          }
+          if (request.url.path.endsWith('/heartbeat')) {
+            return http.Response('{"error":"screen_access_denied"}', 403);
+          }
+          return http.Response('{}', 200);
+        }),
+      );
+      final screen = ScreenShareController(call, api, 'ws://localhost:7880');
+      await tester.runAsync(screen.connect);
+      await tester.runAsync(screen.poll);
+      expect(screen.isClosed, isTrue);
+      expect(screen.reconnectAllowed, isTrue);
+      expect(screen.displayTrack, isNull);
+      await tester.runAsync(screen.close);
+      screen.dispose();
+      await client.dispose();
+    },
+  );
   test(
     'После picker claim использует свежий roster; отказ проверки закрывает capture',
     () async {

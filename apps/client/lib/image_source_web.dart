@@ -7,12 +7,17 @@ import 'media_policy.dart';
 import 'photo_processing.dart';
 import 'user_action_error.dart';
 
-Future<List<MatrixImageFile>> chooseImages(MediaPolicy policy, int remaining) {
+Future<List<MatrixImageFile>> chooseImages(
+  MediaPolicy policy,
+  int remaining, {
+  bool camera = false,
+}) {
   final done = Completer<List<MatrixImageFile>>();
   final input = web.HTMLInputElement()
     ..type = 'file'
     ..accept = 'image/*'
-    ..multiple = true;
+    ..multiple = !camera;
+  if (camera) input.setAttribute('capture', 'environment');
   input.style.display = 'none';
   input.addEventListener(
     'cancel',

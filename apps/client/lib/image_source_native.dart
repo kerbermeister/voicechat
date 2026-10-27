@@ -7,11 +7,13 @@ import 'user_action_error.dart';
 
 Future<List<MatrixImageFile>> chooseImages(
   MediaPolicy policy,
-  int remaining,
-) async {
+  int remaining, {
+  bool camera = false,
+}) async {
   const channel = MethodChannel('voicechat/images');
   final uris = await channel.invokeListMethod<String>('choose', {
-    'max_count': remaining,
+    'max_count': camera ? 1 : remaining,
+    'camera': camera,
   });
   if (uris == null) return [];
   if (uris.length > remaining) {

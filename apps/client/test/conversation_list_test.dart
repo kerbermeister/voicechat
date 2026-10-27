@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart';
 import 'package:voicechat_probe/conversation_list.dart';
@@ -62,6 +63,86 @@ void main() {
           expect(lastMessage(room), label);
         }
       }
+    },
+  );
+  testWidgets(
+    'Pinned rooms precede newer rooms; dots and right click expose the same action',
+    (tester) async {
+      final client = ListClient();
+      final old = Room(id: '!old:local', client: client);
+      final recent = Room(id: '!recent:local', client: client);
+      for (final (room, name, time) in [
+        (old, 'Заметки', 1000),
+        (recent, 'Семья', 2000),
+      ]) {
+        room.states[EventTypes.RoomName] = {
+          '': StrippedStateEvent(
+            type: EventTypes.RoomName,
+            content: {'name': name},
+            stateKey: '',
+            senderId: client.userID,
+          ),
+        };
+        room.lastEvent = Event.fromJson({
+          'event_id': r'$' + name,
+          'type': EventTypes.Message,
+          'sender': client.userID,
+          'origin_server_ts': time,
+          'content': {'msgtype': MessageTypes.Text, 'body': 'hi'},
+        }, room);
+      }
+      old.roomAccountData['m.tag'] = BasicEvent(
+        type: 'm.tag',
+        content: {
+          'tags': {'m.favourite': {}},
+        },
+      );
+      old.states[EventTypes.RoomCreate] = {
+        '': StrippedStateEvent(
+          type: EventTypes.RoomCreate,
+          content: {'type': 'dev.voicechat.personal'},
+          stateKey: '',
+          senderId: client.userID,
+        ),
+      };
+      client.rooms.addAll([recent, old]);
+      final chosen = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ConversationList(
+              client: client,
+              groups: true,
+              onTabChanged: (_) {},
+              onSelect: (_) {},
+              onNewPerson: () {},
+              onNewGroup: () {},
+              onSettings: () {},
+              onChatMenu: (room, action) => chosen.add('${room.id}:$action'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(find.text('Заметки')).dy,
+        lessThan(tester.getTopLeft(find.text('Семья')).dy),
+      );
+      expect(find.byIcon(Icons.push_pin), findsOneWidget);
+      expect(find.byIcon(Icons.lock_outline), findsOneWidget);
+      await tester.tap(find.byTooltip('Действия с чатом').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Открепить'), findsOneWidget);
+      await tester.tap(find.text('Открепить'));
+      await tester.pumpAndSettle();
+      expect(chosen, ['!old:local:pin']);
+      await tester.tap(find.text('Заметки'), buttons: kSecondaryMouseButton);
+      await tester.pumpAndSettle();
+      expect(find.text('Открепить'), findsOneWidget);
+      await tester.tap(find.text('Открепить'));
+      await tester.pumpAndSettle();
+      expect(chosen, ['!old:local:pin', '!old:local:pin']);
+      expect(tester.takeException(), isNull);
     },
   );
   testWidgets(

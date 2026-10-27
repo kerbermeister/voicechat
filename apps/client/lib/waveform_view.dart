@@ -8,38 +8,105 @@ double waveLevel(int rms) => rms <= 0
     ? 0
     : ((20 * log(rms.clamp(1, 1024) / 1024) / ln10 + 60) / 60).clamp(0, 1);
 
-class WaveformView extends StatelessWidget {
+class WaveformView extends StatefulWidget {
   final List<int> levels;
   final double progress;
   final Color? color;
   final bool recording;
+  final ValueChanged<double>? onSeek;
   const WaveformView({
     super.key,
     required this.levels,
     this.progress = 0,
     this.color,
     this.recording = false,
+    this.onSeek,
   });
+  @override
+  State<WaveformView> createState() => _WaveformViewState();
+}
+
+class _WaveformViewState extends State<WaveformView> {
+  double? dragging;
+  void move(Offset point, double width) => setState(() {
+    dragging = ((point.dx - 8) / (width - 16).clamp(1, double.infinity)).clamp(
+      0,
+      1,
+    );
+  });
+  void finish() {
+    final target = dragging;
+    setState(() => dragging = null);
+    if (target != null) widget.onSeek?.call(target);
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final accent = color ?? colors.primary;
-    return Semantics(
-      label: recording ? 'Уровень микрофона' : 'Звуковая дорожка сообщения',
-      child: Container(
-        height: recording ? 84 : 40,
-        padding: EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: recording ? 6 : 4,
-        ),
-        decoration: BoxDecoration(
-          color: colors.surfaceContainerLowest,
-          border: Border.all(color: accent.withValues(alpha: .2)),
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: CustomPaint(
-          size: Size(double.infinity, recording ? 72 : 32),
-          painter: _WavePainter(levels, progress, accent, recording),
+    final accent = widget.color ?? colors.primary;
+    final progress = dragging ?? widget.progress.clamp(0, 1);
+    return LayoutBuilder(
+      builder: (context, box) => Semantics(
+        label: widget.recording
+            ? 'Уровень микрофона'
+            : 'Звуковая дорожка сообщения',
+        value: widget.recording ? null : '${(progress * 100).round()}%',
+        increasedValue: widget.onSeek == null
+            ? null
+            : '${((progress + .05).clamp(0, 1) * 100).round()}%',
+        decreasedValue: widget.onSeek == null
+            ? null
+            : '${((progress - .05).clamp(0, 1) * 100).round()}%',
+        onIncrease: widget.onSeek == null
+            ? null
+            : () => widget.onSeek!((progress + .05).clamp(0, 1)),
+        onDecrease: widget.onSeek == null
+            ? null
+            : () => widget.onSeek!((progress - .05).clamp(0, 1)),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapUp: widget.onSeek == null
+              ? null
+              : (details) {
+                  move(details.localPosition, box.maxWidth);
+                  finish();
+                },
+          onHorizontalDragStart: widget.onSeek == null
+              ? null
+              : (details) => move(details.localPosition, box.maxWidth),
+          onHorizontalDragUpdate: widget.onSeek == null
+              ? null
+              : (details) => move(details.localPosition, box.maxWidth),
+          onHorizontalDragEnd: widget.onSeek == null ? null : (_) => finish(),
+          onHorizontalDragCancel: () => setState(() => dragging = null),
+          onLongPressStart: widget.onSeek == null
+              ? null
+              : (details) => move(details.localPosition, box.maxWidth),
+          onLongPressMoveUpdate: widget.onSeek == null
+              ? null
+              : (details) => move(details.localPosition, box.maxWidth),
+          onLongPressEnd: widget.onSeek == null ? null : (_) => finish(),
+          child: Container(
+            height: widget.recording ? 84 : 40,
+            padding: EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: widget.recording ? 6 : 4,
+            ),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerLowest,
+              border: Border.all(color: accent.withValues(alpha: .2)),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: CustomPaint(
+              size: Size(double.infinity, widget.recording ? 72 : 32),
+              painter: _WavePainter(
+                widget.levels,
+                progress,
+                accent,
+                widget.recording,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -65,6 +132,12 @@ class _WavePainter extends CustomPainter {
           ]
         : levels;
     if (samples.isEmpty) return;
+    if (!recording && progress > 0) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width * progress.clamp(0, 1), size.height),
+        Paint()..color = color.withValues(alpha: .20),
+      );
+    }
     final grid = Paint()
       ..color = color.withValues(alpha: .09)
       ..strokeWidth = 1;
@@ -103,13 +176,6 @@ class _WavePainter extends CustomPainter {
         Offset(x, size.height / 2 - amplitude),
         Offset(x, size.height / 2 + amplitude),
         rms == 0 ? silence : paint,
-      );
-    }
-    if (progress > 0 && progress < 1) {
-      canvas.drawCircle(
-        Offset(size.width * progress, size.height / 2),
-        3.5,
-        Paint()..color = color,
       );
     }
   }

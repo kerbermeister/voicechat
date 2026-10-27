@@ -529,7 +529,11 @@ void main() {
     expect(find.text('Вступили · 1'), findsOneWidget);
     expect(find.text('Приглашены · 2'), findsOneWidget);
     expect(
-      tester.widget<PersonAvatar>(find.byType(PersonAvatar).first).online,
+      tester
+          .widget<PersonAvatar>(
+            find.byWidgetPredicate((w) => w is PersonAvatar && !w.group).first,
+          )
+          .online,
       true,
     );
     final offline = CachedPresence(
@@ -543,7 +547,11 @@ void main() {
     client.onPresenceChanged.add(offline);
     await tester.pumpAndSettle();
     expect(
-      tester.widget<PersonAvatar>(find.byType(PersonAvatar).first).online,
+      tester
+          .widget<PersonAvatar>(
+            find.byWidgetPredicate((w) => w is PersonAvatar && !w.group).first,
+          )
+          .online,
       false,
     );
     expect(find.textContaining('Не в сети · Это вы'), findsOneWidget);
@@ -551,6 +559,36 @@ void main() {
     await tester.tap(find.text('Приглашены · 2'));
     await tester.pumpAndSettle();
     expect(find.textContaining('@alice:local'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('Personal room shows its owner without invitation tabs', (
+    tester,
+  ) async {
+    final client = RichClient();
+    final room = Room(id: '!personal:local', client: client);
+    room.states[EventTypes.RoomCreate] = {
+      '': StrippedStateEvent(
+        type: EventTypes.RoomCreate,
+        stateKey: '',
+        senderId: client.userID,
+        content: {'type': 'dev.voicechat.personal'},
+      ),
+    };
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RoomMembersDialog(
+            room: room,
+            members: [User(client.userID, membership: 'join', room: room)],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(TabBar), findsNothing);
+    expect(find.textContaining('Приглашены'), findsNothing);
+    expect(find.text('Пригласить'), findsNothing);
+    expect(find.textContaining('Это вы'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

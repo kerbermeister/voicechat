@@ -47,6 +47,21 @@ class AdmissionTests(unittest.TestCase):
             for mode in ('true', 1, None, {}):
                 self.assertEqual(self.request({'room_id': '!room:local', 'session': 'test', 'video': mode})[0], 400)
 
+    def test_personal_room_cannot_obtain_media_token(self):
+        def matrix(handler, path):
+            if path == 'account/whoami': return {'user_id': '@owner:local', 'device_id': 'D'}
+            if path.endswith('joined_members'): return {'joined': {'@owner:local': {}}}
+            if path.endswith('m.room.encryption/'): return {'algorithm': 'm.megolm.v1.aes-sha2'}
+            if path.endswith('m.room.create/'): return {'type': 'dev.voicechat.personal'}
+            raise AssertionError(path)
+        with patch.object(token_server.Handler, 'matrix', matrix), patch.object(token_server, 'call_store') as store:
+            for video in (False, True):
+                self.assertEqual(self.request({'room_id': '!private:local', 'session': 'x', 'video': video}),
+                                 (403, {'error': 'personal_room_no_calls'}))
+            store.assert_not_called()
+            for invalid in ('true', 1, None, {}):
+                self.assertEqual(self.request({'room_id': '!private:local', 'session': 'x', 'camera_capable': invalid})[0], 400)
+
     def test_presence_is_limited_to_authenticated_accepted_contacts(self):
         with tempfile.TemporaryDirectory() as directory:
             store = ContactStore(directory + '/contacts.sqlite')

@@ -75,3 +75,52 @@ List<int> pcmWaveform(Uint8List pcm, {int bins = 64}) {
     return (sqrt(sum / (end - start)) * 1024).round().clamp(0, 1024);
   });
 }
+
+/// Normalize only our bounded PCM16 WAV format, in memory during playback.
+/// Unknown formats and near-silence keep their original bytes.
+Uint8List normalizedVoice(Uint8List bytes) {
+  if (bytes.length < 46 ||
+      bytes.length > 44 + 16000 * 2 * 180 ||
+      bytes.length.isOdd) {
+    return bytes;
+  }
+  final data = ByteData.sublistView(bytes);
+  bool label(int offset, String value) {
+    for (var i = 0; i < value.length; i++) {
+      if (bytes[offset + i] != value.codeUnitAt(i)) return false;
+    }
+    return true;
+  }
+
+  if (!label(0, 'RIFF') ||
+      !label(8, 'WAVE') ||
+      !label(12, 'fmt ') ||
+      !label(36, 'data') ||
+      data.getUint32(4, Endian.little) != bytes.length - 8 ||
+      data.getUint32(16, Endian.little) != 16 ||
+      data.getUint16(20, Endian.little) != 1 ||
+      data.getUint16(22, Endian.little) != 1 ||
+      data.getUint32(24, Endian.little) != 16000 ||
+      data.getUint32(28, Endian.little) != 32000 ||
+      data.getUint16(32, Endian.little) != 2 ||
+      data.getUint16(34, Endian.little) != 16 ||
+      data.getUint32(40, Endian.little) != bytes.length - 44) {
+    return bytes;
+  }
+  var peak = 0;
+  for (var i = 44; i < bytes.length; i += 2) {
+    peak = max(peak, data.getInt16(i, Endian.little).abs());
+  }
+  if (peak < 32 || peak >= 31456) return bytes;
+  final gain = min(12.0, 31456 / peak);
+  final result = Uint8List.fromList(bytes);
+  final output = ByteData.sublistView(result);
+  for (var i = 44; i < bytes.length; i += 2) {
+    output.setInt16(
+      i,
+      (data.getInt16(i, Endian.little) * gain).round().clamp(-32768, 32767),
+      Endian.little,
+    );
+  }
+  return result;
+}

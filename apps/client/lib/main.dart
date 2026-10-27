@@ -1,3 +1,9 @@
+import 'resizable_chat_layout.dart';
+import 'chat_scale.dart';
+import 'message_media_cache.dart';
+import 'transient_notice.dart';
+import 'active_call_banner.dart';
+import 'personal_room.dart';
 import 'recovery_key_dialog.dart';
 import 'macos_camera.dart';
 import 'macos_notifications.dart';
@@ -89,6 +95,7 @@ class VoiceChatApp extends StatefulWidget {
 class _VoiceChatAppState extends State<VoiceChatApp>
     with WidgetsBindingObserver {
   AppPalette palette = AppPalette.halo;
+  final chatScale = ChatScale();
   String? invitation = kIsWeb && Uri.base.fragment.startsWith('/contact/')
       ? Uri.base.toString()
       : null;
@@ -99,6 +106,7 @@ class _VoiceChatAppState extends State<VoiceChatApp>
     WidgetsBinding.instance.addObserver(this);
     SharedPreferences.getInstance().then((prefs) {
       final name = prefs.getString('palette');
+      if (mounted) chatScale.load(prefs);
       if (mounted) {
         setState(
           () => palette = AppPalette.values.firstWhere(
@@ -127,6 +135,7 @@ class _VoiceChatAppState extends State<VoiceChatApp>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    chatScale.dispose();
     super.dispose();
   }
 
@@ -148,7 +157,7 @@ class _VoiceChatAppState extends State<VoiceChatApp>
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-      child: child!,
+      child: ChatScaleScope(scale: chatScale, child: child!),
     ),
     theme: palette.theme,
     themeAnimationDuration: appMotionDuration,
@@ -319,6 +328,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (!mounted) return;
     if (probe == null) {
       setState(() => status = value);
+    } else if (value ==
+            'Не удалось получить превью. Ссылку можно отправить без него.' ||
+        value == 'Превью временно недоступно.') {
+      showTransientNotice(context, value);
     } else {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -597,6 +610,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       final id = await probe!.createRoom(
         draft.users,
         name: draft.name,
+        personal: draft.personal,
         avatar: url,
       );
       await select(await probe!.room(id));
@@ -798,7 +812,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
     final action = chosenAction;
     if (action.startsWith('profile:') && mounted) {
       await profileCard(action.substring(8));
-    } else if (action == 'invite' && !room.isDirectChat && mounted) {
+    } else if (action == 'invite' &&
+        !room.isDirectChat &&
+        !isPersonalRoom(room) &&
+        mounted) {
       final users = await showAppDialog<List<String>>(
         context: context,
         animationStyle: appAnimationStyle(context),
@@ -1113,6 +1130,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> lock() async {
+    MessageMediaCache.clear(probe!.client);
     probe!.client.httpClient
         .close(); // Abort network operations before closing local keys.
     try {
@@ -1504,6 +1522,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       await storagePolicy!.open();
       rethrow;
     }
+    MessageMediaCache.clear(probe!.client);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('lastAccount');
     await prefs.remove('lastRoom:${profile.text.trim()}');
@@ -1536,6 +1555,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
 
   @override
   void dispose() {
+    if (probe != null) MessageMediaCache.clear(probe!.client);
     unawaited(sync?.cancel());
     timeline?.cancelSubscriptions();
     unawaited(calls?.close());
@@ -1777,9 +1797,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> settings() async {
+    Future<dynamic>? settingsClosed;
     var privacyBusy = false;
     String? privacyError;
-    await showAppDialog<void>(
+    final choice = await showAppDialog<String>(
       context: context,
       animationStyle: appAnimationStyle(context),
       builder: (dialogContext) => StatefulBuilder(
@@ -1890,6 +1911,17 @@ class _ProbeScreenState extends State<ProbeScreen> {
                         'Объём, лимит и очистка старой локальной истории',
                       ),
                       onTap: () => openSetting('storage'),
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.zoom_in_outlined),
+                      title: const Text('Масштаб'),
+                      subtitle: const Text('Сообщения, люди и группы'),
+                      onTap: () {
+                        settingsClosed = ModalRoute.of(
+                          dialogContext,
+                        )?.completed;
+                        Navigator.pop(dialogContext, 'scale');
+                      },
                     ),
                     Row(
                       children: [
@@ -2006,6 +2038,15 @@ class _ProbeScreenState extends State<ProbeScreen> {
         },
       ),
     );
+    if (choice == 'scale') {
+      await settingsClosed;
+      if (!mounted) return;
+      await showAppDialog<void>(
+        context: context,
+        clearBackdrop: true,
+        builder: (_) => ChatScaleDialog(scale: ChatScaleScope.of(context)!),
+      );
+    }
   }
 
   Future<void> settingsAction(String chosen) async {
@@ -2074,7 +2115,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     });
   }
 
-  Widget rooms() => ConversationList(
+  Widget rooms({bool compact = false}) => ConversationList(
+    compact: compact,
     client: probe!.client,
     selected: selected,
     onSelect: (room) => run(() => select(room)),
@@ -2105,7 +2147,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
                 .length ??
             0),
     onChatMenu: (room, action) => run(() async {
-      if (action == 'mute') {
+      if (action == 'pin') {
+        await room.setFavourite(!room.isFavourite);
+        if (mounted) setState(() {});
+      } else if (action == 'mute') {
         await room.setPushRuleState(
           room.pushRuleState == mx.PushRuleState.dontNotify
               ? mx.PushRuleState.notify
@@ -2172,15 +2217,21 @@ class _ProbeScreenState extends State<ProbeScreen> {
       actions: actions!,
       report: report,
       initialEventId: focusedEvent,
-      onVoiceCall: busy || (call != null && !call!.isClosed)
+      onVoiceCall:
+          isPersonalRoom(room) || busy || (call != null && !call!.isClosed)
           ? null
           : () => run(() => startCall()),
-      onVideoCall: busy || (call != null && !call!.isClosed)
+      onVideoCall:
+          isPersonalRoom(room) || busy || (call != null && !call!.isClosed)
           ? null
           : () => run(() => startCall(video: true)),
       onRoomInfo: busy ? null : () => run(() => roomSettings()),
       completeHistory: completeHistory,
       onJump: (event) => run(() => select(room, eventId: event)),
+      onForward: (target) async {
+        await select(target);
+        if (mounted) setState(() {});
+      },
       header: ConversationHeader(
         room: room,
         lastSeenLabel: room.isDirectChat
@@ -2194,10 +2245,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
             ? () => run(() => profileCard(room.directChatMatrixID!))
             : () => run(() => roomSettings()),
         onInfo: busy ? null : () => run(() => roomSettings()),
-        onVoiceCall: busy || (call != null && !call!.isClosed)
+        onVoiceCall:
+            isPersonalRoom(room) || busy || (call != null && !call!.isClosed)
             ? null
             : () => run(() => startCall()),
-        onVideoCall: busy || (call != null && !call!.isClosed)
+        onVideoCall:
+            isPersonalRoom(room) || busy || (call != null && !call!.isClosed)
             ? null
             : () => run(() => startCall(video: true)),
       ),
@@ -2251,6 +2304,14 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Widget callBanner() {
+    final remote = calls?.devices.remote.values.firstOrNull;
+    if (remote != null && calls?.active?.isClosed != false) {
+      return ActiveCallBanner(
+        onPressed: showCallWindow,
+        label:
+            'Идёт звонок с ${roomDisplayName(remote.room)} на другом устройстве',
+      );
+    }
     final available =
         calls != null &&
         (calls!.starting ||
@@ -2263,13 +2324,11 @@ class _ProbeScreenState extends State<ProbeScreen> {
           ? Duration.zero
           : const Duration(milliseconds: 180),
       child: available
-          ? SizedBox(
-              height: 36,
-              child: TextButton.icon(
-                onPressed: showCallWindow,
-                icon: const Icon(Icons.call),
-                label: const Text('Открыть окно звонка'),
-              ),
+          ? ActiveCallBanner(
+              onPressed: showCallWindow,
+              label: calls!.active?.isClosed == false
+                  ? 'Идёт звонок · Вернуться к звонку'
+                  : 'Открыть окно звонка',
             )
           : const SizedBox.shrink(),
     );
@@ -2372,35 +2431,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
                     switchInCurve: Curves.easeOutCubic,
                     switchOutCurve: Curves.easeInCubic,
                     child: box.maxWidth >= 840
-                        ? Row(
+                        ? ResizableChatLayout(
                             key: const ValueKey('messenger-wide'),
-                            children: [
-                              SizedBox(width: 300, child: rooms()),
-                              Container(
-                                width: 1,
-                                margin: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topCenter,
-                                    end: Alignment.bottomCenter,
-                                    colors: [
-                                      colors.outlineVariant.withValues(
-                                        alpha: 0,
-                                      ),
-                                      colors.outlineVariant.withValues(
-                                        alpha: .8,
-                                      ),
-                                      colors.outlineVariant.withValues(
-                                        alpha: 0,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              Expanded(child: conversation()),
-                            ],
+                            sidebar: (compact) => rooms(compact: compact),
+                            conversation: conversation(),
                           )
                         : selected == null
                         ? KeyedSubtree(

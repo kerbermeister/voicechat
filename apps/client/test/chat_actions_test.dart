@@ -42,6 +42,10 @@ class OutboxRoom implements Room {
   final Client client;
   @override
   final bool encrypted;
+  @override
+  final roomAccountData = <String, BasicEvent>{};
+  @override
+  StrippedStateEvent? getState(String type, [String stateKey = '']) => null;
   OutboxRoom(this.client, {this.encrypted = true});
   @override
   String get id => '!test:local';
@@ -70,6 +74,14 @@ class OutboxTimeline implements Timeline {
 class VideoSession implements CallSession {
   bool rejected = false;
   @override
+  WrappedMediaStream? get localUserMediaStream => null;
+  @override
+  WrappedMediaStream? get remoteUserMediaStream => null;
+  @override
+  List<WrappedMediaStream> get getLocalStreams => [];
+  @override
+  List<WrappedMediaStream> get getRemoteStreams => [];
+  @override
   CallType get type => CallType.kVideo;
   @override
   CallDirection get direction => CallDirection.kOutgoing;
@@ -79,6 +91,8 @@ class VideoSession implements CallSession {
   CallState get state => CallState.kInviteSent;
   @override
   final onCallStateChanged = CachedStreamController<CallState>();
+  @override
+  final onCallStreamsChanged = CachedStreamController<CallSession>();
   @override
   final onStreamAdd = CachedStreamController<WrappedMediaStream>();
   @override
@@ -208,6 +222,41 @@ class WaitingClient extends Client {
 }
 
 void main() {
+  test(
+    'Media volume persists locally per chat; serial writes and failures preserve values',
+    () async {
+      final db = OutboxDatabase();
+      final client = Client('media-volume', database: db);
+      final actions = ChatActions(client);
+      await actions.open();
+      expect(actions.mediaVolume('!one:local'), 1);
+      await Future.wait([
+        actions.setMediaVolume('!one:local', .3),
+        actions.setMediaVolume('!two:local', 0),
+      ]);
+      db.failWrite = true;
+      await expectLater(
+        actions.setMediaVolume('!one:local', .9),
+        throwsStateError,
+      );
+      expect(actions.mediaVolume('!one:local'), .3);
+      db.failWrite = false;
+      await actions.close();
+      db.values['dev.voicechat.local.media_volumes']!['!bad:local'] = 3;
+      final restored = ChatActions(client);
+      await restored.open();
+      expect(restored.mediaVolume('!one:local'), .3);
+      expect(restored.mediaVolume('!two:local'), 0);
+      expect(restored.mediaVolume('!bad:local'), 1);
+      expect(
+        () => restored.setMediaVolume('!one:local', double.nan),
+        throwsArgumentError,
+      );
+      await restored.close();
+      await client.dispose();
+    },
+  );
+
   TestWidgetsFlutterBinding.ensureInitialized();
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
@@ -644,7 +693,7 @@ void main() {
           event('@alice:local', {
             'msgtype': 'dev.voicechat.call',
             'action': action,
-            'session': id,
+            'session': 'fedcba9876543210fedcba9876543210',
           }, timestamp: DateTime.now().add(const Duration(seconds: 30))),
         );
         expect(calls.invitations, hasLength(action == 'invite' ? 1 : 0));

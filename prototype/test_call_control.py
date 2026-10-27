@@ -94,5 +94,32 @@ class CallControlTests(unittest.TestCase):
         self.assertEqual(len(current['roster']), 2)
         self.assertEqual(current['generation'], second['generation'])
 
+    def test_audio_camera_capability_mixed_clients_and_upgrade(self):
+        who = {'user_id': '@modern:local', 'device_id': 'D'}
+        def admit(**kwargs):
+            return self.store.admission('!audio:local', 'audio', False, who, 'curve', 'ed', camera_capable=True, **kwargs)
+        with self.assertRaisesRegex(CallError, 'generation_settling'): admit()
+        self.now += 1
+        modern = admit()
+        self.assertTrue(modern['camera_allowed'])
+        legacy = {'user_id': '@legacy:local', 'device_id': 'OLD'}
+        def old(**kwargs):
+            return self.store.admission('!audio:local', 'audio', False, legacy, 'curve', 'ed', **kwargs)
+        with self.assertRaisesRegex(CallError, 'generation_settling'): old()
+        self.now += 1
+        mixed = old()
+        self.assertFalse(mixed['camera_allowed'])
+        self.assertFalse(admit(lease=modern['lease_id'])['camera_allowed'])
+        with self.assertRaisesRegex(CallError, 'generation_settling'):
+            old(lease=mixed['lease_id'], camera_capable=True)
+        self.now += 1
+        upgraded = old(lease=mixed['lease_id'], camera_capable=True)
+        self.assertTrue(upgraded['camera_allowed'])
+        self.assertNotEqual(upgraded['generation'], mixed['generation'])
+        self.store.leave(legacy, upgraded['lease_id'])
+        with self.store.db() as db:
+            self.assertIsNone(db.execute('SELECT 1 FROM call_camera WHERE lease_id=?', (upgraded['lease_id'],)).fetchone())
+            self.assertEqual(len(db.execute('PRAGMA table_info(leases)').fetchall()), 7)
+
 
 if __name__ == '__main__': unittest.main()

@@ -1,3 +1,4 @@
+import 'hidden_messages.dart';
 import 'message_receipts.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -29,6 +30,8 @@ class ChatActions extends ChangeNotifier {
   StreamSubscription<dynamic>? _sync;
   Timer? _retry;
   final _sending = <String, bool>{};
+  final _delivered = <String, String>{};
+  String? deliveredEvent(String transaction) => _delivered[transaction];
   bool _closed = false;
   final _preparing = <String>{};
   final _activeItems = <String, String>{};
@@ -37,7 +40,30 @@ class ChatActions extends ChangeNotifier {
   ChatActions(this.client, {this.policyUrl, this.onSent});
   static const _storageKey = 'dev.voicechat.local.outbox';
   static const _draftKey = 'dev.voicechat.local.drafts';
+  static const _mediaVolumeKey = 'dev.voicechat.local.media_volumes';
+  final _mediaVolumes = <String, double>{};
+  double mediaVolume(String roomId) => _mediaVolumes[roomId] ?? 1;
+
+  Future<void> setMediaVolume(String roomId, double volume) {
+    if (_closed ||
+        roomId.isEmpty ||
+        !volume.isFinite ||
+        volume < 0 ||
+        volume > 1) {
+      throw ArgumentError('Invalid media volume');
+    }
+    final write = _writes.catchError((Object _) {}).then((_) async {
+      final next = {..._mediaVolumes, roomId: volume};
+      await client.database.storeAccountData(_mediaVolumeKey, next);
+      _mediaVolumes.addAll(next);
+      if (!_closed) notifyListeners();
+    });
+    _writes = write.catchError((Object _) {});
+    return write;
+  }
+
   final Map<String, String> drafts = {};
+  final composerDrafts = <String, ComposerDraft>{};
   Future<void> _draftWrites = Future.value();
   bool get updateBusy =>
       _sending.isNotEmpty || _preparing.isNotEmpty || _publishing.isNotEmpty;
@@ -54,9 +80,61 @@ class ChatActions extends ChangeNotifier {
         .then((_) => client.database.storeAccountData(_draftKey, snapshot));
   }
 
+  Future<void> _hiddenWrites = Future.value();
+  Future<void> hideMessage(Event event) =>
+      _hiddenWrites = _hiddenWrites.catchError((Object _) {}).then((_) async {
+        final room = event.room;
+        if (room.client != client ||
+            !event.eventId.startsWith(r'$') ||
+            event.eventId.length > 255) {
+          throw ArgumentError('Invalid message');
+        }
+        final ids = hiddenMessages(room)..add(event.eventId);
+        if (ids.length > 10000) {
+          throw UserActionError(
+            'Достигнут предел скрытых сообщений в этом чате.',
+          );
+        }
+        final data = BasicEvent(
+          type: hiddenMessagesType,
+          content: {'event_ids': ids.toList()},
+        );
+        await client.setAccountDataPerRoom(
+          client.userID!,
+          room.id,
+          data.type,
+          data.content,
+        );
+        await client.database.storeRoomAccountData(room.id, data);
+        room.roomAccountData[data.type] = data;
+        if (!_closed) notifyListeners();
+      });
+
+  Future<void> waitForDelivery(String id) async {
+    final done = Completer<void>();
+    void check() {
+      if (done.isCompleted) return;
+      final item = pending.where((item) => item['id'] == id).firstOrNull;
+      if (item == null) {
+        done.complete();
+      } else if (item['error'] != null) {
+        done.completeError(UserActionError(item['error'] as String));
+      }
+    }
+
+    addListener(check);
+    try {
+      check();
+      await done.future.timeout(const Duration(seconds: 30));
+    } finally {
+      removeListener(check);
+    }
+  }
+
   Future<void> prepareUpdate() async {
     await _writes;
     await _draftWrites;
+    await _hiddenWrites.catchError((Object _) {});
   }
 
   Future<MediaPolicy> _fetchPolicy() async {
@@ -102,6 +180,18 @@ class ChatActions extends ChangeNotifier {
   }
 
   Future<void> open() async {
+    final volumes =
+        (await client.database.getAccountData())[_mediaVolumeKey]?.content;
+    for (final entry in volumes?.entries ?? <MapEntry<String, dynamic>>[]) {
+      final value = entry.value;
+      if (entry.key.isNotEmpty &&
+          value is num &&
+          value.isFinite &&
+          value >= 0 &&
+          value <= 1) {
+        _mediaVolumes[entry.key] = value.toDouble();
+      }
+    }
     final storedDrafts =
         (await client.database.getAccountData())[_draftKey]?.content;
     if (storedDrafts != null) {
@@ -373,7 +463,7 @@ class ChatActions extends ChangeNotifier {
     );
   }
 
-  Future<void> attachment(
+  Future<String> attachment(
     Room room,
     MatrixFile file, {
     Event? reply,
@@ -401,7 +491,7 @@ class ChatActions extends ChangeNotifier {
         'Поддерживаются изображения и голосовые сообщения.',
       );
     }
-    await enqueue(
+    return enqueue(
       room,
       {
         'msgtype': file.msgType,
@@ -690,6 +780,10 @@ class ChatActions extends ChangeNotifier {
           }
           if (_closed) break;
           if (id == null) throw StateError('Send not confirmed');
+          _delivered[item['id'] as String] = id;
+          while (_delivered.length > 128) {
+            _delivered.remove(_delivered.keys.first);
+          }
           pending.remove(item);
           await _save();
           if ((item['created'] as int) >= _opened &&
@@ -845,11 +939,18 @@ class ChatActions extends ChangeNotifier {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    for (final draft in composerDrafts.values) {
+      for (final file in draft.files) {
+        await file.release();
+      }
+    }
+    composerDrafts.clear();
     _retry?.cancel();
     await _sync?.cancel();
     try {
       await _writes;
       await _draftWrites;
+      await _hiddenWrites.catchError((Object _) {});
     } finally {
       dispose();
     }
@@ -893,7 +994,7 @@ List<Event> visibleMessages(
 }) {
   final search = query.trim().toLowerCase();
   return timeline.events
-      .where((event) => !emptyEncryptedEvent(event))
+      .where((event) => !emptyEncryptedEvent(event) && !messageHidden(event))
       .where(
         (event) =>
             !messageExpired(event) ||
@@ -926,6 +1027,7 @@ List<Event> visibleMessages(
 
 /// A receipt on a later event also acknowledges earlier messages in the loaded timeline.
 bool messageIsRead(Event event, Timeline timeline) {
+  if (personalMessageIsRead(event)) return true;
   final index = timeline.events.indexWhere((e) => e.eventId == event.eventId);
   if (index < 0) return false;
   return messageReadReceipts(event.room).any((receipt) {
@@ -933,5 +1035,32 @@ bool messageIsRead(Event event, Timeline timeline) {
       (e) => e.eventId == receipt.eventId,
     );
     return readIndex >= 0 && readIndex <= index;
+  });
+}
+
+/// In-memory media drafts retained only when forwarding changes the open chat.
+class ComposerDraft {
+  final List<PickedFile> files;
+  final List<MatrixImageFile> photos;
+  final MatrixAudioFile? voice;
+  final String? voiceTransaction;
+  final List<int>? wave;
+  final Event? reply, edit, voiceReply;
+  final bool videoNote;
+  final int? videoDuration, temporarySeconds;
+  final DateTime? scheduledFor;
+  ComposerDraft({
+    required this.files,
+    required this.photos,
+    this.voice,
+    this.voiceTransaction,
+    this.wave,
+    this.reply,
+    this.edit,
+    this.voiceReply,
+    required this.videoNote,
+    this.videoDuration,
+    this.temporarySeconds,
+    this.scheduledFor,
   });
 }

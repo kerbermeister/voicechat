@@ -10,6 +10,7 @@ import 'screen_capture.dart';
 import 'screen_state.dart';
 import 'screen_key.dart';
 import 'screen_quality.dart';
+import 'screen_receive_deadline.dart';
 import 'call_quality.dart';
 import 'matrix_probe.dart';
 import 'transport.dart';
@@ -42,6 +43,7 @@ class ScreenShareController extends ChangeNotifier {
   ScreenQuality quality = ScreenQuality.auto;
   ScreenQuality? _appliedQuality;
   bool _closed = false, _polling = false, _acting = false;
+  bool reconnectAllowed = false;
   bool _bindingPending = false;
   bool _bindingInFlight = false;
   bool _preparingCapture = false;
@@ -51,7 +53,20 @@ class ScreenShareController extends ChangeNotifier {
   int _serial = 0;
   Timer? _timer;
   Timer? _preparation;
+  late final _reception = ScreenReceiveDeadline(() {
+    if (_closed || displayTrack != null) return;
+    phase = ScreenPhase.error;
+    notice = !_receivedKey
+        ? 'Не получен ключ защищённого экрана. Повторите подключение.'
+        : remoteTrack == null
+        ? 'Видеопоток экрана не поступает. Повторите подключение.'
+        : 'Не удалось расшифровать изображение экрана. Повторите подключение.';
+    _changed();
+  });
+  bool _receivedKey = false;
   ScreenCapture? _capture;
+  bool _resumeCamera = false;
+  bool get sharing => _capture != null;
   lk.LocalVideoTrack? _publication;
   lk.BaseKeyProvider? _keys;
   Uint8List? _senderKey;
@@ -67,6 +82,13 @@ class ScreenShareController extends ChangeNotifier {
   bool get isClosed => _closed;
   bool get hasBinding => _binding != null;
   bool get busy => _acting;
+  bool get canShare =>
+      !_closed &&
+      !_acting &&
+      _pending == null &&
+      !_bindingPending &&
+      snapshot != null &&
+      _capture == null;
   lk.VideoTrack? get displayTrack => _closed
       ? null
       : snapshot?.owner == identity
@@ -119,8 +141,10 @@ class ScreenShareController extends ChangeNotifier {
       });
       _authorized.start();
       _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (call.isClosed ||
-            _authorized.elapsed >= const Duration(seconds: 25)) {
+        if (call.isClosed) {
+          unawaited(close());
+        } else if (_authorized.elapsed >= const Duration(seconds: 25)) {
+          reconnectAllowed = true;
           unawaited(close());
         } else {
           unawaited(poll());
@@ -159,6 +183,9 @@ class ScreenShareController extends ChangeNotifier {
     } on ScreenApiError catch (error) {
       if ([401, 403, 404, 410].contains(error.status) ||
           error.code == 'screen_disabled') {
+        reconnectAllowed =
+            error.code == 'lease_expired' ||
+            error.code == 'screen_access_denied';
         await close();
       } else {
         phase = ScreenPhase.reconnecting;
@@ -192,14 +219,7 @@ class ScreenShareController extends ChangeNotifier {
   }
 
   Future<void> share() async {
-    if (_closed ||
-        _acting ||
-        _pending != null ||
-        snapshot == null ||
-        _bindingPending ||
-        _capture != null) {
-      return;
-    }
+    if (!canShare) return;
     _acting = true;
     _preparingCapture = true;
     notice = null;
@@ -208,13 +228,28 @@ class ScreenShareController extends ChangeNotifier {
     _changed();
     try {
       // Capture запускается до сетевых await, сохраняя browser user activation.
-      final capture = await captureFactory();
+      var abandoned = false;
+      final selection = captureFactory();
+      unawaited(
+        selection.then<void>((capture) async {
+          if (abandoned) await capture.close();
+        }, onError: (Object _, StackTrace __) {}),
+      );
+      final capture = await selection.timeout(
+        const Duration(seconds: 60),
+        onTimeout: () {
+          abandoned = true;
+          throw TimeoutException('Screen selection');
+        },
+      );
       if (_closed || call.isClosed) {
         await capture.close();
         return;
       }
       await _capture?.close();
       _capture = capture;
+      _resumeCamera = call.cameraEnabled;
+      if (_resumeCamera) await call.camera(false);
       _preparation?.cancel();
       _preparation = Timer(const Duration(seconds: 15), () {
         if (_capture != capture || phase == ScreenPhase.sharing) return;
@@ -223,7 +258,21 @@ class ScreenShareController extends ChangeNotifier {
         unawaited(stop());
       });
       capture.source.mediaStreamTrack.onEnded = () {
+        if (_capture != capture || _closed) return;
+        notice = 'Браузер или система завершили захват. Начните показ снова.';
         unawaited(stop());
+      };
+      const pausedNotice =
+          'Браузер приостановил захват экрана. Вернитесь в приложение для продолжения.';
+      capture.source.mediaStreamTrack.onMute = () {
+        if (_capture != capture || _closed) return;
+        notice = pausedNotice;
+        _changed();
+      };
+      capture.source.mediaStreamTrack.onUnMute = () {
+        if (_capture != capture || _closed || notice != pausedNotice) return;
+        notice = null;
+        _changed();
       };
       await (() async {
         await _pollFinished?.future;
@@ -244,18 +293,29 @@ class ScreenShareController extends ChangeNotifier {
       _preparation?.cancel();
       await captured?.close();
       if (captured != null) await _disposeMedia();
-      notice = error is UnsupportedError
-          ? 'В этой среде недоступен захват экрана.'
-          : error is TimeoutException
+      await _restoreCamera();
+      notice = error is TimeoutException
           ? 'Не удалось подключить показ вовремя. Попробуйте ещё раз.'
           : captured == null
-          ? 'Показ не начат. Проверьте разрешение на захват экрана.'
+          ? screenCaptureNotice(error)
           : 'Показ остановлен. Проверьте сеть и защищённое соединение.';
       phase = captured == null ? previousPhase : ScreenPhase.error;
     } finally {
       _acting = false;
       _preparingCapture = false;
       _changed();
+    }
+  }
+
+  Future<void> _restoreCamera() async {
+    final resume = _resumeCamera;
+    _resumeCamera = false;
+    if (!resume || call.isClosed) return;
+    try {
+      await call.camera(true);
+    } catch (_) {
+      notice =
+          'Показ завершён. Камера не включилась — включите её кнопкой звонка.';
     }
   }
 
@@ -266,6 +326,7 @@ class ScreenShareController extends ChangeNotifier {
     _capture = null;
     await capture?.close();
     await _disposeMedia();
+    await _restoreCamera();
     if (_acting || _polling || _pending != null) return;
     _acting = true;
     try {
@@ -345,6 +406,7 @@ class ScreenShareController extends ChangeNotifier {
       final capture = _capture;
       _capture = null;
       await capture!.close();
+      await _restoreCamera();
       notice = next.owner == null
           ? null
           : 'Другой участник перехватил демонстрацию.';
@@ -419,6 +481,44 @@ class ScreenShareController extends ChangeNotifier {
     }
   }
 
+  void _waitForImage() {
+    if (_closed || snapshot?.owner == identity) return;
+    _reception.start();
+  }
+
+  void _receptionChanged() {
+    if (decoded && remoteTrack != null) {
+      _reception.reset();
+      phase = ScreenPhase.viewing;
+      notice = null;
+    } else {
+      if (phase != ScreenPhase.error) phase = ScreenPhase.connecting;
+      _waitForImage();
+    }
+    _changed();
+  }
+
+  Future<void> retryViewing() async {
+    if (_closed || _acting || snapshot?.owner == identity) return;
+    _acting = true;
+    _changed();
+    try {
+      await _pollFinished?.future;
+      if (_closed) return;
+      await _disposeMedia();
+      notice = null;
+      phase = ScreenPhase.connecting;
+    } catch (_) {
+      phase = ScreenPhase.error;
+      notice = 'Не удалось повторно подключить экран. Попробуйте ещё раз.';
+      return;
+    } finally {
+      _acting = false;
+      _changed();
+    }
+    await poll();
+  }
+
   Future<void> _connectMedia(ScreenSnapshot next) async {
     // Повторное подключение того же поколения сохраняет его sender key.
     final previousKey = _generation == next.generation
@@ -429,7 +529,9 @@ class ScreenShareController extends ChangeNotifier {
     final serial = _serial;
     _generation = next.generation;
     phase = ScreenPhase.connecting;
+    notice = null;
     decoded = false;
+    _waitForImage();
     final keys = await lk.BaseKeyProvider.create(
       sharedKey: false,
       discardFrameWhenCryptorNotReady: true,
@@ -464,30 +566,34 @@ class ScreenShareController extends ChangeNotifier {
         return;
       }
       remoteTrack = e.track as lk.VideoTrack;
-      _changed();
+      _receptionChanged();
     });
     _events!.on<lk.TrackUnsubscribedEvent>((e) {
       if (serial != _serial || remoteTrack != e.track) return;
       remoteTrack = null;
       decoded = false;
-      phase = ScreenPhase.connecting;
-      _changed();
+      _receptionChanged();
     });
     _events!.on<lk.TrackE2EEStateEvent>((e) {
       if (serial != _serial ||
           e.participant.identity == identity ||
-          e.participant.identity != snapshot?.owner) {
+          e.participant.identity != snapshot?.owner ||
+          e.publication is! lk.RemoteTrackPublication ||
+          !_allowed(
+            e.publication as lk.RemoteTrackPublication,
+            e.participant.identity,
+          )) {
         return;
       }
       decoded = e.state == lk.E2EEState.kOk;
-      phase = decoded ? ScreenPhase.viewing : ScreenPhase.connecting;
-      _changed();
+      _receptionChanged();
     });
     _events!.on<lk.RoomReconnectingEvent>((_) {
       if (serial != _serial) return;
       decoded = false;
       remoteTrack = null;
       phase = ScreenPhase.reconnecting;
+      _waitForImage();
       _changed();
     });
     _events!.on<lk.RoomDisconnectedEvent>((_) {
@@ -495,6 +601,7 @@ class ScreenShareController extends ChangeNotifier {
       decoded = false;
       remoteTrack = null;
       phase = ScreenPhase.reconnecting;
+      _waitForImage();
       _changed();
     });
     final token = await api.request('$_binding/token', {
@@ -674,9 +781,12 @@ class ScreenShareController extends ChangeNotifier {
       Uint8List.fromList(key),
       participantId: current.owner!,
     );
+    if (!_closed && keys == _keys) _receivedKey = true;
   }
 
   Future<void> _disposeMedia() async {
+    _reception.reset();
+    _receivedKey = false;
     _serial++;
     _generation = null;
     _senderKey?.fillRange(0, _senderKey!.length, 0);

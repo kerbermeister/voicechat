@@ -26,6 +26,10 @@ class AndroidCaddyTests(unittest.TestCase):
             (root/'macos/release.json').write_text('private-release')
             (root/'web').mkdir()
             (root/'web/index.html').write_text('SPA')
+            versioned = 'static/' + 'a' * 64
+            (root/'web'/versioned/'canvaskit').mkdir(parents=True)
+            (root/'web'/versioned/'main.dart.js').write_text('versioned-app')
+            (root/'web'/versioned/'canvaskit/canvaskit.wasm').write_text('versioned-engine')
             try:
                 subprocess.run(['docker','run','-d','--name',name,'--network','none',
                     '-e','SITE=http://:80','-v',f'{repo}/infra/Caddyfile:/etc/caddy/Caddyfile:ro',
@@ -59,6 +63,16 @@ class AndroidCaddyTests(unittest.TestCase):
                     self.assertNotEqual(response.returncode,0)
                     self.assertIn('404',response.stderr)
                     self.assertNotIn('SPA',response.stdout)
+                for asset in ('main.dart.js', 'canvaskit/canvaskit.wasm'):
+                    response = get('/' + versioned + '/' + asset)
+                    self.assertEqual(response.returncode, 0, response.stderr)
+                    self.assertIn('immutable', response.stderr)
+                    self.assertIn('31536000', response.stderr)
+                missing = get('/static/' + 'b' * 64 + '/main.dart.js')
+                self.assertIn('404', missing.stderr)
+                self.assertNotIn('immutable', missing.stderr)
+                self.assertNotIn('SPA', missing.stdout)
+                self.assertIn('no-cache', get('/').stderr)
                 self.assertEqual(get('/some-client-route').stdout,'SPA')
             finally:
                 subprocess.run(['docker','rm','-f',name],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)

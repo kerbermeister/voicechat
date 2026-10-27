@@ -1,6 +1,10 @@
 import 'dart:io';
+import 'package:image/image.dart' as img;
+import 'package:voicechat_probe/file_drop.dart';
+import 'package:voicechat_probe/picked_file.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:camera_platform_interface/camera_platform_interface.dart';
 import 'video_note_test.dart' show NoteCamera;
 import 'package:flutter/gestures.dart';
@@ -24,6 +28,11 @@ class ForwardActions extends ChatActions {
   ForwardActions(super.client);
   final sent = <(String, Map<String, dynamic>)>[];
   @override
+  Future<void> saveDraft(String roomId, String text) async {
+    drafts[roomId] = text;
+  }
+
+  @override
   Future<String> enqueue(
     mx.Room room,
     Map<String, dynamic> content, {
@@ -36,6 +45,47 @@ class ForwardActions extends ChatActions {
   }) async {
     sent.add((room.id, content));
     return 'queued';
+  }
+}
+
+class DropActions extends ForwardActions {
+  DropActions(super.client);
+  @override
+  Future<void> saveDraft(String roomId, String text) async {
+    drafts[roomId] = text;
+  }
+
+  int albums = 0, files = 0;
+  String? albumCaption;
+  bool failFile = true;
+  @override
+  Future<void> album(
+    mx.Room room,
+    List<mx.MatrixImageFile> photos,
+    String caption, {
+    mx.Event? reply,
+    int? ttlSeconds,
+    DateTime? scheduledFor,
+  }) async {
+    albums++;
+    albumCaption = caption;
+  }
+
+  @override
+  Future<void> file(
+    mx.Room room,
+    PickedFile source,
+    String caption, {
+    mx.Event? reply,
+    bool videoNote = false,
+    int? duration,
+    void Function(double)? progress,
+    bool Function()? cancelled,
+    int? ttlSeconds,
+    DateTime? scheduledFor,
+  }) async {
+    if (failFile) throw StateError('test upload failure');
+    files++;
   }
 }
 
@@ -75,7 +125,194 @@ void main() {
     }
   });
   testWidgets(
-    'Press begins recording before long-press timeout; swipe cancels without sending',
+    'Phone photo menu distinguishes library and camera; cancellation preserves the draft',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final choices = <Map<dynamic, dynamic>>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('voicechat/images'),
+        (call) async {
+          if (call.method == 'choose') choices.add(call.arguments as Map);
+          return null;
+        },
+      );
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(
+          const MethodChannel('voicechat/images'),
+          null,
+        ),
+      );
+      final client = CaptureClient();
+      final room = ForwardRoom(client, '!photo:local');
+      final actions = DelayedPolicyActions(client);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ChatPane(
+              room: room,
+              timeline: CaptureTimeline(room),
+              actions: actions,
+              header: const SizedBox(height: 50),
+              report: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final field = find.byType(TextField).last;
+      await tester.enterText(field, 'Keep this draft');
+      for (final label in ['Сделать фото', 'Изображение из библиотеки']) {
+        await tester.tap(find.byTooltip('Вложения и отправка'));
+        await tester.pumpAndSettle();
+        expect(find.text('Сделать фото'), findsOneWidget);
+        expect(find.text('Изображение из библиотеки'), findsOneWidget);
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        expect(choices.last['camera'], label == 'Сделать фото');
+        if (label == 'Сделать фото') expect(choices.last['max_count'], 1);
+        expect(
+          tester.widget<TextField>(field).controller!.text,
+          'Keep this draft',
+        );
+        expect(actions.sent, isEmpty);
+      }
+      // The system chooser opens without waiting for a policy network request.
+      expect(actions.policyReady.isCompleted, false);
+      actions.policyReady.complete();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await actions.close();
+      debugDefaultTargetPlatformOverride = null;
+      expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'Mixed drop keeps the draft and does not resend photos after a file retry',
+    (tester) async {
+      final client = CaptureClient();
+      final room = ForwardRoom(client, '!drop:local');
+      final actions = DropActions(client);
+      final errors = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ChatPane(
+              room: room,
+              timeline: CaptureTimeline(room),
+              actions: actions,
+              header: const SizedBox(height: 50),
+              report: errors.add,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final field = find.byType(TextField).last;
+      await tester.enterText(field, 'Caption stays here');
+      final png = Uint8List.fromList(
+        img.encodePng(img.Image(width: 20, height: 12)),
+      );
+      var releases = 0;
+      PickedFile file(String name, String mime, Uint8List bytes) => PickedFile(
+        name: name,
+        mime: mime,
+        size: bytes.length,
+        read: (start, end) async => bytes.sublist(start, end),
+        release: () async {
+          releases++;
+        },
+      );
+      tester.widget<FileDrop>(find.byType(FileDrop)).onDrop([
+        file('photo.png', 'image/png', png),
+        file('report.pdf', 'application/pdf', Uint8List(4)),
+      ]);
+      for (var i = 0; i < 100; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+        await tester.pump();
+        if (tester.widget<FileDrop>(find.byType(FileDrop)).enabled) break;
+      }
+      await tester.pumpAndSettle();
+      expect(errors, isEmpty);
+      expect(find.text('report.pdf'), findsOneWidget);
+      expect(find.textContaining('Прикреплено фото: 1'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(field).controller!.text,
+        'Caption stays here',
+      );
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pumpAndSettle();
+      expect(actions.albums, 1);
+      expect(actions.albumCaption, 'Caption stays here');
+      expect(errors, hasLength(1));
+      expect(find.text('report.pdf'), findsOneWidget);
+      actions.failFile = false;
+      await tester.tap(find.byTooltip('Отправить'));
+      await tester.pumpAndSettle();
+      expect(actions.albums, 1);
+      expect(actions.files, 1);
+      expect(releases, 2);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets('Holding microphone never opens camera or switches to video', (
+    tester,
+  ) async {
+    final previous = CameraPlatform.instance;
+    final camera = NoteCamera();
+    CameraPlatform.instance = camera;
+    addTearDown(() => CameraPlatform.instance = previous);
+    final calls = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('com.llfbandit.record/messages'),
+          (call) async {
+            calls.add(call.method);
+            if (call.method == 'hasPermission') return true;
+            if (call.method == 'startStream') {
+              expect(call.arguments['encoder'], 'pcm16bits');
+              expect(call.arguments['autoGain'], true);
+              throw PlatformException(code: 'test-stream-unavailable');
+            }
+            return null;
+          },
+        );
+    final client = CaptureClient();
+    final room = ForwardRoom(client, '!audio-only:local');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChatPane(
+            room: room,
+            timeline: CaptureTimeline(room),
+            actions: ForwardActions(client),
+            header: const SizedBox(height: 50),
+            report: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final press = await tester.startGesture(
+      tester.getCenter(find.byIcon(Icons.mic_none)),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await press.up();
+    await tester.pumpAndSettle();
+    expect(calls, containsAllInOrder(['hasPermission', 'startStream']));
+    expect(camera.starts, 0);
+    expect(camera.creations, 0);
+    expect(find.byIcon(Icons.mic_none), findsOneWidget);
+    expect(find.byIcon(Icons.videocam_outlined), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await camera.initialized.close();
+    await camera.errors.close();
+  });
+  testWidgets(
+    'Tap switches recording mode; hold starts video and swipe cancels',
     (tester) async {
       final old = CameraPlatform.instance;
       final camera = NoteCamera();
@@ -97,9 +334,21 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.videocam_outlined), findsNothing);
+      await tester.tapAt(tester.getCenter(find.byIcon(Icons.mic_none)));
+      await tester.pump();
+      expect(camera.starts, 0);
+      await tester.tapAt(
+        tester.getCenter(find.byIcon(Icons.videocam_outlined)),
+      );
+      await tester.pump();
+      expect(find.byIcon(Icons.mic_none), findsOneWidget);
+      await tester.tapAt(tester.getCenter(find.byIcon(Icons.mic_none)));
+      await tester.pump();
       final press = await tester.startGesture(
         tester.getCenter(find.byIcon(Icons.videocam_outlined)),
       );
+      await tester.pump(const Duration(milliseconds: 600));
       for (var i = 0; i < 4; i++) {
         await tester.pump(const Duration(milliseconds: 20));
         await tester.runAsync(
@@ -159,6 +408,7 @@ void main() {
         };
       }
       final actions = ForwardActions(client);
+      final opened = <String>[];
       for (final source in [rooms[0], rooms[2]]) {
         final timeline = CaptureTimeline(source)
           ..events.add(
@@ -178,6 +428,9 @@ void main() {
             home: Scaffold(
               body: ChatPane(
                 key: ValueKey(source.id),
+                onForward: (target) async {
+                  opened.add(target.id);
+                },
                 room: source,
                 timeline: timeline,
                 actions: actions,
@@ -196,6 +449,12 @@ void main() {
             )
             .map((w) => w.value)
             .toList();
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pumpAndSettle();
+        await tester.longPress(find.text('Forward me'));
+        await tester.pumpAndSettle();
+        expect(find.text('Ответить'), findsOneWidget);
+        expect(find.byIcon(Icons.reply), findsOneWidget);
         await tester.tapAt(const Offset(10, 10));
         await tester.pumpAndSettle();
         for (final target in rooms) {
@@ -218,23 +477,25 @@ void main() {
           expect(find.byType(AdaptiveTextSelectionToolbar), findsNothing);
           await tester.tap(find.text('Переслать'));
           await tester.pumpAndSettle();
-          final index = rooms.indexOf(target);
-          // Direct chats share the peer name; use picker row order for exact targets.
+          if (!target.isDirectChat) {
+            await tester.tap(find.text('Группы'));
+            await tester.pumpAndSettle();
+          }
           await tester.tap(
-            find
-                .descendant(
-                  of: find.byType(AlertDialog),
-                  matching: find.byType(ListTile),
-                )
-                .at(index),
+            find.descendant(
+              of: find.byType(AlertDialog),
+              matching: find.byKey(ValueKey(target.id)),
+            ),
           );
           await tester.pumpAndSettle();
+          if (source != target) expect(opened.last, target.id);
           expect(actions.sent.last.$1, target.id);
           expect(actions.sent.last.$2[forwardedAuthorKey], 'Alice');
           expect(actions.sent.last.$2['body'], 'Forward me');
         }
       }
       expect(actions.sent, hasLength(8));
+      expect(opened, hasLength(6));
       await tester.pumpWidget(const SizedBox());
     },
   );

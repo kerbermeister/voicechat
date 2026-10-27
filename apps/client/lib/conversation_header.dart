@@ -1,3 +1,4 @@
+import 'personal_room.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'conversation_list.dart';
@@ -64,6 +65,7 @@ class ConversationHeader extends StatelessWidget {
                             name: roomDisplayName(room),
                             client: room.client,
                             url: roomAvatar(room),
+                            personal: isPersonalRoom(room),
                             group: !room.isDirectChat,
                             online: presence == 'В сети',
                             size: avatarSize,
@@ -118,18 +120,20 @@ class ConversationHeader extends StatelessWidget {
                   onPressed: onInfo,
                   icon: const Icon(Icons.more_horiz_rounded),
                 ),
-                IconButton.filledTonal(
-                  tooltip: 'Голосовой звонок',
-                  style: buttonStyle,
-                  onPressed: onVoiceCall,
-                  icon: const Icon(Icons.call_outlined),
-                ),
-                IconButton.filledTonal(
-                  tooltip: 'Видеозвонок',
-                  style: buttonStyle,
-                  onPressed: onVideoCall,
-                  icon: const Icon(Icons.videocam_outlined),
-                ),
+                if (!isPersonalRoom(room))
+                  IconButton.filledTonal(
+                    tooltip: 'Голосовой звонок',
+                    style: buttonStyle,
+                    onPressed: onVoiceCall,
+                    icon: const Icon(Icons.call_outlined),
+                  ),
+                if (!isPersonalRoom(room))
+                  IconButton.filledTonal(
+                    tooltip: 'Видеозвонок',
+                    style: buttonStyle,
+                    onPressed: onVideoCall,
+                    icon: const Icon(Icons.videocam_outlined),
+                  ),
               ],
             ),
           ),

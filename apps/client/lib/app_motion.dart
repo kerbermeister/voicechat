@@ -16,67 +16,33 @@ AnimationStyle appAnimationStyle(BuildContext context) =>
         reverseCurve: Curves.easeInCubic,
       );
 
-final _dialogDepth = Expando<int>('app-dialog-depth');
-
 /// Keep focus, dismissal and typed results; nested windows retain their parent.
 Future<T?> showAppDialog<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   bool barrierDismissible = true,
   AnimationStyle? animationStyle,
-}) async {
-  final navigator = Navigator.of(context, rootNavigator: true);
-  final depth = (_dialogDepth[navigator] ?? 0) + 1;
-  _dialogDepth[navigator] = depth;
-  try {
-    return await showDialog<T>(
-      context: context,
-      barrierDismissible: barrierDismissible,
-      animationStyle: animationStyle ?? appAnimationStyle(context),
-      builder: (context) => _AppDialogScope(
-        depth: depth,
-        child: AppModalBackdrop(child: builder(context)),
-      ),
-    );
-  } finally {
-    final current = _dialogDepth[navigator] ?? 1;
-    _dialogDepth[navigator] = current > 1 ? current - 1 : 0;
-  }
-}
-
-class _AppDialogScope extends InheritedWidget {
-  final int depth;
-  const _AppDialogScope({required this.depth, required super.child});
-  @override
-  bool updateShouldNotify(_AppDialogScope oldWidget) =>
-      depth != oldWidget.depth;
-}
+  bool clearBackdrop = false,
+}) => showDialog<T>(
+  context: context,
+  barrierDismissible: barrierDismissible,
+  barrierColor: clearBackdrop ? Colors.transparent : null,
+  animationStyle: animationStyle ?? appAnimationStyle(context),
+  builder: (context) => clearBackdrop
+      ? builder(context)
+      : AppModalBackdrop(child: builder(context)),
+);
 
 class AppDialogTitle extends StatelessWidget {
   final Widget child;
   const AppDialogTitle({super.key, required this.child});
   @override
   Widget build(BuildContext context) {
-    final depth =
-        context.dependOnInheritedWidgetOfExactType<_AppDialogScope>()?.depth ??
-        1;
     final compact = MediaQuery.sizeOf(context).width < 500;
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        IconButton(
-          tooltip: depth > 1 ? 'Назад' : 'Закрыть',
-          onPressed: () => Navigator.of(context).maybePop(),
-          style: IconButton.styleFrom(
-            minimumSize: const Size(44, 44),
-            maximumSize: const Size(44, 44),
-            padding: const EdgeInsets.all(10),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          icon: Icon(
-            depth > 1 ? Icons.arrow_back_rounded : Icons.close_rounded,
-            size: 22,
-          ),
-        ),
+        const SizedBox(width: 44),
         Expanded(
           child: DefaultTextStyle.merge(
             textAlign: TextAlign.center,
@@ -87,7 +53,17 @@ class AppDialogTitle extends StatelessWidget {
             child: child,
           ),
         ),
-        const SizedBox(width: 44),
+        IconButton(
+          tooltip: 'Закрыть',
+          onPressed: () => Navigator.of(context).maybePop(),
+          style: IconButton.styleFrom(
+            minimumSize: const Size(44, 44),
+            maximumSize: const Size(44, 44),
+            padding: const EdgeInsets.all(10),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          icon: const Icon(Icons.close_rounded, size: 22),
+        ),
       ],
     );
   }
@@ -154,10 +130,7 @@ class AnimatedPanel extends StatelessWidget {
     ),
     child: child == null
         ? const SizedBox.shrink(key: ValueKey('hidden'))
-        : KeyedSubtree(
-            key: child!.key ?? const ValueKey('visible'),
-            child: child!,
-          ),
+        : KeyedSubtree(key: ValueKey(child!.key ?? 'visible'), child: child!),
   );
 }
 

@@ -5,11 +5,12 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'call_controller.dart';
+import 'voice_call.dart';
 
 class AppSounds {
   final mx.Client client;
-  final effect = AudioPlayer();
-  final ringing = AudioPlayer();
+  final AudioPlayer effect;
+  final AudioPlayer ringing;
   final opened = DateTime.now();
   final seen = <String>{};
   StreamSubscription<mx.Event>? events;
@@ -17,9 +18,16 @@ class AppSounds {
   bool blocked = false;
   bool _closed = false;
   String? _ring;
+  VoiceCall? _observedCall;
   Future<void> _ringWrites = Future.value();
   final Future<void> Function(String room, String event)? onReceived;
-  AppSounds(this.client, {this.onReceived});
+  AppSounds(
+    this.client, {
+    this.onReceived,
+    AudioPlayer? effect,
+    AudioPlayer? ringing,
+  }) : effect = effect ?? AudioPlayer(),
+       ringing = ringing ?? AudioPlayer();
   Future<void> open() async {
     if (kIsWeb) prepareBrowserAudio();
     await effect.setAudioContext(
@@ -79,6 +87,12 @@ class AppSounds {
 
   void sent() => unawaited(_play(effect, 'sent'));
   void updateCall(CallController calls) {
+    final previous = _observedCall;
+    if (previous != null && previous.isClosed) {
+      _observedCall = null;
+      unawaited(_play(effect, 'ended'));
+    }
+    if (calls.active?.isClosed == false) _observedCall = calls.active;
     final incoming =
         calls.directInvitations.isNotEmpty || calls.invitations.isNotEmpty;
     final active = calls.active;
@@ -87,7 +101,8 @@ class AppSounds {
         (calls.starting ||
             active != null &&
                 !active.isClosed &&
-                active.duration == Duration.zero);
+                active.duration == Duration.zero &&
+                !calls.devices.isAccepted(active));
     final next = !enabled
         ? null
         : incoming
