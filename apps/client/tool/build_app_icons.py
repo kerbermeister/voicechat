@@ -14,6 +14,7 @@ for size in [16, 32, 64, 128, 256, 512, 1024]:
     render(SVG, ROOT / f'macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_{size}.png', size)
 for size in [192, 512]:
     render(SVG, ROOT / f'web/icons/Icon-{size}.png', size)
+render(SVG, ROOT / 'assets/branding/app-icon.png', 64)
 render(SVG, ROOT / 'web/favicon.png', 32)
 for density, size in [('mdpi', 48), ('hdpi', 72), ('xhdpi', 96), ('xxhdpi', 144), ('xxxhdpi', 192)]:
     render(SVG, ROOT / f'android/app/src/main/res/mipmap-{density}/ic_launcher.png', size)
