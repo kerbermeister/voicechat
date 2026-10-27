@@ -529,7 +529,11 @@ void main() {
     expect(find.text('Вступили · 1'), findsOneWidget);
     expect(find.text('Приглашены · 2'), findsOneWidget);
     expect(
-      tester.widget<PersonAvatar>(find.byType(PersonAvatar).first).online,
+      tester
+          .widget<PersonAvatar>(
+            find.byWidgetPredicate((w) => w is PersonAvatar && !w.group).first,
+          )
+          .online,
       true,
     );
     final offline = CachedPresence(
@@ -543,7 +547,11 @@ void main() {
     client.onPresenceChanged.add(offline);
     await tester.pumpAndSettle();
     expect(
-      tester.widget<PersonAvatar>(find.byType(PersonAvatar).first).online,
+      tester
+          .widget<PersonAvatar>(
+            find.byWidgetPredicate((w) => w is PersonAvatar && !w.group).first,
+          )
+          .online,
       false,
     );
     expect(find.textContaining('Не в сети · Это вы'), findsOneWidget);

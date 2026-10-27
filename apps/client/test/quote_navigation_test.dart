@@ -258,7 +258,17 @@ void main() {
           .first;
       expect(
         tester.getRect(find.widgetWithText(TextButton, '👍 1')).left,
-        closeTo(tester.getRect(bubble).left + 10, .1),
+        closeTo(
+          tester
+              .getRect(
+                find.descendant(
+                  of: metadata,
+                  matching: find.byType(IconButton),
+                ),
+              )
+              .right,
+          .1,
+        ),
       );
       expect(
         tester.getRect(metadata).right,

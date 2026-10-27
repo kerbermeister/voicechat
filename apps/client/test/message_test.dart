@@ -9,6 +9,8 @@ import 'package:voicechat_probe/contact_service.dart';
 
 class TestRoom implements Room {
   @override
+  final roomAccountData = <String, BasicEvent>{};
+  @override
   final bool encrypted;
   @override
   bool get isDirectChat => false;

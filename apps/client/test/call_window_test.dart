@@ -70,6 +70,46 @@ void main() {
         (_) async => null,
       );
   testWidgets(
+    'Audio camera requires confirmation; cancel preserves microphone and camera',
+    (tester) async {
+      final client = Client('audio-camera', database: WindowDatabase());
+      final call = WindowCall(CallRoom(client), video: false)
+        ..cameraEnabled = false;
+      final calls = CallController(
+        client,
+        'http://localhost:8090',
+        'ws://localhost:7880',
+        (_) {},
+      )..active = call;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CallWindow(calls: calls, audioOutput: () async {}),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.byTooltip('Включить камеру'));
+      await tester.pump();
+      expect(
+        find.text('Вы действительно хотите включить камеру?'),
+        findsOneWidget,
+      );
+      expect(call.cameraEnabled, false);
+      await tester.tap(find.text('Отмена'));
+      await tester.pump();
+      expect(call.cameraEnabled, false);
+      await tester.tap(find.byTooltip('Включить камеру'));
+      await tester.pump();
+      await tester.tap(find.text('Включить'));
+      await tester.pump();
+      expect(call.cameraEnabled, true);
+      expect(call.muted, false);
+      await tester.pumpWidget(const SizedBox.shrink());
+      calls.active = null;
+      await tester.runAsync(calls.close);
+      await client.dispose();
+    },
+  );
+  testWidgets(
     'Video controls and quality stay usable on a narrow and rotated screen',
     (tester) async {
       final client = Client('window-test', database: WindowDatabase());

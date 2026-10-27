@@ -146,6 +146,36 @@ void main() {
     },
   );
 
+  test(
+    'Personal room has immutable type, encryption, joined history and no invites',
+    () async {
+      final client = MetadataClient();
+      await MatrixProbe(client).createRoom([], name: 'Заметки', personal: true);
+      expect(client.creation![#creationContent], {
+        'type': 'dev.voicechat.personal',
+        'm.federate': false,
+      });
+      expect(client.creation![#invite], isEmpty);
+      final state = client.creation![#initialState] as List<mx.StateEvent>;
+      expect(
+        state
+            .firstWhere((e) => e.type == mx.EventTypes.Encryption)
+            .content['algorithm'],
+        'm.megolm.v1.aes-sha2',
+      );
+      expect(
+        state
+            .firstWhere((e) => e.type == 'm.room.history_visibility')
+            .content['history_visibility'],
+        'joined',
+      );
+      expect(
+        () => MatrixProbe(client).createRoom(['@friend:local'], personal: true),
+        throwsArgumentError,
+      );
+    },
+  );
+
   testWidgets(
     'Reaction changes retain exact footer geometry, scrolling and actions',
     (tester) async {
@@ -278,7 +308,10 @@ void main() {
         );
         await tester.tap(find.text('Открыть'));
         await tester.pumpAndSettle();
-        expect(find.byType(CheckboxListTile), findsNWidgets(2));
+        await tester.ensureVisible(
+          find.widgetWithText(CheckboxListTile, 'alice'),
+        );
+        expect(find.widgetWithText(CheckboxListTile, 'alice'), findsOneWidget);
         expect(find.text(client.userID), findsNothing);
         await tester.tap(find.widgetWithText(CheckboxListTile, 'alice'));
         await tester.pumpAndSettle();
@@ -292,6 +325,7 @@ void main() {
           of: selectedPerson,
           matching: find.byType(PersonAvatar),
         );
+        await tester.ensureVisible(selectedPerson);
         expect(selectedAvatar, findsOneWidget);
         expect(
           tester.getSize(selectedAvatar).shortestSide,
@@ -310,6 +344,9 @@ void main() {
         await tester.enterText(search, 'bob');
         await tester.pumpAndSettle();
         expect(find.byType(CheckboxListTile), findsOneWidget);
+        await tester.ensureVisible(
+          find.widgetWithText(CheckboxListTile, 'bob'),
+        );
         await tester.tap(find.widgetWithText(CheckboxListTile, 'bob'));
         await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Создать'));

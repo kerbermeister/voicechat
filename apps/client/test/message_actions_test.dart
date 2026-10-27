@@ -4,6 +4,7 @@ import 'package:voicechat_probe/file_drop.dart';
 import 'package:voicechat_probe/picked_file.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:camera_platform_interface/camera_platform_interface.dart';
 import 'video_note_test.dart' show NoteCamera;
 import 'package:flutter/gestures.dart';
@@ -123,6 +124,70 @@ void main() {
           });
     }
   });
+  testWidgets(
+    'Phone photo menu distinguishes library and camera; cancellation preserves the draft',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final choices = <Map<dynamic, dynamic>>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('voicechat/images'),
+        (call) async {
+          if (call.method == 'choose') choices.add(call.arguments as Map);
+          return null;
+        },
+      );
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(
+          const MethodChannel('voicechat/images'),
+          null,
+        ),
+      );
+      final client = CaptureClient();
+      final room = ForwardRoom(client, '!photo:local');
+      final actions = DelayedPolicyActions(client);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ChatPane(
+              room: room,
+              timeline: CaptureTimeline(room),
+              actions: actions,
+              header: const SizedBox(height: 50),
+              report: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final field = find.byType(TextField).last;
+      await tester.enterText(field, 'Keep this draft');
+      for (final label in ['Сделать фото', 'Выбрать из библиотеки']) {
+        await tester.tap(find.byTooltip('Отправить изображение'));
+        await tester.pumpAndSettle();
+        expect(find.text('Сделать фото'), findsOneWidget);
+        expect(find.text('Выбрать из библиотеки'), findsOneWidget);
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        expect(choices.last['camera'], label == 'Сделать фото');
+        if (label == 'Сделать фото') expect(choices.last['max_count'], 1);
+        expect(
+          tester.widget<TextField>(field).controller!.text,
+          'Keep this draft',
+        );
+        expect(actions.sent, isEmpty);
+      }
+      // The system chooser opens without waiting for a policy network request.
+      expect(actions.policyReady.isCompleted, false);
+      actions.policyReady.complete();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await actions.close();
+      debugDefaultTargetPlatformOverride = null;
+      expect(tester.takeException(), isNull);
+    },
+  );
   testWidgets(
     'Mixed drop keeps the draft and does not resend photos after a file retry',
     (tester) async {

@@ -15,6 +15,8 @@ class PickerClient extends ListClient {
 
 class RecipientRoom implements mx.Room {
   @override
+  final roomAccountData = <String, mx.BasicEvent>{};
+  @override
   final mx.Client client;
   @override
   final String id;

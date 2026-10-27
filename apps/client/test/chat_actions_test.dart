@@ -42,6 +42,10 @@ class OutboxRoom implements Room {
   final Client client;
   @override
   final bool encrypted;
+  @override
+  final roomAccountData = <String, BasicEvent>{};
+  @override
+  StrippedStateEvent? getState(String type, [String stateKey = '']) => null;
   OutboxRoom(this.client, {this.encrypted = true});
   @override
   String get id => '!test:local';
@@ -70,6 +74,14 @@ class OutboxTimeline implements Timeline {
 class VideoSession implements CallSession {
   bool rejected = false;
   @override
+  WrappedMediaStream? get localUserMediaStream => null;
+  @override
+  WrappedMediaStream? get remoteUserMediaStream => null;
+  @override
+  List<WrappedMediaStream> get getLocalStreams => [];
+  @override
+  List<WrappedMediaStream> get getRemoteStreams => [];
+  @override
   CallType get type => CallType.kVideo;
   @override
   CallDirection get direction => CallDirection.kOutgoing;
@@ -79,6 +91,8 @@ class VideoSession implements CallSession {
   CallState get state => CallState.kInviteSent;
   @override
   final onCallStateChanged = CachedStreamController<CallState>();
+  @override
+  final onCallStreamsChanged = CachedStreamController<CallSession>();
   @override
   final onStreamAdd = CachedStreamController<WrappedMediaStream>();
   @override
