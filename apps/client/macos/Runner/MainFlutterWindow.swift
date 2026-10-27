@@ -36,6 +36,14 @@ class MainFlutterWindow: NSWindow, NSDraggingDestination {
     minSize = NSSize(width: 390, height: 500)
 
     super.awakeFromNib()
+    // Keep the native title bar outside Flutter's content and retain standard controls.
+    styleMask.insert([.titled, .closable, .miniaturizable, .resizable])
+    styleMask.remove(.fullSizeContentView)
+    titleVisibility = .visible
+    titlebarAppearsTransparent = false
+    for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+      standardWindowButton(button)?.isHidden = false
+    }
   }
 
   static func dropRect(_ arguments: Any?) -> NSRect? {
