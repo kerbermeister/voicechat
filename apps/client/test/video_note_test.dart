@@ -11,7 +11,7 @@ import 'package:voicechat_probe/video_note.dart';
 class NoteCamera extends CameraPlatform {
   final initialized = StreamController<CameraInitializedEvent>.broadcast();
   final errors = StreamController<CameraErrorEvent>.broadcast();
-  int starts = 0, stops = 0;
+  int starts = 0, stops = 0, creations = 0;
   Completer<void>? starting;
   @override
   Future<List<CameraDescription>> availableCameras() async => [
@@ -25,7 +25,11 @@ class NoteCamera extends CameraPlatform {
   Future<int> createCameraWithSettings(
     CameraDescription description,
     MediaSettings settings,
-  ) async => 1;
+  ) async {
+    creations++;
+    return 1;
+  }
+
   @override
   Stream<DeviceOrientationChangedEvent> onDeviceOrientationChanged() =>
       const Stream.empty();

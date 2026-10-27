@@ -1,3 +1,10 @@
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
+import 'package:matrix/matrix.dart' as mx;
+import 'package:voicechat_probe/chat_pane.dart';
+import 'package:voicechat_probe/theme.dart';
+import 'halo_capture_test.dart' show CaptureClient, CaptureTimeline;
+import 'message_actions_test.dart' show ForwardRoom, ForwardActions;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -49,6 +56,185 @@ void main() {
         expect(operations.last.method, 'cancel');
         expect(operations.any((c) => c.method == 'commit'), false);
       }
+    },
+  );
+
+  testWidgets(
+    'Real message copy paints a contrasting border without changing bubble geometry in every theme',
+    (tester) async {
+      for (final channel in [
+        'xyz.luan/audioplayers',
+        'xyz.luan/audioplayers.global',
+        'xyz.luan/audioplayers.global/events',
+        'com.llfbandit.record/messages',
+      ]) {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(MethodChannel(channel), (call) async {
+              if (call.method == 'create' &&
+                  call.arguments is Map &&
+                  call.arguments['playerId'] != null) {
+                final id = call.arguments['playerId'];
+                TestDefaultBinaryMessengerBinding
+                    .instance
+                    .defaultBinaryMessenger
+                    .setMockMethodCallHandler(
+                      MethodChannel('xyz.luan/audioplayers/events/$id'),
+                      (_) async => null,
+                    );
+              }
+              return null;
+            });
+      }
+      final copied = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied.add(call.arguments['text'] as String);
+          }
+          return null;
+        },
+      );
+      final reports = <String>[];
+      final client = CaptureClient();
+      final room = ForwardRoom(client, '!copy:local');
+      room.states[mx.EventTypes.RoomMember] = {
+        for (final id in [client.userID, '@peer:local'])
+          id: mx.StrippedStateEvent(
+            type: mx.EventTypes.RoomMember,
+            stateKey: id,
+            senderId: id,
+            content: {'membership': 'join', 'displayname': 'Пример'},
+          ),
+      };
+      final timeline = CaptureTimeline(room);
+      timeline.events.addAll([
+        for (final own in [false, true])
+          mx.Event.fromJson({
+            'type': mx.EventTypes.Message,
+            'event_id': own ? r'$own' : r'$peer',
+            'sender': own ? client.userID : '@peer:local',
+            'origin_server_ts': DateTime(
+              2026,
+              10,
+              20,
+              12,
+            ).millisecondsSinceEpoch,
+            'content': {
+              'msgtype': mx.MessageTypes.Text,
+              'body': own ? 'Мой пример' : 'Пример собеседника',
+            },
+          }, room),
+      ]);
+      Future<List<int>> pixels() async {
+        final boundary = tester.renderObject<RenderRepaintBoundary>(
+          find.byKey(const ValueKey('paint-proof')),
+        );
+        final image = await tester.runAsync(
+          () => boundary.toImage(pixelRatio: 1),
+        );
+        final bytes = await tester.runAsync(
+          () => image!.toByteData(format: ui.ImageByteFormat.rawRgba),
+        );
+        image!.dispose();
+        return bytes!.buffer.asUint8List().toList();
+      }
+
+      for (final palette in AppPalette.values) {
+        for (final reduced in [false, true]) {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: palette.theme,
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  disableAnimations: reduced,
+                  textScaler: const TextScaler.linear(2),
+                ),
+                child: child!,
+              ),
+              home: RepaintBoundary(
+                key: const ValueKey('paint-proof'),
+                child: Scaffold(
+                  body: ChatPane(
+                    room: room,
+                    timeline: timeline,
+                    actions: ForwardActions(client),
+                    header: const SizedBox(height: 30),
+                    report: reports.add,
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          for (final own in [false, true]) {
+            final row = find.byKey(ValueKey(own ? r'$own' : r'$peer'));
+            final feedback = find.descendant(
+              of: row,
+              matching: find.byType(CopyFeedback),
+            );
+            final original = tester.getRect(feedback);
+            final button = tester.widget<IconButton>(
+              find.descendant(
+                of: row,
+                matching: find.byWidgetPredicate(
+                  (w) =>
+                      w is IconButton && w.tooltip == 'Скопировать сообщение',
+                ),
+              ),
+            );
+            final before = await pixels();
+            await tester.runAsync(() async {
+              button.onPressed!();
+              await Future<void>.delayed(Duration.zero);
+            });
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 200));
+            final after = await pixels();
+            expect(
+              after,
+              isNot(equals(before)),
+              reason: '${palette.name} own=$own reduced=$reduced',
+            );
+            expect(reports.last, 'Скопировано в буфер обмена');
+            expect(copied.last, own ? 'Мой пример' : 'Пример собеседника');
+            expect(tester.widget<CopyFeedback>(feedback).pulse, greaterThan(0));
+            var changedEdge = 0;
+            final boundaryRect = tester.getRect(
+              find.byKey(const ValueKey('paint-proof')),
+            );
+            final width = boundaryRect.width.round();
+            final y = (original.top - boundaryRect.top + 3).round();
+            for (
+              var x = (original.left - boundaryRect.left + 25).round();
+              x < (original.right - boundaryRect.left - 25).round();
+              x++
+            ) {
+              final offset = (y * width + x) * 4;
+              if (before[offset] != after[offset] ||
+                  before[offset + 1] != after[offset + 1] ||
+                  before[offset + 2] != after[offset + 2]) {
+                changedEdge++;
+              }
+            }
+            expect(
+              changedEdge,
+              greaterThan(50),
+              reason: 'Visible top border, not a button state',
+            );
+            expect(tester.getRect(feedback), original);
+            expect(
+              tester.widget<CopyFeedback>(feedback).color,
+              own
+                  ? palette.theme.extension<MessageColors>()!.foreground
+                  : palette.theme.colorScheme.primary,
+            );
+            await tester.pumpAndSettle();
+          }
+          expect(tester.takeException(), isNull);
+        }
+      }
+      await tester.pumpWidget(const SizedBox());
     },
   );
   testWidgets(

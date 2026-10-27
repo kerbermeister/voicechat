@@ -222,6 +222,41 @@ class WaitingClient extends Client {
 }
 
 void main() {
+  test(
+    'Media volume persists locally per chat; serial writes and failures preserve values',
+    () async {
+      final db = OutboxDatabase();
+      final client = Client('media-volume', database: db);
+      final actions = ChatActions(client);
+      await actions.open();
+      expect(actions.mediaVolume('!one:local'), 1);
+      await Future.wait([
+        actions.setMediaVolume('!one:local', .3),
+        actions.setMediaVolume('!two:local', 0),
+      ]);
+      db.failWrite = true;
+      await expectLater(
+        actions.setMediaVolume('!one:local', .9),
+        throwsStateError,
+      );
+      expect(actions.mediaVolume('!one:local'), .3);
+      db.failWrite = false;
+      await actions.close();
+      db.values['dev.voicechat.local.media_volumes']!['!bad:local'] = 3;
+      final restored = ChatActions(client);
+      await restored.open();
+      expect(restored.mediaVolume('!one:local'), .3);
+      expect(restored.mediaVolume('!two:local'), 0);
+      expect(restored.mediaVolume('!bad:local'), 1);
+      expect(
+        () => restored.setMediaVolume('!one:local', double.nan),
+        throwsArgumentError,
+      );
+      await restored.close();
+      await client.dispose();
+    },
+  );
+
   TestWidgetsFlutterBinding.ensureInitialized();
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(

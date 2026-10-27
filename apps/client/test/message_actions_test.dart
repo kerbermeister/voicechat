@@ -258,6 +258,59 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets('Holding microphone never opens camera or switches to video', (
+    tester,
+  ) async {
+    final previous = CameraPlatform.instance;
+    final camera = NoteCamera();
+    CameraPlatform.instance = camera;
+    addTearDown(() => CameraPlatform.instance = previous);
+    final calls = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('com.llfbandit.record/messages'),
+          (call) async {
+            calls.add(call.method);
+            if (call.method == 'hasPermission') return true;
+            if (call.method == 'startStream') {
+              expect(call.arguments['encoder'], 'pcm16bits');
+              expect(call.arguments['autoGain'], true);
+              throw PlatformException(code: 'test-stream-unavailable');
+            }
+            return null;
+          },
+        );
+    final client = CaptureClient();
+    final room = ForwardRoom(client, '!audio-only:local');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChatPane(
+            room: room,
+            timeline: CaptureTimeline(room),
+            actions: ForwardActions(client),
+            header: const SizedBox(height: 50),
+            report: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final press = await tester.startGesture(
+      tester.getCenter(find.byIcon(Icons.mic_none)),
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+    await press.up();
+    await tester.pumpAndSettle();
+    expect(calls, containsAllInOrder(['hasPermission', 'startStream']));
+    expect(camera.starts, 0);
+    expect(camera.creations, 0);
+    expect(find.byIcon(Icons.mic_none), findsOneWidget);
+    expect(find.byIcon(Icons.videocam_outlined), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await camera.initialized.close();
+    await camera.errors.close();
+  });
   testWidgets(
     'Tap switches recording mode; hold starts video and swipe cancels',
     (tester) async {
@@ -282,13 +335,15 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.videocam_outlined), findsNothing);
-      await tester.tap(find.byIcon(Icons.mic_none));
+      await tester.tapAt(tester.getCenter(find.byIcon(Icons.mic_none)));
       await tester.pump();
       expect(camera.starts, 0);
-      await tester.tap(find.byIcon(Icons.videocam_outlined));
+      await tester.tapAt(
+        tester.getCenter(find.byIcon(Icons.videocam_outlined)),
+      );
       await tester.pump();
       expect(find.byIcon(Icons.mic_none), findsOneWidget);
-      await tester.tap(find.byIcon(Icons.mic_none));
+      await tester.tapAt(tester.getCenter(find.byIcon(Icons.mic_none)));
       await tester.pump();
       final press = await tester.startGesture(
         tester.getCenter(find.byIcon(Icons.videocam_outlined)),

@@ -13,6 +13,7 @@ class PreviewPlayer extends VideoPlayerPlatform {
   final events = StreamController<VideoEvent>();
   int plays = 0, disposals = 0;
   Duration? sought;
+  final volumes = <double>[];
   @override
   Future<void> init() async {}
   @override
@@ -37,7 +38,10 @@ class PreviewPlayer extends VideoPlayerPlatform {
   @override
   Future<void> pause(int playerId) async {}
   @override
-  Future<void> setVolume(int playerId, double volume) async {}
+  Future<void> setVolume(int playerId, double volume) async {
+    volumes.add(volume);
+  }
+
   @override
   Future<void> setLooping(int playerId, bool looping) async {}
   @override
@@ -86,9 +90,17 @@ void main() {
           },
         ],
       });
+      final room = Room(id: '!video:local', client: client);
+      final event = Event.fromJson({
+        'type': EventTypes.Message,
+        'event_id': r'$video',
+        'sender': '@peer:local',
+        'origin_server_ts': 1,
+        'content': {...file.content, 'msgtype': 'dev.voicechat.file'},
+      }, room);
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(body: MessageVideo(file: file, inline: true)),
+          home: Scaffold(body: FileView(event: event, volume: .35)),
         ),
       );
       await tester.runAsync(
@@ -97,10 +109,37 @@ void main() {
       await tester.pumpAndSettle();
       expect(platform.sought, const Duration(milliseconds: 100));
       expect(platform.plays, 0);
+      expect(platform.volumes.last, .35);
+      expect(find.text('Видеокружок'), findsNothing);
+      expect(find.textContaining('МБ'), findsNothing);
+      expect(tester.getSize(find.byType(FileView)).width, 220);
+      final circles = find.byType(ClipOval);
+      expect(tester.getSize(circles).width, 220);
+      expect(tester.getSize(find.byType(FileView)).height, 268);
+
+      final play = tester.getRect(find.byTooltip('Воспроизвести видео'));
+      final save = tester.getRect(find.byTooltip('Сохранить файл'));
+      expect(play.center.dy, save.center.dy);
+      expect(save.left - play.right, lessThanOrEqualTo(8));
+
       expect(find.byKey(const ValueKey('decoded-preview')), findsOneWidget);
       await tester.tap(find.byTooltip('Воспроизвести видео'));
       await tester.pump();
       expect(platform.plays, 1);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: FileView(event: event, volume: 0)),
+        ),
+      );
+      await tester.pump();
+      expect(platform.volumes.last, 0);
+      expect(platform.plays, 1);
+      unawaited(showFileInfo(tester.element(find.byType(FileView)), event));
+      await tester.pumpAndSettle();
+      expect(find.text('Информация'), findsOneWidget);
+      expect(find.textContaining('video/mp4'), findsOneWidget);
+      await tester.tap(find.text('Закрыть'));
+      await tester.pumpAndSettle();
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 20)),

@@ -561,4 +561,34 @@ void main() {
     expect(find.textContaining('@alice:local'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
+  testWidgets('Personal room shows its owner without invitation tabs', (
+    tester,
+  ) async {
+    final client = RichClient();
+    final room = Room(id: '!personal:local', client: client);
+    room.states[EventTypes.RoomCreate] = {
+      '': StrippedStateEvent(
+        type: EventTypes.RoomCreate,
+        stateKey: '',
+        senderId: client.userID,
+        content: {'type': 'dev.voicechat.personal'},
+      ),
+    };
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RoomMembersDialog(
+            room: room,
+            members: [User(client.userID, membership: 'join', room: room)],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(TabBar), findsNothing);
+    expect(find.textContaining('Приглашены'), findsNothing);
+    expect(find.text('Пригласить'), findsNothing);
+    expect(find.textContaining('Это вы'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
