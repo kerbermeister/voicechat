@@ -2840,12 +2840,13 @@ class _AttachmentViewState extends State<AttachmentView> {
     super.initState();
     if (widget.event.messageType != mx.MessageTypes.Audio) return;
     positionUpdates = player.onPositionChanged.listen((value) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => position = player.state == PlayerState.completed
               ? duration
               : value,
         );
+      }
     });
     player.onPlayerComplete.listen((_) {
       messagePlayback.closed(this);
