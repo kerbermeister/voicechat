@@ -25,6 +25,19 @@ void main() {
         var store = await openStore(name, automatic: true);
         await writeBlob(name, 'fixture', plaintext);
         expect(await readBlob(name, 'fixture'), plaintext);
+        final beforeTemporary = await storeUsage(name);
+        await writeP2pBlob(
+          name,
+          'p2p/${'a' * 32}/0/0',
+          Uint8List(4 * 1024 * 1024),
+        );
+        expect(
+          await storeUsage(name),
+          greaterThan(beforeTemporary + 4 * 1024 * 1024),
+        );
+        await deleteP2pBlobs(name, 'a' * 32);
+        expect(await storeUsage(name), lessThan(beforeTemporary + 65536));
+        expect(await readBlob(name, 'fixture'), plaintext);
         key = await vault.read(key: keyName);
         expect(key, isNotNull);
         await store.close();

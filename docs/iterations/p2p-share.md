@@ -63,3 +63,16 @@ fingerprint. Configure добавляет поля и сохраняет опе�
 запуском старого control: прежний строгий парсер не принимает новые поля.
 Для ручного возврата на старую ревизию также восстановить policy из согласованного
 backup; не менять backend.sha256/digests вручную. 12 deployment tests — PASS.
+
+## Выпуск и финальные регрессии
+
+Полный release `36ca3749694fc9493bc2696ed37760ef67637198` опубликован workflow
+[40544644275](https://github.com/kerbermeister/voicechat/actions/runs/40544644275).
+Control/web/Synapse/Postgres healthy; previous указывает на `8e99cee`.
+[Prototype checks](https://github.com/kerbermeister/voicechat/actions/runs/40544396442)
+завершились успешно, включая обычную Android-сборку.
+
+Дополнительно проверены 9 UI/storage-policy сценариев: полный путь черновика,
+выбор друга, явная отправка без передачи байтов до согласия, отмена с освобождением
+источника; временный P2P-пакет не запускает вытеснение истории.
+Финальный клиентский патч 1.10.1(19) готовится для web и macOS.

@@ -73,6 +73,22 @@ class MeasuredPolicy extends StoragePolicy {
 }
 
 void main() {
+  test('Temporary P2P files never trigger history eviction', () async {
+    final database = CacheDatabase();
+    final client = CacheClient(database);
+    database.values['dev.voicechat.local.p2p.temporary'] = {
+      'ids': ['active'],
+    };
+    final policy = MeasuredPolicy(client, database)..limitMiB = 16;
+    await policy.check();
+    expect(database.removed, isEmpty);
+    expect(policy.usedBytes, isNull);
+    expect(policy.warning, contains('P2P'));
+    database.values['dev.voicechat.local.p2p.temporary'] = {'ids': []};
+    await policy.check();
+    expect(policy.usedBytes, 20 * 1048576);
+    await policy.close();
+  });
   test(
     'Automatic cleanup starts with the oldest cached history, not the most recent message',
     () async {

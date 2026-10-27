@@ -33,6 +33,8 @@ class P2pClient extends OfflineClient {
       200,
     ),
   );
+  @override
+  List<Room> get rooms => [];
   late final room = PeerRoom(this);
   final sent = <Map<String, dynamic>>[];
   @override

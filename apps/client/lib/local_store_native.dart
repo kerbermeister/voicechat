@@ -138,7 +138,17 @@ Future<void> deleteP2pBlobs(String name, String id) async {
     where: 'id LIKE ?',
     whereArgs: ['p2p/$id/%'],
   );
+  final remaining = await _databases[name]!.query(
+    'voicechat_blobs',
+    columns: ['id'],
+    where: 'id LIKE ?',
+    whereArgs: ['p2p/%'],
+    limit: 1,
+  );
+  // Return freed transfer pages to the OS after the last temporary package.
+  if (remaining.isEmpty) await compactStore(name);
 }
 
-Future<void> writeP2pBlob(String name, String id, Uint8List bytes) => writeBlob(name, id, bytes);
+Future<void> writeP2pBlob(String name, String id, Uint8List bytes) =>
+    writeBlob(name, id, bytes);
 Future<Uint8List?> readP2pBlob(String name, String id) => readBlob(name, id);
