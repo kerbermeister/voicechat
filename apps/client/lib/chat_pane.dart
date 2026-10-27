@@ -1,3 +1,6 @@
+import 'copy_feedback.dart';
+import 'message_clipboard.dart';
+import 'hidden_messages.dart';
 import 'participant_colors.dart';
 import 'forward_message.dart';
 import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
@@ -125,6 +128,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   final viewportKey = GlobalKey();
   final messageKeys = <String, GlobalKey>{};
   bool jumping = false;
+  final copyPulses = <String, int>{};
   bool completeHistory = false;
   mx.MatrixAudioFile? unsentVoice;
   List<int>? unsentWave;
@@ -240,6 +244,9 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
   }
 
   Future<void> jumpToQuote(String? eventId) async {
+    if (hiddenMessages(widget.room).contains(eventId)) {
+      throw UserActionError('Сообщение удалено у вас.');
+    }
     if (eventId != null && eventId == focusedEvent && scroll.hasClients) {
       jumping = true;
       try {
@@ -635,7 +642,7 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     }
   }
 
-  Future<void> image() async {
+  Future<void> image({bool camera = false}) async {
     if (draftFile != null || unsentVoice != null) {
       throw UserActionError(
         'Сначала отправьте или удалите прикреплённый файл.',
@@ -644,14 +651,19 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
     if (edit != null) {
       throw UserActionError('Сначала завершите редактирование сообщения.');
     }
-    await widget.actions.refreshPolicy();
     final policy = widget.actions.policy;
     final remaining = policy.photoMaxCount - draftPhotos.length;
     if (remaining <= 0) {
       throw UserActionError('Максимум ${policy.photoMaxCount} фотографий.');
     }
-    final photos = await chooseImages(policy, remaining);
-    if (mounted) setState(() => draftPhotos.addAll(photos));
+    final room = widget.room;
+    // Open the system picker within the tap; network awaits lose iOS activation.
+    final selection = chooseImages(policy, remaining, camera: camera);
+    unawaited(widget.actions.refreshPolicy());
+    final photos = await selection;
+    if (mounted && widget.room == room) {
+      setState(() => draftPhotos.addAll(photos));
+    }
   }
 
   Future<void> attachFile(String kind, {bool hold = false}) async {
@@ -986,13 +998,14 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       return;
     }
     if (action == 'copy') {
-      await Clipboard.setData(
-        ClipboardData(
-          text: event
-              .getDisplayEvent(widget.timeline)
-              .calcUnlocalizedBody(hideReply: true),
-        ),
-      );
+      await copyMessage(event.getDisplayEvent(widget.timeline));
+      if (mounted) {
+        setState(
+          () =>
+              copyPulses[event.eventId] = (copyPulses[event.eventId] ?? 0) + 1,
+        );
+      }
+      widget.report('Скопировано в буфер обмена');
       return;
     }
     if (action == 'reply') {
@@ -1013,27 +1026,34 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
       return;
     }
     if (action == 'delete') {
-      final confirmed = await showAppDialog<bool>(
+      final choice = await showAppDialog<String>(
         context: context,
-        animationStyle: appAnimationStyle(context),
         builder: (context) => AlertDialog(
-          title: AppDialogTitle(child: const Text('Удалить сообщение у всех?')),
+          title: const Text('Удалить сообщение?'),
           content: const Text(
-            'У собеседника могут оставаться сохранённые копии.',
+            'Удаление у вас не меняет сообщения у других участников.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text('Отмена'),
             ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Удалить'),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(context, 'mine'),
+              child: const Text('Удалить у меня'),
             ),
+            if (event.canRedact)
+              FilledButton(
+                onPressed: () => Navigator.pop(context, 'all'),
+                child: const Text('Удалить у всех'),
+              ),
           ],
         ),
       );
-      if (confirmed == true) await event.redactEvent(redactAllEdits: true);
+      if (choice == 'mine') await widget.actions.hideMessage(event);
+      if (choice == 'all' && event.canRedact) {
+        await event.redactEvent(redactAllEdits: true);
+      }
       return;
     }
     if (action == 'react') {
@@ -1104,13 +1124,13 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
         );
     final menuItems = <PopupMenuEntry<String>>[
       menuItem('reply', 'Ответить', Icons.reply),
-      if (shown.messageType == mx.MessageTypes.Text)
+      if (!event.redacted && event.type != mx.EventTypes.Encrypted)
         menuItem('copy', 'Скопировать', Icons.copy_outlined),
       if (canForwardMessage(shown))
         menuItem('forward', 'Переслать', Icons.forward),
       if (own && shown.messageType == mx.MessageTypes.Text)
         menuItem('edit', 'Редактировать', Icons.edit_outlined),
-      if (event.canRedact) menuItem('delete', 'Удалить', Icons.delete_outline),
+      menuItem('delete', 'Удалить', Icons.delete_outline),
       menuItem('react', 'Реакция…', Icons.add_reaction_outlined),
     ];
     Future<void> openMenu(Offset position) async {
@@ -1283,6 +1303,11 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                                                       ) !=
                                                       null
                                               ? 'Временное сообщение'
+                                              : snapshot.data != null &&
+                                                    messageHidden(
+                                                      snapshot.data!,
+                                                    )
+                                              ? 'Сообщение удалено у вас'
                                               : snapshot.data?.redacted == true
                                               ? 'Удалённое сообщение'
                                               : snapshot.data
@@ -1377,6 +1402,10 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                       : colors.onSurfaceVariant,
                   reactions: reactions,
                   onReaction: (emoji) => perform(() => react(event, emoji)),
+                  onCopy:
+                      event.redacted || event.type == mx.EventTypes.Encrypted
+                      ? null
+                      : () => perform(() => eventAction(event, 'copy')),
                 ),
               ),
               if (menu != null) Positioned(top: 0, right: 0, child: menu),
@@ -1406,12 +1435,15 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                 onLongPressStart: menu == null
                     ? null
                     : (details) => openMenu(details.globalPosition),
-                child: messageExpiry(event) == null
-                    ? content
-                    : ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 526),
-                        child: TemporaryMessage(event: event, child: content),
-                      ),
+                child: CopyFeedback(
+                  pulse: copyPulses[event.eventId] ?? 0,
+                  child: messageExpiry(event) == null
+                      ? content
+                      : ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 526),
+                          child: TemporaryMessage(event: event, child: content),
+                        ),
+                ),
               ),
             ),
           ),
@@ -2042,11 +2074,44 @@ class _ChatPaneState extends State<ChatPane> with WidgetsBindingObserver {
                     ),
                     child: LayoutBuilder(
                       builder: (_, box) {
-                        final photo = IconButton(
-                          tooltip: 'Отправить изображение',
-                          onPressed: working ? null : () => perform(image),
-                          icon: const Icon(Icons.image_outlined),
-                        );
+                        final mobilePhoto =
+                            defaultTargetPlatform == TargetPlatform.iOS ||
+                            defaultTargetPlatform == TargetPlatform.android;
+                        final photo = mobilePhoto
+                            ? PopupMenuButton<bool>(
+                                tooltip: 'Отправить изображение',
+                                enabled: !working,
+                                icon: const Icon(Icons.image_outlined),
+                                onSelected: (camera) =>
+                                    perform(() => image(camera: camera)),
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                    value: false,
+                                    child: ListTile(
+                                      leading: Icon(
+                                        Icons.photo_library_outlined,
+                                      ),
+                                      title: Text('Выбрать из библиотеки'),
+                                    ),
+                                  ),
+                                  PopupMenuItem(
+                                    value: true,
+                                    child: ListTile(
+                                      leading: Icon(
+                                        Icons.photo_camera_outlined,
+                                      ),
+                                      title: Text('Сделать фото'),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : IconButton(
+                                tooltip: 'Отправить изображение',
+                                onPressed: working
+                                    ? null
+                                    : () => perform(() => image()),
+                                icon: const Icon(Icons.image_outlined),
+                              );
                         final emojiButton = IconButton(
                           tooltip: 'Эмодзи',
                           onPressed: working ? null : emoji,

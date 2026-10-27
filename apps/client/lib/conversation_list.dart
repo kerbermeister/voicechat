@@ -1,3 +1,6 @@
+import 'package:flutter/gestures.dart';
+import 'hidden_messages.dart';
+import 'personal_room.dart';
 import 'message_receipts.dart';
 import 'app_motion.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +34,7 @@ String roomDisplayName(mx.Room room) {
 }
 
 String roomPresence(mx.Room room) {
+  if (isPersonalRoom(room)) return 'Личная комната · только вы';
   if (!room.isDirectChat) {
     return 'Вступили: ${room.summary.mJoinedMemberCount ?? '—'} · приглашены: ${room.summary.mInvitedMemberCount ?? '—'}';
   }
@@ -45,6 +49,7 @@ String lastMessage(mx.Room room) {
   }
   final event = room.lastEvent;
   if (event == null) return 'Начните разговор';
+  if (messageHidden(event)) return 'Сообщение удалено у вас';
   if (event.redacted) return 'Сообщение удалено';
   if (event.content.containsKey('dev.voicechat.ttl_seconds')) {
     return 'Временное сообщение';
@@ -90,6 +95,7 @@ class PersonAvatar extends StatelessWidget {
   final mx.Client? client;
   final Uri? url;
   final bool group;
+  final bool personal;
   final bool online;
   final double size;
   final bool showPresence;
@@ -99,6 +105,7 @@ class PersonAvatar extends StatelessWidget {
     this.client,
     this.url,
     this.group = false,
+    this.personal = false,
     this.online = false,
     this.size = 48,
     this.showPresence = true,
@@ -146,7 +153,29 @@ class PersonAvatar extends StatelessWidget {
                     ),
                   ),
           ),
-          if (!group && showPresence)
+          if (personal)
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Tooltip(
+                message: 'Личная комната · только вы',
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: colors.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.lock_outline,
+                    size: 15,
+                    color: colors.primary,
+                    semanticLabel: 'Личная комната · только вы',
+                  ),
+                ),
+              ),
+            ),
+          if (!personal && !group && showPresence)
             Positioned(
               right: 0,
               bottom: 0,
@@ -223,6 +252,47 @@ class _ConversationListState extends State<ConversationList> {
     super.dispose();
   }
 
+  List<PopupMenuEntry<String>> roomMenu(mx.Room room) => [
+    PopupMenuItem(
+      value: 'pin',
+      child: Row(
+        children: [
+          Icon(room.isFavourite ? Icons.push_pin_outlined : Icons.push_pin),
+          const SizedBox(width: 10),
+          Text(room.isFavourite ? 'Открепить' : 'Закрепить сверху'),
+        ],
+      ),
+    ),
+    const PopupMenuItem(value: 'info', child: Text('Информация')),
+    PopupMenuItem(
+      value: 'mute',
+      child: Text(
+        room.pushRuleState == mx.PushRuleState.dontNotify
+            ? 'Включить уведомления'
+            : 'Отключить уведомления',
+      ),
+    ),
+    if (!room.isDirectChat)
+      const PopupMenuItem(value: 'leave', child: Text('Покинуть группу')),
+  ];
+
+  Future<void> openRoomMenu(mx.Room room, Offset point) async {
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final local = overlay.globalToLocal(point);
+    final action = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        local.dx,
+        local.dy,
+        overlay.size.width - local.dx,
+        overlay.size.height - local.dy,
+      ),
+      items: roomMenu(room),
+    );
+    if (action != null && mounted) widget.onChatMenu?.call(room, action);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -241,11 +311,12 @@ class _ConversationListState extends State<ConversationList> {
                   ).toLowerCase().contains(query.toLowerCase()),
             )
             .toList()
-          ..sort(
-            (a, b) => (b.lastEvent?.originServerTs ?? DateTime(1970)).compareTo(
-              a.lastEvent?.originServerTs ?? DateTime(1970),
-            ),
-          );
+          ..sort((a, b) {
+            if (a.isFavourite != b.isFavourite) return a.isFavourite ? -1 : 1;
+            final time = (b.lastEvent?.originServerTs ?? DateTime(1970))
+                .compareTo(a.lastEvent?.originServerTs ?? DateTime(1970));
+            return time != 0 ? time : a.id.compareTo(b.id);
+          });
     final invites =
         widget.contactInvites +
         widget.outgoingInvites +
@@ -460,219 +531,230 @@ class _ConversationListState extends State<ConversationList> {
                               final name = roomDisplayName(room);
                               final time = room.lastEvent?.originServerTs
                                   .toLocal();
-                              return AnimatedContainer(
-                                duration: motionDuration(context),
-                                decoration: BoxDecoration(
-                                  color: selected
-                                      ? colors.primaryContainer.withValues(
-                                          alpha: .6,
-                                        )
-                                      : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Material(
-                                  type: MaterialType.transparency,
-                                  child: ListTile(
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 2,
-                                    ),
-                                    minVerticalPadding: 6,
-                                    horizontalTitleGap: 10,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    selected: selected,
-                                    trailing: widget.onChatMenu == null
-                                        ? null
-                                        : PopupMenuButton<String>(
-                                            popUpAnimationStyle:
-                                                appAnimationStyle(context),
-                                            tooltip: 'Действия с чатом',
-                                            onSelected: (action) =>
-                                                widget.onChatMenu!(
-                                                  room,
-                                                  action,
-                                                ),
-                                            itemBuilder: (_) => [
-                                              const PopupMenuItem(
-                                                value: 'info',
-                                                child: Text('Информация'),
-                                              ),
-                                              PopupMenuItem(
-                                                value: 'mute',
-                                                child: Text(
-                                                  room.pushRuleState ==
-                                                          mx
-                                                              .PushRuleState
-                                                              .dontNotify
-                                                      ? 'Включить уведомления'
-                                                      : 'Отключить уведомления',
-                                                ),
-                                              ),
-                                              if (!room.isDirectChat)
-                                                const PopupMenuItem(
-                                                  value: 'leave',
-                                                  child: Text(
-                                                    'Покинуть группу',
-                                                  ),
-                                                ),
-                                            ],
-                                            icon: const Icon(Icons.more_horiz),
+                              return Listener(
+                                onPointerDown: widget.onChatMenu == null
+                                    ? null
+                                    : (details) {
+                                        if (details.buttons ==
+                                            kSecondaryMouseButton) {
+                                          openRoomMenu(room, details.position);
+                                        }
+                                      },
+                                child: AnimatedContainer(
+                                  duration: motionDuration(context),
+                                  decoration: BoxDecoration(
+                                    color: selected
+                                        ? colors.primaryContainer.withValues(
+                                            alpha: .6,
+                                          )
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Material(
+                                    type: MaterialType.transparency,
+                                    child: ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 2,
                                           ),
-                                    leading: Tooltip(
-                                      message: presence,
-                                      child: PersonAvatar(
-                                        name: name,
-                                        size: 38,
-                                        client: widget.client,
-                                        url: roomAvatar(room),
-                                        group: groups,
-                                        online: presence == 'В сети',
+                                      minVerticalPadding: 6,
+                                      horizontalTitleGap: 10,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
                                       ),
-                                    ),
-                                    title: Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            name,
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                            style: TextStyle(
-                                              fontWeight: messageCount > 0
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w500,
+                                      selected: selected,
+                                      trailing: widget.onChatMenu == null
+                                          ? null
+                                          : PopupMenuButton<String>(
+                                              popUpAnimationStyle:
+                                                  appAnimationStyle(context),
+                                              tooltip: 'Действия с чатом',
+                                              onSelected: (action) =>
+                                                  widget.onChatMenu!(
+                                                    room,
+                                                    action,
+                                                  ),
+                                              itemBuilder: (_) =>
+                                                  roomMenu(room),
+                                              icon: const Icon(
+                                                Icons.more_horiz,
+                                              ),
                                             ),
-                                          ),
+                                      leading: Tooltip(
+                                        message: presence,
+                                        child: PersonAvatar(
+                                          name: name,
+                                          size: 38,
+                                          client: widget.client,
+                                          url: roomAvatar(room),
+                                          group: groups,
+                                          personal: isPersonalRoom(room),
+                                          online: presence == 'В сети',
                                         ),
-                                        if (room.pushRuleState ==
-                                            mx.PushRuleState.dontNotify)
-                                          Padding(
-                                            padding: const EdgeInsets.only(
-                                              right: 6,
+                                      ),
+                                      title: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontWeight: messageCount > 0
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w500,
+                                              ),
                                             ),
-                                            child: Tooltip(
-                                              message: 'Уведомления отключены',
+                                          ),
+                                          if (room.isFavourite)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 6,
+                                              ),
                                               child: Icon(
-                                                Icons
-                                                    .notifications_off_outlined,
+                                                Icons.push_pin,
                                                 size: 16,
-                                                color: colors.error,
-                                                semanticLabel:
-                                                    'Уведомления отключены',
+                                                color: colors.primary,
+                                                semanticLabel: 'Чат закреплён',
                                               ),
                                             ),
-                                          ),
-                                        if (time != null)
-                                          Text(
-                                            TimeOfDay.fromDateTime(
-                                              time,
-                                            ).format(context),
-                                            style: theme.textTheme.labelSmall
-                                                ?.copyWith(
-                                                  color:
-                                                      colors.onSurfaceVariant,
-                                                ),
-                                          ),
-                                      ],
-                                    ),
-                                    subtitle: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const SizedBox(height: 1),
-                                        Row(
-                                          children: [
-                                            if (conversationDeliveryStatus(room)
-                                                case final status?) ...[
-                                              Tooltip(
-                                                message: status.$2,
+                                          if (room.pushRuleState ==
+                                              mx.PushRuleState.dontNotify)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                right: 6,
+                                              ),
+                                              child: Tooltip(
+                                                message:
+                                                    'Уведомления отключены',
                                                 child: Icon(
-                                                  status.$1,
+                                                  Icons
+                                                      .notifications_off_outlined,
                                                   size: 16,
-                                                  color: colors.primary,
-                                                  semanticLabel: status.$2,
+                                                  color: colors.error,
+                                                  semanticLabel:
+                                                      'Уведомления отключены',
                                                 ),
                                               ),
-                                              const SizedBox(width: 4),
-                                            ],
-                                            Expanded(
-                                              child: TypingIndicator(
-                                                room: room,
-                                                compact: true,
-                                                fallback: Container(
-                                                  padding: voice
-                                                      ? const EdgeInsets.symmetric(
-                                                          horizontal: 6,
-                                                          vertical: 1,
-                                                        )
-                                                      : EdgeInsets.zero,
+                                            ),
+                                          if (time != null)
+                                            Text(
+                                              TimeOfDay.fromDateTime(
+                                                time,
+                                              ).format(context),
+                                              style: theme.textTheme.labelSmall
+                                                  ?.copyWith(
+                                                    color:
+                                                        colors.onSurfaceVariant,
+                                                  ),
+                                            ),
+                                        ],
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const SizedBox(height: 1),
+                                          Row(
+                                            children: [
+                                              if (conversationDeliveryStatus(
+                                                    room,
+                                                  )
+                                                  case final status?) ...[
+                                                Tooltip(
+                                                  message: status.$2,
+                                                  child: Icon(
+                                                    status.$1,
+                                                    size: 16,
+                                                    color: colors.primary,
+                                                    semanticLabel: status.$2,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                              ],
+                                              Expanded(
+                                                child: TypingIndicator(
+                                                  room: room,
+                                                  compact: true,
+                                                  fallback: Container(
+                                                    padding: voice
+                                                        ? const EdgeInsets.symmetric(
+                                                            horizontal: 6,
+                                                            vertical: 1,
+                                                          )
+                                                        : EdgeInsets.zero,
+                                                    decoration: BoxDecoration(
+                                                      color: voice
+                                                          ? (ownVoice
+                                                                ? colors
+                                                                      .primaryContainer
+                                                                : colors
+                                                                      .tertiaryContainer)
+                                                          : null,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      lastMessage(room),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: theme
+                                                          .textTheme
+                                                          .bodySmall
+                                                          ?.copyWith(
+                                                            fontWeight:
+                                                                messageCount > 0
+                                                                ? FontWeight
+                                                                      .w600
+                                                                : FontWeight
+                                                                      .w400,
+                                                            color: voice
+                                                                ? (ownVoice
+                                                                      ? colors
+                                                                            .onPrimaryContainer
+                                                                      : colors
+                                                                            .onTertiaryContainer)
+                                                                : colors
+                                                                      .onSurfaceVariant,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              if (messageCount > 0)
+                                                Container(
+                                                  width: 28,
+                                                  height: 28,
+                                                  alignment: Alignment.center,
                                                   decoration: BoxDecoration(
-                                                    color: voice
-                                                        ? (ownVoice
-                                                              ? colors
-                                                                    .primaryContainer
-                                                              : colors
-                                                                    .tertiaryContainer)
-                                                        : null,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          10,
-                                                        ),
+                                                    color: colors.primary,
+                                                    shape: BoxShape.circle,
                                                   ),
                                                   child: Text(
-                                                    lastMessage(room),
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    style: theme
-                                                        .textTheme
-                                                        .bodySmall
-                                                        ?.copyWith(
-                                                          fontWeight:
-                                                              messageCount > 0
-                                                              ? FontWeight.w600
-                                                              : FontWeight.w400,
-                                                          color: voice
-                                                              ? (ownVoice
-                                                                    ? colors
-                                                                          .onPrimaryContainer
-                                                                    : colors
-                                                                          .onTertiaryContainer)
-                                                              : colors
-                                                                    .onSurfaceVariant,
-                                                        ),
+                                                    messageCount > 999
+                                                        ? '999+'
+                                                        : '$messageCount',
+                                                    style: TextStyle(
+                                                      color: colors.onPrimary,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize:
+                                                          messageCount > 99
+                                                          ? 10
+                                                          : 12,
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            ),
-                                            if (messageCount > 0)
-                                              Container(
-                                                width: 28,
-                                                height: 28,
-                                                alignment: Alignment.center,
-                                                decoration: BoxDecoration(
-                                                  color: colors.primary,
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: Text(
-                                                  messageCount > 999
-                                                      ? '999+'
-                                                      : '$messageCount',
-                                                  style: TextStyle(
-                                                    color: colors.onPrimary,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: messageCount > 99
-                                                        ? 10
-                                                        : 12,
-                                                  ),
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ],
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      onTap: () => widget.onSelect(room),
                                     ),
-                                    onTap: () => widget.onSelect(room),
                                   ),
                                 ),
                               );

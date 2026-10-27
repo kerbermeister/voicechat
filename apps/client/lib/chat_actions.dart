@@ -1,3 +1,4 @@
+import 'hidden_messages.dart';
 import 'message_receipts.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -55,6 +56,36 @@ class ChatActions extends ChangeNotifier {
         .then((_) => client.database.storeAccountData(_draftKey, snapshot));
   }
 
+  Future<void> _hiddenWrites = Future.value();
+  Future<void> hideMessage(Event event) =>
+      _hiddenWrites = _hiddenWrites.catchError((Object _) {}).then((_) async {
+        final room = event.room;
+        if (room.client != client ||
+            !event.eventId.startsWith(r'$') ||
+            event.eventId.length > 255) {
+          throw ArgumentError('Invalid message');
+        }
+        final ids = hiddenMessages(room)..add(event.eventId);
+        if (ids.length > 10000) {
+          throw UserActionError(
+            'Достигнут предел скрытых сообщений в этом чате.',
+          );
+        }
+        final data = BasicEvent(
+          type: hiddenMessagesType,
+          content: {'event_ids': ids.toList()},
+        );
+        await client.setAccountDataPerRoom(
+          client.userID!,
+          room.id,
+          data.type,
+          data.content,
+        );
+        await client.database.storeRoomAccountData(room.id, data);
+        room.roomAccountData[data.type] = data;
+        if (!_closed) notifyListeners();
+      });
+
   Future<void> waitForDelivery(String id) async {
     final done = Completer<void>();
     void check() {
@@ -79,6 +110,7 @@ class ChatActions extends ChangeNotifier {
   Future<void> prepareUpdate() async {
     await _writes;
     await _draftWrites;
+    await _hiddenWrites.catchError((Object _) {});
   }
 
   Future<MediaPolicy> _fetchPolicy() async {
@@ -878,6 +910,7 @@ class ChatActions extends ChangeNotifier {
     try {
       await _writes;
       await _draftWrites;
+      await _hiddenWrites.catchError((Object _) {});
     } finally {
       dispose();
     }
@@ -921,7 +954,7 @@ List<Event> visibleMessages(
 }) {
   final search = query.trim().toLowerCase();
   return timeline.events
-      .where((event) => !emptyEncryptedEvent(event))
+      .where((event) => !emptyEncryptedEvent(event) && !messageHidden(event))
       .where(
         (event) =>
             !messageExpired(event) ||

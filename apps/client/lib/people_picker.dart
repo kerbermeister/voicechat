@@ -4,7 +4,12 @@ import 'package:matrix/matrix.dart' as mx;
 import 'avatar_editor.dart';
 import 'conversation_list.dart';
 
-typedef GroupDraft = ({String name, List<String> users, mx.MatrixFile? avatar});
+typedef GroupDraft = ({
+  String name,
+  List<String> users,
+  mx.MatrixFile? avatar,
+  bool personal,
+});
 
 /// Normal selection returns user IDs; the group form returns a GroupDraft.
 class PeoplePicker extends StatefulWidget {
@@ -37,7 +42,7 @@ class _PeoplePickerState extends State<PeoplePicker> {
   final people = <String, mx.Profile>{};
   List<mx.Profile> results = [];
   mx.MatrixFile? avatar;
-  bool busy = false;
+  bool busy = false, personal = false;
   String? status;
   bool eligible(String id) =>
       id != widget.client.userID &&
@@ -120,12 +125,13 @@ class _PeoplePickerState extends State<PeoplePicker> {
 
   void confirm() {
     final users = selected.where(eligible).toList();
-    if (users.isEmpty) return;
+    if (users.isEmpty && !personal) return;
     if (widget.creatingGroup) {
       if (!form.currentState!.validate()) return;
       Navigator.pop<GroupDraft>(context, (
         name: name.text.trim(),
-        users: users,
+        users: personal ? <String>[] : users,
+        personal: personal,
         avatar: avatar,
       ));
     } else {
@@ -307,12 +313,12 @@ class _PeoplePickerState extends State<PeoplePicker> {
         // still need enough intrinsic room for their headings and lists.
         height: (MediaQuery.sizeOf(context).height - 210).clamp(
           (widget.creatingGroup
-                  ? 360
+                  ? 620
                   : widget.multiple
                   ? 240
                   : 180) *
               textScale,
-          540 * textScale,
+          760 * textScale,
         ),
         child: Form(
           key: form,
@@ -366,26 +372,35 @@ class _PeoplePickerState extends State<PeoplePicker> {
                     ],
                   ),
                 ),
-              TextField(
-                controller: search,
-                autofocus: !widget.multiple,
-                onChanged: (_) => setState(() {
-                  results = [];
-                  status = null;
-                }),
-                onSubmitted: (_) => find(),
-                decoration: InputDecoration(
-                  labelText: widget.allowedUsers == null
-                      ? 'Поиск пользователей'
-                      : 'Поиск среди контактов',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: IconButton(
-                    tooltip: 'Найти',
-                    onPressed: busy ? null : find,
-                    icon: const Icon(Icons.arrow_forward_rounded),
+              if (widget.creatingGroup)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Личная комната только для меня'),
+                  subtitle: const Text('Без приглашений и звонков'),
+                  value: personal,
+                  onChanged: (value) => setState(() => personal = value),
+                ),
+              if (!personal)
+                TextField(
+                  controller: search,
+                  autofocus: !widget.multiple,
+                  onChanged: (_) => setState(() {
+                    results = [];
+                    status = null;
+                  }),
+                  onSubmitted: (_) => find(),
+                  decoration: InputDecoration(
+                    labelText: widget.allowedUsers == null
+                        ? 'Поиск пользователей'
+                        : 'Поиск среди контактов',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: IconButton(
+                      tooltip: 'Найти',
+                      onPressed: busy ? null : find,
+                      icon: const Icon(Icons.arrow_forward_rounded),
+                    ),
                   ),
                 ),
-              ),
               SizedBox(
                 height: 3,
                 child: busy ? const LinearProgressIndicator() : null,
@@ -404,7 +419,14 @@ class _PeoplePickerState extends State<PeoplePicker> {
                 ),
               const SizedBox(height: 10),
               Expanded(
-                child: widget.multiple
+                child: personal
+                    ? const Center(
+                        child: Text(
+                          'Сообщения и файлы доступны только вам на ваших устройствах.',
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    : widget.multiple
                     ? LayoutBuilder(
                         builder: (context, box) {
                           if (box.maxWidth >= 600) {
@@ -454,7 +476,7 @@ class _PeoplePickerState extends State<PeoplePicker> {
         ),
         if (widget.multiple)
           FilledButton(
-            onPressed: selected.isEmpty || busy ? null : confirm,
+            onPressed: (selected.isEmpty && !personal) || busy ? null : confirm,
             child: Text(widget.creatingGroup ? 'Создать' : 'Добавить'),
           ),
       ],

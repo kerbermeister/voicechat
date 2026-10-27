@@ -1,3 +1,5 @@
+import 'call_audio.dart';
+import 'personal_room.dart';
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
@@ -45,6 +47,7 @@ class CallController extends ChangeNotifier
       <({String room, String sender, String session}), DateTime>{};
   late final CallDevices devices;
   VoiceCall? active;
+  final audio = CallAudio();
   ScreenShareController? screen;
   VoiceCall? _screenCall;
   bool _screenChecking = false;
@@ -139,6 +142,7 @@ class CallController extends ChangeNotifier
   }
 
   void _refresh() {
+    unawaited(audio.sync(active).catchError((Object _) {}));
     devices.update(active);
     invitations.removeWhere(
       (id, invitation) => devices.answered(invitation.room.id, id),
@@ -344,6 +348,9 @@ class CallController extends ChangeNotifier
     CallInvitation? invitation,
     bool video = false,
   }) async {
+    if (isPersonalRoom(room)) {
+      throw UserActionError('В личной комнате звонки недоступны.');
+    }
     video = invitation?.video ?? video;
     if (starting) throw UserActionError('Вызов уже запускается.');
     if (active != null && !active!.isClosed) {
@@ -530,6 +537,7 @@ class CallController extends ChangeNotifier
     await active?.close();
     await screenClose;
     await devices.close();
+    audio.reset(null);
     screen?.dispose();
     for (final call in _directCalls.values) {
       await call.close();

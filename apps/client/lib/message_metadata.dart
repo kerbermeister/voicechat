@@ -11,13 +11,14 @@ class MessageMetadata extends StatelessWidget {
     required this.onReaction,
     this.read,
     this.edited = false,
+    this.onCopy,
   });
 
-  static const minimumWidth = 190.0;
+  static const minimumWidth = 240.0;
 
   static double rowHeight(BuildContext context) =>
       (MediaQuery.textScalerOf(context).scale(12) * 1.5).clamp(
-        24,
+        48,
         double.infinity,
       );
 
@@ -27,6 +28,7 @@ class MessageMetadata extends StatelessWidget {
   final ValueChanged<String> onReaction;
   final bool? read;
   final bool edited;
+  final VoidCallback? onCopy;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -34,6 +36,12 @@ class MessageMetadata extends StatelessWidget {
     height: rowHeight(context),
     child: Row(
       children: [
+        IconButton(
+          tooltip: 'Скопировать сообщение',
+          onPressed: onCopy,
+          icon: const Icon(Icons.copy_outlined, size: 19),
+          color: color,
+        ),
         Expanded(
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,

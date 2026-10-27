@@ -37,8 +37,15 @@ class CallProbe implements VoiceCall {
   final String livekitUrl;
   final void Function(String) status;
   final void Function()? changed;
+  final bool startedWithVideo;
   @override
-  final bool video;
+  bool get video =>
+      startedWithVideo ||
+      cameraEnabled ||
+      (media?.remoteParticipants.values.any(
+            (p) => p.videoTrackPublications.any((t) => !t.muted),
+          ) ??
+          false);
   @override
   VideoQuality videoQuality = VideoQuality.auto;
   @override
@@ -106,15 +113,15 @@ class CallProbe implements VoiceCall {
     required this.livekitUrl,
     required this.status,
     this.changed,
-    this.video = false,
-  });
+    bool video = false,
+  }) : startedWithVideo = video;
 
   Future<void> connect({bool microphone = true}) async {
     _microphone = microphone;
-    _wantedCamera = video;
+    _wantedCamera = startedWithVideo;
     _rebuilding = true;
     try {
-      await _connect(microphone: microphone, camera: video);
+      await _connect(microphone: microphone, camera: startedWithVideo);
     } catch (error, stack) {
       try {
         await close();
@@ -209,7 +216,7 @@ class CallProbe implements VoiceCall {
         event.publication.encryptionType,
         event.publication.source,
         event.publication.mimeType,
-        video: video,
+        video: true,
       )) {
         unawaited(close());
         status('Поток без поддерживаемой E2EE-защиты отклонён');
@@ -290,7 +297,12 @@ class CallProbe implements VoiceCall {
     status(connection);
     changed?.call();
     if (microphone) await media!.localParticipant!.setMicrophoneEnabled(true);
-    if (camera) await this.camera(true);
+    if (camera && (startedWithVideo || data['camera_allowed'] == true)) {
+      await this.camera(true);
+    } else if (camera) {
+      _wantedCamera = false;
+      status('Камера выключена: участнику требуется обновление приложения.');
+    }
     connection = 'E2EE включено · ждём медиапотоки';
     status(connection);
     changed?.call();
@@ -312,7 +324,8 @@ class CallProbe implements VoiceCall {
             body: jsonEncode({
               'room_id': chat.id,
               'session': session,
-              'video': video,
+              'video': startedWithVideo,
+              'camera_capable': true,
               'protocol_version': 1,
               if (_admission != null) 'lease_id': _admission!['lease_id'],
               if (reconnect != null) 'reconnect': reconnect,
@@ -444,7 +457,7 @@ class CallProbe implements VoiceCall {
       publication.encryptionType,
       publication.source,
       publication.mimeType,
-      video: video,
+      video: true,
     )) {
       unawaited(close());
       status('Поток без поддерживаемой E2EE-защиты отклонён');
@@ -630,8 +643,14 @@ class CallProbe implements VoiceCall {
 
   @override
   Future<void> camera(bool enabled) async {
-    if (video && !_closed) _wantedCamera = enabled;
-    if (!video || _closed || enabled == cameraEnabled) return;
+    if (_closed || enabled == cameraEnabled) return;
+    if (enabled && !_rebuilding) await _renew();
+    if (_closed) return;
+    if (enabled && !startedWithVideo && _admission?['camera_allowed'] != true) {
+      throw UserActionError(
+        'Для включения камеры все участники аудиозвонка должны обновить приложение.',
+      );
+    }
     final participant = media!.localParticipant!;
     if (enabled) {
       final track = await lk.LocalVideoTrack.createCameraTrack(_cameraOptions);
@@ -655,6 +674,7 @@ class CallProbe implements VoiceCall {
       }
     }
     cameraEnabled = enabled;
+    _wantedCamera = enabled;
     changed?.call();
   }
 

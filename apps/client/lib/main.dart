@@ -1,3 +1,5 @@
+import 'active_call_banner.dart';
+import 'personal_room.dart';
 import 'recovery_key_dialog.dart';
 import 'macos_camera.dart';
 import 'macos_notifications.dart';
@@ -597,6 +599,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       final id = await probe!.createRoom(
         draft.users,
         name: draft.name,
+        personal: draft.personal,
         avatar: url,
       );
       await select(await probe!.room(id));
@@ -798,7 +801,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
     final action = chosenAction;
     if (action.startsWith('profile:') && mounted) {
       await profileCard(action.substring(8));
-    } else if (action == 'invite' && !room.isDirectChat && mounted) {
+    } else if (action == 'invite' &&
+        !room.isDirectChat &&
+        !isPersonalRoom(room) &&
+        mounted) {
       final users = await showAppDialog<List<String>>(
         context: context,
         animationStyle: appAnimationStyle(context),
@@ -2105,7 +2111,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
                 .length ??
             0),
     onChatMenu: (room, action) => run(() async {
-      if (action == 'mute') {
+      if (action == 'pin') {
+        await room.setFavourite(!room.isFavourite);
+        if (mounted) setState(() {});
+      } else if (action == 'mute') {
         await room.setPushRuleState(
           room.pushRuleState == mx.PushRuleState.dontNotify
               ? mx.PushRuleState.notify
@@ -2172,10 +2181,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
       actions: actions!,
       report: report,
       initialEventId: focusedEvent,
-      onVoiceCall: busy || (call != null && !call!.isClosed)
+      onVoiceCall:
+          isPersonalRoom(room) || busy || (call != null && !call!.isClosed)
           ? null
           : () => run(() => startCall()),
-      onVideoCall: busy || (call != null && !call!.isClosed)
+      onVideoCall:
+          isPersonalRoom(room) || busy || (call != null && !call!.isClosed)
           ? null
           : () => run(() => startCall(video: true)),
       onRoomInfo: busy ? null : () => run(() => roomSettings()),
@@ -2198,10 +2209,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
             ? () => run(() => profileCard(room.directChatMatrixID!))
             : () => run(() => roomSettings()),
         onInfo: busy ? null : () => run(() => roomSettings()),
-        onVoiceCall: busy || (call != null && !call!.isClosed)
+        onVoiceCall:
+            isPersonalRoom(room) || busy || (call != null && !call!.isClosed)
             ? null
             : () => run(() => startCall()),
-        onVideoCall: busy || (call != null && !call!.isClosed)
+        onVideoCall:
+            isPersonalRoom(room) || busy || (call != null && !call!.isClosed)
             ? null
             : () => run(() => startCall(video: true)),
       ),
@@ -2257,14 +2270,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
   Widget callBanner() {
     final remote = calls?.devices.remote.values.firstOrNull;
     if (remote != null && calls?.active?.isClosed != false) {
-      return TextButton.icon(
+      return ActiveCallBanner(
         onPressed: showCallWindow,
-        icon: const Icon(Icons.devices),
-        label: Text(
-          'Идёт звонок с ${roomDisplayName(remote.room)}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        label:
+            'Идёт звонок с ${roomDisplayName(remote.room)} на другом устройстве',
       );
     }
     final available =
@@ -2279,13 +2288,11 @@ class _ProbeScreenState extends State<ProbeScreen> {
           ? Duration.zero
           : const Duration(milliseconds: 180),
       child: available
-          ? SizedBox(
-              height: 36,
-              child: TextButton.icon(
-                onPressed: showCallWindow,
-                icon: const Icon(Icons.call),
-                label: const Text('Открыть окно звонка'),
-              ),
+          ? ActiveCallBanner(
+              onPressed: showCallWindow,
+              label: calls!.active?.isClosed == false
+                  ? 'Идёт звонок · Вернуться к звонку'
+                  : 'Открыть окно звонка',
             )
           : const SizedBox.shrink(),
     );

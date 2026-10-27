@@ -1,3 +1,4 @@
+import 'participant_quality.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:livekit_client/livekit_client.dart' as lk;
@@ -92,6 +93,14 @@ class CallVideoGrid extends StatelessWidget {
                       size: 32,
                     ),
                   ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: ParticipantStatusBadge(
+                  call: call,
+                  identity: tile.identity,
+                ),
+              ),
               Positioned(
                 left: 8,
                 right: 8,

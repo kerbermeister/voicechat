@@ -65,6 +65,8 @@ class ScreenShareController extends ChangeNotifier {
   });
   bool _receivedKey = false;
   ScreenCapture? _capture;
+  bool _resumeCamera = false;
+  bool get sharing => _capture != null;
   lk.LocalVideoTrack? _publication;
   lk.BaseKeyProvider? _keys;
   Uint8List? _senderKey;
@@ -246,6 +248,8 @@ class ScreenShareController extends ChangeNotifier {
       }
       await _capture?.close();
       _capture = capture;
+      _resumeCamera = call.cameraEnabled;
+      if (_resumeCamera) await call.camera(false);
       _preparation?.cancel();
       _preparation = Timer(const Duration(seconds: 15), () {
         if (_capture != capture || phase == ScreenPhase.sharing) return;
@@ -289,6 +293,7 @@ class ScreenShareController extends ChangeNotifier {
       _preparation?.cancel();
       await captured?.close();
       if (captured != null) await _disposeMedia();
+      await _restoreCamera();
       notice = error is TimeoutException
           ? 'Не удалось подключить показ вовремя. Попробуйте ещё раз.'
           : captured == null
@@ -302,6 +307,18 @@ class ScreenShareController extends ChangeNotifier {
     }
   }
 
+  Future<void> _restoreCamera() async {
+    final resume = _resumeCamera;
+    _resumeCamera = false;
+    if (!resume || call.isClosed) return;
+    try {
+      await call.camera(true);
+    } catch (_) {
+      notice =
+          'Показ завершён. Камера не включилась — включите её кнопкой звонка.';
+    }
+  }
+
   Future<void> stop() async {
     if (_closed) return;
     _preparation?.cancel();
@@ -309,6 +326,7 @@ class ScreenShareController extends ChangeNotifier {
     _capture = null;
     await capture?.close();
     await _disposeMedia();
+    await _restoreCamera();
     if (_acting || _polling || _pending != null) return;
     _acting = true;
     try {
@@ -388,6 +406,7 @@ class ScreenShareController extends ChangeNotifier {
       final capture = _capture;
       _capture = null;
       await capture!.close();
+      await _restoreCamera();
       notice = next.owner == null
           ? null
           : 'Другой участник перехватил демонстрацию.';

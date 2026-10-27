@@ -1,4 +1,5 @@
 import 'device_added.dart';
+import 'personal_room.dart';
 import 'device_name.dart';
 import 'dart:async';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
@@ -173,30 +174,39 @@ class MatrixProbe {
     List<String> invitees, {
     String name = 'Тёплый круг',
     Uri? avatar,
-  }) => client.createRoom(
-    name: name,
-    powerLevelContentOverride: {'invite': 50, 'kick': 50, 'ban': 50},
-    preset: CreateRoomPreset.privateChat,
-    invite: invitees,
-    initialState: [
-      if (avatar != null)
+    bool personal = false,
+  }) {
+    if (personal && invitees.isNotEmpty) {
+      throw ArgumentError('Personal rooms cannot have invitees');
+    }
+    return client.createRoom(
+      creationContent: personal
+          ? {'type': personalRoomType, 'm.federate': false}
+          : null,
+      name: name,
+      powerLevelContentOverride: {'invite': 50, 'kick': 50, 'ban': 50},
+      preset: CreateRoomPreset.privateChat,
+      invite: invitees,
+      initialState: [
+        if (avatar != null)
+          StateEvent(
+            type: EventTypes.RoomAvatar,
+            stateKey: '',
+            content: {'url': avatar.toString()},
+          ),
         StateEvent(
-          type: EventTypes.RoomAvatar,
+          type: EventTypes.Encryption,
           stateKey: '',
-          content: {'url': avatar.toString()},
+          content: {'algorithm': 'm.megolm.v1.aes-sha2'},
         ),
-      StateEvent(
-        type: EventTypes.Encryption,
-        stateKey: '',
-        content: {'algorithm': 'm.megolm.v1.aes-sha2'},
-      ),
-      StateEvent(
-        type: 'm.room.history_visibility',
-        stateKey: '',
-        content: {'history_visibility': 'shared'},
-      ),
-    ],
-  );
+        StateEvent(
+          type: 'm.room.history_visibility',
+          stateKey: '',
+          content: {'history_visibility': personal ? 'joined' : 'shared'},
+        ),
+      ],
+    );
+  }
 
   Future<Room> room(String id) async {
     final until = DateTime.now().add(const Duration(seconds: 30));
