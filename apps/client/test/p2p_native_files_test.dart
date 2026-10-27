@@ -53,6 +53,27 @@ void main() {
       expect(await drop(100), true);
       expect(drops, ['large.bin']);
       expect(await drop(5000), false);
+      final navigation = Navigator.of(tester.element(find.byType(FileDrop)));
+      unawaited(
+        navigation.push(
+          MaterialPageRoute<void>(
+            builder: (_) => Scaffold(
+              body: FileDrop(
+                enabled: true,
+                onDrop: (_) => drops.add('p2p'),
+                child: const SizedBox.expand(),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(await drop(100), true);
+      expect(drops, ['large.bin', 'p2p']);
+      navigation.pop();
+      await tester.pumpAndSettle();
+      expect(await drop(100), true);
+      expect(drops, ['large.bin', 'p2p', 'large.bin']);
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(const MethodChannel('voicechat/files'), (
             call,
@@ -61,6 +82,13 @@ void main() {
             expect(call.arguments['end'], 5000000000);
             return Uint8List(1);
           });
+      addTearDown(
+        () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(
+              const MethodChannel('voicechat/files'),
+              null,
+            ),
+      );
       final file = fileSource({
         'uri': 'opaque',
         'name': 'large.bin',

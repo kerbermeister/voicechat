@@ -31,6 +31,10 @@ fs.mkdirSync(evidence, {recursive:true});
     } catch { res.writeHead(404).end(); }
   });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
+  if (process.argv.includes('--serve')) {
+    console.log(`P2P lab: http://127.0.0.1:${server.address().port}/?peers=1&relay=1&storage=1`);
+    return;
+  }
   const browser = await chromium.launch({executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless:true});
   const results = [];
   const heartbeats = [];

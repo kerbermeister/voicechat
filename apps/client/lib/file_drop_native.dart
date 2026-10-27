@@ -30,6 +30,7 @@ class _FileDropState extends State<FileDrop> with WidgetsBindingObserver {
     }
     return null;
   }
+
   bool hovering = false;
   bool get supported => switch (Theme.of(context).platform) {
     TargetPlatform.macOS ||
@@ -51,7 +52,9 @@ class _FileDropState extends State<FileDrop> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     targets.add(this);
-    channel.setMethodCallHandler((call) async => await activeTarget?.handle(call) ?? false);
+    channel.setMethodCallHandler(
+      (call) async => await activeTarget?.handle(call) ?? false,
+    );
   }
 
   Future<dynamic> handle(MethodCall call) async {
@@ -80,7 +83,11 @@ class _FileDropState extends State<FileDrop> with WidgetsBindingObserver {
 
   void updateTarget() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || !supported || (activeTarget != null && activeTarget != this)) return;
+      if (!mounted ||
+          !supported ||
+          (activeTarget != null && activeTarget != this)) {
+        return;
+      }
       final rect = bounds;
       try {
         await channel.invokeMethod<void>(
@@ -116,10 +123,7 @@ class _FileDropState extends State<FileDrop> with WidgetsBindingObserver {
                   context,
                 ).colorScheme.primaryContainer.withValues(alpha: .94),
                 child: Center(
-                  child: Semantics(
-                    liveRegion: true,
-                    child: Text(widget.label),
-                  ),
+                  child: Semantics(liveRegion: true, child: Text(widget.label)),
                 ),
               ),
             ),
