@@ -6,8 +6,11 @@ import 'package:flutter/rendering.dart';
 class MessageSnapshot {
   final ui.Image image;
   final Rect rect;
+  DateTime? expiresAt;
+  bool get expired => expiresAt?.isAfter(DateTime.now()) == false;
   MessageSnapshot(this.image, this.rect);
-  MessageSnapshot clone() => MessageSnapshot(image.clone(), rect);
+  MessageSnapshot clone() =>
+      MessageSnapshot(image.clone(), rect)..expiresAt = expiresAt;
   void dispose() => image.dispose();
 
   static Future<MessageSnapshot?> capture(GlobalKey key) async {
@@ -30,7 +33,11 @@ class MessageSnapshot {
     GlobalKey? destination,
     bool deleting = false,
   }) async {
-    if (!context.mounted || MediaQuery.disableAnimationsOf(context)) return;
+    if (!context.mounted ||
+        expired ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return;
+    }
     final overlay = Overlay.of(context);
     final overlayBox = overlay.context.findRenderObject()! as RenderBox;
     Rect local(Rect value) => Rect.fromPoints(
@@ -42,6 +49,7 @@ class MessageSnapshot {
       builder: (_) => AnimatedBuilder(
         animation: motion,
         builder: (_, _) {
+          if (expired) return const SizedBox.shrink();
           final t = Curves.easeInOutCubic.transform(motion.value);
           final box = destination?.currentContext?.findRenderObject();
           final target = box is RenderBox && box.attached && box.hasSize
