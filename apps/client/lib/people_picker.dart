@@ -468,14 +468,25 @@ class _PeoplePickerState extends State<PeoplePicker> {
           ),
         ),
       ),
-      actionsPadding: const EdgeInsets.all(16),
+      actionsPadding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      actionsOverflowButtonSpacing: 4,
       actions: [
         TextButton(
+          style: TextButton.styleFrom(
+            minimumSize: const Size(80, 34),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
           onPressed: () => Navigator.pop(context),
           child: const Text('Отмена'),
         ),
         if (widget.multiple)
           FilledButton(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(80, 34),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
             onPressed: (selected.isEmpty && !personal) || busy ? null : confirm,
             child: Text(widget.creatingGroup ? 'Создать' : 'Добавить'),
           ),

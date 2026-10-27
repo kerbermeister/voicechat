@@ -448,6 +448,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       next.client,
       policyUrl: tokenServer.text.trim(),
       onSent: sounds!.sent,
+      onDeleted: sounds!.deleted,
     );
     await actions!.open();
     calls = CallController(

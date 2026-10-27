@@ -1,7 +1,6 @@
 import 'personal_room.dart';
+import 'message_motion.dart';
 import 'message_media_cache.dart';
-import 'package:flutter/rendering.dart';
-import 'dart:ui' as ui;
 import 'animated_message_border.dart';
 import 'chat_scale.dart';
 import 'delete_message_dialog.dart';
@@ -93,7 +92,7 @@ class ChatPane extends StatefulWidget {
 }
 
 class _ChatPaneState extends State<ChatPane>
-    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   Map<String, int> nameColorSlots = {};
   final input = TextEditingController();
   final search = TextEditingController();
@@ -151,6 +150,15 @@ class _ChatPaneState extends State<ChatPane>
     vsync: this,
     duration: const Duration(milliseconds: 420),
   );
+  final textPreviewKey = GlobalKey(),
+      filesPreviewKey = GlobalKey(),
+      photosPreviewKey = GlobalKey();
+  final sendSnapshots = <String, MessageSnapshot>{};
+  final motionControllers = <AnimationController>{};
+  final observedTransactions = <String>{};
+  MessageSnapshot? sendingSnapshot;
+  bool sendingOther = false;
+  String? menuEvent;
   final recordingClock = Stopwatch();
   Timer? recordingMeter;
   PcmLevelMeter liveMeter = PcmLevelMeter();
@@ -287,7 +295,61 @@ class _ChatPaneState extends State<ChatPane>
   }
 
   void refresh() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    if (sendingOther) {
+      for (final item in widget.actions.pending) {
+        final id = item['id'] as String;
+        if (item['room'] == widget.room.id &&
+            item['scheduled_at'] == null &&
+            item['edit'] == null &&
+            observedTransactions.add(id)) {
+          final snapshot = sendingSnapshot?.clone();
+          if (snapshot != null) sendSnapshots[id] = snapshot;
+        }
+      }
+    }
+    for (final id in sendSnapshots.keys.toList()) {
+      final event = widget.actions.deliveredEvent(id);
+      final pending = widget.actions.pending.any((item) => item['id'] == id);
+      if (event != null) {
+        final snapshot = sendSnapshots.remove(id)!;
+        messageKeys.putIfAbsent(event, GlobalKey.new);
+        unawaited(animateSnapshot(snapshot, destination: messageKeys[event]));
+      } else if (!pending) {
+        sendSnapshots.remove(id)!.dispose();
+      }
+    }
+    setState(() {});
+  }
+
+  Future<void> animateSnapshot(
+    MessageSnapshot snapshot, {
+    GlobalKey? destination,
+    bool deleting = false,
+  }) async {
+    if (!mounted) {
+      snapshot.dispose();
+      return;
+    }
+    final controller = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: deleting ? 320 : 420),
+    );
+    motionControllers.add(controller);
+    try {
+      await WidgetsBinding.instance.endOfFrame;
+      if (mounted) {
+        await snapshot.animate(
+          context,
+          controller,
+          destination: destination,
+          deleting: deleting,
+        );
+      }
+    } finally {
+      snapshot.dispose();
+      if (motionControllers.remove(controller)) controller.dispose();
+    }
   }
 
   Future<void> perform(Future<void> Function() action) async {
@@ -455,6 +517,37 @@ class _ChatPaneState extends State<ChatPane>
   }
 
   Future<void> send() async {
+    if (unsentVoice != null || edit != null || scheduledFor != null) {
+      await sendContents();
+      return;
+    }
+    observedTransactions
+      ..clear()
+      ..addAll(widget.actions.pending.map((item) => item['id'] as String));
+    final key = draftFiles.isNotEmpty
+        ? filesPreviewKey
+        : draftPhotos.isNotEmpty
+        ? photosPreviewKey
+        : textPreviewKey;
+    sendingSnapshot = MediaQuery.disableAnimationsOf(context)
+        ? null
+        : await MessageSnapshot.capture(key);
+    if (!mounted) {
+      sendingSnapshot?.dispose();
+      sendingSnapshot = null;
+      return;
+    }
+    setState(() => sendingOther = true);
+    try {
+      await sendContents();
+    } finally {
+      sendingSnapshot?.dispose();
+      sendingSnapshot = null;
+      if (mounted) setState(() => sendingOther = false);
+    }
+  }
+
+  Future<void> sendContents() async {
     if (edit != null && messageExpired(edit!)) {
       throw UserActionError(
         'Временное сообщение уже исчезло. Отправьте новое сообщение.',
@@ -971,56 +1064,18 @@ class _ChatPaneState extends State<ChatPane>
 
   Future<void> flyVoicePreview(String event) async {
     if (MediaQuery.disableAnimationsOf(context)) return;
-    final boundary = voicePreviewKey.currentContext?.findRenderObject();
-    if (boundary is! RenderRepaintBoundary || boundary.debugNeedsPaint) return;
-    final overlay = Overlay.of(context);
-    final overlayBox = overlay.context.findRenderObject()! as RenderBox;
-    Rect? rect(GlobalKey key) {
-      final box = key.currentContext?.findRenderObject();
-      if (box is! RenderBox || !box.attached || !box.hasSize) return null;
-      return Rect.fromPoints(
-        overlayBox.globalToLocal(box.localToGlobal(Offset.zero)),
-        overlayBox.globalToLocal(
-          box.localToGlobal(box.size.bottomRight(Offset.zero)),
-        ),
-      );
-    }
-
-    final source = rect(voicePreviewKey);
-    if (source == null || rect(messageKeys[event]!) == null) return;
-    ui.Image? image;
-    OverlayEntry? entry;
+    final snapshot = await MessageSnapshot.capture(voicePreviewKey);
+    if (snapshot == null) return;
     try {
-      image = await boundary.toImage(pixelRatio: 1.5);
       if (!mounted) return;
-      final snapshot = image;
-      voiceFlight.value = 0;
-      entry = OverlayEntry(
-        builder: (_) => AnimatedBuilder(
-          animation: voiceFlight,
-          builder: (_, _) {
-            final progress = Curves.easeInOutCubic.transform(voiceFlight.value);
-            final destination = rect(messageKeys[event]!) ?? source;
-            return Positioned.fromRect(
-              rect: Rect.lerp(source, destination, progress)!,
-              child: IgnorePointer(
-                child: Opacity(
-                  opacity: (2 - 2 * voiceFlight.value).clamp(0.0, 1.0),
-                  child: RawImage(image: snapshot, fit: BoxFit.fill),
-                ),
-              ),
-            );
-          },
-        ),
-      );
-      overlay.insert(entry);
       setState(() => unsentVoice = null);
-      await voiceFlight.forward().orCancel;
-    } on TickerCanceled {
-      // The room closed during the transition; the delivered message stays in history.
+      await snapshot.animate(
+        context,
+        voiceFlight,
+        destination: messageKeys[event],
+      );
     } finally {
-      entry?.remove();
-      image?.dispose();
+      snapshot.dispose();
       if (mounted) setState(() => voiceFlightEvent = null);
     }
   }
@@ -1139,9 +1194,29 @@ class _ChatPaneState extends State<ChatPane>
         context: context,
         builder: (_) => DeleteMessageDialog(allowAll: event.canRedact),
       );
-      if (choice == 'mine') await widget.actions.hideMessage(event);
-      if (choice == 'all' && event.canRedact) {
-        await event.redactEvent(redactAllEdits: true);
+      if (choice != 'mine' && !(choice == 'all' && event.canRedact)) return;
+      messageKeys.putIfAbsent(event.eventId, GlobalKey.new);
+      if (!mounted) return;
+      setState(() {});
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      final snapshot =
+          MediaQuery.disableAnimationsOf(context) || messageExpired(event)
+          ? null
+          : await MessageSnapshot.capture(messageKeys[event.eventId]!);
+      try {
+        if (choice == 'mine') {
+          await widget.actions.hideMessage(event);
+        } else {
+          await event.redactEvent(redactAllEdits: true);
+        }
+      } catch (_) {
+        snapshot?.dispose();
+        rethrow;
+      }
+      widget.actions.onDeleted?.call();
+      if (snapshot != null) {
+        unawaited(animateSnapshot(snapshot, deleting: true));
       }
       if (choice == 'mine' || choice == 'all' && event.canRedact) {
         MessageMediaCache.of(
@@ -1241,16 +1316,22 @@ class _ChatPaneState extends State<ChatPane>
       final overlay =
           Overlay.of(context).context.findRenderObject()! as RenderBox;
       final local = overlay.globalToLocal(position);
-      final action = await showMenu<String>(
-        context: context,
-        position: RelativeRect.fromRect(
-          Rect.fromLTWH(local.dx, local.dy, 0, 0),
-          Offset.zero & overlay.size,
-        ),
-        items: menuItems,
-      );
+      setState(() => menuEvent = event.eventId);
+      String? action;
+      try {
+        action = await showMenu<String>(
+          context: context,
+          position: RelativeRect.fromRect(
+            Rect.fromLTWH(local.dx, local.dy, 0, 0),
+            Offset.zero & overlay.size,
+          ),
+          items: menuItems,
+        );
+      } finally {
+        if (mounted) setState(() => menuEvent = null);
+      }
       if (action != null && mounted) {
-        await perform(() => eventAction(event, action));
+        await perform(() => eventAction(event, action!));
       }
     }
 
@@ -1259,12 +1340,18 @@ class _ChatPaneState extends State<ChatPane>
             popUpAnimationStyle: appAnimationStyle(context),
             style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
             tooltip: 'Действия с сообщением',
-            onSelected: (action) => perform(() => eventAction(event, action)),
+            onOpened: () => setState(() => menuEvent = event.eventId),
+            onCanceled: () {
+              if (mounted) setState(() => menuEvent = null);
+            },
+            onSelected: (action) {
+              setState(() => menuEvent = null);
+              perform(() => eventAction(event, action));
+            },
             itemBuilder: (_) => menuItems,
           )
         : null;
     final content = Container(
-      key: messageKeys[event.eventId],
       foregroundDecoration: event.eventId == highlightedEvent
           ? BoxDecoration(
               border: Border.all(color: baseColors.tertiary, width: 2),
@@ -1562,15 +1649,24 @@ class _ChatPaneState extends State<ChatPane>
                 onLongPressStart: menu == null
                     ? null
                     : (details) => openMenu(details.globalPosition),
-                child: CopyFeedback(
-                  color: own ? colors.onPrimary : colors.primary,
-                  pulse: copyPulses[event.eventId] ?? 0,
-                  child: messageExpiry(event) == null
-                      ? content
-                      : ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 526),
-                          child: TemporaryMessage(event: event, child: content),
-                        ),
+                child: RepaintBoundary(
+                  key: messageKeys[event.eventId],
+                  child: MessageMenuHighlight(
+                    selected: menuEvent == event.eventId,
+                    child: CopyFeedback(
+                      color: own ? colors.onPrimary : colors.primary,
+                      pulse: copyPulses[event.eventId] ?? 0,
+                      child: messageExpiry(event) == null
+                          ? content
+                          : ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 526),
+                              child: TemporaryMessage(
+                                event: event,
+                                child: content,
+                              ),
+                            ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1625,39 +1721,42 @@ class _ChatPaneState extends State<ChatPane>
         return Align(
           key: ValueKey('pending:${p['id']}'),
           alignment: Alignment.centerRight,
-          child: Card(
-            child: ListTile(
-              title: Text(
-                c.containsKey('bytes')
-                    ? c['body'] as String
-                    : c['body'] as String? ?? 'Реакция',
-              ),
-              subtitle: Text(widget.actions.pendingStatus(p)),
-              trailing: PopupMenuButton<String>(
-                popUpAnimationStyle: appAnimationStyle(context),
-                tooltip: 'Действия с очередью',
-                onSelected: (action) => perform(
-                  () => action == 'schedule'
-                      ? chooseSchedule(pendingId: p['id'] as String)
-                      : action == 'retry'
-                      ? widget.actions.flush()
-                      : widget.actions.cancel(p['id'] as String),
+          child: AnimatedMessageBorder(
+            active: p['error'] == null && p['scheduled_at'] == null,
+            child: Card(
+              child: ListTile(
+                title: Text(
+                  c.containsKey('bytes')
+                      ? c['body'] as String
+                      : c['body'] as String? ?? 'Реакция',
                 ),
-                itemBuilder: (_) => [
-                  if (p['schedule_rejected'] == true)
+                subtitle: Text(widget.actions.pendingStatus(p)),
+                trailing: PopupMenuButton<String>(
+                  popUpAnimationStyle: appAnimationStyle(context),
+                  tooltip: 'Действия с очередью',
+                  onSelected: (action) => perform(
+                    () => action == 'schedule'
+                        ? chooseSchedule(pendingId: p['id'] as String)
+                        : action == 'retry'
+                        ? widget.actions.flush()
+                        : widget.actions.cancel(p['id'] as String),
+                  ),
+                  itemBuilder: (_) => [
+                    if (p['schedule_rejected'] == true)
+                      const PopupMenuItem(
+                        value: 'schedule',
+                        child: Text('Выбрать новое время'),
+                      ),
                     const PopupMenuItem(
-                      value: 'schedule',
-                      child: Text('Выбрать новое время'),
+                      value: 'retry',
+                      child: Text('Повторить отправку'),
                     ),
-                  const PopupMenuItem(
-                    value: 'retry',
-                    child: Text('Повторить отправку'),
-                  ),
-                  PopupMenuItem(
-                    value: 'cancel',
-                    child: Text('Отменить отправку'),
-                  ),
-                ],
+                    PopupMenuItem(
+                      value: 'cancel',
+                      child: Text('Отменить отправку'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1937,86 +2036,99 @@ class _ChatPaneState extends State<ChatPane>
           ),
         AnimatedPanel(
           child: draftFiles.isNotEmpty
-              ? SizedBox(
-                  height: keyboardOpen ? 64 : 76,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: shownFiles.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 6),
-                    itemBuilder: (_, i) => SizedBox(
-                      width: 260,
-                      child: Material(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerHigh,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: ListTile(
-                          dense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                          ),
-                          titleTextStyle: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          subtitleTextStyle: TextStyle(
+              ? RepaintBoundary(
+                  key: filesPreviewKey,
+                  child: AnimatedMessageBorder(
+                    active: sendingOther,
+                    padding: 0,
+                    child: SizedBox(
+                      height: keyboardOpen ? 64 : 76,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: shownFiles.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 6),
+                        itemBuilder: (_, i) => SizedBox(
+                          width: 260,
+                          child: Material(
                             color: Theme.of(
                               context,
-                            ).colorScheme.onSurfaceVariant,
-                            fontSize: 12,
-                          ),
-                          iconColor: Theme.of(context).colorScheme.onSurface,
-                          onTap: shownFiles[i].mime.startsWith('video/')
-                              ? () => showAppDialog<void>(
-                                  context: context,
-                                  animationStyle: appAnimationStyle(context),
-                                  builder: (_) => MessageVideo.draft(
-                                    file: shownFiles[i],
-                                    videoNote: draftIsVideoNote,
-                                    thumbnail: false,
-                                  ),
-                                )
-                              : null,
-                          leading: shownFiles[i].mime.startsWith('video/')
-                              ? MessageVideo.draft(
-                                  key: ObjectKey(shownFiles[i]),
-                                  file: shownFiles[i],
-                                  videoNote: draftIsVideoNote,
-                                )
-                              : Icon(
-                                  draftIsVideoNote
-                                      ? Icons.video_camera_front
-                                      : Icons.attach_file,
-                                ),
-                          title: Text(
-                            shownFiles[i].name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: fileProgress != null && i == 0
-                              ? LinearProgressIndicator(value: fileProgress)
-                              : Text(
-                                  '${(shownFiles[i].size / 1048576).toStringAsFixed(1)} МБ · ${i + 1}/${widget.actions.policy.fileMaxCount}',
-                                ),
-                          trailing: IconButton(
-                            tooltip: 'Убрать файл ${i + 1}',
-                            icon: const Icon(Icons.close),
-                            onPressed: () async {
-                              if (fileProgress != null) {
-                                setState(() => cancelFile = true);
-                                return;
-                              }
-                              final source = draftFiles.removeAt(i);
-                              await source.release();
-                              if (mounted) setState(() {});
-                            },
+                            ).colorScheme.surfaceContainerHigh,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant,
+                              ),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              titleTextStyle: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              subtitleTextStyle: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                                fontSize: 12,
+                              ),
+                              iconColor: Theme.of(
+                                context,
+                              ).colorScheme.onSurface,
+                              onTap: shownFiles[i].mime.startsWith('video/')
+                                  ? () => showAppDialog<void>(
+                                      context: context,
+                                      animationStyle: appAnimationStyle(
+                                        context,
+                                      ),
+                                      builder: (_) => MessageVideo.draft(
+                                        file: shownFiles[i],
+                                        videoNote: draftIsVideoNote,
+                                        thumbnail: false,
+                                      ),
+                                    )
+                                  : null,
+                              leading: shownFiles[i].mime.startsWith('video/')
+                                  ? MessageVideo.draft(
+                                      key: ObjectKey(shownFiles[i]),
+                                      file: shownFiles[i],
+                                      videoNote: draftIsVideoNote,
+                                    )
+                                  : Icon(
+                                      draftIsVideoNote
+                                          ? Icons.video_camera_front
+                                          : Icons.attach_file,
+                                    ),
+                              title: Text(
+                                shownFiles[i].name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: fileProgress != null && i == 0
+                                  ? LinearProgressIndicator(value: fileProgress)
+                                  : Text(
+                                      '${(shownFiles[i].size / 1048576).toStringAsFixed(1)} МБ · ${i + 1}/${widget.actions.policy.fileMaxCount}',
+                                    ),
+                              trailing: IconButton(
+                                tooltip: 'Убрать файл ${i + 1}',
+                                icon: const Icon(Icons.close),
+                                onPressed: () async {
+                                  if (fileProgress != null) {
+                                    setState(() => cancelFile = true);
+                                    return;
+                                  }
+                                  final source = draftFiles.removeAt(i);
+                                  await source.release();
+                                  if (mounted) setState(() {});
+                                },
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -2027,63 +2139,72 @@ class _ChatPaneState extends State<ChatPane>
         ),
         AnimatedPanel(
           child: draftPhotos.isNotEmpty
-              ? Container(
-                  margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Прикреплено фото: ${draftPhotos.length} / ${widget.actions.policy.photoMaxCount}',
-                        style: Theme.of(context).textTheme.labelMedium,
+              ? RepaintBoundary(
+                  key: photosPreviewKey,
+                  child: AnimatedMessageBorder(
+                    active: sendingOther,
+                    padding: 0,
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: keyboardOpen ? 48 : 84,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: shownPhotos.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 8),
-                          itemBuilder: (_, i) => Stack(
-                            children: [
-                              InkWell(
-                                onTap: () => showPhotos(context, [
-                                  for (final p in draftPhotos)
-                                    () async => p.bytes,
-                                ], i),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.memory(
-                                    shownPhotos[i].bytes,
-                                    width: 84,
-                                    height: keyboardOpen ? 48 : 84,
-                                    fit: BoxFit.cover,
-                                    cacheWidth: 170,
-                                    semanticLabel:
-                                        'Прикреплённое фото ${i + 1}',
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: IconButton.filled(
-                                  tooltip: 'Убрать фото ${i + 1}',
-                                  visualDensity: VisualDensity.compact,
-                                  onPressed: () =>
-                                      setState(() => draftPhotos.removeAt(i)),
-                                  icon: const Icon(Icons.close, size: 16),
-                                ),
-                              ),
-                            ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Прикреплено фото: ${draftPhotos.length} / ${widget.actions.policy.photoMaxCount}',
+                            style: Theme.of(context).textTheme.labelMedium,
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: keyboardOpen ? 48 : 84,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: shownPhotos.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(width: 8),
+                              itemBuilder: (_, i) => Stack(
+                                children: [
+                                  InkWell(
+                                    onTap: () => showPhotos(context, [
+                                      for (final p in draftPhotos)
+                                        () async => p.bytes,
+                                    ], i),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.memory(
+                                        shownPhotos[i].bytes,
+                                        width: 84,
+                                        height: keyboardOpen ? 48 : 84,
+                                        fit: BoxFit.cover,
+                                        cacheWidth: 170,
+                                        semanticLabel:
+                                            'Прикреплённое фото ${i + 1}',
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: IconButton.filled(
+                                      tooltip: 'Убрать фото ${i + 1}',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: () => setState(
+                                        () => draftPhotos.removeAt(i),
+                                      ),
+                                      icon: const Icon(Icons.close, size: 16),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 )
               : null,
@@ -2277,27 +2398,35 @@ class _ChatPaneState extends State<ChatPane>
                           ),
                         );
                         final field = Expanded(
-                          child: TextField(
-                            readOnly: voiceTransaction != null,
-                            controller: input,
-                            focusNode: composerFocus,
-                            onChanged: (value) {
-                              typing(value);
-                              final urls = messageLinks(value);
-                              linkPreviews.removeWhere(
-                                (url, _) => !urls.contains(url),
-                              );
-                              setState(() {});
-                            },
-                            minLines: 1,
-                            maxLines: keyboardOpen ? 2 : 4,
-                            decoration: const InputDecoration(
-                              hintText: 'Написать сообщение…',
-                              hintMaxLines: 1,
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 12,
+                          child: RepaintBoundary(
+                            key: textPreviewKey,
+                            child: AnimatedMessageBorder(
+                              active: sendingOther,
+                              padding: 0,
+                              child: TextField(
+                                readOnly:
+                                    voiceTransaction != null || sendingOther,
+                                controller: input,
+                                focusNode: composerFocus,
+                                onChanged: (value) {
+                                  typing(value);
+                                  final urls = messageLinks(value);
+                                  linkPreviews.removeWhere(
+                                    (url, _) => !urls.contains(url),
+                                  );
+                                  setState(() {});
+                                },
+                                minLines: 1,
+                                maxLines: keyboardOpen ? 2 : 4,
+                                decoration: const InputDecoration(
+                                  hintText: 'Написать сообщение…',
+                                  hintMaxLines: 1,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 12,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -2772,6 +2901,14 @@ class _ChatPaneState extends State<ChatPane>
 
   @override
   void dispose() {
+    for (final controller in motionControllers) {
+      controller.dispose();
+    }
+    motionControllers.clear();
+    for (final snapshot in sendSnapshots.values) {
+      snapshot.dispose();
+    }
+    sendSnapshots.clear();
     voiceFlight.dispose();
     updateGuards.remove(prepareUpdate);
     input.removeListener(saveDraft);
