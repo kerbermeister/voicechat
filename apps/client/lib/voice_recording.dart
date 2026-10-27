@@ -111,8 +111,8 @@ Uint8List normalizedVoice(Uint8List bytes) {
   for (var i = 44; i < bytes.length; i += 2) {
     peak = max(peak, data.getInt16(i, Endian.little).abs());
   }
-  if (peak < 32 || peak >= 27524) return bytes;
-  final gain = min(4.0, 27524 / peak);
+  if (peak < 32 || peak >= 31456) return bytes;
+  final gain = min(12.0, 31456 / peak);
   final result = Uint8List.fromList(bytes);
   final output = ByteData.sublistView(result);
   for (var i = 44; i < bytes.length; i += 2) {

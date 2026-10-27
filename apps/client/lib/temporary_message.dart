@@ -1,3 +1,4 @@
+import 'animated_message_border.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -124,13 +125,9 @@ class _TemporaryMessageState extends State<TemporaryMessage>
                   ),
                 ),
               )
-            : Container(
-                margin: const EdgeInsets.symmetric(vertical: 1),
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  border: Border.all(color: colors.tertiary, width: 2),
-                  borderRadius: BorderRadius.circular(26),
-                ),
+            : AnimatedMessageBorder(
+                radius: 26,
+                padding: 8,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,7 +162,10 @@ class _TemporaryMessageState extends State<TemporaryMessage>
                         ],
                       ),
                     ),
-                    widget.child,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: widget.child,
+                    ),
                   ],
                 ),
               ),

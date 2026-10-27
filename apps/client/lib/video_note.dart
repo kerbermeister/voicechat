@@ -1,3 +1,4 @@
+import 'smooth_progress_ring.dart';
 import 'app_motion.dart';
 import 'dart:async';
 import 'dart:typed_data';
@@ -348,8 +349,10 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
                       ? CameraPreview(camera!)
                       : const Center(child: CircularProgressIndicator()),
                 ),
-                CircularProgressIndicator(
+                SmoothProgressRing(
                   value: clock.elapsedMilliseconds / (widget.maxSeconds * 1000),
+                  running: clock.isRunning,
+                  duration: Duration(seconds: widget.maxSeconds),
                   strokeWidth: 6,
                 ),
               ],

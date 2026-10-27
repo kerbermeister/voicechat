@@ -154,10 +154,7 @@ class AnimatedPanel extends StatelessWidget {
     ),
     child: child == null
         ? const SizedBox.shrink(key: ValueKey('hidden'))
-        : KeyedSubtree(
-            key: child!.key ?? const ValueKey('visible'),
-            child: child!,
-          ),
+        : KeyedSubtree(key: ValueKey(child!.key ?? 'visible'), child: child!),
   );
 }
 

@@ -30,6 +30,8 @@ class ChatActions extends ChangeNotifier {
   StreamSubscription<dynamic>? _sync;
   Timer? _retry;
   final _sending = <String, bool>{};
+  final _delivered = <String, String>{};
+  String? deliveredEvent(String transaction) => _delivered[transaction];
   bool _closed = false;
   final _preparing = <String>{};
   final _activeItems = <String, String>{};
@@ -461,7 +463,7 @@ class ChatActions extends ChangeNotifier {
     );
   }
 
-  Future<void> attachment(
+  Future<String> attachment(
     Room room,
     MatrixFile file, {
     Event? reply,
@@ -489,7 +491,7 @@ class ChatActions extends ChangeNotifier {
         'Поддерживаются изображения и голосовые сообщения.',
       );
     }
-    await enqueue(
+    return enqueue(
       room,
       {
         'msgtype': file.msgType,
@@ -778,6 +780,10 @@ class ChatActions extends ChangeNotifier {
           }
           if (_closed) break;
           if (id == null) throw StateError('Send not confirmed');
+          _delivered[item['id'] as String] = id;
+          while (_delivered.length > 128) {
+            _delivered.remove(_delivered.keys.first);
+          }
           pending.remove(item);
           await _save();
           if ((item['created'] as int) >= _opened &&
@@ -1021,6 +1027,7 @@ List<Event> visibleMessages(
 
 /// A receipt on a later event also acknowledges earlier messages in the loaded timeline.
 bool messageIsRead(Event event, Timeline timeline) {
+  if (personalMessageIsRead(event)) return true;
   final index = timeline.events.indexWhere((e) => e.eventId == event.eventId);
   if (index < 0) return false;
   return messageReadReceipts(event.room).any((receipt) {
@@ -1036,6 +1043,7 @@ class ComposerDraft {
   final List<PickedFile> files;
   final List<MatrixImageFile> photos;
   final MatrixAudioFile? voice;
+  final String? voiceTransaction;
   final List<int>? wave;
   final Event? reply, edit, voiceReply;
   final bool videoNote;
@@ -1045,6 +1053,7 @@ class ComposerDraft {
     required this.files,
     required this.photos,
     this.voice,
+    this.voiceTransaction,
     this.wave,
     this.reply,
     this.edit,

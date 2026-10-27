@@ -1,3 +1,4 @@
+import 'smooth_progress_ring.dart';
 import 'dart:async';
 import 'dart:js_interop';
 import 'package:flutter/material.dart';
@@ -339,10 +340,12 @@ class _WebNoteState extends State<_WebNote> with WidgetsBindingObserver {
                           if (!clock.isRunning && !finishing && error == null)
                             const Center(child: CircularProgressIndicator()),
                           IgnorePointer(
-                            child: CircularProgressIndicator(
+                            child: SmoothProgressRing(
                               value:
                                   clock.elapsedMilliseconds /
                                   (widget.maxSeconds * 1000),
+                              running: clock.isRunning,
+                              duration: Duration(seconds: widget.maxSeconds),
                               strokeWidth: 6,
                             ),
                           ),
