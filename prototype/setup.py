@@ -108,7 +108,7 @@ use-auth-secret
 static-auth-secret={s['turn']}
 realm=voicechat.local
 listening-ip=0.0.0.0
-relay-ip=0.0.0.0
+# Let coturn select an actual interface; 0.0.0.0 is not a usable relay candidate.
 min-port=49160
 max-port=49200
 cli=off

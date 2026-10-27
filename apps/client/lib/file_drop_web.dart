@@ -6,10 +6,12 @@ import 'picked_file.dart';
 
 class FileDrop extends StatefulWidget {
   final Widget child;
+  final String label;
   final bool enabled;
   final void Function(List<PickedFile>) onDrop;
   const FileDrop({
     super.key,
+    this.label = 'Отпустите файлы, чтобы прикрепить к чату',
     required this.child,
     required this.enabled,
     required this.onDrop,
@@ -55,7 +57,10 @@ class _FileDropState extends State<FileDrop> {
         if (!files(event)) return;
         // Prevent navigation even outside the chat or while an action is busy.
         event.preventDefault();
-        final accepted = widget.enabled && contains(event);
+        final accepted =
+            widget.enabled &&
+            ModalRoute.of(context)?.isCurrent != false &&
+            contains(event);
         if (type != 'drop') {
           event.dataTransfer?.dropEffect = accepted ? 'copy' : 'none';
           hover(accepted);
@@ -87,10 +92,7 @@ class _FileDropState extends State<FileDrop> {
                 context,
               ).colorScheme.primaryContainer.withValues(alpha: .94),
               child: Center(
-                child: Semantics(
-                  liveRegion: true,
-                  child: Text('Отпустите файлы, чтобы прикрепить к чату'),
-                ),
+                child: Semantics(liveRegion: true, child: Text(widget.label)),
               ),
             ),
           ),

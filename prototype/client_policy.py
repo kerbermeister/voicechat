@@ -4,6 +4,9 @@ import os
 from pathlib import Path
 
 BOUNDS = {
+    'p2p_file_max_bytes': (int, 1, 100_000_000_000),
+    'p2p_file_max_count': (int, 1, 100),
+    'p2p_max_recipients': (int, 1, 16),
     'photo_max_count': (int, 1, 64), 'photo_scale': ((int, float), .05, 1),
     'photo_jpeg_quality': (int, 1, 100), 'photo_max_bytes': (int, 1, 10 * 1024 * 1024),
     'photo_max_pixels': (int, 1, 24_000_000), 'text_max_length': (int, 1, 16000),

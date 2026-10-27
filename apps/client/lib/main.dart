@@ -4,6 +4,8 @@ import 'message_media_cache.dart';
 import 'transient_notice.dart';
 import 'active_call_banner.dart';
 import 'personal_room.dart';
+import 'p2p/service.dart';
+import 'p2p/panel.dart';
 import 'recovery_key_dialog.dart';
 import 'macos_camera.dart';
 import 'macos_notifications.dart';
@@ -220,6 +222,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   PresenceTracker? presenceTracker;
   RecordingActivity? recordingActivity;
   ContactService? contacts;
+  P2pService? p2p;
   StoragePolicy? storagePolicy;
   ChatActions? actions;
   DeviceVerifications? verifications;
@@ -451,6 +454,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       onDeleted: sounds!.deleted,
     );
     await actions!.open();
+    await openP2p(next.client);
     calls = CallController(
       next.client,
       tokenServer.text.trim(),
@@ -1478,6 +1482,23 @@ class _ProbeScreenState extends State<ProbeScreen> {
     );
   }
 
+  Future<void> openP2p(mx.Client client) async {
+    final service = P2pService(client, contacts!, tokenServer.text.trim());
+    service.addListener(() {
+      if (mounted) setState(() {});
+    });
+    try {
+      await service.open();
+      p2p = service;
+    } catch (_) {
+      await service.close();
+      p2p = null;
+      report(
+        'Не удалось открыть P2P Share. Перезапустите приложение и повторите.',
+      );
+    }
+  }
+
   Future<void> logout() async {
     final confirmed = await showAppDialog<bool>(
       context: context,
@@ -1517,10 +1538,13 @@ class _ProbeScreenState extends State<ProbeScreen> {
           probe!.client.accessToken!,
         );
       }
+      await p2p?.close();
+      p2p = null;
       await probe!.logout();
     } catch (_) {
       storagePolicy = StoragePolicy(probe!.client, () => selected?.id);
       await storagePolicy!.open();
+      if (p2p == null) await openP2p(probe!.client);
       rethrow;
     }
     MessageMediaCache.clear(probe!.client);
@@ -1570,6 +1594,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     unawaited(actions?.close());
     unawaited(connectionStatus?.cancel());
     unawaited(() async {
+      await p2p?.close();
       await storagePolicy?.close();
       await probe?.close();
     }());
@@ -1785,7 +1810,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
               restoringSession ||
               hasActiveCapture ||
               (call != null && !call!.isClosed) ||
-              actions?.updateBusy == true) {
+              actions?.updateBusy == true ||
+              p2p?.busy == true) {
             return 'Завершите звонок, запись или текущую отправку перед установкой.';
           }
           final reason = await checkUpdateGuards();
@@ -2124,6 +2150,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
     onNewPerson: () => run(() => newChat()),
     onNewGroup: () => run(() => newChat(group: true)),
     onSettings: settings,
+    onP2p: p2p == null
+        ? null
+        : () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (_) => P2pPanel(service: p2p!)),
+          ),
+    p2pIncoming: p2p?.incomingCount ?? 0,
     onInvitations: invitations,
     onSearch: globalSearch,
     ownAvatar: ownAvatar,

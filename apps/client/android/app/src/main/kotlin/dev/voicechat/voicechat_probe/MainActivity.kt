@@ -31,6 +31,7 @@ class MainActivity : FlutterActivity() {
         private var maxImageCount = 24
         private var selectedImages = emptySet<String>()
         private var fileResult: MethodChannel.Result? = null
+        private var maxFileBytes = 314572800L
         private var maxFileCount = 5
         private val selectedFiles = mutableSetOf<String>()
         private var saveResult: MethodChannel.Result? = null
@@ -124,6 +125,7 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/save")
             .setMethodCallHandler { call, result ->
                 when (call.method) {
+                    "availableBytes" -> result.success(filesDir.usableSpace)
                     "cacheDirectory" -> result.success(cacheDir.canonicalPath)
                     "begin" -> {
                         if (saveResult != null) { result.error("busy", "Save picker is open", null); return@setMethodCallHandler }
@@ -163,7 +165,8 @@ class MainActivity : FlutterActivity() {
                     "choose" -> {
                         if (fileResult != null) { result.error("busy", "Picker is open", null); return@setMethodCallHandler }
                         maxFileCount = call.argument<Int>("max_count") ?: 5
-                        if (maxFileCount !in 1..20) { result.error("invalid", "Invalid file count", null); return@setMethodCallHandler }
+                        maxFileBytes = call.argument<Number>("max_bytes")?.toLong() ?: 314572800L
+                        if (maxFileCount !in 1..100 || maxFileBytes !in 1..100000000000L) { result.error("invalid", "Invalid file count", null); return@setMethodCallHandler }
                         fileResult = result
                         try {
                             startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).apply {
@@ -175,9 +178,9 @@ class MainActivity : FlutterActivity() {
                     }
                     "release" -> { selectedFiles.remove(value); result.success(null) }
                     "read" -> {
-                        val start = call.argument<Int>("start") ?: -1
-                        val end = call.argument<Int>("end") ?: -1
-                        if (value !in selectedFiles || start < 0 || end <= start || end - start > 4 * 1024 * 1024 || end > 300 * 1024 * 1024) {
+                        val start = call.argument<Number>("start")?.toLong() ?: -1L
+                        val end = call.argument<Number>("end")?.toLong() ?: -1L
+                        if (value !in selectedFiles || start < 0 || end <= start || end - start > 4 * 1024 * 1024 || end > 100000000000L) {
                             result.error("invalid", "Invalid file range", null); return@setMethodCallHandler
                         }
                         Thread {
@@ -188,7 +191,7 @@ class MainActivity : FlutterActivity() {
                                         val n = input.skip(start - skipped)
                                         if (n == 0L) { require(input.read() >= 0); skipped++ } else skipped += n
                                     }
-                                    val output = ByteArray(end - start)
+                                    val output = ByteArray((end - start).toInt())
                                     var offset = 0
                                     while (offset < output.size) {
                                         val n = input.read(output, offset, output.size - offset)
@@ -281,12 +284,12 @@ class MainActivity : FlutterActivity() {
                     contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { cursor ->
                         if (cursor.moveToFirst()) { name = cursor.getString(0) ?: name; size = cursor.getLong(1) }
                     }
-                    require(size in 1..(300L * 1024 * 1024))
+                    require(size in 0..maxFileBytes)
                     mapOf("uri" to uri.toString(), "name" to name, "size" to size, "mime" to (contentResolver.getType(uri) ?: "application/octet-stream"))
                 }
                 selectedFiles.addAll(uris.map { it.toString() })
                 result.success(files)
-            } catch (_: Exception) { result.error("invalid", "Invalid file count, unavailable file or larger than 300 MB", null) }
+            } catch (_: Exception) { result.error("invalid", "Invalid file count, unavailable file or configured size exceeded", null) }
             return
         }
         if (requestCode == 7504) {

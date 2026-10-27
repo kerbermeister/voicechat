@@ -7,10 +7,12 @@ import 'picked_file.dart';
 /// Native hosts exchange opaque selections through the existing files channel.
 class FileDrop extends StatefulWidget {
   final Widget child;
+  final String label;
   final bool enabled;
   final void Function(List<PickedFile>) onDrop;
   const FileDrop({
     super.key,
+    this.label = 'Отпустите файлы, чтобы прикрепить к чату',
     required this.child,
     required this.enabled,
     required this.onDrop,
@@ -21,6 +23,13 @@ class FileDrop extends StatefulWidget {
 
 class _FileDropState extends State<FileDrop> with WidgetsBindingObserver {
   static const channel = MethodChannel('voicechat/file-drop');
+  static final targets = <_FileDropState>[];
+  static _FileDropState? get activeTarget {
+    for (final target in targets.reversed) {
+      if (target.mounted && target.enabled && target.supported) return target;
+    }
+    return null;
+  }
   bool hovering = false;
   bool get supported => switch (Theme.of(context).platform) {
     TargetPlatform.macOS ||
@@ -41,7 +50,8 @@ class _FileDropState extends State<FileDrop> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    channel.setMethodCallHandler(handle);
+    targets.add(this);
+    channel.setMethodCallHandler((call) async => await activeTarget?.handle(call) ?? false);
   }
 
   Future<dynamic> handle(MethodCall call) async {
@@ -70,7 +80,7 @@ class _FileDropState extends State<FileDrop> with WidgetsBindingObserver {
 
   void updateTarget() {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || !supported) return;
+      if (!mounted || !supported || (activeTarget != null && activeTarget != this)) return;
       final rect = bounds;
       try {
         await channel.invokeMethod<void>(
@@ -108,9 +118,7 @@ class _FileDropState extends State<FileDrop> with WidgetsBindingObserver {
                 child: Center(
                   child: Semantics(
                     liveRegion: true,
-                    child: const Text(
-                      'Отпустите файлы, чтобы прикрепить к чату',
-                    ),
+                    child: Text(widget.label),
                   ),
                 ),
               ),
@@ -123,8 +131,13 @@ class _FileDropState extends State<FileDrop> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    channel.setMethodCallHandler(null);
-    unawaited(channel.invokeMethod<void>('target').catchError((Object _) {}));
+    targets.remove(this);
+    if (targets.isEmpty) {
+      channel.setMethodCallHandler(null);
+      unawaited(channel.invokeMethod<void>('target').catchError((Object _) {}));
+    } else {
+      targets.last.updateTarget();
+    }
     super.dispose();
   }
 }

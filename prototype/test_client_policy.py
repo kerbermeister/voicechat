@@ -20,6 +20,20 @@ class PolicyTests(unittest.TestCase):
                     path.write_text(json.dumps({**defaults, **change}))
                     with self.assertRaises(ValueError): load_policy(path)
 
+    def test_p2p_policy_is_separate_and_rejects_invalid_values(self):
+        defaults = load_policy()
+        self.assertEqual([defaults[k] for k in ('p2p_file_max_bytes', 'p2p_file_max_count', 'p2p_max_recipients')], [5000000000, 10, 4])
+        self.assertEqual(defaults['file_max_bytes'], 314572800)
+        with tempfile.TemporaryDirectory() as root:
+            path = Path(root) / 'policy.json'
+            for key, high in [('p2p_file_max_bytes', 100000000000), ('p2p_file_max_count', 100), ('p2p_max_recipients', 16)]:
+                for value in [0, -1, True, 1.5, '4', high + 1]:
+                    with self.subTest(key=key, value=value):
+                        path.write_text(json.dumps({**defaults, key:value}))
+                        with self.assertRaises(ValueError): load_policy(path)
+                path.write_text(json.dumps({**defaults, key:high}))
+                self.assertEqual(load_policy(path)[key], high)
+
     def test_runtime_policy_is_reloaded_and_invalid_changes_fail_closed(self):
         defaults = load_policy()
         with tempfile.TemporaryDirectory() as directory:

@@ -58,25 +58,48 @@ Future<void> saveFile(
   void Function(double) progress,
   bool Function() cancelled,
 ) async {
+  try {
+    await saveStreamFile(
+      file.name,
+      file.mime,
+      file.size,
+      file.range,
+      progress,
+      cancelled,
+    );
+  } finally {
+    file.clear();
+  }
+}
+
+Future<FileSaveResult> saveStreamFile(
+  String name,
+  String mime,
+  int size,
+  Stream<Uint8List> Function(int, int) range,
+  void Function(double) progress,
+  bool Function() cancelled,
+) async {
   final id = await _channel.invokeMethod<String>('begin', {
-    'name': file.name,
-    'mime': file.mime,
+    'name': name,
+    'mime': mime,
   });
-  if (id == null) return;
+  if (id == null) return FileSaveResult.cancelled;
   var success = false;
   try {
     var written = 0;
-    await for (final bytes in file.range(0, file.size)) {
+    await for (final bytes in range(0, size)) {
       if (cancelled()) throw StateError('Cancelled');
       await _channel.invokeMethod<void>('write', {'id': id, 'bytes': bytes});
       written += bytes.length;
-      progress(written / file.size);
+      progress(size == 0 ? 1 : written / size);
     }
+    if (cancelled() || written != size) throw StateError('Incomplete or cancelled save');
     success = true;
   } finally {
     await _channel.invokeMethod<void>('finish', {'id': id, 'success': success});
-    file.clear();
   }
+  return FileSaveResult.saved;
 }
 
 Future<({String url, Future<void> Function() close})> videoSource(

@@ -232,6 +232,8 @@ class ConversationList extends StatefulWidget {
   final VoidCallback onNewPerson;
   final VoidCallback onNewGroup;
   final VoidCallback onSettings;
+  final VoidCallback? onP2p;
+  final int p2pIncoming;
   final VoidCallback? onInvitations;
   final VoidCallback? onSearch;
   final Uri? ownAvatar;
@@ -252,6 +254,8 @@ class ConversationList extends StatefulWidget {
     required this.onNewPerson,
     required this.onNewGroup,
     required this.onSettings,
+    this.onP2p,
+    this.p2pIncoming = 0,
     this.onInvitations,
     this.onSearch,
     this.ownAvatar,
@@ -619,6 +623,16 @@ class _ConversationListState extends State<ConversationList> {
                         widget.onTabChanged(value.single),
                   ),
                 ),
+                if (widget.onP2p != null)
+                  ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.swap_horiz),
+                    title: const Text('P2P Share · Beta'),
+                    trailing: widget.p2pIncoming > 0
+                        ? Badge(label: Text('${widget.p2pIncoming}'))
+                        : null,
+                    onTap: widget.onP2p,
+                  ),
                 AnimatedPanel(
                   child: invites > 0
                       ? Material(

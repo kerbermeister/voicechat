@@ -6,7 +6,7 @@ self.addEventListener('activate', event => event.waitUntil(self.clients.claim())
 self.addEventListener('message', event => {
   const data = event.data;
   if (data?.action !== 'register' || !event.source?.id || !event.ports[0] || !/^[a-f0-9]{64}$/.test(data.id) ||
-      !Number.isInteger(data.size) || data.size < 1 || data.size > 314572800 || typeof data.mime !== 'string' || /[\r\n]/.test(data.mime)) return;
+      !Number.isInteger(data.size) || data.size < 0 || data.size > (data.download === true ? 100000000000 : 314572800) || typeof data.mime !== 'string' || /[\r\n]/.test(data.mime)) return;
   const port = event.ports[0];
   const source = {download: data.download === true, claimed: false, client: event.source.id, size: data.size, mime: data.mime, name: data.name, port, pending: new Map(), next: 0};
   sources.set(data.id, source);

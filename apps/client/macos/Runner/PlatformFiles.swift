@@ -62,7 +62,7 @@ final class PlatformFiles {
     switch call.method {
     case "choose" where channel == "files" || channel == "images":
       guard !pickerOpen, let maximum = args["max_count"] as? Int,
-            (1...(channel == "images" ? 64 : 20)).contains(maximum) else { throw invalid() }
+            (1...(channel == "images" ? 64 : 100)).contains(maximum) else { throw invalid() }
       let panel = NSOpenPanel()
       panel.canChooseDirectories = false
       panel.allowsMultipleSelection = maximum > 1
@@ -109,6 +109,10 @@ final class PlatformFiles {
         guard data.count == end - start else { throw invalid() }
         result(FlutterStandardTypedData(bytes: data))
       }
+    case "availableBytes" where channel == "save":
+      let root = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+      let values = try root.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+      result(values.volumeAvailableCapacityForImportantUsage)
     case "cacheDirectory" where channel == "save":
       let root = try FileManager.default.url(for: .cachesDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         .appendingPathComponent("VoiceChatRecordings", isDirectory: true)

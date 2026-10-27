@@ -75,43 +75,65 @@ Future<void> saveFile(
   void Function(double) progress,
   bool Function() cancelled,
 ) async {
-  if (!_supportsSavePicker().toDart) {
-    try {
-      await _download(
-        file.name.toJS,
-        file.mime.toJS,
-        file.size.toJS,
-        ((JSNumber from, JSNumber to) => (() async {
-          if (cancelled()) throw StateError('Cancelled');
-          final builder = BytesBuilder(copy: false);
-          await for (final block in file.range(from.toDartInt, to.toDartInt)) {
-            builder.add(block);
-          }
-          progress(to.toDartInt / file.size);
-          return builder.takeBytes().toJS;
-        })().toJS).toJS,
-      ).toDart;
-    } finally {
-      file.clear();
-    }
-    return;
+  try {
+    await saveStreamFile(
+      file.name,
+      file.mime,
+      file.size,
+      file.range,
+      progress,
+      cancelled,
+    );
+  } finally {
+    file.clear();
   }
-  final id = (await _beginSave(file.name.toJS).toDart)?.toDart;
-  if (id == null) return;
+}
+
+Future<FileSaveResult> saveStreamFile(
+  String name,
+  String mime,
+  int size,
+  Stream<Uint8List> Function(int, int) range,
+  void Function(double) progress,
+  bool Function() cancelled,
+) async {
+  if (cancelled()) return FileSaveResult.cancelled;
+  if (!_supportsSavePicker().toDart) {
+    await _download(
+      name.toJS,
+      mime.toJS,
+      size.toJS,
+      ((JSNumber from, JSNumber to) => (() async {
+        if (cancelled()) throw StateError('Cancelled');
+        final builder = BytesBuilder(copy: false);
+        await for (final block in range(from.toDartInt, to.toDartInt)) {
+          builder.add(block);
+        }
+        progress(size == 0 ? 1 : to.toDartInt / size);
+        return builder.takeBytes().toJS;
+      })().toJS).toJS,
+    ).toDart;
+    return FileSaveResult.downloadStarted;
+  }
+  final id = (await _beginSave(name.toJS).toDart)?.toDart;
+  if (id == null) return FileSaveResult.cancelled;
   var success = false;
   try {
     var written = 0;
-    await for (final part in file.range(0, file.size)) {
+    await for (final part in range(0, size)) {
       if (cancelled()) throw StateError('Cancelled');
       await _write(id.toJS, part.toJS).toDart;
       written += part.length;
-      progress(written / file.size);
+      progress(size == 0 ? 1 : written / size);
+    }
+    if (cancelled() || written != size) {
+      throw StateError('Incomplete or cancelled save');
     }
     success = true;
   } finally {
     await _finish(id.toJS, success.toJS).toDart;
-    file.clear();
   }
+  return FileSaveResult.saved;
 }
 
 Future<({String url, Future<void> Function() close})> videoSource(
