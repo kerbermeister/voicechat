@@ -1,4 +1,6 @@
 """Opt-in previews. Connect only to a validated public IP, including redirects."""
+import json
+import re
 import base64
 import http.client
 import ipaddress
@@ -6,7 +8,7 @@ import socket
 import ssl
 import time
 from html.parser import HTMLParser
-from urllib.parse import urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qs, urlencode, urljoin, urlsplit, urlunsplit
 
 
 def public_target(url):
@@ -90,8 +92,58 @@ class Metadata(HTMLParser):
             self.title += data[:512]
 
 
+def youtube_video_id(url):
+    if not isinstance(url, str) or len(url) > 2048:
+        raise ValueError('invalid_url')
+    parsed = urlsplit(url)
+    parts = parsed.path.strip('/').split('/')
+    host = (parsed.hostname or '').lower()
+    video = None
+    if host == 'youtu.be' and len(parts) == 1:
+        video = parts[0]
+    elif host in ('youtube.com', 'www.youtube.com', 'm.youtube.com', 'www.youtube-nocookie.com'):
+        if parsed.path == '/watch':
+            video = parse_qs(parsed.query).get('v', [None])[0]
+        elif len(parts) == 2 and parts[0] in ('embed', 'shorts'):
+            video = parts[1]
+    return video if isinstance(video, str) and re.fullmatch(r'[A-Za-z0-9_-]{11}', video) else None
+
+
+def add_cover(result, image, base, deadline):
+    if not isinstance(image, str) or len(image) > 2048:
+        return
+    try:
+        _, headers, body = fetch(urljoin(base, image), 192 * 1024, deadline)
+        if headers.get_content_type() in ('image/jpeg', 'image/png', 'image/webp'):
+            result['image'] = base64.b64encode(body).decode('ascii')
+    except (OSError, ValueError, http.client.HTTPException):
+        pass
+
+
+def youtube_preview(url, video, deadline):
+    public_target(url)  # Preserve original URL/port checks before using a fixed provider endpoint.
+    endpoint = 'https://www.youtube.com/oembed?' + urlencode({
+        'url': 'https://www.youtube.com/watch?v=' + video, 'format': 'json',
+    })
+    _, headers, body = fetch(endpoint, 16 * 1024, deadline)
+    if headers.get_content_type() != 'application/json':
+        raise ValueError('invalid_oembed')
+    metadata = json.loads(body)
+    if not isinstance(metadata, dict) or not isinstance(metadata.get('title'), str) or not metadata['title'].strip():
+        raise ValueError('invalid_oembed')
+    author = metadata.get('author_name')
+    result = {'url': url, 'title': metadata['title'].strip()[:256],
+              'description': ('YouTube · ' + author if isinstance(author, str) else 'YouTube')[:512]}
+    # Never embed or forward provider-supplied HTML.
+    add_cover(result, metadata.get('thumbnail_url'), endpoint, deadline)
+    return result
+
+
 def preview(url):
     deadline = time.monotonic() + 10
+    video = youtube_video_id(url)
+    if video:
+        return youtube_preview(url, video, deadline)
     final, headers, body = fetch(url, 256 * 1024, deadline)
     if headers.get_content_type() not in ('text/html', 'application/xhtml+xml'):
         return {'url': url, 'title': urlsplit(final).hostname, 'description': ''}
@@ -105,12 +157,5 @@ def preview(url):
         'title': (parser.values.get('og:title') or parser.title).strip()[:256],
         'description': (parser.values.get('og:description') or parser.values.get('description') or '').strip()[:512],
     }
-    image = parser.values.get('og:image')
-    if image:
-        try:
-            _, image_headers, image_bytes = fetch(urljoin(final, image), 192 * 1024, deadline)
-            if image_headers.get_content_type() in ('image/jpeg', 'image/png', 'image/webp'):
-                result['image'] = base64.b64encode(image_bytes).decode('ascii')
-        except (OSError, ValueError, http.client.HTTPException):
-            pass
+    add_cover(result, parser.values.get('og:image'), final, deadline)
     return result
