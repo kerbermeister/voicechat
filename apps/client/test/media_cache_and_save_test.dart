@@ -242,6 +242,10 @@ void main() {
       final sizes = [for (var i = 0; i < 3; i++) tester.getSize(buttons.at(i))];
       expect(sizes[0], sizes[1]);
       expect(sizes[1], sizes[2]);
+      final rows = {
+        for (var i = 0; i < 3; i++) tester.getTopLeft(buttons.at(i)).dy,
+      };
+      expect(rows.length, lessThanOrEqualTo(2));
       expect(
         sizes[0].height,
         lessThanOrEqualTo(40),

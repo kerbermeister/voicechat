@@ -86,6 +86,7 @@ class AppSounds {
   }
 
   void sent() => unawaited(_play(effect, 'sent'));
+  void deleted() => unawaited(_play(effect, 'deleted'));
   void updateCall(CallController calls) {
     final previous = _observedCall;
     if (previous != null && previous.isClosed) {

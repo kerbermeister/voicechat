@@ -21,7 +21,7 @@ const maxAttachmentBytes = 10 * 1024 * 1024;
 class ChatActions extends ChangeNotifier {
   final Client client;
   final String? policyUrl;
-  final void Function()? onSent;
+  final void Function()? onSent, onDeleted;
   final _opened = DateTime.now().millisecondsSinceEpoch;
   MediaPolicy policy = const MediaPolicy();
   DateTime _policyChecked = DateTime(1970);
@@ -37,7 +37,7 @@ class ChatActions extends ChangeNotifier {
   final _activeItems = <String, String>{};
   final _publishing = <String, String>{};
   Future<void> _writes = Future.value();
-  ChatActions(this.client, {this.policyUrl, this.onSent});
+  ChatActions(this.client, {this.policyUrl, this.onSent, this.onDeleted});
   static const _storageKey = 'dev.voicechat.local.outbox';
   static const _draftKey = 'dev.voicechat.local.drafts';
   static const _mediaVolumeKey = 'dev.voicechat.local.media_volumes';
