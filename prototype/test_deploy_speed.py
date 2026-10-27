@@ -99,7 +99,7 @@ class DeploySpeedTests(unittest.TestCase):
             with patch.object(deploy, 'compose'):
                 deploy.web_deploy(root, release, old, target, {}, configuration)
             current = json.loads((root/'current.json').read_text())
-            with patch.object(deploy.subprocess, 'check_output', side_effect=[json.dumps(configuration).encode(), b'postgres']), \
+            with patch.object(deploy.subprocess, 'check_output', side_effect=[json.dumps(configuration).encode(), b'postgres', b'{"version":1,"text_max_length":8000}']), \
                  patch.object(deploy, 'execute'), patch.object(deploy, 'backup') as backup:
                 deploy.deploy(root, release, current)
             self.assertEqual(backup.call_args.args[1], release)
