@@ -154,6 +154,7 @@ class _ChatPaneState extends State<ChatPane>
       filesPreviewKey = GlobalKey(),
       photosPreviewKey = GlobalKey();
   final sendSnapshots = <String, MessageSnapshot>{};
+  final expiringSnapshots = <String>{};
   final motionControllers = <AnimationController>{};
   final observedTransactions = <String>{};
   MessageSnapshot? sendingSnapshot;
@@ -304,7 +305,12 @@ class _ChatPaneState extends State<ChatPane>
             item['edit'] == null &&
             observedTransactions.add(id)) {
           final snapshot = sendingSnapshot?.clone();
-          if (snapshot != null) sendSnapshots[id] = snapshot;
+          if (snapshot != null) {
+            sendSnapshots[id] = snapshot;
+            if ((item['content'] as Map)['dev.voicechat.ttl_seconds'] != null) {
+              expiringSnapshots.add(id);
+            }
+          }
         }
       }
     }
@@ -313,10 +319,21 @@ class _ChatPaneState extends State<ChatPane>
       final pending = widget.actions.pending.any((item) => item['id'] == id);
       if (event != null) {
         final snapshot = sendSnapshots.remove(id)!;
+        if (expiringSnapshots.remove(id)) {
+          final delivered = widget.timeline.events
+              .where((item) => item.eventId == event)
+              .firstOrNull;
+          if (delivered == null || messageExpired(delivered)) {
+            snapshot.dispose();
+            continue;
+          }
+          snapshot.expiresAt = messageExpiry(delivered);
+        }
         messageKeys.putIfAbsent(event, GlobalKey.new);
         unawaited(animateSnapshot(snapshot, destination: messageKeys[event]));
       } else if (!pending) {
         sendSnapshots.remove(id)!.dispose();
+        expiringSnapshots.remove(id);
       }
     }
     setState(() {});
@@ -1064,8 +1081,16 @@ class _ChatPaneState extends State<ChatPane>
 
   Future<void> flyVoicePreview(String event) async {
     if (MediaQuery.disableAnimationsOf(context)) return;
+    final delivered = widget.timeline.events
+        .where((item) => item.eventId == event)
+        .firstOrNull;
+    if (temporarySeconds != null &&
+        (delivered == null || messageExpired(delivered))) {
+      return;
+    }
     final snapshot = await MessageSnapshot.capture(voicePreviewKey);
     if (snapshot == null) return;
+    snapshot.expiresAt = delivered == null ? null : messageExpiry(delivered);
     try {
       if (!mounted) return;
       setState(() => unsentVoice = null);
@@ -1204,6 +1229,7 @@ class _ChatPaneState extends State<ChatPane>
           MediaQuery.disableAnimationsOf(context) || messageExpired(event)
           ? null
           : await MessageSnapshot.capture(messageKeys[event.eventId]!);
+      snapshot?.expiresAt = messageExpiry(event);
       try {
         if (choice == 'mine') {
           await widget.actions.hideMessage(event);
