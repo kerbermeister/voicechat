@@ -47,6 +47,16 @@
       "oldClientKeyVerified": true,
       "enclosureVerified": true
     },
-    "standardUpdateVerified": false
+    "standardUpdateVerified": false,
+    "installedBuild": 19,
+    "installedPackageFilesAndLinks": 285,
+    "installedProfile": {
+      "accountMatches": true,
+      "deviceMatches": true,
+      "matchingOldMessageTexts": 3,
+      "installation": "local exact published package after network failures",
+      "standardUpdateVerified": false
+    },
+    "standardUpdateFailure": "Repeated NSURLErrorDomain -1005 while downloading; exact published package installed locally with backup; do not count as a successful standard update"
   }
 }
