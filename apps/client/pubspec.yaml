@@ -2,7 +2,7 @@ name: voicechat_probe
 description: "VoiceChat Android/web E2EE prototype."
 publish_to: 'none'
 
-version: 1.9.1+17
+version: 1.10.1+19
 
 environment:
   sdk: ">=3.11.0 <4.0.0"
@@ -37,6 +37,11 @@ dependencies:
   qr_flutter: ^4.1.0
 
   dart_webrtc: any
+dependency_overrides:
+  # crypto 3.0.7 uses 32-bit rounding for final padding in dart2js (>4 GiB fails).
+  crypto:
+    path: ../../vendor/crypto
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

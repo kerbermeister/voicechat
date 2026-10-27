@@ -46,6 +46,15 @@ class StoragePolicy extends ChangeNotifier {
     warning = null;
     notifyListeners();
     try {
+      // Temporary transfers may be much larger than the chat cache budget.
+      final temporary =
+          (await client.database
+                  .getAccountData())['dev.voicechat.local.p2p.temporary']
+              ?.content['ids'];
+      if (temporary is List && temporary.isNotEmpty) {
+        warning = 'Очистка кеша отложена, пока сохранены временные P2P-файлы.';
+        return;
+      }
       usedBytes = await measure();
       final target = (limitMiB * 1048576 * .9).floor();
       if (usedBytes! >= target) {

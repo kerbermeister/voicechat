@@ -14,5 +14,8 @@
   "temporary_min_seconds": 10,
   "temporary_max_seconds": 600,
   "temporary_step_seconds": 10,
-  "schedule_max_seconds": 172800
+  "schedule_max_seconds": 172800,
+  "p2p_file_max_bytes": 5000000000,
+  "p2p_file_max_count": 10,
+  "p2p_max_recipients": 4
 }

@@ -236,10 +236,9 @@ packages:
   crypto:
     dependency: "direct main"
     description:
-      name: crypto
-      sha256: c8ea0233063ba03258fbcf2ca4d6dadfefe14f02fab57702265467a19f27fadf
-      url: "https://pub.dev"
-    source: hosted
+      path: "../../vendor/crypto"
+      relative: true
+    source: path
     version: "3.0.7"
   csslib:
     dependency: transitive

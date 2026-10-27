@@ -171,6 +171,40 @@ class DeploymentTests(unittest.TestCase):
                                 and 'up' in c.args[0] for c in calls))
             self.assertFalse(any('down' in c.args[0] for c in calls))
 
+    def test_failed_startup_restores_policy_before_restarting_old_release(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            runtime=root/'runtime'; runtime.mkdir()
+            (runtime/'stand.env').write_text("PUBLIC_URL='https://chat.example.com'\n")
+            release=root/'releases'/('a'*40); (release/'infra').mkdir(parents=True)
+            value={'commit':'a'*40,'schema':1,'origin':'https://chat.example.com',
+                   'control':'ghcr.io/owner/chat/control@sha256:'+'b'*64,
+                   'web':'ghcr.io/owner/chat/web@sha256:'+'c'*64}
+            (release/'release.json').write_text(json.dumps(value))
+            old={'release':str(root/'releases'/('d'*40)),
+                 'manifest':{**value,'commit':'d'*40,'control':'ghcr.io/owner/chat/control@sha256:'+'e'*64}}
+            current=root/'current.json'; current.write_text(json.dumps(old))
+            config=json.dumps({'services':{'configure':{'environment':{'PUBLIC_URL':value['origin']}}}}).encode()
+            with patch.object(sys,'argv',['deploy.py','--root',str(root),'--release',str(release)]), \
+                 patch.object(deploy.subprocess,'check_output',side_effect=[config,b'postgres',b'{"version":1,"text_max_length":8000}']), \
+                 patch.object(deploy,'execute') as execute, \
+                 patch.object(deploy,'backup'):
+                def commands(args, **kwargs):
+                    if 'up' in args and kwargs.get('env',{}).get('CONTROL_IMAGE')==value['control']:
+                        raise OSError('New release unhealthy')
+                execute.side_effect=commands
+                with self.assertRaisesRegex(OSError,'New release unhealthy'): deploy.main()
+            self.assertEqual(json.loads(current.read_text()),old)
+            calls=execute.call_args_list
+            self.assertTrue(any(c.kwargs.get('env',{}).get('CONTROL_IMAGE')==old['manifest']['control']
+                                and 'up' in c.args[0] for c in calls))
+            self.assertFalse(any('down' in c.args[0] for c in calls))
+
+            restore=next(i for i,c in enumerate(calls) if c.kwargs.get('input')==b'{"version":1,"text_max_length":8000}')
+            restart=next(i for i,c in enumerate(calls) if 'up' in c.args[0] and c.kwargs.get('env',{}).get('CONTROL_IMAGE')==old['manifest']['control'])
+            self.assertLess(restore,restart)
+            self.assertFalse((root/'previous.json').exists())
+
     def test_bootstrap_preserves_identity_secrets_and_private_permissions(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(bootstrap,'__file__',str(Path(directory)/'bootstrap.py')), patch.dict(os.environ,{'SMTP_USER':'a$'+chr(92)+"'",'SMTP_PASSWORD':"p$'"},clear=True), patch.object(sys,'argv',['bootstrap.py']), contextlib.redirect_stdout(io.StringIO()):
             bootstrap.main()

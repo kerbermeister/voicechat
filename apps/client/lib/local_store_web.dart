@@ -138,3 +138,19 @@ Future<void> closeStore(String name) async {
 Future<void> eraseStore(String name) async {
   await _erase(name.toJS).toDart;
 }
+
+@JS('voicechatVault.deleteP2pBlobs')
+external JSPromise<JSAny?> _deleteP2pBlobs(JSString name, JSString id);
+Future<void> deleteP2pBlobs(String name, String id) async {
+  await _deleteP2pBlobs(name.toJS, id.toJS).toDart;
+}
+
+@JS('voicechatVault.writeP2pBlob')
+external JSPromise<JSAny?> _writeP2pBlob(JSString name, JSString id, JSUint8Array bytes);
+@JS('voicechatVault.readP2pBlob')
+external JSPromise<JSUint8Array?> _readP2pBlob(JSString name, JSString id);
+Future<void> writeP2pBlob(String name, String id, Uint8List bytes) async {
+  await _writeP2pBlob(name.toJS, id.toJS, bytes.toJS).toDart;
+}
+Future<Uint8List?> readP2pBlob(String name, String id) async =>
+    (await _readP2pBlob(name.toJS, id.toJS).toDart)?.toDart;

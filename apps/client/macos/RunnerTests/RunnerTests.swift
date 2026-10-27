@@ -17,6 +17,8 @@ class RunnerTests: XCTestCase {
                    NSRect(x: 10, y: 20, width: 30, height: 40))
   }
   func testFileRangesCannotEscapeSelectionOrExhaustMemory() {
+    XCTAssertTrue(PlatformFiles.validRange(start: 4_999_999_999, end: 5_000_000_000, size: 5_000_000_000))
+    XCTAssertFalse(PlatformFiles.validRange(start: 5_000_000_000, end: 5_000_000_001, size: 5_000_000_000))
     XCTAssertTrue(PlatformFiles.validRange(start: 0, end: 1, size: 1))
     XCTAssertTrue(PlatformFiles.validRange(start: 2, end: 4, size: 4))
     XCTAssertFalse(PlatformFiles.validRange(start: -1, end: 1, size: 4))

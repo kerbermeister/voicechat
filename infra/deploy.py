@@ -208,13 +208,27 @@ def deploy(root, release, old, backup_only=False, web_only=False):
         prior_release = Path(old['release'])
         prior_env = {**os.environ, 'CONTROL_IMAGE': old['manifest']['control'],
                      'WEB_IMAGE': old['manifest']['web']}
+    prior_policy = None
     try:
         if running:
             compose(prior_release, prior_env, 'stop', 'web', 'synapse', 'control', 'turn')
             backup(root, prior_release, prior_env)
+            if not backup_only:
+                prior_policy = subprocess.check_output(compose_command(prior_release,
+                    'run', '--rm', '--no-deps', '-T', '--entrypoint', 'cat',
+                    'configure', '/media/client-policy.json'), env=prior_env)
+                if len(prior_policy) > 65536 or not isinstance(json.loads(prior_policy), dict):
+                    raise ValueError('Invalid prior client policy; refusing update')
         compose(release, env, 'up', '-d', '--wait', '--wait-timeout', '180')
     except Exception:
         if old:
+            if prior_policy is not None:
+                # Old releases reject new fields. Restore the exact operator settings before restarting them.
+                compose(prior_release, prior_env, 'run', '--rm', '--no-deps', '-T',
+                    '--entrypoint', 'python3', 'configure', '-c',
+                    "import os,sys; from pathlib import Path; p=Path('/media/client-policy.json'); "
+                    "t=p.with_suffix('.rollback'); t.write_bytes(sys.stdin.buffer.read()); "
+                    "os.chown(t,10001,10001); t.chmod(0o600); t.replace(p)", input=prior_policy)
             compose(prior_release, prior_env, 'up', '-d', '--wait', '--wait-timeout', '180')
         raise
     if backup_only:

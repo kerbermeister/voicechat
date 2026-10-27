@@ -7,6 +7,7 @@ import 'user_action_error.dart';
 Future<List<PickedFile>> chooseFiles({
   bool video = false,
   required int maxCount,
+  int maxBytes = 314572800,
 }) {
   final done = Completer<List<PickedFile>>();
   final input = web.HTMLInputElement()

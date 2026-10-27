@@ -143,7 +143,10 @@
                 const item = cursor.result;
                 if (!item) { resolve(); return; }
                 // UTF-16 payload estimate, one bounded encrypted record at a time.
-                bytes += 2 * (String(item.key).length + JSON.stringify(item.value).length);
+                const value = item.value;
+                bytes += value?.v === 2 && value.body instanceof ArrayBuffer
+                  ? value.body.byteLength + 2 * String(item.key).length + 128
+                  : 2 * (String(item.key).length + JSON.stringify(value).length);
                 item.continue();
               };
             });
@@ -162,6 +165,26 @@
       return envelope === undefined ? null : unb64(await unseal(session(name).key, name, 'blobs', id, envelope));
     },
     deleteBlob: (name, id) => blobStore(name, 'readwrite', store => store.delete(id)),
+    async writeP2pBlob(name, id, data) {
+      if (!/^p2p\/[a-f0-9]{32}\/\d+\/\d+$/.test(id) || !(data instanceof Uint8Array) || data.length > 4194304) throw new Error('Invalid P2P block');
+      // Binary structured clones avoid two base64 layers for multi-gigabyte live transfers.
+      const iv = bytes(12);
+      const body = await crypto.subtle.encrypt({name: 'AES-GCM', iv, additionalData: aad(name, 'p2p-binary', id)}, session(name).key, data);
+      await blobStore(name, 'readwrite', store => store.put({v: 2, iv, body}, id));
+    },
+    async readP2pBlob(name, id) {
+      if (!/^p2p\/[a-f0-9]{32}\/\d+\/\d+$/.test(id)) throw new Error('Invalid P2P block');
+      const value = await blobStore(name, 'readonly', store => store.get(id));
+      if (value === undefined) return null;
+      if (value?.v !== 2 || !(value.iv instanceof Uint8Array) || value.iv.length !== 12 ||
+          !(value.body instanceof ArrayBuffer) || value.body.byteLength < 16 || value.body.byteLength > 4194320) throw new Error('Invalid encrypted P2P block');
+      return new Uint8Array(await crypto.subtle.decrypt({name: 'AES-GCM', iv: value.iv, additionalData: aad(name, 'p2p-binary', id)}, session(name).key, value.body));
+    },
+    async deleteP2pBlobs(name, id) {
+      if (!/^[a-f0-9]{32}$/.test(id)) throw new Error('Invalid transfer');
+      const prefix = `p2p/${id}/`;
+      await blobStore(name, 'readwrite', store => store.delete(IDBKeyRange.bound(prefix, prefix + '\uffff')));
+    },
     readAccount: () => sessionStorage.getItem('voicechat.account'),
     writeAccount: value => value === null ? sessionStorage.removeItem('voicechat.account') : sessionStorage.setItem('voicechat.account', value),
     encrypt: (name, store, id, text) => seal(session(name).key, name, store, id, text),

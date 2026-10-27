@@ -26,7 +26,11 @@
     const id = [...crypto.getRandomValues(new Uint8Array(32))].map(b => b.toString(16).padStart(2, '0')).join('');
     const channel = new MessageChannel();
     let ready, done, failed;
-    const opened = new Promise(resolve => { ready = resolve; });
+    let openingTimer;
+    const opened = new Promise((resolve, reject) => {
+      ready = () => { clearTimeout(openingTimer); resolve(); };
+      openingTimer = setTimeout(() => { channel.port1.close(); reject(new Error('Media registration timeout')); }, 15000);
+    });
     const completed = new Promise((resolve, reject) => { done = resolve; failed = reject; });
     completed.catch(() => {});
     channel.port1.onmessage = async event => {
@@ -65,6 +69,14 @@
     },
     stream, revoke,
     async download(name, mime, size, read) {
+      if (size === 0) {
+        // An empty stream can finish before an iframe starts its download.
+        const url = URL.createObjectURL(new Blob([], {type: mime}));
+        const link = document.createElement('a'); link.href = url; link.download = name;
+        document.body.append(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+        return;
+      }
       const url = await stream(name, mime, size, read, true);
       const frame = document.createElement('iframe'); frame.hidden = true;
       try {

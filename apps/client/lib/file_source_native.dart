@@ -5,10 +5,12 @@ const _channel = MethodChannel('voicechat/files');
 Future<List<PickedFile>> chooseFiles({
   bool video = false,
   required int maxCount,
+  int maxBytes = 314572800,
 }) async {
   final files = await _channel.invokeListMethod<dynamic>('choose', {
     'video': video,
     'max_count': maxCount,
+    'max_bytes': maxBytes,
   });
   if (files == null) return [];
   return files
