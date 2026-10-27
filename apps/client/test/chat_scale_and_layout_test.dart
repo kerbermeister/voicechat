@@ -1,3 +1,6 @@
+import 'package:voicechat_probe/conversation_list.dart';
+import 'package:matrix/matrix.dart' as mx;
+import 'conversation_list_test.dart' show ListClient;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -108,6 +111,83 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getSize(find.byKey(const ValueKey('sidebar'))).width, 70);
       expect(tester.takeException(), isNull);
+    },
+  );
+  testWidgets(
+    'Compact contacts honor live scale and retain pinned/unread state at minimum width',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final scale = ChatScale();
+      final client = ListClient();
+      final room = mx.Room(
+        id: '!compact:local',
+        client: client,
+        notificationCount: 2,
+      );
+      room.states[mx.EventTypes.RoomName] = {
+        '': mx.StrippedStateEvent(
+          type: mx.EventTypes.RoomName,
+          senderId: client.userID,
+          stateKey: '',
+          content: {'name': 'Семья'},
+        ),
+      };
+      room.roomAccountData['m.tag'] = mx.BasicEvent(
+        type: 'm.tag',
+        content: {
+          'tags': {'m.favourite': {}},
+        },
+      );
+      client.rooms.add(room);
+      var selected = false;
+      for (final width in [60.0, 180.0]) {
+        await scale.change(contacts: 80);
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) =>
+                ChatScaleScope(scale: scale, child: child!),
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: width,
+                  child: ConversationList(
+                    client: client,
+                    compact: true,
+                    groups: true,
+                    onTabChanged: (_) {},
+                    onSelect: (_) => selected = true,
+                    onNewPerson: () {},
+                    onNewGroup: () {},
+                    onSettings: () {},
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final button = find.byWidgetPredicate(
+          (widget) => widget is IconButton && widget.tooltip == 'Семья',
+        );
+        final before = tester.getRect(button);
+        await scale.change(contacts: 120);
+        await tester.pumpAndSettle();
+        expect(tester.getRect(button).height, greaterThan(before.height));
+        expect(
+          tester.getRect(find.byType(PersonAvatar)).width,
+          lessThanOrEqualTo(width - 16),
+        );
+        expect(find.byIcon(Icons.push_pin), findsOneWidget);
+        expect(find.text('2'), findsOneWidget);
+        await tester.tap(button);
+        expect(selected, true);
+        await scale.change(contacts: 60);
+        await tester.pumpAndSettle();
+        expect(tester.getRect(button).height, lessThan(before.height));
+        expect(tester.takeException(), isNull);
+      }
+      await tester.pumpWidget(const SizedBox());
+      scale.dispose();
     },
   );
 }
