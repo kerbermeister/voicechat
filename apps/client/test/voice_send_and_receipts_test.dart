@@ -78,6 +78,35 @@ void main() {
           });
     }
   });
+  testWidgets('Personal room hides both call actions in desktop side panel', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final client = CaptureClient();
+    final room = PersonalRoom(client, '!notes:local');
+    final actions = ForwardActions(client);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChatPane(
+            room: room,
+            timeline: CaptureTimeline(room),
+            actions: actions,
+            header: const SizedBox(height: 40),
+            report: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Голосовой звонок'), findsNothing);
+    expect(find.text('Видеозвонок'), findsNothing);
+    expect(find.textContaining('Громкость сообщений'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpAndSettle();
+    actions.dispose();
+  });
   test(
     'Personal delivered notes are read without another participant receipt',
     () {

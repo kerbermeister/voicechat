@@ -261,7 +261,7 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Не терять');
     await tester.tap(find.text('Далее'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Назад'));
+    await tester.tap(find.byTooltip('Закрыть').last);
     await tester.pumpAndSettle();
     expect(result, isNull);
     expect(draft.text, 'Не терять');

@@ -124,7 +124,8 @@ void main() {
     );
     await render('https://example.com/a.mp4');
     expect(find.text('Old clip'), findsOneWidget);
-    expect(find.text('Смотреть видео'), findsOneWidget);
+    expect(find.text('Смотреть видео'), findsNothing);
+    expect(find.byType(InkWell), findsWidgets);
     await render('https://example.com/new.txt');
     expect(find.text('Old clip'), findsNothing);
     expect(find.text('Смотреть видео'), findsNothing);
@@ -157,7 +158,8 @@ void main() {
           ),
         ),
       );
-      expect(find.text('Смотреть видео'), findsOneWidget);
+      expect(find.text('Смотреть видео'), findsNothing);
+      expect(find.byType(InkWell), findsWidgets);
       expect(tester.takeException(), isNull);
     }
   });

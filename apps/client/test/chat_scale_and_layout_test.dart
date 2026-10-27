@@ -104,12 +104,12 @@ void main() {
       );
       await tester.drag(boundary, const Offset(-1000, 0));
       await tester.pumpAndSettle();
-      expect(tester.getSize(find.byKey(const ValueKey('sidebar'))).width, 70);
+      expect(tester.getSize(find.byKey(const ValueKey('sidebar'))).width, 160);
       expect(find.text('Аватары'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
-      expect(tester.getSize(find.byKey(const ValueKey('sidebar'))).width, 70);
+      expect(tester.getSize(find.byKey(const ValueKey('sidebar'))).width, 160);
       expect(tester.takeException(), isNull);
     },
   );
