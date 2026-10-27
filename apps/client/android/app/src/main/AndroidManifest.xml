@@ -15,6 +15,15 @@
         android:label="VoiceChat"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.camera"
+            android:exported="false" android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/camera_paths" />
+        </provider>
+        <provider android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.clipboard" android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/clipboard_paths" />
+        </provider>
         <receiver android:name=".UpdateResultReceiver" android:exported="false" />
         <service android:name=".CallService" android:exported="false" android:foregroundServiceType="microphone" />
         <service android:name=".ScreenService" android:exported="false" android:foregroundServiceType="mediaProjection" />
