@@ -23,11 +23,14 @@ def read(path):
 
 
 def persist(path, value):
+    content = (json.dumps(value, sort_keys=True, allow_nan=False) + '\n').encode('utf-8')
+    if len(content) > 65536:
+        raise ValueError('Managed state is too large')
     descriptor, temporary = tempfile.mkstemp(prefix='.intent-', dir=path.parent)
     try:
-        with os.fdopen(descriptor, 'w') as output:
+        with os.fdopen(descriptor, 'wb') as output:
             os.fchmod(output.fileno(), 0o600)
-            output.write(json.dumps(value, sort_keys=True) + '\n')
+            output.write(content)
             output.flush(); os.fsync(output.fileno())
         os.replace(temporary, path)
         directory = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)

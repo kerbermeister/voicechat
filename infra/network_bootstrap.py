@@ -101,7 +101,10 @@ def install(root=Path('/'), *, run=command):
             if (type(previous['schema']) is not int or {key: previous[key] for key in identity} != identity or
                     previous['phase'] not in ('prepared', 'complete')):
                 raise ValueError('Boot source/identity upgrade requires a separate migration')
-        elif run('systemctl', 'list-unit-files', '--no-legend', '--no-pager', 'voicechat-network.service').strip():
+        # systemctl returns exit 1 for a missing exact-name pattern on Debian 12.
+        # Inspect the successful full listing so a clean host is not an error.
+        elif any(line.split()[:1] == ['voicechat-network.service'] for line in
+                 run('systemctl', 'list-unit-files', '--no-legend', '--no-pager').splitlines()):
             raise ValueError('An unclaimed network service is already installed')
         # Inspect every destination before writing the receipt or any code/unit.
         for name, data in files.items():

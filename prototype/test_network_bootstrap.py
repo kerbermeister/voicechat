@@ -32,6 +32,9 @@ class NetworkBootstrapTests(unittest.TestCase):
     def command(self, *args):
         self.calls.append(args)
         if args == ('systemctl', 'show', '--property=SystemState', '--value'): return 'running'
+        if args[:2] == ('systemctl', 'list-unit-files'):
+            self.assertNotIn('voicechat-network.service', args[2:])
+            return 'docker.service enabled enabled\nssh.service enabled enabled\n'
         if self.fail_start and args[:2] == ('systemctl', 'start'):
             raise RuntimeError('Injected boot unit failure')
         return ''

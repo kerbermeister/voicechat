@@ -60,6 +60,48 @@ Production по-прежнему `8bcbd91`, HTTP 200; службы не пере
 Не выдавать TLS controller за уже готовый автоматический renewal scheduler или
 завершённый deploy. Реальный DuckDNS DNS-01 пока требует недоступного account token.
 
+### Текущая итерация: edge/web deploy и чистая VM
+
+Основа сохранена локальным коммитом `35c7649` (без push/deploy). После него добавлены
+`edge_deploy.py` + 11 tests: реальные private filesystem/source guards, имитация
+Docker fault/up/rollback. 53 focused tests PASS. На настоящем Docker controller
+ещё не запущен. Его prerequisites/ограничения: `infra/THREE_VPS.md`.
+Добавлены completed network fingerprint и общий network lock до конца rollout;
+частично применённый intent больше не считается готовой сетью. Persistence
+отвергает oversized/NaN до замены предыдущего восстанавливаемого состояния.
+
+Добавлен `role_prepare.py`: atomic source-verified bundle, private role identity,
+shared runtime symlink, no secret copy/service start, idempotence and refusal of
+foreign data. Releases теперь именуются SHA-256 полного manifest, а не только
+Git commit: config-only изменения одной версии кода сохраняют отдельный rollback
+bundle. 123 выбранных infrastructure tests PASS; из них 12 edge deploy,
+5 role preparation и 4 boot installer tests. Лог `.prototype/three-vps-infra-tests.log`.
+
+QEMU 11.1.2 установлен. Официальный Debian12 genericcloud amd64 `20261026-2643`,
+SHA512 проверен; metadata `.prototype/debian-vm-image.json`, image `.prototype/vm/`.
+Активная disposable VM: `.prototype/vm/active.json`, SSH helper
+`.prototype/vm-exec.py`; только синтетические данные, 2 GiB/2 vCPU, amd64 TCG.
+VM пока запущена для следующих проверок; остановить через её SSH `systemctl poweroff`
+после завершения испытаний, не трогать Docker Desktop/production.
+
+Реальные network bootstrap/repeat/reboot и fail-closed проверки PASS:
+[свидетельство](three-vps-evidence/2026-10-28-vm-network-boot.json).
+Docker 29.8.1, Compose 5.5.1, Debian nftables 1.0.6. Установщик не перезапустил
+работающий Docker; после reboot firewall/WireGuard завершились до Docker.
+Без desired intent сеть failed и Docker inactive; после восстановления intent
+оба active. Исправлена обнаруженная только на настоящем Debian ошибка:
+`systemctl list-unit-files <отсутствующая служба>` возвращает exit 1, теперь
+проверяется успешный полный список и точное имя. Fixture scripts/logs находятся
+в `.prototype/vm-network-*` и `/srv/voicechat-boot-fixture` внутри VM.
+
+Следующий реальный edge deploy пока не выполнен: anonymous GHCR pull приватного
+web image отклонён registry. Автоматическая проверка безопасности отклонила
+предложенную операцию получения repository:pull токена из credentials на VPS
+и передачи токена в VM; операция не выполнялась. Пользователю отправлен отдельный
+async вопрос об этом разрешении; ответа пока нет. Не обходить отказ и не
+повторять эту credential-операцию без явного разрешения. Независимые задачи
+можно продолжать. Production по-прежнему не менялся.
+
 ## Неизменные условия
 
 - Продолжать по `docs/tasks/19-three-vps.md` и `docs/three-vps-spec.md`.

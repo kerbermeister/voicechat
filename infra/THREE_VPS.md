@@ -615,6 +615,60 @@ reload; непрерывность WSS и реального звонка не �
 [lego DuckDNS provider](https://go-acme.github.io/lego/dns/duckdns/),
 [lego certificate storage](https://go-acme.github.io/lego/obtain/index.html).
 
+## Раздельный deploy подготовленного edge: текущий этап
+
+`edge_deploy.py` реализует локальный на целевом узле controller для `edge` и `web`.
+Он ещё не подключён к release workflow и не заменяет миграцию старого production.
+Запускать из проверенного полного operator checkout; generated bundle содержит
+runtime сервисов, а не весь orchestration toolkit.
+
+Условия: подтверждённый core role manifest; подготовленная сеть и active
+`voicechat-network.service`; `applied.json` с `phase=complete` для того же inventory;
+private root `releases/<manifest-sha256>` и `runtime`; runtime каждого release — symlink
+на общий `root/runtime`, TLS и TURN secret подготовлены заранее.
+`role_prepare.py` создаёт эти paths из проверенного operator checkout: сверяет
+manifest с текущими sources/config, сохраняет владельца роли в `role.json`,
+атомарно публикует новый bundle. Секреты не создаёт и не копирует, службы не запускает.
+ID каталога — SHA-256 полного manifest: конфигурационный релиз при прежнем Git
+commit получает собственный каталог, а старые bind mounts остаются доступными.
+Повторная подготовка проверяет существующий bundle, не перезаписывает его.
+Чужой непустой root и подменённые files/symlinks автоматически не принимаются.
+
+```sh
+python3 infra/role_prepare.py --root /srv/voicechat-edges/b \
+  --topology /private/config/topology.json --inventory /private/config/inventory.json \
+  --manifest /private/candidate/release.json
+```
+
+```sh
+python3 infra/edge_deploy.py --root /srv/voicechat-edges/b \
+  --topology /private/config/topology.json --inventory /private/config/inventory.json \
+  --manifest /private/candidate/release.json --core-manifest /private/current-core.json \
+  --scope web --edge-subnet 10.241.0.0/28
+```
+
+Порядок lock: edge root → host network → TLS. Pull предшествует изменению
+контейнеров; validated source bundle, immutable digests, существующая rollback
+база, TLS и completed network intent проверяются до `up`. `web` допускается
+только при совпадении всех остальных role inputs и использует `--no-deps web`;
+ID/StartedAt/RestartCount ingress/TURN/readiness должны сохраниться. Команд к core
+нет. Edge scope обновляет свой Compose project, не другие входы.
+
+Один atomic `state.json` хранит current/previous/pending. Фазы prepared/applying/
+rollback позволяют продолжить тот же target после прерывания; другая кандидатура
+до завершения операции запрещена. После TLS CA/SNI/leaf и `/health/route` checks
+committed pointer меняется атомарно. Ошибка откатывает прежний edge release;
+неудачный rollback остаётся pending и повторяется следующим запуском. При первом
+неудачном запуске controller останавливает только собственный project, не удаляя
+volumes. Existing project без baseline автоматически не присваивается.
+
+Проверка логики: fault-injected subprocess tests с настоящими source bundles и
+файловым журналом. Это **не** доказательство реального Compose deployment/rollback:
+чистая VM и внешняя TLS/health приёмка ещё выполняются. Открыты SSH доставка,
+доставка секретов/host packages, core/full orchestration, coordinated multi-edge rollout,
+workflow/build-only и legacy shared-ingress migration. Собственный controller
+не является разрешением обойти существующие production release guards.
+
 ## Runtime и секреты
 
 | Материал | Где нужен | Права/условия |

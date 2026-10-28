@@ -4,6 +4,8 @@ Use this entrypoint for managed hosts. A crash between firewall and tunnel apply
 must resume the same inventory, rather than unrelated per-component snapshots.
 """
 import argparse
+import hashlib
+import json
 import os
 from pathlib import Path
 import platform
@@ -14,6 +16,10 @@ import node_inventory
 from topology import fields, read_json
 import tunnel_config
 import tunnel_runtime
+
+
+def fingerprint(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
 
 
 def components(value):
@@ -51,10 +57,13 @@ def reconcile(directory, value=None, *, run=tunnel_runtime.command):
                 tunnel_runtime.transition(saved, tunnel)
             tunnel_runtime.inspect(tunnel, owned=saved is not None, run=run)
         if previous != desired: managed_state.persist(path, desired)
+        status = {'schema': 1, 'sha256': fingerprint(desired), 'phase': 'applying'}
+        managed_state.persist(directory / 'applied.json', status)
         # Revocation is restrictive first; a new peer cannot authenticate until
         # its WireGuard key is installed. Never roll back to retired credentials.
         firewall_runtime.reconcile(directory / 'firewall', firewall, run=run)
         tunnel_runtime.reconcile(directory / 'tunnel', tunnel, run=run)
+        managed_state.persist(directory / 'applied.json', {**status, 'phase': 'complete'})
 
 
 def main():

@@ -556,6 +556,22 @@ current/previous per node, происхождение build artifacts, CI и dep
 на изолированных volumes. Подтвердить неизменность A для web/edge и TURN для web.
 Выход: воспроизводимый release процесс, готовый к staging, а не уже выполненный deploy.
 
+Текущий локальный шаг V3-20: `edge_deploy.py` для одного подготовленного edge и
+web-only, atomic current/previous/pending, общий lock с host networking/TLS,
+preload/check/rollback/resume и запрет adoption чужого проекта. Fault tests прошли;
+настоящая clean VM/Compose приёмка ещё не проведена. Не закрывает core/full,
+workflow, SSH transport orchestration и последовательное обновление всех входов.
+`network_runtime` теперь сохраняет completed fingerprint только после обоих
+применений; при прерывании остаётся applying, и deploy блокируется.
+
+Дополнение 28.10: `role_prepare.py` атомарно подготавливает source-verified
+core/edge bundle и общий runtime без копирования secrets. Каталог определяется
+полным manifest hash: новая конфигурация на том же commit не перезаписывает
+rollback bundle. 5 tests + 12 edge deploy tests PASS. В отдельной Debian12 VM
+пройдены network bootstrap/repeat/reboot, запрет Docker при missing intent и
+восстановление; [evidence](../iterations/three-vps-evidence/2026-10-28-vm-network-boot.json).
+Настоящий edge deployment/rollback и общий core/full rollout ещё не приняты.
+
 ### V3-21 — Автоматизировать замену входного VPS
 
 Зависимости: V3-15, V3-16, V3-17, V3-20.

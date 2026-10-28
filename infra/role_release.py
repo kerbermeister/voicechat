@@ -112,6 +112,16 @@ def verify_bundle(release, manifest, public, inventory, subnet='10.241.0.0/28'):
                     manifest['images']['control' if role == 'core' else 'web'], manifest['edge_id'], subnet)
     if expected != manifest:
         raise ValueError('Release does not match the requested role/configuration/source bundle')
+    verify_recorded_bundle(release, manifest)
+
+
+def verify_recorded_bundle(release, manifest):
+    """Recheck a previously verified manifest from private deployment state.
+
+    This cannot establish trust in a new candidate: use verify_bundle for that.
+    Old immutable sources need not match the currently installed renderer.
+    """
+    validate(manifest)
     release = Path(release)
     if release.is_symlink(): raise ValueError('Release root must not be a symlink')
     # Checksums alone do not stop an extra Python module shadowing a standard

@@ -14,6 +14,15 @@ from test_tunnel_runtime import Network, state
 
 
 class NetworkRuntimeTests(unittest.TestCase):
+    def test_unreadable_future_state_never_replaces_recoverable_intent(self):
+        with managed_state.locked(self.root):
+            path = self.root / 'desired.json'
+            managed_state.persist(path, self.value)
+            for value in ({'too_large': 'я' * 65536}, {'not_json': float('nan')}):
+                with self.assertRaises(ValueError): managed_state.persist(path, value)
+                self.assertEqual(managed_state.read(path), self.value)
+            self.assertFalse(list(self.root.glob('.intent-*')))
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
@@ -40,11 +49,14 @@ class NetworkRuntimeTests(unittest.TestCase):
         retired = changed['public_keys']['nodes'].pop('edge-c')['public_key']
         self.fail_tunnel = True
         with self.assertRaisesRegex(RuntimeError, 'between'): self.apply(changed)
+        self.assertEqual(managed_state.read(self.root / 'applied.json')['phase'], 'applying')
         self.assertEqual(managed_state.read(self.root / 'desired.json'), changed)
         self.assertNotIn('192.0.2.12', self.firewall.applied[-1])
         self.assertIn(retired, self.tunnel.peers)
         self.fail_tunnel = False
         self.apply(None)
+        self.assertEqual(managed_state.read(self.root / 'applied.json'), {
+            'schema': 1, 'sha256': network_runtime.fingerprint(changed), 'phase': 'complete'})
         self.assertNotIn(retired, self.tunnel.peers)
         self.assertEqual(len(self.tunnel.routes), 2)
         self.assertEqual(managed_state.read(self.root / 'tunnel/desired.json')['inventory'], changed['inventory'])
