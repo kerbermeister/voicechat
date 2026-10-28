@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "real_restic_backup_check_restore": true,
+  "postgres_dump_contains_fixture_table": true,
+  "matrix_key_and_media_preserved": true,
+  "control_sqlite_preserved": true,
+  "core_role_state_and_runtime_saved": true,
+  "backup_password_excluded": true,
+  "restic_image": "restic/restic@sha256:9940e6c7421ab3a21ee9fdc4e91596d04c792b600d31b102696c75cbf3ac4481",
+  "limits": [
+    "Synthetic isolated core volumes; no production data or full application restore.",
+    "Writers were never started in this fixture; rollout must enforce stop/backup ordering."
+  ],
+  "fixture_resources_removed": true,
+  "source_sha256": "1248bedd0c361b1e68f8ba023bd15eedfe069119a2660d10d7bd99984ccd6d91"
+}

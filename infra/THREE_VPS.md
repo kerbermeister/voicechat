@@ -816,3 +816,25 @@ standalone CLI намеренно отсутствует. Журнал огра�
 `voicechat_push_migration_fixture_`, libpq `PG*` environment и psycopg2 из pinned
 Synapse image. Это проверка транзакций на синтетической таблице, не приёмка полной
 миграции настоящей Synapse БД.
+
+### Согласованный backup core
+
+Внутренний `deploy.backup(root, release, env, core=True)` переиспользует существующий
+Restic pipeline и pg_dump. Сохраняются тома synapse/control/media-config/turn-config,
+stand.env, immutable release и state.json роли; пароль Restic остаётся вне snapshot.
+Core Compose не принимает legacy override. Исходный backup без `core=True` сохраняет
+прежний состав и current.json. Это не добавляет production CLI scope `core` или
+`backend`: orchestration с остановкой writers, backup, миграцией и rollback ещё нужен.
+
+`prototype/check_core_backup.py` поднимает только изолированные fixtures, создаёт
+копию, выполняет check и restore, проверяет синтетические identity/media/SQLite,
+state/runtime, отсутствие backup key в snapshot и читаемость pg_dump. Затем удаляет
+свои контейнеры, сеть и тома. Проверка выполнена в Debian VM; результат:
+`docs/iterations/three-vps-evidence/2026-10-28-vm-core-backup.json`.
+Полный запуск восстановленного приложения отдельно ещё не принят.
+
+Core bundle берёт неизменённые определения четырёх служб из canonical compose.yaml,
+но исключает web/turn/mailpit перед наследованием: Compose интерполирует даже
+неиспользуемые service blocks. Поэтому WEB_IMAGE/SITE/web-порты на core не нужны.
+Renderer проверяет ожидаемую структуру исходного файла, а реальный Compose probe
+проверяет итоговое наследование и повторную инициализацию.

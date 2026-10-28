@@ -585,6 +585,11 @@ rollback bundle. 5 tests + 12 edge deploy tests PASS. В отдельной Debi
 Настоящий edge deployment/rollback/resume теперь прошёл отдельную VM проверку
 с синтетическими upstreams: [evidence](../iterations/three-vps-evidence/2026-10-28-vm-edge-deploy.json).
 Общий core/full rollout, реальные данные и production migration ещё не приняты.
+Core backup primitive переиспользует legacy Restic/pg_dump с отдельными volumes и
+state.json. Реальные backup/check/restore синтетических файлов прошли; полный
+восстановленный application и stop/backup/start orchestration ещё не приняты.
+[Evidence](../iterations/three-vps-evidence/2026-10-28-vm-core-backup.json).
+
 Подготовлен URL-only migration primitive для прежних pushers: journal до DB commit,
 повтор после прерывания и транзакционный rollback проверены на настоящем PostgreSQL
 с синтетической таблицей. В core orchestrator ещё не подключён; остановка writers,

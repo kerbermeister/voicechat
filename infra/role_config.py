@@ -9,6 +9,7 @@ import node_inventory
 import render_edge
 
 ROOT = Path(__file__).resolve().parents[1]
+CORE_SERVICES = ('configure', 'postgres', 'synapse', 'control')
 LOGGING = {'driver': 'json-file', 'options': {'max-size': '10m', 'max-file': '3'}}
 
 
@@ -26,6 +27,31 @@ def bind(source, target):
             'bind': {'create_host_path': False}}
 
 
+def core_base(source):
+    """Select complete blocks from our canonical base file, without interpreting YAML.
+
+    Compose interpolates even unused services in an extends file. Keeping web
+    there would require WEB_IMAGE/SITE on a data-only host. Reject a changed
+    source layout rather than silently dropping part of a service definition.
+    """
+    _, separator, rest = source.partition('\nservices:\n')
+    body, volumes, _ = rest.partition('\nvolumes:\n')
+    if not separator or not volumes:
+        raise ValueError('Unexpected base Compose layout')
+    blocks = re.split(r'(?m)^  ([a-z][a-z0-9-]*):\n', body)
+    if blocks[0].strip() or len(blocks) % 2 != 1:
+        raise ValueError('Unexpected base service layout')
+    selected = {}
+    for name, content in zip(blocks[1::2], blocks[2::2]):
+        if name in selected: raise ValueError('Duplicate base service')
+        if any(line.strip() and not line.startswith('    ') and not line.lstrip().startswith('#')
+               for line in content.splitlines()):
+            raise ValueError('Unexpected base service indentation')
+        selected[name] = content
+    if not set(CORE_SERVICES) <= selected.keys(): raise ValueError('Missing core service')
+    return 'services:\n' + ''.join('  ' + name + ':\n' + selected[name].rstrip() + '\n' for name in CORE_SERVICES)
+
+
 def core(public, inventory):
     node_inventory.validate(inventory, public)
     address = inventory['core']['tunnel_ip']
@@ -34,7 +60,7 @@ def core(public, inventory):
                        # DNS/client sockets in core containers out of that range.
                        'sysctls': {'net.ipv4.ip_local_reserved_ports': '50300-50400'},
                        'logging': deepcopy(LOGGING)}
-                for name in ('configure', 'postgres', 'synapse', 'control')}
+                for name in CORE_SERVICES}
     services['configure'].update(environment={
         'VOICECHAT_ROUTE_CONFIG': json.dumps(public, separators=(',', ':')),
         'PUBLIC_IP': inventory['core']['public_ip'],

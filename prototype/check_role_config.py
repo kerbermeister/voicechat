@@ -39,6 +39,9 @@ def main():
                       'BIND':'127.0.0.1', 'SITE':'chat.example.com', 'HTTP_PORT':'18080', 'HTTPS_PORT':'18443',
                       **{key:secrets.token_hex(32) for key in ('POSTGRES_PASSWORD','LIVEKIT_SECRET','POLICY_SECRET',
                                                              'REGISTRATION_SECRET','MACAROON_SECRET','TURN_SECRET')}}
+            if role == 'core':
+                for key in ('WEB_IMAGE', 'SITE', 'BIND', 'HTTP_PORT', 'HTTPS_PORT'):
+                    values.pop(key)
             env = root / 'infra/runtime/stand.env'
             env.parent.mkdir(exist_ok=True)
             env.write_text(''.join(key + '=' + value + '\n' for key,value in values.items())); env.chmod(0o600)

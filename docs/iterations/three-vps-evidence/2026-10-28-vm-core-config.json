@@ -7,8 +7,9 @@
   "configuration_permissions_checked": true,
   "edge_excludes_core_secrets": true,
   "fixture_resources_removed": true,
-  "probe_sha256": "9b557d38e54b4e3370292c96ae7cfdc45e80cb9c23538318678239af0a667499",
+  "probe_sha256": "81a83b747659bcc660ee7d70e2a957ccac8c8c51386c1e33a3dbdf5e8f66f16d",
   "limits": [
     "Disposable volumes and synthetic identity/media; configure service only, not complete core rollout or a production database migration."
-  ]
+  ],
+  "no_web_environment_required": true
 }

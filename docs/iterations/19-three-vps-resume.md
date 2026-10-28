@@ -147,6 +147,28 @@ Fixture resources удалены. VM пока доступна для следу
 Далее: согласованный core backup/full controller + legacy baseline/shared ingress
 migration, затем SSH/CI orchestration. Production не обновлён.
 
+### Core backup и независимый Compose
+
+Checkpoint `c397939` сохраняет pusher migration primitive и core configure mount.
+После него исправлена выявленная настоящим Compose зависимость core от WEB_IMAGE,
+SITE и web-портов: в core bundle наследуемый compose.yaml содержит только четыре
+core service blocks из canonical legacy файла. Изменённый формат/дубликаты/пропуск
+служб отвергаются; legacy compose.yaml в репозитории не изменялся. Реальная
+повторная инициализация без web environment прошла, identity/media сохранены.
+
+Существующий `deploy.backup(..., core=True)` теперь умеет сохранять core volumes,
+stand.env, immutable release и state.json. Это внутренний backup primitive, не
+новый production CLI mode. Legacy mode и его tests сохранены; core запрещает
+унаследованный legacy compose override. 157 выбранных tests PASS.
+`prototype/check_core_backup.py` прошёл на настоящих PostgreSQL/Restic в VM:
+backup/check/restore, сохранение Matrix identity/media/control SQLite/runtime/state,
+читаемый SQL dump, пароль Restic не попал в snapshot. Все fixture resources удалены.
+[Свидетельство](three-vps-evidence/2026-10-28-vm-core-backup.json).
+Это не полный запуск восстановленного приложения. Writers в fixture не запускались;
+production orchestrator ещё должен обеспечить stop/backup/migration/start ordering.
+Следующий блок — durable core/full controller, затем shared ingress/legacy adoption
+и SSH/CI integration. Ни новый production релиз, ни DNS не применены.
+
 ## Неизменные условия
 
 - Продолжать по `docs/tasks/19-three-vps.md` и `docs/three-vps-spec.md`.

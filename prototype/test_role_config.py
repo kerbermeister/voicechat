@@ -83,6 +83,19 @@ class RoleConfigTests(unittest.TestCase):
         self.assertEqual(control['ports'], ['10.88.0.1:8090:8090', '10.88.0.1:7880:7880'])
         self.assertNotIn('MATRIX_SERVER_NAME', compose['services']['configure']['environment'])
 
+    def test_core_base_excludes_web_interpolation_and_refuses_changed_layout(self):
+        source = (ROOT / 'infra/compose.yaml').read_text()
+        result = role_config.core_base(source)
+        for value in ('WEB_IMAGE', 'SITE', 'HTTP_PORT', 'HTTPS_PORT', '  turn:', '  mailpit:'):
+            self.assertNotIn(value, result)
+        for name in role_config.CORE_SERVICES:
+            self.assertIn('  ' + name + ':\n', result)
+        for broken in (source.replace('services:', 'changed:'),
+                       source.replace('  control:', '  renamed:'),
+                       source.replace('  control:', '  postgres:'),
+                       source.replace('    image:', '   image:', 1)):
+            with self.assertRaises(ValueError): role_config.core_base(broken)
+
     def test_core_configuration_keeps_secrets_and_rejects_identity_change_before_writes(self):
         env = {'LOCAL_STAND':'0', 'MATRIX_SERVER_NAME':self.public['matrix_server_name'],
                'PUBLIC_URL':self.public['canonical_origin'], 'PUBLIC_IP':'192.0.2.10',

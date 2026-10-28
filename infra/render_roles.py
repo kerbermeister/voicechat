@@ -41,7 +41,7 @@ def bundle(public, inventory, role, edge_id=None, subnet='10.241.0.0/28'):
     if role == 'core':
         # The legacy BIND may be 0.0.0.0/:: or another interface. The core media
         # ACL protects the inventory address; never publish a bypass on aliases.
-        source = files['infra/compose.yaml']
+        source = role_config.core_base(files['infra/compose.yaml'])
         if '${BIND}' not in source: raise ValueError('Core base bind contract changed')
         files['infra/compose.yaml'] = source.replace('${BIND}', inventory['core']['public_ip'])
     files.update({'infra/' + name: content for name, content in generated.items()})
