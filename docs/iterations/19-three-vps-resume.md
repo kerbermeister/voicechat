@@ -169,6 +169,129 @@ production orchestrator ещё должен обеспечить stop/backup/mig
 Следующий блок — durable core/full controller, затем shared ingress/legacy adoption
 и SSH/CI integration. Ни новый production релиз, ни DNS не применены.
 
+## Продолжение core/full (текущая незавершённая итерация)
+
+Работа продолжается после нового разрешения владельца довести core/full и production
+без ожидания его ответов. Оценка общей готовности в начале этой итерации — около 60%.
+Базовый commit этой итерации — `a7e37fc`; новые изменения пока не закоммичены.
+
+Добавлены `core_deploy.py`, общие `role_deploy.py`, `role_boot.py` и
+`role_bootstrap.py`. Core journal: prepared/stopping/backed-up/applying/rollback;
+backup после остановки writers, сохранение/откат client policy, никаких pg_restore
+поверх новых записей, current/previous и same-target resume. Runtime secrets,
+host identity и engine upgrades закрыты guards. Core state дополнительно хранит
+PostgreSQL system identifier и hash Matrix signing key; missing volumes/data identity
+не должны запускать пустую замену. Legacy deploy отвергает role-deployment.json marker.
+
+Реальный первоначальный core lifecycle (до boot gate) прошёл:
+[historical proof](three-vps-evidence/2026-10-28-vm-core-rollout.json).
+Initial/upgrade с настоящим backup, actual control stop → rollback, interrupted up →
+resume, synthetic account/device/account data/signing key сохранены. Приватный
+control image экспортировать с VPS **не удалось**: auto-review отклонила private
+artifact transfer (предыдущее отдельное разрешение было для web). Экспорт не выполнялся.
+Безопасная альтернатива завершена: control собран из локальных Dockerfile/COPY sources
+в VM, `type=image,push=false,name-canonical=true`. Локальный непубликованный digest:
+`ghcr.io/voicechat-fixture/control@sha256:9e871e3caa460028f14d09fef69cf474cccf383b1e2a0ac394fe55f9caa33c30`.
+Ни production credentials, ни данные в VM не передавались.
+
+**Важный найденный дефект:** реальный negative reboot с on-failure поднял PostgreSQL
+в обход network gate. Этот тест провален и не засчитан. Старый fixture очищен;
+после него также наблюдался DNS сбой postgres alias. Поэтому теперь все контейнеры
+VoiceChat используют Docker restart=no, а отдельный systemd Type=notify monitor
+восстанавливает committed роль. При maintenance он выходит без restart, чтобы
+не вмешиваться в backup. Controllers активируют monitor после освобождения locks;
+pending applying/rollback не поднимается автоматически. Prepared pull может
+восстановить прежний committed current. Shared Docker ordering — Wants/After;
+разрешён только с restart=no и enabled owned per-role --watch units. Соседние
+workloads запускаются независимо. Повторный negative reboot **прошёл**: ни одного
+running VoiceChat container, Docker active и соседний HTTP fixture доступен.
+Аварийный docker kill control → systemd recovery и Docker daemon restart тоже
+прошли с прежней account/device/data identity.
+
+VM работает, helper `.prototype/vm-exec.py`, metadata `.prototype/vm/active.json`.
+Текущий реальный новый No/monitor probe:
+`.prototype/vm-core-rollout-probe.py` → VM `/srv/voicechat-edge-fixture/core-rollout-probe.py`,
+лог `.prototype/vm-core-rollout-monitor-probe.log`, exec session 2915 завершена.
+Initial/upgrade/actual failure rollback/interruption resume прошли. Fixture
+оставлен для boot проверки, session/token только synthetic, VM file
+`core-boot-session.json` mode600. Приватный boot probe:
+`.prototype/vm-core-boot-probe.py`, modes prepare/runtime-failure/verify-restart/
+verify-reboot/corrupt/verify-blocked/restore/verify-restored/cleanup.
+Лог boot `.prototype/vm-core-boot-monitor.log`: negative reboot пройден; после
+restore intent реальный reboot сначала **превысил 240s probe**, затем повтор
+verify-restored прошёл с прежним аккаунтом/ключами. Первый cold start не принят.
+Control supervisor имел общий 5s deadline на initial start и runtime outage;
+под TCG холодный Python/SFU start мог не укладываться. Добавлен отдельный initial
+30s budget только production supervisor entrypoint; после первой готовности
+runtime cutoff остаётся 5s, crashed child завершается сразу. Unit tests это
+проверяют, включая delayed first readiness и последующее короткое отключение.
+
+`core_deploy.data_identity` read-only/no-network probes переданы в VM после
+завершения journal; revision e + immutable operator source upgrade прошли.
+Дополнительный guard теперь проверяет data identity и после rollback, оставляя
+unsafe rollback pending при подмене данных (unit test PASS).
+
+**Текущий активный шаг:** новый supervisor собран в VM из public repository sources,
+локальный непубликованный control digest
+`sha256:abc8e6e2f226aec43a3e59e0229b18b72070f4046f79e5a63b99ea410fd7b9d4`.
+Все reviewed operator SOURCES синхронизированы в VM после completed journal.
+Revision f core update с реальным backup и новым source package прошёл:
+session 45484 завершена, log `.prototype/vm-core-startup-upgrade.log`.
+Тот же synthetic account/device/account data/data identity подтверждены.
+Cold reboot и bounded verify-restored прошли с **NRestarts=0**, session 22675
+завершена. Дополнительно canonical control healthcheck получил start_period=30s,
+чтобы не объявлять unhealthy до разрешённого startup budget. Это проверено ещё
+одним реальным core upgrade (fixture revision `1`×40, тот же image), actual Docker
+Healthcheck.StartPeriod=30000000000 и неизменная data identity. Cold proof — на
+revision f перед этой health grace; дополнительный reboot grace-конфига не заявлен.
+Cleanup завершён: core unit/containers/volumes/network/neighbor и synthetic token
+удалены. Итоговые публичные отчёты (historical proof выше сохранён):
+[core lifecycle](three-vps-evidence/2026-10-28-vm-core-monitor-rollout.json),
+[role boot](three-vps-evidence/2026-10-28-vm-core-role-boot.json).
+Hashes core/boot/supervisor/compose сверены с локальными исходниками.
+Regression после final helper/grace изменений: **165 tests PASS** (session 31917
+завершена). Scope — infra/role/network/TLS/supervisor, без повторной Flutter сборки.
+
+`shared_legacy_proxy` renderer сохраняет business routes, точный PROXY trust,
+strict SNI и HTTP-01-only certificate sinks без старого VoiceChat reverse_proxy.
+5 edge config tests и настоящий Caddy 2.8 no-network validate прошли:
+[parser evidence](three-vps-evidence/2026-10-28-vm-shared-caddy-acme-parser.json).
+Это не ACME issuance. VM core operator не обновлялся последним неиспользуемым
+для core helper, чтобы не менять installed package посреди теста.
+
+В работе также config для общего TLS: optional co-located `shared_tls` /29 profile,
+SNI legacy fallback, `shared-node-inventory.example.json`, unit tests passed.
+Offline renderer уже исправлен: независимый shared-front HAProxy с public443 и
+restart unless-stopped, persistent external edge bridge, без TLS/runtime secrets.
+Shared edge не содержит ingress; dedicated edges сохраняют свой. Manifest guards
+требуют ровно одну dedicated/shared definition; web-only не меняет front. Monitor
+и snapshot не управляют внешним listener. `check_shared_front.py` прошёл в VM на
+настоящих HAProxy/Caddy 2.8: три TLS routes, strict SNI/Host, stopped web/turn не
+мешают neighbor и не перезапускают front; известные недоступные SNI не уходят в
+legacy fallback. Все его resources удалены; [evidence](three-vps-evidence/2026-10-28-vm-shared-front.json).
+Первый fixture не ждал готовности всех backends и был исправлен после диагностики;
+провал не засчитан. Это не TURN allocation, shared-front reboot, ACME или production
+migration. Global shared controller/port cutover и Avito deployment persistence
+по-прежнему открыты. Топология/THREE_VPS.md обновлены.
+
+Avito source cloned (no AGENTS.md) в `.prototype/avito-shared-ingress`.
+Локальная ветка `codex/preserve-shared-ingress`, **без push/main changes**: draft
+workflow делегирует `/usr/local/sbin/voicechat-shared-deploy avito-update`, если
+installed; fallback отказывается при dirty tracked files вместо git checkout.
+Shell fixture проверил delegation, propagation failure и сохранение dirty Caddy.
+Сам managed CLI **ещё не реализован/не установлен**. Перед main push обязательно
+поставить legacy-compatible protected config/CLI; сейчас production не менялся.
+Repo `kerbermeister/avito-helper`; main push автоматически deploy. Его workflow
+выполняет **git checkout -- .** и может стереть server-local VoiceChat Caddy changes!
+Не push/merge main до установки защищённого legacy-compatible shared config/CLI.
+Нужен workflow hook к managed ingress CLI + global lock; Caddy-only scope должен
+сохранять backend/frontend/PostgreSQL IDs. Caddy config лучше directory mount,
+чтобы atomic replace не оставлял старый inode bind mount. Runtime .env не копировать.
+Production Caddy public image digest:
+`caddy@sha256:226d1f059b75399fe19182893c7184591c07b97afc8dfcf44eeb80c9a77a530f`,
+DOMAIN `listing-helper.flashhub.net`, compose `/opt/avito-helper/deploy/docker-compose.yml`.
+TCP80/443, UDP443 отсутствует. Изменений production/DNS по-прежнему нет.
+
 ## Неизменные условия
 
 - Продолжать по `docs/tasks/19-three-vps.md` и `docs/three-vps-spec.md`.

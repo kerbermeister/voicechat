@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "image": "ghcr.io/voicechat-fixture/control@sha256:9e871e3caa460028f14d09fef69cf474cccf383b1e2a0ac394fe55f9caa33c30",
+  "source": "locally built fixture image from repository Dockerfile; never published",
+  "production_changed": false,
+  "initial_core_with_real_synapse_control_livekit": true,
+  "upgrade_with_real_stopped_writer_backup": true,
+  "actual_control_failure_rolled_back": true,
+  "interrupted_real_apply_resumed_without_second_backup": true,
+  "account_device_account_data_and_signing_identity_preserved": true,
+  "limits": [
+    "Synthetic account and data on disposable PostgreSQL/control volumes.",
+    "No real device, E2EE media, shared ingress or production adoption acceptance."
+  ],
+  "fixture_resources_removed": true,
+  "controller_sha256": "768cd2dfe58cd6023afa25e126810ff5944e31ea4ac5a1db4d8af9dd602da2f4",
+  "readonly_metadata_probe_operator_upgrade": true,
+  "startup_budget_image_upgrade_preserved_account_identity": true,
+  "final_controller_sha256": "8a37c56bb46eb3cb90136fc507fe641fa3bf1b7e82b3115e945c5932365400bd"
+}

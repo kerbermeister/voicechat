@@ -62,13 +62,15 @@ def validate(value):
         raise ValueError('Invalid source revision')
     if not isinstance(value['service_id'], str) or not re.fullmatch(r'[a-z][a-z0-9-]{0,62}', value['service_id']):
         raise ValueError('Invalid service ID')
+    if not isinstance(value['images'], dict): raise ValueError('Role image map required')
     if value['role'] == 'core':
         if value['edge_id'] is not None: raise ValueError('Core has no edge ID')
         services = {'configure', 'postgres', 'synapse', 'control'}
     else:
         if not isinstance(value['edge_id'], str) or not re.fullmatch(r'[a-z][a-z0-9-]{0,31}', value['edge_id']):
             raise ValueError('Invalid edge ID')
-        services = {'configure', 'ingress', 'web', 'turn', 'route-health'}
+        services = {'configure', 'web', 'turn', 'route-health'}
+        if 'ingress' in value['images']: services.add('ingress')
     topology.fields(value['identity'], ('canonical_origin', 'matrix_server_name'))
     topology.origin(value['identity']['canonical_origin'])
     topology.hostname(value['identity']['matrix_server_name'])
@@ -97,6 +99,8 @@ def validate(value):
             raise ValueError('Invalid role file manifest entry')
     required = {'infra/compose.' + value['role'] + '.json', 'infra/node.json', 'infra/known_hosts'}
     if not required <= files.keys(): raise ValueError('Incomplete role manifest')
+    if value['role'] == 'edge' and (('infra/compose.shared-front.json' in files) == ('ingress' in value['images'])):
+        raise ValueError('Edge must use exactly one dedicated or shared ingress definition')
     return value
 
 

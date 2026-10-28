@@ -2,8 +2,9 @@
 
 Это локально проверенные описания служб и генераторы конфигурации. Существующий
 production workflow остаётся single-host; новые bundle нельзя передавать старому
-`deploy.py` как готовый релиз. Полный bootstrap, boot ordering, сертификаты/renewal,
-интеграция role manifests в deploy/rollback ещё требуют реализации и приёмки.
+`deploy.py` как готовый релиз. Boot gates и отдельные core/edge controllers
+подготовлены; общий bootstrap/full rollout, renewal scheduler и переход production
+ещё требуют завершения и приёмки.
 
 Наглядные схемы: [один VPS, разнесённые роли, WireGuard и медиапути](../docs/architecture/network-topology.md).
 
@@ -838,3 +839,88 @@ Core bundle берёт неизменённые определения четы�
 неиспользуемые service blocks. Поэтому WEB_IMAGE/SITE/web-порты на core не нужны.
 Renderer проверяет ожидаемую структуру исходного файла, а реальный Compose probe
 проверяет итоговое наследование и повторную инициализацию.
+
+### Подготовленный core и восстановление роли
+
+После `role_prepare.py`, подготовки приватного runtime и применения network intent
+установить per-role systemd operator из того же проверенного набора исходников:
+
+```sh
+python3 -B infra/role_bootstrap.py --root /srv/voicechat-core --role core
+python3 -B infra/core_deploy.py --root /srv/voicechat-core \
+  --topology topology.json --inventory inventory.json --manifest core-release.json
+# Для уже подготовленного edge:
+python3 -B infra/role_bootstrap.py --root /srv/voicechat-edge-a --role edge --edge a
+```
+
+Это команды для управляемого fixture/нового хоста, не миграция существующего VPS.
+Core controller отказывается присваивать неизвестные volumes, containers и network.
+Для существующего production с данными нужен отдельный согласованный adoption/full
+controller. Пароли БД и физическая идентичность не меняются обычным core deploy;
+смена PostgreSQL/Synapse image требует отдельной процедуры совместимости.
+
+Core journal `state.json` хранит current/previous/pending, runtime hash, PostgreSQL
+system identifier и hash Matrix signing key. Фазы: prepared → stopping → backed-up
+→ applying; rollback остаётся pending до успешного восстановления прежнего кода,
+policy, health и data identity. Образы скачиваются до maintenance. После остановки
+Synapse/control создаётся проверенная копия; данные не восстанавливаются поверх
+новых записей при откате кода. Прерванный apply завершается только тем же target.
+Неизвестные/пропавшие volumes не должны приводить к созданию пустой БД. Metadata
+probes используют read-only mounts без сети и без запуска PostgreSQL entrypoint.
+
+У управляемых core/edge контейнеров Docker restart policy — `no`. За восстановление
+отвечают `voicechat-core.service`/`voicechat-edge-ID.service`: Type=notify,
+Restart=on-failure, Requires/After network и Docker, PartOf Docker. Monitor запускает
+только committed роль после проверки источников/identity и следит за её контейнерами.
+Maintenance с unsafe pending не возобновляется автоматически; повторить controller
+с тем же target. Контроллер активирует monitor после освобождения locks. При
+штатной остановке monitor останавливает только свою роль; pending maintenance
+остаётся под управлением controller. Установка operator обновляет immutable source
+package и unit, включает unit, но сама не перезапускает Docker или приложения.
+
+На хосте с соседними приложениями после миграции VoiceChat restart policies и
+установки owned boot gates можно использовать:
+
+```sh
+python3 -B infra/network_bootstrap.py --upgrade --shared-host
+```
+
+Тогда Docker использует Wants/After VoiceChat network: отказ этой сети блокирует
+VoiceChat per-role units, сохраняя запуск посторонних workloads. Режим сохраняется
+при последующих source upgrades. Guard отказывает, если обнаружит управляемые
+контейнеры с autorestart или без boot gates. Применять на прежний production до
+подготовленной миграции нельзя. Dedicated clean host сохраняет строгую зависимость
+Docker Requires; вариант с `on-failure` для контейнеров отклонён реальным negative
+reboot-тестом и заменён на `no`.
+
+Control supervisor даёт 30s до первой готовности, затем сохраняет 5s cutoff при
+потере health; умерший дочерний процесс завершает общий lifecycle сразу. Docker
+healthcheck имеет соответствующий start_period=30s. Реальные core lifecycle,
+negative network reboot, systemd crash recovery, Docker restart и cold reboot
+нового control image с NRestarts=0 прошли в disposable VM с прежним synthetic
+account/device/data identity. См. [core lifecycle](../docs/iterations/three-vps-evidence/2026-10-28-vm-core-monitor-rollout.json)
+и [role boot](../docs/iterations/three-vps-evidence/2026-10-28-vm-core-role-boot.json).
+Это не production adoption или приёмка медиапотоков.
+
+### Общий TLS-вход на совмещённом VPS
+
+`shared-node-inventory.example.json` добавляет co-located edge профиль `shared_tls`:
+отдельная private /29, имя bridge и точные адреса прежнего Caddy/shared-front.
+Renderer создаёт дополнительно `compose.shared-front.json`; edge не содержит
+собственного ingress и использует persistent external bridge shared-front.
+Shared-front имеет Docker restart unless-stopped и не зависит от VoiceChat network;
+он хранит только SNI routes и не монтирует TLS/TURN credentials или данные.
+Dedicated edge без профиля сохраняет собственный ingress.
+
+Полный rollout обязан отдельно владеть shared-front и его сетями. Web-only не
+меняет эти файлы; edge stop/down не должен удалять listener или соседний сайт.
+Прежний Caddy требует точного PROXY v2 trust и strict SNI/Host, сохранения HTTP-01
+и сертификатов. Миграция его портов/config и защита от последующего деплоя соседнего
+репозитория ещё не реализованы. Один offline bundle не разрешает занимать порт 443.
+Изолированный `prototype/check_shared_front.py` проверяет маршрутизацию на HAProxy
+и публичном Caddy 2.8; это синтетические TLS endpoints, без TURN allocation/media.
+`edge_config.shared_legacy_proxy` генерирует следующий Caddy config из reviewed
+business routes: точный PROXY trust, strict SNI и VoiceChat certificate sinks с
+отключённым TLS-ALPN challenge. Это оставляет HTTP-01 на прежнем порту 80; config
+прошёл stock Caddy 2.8 validate без сети. Реальный выпуск/renewal и доставка этих
+сертификатов в edge пока не приняты.

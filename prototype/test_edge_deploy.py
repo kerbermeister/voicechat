@@ -80,7 +80,7 @@ class EdgeDeployTests(unittest.TestCase):
 
     def deploy(self, manifest, scope='edge'):
         return edge_deploy.deploy(self.root, self.public, self.inventory, manifest, self.core,
-            scope=scope, execute=self.execute, check_network=lambda *a, **k: nullcontext(), check_health=self.health)
+            scope=scope, execute=self.execute, check_boot=lambda *a: None, activate_monitor=lambda *a: None, check_network=lambda *a, **k: nullcontext(), check_health=self.health)
 
     def state(self): return edge_deploy.read_state(self.root, 'b')
 

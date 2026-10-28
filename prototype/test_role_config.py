@@ -40,6 +40,30 @@ class RoleConfigTests(unittest.TestCase):
             contents, _ = bundle(public, inventory, role, 'a' if role == 'edge' else None)
             self.assertIn('infra/compose.' + role + '.json', contents)
 
+    def test_shared_front_survives_edge_shutdown_without_edge_secrets(self):
+        public = load(ROOT / 'infra/single-vps.example.json')
+        inventory = {**self.inventory, 'edges': [{'id': 'a', 'host': 'core', 'shared_tls': {'network': 'voicechat-shared-ingress', 'subnet': '172.29.0.0/29', 'legacy_ip': '172.29.0.2', 'ingress_ip': '172.29.0.3'}}]}
+        compose, files = role_config.edge(public, inventory, 'a')
+        self.assertNotIn('ingress', compose['services'])
+        self.assertEqual(compose['networks']['default'], {'external': True, 'name': 'voicechat-edge-a_default'})
+        front = json.loads(files['compose.shared-front.json'])
+        self.assertEqual(set(front['services']), {'ingress'})
+        ingress = front['services']['ingress']
+        self.assertEqual(ingress['restart'], 'unless-stopped')
+        self.assertNotIn('depends_on', ingress)
+        self.assertEqual(ingress['networks'], {'edge': {'ipv4_address': '10.241.0.2'}, 'legacy': {'ipv4_address': '172.29.0.3'}})
+        self.assertEqual(front['networks']['edge']['name'], compose['networks']['default']['name'])
+        self.assertEqual(front['networks']['legacy']['name'], 'voicechat-shared-ingress')
+        self.assertEqual(ingress['volumes'], [role_config.bind('./haproxy.cfg', '/usr/local/etc/haproxy/haproxy.cfg')])
+        for name, service in compose['services'].items():
+            self.assertEqual(set(service['networks']), {'default'})
+            if name != 'configure': self.assertEqual(service['restart'], 'no')
+        self.assertIn('default_backend legacy_tls', files['haproxy.cfg'])
+        self.assertIn('server legacy 172.29.0.2:443 check send-proxy-v2', files['haproxy.cfg'])
+        self.assertNotIn('!web_name !turn_name', files['haproxy.cfg'])
+        inventory['edges'][0]['shared_tls'].update(subnet='10.241.0.0/29', legacy_ip='10.241.0.2', ingress_ip='10.241.0.3')
+        with self.assertRaisesRegex(ValueError, 'overlap'): role_config.edge(public, inventory, 'a')
+
     def test_edge_has_only_role_secrets_and_no_business_data(self):
         compose, _ = role_config.edge(self.public, self.inventory, 'c')
         self.assertEqual(set(compose['services']), {'configure', 'ingress', 'web', 'route-health', 'turn'})
@@ -56,6 +80,7 @@ class RoleConfigTests(unittest.TestCase):
         for name, service in compose['services'].items():
             self.assertEqual(service['logging'], role_config.LOGGING)
             self.assertTrue(service['read_only'])
+            if name != 'configure': self.assertEqual(service['restart'], 'no')
             for mount in service['volumes']:
                 if isinstance(mount, dict):
                     self.assertTrue(mount['read_only'])
@@ -69,6 +94,8 @@ class RoleConfigTests(unittest.TestCase):
         compose = role_config.core(public, self.inventory)
         self.assertEqual(compose['name'], 'voicechat')
         self.assertEqual(set(compose['services']), {'configure', 'postgres', 'synapse', 'control'})
+        for name in ('postgres', 'synapse', 'control'):
+            self.assertEqual(compose['services'][name]['restart'], 'no')
         for name, service in compose['services'].items():
             self.assertEqual(service['extends'], {'file':'compose.yaml', 'service':name})
             self.assertEqual(service['sysctls']['net.ipv4.ip_local_reserved_ports'], '50300-50400')

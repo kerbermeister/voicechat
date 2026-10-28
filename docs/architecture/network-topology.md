@@ -39,6 +39,30 @@ flowchart LR
 серверов; два проекта не могут одновременно делить публичные порты со старым
 single-host web/TURN. Этот переход требует отдельной миграции.
 
+Если на том же VPS уже работает другой сайт, общий порт 443 принадлежит отдельному
+shared-front. Он не зависит от `voicechat-network.service` и не управляется edge
+deploy/stop. Ниже целевой профиль текущего VPS; миграция ещё не применена.
+
+```mermaid
+flowchart LR
+    U["Клиент TLS :443"] --> F["Общий HAProxy shared-front<br/>только SNI, без TLS-ключей"]
+    F -->|"VoiceChat HTTPS · PROXY v2"| W["edge-a Caddy :8443"]
+    F -->|"TURN имя"| T["edge-a coturn :5349"]
+    F -->|"Остальные SNI · PROXY v2<br/>отдельный bridge /29"| L["Прежний Caddy<br/>соседний сайт"]
+    H["HTTP :80<br/>ACME HTTP-01"] --> L
+    W -->|"private IP · wg-vc"| A["Core A"]
+    G["voicechat-network.service"] -.->|"Разрешает запуск только VoiceChat"| W
+    G -.-> A
+```
+
+Shared-front владеет постоянным edge bridge; edge использует его как external
+network и не удаляет при остановке. Caddy edge доверяет PROXY v2 только точному
+адресу shared-front. Соседний Caddy получает отдельный точный адрес доверия на /29.
+Отказ приватной сети должен закрывать VoiceChat, сохраняя TLS соседнего сайта;
+это отдельная обязательная проверка перед production. Dedicated B/C сохраняют
+свой HAProxy внутри роли edge. Изменение shared-front требует полного согласованного
+rollout; web-only не меняет его конфигурацию.
+
 ## После расширения: один core, произвольное число входов
 
 ```mermaid

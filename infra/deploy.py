@@ -176,6 +176,9 @@ def main():
 
 
 def deploy(root, release, old, backup_only=False, web_only=False):
+    marker = root / 'role-deployment.json'
+    if marker.exists() or marker.is_symlink():
+        raise SystemExit('This installation uses core/edge roles; use the role rollout controller')
     if not release.is_relative_to(root/'releases'): raise SystemExit('Release must be inside root/releases')
     target = manifest(release/'release.json')
     runtime = root/'runtime'

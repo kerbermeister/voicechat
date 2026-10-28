@@ -63,6 +63,15 @@ class NetworkUpgradeTests(unittest.TestCase):
         self.assertEqual(self.upgrade(), digest)
         self.assertEqual(self.calls, [])
 
+    def test_explicit_shared_host_upgrade_is_preserved_by_later_default_retry(self):
+        digest = network_bootstrap.upgrade(self.root, run=self.command, shared_host=True)
+        drop_in = (self.root / network_bootstrap.DROP_IN).read_text()
+        self.assertIn('Wants=voicechat-network.service', drop_in)
+        self.calls.clear()
+        self.assertEqual(self.upgrade(), digest)
+        self.assertTrue(all(call[:2] == ('docker', 'ps') for call in self.calls))
+        self.assertNotIn('Requires=voicechat-network.service', (self.root / network_bootstrap.DROP_IN).read_text())
+
     def test_failed_reload_keeps_journal_and_resumes_same_source(self):
         self.fail_reload = True
         with self.assertRaisesRegex(RuntimeError, 'reload failure'): self.upgrade()

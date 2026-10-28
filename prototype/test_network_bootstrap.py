@@ -59,6 +59,25 @@ class NetworkBootstrapTests(unittest.TestCase):
         self.assertLess(next(i for i, call in enumerate(self.calls) if call[0] == 'systemd-analyze'),
                         next(i for i, call in enumerate(self.calls) if call[:2] == ('systemctl', 'daemon-reload')))
 
+    def test_shared_host_orders_docker_without_blocking_unrelated_workloads(self):
+        digest = network_bootstrap.install(self.root, run=self.command, shared_host=True)
+        drop_in = (self.root / network_bootstrap.DROP_IN).read_text()
+        self.assertIn('Wants=voicechat-network.service', drop_in)
+        self.assertIn('After=voicechat-network.service', drop_in)
+        self.assertNotIn('Requires=voicechat-network.service', drop_in)
+        self.assertEqual(network_bootstrap.install(self.root, run=self.command, shared_host=True), digest)
+        with self.assertRaisesRegex(ValueError, 'upgrade'): self.install()
+
+    def test_shared_host_refuses_legacy_container_restart_policy_before_installing_files(self):
+        def legacy_container(*args):
+            if args[:2] == ('docker', 'ps'): return 'aaaaaaaaaaaa voicechat control\n'
+            if args[:2] == ('docker', 'inspect'): return '{"Name":"unless-stopped","MaximumRetryCount":0}'
+            return self.command(*args)
+        with self.assertRaisesRegex(ValueError, 'restart policies'):
+            network_bootstrap.install(self.root, run=legacy_container, shared_host=True)
+        self.assertFalse((self.root / network_bootstrap.UNIT).exists())
+        self.assertFalse((self.state_root / 'boot-install').exists())
+
     def test_interrupted_copy_and_unit_start_resume_same_installation(self):
         original = network_bootstrap.create_file
         count = 0

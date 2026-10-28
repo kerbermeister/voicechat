@@ -3,44 +3,25 @@
 This does not bootstrap hosts, migrate the legacy core or publish a catalog.
 """
 import argparse
-from contextlib import contextmanager
 import http.client
 import json
 import os
 from pathlib import Path
 import socket
 import ssl
-import subprocess
 from urllib.parse import urlsplit
 
 import managed_state
-import network_runtime
+import role_deploy
+from role_deploy import run, release_path
 import node_inventory
 import role_release
+import role_bootstrap
 import tls_activation
 import tls_material
 import tls_runtime
 import topology
 
-
-def run(arguments, *, env=None):
-    result = subprocess.run(arguments, env=env, capture_output=True, timeout=300)
-    if result.returncode:
-        raise RuntimeError('Edge deployment command failed; consult private service logs')
-    if len(result.stdout) > 1024 * 1024:
-        raise ValueError('Unexpected deployment command response size')
-    return result.stdout
-
-
-def release_path(root, record):
-    path = root / 'releases' / role_release.json_digest(record['manifest'])
-    if path.resolve() != path or not path.is_dir():
-        raise ValueError('Immutable release must be a real directory under releases/<manifest-sha256>')
-    role_release.verify_recorded_bundle(path, record['manifest'])
-    runtime = path / 'infra/runtime'
-    if not runtime.is_symlink() or runtime.resolve() != root / 'runtime':
-        raise ValueError('Release must reference the prepared shared edge runtime')
-    return path
 
 
 def compose(root, record, *arguments, execute=run):
@@ -95,35 +76,18 @@ def read_state(root, edge_id):
     return state
 
 
-@contextmanager
 def network_ready(inventory, edge_id, subnet, *, execute=run, directory=Path('/var/lib/voicechat-network')):
-    # Keep replacement/revocation from racing this rollout. Lock ordering is
-    # edge role -> host network -> TLS; network reconciliation never takes TLS.
-    with managed_state.locked(directory):
-        upgrade = directory / 'boot-install/upgrade.json'
-        if upgrade.exists() or upgrade.is_symlink():
-            raise ValueError('Finish the interrupted network source upgrade before deploying')
-        desired = managed_state.read(directory / 'desired.json')
-        firewall, tunnel = network_runtime.components(desired)
-        node = 'core' if next(item for item in inventory['edges'] if item['id'] == edge_id).get('host') == 'core' else 'edge-' + edge_id
-        if desired['inventory'] != inventory or desired['node'] != node or desired['edge_subnet'] != subnet:
-            raise ValueError('Host networking does not match this edge inventory')
-        if (managed_state.read(directory / 'applied.json') != {'schema': 1,
-                'sha256': network_runtime.fingerprint(desired), 'phase': 'complete'} or
-                managed_state.read(directory / 'firewall/desired.json') != firewall or
-                managed_state.read(directory / 'tunnel/desired.json') != tunnel):
-            raise ValueError('Finish the interrupted host network operation before deploying')
-        if execute(['systemctl', 'is-active', 'voicechat-network.service']).strip() != b'active':
-            raise ValueError('Managed host network service is not active')
-        yield
+    node = 'core' if next(item for item in inventory['edges'] if item['id'] == edge_id).get('host') == 'core' else 'edge-' + edge_id
+    return role_deploy.network_ready(inventory, node, subnet, execute=execute, directory=directory)
 
 
 def snapshot(root, record, *, execute=run):
-    ids = compose(root, record, 'ps', '-q', 'ingress', 'turn', 'route-health', execute=execute).decode().split()
-    if len(ids) != 3: raise ValueError('Web deployment requires three existing edge services')
+    services = [name for name in ('ingress', 'turn', 'route-health') if name in record['manifest']['images']]
+    ids = compose(root, record, 'ps', '-q', *services, execute=execute).decode().split()
+    if len(ids) != len(services): raise ValueError('Web deployment requires existing edge services')
     data = execute(['docker', 'inspect', '--format',
         '{{.Id}} {{.State.Running}} {{.State.StartedAt}} {{.RestartCount}}', *ids]).decode().splitlines()
-    if len(data) != 3 or any(' true ' not in item for item in data):
+    if len(data) != len(services) or any(' true ' not in item for item in data):
         raise ValueError('Existing edge services are not running')
     return sorted(data)
 
@@ -164,14 +128,15 @@ def healthy(root, record, *, execute=run):
 
 
 def deploy(root, public, inventory, manifest, core_manifest, *, scope='edge', subnet='10.241.0.0/28',
-           execute=run, check_network=network_ready, check_health=healthy):
+           execute=run, check_network=network_ready, check_health=healthy, check_boot=role_bootstrap.ready, activate_monitor=role_bootstrap.activate):
     if scope not in ('web', 'edge'): raise ValueError('Choose web or edge scope')
     root = Path(root).absolute()
     if root.resolve() != root: raise ValueError('Deployment root must not traverse symlinks')
     role_release.require_compatible(core_manifest, manifest)
     target = record_for(public, inventory, manifest)
     edge_id = manifest['edge_id']
-    with managed_state.locked(root), check_network(inventory, edge_id, subnet, execute=execute):
+    with role_bootstrap.monitor_after(root, 'edge', edge_id, activate=activate_monitor), managed_state.locked(root), check_network(inventory, edge_id, subnet, execute=execute):
+        check_boot(root, 'edge', edge_id)
         release = release_path(root, target)
         role_release.verify_bundle(release, manifest, public, inventory, subnet)
         state = read_state(root, edge_id)

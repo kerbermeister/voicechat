@@ -590,6 +590,24 @@ state.json. Реальные backup/check/restore синтетических ф�
 восстановленный application и stop/backup/start orchestration ещё не приняты.
 [Evidence](../iterations/three-vps-evidence/2026-10-28-vm-core-backup.json).
 
+Дополнение core controller: `core_deploy.py` реализует остановку writers,
+проверенный backup, current/previous/pending, policy rollback и same-target resume.
+Initial/upgrade/actual control failure/interrupt проверены на настоящих VM volumes
+с синтетическим аккаунтом. Per-role notify monitor восстанавливает committed роль;
+Docker restart=no исключает обход сетевого gate при reboot. Negative reboot с
+missing intent и работающим соседним HTTP, kill/recovery и Docker restart прошли.
+Initial supervisor startup budget отделён от runtime outage cutoff; повторный
+cold reboot нового control image прошёл с NRestarts=0 и прежним аккаунтом. Это всё ещё внутренний core
+controller, а не готовый production full scope/adoption.
+
+Shared ingress renderer выделяет persistent front из edge и не включает его в
+web-only/role monitor. На HAProxy + Caddy 2.8 пройдены реальные synthetic TLS routes,
+strict SNI/Host и доступность neighbor при stopped edge:
+[evidence](../iterations/three-vps-evidence/2026-10-28-vm-shared-front.json).
+Согласованный port cutover, защита общего Caddy от Avito workflow и возврат legacy
+network/config при неудачной миграции пока открыты. Текущая точка продолжения —
+[resume](../iterations/19-three-vps-resume.md).
+
 Подготовлен URL-only migration primitive для прежних pushers: journal до DB commit,
 повтор после прерывания и транзакционный rollback проверены на настоящем PostgreSQL
 с синтетической таблицей. В core orchestrator ещё не подключён; остановка writers,

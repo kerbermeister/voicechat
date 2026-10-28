@@ -65,10 +65,17 @@ def create_file(path, content):
         Path(temporary).unlink(missing_ok=True)
 
 
-def source_plan(desired):
+def source_plan(desired, *, shared_host=False):
     source = Path(__file__).parent
     contents = {name: (source / name).read_bytes() for name in
                 (*SOURCES, 'voicechat-network.service', 'voicechat-docker-network.conf')}
+    if shared_host:
+        name = 'voicechat-docker-network.conf'
+        if contents[name].count(b'Requires=voicechat-network.service') != 1:
+            raise ValueError('Docker dependency template changed')
+        contents[name] = contents[name].replace(b'Requires=voicechat-network.service', b'Wants=voicechat-network.service').replace(
+            b'# Docker must not auto-start containers when network intent is missing/invalid.',
+            b'# Shared host: unrelated Docker workloads may start after a failed VoiceChat network unit.')
     digest = hashlib.sha256(json.dumps({name: hashlib.sha256(data).hexdigest()
         for name, data in contents.items()}, sort_keys=True).encode()).hexdigest()
     code = 'opt/voicechat/network/' + digest
@@ -80,7 +87,33 @@ def source_plan(desired):
     return identity, files, code
 
 
-def install(root=Path('/'), *, run=command):
+def shared_containers_ready(root, run):
+    """Do not relax the global dependency while VoiceChat can bypass its gate."""
+    rows = run('docker', 'ps', '-a', '--format',
+               '{{.ID}} {{.Label "com.docker.compose.project"}} {{.Label "com.docker.compose.service"}}')
+    for row in rows.splitlines():
+        parts = row.split()
+        if len(parts) != 3: continue  # Unlabelled unrelated containers.
+        identifier, project, service = parts
+        if project != 'voicechat' and not project.startswith('voicechat-edge-'): continue
+        import re
+        if not re.fullmatch(r'[a-f0-9]{12,64}', identifier): raise ValueError('Unexpected container identity')
+        if project != 'voicechat' and not re.fullmatch(r'voicechat-edge-[a-z][a-z0-9-]{0,31}', project):
+            raise ValueError('Unexpected VoiceChat project identity')
+        policy = json.loads(run('docker', 'inspect', '--format', '{{json .HostConfig.RestartPolicy}}', identifier))
+        expected = 'no'
+        if policy.get('Name') != expected or policy.get('MaximumRetryCount', 0) != 0:
+            raise ValueError('Migrate VoiceChat restart policies before enabling shared-host Docker ordering')
+        unit = 'voicechat-core.service' if project == 'voicechat' else project + '.service'
+        content = existing(root / 'etc/systemd/system' / unit)
+        if (content is None or b'Requires=docker.service voicechat-network.service' not in content or
+                b'WantedBy=docker.service' not in content or b'/opt/voicechat/operators/' not in content or
+                b'--watch' not in content or b'Restart=on-failure' not in content):
+            raise ValueError('Owned role boot gates are required on a shared Docker host')
+        run('systemctl', 'is-enabled', '--quiet', unit)
+
+
+def install(root=Path('/'), *, run=command, shared_host=False):
     root = Path(root).resolve()
     state_root = directory(root, 'var/lib/voicechat-network')
     info = state_root.stat()
@@ -95,7 +128,8 @@ def install(root=Path('/'), *, run=command):
         raise ValueError('A healthy running systemd host is required')
     for program in ('nft', 'wg', '/usr/bin/python3', 'systemd-analyze'):
         run(program, '--version')
-    identity, files, code = source_plan(desired)
+    if shared_host: shared_containers_ready(root, run)
+    identity, files, code = source_plan(desired, shared_host=shared_host)
     digest = identity['source_sha256']
     with managed_state.locked(state_root / 'boot-install') as receipt_root:
         receipt = receipt_root / 'desired.json'
@@ -175,7 +209,7 @@ def verify_previous(root, before, previous_files):
         raise ValueError('Prior boot source/unit checksums do not match the owned receipt')
 
 
-def upgrade(root=Path('/'), *, run=command):
+def upgrade(root=Path('/'), *, run=command, shared_host=None):
     """Resume an owned source upgrade by reload; never restart Docker or restore retired peers."""
     root = Path(root).resolve()
     state_root = directory(root, 'var/lib/voicechat-network')
@@ -186,7 +220,11 @@ def upgrade(root=Path('/'), *, run=command):
     host_key = ' '.join((root / 'etc/ssh/ssh_host_ed25519_key.pub').read_text().split()[:2])
     if node_inventory.host_key(host_key) != local['ssh_host_key']:
         raise ValueError('This host does not match the prepared network identity')
-    identity, files, code = source_plan(desired)
+    if shared_host is None:
+        installed = existing(root / DROP_IN)
+        shared_host = installed is not None and b'\nWants=voicechat-network.service\n' in installed
+    if shared_host: shared_containers_ready(root, run)
+    identity, files, code = source_plan(desired, shared_host=shared_host)
     with managed_state.locked(state_root / 'boot-install') as receipt_root:
         receipt, pending = receipt_root / 'desired.json', receipt_root / 'upgrade.json'
         current = managed_state.read(receipt)
@@ -256,10 +294,15 @@ def upgrade(root=Path('/'), *, run=command):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--upgrade', action='store_true', help='Upgrade owned source/unit by reload, without restarting Docker')
+    parser.add_argument('--shared-host', action='store_const', const=True, default=None,
+        help='Keep Docker available for unrelated apps if VoiceChat networking fails; core binds must remain private')
     args = parser.parse_args()
     if platform.system() != 'Linux' or os.geteuid() != 0:
         raise SystemExit('Boot installation requires the selected Linux host as root')
-    (upgrade if args.upgrade else install)()
+    if args.upgrade:
+        upgrade(shared_host=args.shared_host)
+    else:
+        install(shared_host=bool(args.shared_host))
     print('Owned network boot restoration verified; Docker was not restarted.')
 
 

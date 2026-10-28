@@ -61,6 +61,8 @@ def core(public, inventory):
                        'sysctls': {'net.ipv4.ip_local_reserved_ports': '50300-50400'},
                        'logging': deepcopy(LOGGING)}
                 for name in CORE_SERVICES}
+    for name in ('postgres', 'synapse', 'control'):
+        services[name]['restart'] = 'no'
     services['configure'].update(environment={
         'VOICECHAT_ROUTE_CONFIG': json.dumps(public, separators=(',', ':')),
         'PUBLIC_IP': inventory['core']['public_ip'],
@@ -95,7 +97,7 @@ def edge(public, inventory, edge_id, subnet='10.241.0.0/28'):
     ingress_ip, relay_ip = str(network[2]), str(network[4])
     core_ip = inventory['core']['tunnel_ip']
     hardened = {'read_only': True, 'cap_drop': ['ALL'], 'security_opt': ['no-new-privileges:true'],
-                'tmpfs': ['/tmp:size=16m,mode=1777'], 'restart': 'unless-stopped', 'pids_limit': 128}
+                'tmpfs': ['/tmp:size=16m,mode=1777'], 'restart': 'no', 'pids_limit': 128}
     services = {
         'configure': {
             'image': pinned_image('configure'), 'entrypoint': ['python3', '/edge_turn.py'],
@@ -150,5 +152,24 @@ def edge(public, inventory, edge_id, subnet='10.241.0.0/28'):
                'networks': {'default': {
                    'driver_opts': {'com.docker.network.bridge.name': node_inventory.edge_bridge(inventory, edge_id)},
                    'ipam': {'config': [{'subnet': subnet}]}}}}
-    return compose, render_edge.render(public, inventory, edge_id, ingress_ip,
-                                       web_ip=str(network[3]), turn_ip=relay_ip)
+    shared = node_inventory.shared_tls_profile(inventory, edge_id)
+    files = render_edge.render(public, inventory, edge_id, ingress_ip,
+                               web_ip=str(network[3]), turn_ip=relay_ip)
+    if shared is not None:
+        if network.overlaps(ipaddress.ip_network(shared['subnet'])):
+            raise ValueError('Shared TLS and edge bridge networks must not overlap')
+        # The shared listener must survive a failed VoiceChat network gate so
+        # unrelated sites remain reachable. Its bridge also survives edge down.
+        ingress = services.pop('ingress')
+        ingress.pop('depends_on')
+        ingress['restart'] = 'unless-stopped'
+        ingress['networks'] = {'edge': {'ipv4_address': ingress_ip},
+                               'legacy': {'ipv4_address': shared['ingress_ip']}}
+        edge_network = compose['networks']['default']
+        edge_network['name'] = compose['name'] + '_default'
+        front = {'name': 'voicechat-shared-front', 'services': {'ingress': ingress},
+                 'networks': {'edge': edge_network, 'legacy': {
+                     'name': shared['network'], 'ipam': {'config': [{'subnet': shared['subnet']}]}}}}
+        compose['networks']['default'] = {'external': True, 'name': edge_network['name']}
+        files['compose.shared-front.json'] = json.dumps(front, indent=2) + '\n'
+    return compose, files

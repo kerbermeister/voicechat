@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "caddy_image": "caddy@sha256:226d1f059b75399fe19182893c7184591c07b97afc8dfcf44eeb80c9a77a530f",
+  "shared_sni_routes": true,
+  "strict_legacy_sni_host": true,
+  "stopped_edge_preserved_neighbor_and_front_process": true,
+  "unavailable_known_names_never_fell_back_to_neighbor": true,
+  "production_changed": false,
+  "limits": [
+    "Synthetic TLS endpoints, no TURN allocation or media.",
+    "No shared-front reboot, production migration or ACME issuance acceptance."
+  ],
+  "fixture_resources_removed": true,
+  "source_sha256": {
+    "infra/role_config.py": "3984c022ed84d2c01a6b883836b740dfcb87d1659368f150e5f8586c1d2a0e18",
+    "infra/edge_config.py": "c41ac013507d4bd59b6e11fb3fc79587166268ec3cfb721db8784aa9bdd3d34e",
+    "infra/render_edge.py": "f89091b682dec1fcabab0c37e8bf2059981ca85af2ea0fc529b73713b580039b",
+    "infra/node_inventory.py": "fb2fff0c8cdd0704ba140ef0131028f47b0b10e3142855984d9da0b32a48dd61",
+    "prototype/check_shared_front.py": "bfe87f2b52024957fe9d33ff1f31b55549ae28a3e0aab54fa4fd42b90e6e549e"
+  }
+}

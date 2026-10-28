@@ -42,6 +42,21 @@ def host_key(value):
     return value
 
 
+def shared_tls(value):
+    fields(value, ('network', 'subnet', 'legacy_ip', 'ingress_ip'))
+    if not isinstance(value['network'], str) or not re.fullmatch(r'[a-z][a-z0-9_-]{0,62}', value['network']):
+        raise ValueError('Invalid shared TLS network name')
+    if not isinstance(value['subnet'], str): raise ValueError('Shared TLS subnet must be a canonical CIDR')
+    network = ipaddress.ip_network(value['subnet'], strict=True)
+    if network.version != 4 or network.prefixlen != 29:
+        raise ValueError('A dedicated private /29 is required for shared TLS')
+    ipv4(str(network[1]), tunnel=True)
+    addresses = [ipaddress.ip_address(ipv4(value[key], tunnel=True)) for key in ('legacy_ip', 'ingress_ip')]
+    if len(set(addresses)) != 2 or any(address not in network or address in (network[0], network[1], network[-1]) for address in addresses):
+        raise ValueError('Distinct shared TLS hosts must exclude the gateway and network/broadcast addresses')
+    return value
+
+
 def validate(value, topology=None):
     if topology is not None:
         validate_topology(topology)
@@ -63,7 +78,8 @@ def validate(value, topology=None):
     fields(value['core'], keys)
     for edge in edges:
         if isinstance(edge, dict) and 'host' in edge:
-            fields(edge, ('id', 'host'))
+            fields(edge, ('id', 'host', 'shared_tls') if 'shared_tls' in edge else ('id', 'host'))
+            if 'shared_tls' in edge: shared_tls(edge['shared_tls'])
             if edge['host'] != 'core':
                 raise ValueError('Only an explicit core host reference is supported')
         else:
@@ -84,6 +100,11 @@ def validate(value, topology=None):
         ipv4(node['public_ip'])
         ipv4(node['tunnel_ip'], tunnel=True)
         host_key(node['ssh_host_key'])
+    for edge in edges:
+        if 'shared_tls' in edge:
+            network = ipaddress.ip_network(edge['shared_tls']['subnet'])
+            if any(ipaddress.ip_address(node['tunnel_ip']) in network for node in nodes):
+                raise ValueError('Shared TLS network overlaps a tunnel address')
     for key in ('public_ip', 'tunnel_ip', 'ssh_host_key'):
         if len({node[key] for node in nodes}) != len(nodes):
             raise ValueError('Nodes must have distinct ' + key)
@@ -99,6 +120,12 @@ def edge_assignment(inventory, edge_id):
     if edge is None:
         raise ValueError('Unknown edge host assignment')
     return {'id': edge_id, **inventory['core']} if edge.get('host') == 'core' else edge
+
+
+def shared_tls_profile(inventory, edge_id):
+    edge = next((item for item in inventory['edges'] if item['id'] == edge_id), None)
+    if edge is None: raise ValueError('Unknown edge host assignment')
+    return edge.get('shared_tls')
 
 
 def check_replacement(previous, current):

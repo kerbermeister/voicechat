@@ -101,6 +101,7 @@ class RoleReleaseTests(unittest.TestCase):
             lambda v: v['contracts'].pop('role_config'),
             lambda v: v['images'].update(web='ghcr.io/example/voicechat:latest'),
             lambda v: v['images'].pop('turn'),
+            lambda v: v['images'].pop('ingress'),
             lambda v: v['files'].pop('infra/node.json'),
             lambda v: v['files'].update({'../stand.env': '1' * 64}),
             lambda v: v['files'].update({'infra/runtime/stand.env': '1' * 64}),
@@ -138,6 +139,28 @@ class RoleReleaseTests(unittest.TestCase):
         self.assertNotIn('control', edge['images'])
         for image in ('local:latest', IMAGE + '\n', 'example.test/web@sha256:' + 'a' * 64):
             with self.assertRaises(ValueError): role_release.make(public, inventory, 'edge', 'a' * 40, image, 'a')
+
+    def test_shared_listener_is_verified_separately_and_excluded_from_web_only_changes(self):
+        public = load(ROOT / 'infra/single-vps.example.json')
+        inventory = {**self.inventory, 'edges': [{'id': 'a', 'host': 'core', 'shared_tls': {
+            'network': 'voicechat-shared-ingress', 'subnet': '172.29.0.0/29',
+            'legacy_ip': '172.29.0.2', 'ingress_ip': '172.29.0.3'}}]}
+        manifest = role_release.make(public, inventory, 'edge', 'a' * 40, IMAGE, 'a')
+        self.assertNotIn('ingress', manifest['images'])
+        self.assertIn('infra/compose.shared-front.json', manifest['files'])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / 'edge'
+            files, runtime = bundle(public, inventory, 'edge', 'a')
+            write_bundle(root, files, runtime)
+            role_release.verify_bundle(root, manifest, public, inventory)
+            dedicated = {**inventory, 'edges': [{'id': 'a', 'host': 'core'}]}
+            with self.assertRaises(ValueError): role_release.verify_bundle(root, manifest, public, dedicated)
+            changed = deepcopy(manifest)
+            changed['files']['infra/compose.shared-front.json'] = 'f' * 64
+            with self.assertRaises(ValueError): role_release.require_web_only(manifest, changed)
+            path = root / 'infra/compose.shared-front.json'
+            path.write_text(path.read_text().replace('unless-stopped', 'no'))
+            with self.assertRaises(ValueError): role_release.verify_bundle(root, manifest, public, inventory)
 
 
 if __name__ == '__main__': unittest.main()

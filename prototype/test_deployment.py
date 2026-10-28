@@ -307,4 +307,19 @@ class DeploymentTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Legacy Compose override'):
                 deploy.compose_command(release, 'config', core=True)
 
+    def test_legacy_deploy_cannot_mutate_an_installation_migrated_to_roles(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            marker = root / 'role-deployment.json'
+            marker.write_text('{}')
+            with patch.object(deploy, 'execute') as execute:
+                with self.assertRaisesRegex(SystemExit, 'core/edge roles'):
+                    deploy.deploy(root, root / 'releases/candidate', None)
+                execute.assert_not_called()
+                marker.unlink()
+                marker.symlink_to(root / 'missing')
+                with self.assertRaisesRegex(SystemExit, 'core/edge roles'):
+                    deploy.deploy(root, root / 'releases/candidate', None)
+                execute.assert_not_called()
+
 if __name__=='__main__': unittest.main()

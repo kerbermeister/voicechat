@@ -15,9 +15,10 @@ def render(public, inventory, edge_id, ingress_ip, *, web_ip=None, turn_ip=None)
     node = node_inventory.edge_assignment(inventory, edge_id)
     edge = next(edge for edge in public['edges'] if edge['id'] == edge_id)
     names = [urlsplit(edge['origin']).hostname, urlsplit(public['canonical_origin']).hostname]
+    shared = node_inventory.shared_tls_profile(inventory, edge_id)
     return {
         'Caddyfile': edge_proxy(public, edge_id, inventory['core']['tunnel_ip'], ingress_ip),
-        'haproxy.cfg': sni_proxy(names, edge['turn_host'], web_ip=web_ip, turn_ip=turn_ip),
+        'haproxy.cfg': sni_proxy(names, edge['turn_host'], web_ip=web_ip, turn_ip=turn_ip, legacy_ip=shared['legacy_ip'] if shared else None),
         'known_hosts': node_inventory.known_host(inventory, node),
         'node.json': json.dumps({
             'schema': 1, 'role': 'edge', 'service_id': public['service_id'],

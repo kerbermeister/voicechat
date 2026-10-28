@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "caddy_image": "caddy@sha256:226d1f059b75399fe19182893c7184591c07b97afc8dfcf44eeb80c9a77a530f",
+  "legacy_http01_sink_and_exact_proxy_trust_config_validated": true,
+  "source_sha256": {
+    "infra/edge_config.py": "441ee98343b2b016329c561f506ad3fb105055f78e5532c02744a99df6da70e3"
+  },
+  "fixture_resources_removed": true,
+  "limits": [
+    "Parser/provision validation on isolated no-network Caddy only; no ACME issuance or production cutover."
+  ]
+}

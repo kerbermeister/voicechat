@@ -32,6 +32,25 @@ class InventoryTests(unittest.TestCase):
         self.public = load(ROOT / 'infra/three-vps.example.json')
         self.inventory = fixture()
 
+    def test_shared_tls_is_config_not_a_physical_host_replacement(self):
+        public = load(ROOT / 'infra/single-vps.example.json')
+        inventory = fixture()
+        inventory['edges'] = [{'id': 'a', 'host': 'core'}]
+        before = deepcopy(inventory)
+        profile = {'network': 'voicechat-shared-ingress', 'subnet': '172.29.0.0/29', 'legacy_ip': '172.29.0.2', 'ingress_ip': '172.29.0.3'}
+        inventory['edges'][0]['shared_tls'] = profile
+        node_inventory.validate(inventory, public)
+        node_inventory.check_replacement(before, inventory)
+        self.assertEqual(node_inventory.edge_assignment(before, 'a'), node_inventory.edge_assignment(inventory, 'a'))
+        self.assertEqual(node_inventory.shared_tls_profile(inventory, 'a'), profile)
+        for change in ({'legacy_ip':'8.8.8.8'}, {'legacy_ip':'172.29.0.1'},
+                       {'legacy_ip':'172.29.0.3'}, {'ingress_ip':'172.30.0.3'},
+                       {'subnet':'0.0.0.0/29'}, {'network':'bad\nnetwork'},
+                       {'subnet':'172.29.0.0/24'}):
+            with self.subTest(change=change):
+                inventory['edges'][0]['shared_tls'] = {**profile, **change}
+                with self.assertRaises(ValueError): node_inventory.validate(inventory, public)
+
     def test_replacement_changes_host_files_without_rebuilding_public_config(self):
         before = render(self.public, self.inventory, 'c', '10.241.0.2')
         defines = client_defines(self.public)
