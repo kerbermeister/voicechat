@@ -58,7 +58,9 @@ def main():
     parser.add_argument('--role-bundle', action='store_true', help='Run the generated edge role, including TURN initialization/readiness')
     parser.add_argument('--single-entry', action='store_true', help='Validate one edge assigned explicitly to the core host')
     parser.add_argument('--activation', action='store_true', help='Exercise the full host TLS activation controller (Linux root only)')
+    parser.add_argument('--cpus', type=float, default=.25, help='Per-service fixture CPU quota; use 1 on a disposable emulated VM')
     args = parser.parse_args()
+    if not 0 < args.cpus <= 2: parser.error('--cpus must be greater than zero and at most 2')
     if args.activation and (not args.role_bundle or sys.platform != 'linux' or os.geteuid() != 0):
         parser.error('--activation requires --role-bundle on an isolated Linux root fixture')
     if args.single_entry and not args.role_bundle:
@@ -147,7 +149,7 @@ log-file=stdout
             inventory['core']['tunnel_ip'] = backend_prefix + '.2'
             if args.single_entry:
                 topology['edges'] = topology['edges'][:1]
-                inventory['edges'] = [{'id':edge_id,'host':'core'}]
+                inventory['edges'] = [{'id':edge_id,'host':'core','legacy_turn':True}]
             files, runtime = bundle(topology, inventory, 'edge', edge_id, prefix + '.0/28')
             bundle_root = root / 'bundle'
             write_bundle(bundle_root, files, runtime)
@@ -158,7 +160,11 @@ log-file=stdout
             services = model['services']
             # Test-only: random loopback ingress; no public TURN ports or real A.
             services['ingress']['ports'] = ['127.0.0.1::8443']
-            services['turn']['ports'] = []
+            if args.single_entry:
+                assert '3488:3478/tcp' in services['turn']['ports'] and '3488:3478/udp' in services['turn']['ports']
+                services['turn']['ports'] = ['127.0.0.1::3478/tcp', '127.0.0.1::3478/udp']
+            else:
+                services['turn']['ports'] = []
             services['web']['image'] = caddy
             # Test-only upstream substitution: this probe tests the proxy/role
             # process configuration, not host routing or WireGuard. Keep the
@@ -227,7 +233,7 @@ log-file=stdout
             initial_catalog = json.dumps(sign(topology, catalog_key, 1, now, now + 3600)).encode()
             publish(catalog_directory, initial_catalog, catalog_public, topology, initialize=True)
         for service in services.values():
-            service.update(mem_limit='128m', cpus=.25)
+            service.update(mem_limit='128m', cpus=args.cpus)
         compose.write_text(json.dumps(model))
         command = ['docker','compose','--parallel','1','-f',str(compose)]
         try:
@@ -272,7 +278,8 @@ log-file=stdout
             if args.role_bundle:
                 deadline = time.monotonic() + 10
                 while True:
-                    ready = request('/health/route','https://backup.routes.test')
+                    try: ready = request('/health/route','https://backup.routes.test')
+                    except OSError: ready = b''
                     if b'200 OK' in ready and b'"matrix":true' in ready and b'"control":true' in ready: break
                     if time.monotonic() >= deadline: raise AssertionError('Route readiness failed: ' + repr(ready))
                     time.sleep(.2)
@@ -326,6 +333,23 @@ else:
                     check_policy(stream, old_secret)
                 with connect('turn.routes.test') as stream:
                     authenticated_allocation(stream, old_secret, lifetime=-60, rejected=True)
+                if args.single_entry:
+                    def legacy_port(protocol):
+                        value = subprocess.check_output([*command, 'port', '--protocol', protocol, 'turn', '3478'], text=True).strip()
+                        host, port = value.rsplit(':', 1)
+                        assert host == '127.0.0.1'
+                        return int(port)
+                    with socket.create_connection(('127.0.0.1', legacy_port('tcp')), timeout=10) as stream:
+                        check_policy(stream, old_secret)
+                    with socket.create_connection(('127.0.0.1', legacy_port('tcp')), timeout=10) as stream:
+                        authenticated_allocation(stream, old_secret, lifetime=-60, rejected=True)
+                    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as stream:
+                        stream.settimeout(10)
+                        transaction = secrets.token_bytes(12)
+                        stream.sendto(struct.pack('!HHI', 1, 0, 0x2112a442) + transaction, ('127.0.0.1', legacy_port('udp')))
+                        response, _ = stream.recvfrom(4096)
+                        assert response[:2] == b'\x01\x01' and response[8:20] == transaction
+                    print('PASS: legacy TURN mapping, authenticated TCP allocation/private-peer denial/expiry and UDP binding (no media)', flush=True)
                 identifiers = subprocess.check_output([*command, 'ps', '-q', 'web', 'turn'], text=True).split()
                 def processes():
                     return subprocess.check_output(['docker', 'inspect', '--format',

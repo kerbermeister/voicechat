@@ -28,6 +28,19 @@ def fixture():
 
 
 class InventoryTests(unittest.TestCase):
+    def test_legacy_turn_is_only_co_located_config_and_never_changes_host_identity(self):
+        inventory = fixture(); inventory['edges'] = [{'id': 'a', 'host': 'core'}]
+        before = deepcopy(inventory)
+        inventory['edges'][0]['legacy_turn'] = True
+        node_inventory.validate(inventory)
+        node_inventory.check_replacement(before, inventory)
+        self.assertEqual(node_inventory.edge_assignment(before, 'a'), node_inventory.edge_assignment(inventory, 'a'))
+        for value in ('true', 1, None):
+            inventory['edges'][0]['legacy_turn'] = value
+            with self.assertRaises(ValueError): node_inventory.validate(inventory)
+        dedicated = fixture(); dedicated['edges'][0]['legacy_turn'] = True
+        with self.assertRaises(ValueError): node_inventory.validate(dedicated)
+
     def setUp(self):
         self.public = load(ROOT / 'infra/three-vps.example.json')
         self.inventory = fixture()

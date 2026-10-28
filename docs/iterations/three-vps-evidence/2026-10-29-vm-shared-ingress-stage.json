@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "legacy_operator_roster_verified": true,
+  "legacy_and_shared_plans_staged_idempotently": true,
+  "old_plan_and_operator_retained": true,
+  "no_runtime_git_environment_or_unit_activation": true,
+  "production_changed": false,
+  "source_sha256": {
+    "shared_ingress.py": "d973c53fd66bd52ceba4f3ccd22cab58842b9feb1b29a3dc640bf4241f2d3966",
+    "role_bootstrap.py": "1711f195c16ca74932fb744a4b0861d019a265c7781d9ad821c494154194188b",
+    "node_inventory.py": "2d2e277394c51542488259061d5531303e6d20fac574d804f4ca1aa286a2f180",
+    "role_config.py": "0247db7af98e17420be0417132e951e95580806f2d2ac67779fcdb80a1d2ff07"
+  },
+  "limits": [
+    "Source/config staging only; no live Caddy adoption, .env update, manager CLI activation or port cutover.",
+    "Content-addressed public operator package retained in disposable VM."
+  ],
+  "fixture_plan_removed": true
+}

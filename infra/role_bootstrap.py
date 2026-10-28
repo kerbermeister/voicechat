@@ -21,7 +21,8 @@ SOURCES = ('role_boot.py', 'role_bootstrap.py', 'core_deploy.py', 'edge_deploy.p
     'render_edge.py', 'edge_config.py', 'deploy.py', 'tls_activation.py', 'tls_runtime.py',
     'tls_material.py', 'client_config.py', 'topology.py', 'node_inventory.py', 'managed_state.py',
     'network_bootstrap.py', 'network_runtime.py', 'firewall_runtime.py', 'firewall_config.py',
-    'tunnel_runtime.py', 'tunnel_config.py')
+    'tunnel_runtime.py', 'tunnel_config.py', 'shared_ingress.py')
+LEGACY_SOURCES = tuple(name for name in SOURCES if name != 'shared_ingress.py')
 
 
 def unit_name(role, edge_id):
@@ -68,7 +69,7 @@ def verify_record(system_root, record):
     name = unit_name(record['role'], record['edge_id'])
     if type(record['schema']) is not int or record['schema'] != 1 or not isinstance(record['files'], dict):
         raise ValueError('Invalid boot ownership record')
-    if set(record['files']) != set(SOURCES) or any(not isinstance(value, str) or not re.fullmatch(r'[a-f0-9]{64}', value) for value in record['files'].values()):
+    if set(record['files']) not in (set(SOURCES), set(LEGACY_SOURCES)) or any(not isinstance(value, str) or not re.fullmatch(r'[a-f0-9]{64}', value) for value in record['files'].values()):
         raise ValueError('Invalid boot source hashes')
     if hashlib.sha256(json.dumps(record['files'], sort_keys=True).encode()).hexdigest() != record['operator_sha256']:
         raise ValueError('Boot source identity changed')
@@ -79,6 +80,24 @@ def verify_record(system_root, record):
         data = network_bootstrap.existing(directory / key)
         if data is None or hashlib.sha256(data).hexdigest() != checksum: raise ValueError('Operator source changed')
     return name
+
+
+def check_sources(system_root, code, contents):
+    operator = network_bootstrap.directory(system_root, code)
+    if operator.exists() and {item.name for item in operator.iterdir()} - set(contents):
+        raise ValueError('Unexpected import in immutable operator source')
+    for key, value in contents.items():
+        data = network_bootstrap.existing(operator / key)
+        if data not in (None, value): raise ValueError('Immutable operator source collision')
+
+
+def install_sources(system_root, code, contents):
+    """Stage the same reviewed package without activating a role or Docker."""
+    check_sources(system_root, code, contents)
+    operator = network_bootstrap.directory(system_root, code, create=True)
+    for key, value in contents.items():
+        if network_bootstrap.existing(operator / key) is None:
+            network_bootstrap.create_file(operator / key, value)
 
 
 def ready(root, role, edge_id=None, *, system_root=Path('/'), run=command):
@@ -128,17 +147,9 @@ def install(root, role, edge_id=None, *, system_root=Path('/'), run=command):
                     allowed.add(actual)
             if actual not in allowed or (before is None and actual is not None and not pending.exists()):
                 raise ValueError('Refusing to replace an unclaimed or modified boot unit')
-            operator = system_root / code
-            network_bootstrap.directory(system_root, code)
-            if operator.exists() and {item.name for item in operator.iterdir()} - set(SOURCES):
-                raise ValueError('Unexpected import in immutable operator source')
-            for key, value in contents.items():
-                data = network_bootstrap.existing(operator / key)
-                if data not in (None, value): raise ValueError('Immutable operator source collision')
+            check_sources(system_root, code, contents)
             managed_state.persist(pending, journal)
-            network_bootstrap.directory(system_root, code, create=True)
-            for key, value in contents.items():
-                if network_bootstrap.existing(operator / key) is None: network_bootstrap.create_file(operator / key, value)
+            install_sources(system_root, code, contents)
             network_bootstrap.directory(system_root, destination.parent.relative_to(system_root), create=True)
             if actual is None: network_bootstrap.create_file(destination, unit)
             elif actual != unit: network_bootstrap.replace_file(destination, unit)

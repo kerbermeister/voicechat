@@ -924,3 +924,18 @@ business routes: точный PROXY trust, strict SNI и VoiceChat certificate s
 отключённым TLS-ALPN challenge. Это оставляет HTTP-01 на прежнем порту 80; config
 прошёл stock Caddy 2.8 validate без сети. Реальный выпуск/renewal и доставка этих
 сертификатов в edge пока не приняты.
+
+`shared_ingress.stage(...)` подготавливает immutable candidate config/override и
+reviewed source package без runtime activation. `compose_override` использует
+Compose !override для портов и volumes: иначе прежний leaf mount может закрыть
+новый Caddyfile в каталоге, а прежний 443 конфликтует с shared-front. Имена Caddy
+volumes и определения остальных сервисов проверены через настоящий Compose 5.5.1.
+Это ещё не manager CLI и не команда миграции работающего Caddy.
+
+Для начальной миграции старого A можно явно добавить `legacy_turn: true` к
+`{"id":"a","host":"core"}`: host3488 TCP/UDP направляется на авторизованный
+listener3478. Флаг отсутствует по умолчанию и запрещён для dedicated edge. Он
+нужен при сохранении старых client TURN URI с TTL1h; shared secret при переносе
+должен совпадать с прежним. Удалять aliases можно после принятого перехода и
+истечения кешей, отдельным edge scope. Unit и coturn fixture прошли, но настоящий
+production host3488 и пользовательские звонки этим ещё не приняты.

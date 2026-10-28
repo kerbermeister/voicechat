@@ -78,8 +78,10 @@ def validate(value, topology=None):
     fields(value['core'], keys)
     for edge in edges:
         if isinstance(edge, dict) and 'host' in edge:
-            fields(edge, ('id', 'host', 'shared_tls') if 'shared_tls' in edge else ('id', 'host'))
+            fields(edge, ('id', 'host', *(name for name in ('shared_tls', 'legacy_turn') if name in edge)))
             if 'shared_tls' in edge: shared_tls(edge['shared_tls'])
+            if 'legacy_turn' in edge and type(edge['legacy_turn']) is not bool:
+                raise ValueError('Legacy TURN compatibility must be a boolean')
             if edge['host'] != 'core':
                 raise ValueError('Only an explicit core host reference is supported')
         else:

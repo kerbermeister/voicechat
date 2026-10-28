@@ -141,6 +141,10 @@ def edge(public, inventory, edge_id, subnet='10.241.0.0/28'):
             'depends_on': {'configure': {'condition': 'service_completed_successfully'}},
         },
     }
+    entry = next(item for item in inventory['edges'] if item['id'] == edge_id)
+    if entry.get('legacy_turn', False):
+        # Existing clients may retain Synapse's old :3488 URI for its 1h TTL.
+        services['turn']['ports'] += ['3488:3478/tcp', '3488:3478/udp']
     for name, service in services.items():
         service['logging'] = deepcopy(LOGGING)
         service['environment'] = {'PYTHONDONTWRITEBYTECODE': '1'} if name in ('configure', 'route-health') else {}

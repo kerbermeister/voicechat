@@ -286,11 +286,63 @@ Repo `kerbermeister/avito-helper`; main push автоматически deploy. 
 Не push/merge main до установки защищённого legacy-compatible shared config/CLI.
 Нужен workflow hook к managed ingress CLI + global lock; Caddy-only scope должен
 сохранять backend/frontend/PostgreSQL IDs. Caddy config лучше directory mount,
-чтобы atomic replace не оставлял старый inode bind mount. Runtime .env не копировать.
+чтобы atomic replace не оставлял старый inode bind mount. Production .env не
+переносить в VM/CI/локальные fixtures.
 Production Caddy public image digest:
 `caddy@sha256:226d1f059b75399fe19182893c7184591c07b97afc8dfcf44eeb80c9a77a530f`,
 DOMAIN `listing-helper.flashhub.net`, compose `/opt/avito-helper/deploy/docker-compose.yml`.
 TCP80/443, UDP443 отсутствует. Изменений production/DNS по-прежнему нет.
+
+### 29 октября: следующий блок shared ingress
+
+Проверенный core checkpoint сохранён commit `4ca5f3a`. Новые изменения ниже пока
+не закоммичены. `shared_ingress.py` содержит renderers legacy config/Compose override
+и `stage(...)`: immutable планы по digest + тот же reviewed operator package,
+без создания runtime/.env/Git checkout/systemd unit. Реальная VM staging проверка
+прошла, включая идемпотентность обоих режимов и сохранение прежнего плана:
+[evidence](three-vps-evidence/2026-10-29-vm-shared-ingress-stage.json).
+`role_bootstrap` выделяет source-only staging и принимает ровно два известных
+roster (до/после shared_ingress.py) для проверки прежних установок; ready по-прежнему
+требует полный текущий target. Проверены unit upgrade и настоящий старый VM receipt.
+Планы fixture удалены, content-addressed public source package оставлен в VM.
+
+Compose 5.5.1 проверил !override для volumes/ports: leaf Caddyfile mount удалён,
+старые deploy_caddy_data/config сохранены, business service definitions не меняются;
+shared Caddy сохраняет TCP80 и отдаёт 443 внешнему front. Внешняя сеть нормализуется
+Compose с пустым ipam mapping; fixture assertion уточнён после диагностики:
+[evidence](three-vps-evidence/2026-10-28-vm-shared-ingress-compose.json).
+
+Добавлен co-located `legacy_turn: true` (default false, dedicated edge не принимает
+этот флаг): aliases 3488→3478 TCP/UDP сохраняют старые cached TURN URI. Host identity
+и generation не меняются. Реальный `check_route_tls.py --role-bundle --single-entry
+--cpus 1` прошёл в VM: TCP auth allocation/expiry/private peer denial, UDP binding,
+signed catalog update, TLS rotation/rollback и secret overlap/retirement:
+[evidence](three-vps-evidence/2026-10-29-vm-legacy-turn.json).
+Публиковались random loopback ports, не настоящий host3488; это не UDP relay media
+или E2EE/device acceptance. Первый TCG run с quota .25 hit readiness timeout, не
+принят. Добавлены fixture CPU option (старый default сохранён) и retry временных
+readiness OSError в прежнем bounded deadline. Обе попытки полностью очищены.
+
+Итоговая infra regression **172 tests PASS**, Flutter повторно не собирался.
+Production по-прежнему не менялся; свежая read-only проверка Avito:
+main `83df69c3c5add7ae9c1b4a8370bb220ba9211b27`, dirty только deploy/Caddyfile,
+repo/.git root:root 0755, .env и Caddyfile root:root 0644. Содержимое .env не
+экспортировалось. Последний production VoiceChat — прежний 8bcbd91… release.
+
+Следующее: controller фактического legacy adoption/rollback и `avito-update`
+manager CLI ещё отсутствуют. Не устанавливать draft workflow hook/не push main
+Avito до их готовности. Минимальный путь: prepared config вне Avito Git; directory
+mount; persistent COMPOSE_FILE в server-local .env; тот же global apply.lock для
+Avito update и VoiceChat migration. До mutation сверить pinned Caddy image,
+mounted config/volumes/ports, adapted semantic config, Git HEAD/dirty paths и
+neighbor container IDs. `.env` сохранять byte-for-byte кроме управляемой строки;
+использовать Compose для dotenv interpolation/JSON config comparison, не писать
+свой parser секретов. Config из старого Git HEAD и текущий custom Caddyfile должны
+быть семантически одинаковы после добавления прежнего VoiceChat block. Затем
+candidate validation, journal, targeted Caddy-only recreate/reload + HTTPS checks,
+preserve neighbor IDs и автоматический возврат при ошибке. Публикация нового
+shared-front/port443, ACME issuance/renewal/export в edge, legacy core adoption,
+full/SSH/CI integration, production release и обязательный macOS update остаются.
 
 ## Неизменные условия
 
@@ -307,9 +359,11 @@ TCP80/443, UDP443 отсутствует. Изменений production/DNS по
 - Все поддерживаемые клиенты и будущий Windows подчиняются одному контракту.
   Написание Windows-клиента не входит в эту задачу. Внешний backup — после MVP.
 - `/ponytail` и AGENTS.md действуют. Не создавать subagents без прямого запроса.
-- Исходная ветка `codex/calls-and-message-todos`, baseline
-  `bca5b46f582cac1bee080736985950d039b46a0e`. Работа не закоммичена.
-  Сначала прочитать `git status`; не сбрасывать существующие чужие изменения.
+- Историческая исходная ветка `codex/calls-and-message-todos`, baseline
+  `bca5b46f582cac1bee080736985950d039b46a0e`; её пользовательские изменения сохранены.
+  Текущий worktree — `~/.codex/worktrees/three-vps-rollout/VoiceChat`, ветка
+  `codex/three-vps-rollout`, checkpoint `4ca5f3a` плюс описанные выше изменения.
+  Сначала прочитать `git status`; не сбрасывать чужие изменения.
 
 ## Где остановились
 

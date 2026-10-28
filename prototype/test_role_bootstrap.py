@@ -53,6 +53,19 @@ class RoleBootInstallationTests(unittest.TestCase):
         self.assertEqual(self.install(), record)
         self.assertFalse((self.root / 'runtime/boot/pending.json').exists())
 
+    def test_source_only_package_does_not_claim_a_unit_and_legacy_roster_upgrades(self):
+        _, code, contents, _, record = role_bootstrap.plan(self.root, 'core', None)
+        role_bootstrap.install_sources(self.system, code, contents)
+        role_bootstrap.verify_record(self.system, record)
+        self.assertFalse((self.system / 'etc/systemd/system/voicechat-core.service').exists())
+        self.assertEqual(self.calls, [])
+        with patch.object(role_bootstrap, 'SOURCES', role_bootstrap.LEGACY_SOURCES):
+            previous = self.install()
+        current = self.install()
+        self.assertNotEqual(previous['operator_sha256'], current['operator_sha256'])
+        role_bootstrap.verify_record(self.system, previous)
+        self.ready()
+
     def test_interrupted_enable_blocks_deployment_and_resumes_same_source(self):
         self.fail_enable = True
         with self.assertRaises(RuntimeError): self.install()

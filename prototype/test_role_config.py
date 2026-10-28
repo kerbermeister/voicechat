@@ -64,6 +64,22 @@ class RoleConfigTests(unittest.TestCase):
         inventory['edges'][0]['shared_tls'].update(subnet='10.241.0.0/29', legacy_ip='10.241.0.2', ingress_ip='10.241.0.3')
         with self.assertRaisesRegex(ValueError, 'overlap'): role_config.edge(public, inventory, 'a')
 
+    def test_opt_in_legacy_turn_keeps_cached_3488_uris_on_the_same_authenticated_listener(self):
+        public = load(ROOT / 'infra/single-vps.example.json')
+        inventory = {**self.inventory, 'edges': [{'id': 'a', 'host': 'core'}]}
+        before, _ = role_config.edge(public, inventory, 'a')
+        inventory['edges'][0]['legacy_turn'] = True
+        after, _ = role_config.edge(public, inventory, 'a')
+        self.assertEqual(after['services']['turn']['ports'], before['services']['turn']['ports'] +
+                         ['3488:3478/tcp', '3488:3478/udp'])
+        for name in before['services']:
+            old, new = deepcopy(before['services'][name]), deepcopy(after['services'][name])
+            if name == 'turn': new.pop('ports'); old.pop('ports')
+            self.assertEqual(old, new)
+        inventory['edges'][0]['legacy_turn'] = False
+        disabled, _ = role_config.edge(public, inventory, 'a')
+        self.assertEqual(disabled, before)
+
     def test_edge_has_only_role_secrets_and_no_business_data(self):
         compose, _ = role_config.edge(self.public, self.inventory, 'c')
         self.assertEqual(set(compose['services']), {'configure', 'ingress', 'web', 'route-health', 'turn'})

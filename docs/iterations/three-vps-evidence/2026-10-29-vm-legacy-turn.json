@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "fixture_arguments": [
+    "--role-bundle",
+    "--single-entry",
+    "--cpus",
+    "1"
+  ],
+  "legacy_3488_aliases_rendered": true,
+  "mapped_listener_authenticated_tcp_allocation": true,
+  "expired_credentials_rejected": true,
+  "private_metadata_peer_permissions_denied": true,
+  "mapped_udp_stun_binding": true,
+  "tls_sni_rotation_and_secret_overlap_regression": true,
+  "signed_catalog_atomic_update_without_proxy_restart": true,
+  "fixture_resources_removed": true,
+  "source_sha256": {
+    "prototype/check_route_tls.py": "15d8feba4ef7063d454d9cf1228c596a85e9bde8b531dcff30ac5448dd9a101d",
+    "prototype/turn_tls_probe.py": "b903864adc0e9d882fe7f81807c91e65f1df6d904fd5b392c84dd2dd26993fcb",
+    "infra/node_inventory.py": "2d2e277394c51542488259061d5531303e6d20fac574d804f4ca1aa286a2f180",
+    "infra/role_config.py": "0247db7af98e17420be0417132e951e95580806f2d2ac67779fcdb80a1d2ff07"
+  },
+  "limits": [
+    "Published ports were random loopback ports; production host port 3488 was not bound.",
+    "No UDP relay payload, real media/device, WireGuard or production cutover acceptance.",
+    "Initial .25 CPU TCG fixture hit readiness timeout and was not accepted; successful rerun used per-service CPU quota 1."
+  ]
+}
