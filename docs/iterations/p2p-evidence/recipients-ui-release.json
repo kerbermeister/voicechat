@@ -1,0 +1,75 @@
+{
+  "date": "2026-10-28",
+  "version": "1.11.1+23",
+  "commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "macOS": {
+    "published": true,
+    "packageFilesAndLinks": 285,
+    "zipDmgBuildMatch": true,
+    "signatureVerified": true,
+    "https": {
+      "version": "1.11.1+23",
+      "commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+      "httpsHashes": {
+        "appcast.xml": {
+          "sha256": "03cc2b9564ab0b3ef1e7fc4f57e385dbb85e821e5ac5d0054c830328a833f740",
+          "bytes": 20746
+        },
+        "VoiceChat.zip": {
+          "sha256": "fa017949534513f66f44e17cfe45e86a9ecfc94322e0c5b55d633b62b70bf33b",
+          "bytes": 37003957
+        },
+        "VoiceChat.dmg": {
+          "sha256": "7dbe150a75c73579348d72db1bb95b3ae6b7f628758562ac258ac90c707f2f72",
+          "bytes": 41682365
+        }
+      },
+      "fullHttpsHashVantage": "VPS fetching canonical public HTTPS origin with certificate verification",
+      "externalHttpsHeadVerified": true,
+      "oldClientKeyVerified": true,
+      "enclosureVerified": true
+    },
+    "candidateProfile": {
+      "accountMatches": true,
+      "deviceMatches": true,
+      "matchingOldMessageTexts": 3
+    },
+    "installedBuild": 23,
+    "standardUpdateVerified": false,
+    "installation": "local exact published package after UI automation timeouts",
+    "standardUpdateFailure": "UI automation timeouts; no successful 22 -> 23 button installation claimed",
+    "installedProfile": {
+      "build": 23,
+      "accountMatches": true,
+      "deviceMatches": true,
+      "matchingOldMessageTexts": 3,
+      "standardUpdateVerified": false,
+      "installation": "local exact published package"
+    },
+    "installedVersionVisible": "1.11.1 (\u0441\u0431\u043e\u0440\u043a\u0430 23)",
+    "signedChannelCheck": "\u0421\u043e\u0432\u043c\u0435\u0441\u0442\u0438\u043c\u044b\u0445 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0439 \u043d\u0435\u0442."
+  },
+  "web22": {
+    "workflow": 40635002327,
+    "commit": "ffb6eeb8647a68453fe9f30bbf12c857013db1c6",
+    "backendUnchanged": true
+  },
+  "web23": {
+    "workflow": 40636142441,
+    "status": "success",
+    "commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+    "control": "ghcr.io/kerbermeister/voicechat/control@sha256:599629e7cae958ebbf470ca433ac4b403c949a93ac742ba11781967bb6613603",
+    "web": "ghcr.io/kerbermeister/voicechat/web@sha256:68739c97b37b5d04ba7d11a3c7c4126e7f86dbaa6b36a5ac35ce33a293f69f4f",
+    "backendUnchanged": true,
+    "rollbackCommit": "ffb6eeb8647a68453fe9f30bbf12c857013db1c6",
+    "publicVersion": "1.11.1+23",
+    "cacheControl": "no-cache"
+  },
+  "tests": {
+    "p2pTargetedPassed": 8,
+    "web22Ci": 40634932252,
+    "web23Ci": 40636063645,
+    "web23CiStatus": "success",
+    "includesAndroidPreviewBuild": true
+  }
+}
