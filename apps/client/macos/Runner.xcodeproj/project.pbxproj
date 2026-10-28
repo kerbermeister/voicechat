@@ -21,6 +21,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		AABBCC001122334455660021 /* MacUpdateRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCC001122334455660020 /* MacUpdateRoute.swift */; };
         AABBCC001122334455660010 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = AABBCC001122334455660012 /* Sparkle */; };
 		AABBCC001122334455660008 /* MacUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCC001122334455660007 /* MacUpdater.swift */; };
 		AABBCC001122334455660006 /* DesktopNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCC001122334455660005 /* DesktopNotifications.swift */; };
@@ -67,6 +68,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		AABBCC001122334455660020 /* MacUpdateRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUpdateRoute.swift; sourceTree = "<group>"; };
 		AABBCC001122334455660007 /* MacUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUpdater.swift; sourceTree = "<group>"; };
 		AABBCC001122334455660005 /* DesktopNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopNotifications.swift; sourceTree = "<group>"; };
 		331C80D5294CF71000263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -188,6 +190,7 @@
 				33CC10F02044A3C60003C045 /* AppDelegate.swift */,
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				AABBCC001122334455660007 /* MacUpdater.swift */,
+				AABBCC001122334455660020 /* MacUpdateRoute.swift */,
 				AABBCC001122334455660005 /* DesktopNotifications.swift */,
 				AABBCC001122334455660003 /* NoteCamera.swift */,
 				AABBCC001122334455660001 /* PlatformFiles.swift */,
@@ -455,6 +458,7 @@
 			files = (
 				33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */,
 				AABBCC001122334455660008 /* MacUpdater.swift in Sources */,
+				AABBCC001122334455660021 /* MacUpdateRoute.swift in Sources */,
 				AABBCC001122334455660006 /* DesktopNotifications.swift in Sources */,
 				AABBCC001122334455660004 /* NoteCamera.swift in Sources */,
 				AABBCC001122334455660002 /* PlatformFiles.swift in Sources */,

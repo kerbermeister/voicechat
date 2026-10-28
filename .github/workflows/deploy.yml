@@ -23,6 +23,8 @@ jobs:
     environment: production
     env:
       PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+      CLIENT_ROUTE_CONFIG: ${{ vars.CLIENT_ROUTE_CONFIG }}
+      CLIENT_ROUTE_CATALOG_KEY: ${{ vars.CLIENT_ROUTE_CATALOG_KEY }}
       DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
       DEPLOY_USER: ${{ vars.DEPLOY_USER }}
       DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT }}
@@ -32,9 +34,13 @@ jobs:
       - name: Validate public deployment configuration
         run: |
           test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER" && test -n "$DEPLOY_ROOT"
-          python3 infra/client_config.py "$PUBLIC_URL" /tmp/client.json
+          python3 infra/client_config.py --environment "$PUBLIC_URL" /tmp/client.json
           python3 -c 'import json; assert json.load(open("/tmp/client.json"))["MATRIX_URL"].startswith("https://")'
           python3 infra/release_source.py
+      - name: Reject routed client deployment through legacy single-host deploy
+        if: ${{ inputs.deploy }}
+        # shortcut: routed builds remain build-only until role deploy gates are connected.
+        run: python3 -c 'import json; assert "ROUTE_CONFIG" not in json.load(open("/tmp/client.json")), "Use deploy=false for routed candidates until role rollout is implemented"'
       - name: Set up pinned SSH identity
         if: ${{ inputs.deploy || inputs.mode == 'web' }}
         env:

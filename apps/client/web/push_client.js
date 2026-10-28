@@ -8,7 +8,8 @@
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'Этот браузер не поддерживает push-уведомления.';
     return null;
   }
-  async function request(base, token, path, body) {
+  async function request(base, token, path, body, routedRequest) {
+    if (routedRequest) return JSON.parse(await routedRequest(path, body ? JSON.stringify(body) : null));
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
@@ -17,6 +18,7 @@
         headers: {'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json'},
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
+        redirect: 'error',
       });
       if (!response.ok) throw new Error('Сервис уведомлений недоступен. Повторите позже.');
       return await response.json();
@@ -46,13 +48,13 @@
     });
   }
   window.VoiceChatPush = {
-    async enable(base, token) {
+    async enable(base, token, routedRequest) {
       const reason = availability();
       if (reason) throw new Error(reason);
       // Request before any await: iOS requires the button's transient activation.
       const permission = Notification.requestPermission();
       if (await permission !== 'granted') throw new Error('Разрешите уведомления для VoiceChat в настройках iPhone или браузера.');
-      const config = await request(base, token, 'config');
+      const config = await request(base, token, 'config', null, routedRequest);
       const registration = await worker();
       let subscription = await registration.pushManager.getSubscription();
       const expectedKey = keyBytes(config.public_key);
@@ -61,25 +63,25 @@
         await subscription.unsubscribe(); subscription = null;
       }
       subscription ??= await registration.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: expectedKey});
-      const response = await request(base, token, 'subscribe', {action: 'register', subscription: subscription.toJSON()});
+      const response = await request(base, token, 'subscribe', {action: 'register', subscription: subscription.toJSON()}, routedRequest);
       try {
         await bind(registration, response.binding);
       } catch (error) {
         await Promise.allSettled([
-          request(base, token, 'subscribe', {action: 'remove'}),
+          request(base, token, 'subscribe', {action: 'remove'}, routedRequest),
           subscription.unsubscribe(),
         ]);
         throw error;
       }
       return 'Уведомления включены. Звук в фоне зависит от настроек iPhone и режима «Фокусирование».';
     },
-    async disable(base, token) {
+    async disable(base, token, routedRequest) {
       if (!('serviceWorker' in navigator)) return 'Уведомления выключены.';
       const registration = await navigator.serviceWorker.getRegistration(workerURL.href);
       if (registration) {
         const subscription = await registration.pushManager.getSubscription();
         if (!subscription) return 'Уведомления выключены.';
-        await request(base, token, 'subscribe', {action: 'remove'});
+        await request(base, token, 'subscribe', {action: 'remove'}, routedRequest);
         await bind(registration, null);
         if (subscription) await subscription.unsubscribe();
         for (const notification of await registration.getNotifications()) notification.close();

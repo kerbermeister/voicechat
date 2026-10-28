@@ -17,6 +17,10 @@ import 'conversation_header.dart';
 import 'app_motion.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'app_update.dart' show updateOrigin;
+import 'route_transport.dart';
+import 'route_coordinator.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'identity_field.dart';
 import 'package:flutter/material.dart';
@@ -57,6 +61,7 @@ import 'people_picker.dart';
 import 'registration_screen.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'matrix_probe.dart';
+import 'route_status_banner.dart';
 import 'local_store.dart';
 import 'theme.dart';
 import 'user_action_error.dart';
@@ -242,6 +247,11 @@ class _ProbeScreenState extends State<ProbeScreen> {
     contacts!,
     kIsWeb ? Uri.base : Uri.parse(server.text.trim()),
   );
+
+  http.Client _pushClient() {
+    final network = probe!.client.httpClient;
+    return network is RouteTransport ? network.fork() : http.Client();
+  }
 
   @override
   void initState() {
@@ -1536,6 +1546,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
         await disablePushNotifications(
           tokenServer.text.trim(),
           probe!.client.accessToken!,
+          createClient: _pushClient,
         );
       }
       await p2p?.close();
@@ -1805,6 +1816,33 @@ class _ProbeScreenState extends State<ProbeScreen> {
       barrierDismissible: !MacOSNotifications.supported,
       animationStyle: appAnimationStyle(context),
       builder: (_) => AppUpdateDialog(
+        updateRoute: () {
+          final network = probe?.client.httpClient;
+          if (network is! RouteTransport ||
+              network.origin != Uri.tryParse(updateOrigin)) {
+            return null;
+          }
+          final selected = network.coordinator == null
+              ? network.selected
+              : network.coordinator!.route(RouteService.matrix)?.origin;
+          if (selected == null) {
+            throw const FormatException(
+              'Нет доступного входа. Повторите проверку после восстановления связи.',
+            );
+          }
+          return {
+            'canonicalOrigin': updateOrigin,
+            'selectedOrigin': selected.toString(),
+          };
+        },
+        createClient: () {
+          final network = probe?.client.httpClient;
+          if (network is RouteTransport &&
+              network.origin == Uri.tryParse(updateOrigin)) {
+            return network.fork();
+          }
+          return http.Client();
+        },
         prepareInstall: () async {
           if (busy ||
               restoringSession ||
@@ -2106,6 +2144,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                 : await enablePushNotifications(
                     tokenServer.text.trim(),
                     probe!.client.accessToken!,
+                    createClient: _pushClient,
                   ),
           );
         case 'push-disable':
@@ -2115,6 +2154,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                 : await disablePushNotifications(
                     tokenServer.text.trim(),
                     probe!.client.accessToken!,
+                    createClient: _pushClient,
                   ),
           );
         case 'avatar':
@@ -2445,7 +2485,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
                   icon: const Icon(Icons.close),
                 ),
               ),
-            if (!online)
+            if (probe!.routes != null)
+              RouteStatusBanner(coordinator: probe!.routes!, syncOnline: online)
+            else if (!online)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(8),

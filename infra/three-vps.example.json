@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "service_id": "voicechat",
+  "matrix_server_name": "chat.example.com",
+  "canonical_origin": "https://chat.example.com",
+  "web_origins": ["https://chat.example.com", "https://b.example.com", "https://c.example.com"],
+  "edges": [
+    {"id": "b", "origin": "https://b.example.com", "turn_host": "turn-b.example.com"},
+    {"id": "c", "origin": "https://c.example.com", "turn_host": "turn-c.example.com"}
+  ]
+}

@@ -1,0 +1,340 @@
+{
+  "recorded_at": "2026-10-28T11:35:31.275275+00:00",
+  "state": "Local single-host, LiveKit recovery, role manifest and WireGuard peer iterations verified; MVP remains incomplete",
+  "baseline_commit": "bca5b46f582cac1bee080736985950d039b46a0e",
+  "source": "Uncommitted working tree; unrelated prior changes preserved",
+  "production_changed": false,
+  "dns_changed": false,
+  "committed_or_pushed": false,
+  "source_sha256": {
+    ".github/workflows/android-release.yml": "121b4c9360af99cb75f9dffdff12c4e3ab7ed26ac019f00541a39e5f468dca86",
+    ".github/workflows/deploy.yml": "c03ce5fb7e88785ed8a8ca72668bccfc3829392c2afb6eaeb6dfe2413b2ac5a1",
+    ".github/workflows/macos.yml": "711cc5e7c0371fb15e68baec9b886aaaff8683a5372f2b6f01d1dccfc55cd3fd",
+    ".github/workflows/prototype.yml": "29940388bde002d298abc08cd2c1712d8823d4b01d389951ed55731436b5718b",
+    "apps/client/integration_test/route_livekit_test.dart": "5b6534ad4f4fcd4e9ffb0f127eaca4497bddaf4a7af6ffce2f03e3afa84d81a3",
+    "apps/client/integration_test/route_transport_test.dart": "a47db7b0788379fd5f45853aed61df5605ec0c00b6e78d19b0e7ac833b9f0e62",
+    "apps/client/lib/call_probe.dart": "223ea230e55880c836d583507b7f01d0f09ac9b715e16a8e3dff254e0c2ca1c4",
+    "apps/client/lib/media_routes.dart": "be28fbcd041252ee3d02f6ccd125a619f5b5363a54c01e74e030b17624375481",
+    "apps/client/lib/p2p/service.dart": "31525667d61cb0e7396d60c0c1ee9df06a0ea9a3b11849f7d15c911ccc9db9f2",
+    "apps/client/lib/route_config.dart": "8ec85eb3bb4fd55392a129351798fd6d69f111590057600af5e818552aecdb8a",
+    "apps/client/lib/route_coordinator.dart": "c1ddddbdc8e1d6d12745c2b2d8aa6036c07ba55e3e11a5bb119062f5e7294bfe",
+    "apps/client/lib/route_transport.dart": "6b9aa61efeb94a7c147c521c59e9caab3b7672d0dbe24e912ed082a277c4af3a",
+    "apps/client/lib/routed_livekit_engine.dart": "acd8a9585ac2668ab68eb19b05b802bdb9474061ee43d6edecae6697fb916b37",
+    "apps/client/lib/screen_controller.dart": "36211135a2c7cbd4f6d6448d347a44176892541471acab2f3fe3365057a52968",
+    "apps/client/test/media_routes_io_test.dart": "806b1bd7235d12b4178fabb785f9f0a8023b54c322f04850cc92b9c17457f7e9",
+    "apps/client/test/media_routes_test.dart": "d42f72b4f483b7e9a805e09c4915fd09fb0115c7a69560b04d57e5452f8e50fb",
+    "apps/client/test/route_coordinator_test.dart": "39f8c238e6a218383d1a59529cac1c22a936cfa502d2b6a39ef78aa8e2f419af",
+    "apps/client/test/route_fixture.dart": "a34343fb03a8277c1ebf3a1f52a782ab7ec207b0103bbb4e50ba3966a3e0efe2",
+    "apps/client/test/route_status_banner_test.dart": "cc66c569c72f7ebcb484190fa72bfb148f2b53ae5edf0094f43a7440b761354e",
+    "apps/client/test/routed_livekit_engine_test.dart": "edf9ff27f3ac517bf702cfc7aa22fc1f49abd215387f009af0c6caffa995259e",
+    "apps/client/tool/route_catalog_web_probe.dart": "da1458224355899bd65aac1023936444743c0b8caf356081be3f9616f7e46cd9",
+    "infra/client_config.py": "33237386efaa677d9c7dc880d687268c4e698028bb397e2247448ac9fb322d72",
+    "infra/host_preflight.py": "d27ebb6543e8b85bb2580cb59d7ae0f783993e02e6e1ba582f0bb7fc7dc31b0e",
+    "infra/node_inventory.py": "53be1c20e2ba9050ef32ec0fefc1234d85bc67b54086aed303b13ad16c0b5fcf",
+    "infra/render_roles.py": "b209a8032f8b4a327c644e00dd8964844de0a6bde550897f47bec912ca7b6b77",
+    "infra/role_config.py": "1b51b8e4e6c1b693360206a0b033b54a80a8273b6c564f8922e3f06eccf3dcfb",
+    "infra/role_release.py": "b1d4d6dbb9f3fd74ed27b8dc6df422ec246a8f0dc2cfdca712da2a06b8384ca1",
+    "infra/single-node-inventory.example.json": "b0937dedc51eab042758121c3c75530d4c9a734a674c6d067e8037478b8b62fb",
+    "infra/single-vps.example.json": "b281046e0af6a6bd2b61cdcf487401599c2de1788dfe112a36d6763030086435",
+    "infra/topology.py": "6995c97f2992829894d230816624e6ebe4ef3760f242ed31aa038878ebe6ff14",
+    "infra/tunnel-public-keys.example.json": "607218490917039ea1a6042ebcb15951ff5f2e61de378dcd962c483b3e63bbe9",
+    "infra/tunnel_config.py": "0c78473d5071a091fe1765978b10b1c9457115884927232b6247b53994210b53",
+    "infra/tunnel_runtime.py": "c9a5ffb293b48a568adf2acd0b6f2af7a9d31d6b5018e3e88b3be526baea3a32",
+    "prototype/check_role_config.py": "92e7f2da082680237fb592c4a26ab9a7d40e779a3442ba04a708eef9f3f98746",
+    "prototype/check_route_catalog_web.cjs": "e4663046b7280232e2cbe5f72cae1505096ccddcf1dd04c67ea1295690d0a03e",
+    "prototype/check_route_catalog_web.py": "b31fc3850a34f0fc29c402350fb0468bb22b818155c38f8d84110ed863b3e722",
+    "prototype/check_route_livekit.py": "a9ee389ca3ade664842ca3dc483522cc80761c1eddb393a11af725ee49cb940e",
+    "prototype/check_route_tls.py": "9a7cf9b5e340b3fe80c4f2cf81698b65e88bd20b27794dbeb5fe5e39fb95a840",
+    "prototype/check_route_web.py": "7d23663e8eab6c7d56018e72d5295a73a329a80d2c7463f83e0ae2d95b35455c",
+    "prototype/check_three_vps.py": "922a6e01d14a834cf0e08ed6c2fd78db012a483b494c6b243a9aba8640324183",
+    "prototype/check_tunnel_config.py": "bdb7e0cae6114f65ba5fe19b274d15ead8541fa2736471b5b5a5030808a2883b",
+    "prototype/check_tunnel_runtime.py": "41d68450abcf15a7cb444390cb428b51a78a656b97165898c4c42ecb2f54f74e",
+    "prototype/test_client_route_build.py": "ac740607b5f26c8be01d1b2c97e276fa476ef59353c30613d84234f5c4f99985",
+    "prototype/test_host_preflight.py": "c9bb1bb96d48c5561f9170f41a14007cb5843f2aca39d559f04322d1c0342475",
+    "prototype/test_role_release.py": "577108326afdcb4260391593c734e35ce9995df50dc20c2d4c300b8b54a4140a",
+    "prototype/test_topology.py": "7106025f9b79f2460bf30bd4c484b0de0aef24868a0cf6ebcfbeaebc8b48fa8f",
+    "prototype/test_tunnel_config.py": "23e56abd5ca2e7b81f0eb5d8e5becdfc619cccf3ef906a8c306ed4ea4ce1641e",
+    "prototype/test_tunnel_runtime.py": "8fda1a2e5b633062554e2f4665e7ac76ca043bb453c1159985c54de2ad7bddee",
+    "prototype/tunnel.Dockerfile": "4a99d59aac78393ecac239f0a21dd364e0e7ddbef7e0b526c59807f0d4fde52b",
+    "infra/firewall_config.py": "987edd096d5478be26c2c6cba4a99b2b9c2658f8e8afb569dd95d083b151b9c1",
+    "infra/firewall_runtime.py": "30c9ec25283be7c613548bc1a8868c14cb45b093e0e4898dcd6f511d2eff9afc",
+    "infra/managed_state.py": "d063dfbb9700ec17c7ef732bb9c0efc79cdf29cdd80a01eb60f7e29a3e4eda80",
+    "prototype/test_firewall_config.py": "b1df793e34fb532d98d33db785e805db0d2f74a8755a74a55f48fdb9b4d7a7ac",
+    "prototype/test_firewall_runtime.py": "45b8afa9a5cd3e3825764b915c27e95ffa6a410145acb74779bb8a449f43d160",
+    "prototype/check_firewall_config.py": "8977e36500f82be7e958e210fe58915620b5e84d30315eb446941d72047d0907",
+    "infra/network_runtime.py": "bb2edbfba6e3b2eb6e9465d22f448e3e73a8de9be7f0b4e9c7af42c40c2c0779",
+    "infra/voicechat-network.service": "c0f003bb8f17870c7942fce725d51d525fcca11c078ab7962cea41d3a80894d7",
+    "infra/voicechat-docker-network.conf": "dd5858789491bdf323898688a23976c91cb81e49c0fc012d2aabf2ec0a588e6f",
+    "prototype/test_network_runtime.py": "56cc64a4266c12c19ee844e1ef80b22c8dc6bd6f21baca982d4b852081cf3973",
+    "prototype/check_network_service.py": "ddb662934954a1ca887838036f4060aa7387387e199912e91cebab91830bfb53",
+    "infra/host_connection.py": "33bdc90ad21924d6345b9c94941cfbcd088989cb680712fd6ef4512a8ccec909",
+    "infra/network_bootstrap.py": "b2180b1ae1047407d83ee3062ba223273607bbb410586f2c026fc2102c576ece",
+    "prototype/test_host_connection.py": "a4df27d2134733e4e1ad0b46fb8ecb5e6112f791bd65d1f2b24b608fa3b63d6b",
+    "prototype/test_network_bootstrap.py": "557726cdcab7dd40753cb8a88f7a136d46d93ffad16a6903b81e1b5cfe04b1e1",
+    "prototype/check_host_connection.py": "80d054d2c4e9e4bb8593afd825a3130933b05c6bfb51d7571e7c79c25f164633",
+    "infra/tls_material.py": "3b8cc07325d4658c61e5b144b7497651473cf354556d6392f3e2cadcf2d58954",
+    "infra/acme.py": "d7b65c42a29d623274af94bf24c8abe90c20d8074348c936f434d9fe4a6836ea",
+    "infra/acme-tools.json": "0ea0ef87b727621aa788f72d504ae7f5c7c25abe789fbfb29583aaca72558d6e",
+    "infra/acme-duckdns.example.json": "47d3ad7fadad1223cde6d6b7170546c6355ade2896071faac5e19a0a271cc73c",
+    "prototype/test_tls_material.py": "75c8564dc559b7b75b0335ecc2eb8f80be155ce69105174b3f63614367616d75",
+    "prototype/test_acme.py": "bec87bad82093abb644b5e959721db6b708fa6a1e62558a44509d6dc7950b610",
+    "prototype/check_acme_cli.py": "947447aea1889b19bf2801bd5b93df1fc9f7e4cdc07bfc6c157c592c39fb83dc"
+  },
+  "python_regression_tests_passed": 98,
+  "flutter_media_p2p_regressions_passed": 36,
+  "flutter_focused_final_adapter_tests_passed": 5,
+  "flutter_analyze": "No issues found",
+  "single_host": {
+    "role_project": "voicechat-role-32b6c4f1173d",
+    "tls_project": "voicechat-sni-7ce1e02b59e2",
+    "native_matrix_project": "voicechat-routes-222b1be15ec7",
+    "result": "passed",
+    "bootstrap_entries": 1,
+    "discovered_entries": 3,
+    "profile_and_file_decryption_after_old_entries_lost": true
+  },
+  "livekit": {
+    "project": "voicechat-livekit-0ed8730e0724",
+    "result": "passed",
+    "recovery_ms": 670,
+    "turn_refreshes": 2,
+    "same_participant_on_resume": true,
+    "data_before_after": true,
+    "full_restart_ms": 339,
+    "data_after_full_restart": true,
+    "excludes": [
+      "Decoded application audio/video E2EE",
+      "TURN-to-SFU relay or TURN/TLS media",
+      "External networks and hardware call/screen acceptance",
+      "Actual call lease revocation under failures"
+    ]
+  },
+  "wireguard": {
+    "project": "voicechat-tunnel-e592e872e49b",
+    "result": "passed",
+    "tools_image_id": "sha256:7bad72e2d86ec1353d57d9687b69ca92134fce68edd07dcf776f7cdec0a181ad",
+    "packages": {
+      "wireguard-tools": "1.0.20210914-1+b1",
+      "iproute2": "6.1.0-3",
+      "iputils-ping": "3:20221126-1+deb12u1"
+    },
+    "checks": [
+      "Real kernel public keys match OpenSSL-generated node keys",
+      "B and C independently reach private A API",
+      "B replacement changes peer key without core restart",
+      "Old B key cannot reach A, replacement can",
+      "C reaches A before and after replacement",
+      "Private A address remains usable with zero peers"
+    ],
+    "excludes": [
+      "Host bootstrap or reboot",
+      "Provider firewall and Docker host ACL",
+      "Public IP routing, NAT, external MTU",
+      "SSH or DNS changes"
+    ]
+  },
+  "role_manifest": {
+    "result": "local tests passed",
+    "legacy_deploy_compatible": false,
+    "ci_orchestrator_connected": false,
+    "checks": [
+      "Complete source/config bundle hash verification",
+      "Immutable service images",
+      "Compatibility and installation identity",
+      "Web-only refuses non-web source/config/node/image changes"
+    ]
+  },
+  "topology_diagram": "docs/architecture/network-topology.md",
+  "remaining": [
+    "Host bootstrap/preflight/install/persistence",
+    "Firewall and TLS issuance/renewal automation",
+    "Role release workflows, pointers, locks, backup, rollout and rollback",
+    "Full VPS replacement and available-core transfer",
+    "Client/web/platform/hardware media and updater acceptance",
+    "Production migration (not authorized in this local-only task)",
+    "External backup after MVP"
+  ],
+  "flutter_route_media_regressions_passed": 47,
+  "ci_build_configuration": {
+    "yaml_parsed": 4,
+    "bash_scripts_checked": 32,
+    "actions_run": false,
+    "routed_deploy_enabled": false
+  },
+  "livekit_wss_only": {
+    "project": "voicechat-livekit-d21d703be13d",
+    "result": "passed",
+    "recovery_ms": 398,
+    "turn_refreshes": 2,
+    "same_participant_on_resume": true,
+    "data_before_after": true,
+    "full_restart_ms": 265,
+    "data_after_full_restart": true,
+    "excludes": [
+      "Decoded application audio/video E2EE",
+      "TURN-to-SFU relay or TURN/TLS media",
+      "External networks and hardware call/screen acceptance",
+      "Actual call lease revocation under failures"
+    ],
+    "failed_edge_health_remains_200": true
+  },
+  "full_flutter_tests": {
+    "passed": 319,
+    "skipped": 3,
+    "skips": "Optional visual captures"
+  },
+  "browser_route_contracts_passed": 29,
+  "browser_catalog": {
+    "result": "passed",
+    "dart_target": "JS release",
+    "crypto": "Fresh pinned vodozemac WASM",
+    "discovered_entry": "d",
+    "persisted_revision": 4,
+    "real_local_storage": true,
+    "real_page_reload_offline": true,
+    "guards": [
+      "rollback",
+      "tamper",
+      "expiry",
+      "foreign identity",
+      "conflicting revision"
+    ],
+    "excludes": [
+      "Real Matrix account recovery",
+      "E2EE audio/video",
+      "Experimental Dart/Wasm target"
+    ]
+  },
+  "generated_crypto_sha256": {
+    "apps/client/web/e2ee.worker.dart.js": "158df1cdab5326a6f09f9c9ab6dd7794f8cf6cf777a67ecd1260338adec203d7",
+    "apps/client/web/pkg/vodozemac_bindings_dart.js": "ca73b554468eb14d32e6f46feb681dc249e36101aa7189ec566a1fa2cdba8677",
+    "apps/client/web/pkg/vodozemac_bindings_dart_bg.wasm": "9da3f582fda73ad6f4faf85194bf90672cf7937e1955f7c79eeb3c2fe7fd1332"
+  },
+  "host_preflight": {
+    "unit_tests": 6,
+    "real_linux_collector": "Detected UDP port and loopback route; missing systemd/NTP/host-key fail closed",
+    "clean_vm_acceptance": false
+  },
+  "managed_wireguard": {
+    "project": "voicechat-managed-wg-3aecc890d684",
+    "result": "passed",
+    "checks": [
+      "Idempotent apply",
+      "B replacement at new public IP/key; old B denied",
+      "C remains working",
+      "D peer/route addition without core restart",
+      "Recreate deleted interface from saved state",
+      "Restart container using persistent state",
+      "Retire peers/routes while keeping private A"
+    ],
+    "keepalive": "25 seconds at both ends; initiates fresh core handshake on interface recreation",
+    "excludes": [
+      "Full VM/systemd reboot",
+      "Host/provider/Docker ACL",
+      "External path MTU",
+      "Production deployment"
+    ],
+    "repeat_after_shared_state_extraction": {
+      "project": "voicechat-managed-wg-1e81209070d4",
+      "result": "passed"
+    }
+  },
+  "firewall": {
+    "result": "passed",
+    "project": "voicechat-firewall-18f116093cb1",
+    "tools_image": "sha256:1777dd22a8397fbc30730d03924dfffd770ad59f11a0fb53ee1820d8a656a477",
+    "checks": [
+      "INPUT and FORWARD DNAT original ports",
+      "Private API and public SFU media source ACL",
+      "Hostile WireGuard peer transit denied",
+      "Co-located web/health/relay separation",
+      "Atomic owned-table replacement and resume",
+      "Unrelated tables retained",
+      "Direct container IP routing denied while separate application DNAT remains functional",
+      "SFU-originated SNAT reply direction rejects direct clients; remote and co-located relay replies allowed"
+    ],
+    "excludes": [
+      "VM/systemd boot",
+      "Actual Docker host/provider ACL",
+      "Production rollout"
+    ]
+  },
+  "role_bridge_repeat": {
+    "core": "voicechat-role-1a8552851834",
+    "tls": "voicechat-sni-645435c3e90b",
+    "result": "passed"
+  },
+  "local_fixture_cleanup_issue": {
+    "network": "voicechat-firewall-61bd4566a853_local",
+    "containers": 0,
+    "issue": "Docker refuses rm: active endpoints; forced disconnect by removed core name: not found",
+    "docker_restarted": false,
+    "final_fixture_cleaned": true
+  },
+  "core_bind_bridge": {
+    "result": "passed",
+    "project": "voicechat-role-36200cb78267",
+    "media_bind": "Specific inventory IPv4 independent of legacy BIND",
+    "network": "Stable core bridge, migration of existing network still required",
+    "reserved_media_ports": "50300-50400 per container network namespace; actual automatic/explicit kernel bind behavior checked"
+  },
+  "coordinated_network": {
+    "result": "passed",
+    "project": "voicechat-managed-wg-59f4c47ec578",
+    "tools_image": "sha256:e2ac5ac00e116d277e0e41bebb580bee5dd8836c8ec2b8ab5a4b5b71e81ff83f",
+    "unit_tests": 4,
+    "systemd_verify": "passed, including missing-state and negative dependency cycle",
+    "real_vm_boot": false,
+    "installer_complete": false
+  },
+  "ssh_transport": {
+    "result": "passed",
+    "project": "voicechat-ssh-f371de388b81",
+    "tools_image": "sha256:1777dd22a8397fbc30730d03924dfffd770ad59f11a0fb53ee1820d8a656a477",
+    "unit_tests": 3,
+    "checks": [
+      "Verified-only Ed25519 host key",
+      "Unknown and retired key rejected without executing command",
+      "New generation accepted after host key rotation",
+      "Literal argv and exact binary stdin",
+      "No user SSH configuration or known_hosts changes"
+    ]
+  },
+  "network_bootstrap": {
+    "filesystem_and_failure_tests": 4,
+    "result": "passed",
+    "real_vm_install_or_boot": false,
+    "packages_installed_on_vps": false,
+    "docker_restarted": false
+  },
+  "tls_material": {
+    "unit_tests": 5,
+    "result": "passed",
+    "role_fixture": "voicechat-sni-5e605f23ed78",
+    "role_fixture_cleaned": true,
+    "active_runtime_rotation": false
+  },
+  "duckdns_acme": {
+    "unit_tests": 6,
+    "result": "passed, injected runner failures and actual offline CLI",
+    "lego_image": "goacme/lego:v5.5.2@sha256:1944e8c36055beec47c7de6f15202b41128be75eea0ffa257f0c14d93c5155fd",
+    "network_mode": "none",
+    "credentials": "synthetic only",
+    "containers_cleaned": true,
+    "public_dns_or_ca_called": false,
+    "real_issuance_or_renewal": false,
+    "scheduler_or_activation": false
+  },
+  "tls_renewal_fixture": {
+    "result": "passed",
+    "project": "voicechat-sni-fd60e4e81b97",
+    "cleaned": true,
+    "method": "Atomic pair pointer inside stable bind, SIGUSR1 Caddy 2.11.7 / SIGUSR2 coturn, rollback",
+    "new_handshakes": true,
+    "existing_turn_allocation": true,
+    "container_restarts": false,
+    "production_activation_tool": false,
+    "wss_or_app_call_continuity": false,
+    "idle_http_limitation": "Earlier fixture ed9db98c20d7 observed idle HTTP disconnect on Caddy reload; fresh HTTPS passes"
+  }
+}

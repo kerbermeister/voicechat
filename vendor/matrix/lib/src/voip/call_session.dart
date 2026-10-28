@@ -1276,10 +1276,22 @@ class CallSession {
 
   Future<void> restartIce() async {
     Logs().v('[VOIP] iceRestart.');
+    final connection = pc;
+    if (connection == null || callHasEnded) return;
+    // TURN credentials and the trusted relay list may change during a call.
+    final servers = await voip.getIceServers();
+    if (callHasEnded || pc != connection) return;
+    if (servers.isNotEmpty) {
+      await connection.setConfiguration({
+        ...connection.getConfiguration,
+        'iceServers': servers,
+      });
+    }
+    if (callHasEnded || pc != connection) return;
     // Needs restart ice on session.pc and renegotiation.
     _iceGatheringFinished = false;
     _localCandidates.clear();
-    await pc!.restartIce();
+    await connection.restartIce();
   }
 
   Future<MediaStream?> _getUserMedia(CallType type) async {

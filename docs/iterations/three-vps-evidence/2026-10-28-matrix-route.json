@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-28",
+  "baseline_commit": "bca5b46f582cac1bee080736985950d039b46a0e",
+  "source": "uncommitted working tree; hashes identify tested files",
+  "source_sha256": {
+    "apps/client/lib/route_transport.dart": "4feae41490d355dbb33c4a3d3630497cd71d55114da6e57456601f4c5571be2c",
+    "apps/client/lib/matrix_probe.dart": "b868bdeaee092195f1fdf45cbf1cc10d2f1d8698812c409311304771568d23ef",
+    "apps/client/test/route_transport_test.dart": "a5ae2e99fa7b2151abe7ec8974816d4a0d3e9c19f1fb8adebb092c07ec6539ce",
+    "apps/client/integration_test/route_transport_test.dart": "b1aa619a652bc0ed7b55e194472b430eb065333978aa3eb89fa37bc719c908ff",
+    "prototype/check_three_vps.py": "476102c949d7bf89b0485c00f3d153cfe31536120576a1aaeb4038823074c015",
+    "prototype/test_three_vps.py": "9341c2532972824f9b89cf06ad084ec1f06d865450defb29be8ff877a7dadb46"
+  },
+  "scope": "Local macOS and disposable loopback Docker only",
+  "production_changed": false,
+  "native_matrix_test": {
+    "result": "passed",
+    "project": "voicechat-routes-b941fc9e04b9",
+    "log_sha256": "2a74a388cdca70821ce54b4033682006d2abf5e2275fc0a6b24395607de021ef",
+    "transport_selection": "explicit B to C, then reopen on C",
+    "canonical_origin": "http://localhost:9",
+    "checks": [
+      "encrypted wire events fetched again and decrypted through Matrix SDK",
+      "unchanged user ID, device ID, access token and fingerprint",
+      "same native SQLCipher/Keychain profile reopened",
+      "server reports exactly one device"
+    ],
+    "cleanup": "compose down --volumes --remove-orphans exited successfully",
+    "nonfatal_build_messages": [
+      "sqflite_sqlcipher does not support Swift Package Manager",
+      "Failed to foreground app; open returned 1"
+    ]
+  },
+  "flutter_regression": {
+    "passed": 27,
+    "new_route_tests": 8
+  },
+  "flutter_analyze": "No issues found",
+  "python_tests": {
+    "fixture_isolation": 2,
+    "existing_deployment": 11
+  },
+  "not_proven": [
+    "automatic route selection or failover",
+    "interrupted sync or requests on a dead proxy",
+    "control API and all media consumers routed",
+    "Android and web runtime behavior",
+    "TURN, LiveKit, call or screen recovery",
+    "external TLS/SNI and port 443",
+    "15 second recovery target",
+    "VPS bootstrap, replacement, production migration or rollback"
+  ]
+}

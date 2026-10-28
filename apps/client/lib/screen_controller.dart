@@ -14,6 +14,8 @@ import 'screen_receive_deadline.dart';
 import 'call_quality.dart';
 import 'matrix_probe.dart';
 import 'transport.dart';
+import 'route_transport.dart';
+import 'media_routes.dart';
 import 'voice_call.dart';
 
 bool allowsScreenMedia(
@@ -547,12 +549,15 @@ class ScreenShareController extends ChangeNotifier {
       );
       await keys.setRawKey(_senderKey!, participantId: identity);
     }
-    final room = lk.Room(
-      roomOptions: lk.RoomOptions(
+    final room = routedMediaRoom(
+      call.chat.client,
+      mediaUrl,
+      lk.RoomOptions(
         encryption: lk.E2EEOptions(keyProvider: keys),
         // Renderer закрыт до kOk; adaptive stream иначе ждёт видимый renderer.
         adaptiveStream: false,
       ),
+      canRecover: () => !_closed && !call.isClosed && serial == _serial,
     );
     media = room;
     _events = room.createListener();
@@ -616,10 +621,14 @@ class ScreenShareController extends ChangeNotifier {
         token['token'] is! String) {
       throw const FormatException('screen token context');
     }
+    final connectOptions = await routedMediaOptions(call.chat.client);
+    if (_closed || serial != _serial) return;
     await room.connect(
-      mediaUrl,
+      api.client is RouteTransport
+          ? (api.client as RouteTransport).websocketUrl(mediaUrl)
+          : mediaUrl,
       token['token'],
-      connectOptions: const lk.ConnectOptions(autoSubscribe: false),
+      connectOptions: connectOptions,
     );
     if (_closed || serial != _serial) return;
     if (room.e2eeManager == null) {

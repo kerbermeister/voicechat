@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "service_id": "voicechat",
+  "nodes": {
+    "core": {"generation": 1, "public_key": "REPLACE_WITH_VERIFIED_CORE_WIREGUARD_PUBLIC_KEY"},
+    "edge-b": {"generation": 1, "public_key": "REPLACE_WITH_VERIFIED_B_WIREGUARD_PUBLIC_KEY"},
+    "edge-c": {"generation": 1, "public_key": "REPLACE_WITH_VERIFIED_C_WIREGUARD_PUBLIC_KEY"}
+  }
+}

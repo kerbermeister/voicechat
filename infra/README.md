@@ -3,6 +3,43 @@
 Конкретный план для `univc.duckdns.org` → `84.200.80.13`: [VPS, DuckDNS,
 первый запуск, ежедневный backup и восстановление](VPS.md).
 
+## Локальная подготовка нескольких входов
+
+Новый multi-VPS режим пока не подключён к production workflow. Реализованы публичная
+topology/подписанный каталог и offline render proxy; полный role deploy ещё в работе.
+Состояние и точка продолжения: [журнал](../docs/iterations/19-three-vps.md).
+Новые самостоятельные Compose bundle и границы прав:
+[подготовка core/edge](THREE_VPS.md). Старый production workflow ими пока не заменён.
+
+`three-vps.example.json` содержит публичные логические адреса. Отдельный
+`node-inventory.example.json` описывает физические IPv4, private tunnel IP,
+поколения и SSH host keys. В inventory намеренно стоят непригодные для запуска
+placeholder-ключи: заменить их проверенными вне SSH-сеанса ключами новых машин.
+Адреса `192.0.2.0/24` — только документационный пример. Приватные ключи и пароли
+не входят ни в один из этих JSON. Реальный inventory хранить вне Git/runtime web.
+
+После заполнения копий конфигурации локальный вызов из корня:
+
+```sh
+python3 infra/render_edge.py --topology topology.json --inventory inventory.json \
+  --edge c --ingress-ip 10.241.0.2 --output /tmp/voicechat-edge-c-review
+```
+
+`--ingress-ip` — точный адрес контейнера HAProxy в будущей выделенной bridge-сети,
+не публичный IP VPS. В текущем offline шаге он задаётся явно; перед deployment
+нужна проверка пересечения подсетей. Генератор создаёт только `Caddyfile`,
+`haproxy.cfg`, `known_hosts`, `node.json` в новом каталоге 0700, файлы 0600.
+Он не устанавливает службы, не выполняет SSH и не меняет DNS. TLS файлы,
+runtime/Compose/tunnel, сертификаты и renewal этим вызовом не создаются.
+
+При замене узла добавить `--previous-inventory previous-inventory.json`:
+изменение host assignment требует большего `generation` и нового проверенного
+SSH host key. DNS-имена и tunnel IP прежнего логического C можно сохранить;
+публичная клиентская конфигурация при смене только physical IP не меняется.
+Для нового D добавить записи в topology и inventory и выпустить подписанный
+каталог с большей revision после подготовки входа. Публикация каталога описана
+в [журнале](../docs/iterations/19-three-vps.md), автоматизация deploy ещё открыта.
+
 ## Флаг демонстрации экрана
 
 По умолчанию screen API выключен. Проверка совместимости: authenticated

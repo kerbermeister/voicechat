@@ -10,6 +10,7 @@ import 'package:http/testing.dart';
 import 'package:voicechat_probe/app_update.dart';
 import 'package:voicechat_probe/app_update_dialog.dart';
 import 'package:voicechat_probe/update_platform_native.dart';
+import 'package:voicechat_probe/route_transport.dart';
 
 const package = 'dev.voicechat.voicechat_probe';
 Map<String, dynamic> manifest([List<int> bytes = const [1, 2, 3]]) => {
@@ -100,6 +101,64 @@ void main() {
       client.close();
     }
   });
+
+  test(
+    'routed update pins selected metadata and rejects mismatching bytes on another entry',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'routed-update-test-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      final b = Uri.parse('https://b.test'), c = Uri.parse('https://c.test');
+      final requests = <Uri>[];
+      var wrongPackage = true;
+      final network = RouteTransport(
+        origin: Uri.parse('https://updates.test'),
+        routes: [b, c],
+        inner: MockClient((request) async {
+          requests.add(request.url);
+          expect(request.followRedirects, false);
+          expect(request.headers.containsKey('authorization'), false);
+          if (request.url.path.endsWith('/latest.json')) {
+            expect(request.url.origin, b.origin);
+            return http.Response.bytes(
+              utf8.encode(jsonEncode(manifest())),
+              200,
+            );
+          }
+          expect(request.url.origin, c.origin);
+          expect(request.url.path, '/updates/android/3/voicechat.apk');
+          return http.Response.bytes(wrongPackage ? [3, 2, 1] : [1, 2, 3], 200);
+        }),
+      );
+      addTearDown(network.close);
+      final selected = await checkAppUpdate(
+        network,
+        'https://updates.test',
+        package,
+      );
+      network.select(c);
+      final path = '${directory.path}/update.apk';
+      Future<void> download() => downloadUpdate(
+        network,
+        'https://updates.test',
+        selected,
+        path,
+        (_) {},
+        () => false,
+      );
+      await expectLater(download(), throwsFormatException);
+      expect(await File(path).exists(), false);
+      expect(requests, hasLength(2));
+      wrongPackage = false;
+      await download();
+      expect(await File(path).readAsBytes(), [1, 2, 3]);
+      expect(
+        requests,
+        hasLength(3),
+      ); // Explicit retry; no new feed or silent replay.
+    },
+  );
 
   test(
     'download validates actual bytes, removes partial files, preserves unrelated data',

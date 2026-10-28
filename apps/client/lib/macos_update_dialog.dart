@@ -5,7 +5,12 @@ import 'app_version.dart';
 class MacOSUpdateDialog extends StatefulWidget {
   static const channel = MethodChannel('voicechat/macos_update');
   final Future<String?> Function() prepareInstall;
-  const MacOSUpdateDialog({super.key, required this.prepareInstall});
+  final Map<String, String>? Function()? updateRoute;
+  const MacOSUpdateDialog({
+    super.key,
+    required this.prepareInstall,
+    this.updateRoute,
+  });
   @override
   State<MacOSUpdateDialog> createState() => _MacOSUpdateDialogState();
 }
@@ -65,7 +70,12 @@ class _MacOSUpdateDialogState extends State<MacOSUpdateDialog> {
           return;
         }
       }
-      await MacOSUpdateDialog.channel.invokeMethod<void>(method);
+      final route = method == 'check' || method == 'download'
+          ? widget.updateRoute?.call()
+          : null;
+      await MacOSUpdateDialog.channel.invokeMethod<void>(method, route);
+    } on FormatException catch (error) {
+      if (mounted) setState(() => state['message'] = error.message);
     } on PlatformException catch (error) {
       if (mounted) {
         setState(

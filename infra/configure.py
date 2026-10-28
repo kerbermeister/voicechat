@@ -27,6 +27,12 @@ def main():
     name=env['MATRIX_SERVER_NAME']
     marker=Path('/matrix/.voicechat-server-name')
     if marker.exists() and marker.read_text()!=name: raise SystemExit('Refusing a Matrix server_name change on existing data')
+    routes = None
+    if env.get('VOICECHAT_ROUTE_CONFIG'):
+        from topology import validate, unique_object
+        routes = validate(json.loads(env['VOICECHAT_ROUTE_CONFIG'], object_pairs_hook=unique_object))
+        if routes['matrix_server_name'] != name or routes['canonical_origin'] != env['PUBLIC_URL']:
+            raise ValueError('Route topology cannot change the existing Matrix identity or origin')
     sender = (base64.b64decode(env['SMTP_FROM_B64'], validate=True).decode()
               if env.get('SMTP_FROM_B64') else f'VoiceChat <noreply@{name}>')
     if not sender.strip() or '\r' in sender or '\n' in sender:
@@ -55,12 +61,20 @@ def main():
     if local:
         synapse['rc_login'] = {kind: {'per_second': 20, 'burst_count': 100}
                                for kind in ('address', 'account')}
+    if routes is not None:
+        synapse['turn_uris'] = [uri for edge in routes['edges'] for uri in (
+            f"turn:{edge['turn_host']}:3478?transport=udp",
+            f"turn:{edge['turn_host']}:3478?transport=tcp",
+            f"turns:{edge['turn_host']}:443?transport=tcp")]
     write('/matrix/homeserver.yaml',json.dumps(synapse),991)
     write(marker,name,991)
     configure_policy()
     write('/media/livekit.json',json.dumps({'port':7880,'bind_addresses':['0.0.0.0'],
         'rtc':{'tcp_port':7981,'port_range_start':50300,'port_range_end':50400,'use_external_ip':False,'node_ip':env['PUBLIC_IP']},
         'keys':{'prototype':env['LIVEKIT_SECRET']},'room':{'auto_create':False,'max_participants':10}}),10001)
+    if routes is not None:
+        # Multi-host core issues credentials; only edge hosts run TURN.
+        return
     turn=f"listening-port=3488\nfingerprint\nuse-auth-secret\nstatic-auth-secret={env['TURN_SECRET']}\nrealm={name}\nmin-port=49300\nmax-port=49400\ncli=off\nno-tls\nno-dtls\nno-multicast-peers\nexternal-ip={env['PUBLIC_IP']}\n"
     if local: turn+='allow-loopback-peers\n'
     else:

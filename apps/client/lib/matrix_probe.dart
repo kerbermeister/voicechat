@@ -5,6 +5,12 @@ import 'dart:async';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
 import 'package:matrix/matrix.dart';
 import 'package:matrix/encryption.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'route_config.dart';
+import 'route_catalog.dart';
+import 'route_coordinator.dart';
+import 'route_transport.dart';
 import 'local_store.dart';
 import 'transport.dart';
 import 'user_action_error.dart';
@@ -15,36 +21,75 @@ import 'contact_service.dart';
 class MatrixProbe {
   static Future<void>? _cryptoInit;
   final Client client;
-  MatrixProbe(this.client);
+  final RouteCoordinator? routes;
+  final http.Client? _ownedNetwork;
+  MatrixProbe(this.client, {this.routes, http.Client? ownedNetwork})
+    : _ownedNetwork = ownedNetwork;
 
   static Future<MatrixProbe> open(
     String profile, {
     String? passphrase,
     bool remember = false,
     bool automatic = false,
+    http.Client? httpClient,
   }) async {
     _cryptoInit ??= vod.init();
     await _cryptoInit;
+    RouteCoordinator? routes;
+    http.Client? ownedNetwork;
+    const compiled = String.fromEnvironment('ROUTE_CONFIG');
+    if (httpClient == null && compiled.isNotEmpty) {
+      final bootstrap = RouteConfig.parse(compiled);
+      final catalog = RouteCatalog(
+        bootstrap,
+        const String.fromEnvironment('ROUTE_CATALOG_KEY'),
+        await SharedPreferences.getInstance(),
+      );
+      routes = RouteCoordinator(catalog.config, catalog: catalog);
+      try {
+        await routes.start();
+        ownedNetwork = RouteTransport(
+          origin: bootstrap.canonicalOrigin,
+          routes: routes.config.edges.map((e) => e.origin).toList(),
+          coordinator: routes,
+          inner: http.Client(),
+        );
+        httpClient = ownedNetwork;
+      } catch (_) {
+        routes.close();
+        rethrow;
+      }
+    }
     final name = 'voicechat_probe_${Uri.encodeComponent(profile)}';
-    final db = await openStore(
-      name,
-      passphrase: passphrase,
-      remember: remember,
-      automatic: automatic,
-    );
+    final MatrixSdkDatabase db;
+    try {
+      db = await openStore(
+        name,
+        passphrase: passphrase,
+        remember: remember,
+        automatic: automatic,
+      );
+    } catch (_) {
+      routes?.close();
+      ownedNetwork?.close();
+      rethrow;
+    }
     final client = Client(
       name,
       database: db,
+      httpClient: httpClient,
       shareKeysWith: ShareKeysWith.directlyVerifiedOnly,
       logLevel: Level.error,
     );
     try {
       await client.init();
-      return MatrixProbe(client);
+      return MatrixProbe(client, routes: routes, ownedNetwork: ownedNetwork);
     } catch (_) {
       try {
         await client.dispose();
       } finally {
+        routes?.close();
+        ownedNetwork?.close();
         await closeStore(name);
       }
       rethrow;
@@ -278,9 +323,11 @@ class MatrixProbe {
   }
 
   Future<void> close() async {
+    routes?.close();
     try {
       await client.dispose();
     } finally {
+      _ownedNetwork?.close();
       await closeStore(client.clientName);
     }
   }

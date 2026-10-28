@@ -1,0 +1,28 @@
+[Unit]
+Description=Restore VoiceChat firewall and WireGuard before container startup
+Wants=network-online.target
+After=network-online.target nftables.service
+Before=docker.service
+RequiresMountsFor=/opt/voicechat/network /var/lib/voicechat-network
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/python3 /opt/voicechat/network/network_runtime.py --directory /var/lib/voicechat-network --resume
+TimeoutStartSec=120
+Environment=PYTHONDONTWRITEBYTECODE=1
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=CAP_NET_ADMIN
+ProtectSystem=strict
+ReadWritePaths=/var/lib/voicechat-network
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+
+[Install]
+WantedBy=multi-user.target
