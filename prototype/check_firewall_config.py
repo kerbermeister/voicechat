@@ -101,7 +101,7 @@ if name=='core':
     run('nft','-f','/input/nat.nft')
     os.execvp('python3',['python3','/input/core-http.py'])
 elif name=='backend':
-    for address in ('192.0.2.0/28','10.242.0.0/28'): run('ip','route','add',address,'via','10.245.0.2')
+    for address in ('192.0.2.0/28','10.242.0.0/28','10.88.0.1/32'): run('ip','route','add',address,'via','10.245.0.2')
     os.execvp('python3',['python3','/input/backend.py'])
 elif name=='outsider':
     for address in ('10.88.0.1/32','10.245.0.3/32'): run('ip','route','add',address,'via','192.0.2.10')
@@ -119,6 +119,7 @@ os.execvp('sleep',['sleep','infinity'])
             'health': {'local': '10.242.0.5'}, 'other': {'local': '10.242.0.6'},
         }
         services = {name: {'image': args.tools_image, 'cap_add': ['NET_ADMIN'],
+            'mem_limit': '128m', 'cpus': .25, 'pids_limit': 64,
             'sysctls': {'net.ipv4.ip_forward': '1' if name == 'core' else '0'},
             'entrypoint': ['python3', '/input/start.py', name, bridge, core_bridge],
             'environment': {'PYTHONDONTWRITEBYTECODE': '1'},
@@ -201,6 +202,14 @@ os.execvp('sleep',['sleep','infinity'])
             run('edge-b', 'ip', 'route', 'add', '10.245.0.3/32', 'dev', 'wg-vc')
             http('edge-b', '10.245.0.3', 8008)
             apply('core', inventory, 'core'); apply('edge-b', inventory, 'edge-b')
+            # A private push callback from the owned core bridge may reach only
+            # control:8090, through both a host listener and Docker-style DNAT.
+            http('backend','10.88.0.1',8090)
+            http('backend','10.88.0.1',8088,False)
+            http('backend','10.88.0.1',8091,False)
+            run('core','nft','add','rule','ip','fixture_nat','prerouting',
+                'ip','daddr','10.88.0.1','tcp','dport','8090','dnat','to','10.245.0.3:8008')
+            http('backend','10.88.0.1',8090)
             http('edge-b', '10.245.0.3', 8008, False)
             http('outsider', '10.245.0.3', 8008, False)
             media_reply('192.0.2.14', False); media_reply('192.0.2.11')
@@ -232,7 +241,7 @@ os.execvp('sleep',['sleep','infinity'])
             http('web','192.0.2.10',7981,False)
             http('edge-b','10.88.0.1',8088,False)
             http('outsider','192.0.2.10',9002)
-            print('PASS: scoped INPUT/FORWARD, real WireGuard replies, DNAT original ports, media source ACL, co-located roles, unrelated tables retained', flush=True)
+            print('PASS: scoped INPUT/FORWARD, real WireGuard replies, DNAT original ports, media source ACL, private core callback INPUT/DNAT, co-located roles, unrelated tables retained', flush=True)
         except Exception:
             subprocess.run([*command, 'logs', '--tail', '12'], check=False)
             subprocess.run([*command, 'ps', '-a'], check=False)

@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "project": "voicechat-firewall-26d6980e93fd",
+  "tools_image": "sha256:09e980f2a8fe03f842a559ee2a75fd0ba67c664722af997f4b218fb1d193bd91",
+  "real_linux_firewall_probe_passed": true,
+  "private_core_callback_input_and_dnat_passed": true,
+  "other_private_ports_rejected": true,
+  "existing_acl_regressions_passed": true,
+  "production_container_ids_start_times_restarts_unchanged": true,
+  "production_commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "public_health": {
+    "/api/health": 200,
+    "/_matrix/client/versions": 200
+  },
+  "fixture_resources_removed": true,
+  "source_sha256": {
+    "infra/firewall_config.py": "ce8411fac264573564ad0c9982985223c96333cf2ed740d308e6bc5e163139b5",
+    "prototype/check_firewall_config.py": "8efba8fb5ed478c57d50380c63e7627ee574a294ebfe1a5cf95e82abeb6b4655"
+  },
+  "date": "2026-10-28",
+  "environment": "Isolated container network namespaces on existing VPS; no host firewall changes",
+  "limits": [
+    "HTTP reachability and ACL proof; this is not real Synapse/provider delivery.",
+    "Existing production pusher URL migration remains pending."
+  ]
+}

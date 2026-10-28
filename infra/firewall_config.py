@@ -52,6 +52,10 @@ def render(inventory, node, subnet='10.241.0.0/28', *, replace=False):
         backend_bridge = node_inventory.core_bridge(inventory)
         api_input = f'ip daddr {private} tcp dport {API_PORTS}'
         api_forward = f'ct direction original ct original ip daddr {private} meta l4proto tcp ct original proto-dst {API_PORTS}'
+        # Synapse push callbacks stay on A, independent of any public edge.
+        # Permit only the owned core bridge and the control gateway port.
+        incoming.append(f'ip daddr {private} tcp dport 8090 iifname "{backend_bridge}" return')
+        forwarded.append(f'ct direction original ct original ip daddr {private} meta l4proto tcp ct original proto-dst 8090 iifname "{backend_bridge}" return')
         co_located = next((edge for edge in inventory['edges'] if edge.get('host') == 'core'), None)
         if peers:
             allowed = 'iifname "wg-vc" ip saddr ' + addresses([item['tunnel_ip'] for item in peers])

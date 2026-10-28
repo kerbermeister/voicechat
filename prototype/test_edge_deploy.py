@@ -93,7 +93,7 @@ class EdgeDeployTests(unittest.TestCase):
         self.assertEqual(state['previous']['manifest'], self.old)
         self.assertIsNone(state['pending'])
         self.assertEqual([args[-2:] for args in self.calls if 'up' in args], [['--no-deps', 'web']])
-        self.assertEqual([args[-2:] for args in self.calls if 'pull' in args], [['pull', 'web']])
+        self.assertEqual([args[-4:] for args in self.calls if 'pull' in args], [['pull', '--policy', 'missing', 'web']])
         self.deploy(self.new, 'web')
         self.assertEqual(self.state()['previous']['manifest'], self.old)
 
@@ -225,6 +225,12 @@ class EdgeDeployTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'interrupted'):
             with guard(): pass
         managed_state.persist(directory / 'applied.json', status)
+        (directory / 'boot-install').mkdir(mode=0o700)
+        pending = directory / 'boot-install/upgrade.json'
+        managed_state.persist(pending, {'schema': 1})
+        with self.assertRaisesRegex(ValueError, 'source upgrade'):
+            with guard(): pass
+        pending.unlink()
         managed_state.persist(directory / 'firewall/desired.json', {**firewall, 'edge_subnet': '10.242.0.0/28'})
         with self.assertRaisesRegex(ValueError, 'interrupted'):
             with guard(): pass

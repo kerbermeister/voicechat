@@ -18,8 +18,17 @@ import tunnel_config
 import tunnel_runtime
 
 
+SOURCES = ('client_config.py', 'topology.py', 'node_inventory.py', 'tunnel_config.py',
+           'tunnel_runtime.py', 'managed_state.py', 'firewall_config.py',
+           'firewall_runtime.py', 'network_runtime.py')
+
+
 def fingerprint(value):
-    return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+    # The same inventory can produce different ACLs after a code update. A
+    # receipt from older policy code must not authorize the next deployment.
+    source = Path(__file__).parent
+    hashes = {name: hashlib.sha256((source / name).read_bytes()).hexdigest() for name in SOURCES}
+    return hashlib.sha256(json.dumps({'intent': value, 'sources': hashes}, sort_keys=True).encode()).hexdigest()
 
 
 def components(value):

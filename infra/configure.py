@@ -33,6 +33,8 @@ def main():
         routes = validate(json.loads(env['VOICECHAT_ROUTE_CONFIG'], object_pairs_hook=unique_object))
         if routes['matrix_server_name'] != name or routes['canonical_origin'] != env['PUBLIC_URL']:
             raise ValueError('Route topology cannot change the existing Matrix identity or origin')
+        from node_inventory import ipv4
+        push_gateway_ip = ipv4(env.get('VOICECHAT_PUSH_GATEWAY_IP'), tunnel=True)
     sender = (base64.b64decode(env['SMTP_FROM_B64'], validate=True).decode()
               if env.get('SMTP_FROM_B64') else f'VoiceChat <noreply@{name}>')
     if not sender.strip() or '\r' in sender or '\n' in sender:
@@ -62,6 +64,9 @@ def main():
         synapse['rc_login'] = {kind: {'per_second': 20, 'burst_count': 100}
                                for kind in ('address', 'account')}
     if routes is not None:
+        # Only the core's own private gateway is exempted from Synapse's default
+        # SSRF blacklist. Host firewall limits this bridge path to control:8090.
+        synapse['ip_range_whitelist'] = [push_gateway_ip + '/32']
         synapse['turn_uris'] = [uri for edge in routes['edges'] for uri in (
             f"turn:{edge['turn_host']}:3478?transport=udp",
             f"turn:{edge['turn_host']}:3478?transport=tcp",

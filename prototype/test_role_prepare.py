@@ -47,6 +47,17 @@ class RolePrepareTests(unittest.TestCase):
         self.assertEqual(managed_state.read(second / 'release.json'), changed)
         self.assertFalse((self.root / 'state.json').exists())
 
+    def test_subsequent_release_preserves_tls_publishers_serving_permissions(self):
+        self.prepare()
+        serving = self.root / 'runtime/tls/turn'
+        serving.mkdir(mode=0o750)
+        serving.chmod(0o750)
+        (serving / 'turn.key').write_text('synthetic-serving-material')
+        manifest = role_release.make(self.public, self.inventory, 'edge', 'b' * 40, self.image, 'b')
+        self.prepare(manifest)
+        self.assertEqual(serving.stat().st_mode & 0o777, 0o750)
+        self.assertEqual((serving / 'turn.key').read_text(), 'synthetic-serving-material')
+
     def test_core_role_has_no_generated_secrets_or_service_side_effects(self):
         core = role_release.make(self.public, self.inventory, 'core', 'a' * 40, self.image)
         target = self.prepare(core)

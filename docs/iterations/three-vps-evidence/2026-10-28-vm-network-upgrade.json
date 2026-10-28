@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "source_sha256": "96f0f82e7fde16beeebbad45670edc57c1bb8e51a781c0be07056db0888ad4d8",
+  "upgrade_completed": true,
+  "repeat_preserved_docker": true,
+  "docker_before_reboot": "MainPID=525\nExecMainStartTimestampMonotonic=50689886\n",
+  "boot_before": "1bf7d3f6-6964-4b8d-a1f8-92d5385a50cf",
+  "wg_key_sha256": "4dbf52dd3a686702febdfa6e17097c236178a5845549e5bfb4ac6112c35233c8",
+  "new_policy_survived_reboot": true,
+  "network_completed_before_docker": true,
+  "wireguard_key_preserved": true,
+  "private_callback_firewall_present": true,
+  "production_changed": false,
+  "limits": [
+    "One disposable Debian VM; no remote WireGuard peer or application call tested."
+  ]
+}

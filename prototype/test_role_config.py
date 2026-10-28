@@ -75,6 +75,9 @@ class RoleConfigTests(unittest.TestCase):
         self.assertEqual(set(compose['volumes']), {'postgres','synapse','control','media-config','turn-config'})
         control = compose['services']['control']
         self.assertEqual(control['environment']['VOICECHAT_ORIGINS'].split(',')[0], public['canonical_origin'])
+        self.assertEqual(control['environment']['VOICECHAT_PUSH_GATEWAY_URL'],
+                         'http://10.88.0.1:8090/_matrix/push/v1/notify')
+        self.assertEqual(compose['services']['configure']['environment']['VOICECHAT_PUSH_GATEWAY_IP'], '10.88.0.1')
         self.assertEqual(control['ports'], ['10.88.0.1:8090:8090', '10.88.0.1:7880:7880'])
         self.assertNotIn('MATRIX_SERVER_NAME', compose['services']['configure']['environment'])
 
@@ -82,7 +85,7 @@ class RoleConfigTests(unittest.TestCase):
         env = {'LOCAL_STAND':'0', 'MATRIX_SERVER_NAME':self.public['matrix_server_name'],
                'PUBLIC_URL':self.public['canonical_origin'], 'PUBLIC_IP':'192.0.2.10',
                'SMTP_HOST':'smtp.example.com', 'SMTP_PORT':'587',
-               'VOICECHAT_ROUTE_CONFIG':json.dumps(self.public),
+               'VOICECHAT_ROUTE_CONFIG':json.dumps(self.public), 'VOICECHAT_PUSH_GATEWAY_IP':'10.88.0.1',
                **{key:'test-only' for key in ('POLICY_SECRET','POSTGRES_PASSWORD','REGISTRATION_SECRET',
                                              'MACAROON_SECRET','LIVEKIT_SECRET','TURN_SECRET')}}
         with patch.dict(os.environ, env, clear=True), patch.object(Path, 'exists', return_value=False), \
@@ -90,12 +93,19 @@ class RoleConfigTests(unittest.TestCase):
             configure.main()
             outputs = {args[0][0]:args[0][1] for args in write.call_args_list}
             synapse = json.loads(outputs['/matrix/homeserver.yaml'])
+            self.assertEqual(synapse['ip_range_whitelist'], ['10.88.0.1/32'])
+            self.assertNotIn('ip_range_blacklist', synapse)
             self.assertEqual(synapse['turn_shared_secret'], 'test-only')
             self.assertEqual(synapse['signing_key_path'], '/data/voicechat.signing.key')
             self.assertEqual(len(synapse['turn_uris']), 6)
             self.assertIn('turns:turn-c.example.com:443?transport=tcp', synapse['turn_uris'])
             self.assertNotIn('/turn/turnserver.conf', outputs)
             write.reset_mock()
+            for gateway in ('', '127.0.0.1', '169.254.169.254', '192.0.2.10', '10.88.0.0/24', '10.88.0.1\n'):
+                os.environ['VOICECHAT_PUSH_GATEWAY_IP'] = gateway
+                with self.subTest(gateway=gateway), self.assertRaises(ValueError): configure.main()
+                write.assert_not_called()
+            os.environ['VOICECHAT_PUSH_GATEWAY_IP'] = '10.88.0.1'
             os.environ['MATRIX_SERVER_NAME'] = 'different.example.com'
             with self.assertRaises(ValueError): configure.main()
             write.assert_not_called()

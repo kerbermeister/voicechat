@@ -34,6 +34,18 @@ class FirewallConfigTests(unittest.TestCase):
         self.assertTrue(firewall_config.render(inventory, 'core', replace=True).startswith(f'delete table inet {table}\n'))
         self.assertNotIn('delete table', rules)
 
+    def test_core_callback_exception_is_only_private_control_from_owned_core_bridge(self):
+        inventory = fixture()
+        rules = firewall_config.render(inventory, 'core')
+        bridge = node_inventory.core_bridge(inventory)
+        allowed = [line.strip() for line in rules.splitlines()
+                   if f'iifname "{bridge}" return' in line]
+        self.assertEqual(allowed, [
+            f'ip daddr 10.88.0.1 tcp dport 8090 iifname "{bridge}" return',
+            f'ct direction original ct original ip daddr 10.88.0.1 meta l4proto tcp ct original proto-dst 8090 iifname "{bridge}" return'])
+        self.assertLess(rules.index(allowed[0]), rules.index('ip daddr 10.88.0.1 drop'))
+        self.assertLess(rules.index(allowed[1]), rules.index('ct direction original ct original ip daddr 10.88.0.1 drop'))
+
     def test_co_located_bridge_matches_compose_and_separates_relay_from_api(self):
         inventory = fixture()
         inventory['edges'] = [{'id': 'a', 'host': 'core'}]

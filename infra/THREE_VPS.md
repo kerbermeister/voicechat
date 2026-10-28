@@ -134,10 +134,26 @@ Unit и drop-in входят в manifests обеих ролей. На подго
 Проверяются SSH identity текущего хоста, рабочий systemd и необходимые команды.
 Owner-only receipt позволяет продолжить оборванное копирование/activation; чужие
 units/files/symlinks и изменённые установленные файлы не перезаписываются. Повтор
-той же версии поддерживается; source upgrade требует отдельного migration/release
-шага. Docker не перезапускается. Файловые операции и отказы проверены четырьмя
-тестами; настоящий install/start на VM ещё не принят. Нельзя без миграции добавлять
-зависимость чужому или текущему production Docker host.
+той же версии поддерживается. Для обновления **уже управляемой** установки:
+
+```sh
+python3 -B infra/network_bootstrap.py --upgrade
+```
+
+Обновление проверяет прежние immutable исходники и systemd units по receipt,
+сохраняет journal, устанавливает новую версию и вызывает `ExecReload`. Docker
+не перезапускается; PID/время старта проверяются до и после. Незавершённый upgrade
+блокирует edge deploy; повторять нужно ту же версию исходников. Старые каталоги
+сохраняются. Автоматического отката ACL нет: он мог бы вернуть отозванных peers.
+Applied fingerprint включает inventory и код сетевой политики, поэтому receipt
+старого кода не разрешает новый deploy. Изменять роль/идентичность этим способом нельзя.
+
+Настоящие initial install/repeat/reboot/fail-closed проверки выполнены в disposable
+Debian VM, см. `docs/iterations/three-vps-evidence/2026-10-28-vm-network-boot.json`.
+Обновление source через reload, повтор и reboot также проверены:
+`docs/iterations/three-vps-evidence/2026-10-28-vm-network-upgrade.json`.
+Это не разрешает без миграции добавлять зависимость чужому или текущему production
+Docker host. Установка пакетов и общий SSH bootstrap пока не завершены.
 
 `check_network_service.py` использует настоящий Debian systemd 252 parser в
 read-only контейнере без сети/capabilities: позитивная проверка units, отказ при
@@ -663,11 +679,36 @@ committed pointer меняется атомарно. Ошибка откатыв
 volumes. Existing project без baseline автоматически не присваивается.
 
 Проверка логики: fault-injected subprocess tests с настоящими source bundles и
-файловым журналом. Это **не** доказательство реального Compose deployment/rollback:
-чистая VM и внешняя TLS/health приёмка ещё выполняются. Открыты SSH доставка,
+файловым журналом. Дополнительно [реальный VM fixture](../docs/iterations/three-vps-evidence/2026-10-28-vm-edge-deploy.json)
+прошёл initial edge deploy, web-only с прежними ingress/TURN/readiness процессами,
+config-only на том же commit, rollback после HTTP 503 и resume после прерывания.
+В нём настоящие Docker/network/TLS/controllers, синтетические Matrix/control
+upstreams; это не приёмка core/БД/звонков или production migration.
+Pull использует `--policy missing` только для immutable digests; существующий
+image cache позволяет выполнить конфигурационный rollout без registry credential.
+Открыты SSH доставка,
 доставка секретов/host packages, core/full orchestration, coordinated multi-edge rollout,
 workflow/build-only и legacy shared-ingress migration. Собственный controller
 не является разрешением обойти существующие production release guards.
+
+## Приватный server push callback
+
+В core role новые push-подписки получают gateway
+`http://<core.tunnel_ip>:8090/_matrix/push/v1/notify`. Запрос Synapse остаётся
+внутри A, даже когда нет доступного публичного edge. Контакты/ссылки и browser
+origin по-прежнему канонические; отправка к push provider остаётся HTTPS.
+
+`configure.py` разрешает в Synapse только этот RFC1918 адрес `/32`, не меняя
+стандартный `ip_range_blacklist`. Host ACL допускает к нему только TCP 8090
+из принадлежащего core Docker bridge, включая исходный адрес/порт до DNAT.
+Остальные private/metadata адреса и внутренние порты этим правилом не открываются.
+[Linux INPUT/FORWARD/DNAT проверка](../docs/iterations/three-vps-evidence/2026-10-28-private-push-firewall.json)
+прошла с прежними ACL и без перезапуска production служб.
+
+Ограничение миграции: сохранённые ранее Matrix pushers имеют прежний URL.
+До production rollout нужен контролируемый перенос этих записей под согласованным
+backup и остановленными writers либо явно проверенная совместимая перерегистрация.
+Нельзя объявлять старые подписки переведёнными одним изменением environment.
 
 ## Runtime и секреты
 

@@ -45,6 +45,9 @@ def prepare(root, public, inventory, manifest, subnet='10.241.0.0/28'):
         directory(root / 'releases')
         directory(root / 'runtime')
         for name in runtime:
+            # TLS publication owns service directories (including TURN's 0750
+            # group-readable mount). Do not recreate or chmod them on rollout.
+            if name in ('runtime/tls/web', 'runtime/tls/turn'): continue
             relative = Path(name).relative_to('runtime')
             path = root / 'runtime'
             for part in relative.parts:

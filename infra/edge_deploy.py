@@ -100,6 +100,9 @@ def network_ready(inventory, edge_id, subnet, *, execute=run, directory=Path('/v
     # Keep replacement/revocation from racing this rollout. Lock ordering is
     # edge role -> host network -> TLS; network reconciliation never takes TLS.
     with managed_state.locked(directory):
+        upgrade = directory / 'boot-install/upgrade.json'
+        if upgrade.exists() or upgrade.is_symlink():
+            raise ValueError('Finish the interrupted network source upgrade before deploying')
         desired = managed_state.read(directory / 'desired.json')
         firewall, tunnel = network_runtime.components(desired)
         node = 'core' if next(item for item in inventory['edges'] if item['id'] == edge_id).get('host') == 'core' else 'edge-' + edge_id
@@ -190,7 +193,10 @@ def deploy(root, public, inventory, manifest, core_manifest, *, scope='edge', su
             state = {**state, 'pending': pending}
             managed_state.persist(root / 'state.json', state)
         if pending['phase'] == 'prepared':
-            compose(root, target, 'pull', *(['web'] if scope == 'web' else []), execute=execute)
+            # Digests are immutable: reuse verified local image content and fetch
+            # only missing images, so a config-only rollout can work offline.
+            compose(root, target, 'pull', '--policy', 'missing',
+                    *(['web'] if scope == 'web' else []), execute=execute)
         with managed_state.locked(root / 'runtime/tls'):
             def up(record):
                 compose(root, record, 'up', '-d', '--wait', '--wait-timeout', '180',

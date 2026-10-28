@@ -38,13 +38,15 @@ def core(public, inventory):
     services['configure'].update(environment={
         'VOICECHAT_ROUTE_CONFIG': json.dumps(public, separators=(',', ':')),
         'PUBLIC_IP': inventory['core']['public_ip'],
+        'VOICECHAT_PUSH_GATEWAY_IP': address,
     }, volumes=[bind('./topology.py', '/topology.py'), bind('./client_config.py', '/client_config.py')])
     services['synapse']['ports'] = [f'{address}:8088:8008']
     # Keep the canonical origin first: push links use the first control origin.
     origins = [public['canonical_origin'], *(value for value in public['web_origins']
                                             if value != public['canonical_origin'])]
     services['control'].update(
-        environment={'VOICECHAT_ORIGINS': ','.join(origins)},
+        environment={'VOICECHAT_ORIGINS': ','.join(origins),
+                     'VOICECHAT_PUSH_GATEWAY_URL': f'http://{address}:8090/_matrix/push/v1/notify'},
         ports=[f'{address}:8090:8090', f'{address}:7880:7880'])
     return {'name': 'voicechat', 'services': services,
             'networks': {'default': {'driver_opts': {

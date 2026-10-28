@@ -64,8 +64,7 @@ Production по-прежнему `8bcbd91`, HTTP 200; службы не пере
 
 Основа сохранена локальным коммитом `35c7649` (без push/deploy). После него добавлены
 `edge_deploy.py` + 11 tests: реальные private filesystem/source guards, имитация
-Docker fault/up/rollback. 53 focused tests PASS. На настоящем Docker controller
-ещё не запущен. Его prerequisites/ограничения: `infra/THREE_VPS.md`.
+Docker fault/up/rollback. 53 focused tests PASS. Настоящий Docker proof завершён ниже. Его prerequisites/ограничения: `infra/THREE_VPS.md`.
 Добавлены completed network fingerprint и общий network lock до конца rollout;
 частично применённый intent больше не считается готовой сетью. Persistence
 отвергает oversized/NaN до замены предыдущего восстанавливаемого состояния.
@@ -94,13 +93,39 @@ Docker 29.8.1, Compose 5.5.1, Debian nftables 1.0.6. Установщик не �
 проверяется успешный полный список и точное имя. Fixture scripts/logs находятся
 в `.prototype/vm-network-*` и `/srv/voicechat-boot-fixture` внутри VM.
 
-Следующий реальный edge deploy пока не выполнен: anonymous GHCR pull приватного
-web image отклонён registry. Автоматическая проверка безопасности отклонила
-предложенную операцию получения repository:pull токена из credentials на VPS
-и передачи токена в VM; операция не выполнялась. Пользователю отправлен отдельный
-async вопрос об этом разрешении; ответа пока нет. Не обходить отказ и не
-повторять эту credential-операцию без явного разрешения. Независимые задачи
-можно продолжать. Production по-прежнему не менялся.
+Настоящий edge deploy/rollback выполняется в этой VM. После отказа anonymous
+GHCR pull auto-review отклонила получение производного токена из registry credentials
+VPS. Владелец затем **явно разрешил repository:pull токен для VM**. Разрешённая
+операция выполнена: исходные credentials остались на VPS, ограниченный токен
+передан только в VM, существующий web digest `68739c97...` скачан, token config
+удалён сразу после загрузки (проверено). Повторного разрешения на эту же операцию
+не требуется. Helper `.prototype/vm-pull-private.py` не содержит самих secrets.
+
+Реальный edge probe завершён: initial, web-only без перезапуска остальных служб,
+config-only отдельный bundle, readiness failure rollback и interrupted apply resume.
+[Свидетельство](three-vps-evidence/2026-10-28-vm-edge-deploy.json).
+Все fixture containers/networks/volumes удалены. Synthetic upstream, не реальные
+пользовательские данные или звонки. Исправлены сохранение TLS serving directories
+в role_prepare и pull policy missing для immutable digest cache.
+
+Приватный push: новый pusher получает URL core private IP:8090; Synapse разрешает
+ровно этот /32, остальные private destinations остаются под SSRF blacklist.
+Core bridge firewall допускает только этот callback. Реальный namespace proof
+на VPS и настоящий Synapse в VM подтвердили доставку, блокировку другого
+доступного private destination и отзыв pusher:
+[firewall](three-vps-evidence/2026-10-28-private-push-firewall.json),
+[Synapse](three-vps-evidence/2026-10-28-vm-private-push.json).
+Существующие production pushers ещё требуют согласованной миграции URL.
+
+Network applied receipt теперь включает hashes кода политики, а не только inventory.
+`network_bootstrap.py --upgrade` обновляет owned immutable source через ExecReload,
+не restart Docker; durable journal допускает retry только той же версии.
+Незавершённый upgrade блокирует edge deploy. Unit tests: отказы, подмена исходников,
+прерывание после замены unit, retry, no-op и отсутствующий applied receipt.
+Настоящий upgrade, повтор и reboot новой версии в VM прошли: ключ сохранён,
+новая политика восстановлена, network active предшествует старту Docker.
+[Свидетельство](three-vps-evidence/2026-10-28-vm-network-upgrade.json).
+Общий выбранный регрессионный набор: **150 tests PASS**.
 
 ## Неизменные условия
 
@@ -294,7 +319,7 @@ async вопрос об этом разрешении; ответа пока н�
 V3-19/20 role release workflow/guarded deploy; V3-04/15/16 real app media/lease.
 До изменения deployment читать `infra/deploy.py`, `release_source.py`, тесты и
 `infra/THREE_VPS.md`. Не передавать новые role bundles старому deploy.py;
-не ослаблять baseline/backup guards. Production baseline не считывалась.
+не ослаблять baseline/backup guards. Production baseline считана; см. факты в начале этого файла.
 
 ## Важные незавершённые части
 

@@ -261,7 +261,8 @@ Read-only `host_preflight.py` проверяет чистый physical host и �
 `tunnel_runtime.py` добавляет atomic intent/apply/resume и /32 route reconciliation;
 реальный Linux fixture проверил замену B/добавление D/interface recreation и restart
 контейнера из persistent state. Повторный rollout существующего deployment,
-systemd и положительная clean VM/reboot приёмка ещё не выполнены.
+network systemd и clean Debian12 VM/reboot теперь проверены отдельно; общий
+bootstrap с установкой пакетов и исходный production migration ещё не завершены.
 
 `firewall_config.py` / `firewall_runtime.py` локально проверены на настоящем Linux:
 INPUT/FORWARD/DNAT, private API/media allowlists, запрет WG transit, co-located
@@ -272,11 +273,14 @@ IPv6/bind/provider ACL, текущую A migration и clean VM acceptance.
 Общий network_runtime.py завершает одинаковый intent для firewall/WG после
 обрыва между шагами. Core IPv4 binds и стабильный core bridge закрывают обход
 ACL через другие адреса/container IP. Unit+Docker Requires/After проверены
-systemd-analyze, missing-state и cycle fixtures; actual installer/boot ещё открыт.
+systemd-analyze, missing-state и cycle fixtures. Реальный installer/reboot
+также прошёл в чистой Debian12 VM; отсутствие intent блокирует Docker до
+восстановления конфигурации.
 
 `network_bootstrap.py` теперь готовит immutable code + owned systemd files,
 продолжает interrupted install и активирует network unit без restart Docker.
-Файловые операции/guards проверены, VM install/reboot ещё не принят. Verified SSH
+Файловые операции/guards и VM install/reboot проверены:
+[evidence](../iterations/three-vps-evidence/2026-10-28-vm-network-boot.json). Verified SSH
 transport проверен отдельным OpenSSH fixture с настоящей заменой host key.
 Установка пакетов, общий SSH bootstrap/rollout и source upgrade остаются открытыми.
 
@@ -302,7 +306,9 @@ SAN/chain/key/срок и атомарно сохраняет отдельную
 явно запускает закреплённый lego для последовательного issuance/renewal, с общим
 lock и запретом новых jobs после неопределённого cleanup. 11 focused tests и
 изолированный CLI без сети прошли; real Caddy/coturn принимает проверенные пары.
-DNS-01 issuance в сети, scheduler, доставка/активация/renewal служб ещё открыты.
+Реальный DNS-01 issuance, scheduler и автоматическая доставка ещё открыты.
+Локальный TLS activation controller уже прошёл отдельный VPS fixture с
+rotation/rollback и сохранением процессов; это не полноценный renewal scheduler.
 Переход на свой домен вынесен отдельно в V3-T04, не считается выполненным.
 Добавлен `tls_runtime.py`: immutable serving pairs, atomic pointer, interrupted
 publication resume, root:10001 read-only доступ TURN. 5 filesystem tests и реальный
@@ -513,6 +519,12 @@ Dart/JS interop прошли. Реальный push callback/delivery/revoke н�
 с каждого origin остаются открытыми.
 
 
+Private push callback для новых подписок теперь задаётся core role по
+`core.tunnel_ip:8090`; Synapse whitelist только `/32`, стандартный blacklist
+сохранён. Узкий INPUT/DNAT путь из core bridge и остальные ACL прошли настоящую
+Linux проверку. Перенос существующих pusher URL, реальные provider delivery и
+проверка каждого web-origin ещё не закрыты.
+
 ### V3-19 — Расширить release manifests и проверки baseline
 
 Зависимости: V3-05, V3-06.
@@ -570,7 +582,9 @@ core/edge bundle и общий runtime без копирования secrets. К
 rollback bundle. 5 tests + 12 edge deploy tests PASS. В отдельной Debian12 VM
 пройдены network bootstrap/repeat/reboot, запрет Docker при missing intent и
 восстановление; [evidence](../iterations/three-vps-evidence/2026-10-28-vm-network-boot.json).
-Настоящий edge deployment/rollback и общий core/full rollout ещё не приняты.
+Настоящий edge deployment/rollback/resume теперь прошёл отдельную VM проверку
+с синтетическими upstreams: [evidence](../iterations/three-vps-evidence/2026-10-28-vm-edge-deploy.json).
+Общий core/full rollout, реальные данные и production migration ещё не приняты.
 
 ### V3-21 — Автоматизировать замену входного VPS
 

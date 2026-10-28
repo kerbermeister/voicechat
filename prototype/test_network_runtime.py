@@ -3,6 +3,8 @@ import fcntl
 from pathlib import Path
 import sys
 import tempfile
+import shutil
+from unittest.mock import patch
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,6 +66,22 @@ class NetworkRuntimeTests(unittest.TestCase):
         first_filter = next(index for index, call in enumerate(self.calls) if call[:2] == ('nft', '--file'))
         first_tunnel = next(index for index, call in enumerate(self.calls) if call[:2] == ('wg', 'syncconf'))
         self.assertLess(first_filter, first_tunnel)
+
+    def test_receipt_covers_policy_sources_even_when_inventory_does_not_change(self):
+        self.apply(self.value)
+        original = managed_state.read(self.root / 'applied.json')['sha256']
+        source = self.root / 'updated-source'
+        source.mkdir()
+        for name in network_runtime.SOURCES:
+            shutil.copyfile(ROOT / 'infra' / name, source / name)
+        with patch.object(network_runtime, '__file__', str(source / 'network_runtime.py')):
+            self.assertEqual(network_runtime.fingerprint(self.value), original)
+            policy = source / 'firewall_config.py'
+            policy.write_bytes(policy.read_bytes() + b'\n# changed policy code\n')
+            self.assertNotEqual(network_runtime.fingerprint(self.value), original)
+            self.apply(None)
+            self.assertEqual(managed_state.read(self.root / 'applied.json')['sha256'],
+                             network_runtime.fingerprint(self.value))
 
     def test_reboot_restores_both_components_from_common_state(self):
         self.apply(self.value)
