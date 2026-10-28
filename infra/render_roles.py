@@ -22,7 +22,7 @@ def bundle(public, inventory, role, edge_id=None, subnet='10.241.0.0/28'):
         if edge_id is not None:
             raise ValueError('Core has no edge ID')
         compose = role_config.core(public, inventory)
-        sources = ['infra/' + name for name in [*shared, 'compose.yaml']]
+        sources = ['infra/' + name for name in [*shared, 'compose.yaml', 'push_route_migration.py']]
         sources += ['prototype/' + name for name in ('client-policy.json', 'voicechat_policy.py',
                                                     'client_policy.py', 'scheduled_messages.py')]
         node = inventory['core']

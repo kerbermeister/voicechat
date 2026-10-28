@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "postgres_transaction_proof": true,
+  "url_only_change": true,
+  "foreign_pushers_unchanged": true,
+  "commit_crash_resumed": true,
+  "rollback_conflict_atomic": true,
+  "deleted_subscription_not_recreated": true,
+  "repeat_idempotent": true,
+  "limits": [
+    "Synthetic PostgreSQL pusher table matching inspected Synapse columns; not a full production migration.",
+    "Caller must enforce stopped writers, verified backup and Synapse restart; core orchestration not yet wired."
+  ],
+  "postgres_image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+  "fixture_resources_removed": true,
+  "source_sha256": "3ae12178d9ab9fb611972c24ca5ca448e43cfd3b368d4f2489441764de069114",
+  "probe_sha256": "449f106ee0aaec9441c723289457c2ca7d92c46853a02b4c8f6b9f909dbb00fe"
+}

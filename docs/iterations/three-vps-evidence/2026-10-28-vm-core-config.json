@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "single_entry": true,
+  "compose_core_initialization_repeated": true,
+  "existing_signing_key_and_media_preserved": true,
+  "private_push_whitelist_checked": true,
+  "configuration_permissions_checked": true,
+  "edge_excludes_core_secrets": true,
+  "fixture_resources_removed": true,
+  "probe_sha256": "9b557d38e54b4e3370292c96ae7cfdc45e80cb9c23538318678239af0a667499",
+  "limits": [
+    "Disposable volumes and synthetic identity/media; configure service only, not complete core rollout or a production database migration."
+  ]
+}

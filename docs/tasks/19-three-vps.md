@@ -571,7 +571,7 @@ current/previous per node, происхождение build artifacts, CI и dep
 Текущий локальный шаг V3-20: `edge_deploy.py` для одного подготовленного edge и
 web-only, atomic current/previous/pending, общий lock с host networking/TLS,
 preload/check/rollback/resume и запрет adoption чужого проекта. Fault tests прошли;
-настоящая clean VM/Compose приёмка ещё не проведена. Не закрывает core/full,
+настоящая VM/Compose проверка также прошла (см. ниже). Не закрывает core/full,
 workflow, SSH transport orchestration и последовательное обновление всех входов.
 `network_runtime` теперь сохраняет completed fingerprint только после обоих
 применений; при прерывании остаётся applying, и deploy блокируется.
@@ -585,6 +585,11 @@ rollback bundle. 5 tests + 12 edge deploy tests PASS. В отдельной Debi
 Настоящий edge deployment/rollback/resume теперь прошёл отдельную VM проверку
 с синтетическими upstreams: [evidence](../iterations/three-vps-evidence/2026-10-28-vm-edge-deploy.json).
 Общий core/full rollout, реальные данные и production migration ещё не приняты.
+Подготовлен URL-only migration primitive для прежних pushers: journal до DB commit,
+повтор после прерывания и транзакционный rollback проверены на настоящем PostgreSQL
+с синтетической таблицей. В core orchestrator ещё не подключён; остановка writers,
+backup и restart Synapse обязательны. [Evidence](../iterations/three-vps-evidence/2026-10-28-vm-push-migration.json).
+
 
 ### V3-21 — Автоматизировать замену входного VPS
 

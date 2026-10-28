@@ -78,6 +78,8 @@ class RoleConfigTests(unittest.TestCase):
         self.assertEqual(control['environment']['VOICECHAT_PUSH_GATEWAY_URL'],
                          'http://10.88.0.1:8090/_matrix/push/v1/notify')
         self.assertEqual(compose['services']['configure']['environment']['VOICECHAT_PUSH_GATEWAY_IP'], '10.88.0.1')
+        self.assertIn(role_config.bind('./node_inventory.py', '/node_inventory.py'),
+                      compose['services']['configure']['volumes'])
         self.assertEqual(control['ports'], ['10.88.0.1:8090:8090', '10.88.0.1:7880:7880'])
         self.assertNotIn('MATRIX_SERVER_NAME', compose['services']['configure']['environment'])
 

@@ -74,6 +74,7 @@ assert Path('/matrix/voicechat.signing.key').read_text() == 'test-only-original-
 assert Path('/matrix/media_store/sentinel').read_text() == 'original-media'
 value=json.loads(Path('/matrix/homeserver.yaml').read_text())
 assert value['server_name']=='chat.example.com'
+assert value['ip_range_whitelist'] == ['10.88.0.1/32']
 expected = EXPECTED_TURN
 assert value['turn_uris'] == expected
 assert not Path('/turn/turnserver.conf').exists()

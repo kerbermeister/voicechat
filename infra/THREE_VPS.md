@@ -794,3 +794,25 @@ WireGuard или certificate renewal. Протокол тестовой проб
 [STUN message integrity](https://www.rfc-editor.org/rfc/rfc8489.html#section-14.5)
 и [TURN permissions](https://www.rfc-editor.org/rfc/rfc8656.html#section-10.2);
 настройка логов — [Caddy global logging](https://caddyserver.com/docs/caddyfile/options#log).
+
+### Миграция существующих pushers при core rollout
+
+`push_route_migration.py` — внутренний транзакционный шаг core maintenance,
+включённый в core bundle. Он заменяет только точный canonical callback URL у
+`dev.voicechat.web` HTTP pushers, сохраняя ID, pushkey, позицию обработки и остальные
+поля. Приватный journal хранит ID и прежний/новый JSON data; это не backup.
+Intent сохраняется до UPDATE, поэтому повтор после обрыва между PostgreSQL commit
+и записью receipt завершает ту же операцию. Откат не создаёт удалённые подписки и
+отказывается перезаписывать независимо изменённые записи; конфликт откатывает всю
+транзакцию. Ожидание lock ограничено 5 секундами, SQL — 30 секундами.
+
+Обязательные условия вызывающего core deploy: общий lock, остановленные Synapse и
+control writers, проверенный согласованный backup и restart Synapse после commit
+для сброса его pusher cache. Пока этот шаг **не подключён** к production rollout;
+standalone CLI намеренно отсутствует. Журнал ограничен общим лимитом managed state
+64 KiB: превышение останавливает миграцию до изменений БД, требуется отдельный
+план для большего набора подписок. PostgreSQL probe:
+`prototype/check_push_route_migration.py`, только disposable база с префиксом
+`voicechat_push_migration_fixture_`, libpq `PG*` environment и psycopg2 из pinned
+Synapse image. Это проверка транзакций на синтетической таблице, не приёмка полной
+миграции настоящей Synapse БД.

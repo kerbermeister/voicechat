@@ -127,6 +127,26 @@ Network applied receipt теперь включает hashes кода полит
 [Свидетельство](three-vps-evidence/2026-10-28-vm-network-upgrade.json).
 Общий выбранный регрессионный набор: **150 tests PASS**.
 
+### Следующий core блок: подготовлен миграционный примитив
+
+Checkpoint `b0f1a7f` сохраняет edge/network/private-push proofs. После него добавлен
+`push_route_migration.py` в core bundle: PostgreSQL transaction, exact URL-only
+update, private journal до UPDATE, resume после DB commit, rollback без восстановления
+удалённых/чужих изменённых подписок. 4 unit tests и реальный PostgreSQL probe PASS:
+[свидетельство](three-vps-evidence/2026-10-28-vm-push-migration.json).
+В core deploy пока **не интегрирован**. Caller обязан остановить всех writers,
+проверить backup, удерживать общий lock и после commit перезапустить Synapse.
+Не запускать этот примитив вручную на production как замену orchestrator.
+
+Второй реальный Compose probe подтвердил repeat configure, сохранение signing key,
+media и permissions, private push whitelist и отсутствие core secrets в edge:
+[свидетельство](three-vps-evidence/2026-10-28-vm-core-config.json).
+Исправлен отсутствовавший bind mount node_inventory.py в core configure service.
+Fixture resources удалены. VM пока доступна для следующих core/backup испытаний.
+Последний полный выбранный регрессионный набор: 154 tests PASS.
+Далее: согласованный core backup/full controller + legacy baseline/shared ingress
+migration, затем SSH/CI orchestration. Production не обновлён.
+
 ## Неизменные условия
 
 - Продолжать по `docs/tasks/19-three-vps.md` и `docs/three-vps-spec.md`.
