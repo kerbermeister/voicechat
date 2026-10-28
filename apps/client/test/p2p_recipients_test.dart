@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:voicechat_probe/conversation_list.dart';
 import 'package:voicechat_probe/people_picker.dart';
+import 'package:voicechat_probe/person_identity.dart';
 import 'package:voicechat_probe/p2p/file_icon.dart';
 import 'p2p_service_test.dart' show P2pClient;
 
@@ -20,7 +21,35 @@ class ProfileClient extends P2pClient {
   );
 }
 
+class ProfileClientWithRooms extends ProfileClient {
+  final profileRooms = <mx.Room>[];
+  @override
+  List<mx.Room> get rooms => profileRooms;
+  @override
+  bool get getDisplayNameAndAvatarFromPrevContent => false;
+}
+
 void main() {
+  test(
+    'malformed member display name falls back without losing its avatar',
+    () {
+      final client = ProfileClientWithRooms();
+      final room = mx.Room(id: '!profile:local', client: client);
+      room.states[mx.EventTypes.RoomMember] = {
+        '@anna:local': mx.StrippedStateEvent(
+          senderId: '@anna:local',
+          type: mx.EventTypes.RoomMember,
+          stateKey: '@anna:local',
+          content: {'displayname': 42, 'avatar_url': 'mxc://local/avatar'},
+        ),
+      };
+      client.profileRooms.add(room);
+      final profile = cachedPersonProfile(client, '@anna:local')!;
+      expect(profile.displayName, isNull);
+      expect(profile.avatarUrl, Uri.parse('mxc://local/avatar'));
+    },
+  );
+
   test('file pictures distinguish MIME types and extension fallbacks', () {
     for (final (name, mime, label) in [
       ('photo.HEIC', 'application/octet-stream', 'Изображение'),

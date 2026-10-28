@@ -11,7 +11,9 @@ mx.Profile? cachedPersonProfile(mx.Client client, String id) {
     if (member == null) continue;
     return mx.Profile(
       userId: id,
-      displayName: member['displayname'] as String?,
+      displayName: member['displayname'] is String
+          ? member['displayname'] as String
+          : null,
       avatarUrl:
           member['avatar_url'] is String &&
               (member['avatar_url'] as String).isNotEmpty
