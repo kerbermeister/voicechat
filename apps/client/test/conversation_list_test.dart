@@ -1,3 +1,5 @@
+// ignore: implementation_imports
+import 'package:matrix/src/utils/cached_stream_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +8,8 @@ import 'package:voicechat_probe/conversation_list.dart';
 import 'package:voicechat_probe/theme.dart';
 
 class ListClient implements Client {
+  @override
+  final onPresenceChanged = CachedStreamController<CachedPresence>();
   @override
   bool get autoRequestProfileForMissingUsers => false;
   @override

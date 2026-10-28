@@ -1,4 +1,6 @@
 import 'flow.dart';
+import 'file_icon.dart';
+import '../person_identity.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../app_motion.dart';
@@ -89,8 +91,8 @@ class P2pFileProgress extends StatelessWidget {
           value: percent,
           child: ExcludeSemantics(
             child: SizedBox(
-              width: 44,
-              height: 44,
+              width: 52,
+              height: 52,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -107,9 +109,10 @@ class P2pFileProgress extends StatelessWidget {
                       ).colorScheme.surfaceContainerHighest,
                     ),
                   ),
-                  Icon(
-                    verified ? Icons.check : Icons.insert_drive_file_outlined,
-                    size: 20,
+                  P2pFileIcon(
+                    name: file.name,
+                    mime: file.mime,
+                    verified: verified,
                   ),
                 ],
               ),
@@ -276,6 +279,11 @@ class _P2pPanelState extends State<P2pPanel> {
                                 multiple: true,
                                 title: 'Получатели P2P',
                                 allowedUsers: service.contacts.acceptedUsers,
+                                initialUsers: peers,
+                                maxSelected:
+                                    (policy.maxRecipients -
+                                            service.activeRecipients)
+                                        .clamp(0, policy.maxRecipients),
                               ),
                             );
                             if (selected == null || !mounted) return;
@@ -288,7 +296,7 @@ class _P2pPanelState extends State<P2pPanel> {
                             setState(() => peers = selected);
                           }),
                     icon: const Icon(Icons.people_outline),
-                    label: Text('Друзья (${peers.length})'),
+                    label: const Text('Выбрать получателей'),
                   ),
                   OutlinedButton.icon(
                     onPressed:
@@ -309,11 +317,37 @@ class _P2pPanelState extends State<P2pPanel> {
                   ),
                 ],
               ),
-              if (peers.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(peers.join(', ')),
+              const SizedBox(height: 12),
+              Text(
+                policy == null
+                    ? 'Получатели: ${peers.length}'
+                    : 'Получатели: ${peers.length} из ${policy.maxRecipients}',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              if (service.activeRecipients > 0)
+                Text(
+                  'Уже получают другие передачи: ${service.activeRecipients}',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
+              for (final peer in peers)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: PersonIdentity(client: service.client, userId: peer),
+                  trailing: IconButton(
+                    tooltip: 'Убрать получателя',
+                    onPressed: acting
+                        ? null
+                        : () => setState(() => peers.remove(peer)),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ),
+              const SizedBox(height: 12),
+              Text(
+                policy == null
+                    ? 'Файлы: ${files.length}'
+                    : 'Файлы: ${files.length} из ${policy.maxFiles}',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               if (files.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(24),
@@ -325,8 +359,8 @@ class _P2pPanelState extends State<P2pPanel> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: SizedBox(
-                    width: 40,
-                    height: 40,
+                    width: 52,
+                    height: 52,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
@@ -337,7 +371,7 @@ class _P2pPanelState extends State<P2pPanel> {
                             context,
                           ).colorScheme.surfaceContainerHighest,
                         ),
-                        const Icon(Icons.insert_drive_file_outlined, size: 20),
+                        P2pFileIcon(name: file.name, mime: file.mime),
                       ],
                     ),
                   ),
@@ -399,9 +433,11 @@ class _P2pPanelState extends State<P2pPanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '${t.outgoing ? 'Кому' : 'От кого'}: ${t.peer}',
-            style: Theme.of(context).textTheme.titleMedium,
+            t.outgoing ? 'Кому' : 'От кого',
+            style: Theme.of(context).textTheme.labelMedium,
           ),
+          const SizedBox(height: 8),
+          PersonIdentity(client: service.client, userId: t.peer),
           Text(t.label),
           P2pFlow(
             outgoing: t.outgoing,

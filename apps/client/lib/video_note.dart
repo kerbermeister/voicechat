@@ -346,7 +346,13 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
               children: [
                 ClipOval(
                   child: camera?.value.isInitialized == true
-                      ? CameraPreview(camera!)
+                      ? FittedBox(
+                          fit: BoxFit.cover,
+                          child: SizedBox(
+                            width: camera!.value.previewSize!.width,
+                            child: CameraPreview(camera!),
+                          ),
+                        )
                       : const Center(child: CircularProgressIndicator()),
                 ),
                 SmoothProgressRing(

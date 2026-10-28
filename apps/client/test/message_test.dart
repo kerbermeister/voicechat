@@ -1,3 +1,5 @@
+// ignore: implementation_imports
+import 'package:matrix/src/utils/cached_stream_controller.dart';
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart';
@@ -37,6 +39,10 @@ class TestRoom implements Room {
 }
 
 class TestClient implements Client {
+  @override
+  final onPresenceChanged = CachedStreamController<CachedPresence>();
+  @override
+  final presences = <String, CachedPresence>{};
   @override
   String get userID => '@user:local';
   @override

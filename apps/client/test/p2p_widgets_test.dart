@@ -114,13 +114,18 @@ void main() {
       ]);
       await tester.pumpAndSettle();
       expect(client.sent, isEmpty);
-      await tester.tap(find.text('Друзья (0)'));
+      expect(find.text('Файлы: 1 из 10'), findsOneWidget);
+      expect(find.text('Получатели: 0 из 4'), findsOneWidget);
+      await tester.tap(find.text('Выбрать получателей'));
       await tester.pumpAndSettle();
       await tester.tap(find.byType(CheckboxListTile).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Добавить'));
       await tester.pumpAndSettle();
       expect(client.sent, isEmpty);
+      expect(find.text('Получатели: 1 из 4'), findsOneWidget);
+      expect(find.text('@peer:local'), findsOneWidget);
+      expect(find.text('Статус недоступен'), findsOneWidget);
       await tester.ensureVisible(find.text('Отправить'));
       await tester.runAsync(() async {
         await tester.tap(find.text('Отправить'));

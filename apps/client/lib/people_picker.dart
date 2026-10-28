@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'app_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'avatar_editor.dart';
+import 'person_identity.dart';
 import 'conversation_list.dart';
 
 typedef GroupDraft = ({
@@ -17,12 +19,16 @@ class PeoplePicker extends StatefulWidget {
   final bool multiple, creatingGroup;
   final String? title;
   final Set<String>? allowedUsers;
+  final List<String> initialUsers;
+  final int? maxSelected;
   const PeoplePicker({
     super.key,
     required this.client,
     this.multiple = false,
     this.title,
     this.allowedUsers,
+    this.initialUsers = const [],
+    this.maxSelected,
   }) : creatingGroup = false;
   const PeoplePicker.group({
     super.key,
@@ -30,7 +36,9 @@ class PeoplePicker extends StatefulWidget {
     required this.allowedUsers,
   }) : multiple = true,
        creatingGroup = true,
-       title = 'Новая группа';
+       title = 'Новая группа',
+       initialUsers = const [],
+       maxSelected = null;
   @override
   State<PeoplePicker> createState() => _PeoplePickerState();
 }
@@ -51,25 +59,21 @@ class _PeoplePickerState extends State<PeoplePicker> {
   @override
   void initState() {
     super.initState();
+    selected.addAll(widget.initialUsers.where(eligible));
     for (final id in widget.allowedUsers ?? <String>{}) {
       if (!eligible(id)) continue;
-      mx.Room? direct;
-      for (final room in widget.client.rooms) {
-        if (room.isDirectChat && room.directChatMatrixID == id) {
-          direct = room;
-          break;
-        }
-      }
-      final display = direct
-          ?.getState(mx.EventTypes.RoomMember, id)
-          ?.content['displayname'];
-      people[id] = mx.Profile(
-        userId: id,
-        displayName: display is String
-            ? display
-            : id.split(':').first.replaceFirst('@', ''),
-        avatarUrl: direct == null ? null : roomAvatar(direct),
-      );
+      final cached = cachedPersonProfile(widget.client, id);
+      people[id] = cached ?? mx.Profile(userId: id);
+      if (cached == null) unawaited(loadProfile(id));
+    }
+  }
+
+  Future<void> loadProfile(String id) async {
+    try {
+      final profile = await widget.client.getProfileFromUserId(id);
+      if (mounted) setState(() => people[id] = profile);
+    } catch (_) {
+      // Retain the username if a contact profile is unavailable.
     }
   }
 
@@ -119,13 +123,21 @@ class _PeoplePickerState extends State<PeoplePicker> {
       return;
     }
     setState(() {
-      if (!selected.add(person.userId)) selected.remove(person.userId);
+      if (selected.contains(person.userId)) {
+        selected.remove(person.userId);
+      } else if (widget.maxSelected == null ||
+          selected.length < widget.maxSelected!) {
+        selected.add(person.userId);
+      }
     });
   }
 
   void confirm() {
     final users = selected.where(eligible).toList();
     if (users.isEmpty && !personal) return;
+    if (widget.maxSelected != null && users.length > widget.maxSelected!) {
+      return;
+    }
     if (widget.creatingGroup) {
       if (!form.currentState!.validate()) return;
       Navigator.pop<GroupDraft>(context, (
@@ -206,24 +218,18 @@ class _PeoplePickerState extends State<PeoplePicker> {
                   vertical: 2,
                 ),
                 value: selected.contains(p.userId),
-                secondary: PersonAvatar(
-                  name: p.displayName ?? p.userId,
-                  size: 32,
+                title: PersonIdentity(
                   client: widget.client,
-                  url: p.avatarUrl,
-                  showPresence: false,
+                  userId: p.userId,
+                  profile: p,
                 ),
-                title: Text(
-                  p.displayName ?? p.userId,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  p.userId,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                onChanged: busy ? null : (_) => toggle(p),
+                onChanged:
+                    busy ||
+                        (!selected.contains(p.userId) &&
+                            widget.maxSelected != null &&
+                            selected.length >= widget.maxSelected!)
+                    ? null
+                    : (_) => toggle(p),
               );
             },
           );
@@ -235,7 +241,7 @@ class _PeoplePickerState extends State<PeoplePicker> {
               style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
             ),
           )
-        : compact
+        : compact && widget.maxSelected == null
         ? SingleChildScrollView(
             child: Wrap(
               spacing: 6,
@@ -273,18 +279,10 @@ class _PeoplePickerState extends State<PeoplePicker> {
                 ListTile(
                   dense: true,
                   contentPadding: EdgeInsets.zero,
-                  leading: PersonAvatar(
-                    name: people[id]?.displayName ?? id,
-                    size: 32,
+                  title: PersonIdentity(
                     client: widget.client,
-                    url: people[id]?.avatarUrl,
-                    showPresence: false,
-                  ),
-                  title: Text(people[id]?.displayName ?? id, maxLines: 2),
-                  subtitle: Text(
-                    id,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                    userId: id,
+                    profile: people[id],
                   ),
                   trailing: IconButton(
                     tooltip: 'Убрать участника',
@@ -315,7 +313,7 @@ class _PeoplePickerState extends State<PeoplePicker> {
           (widget.creatingGroup
                   ? 620
                   : widget.multiple
-                  ? 240
+                  ? (widget.maxSelected == null ? 240 : 360)
                   : 180) *
               textScale,
           760 * textScale,
@@ -438,7 +436,9 @@ class _PeoplePickerState extends State<PeoplePicker> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: panel(
-                                    'Выбрано · ${selected.length}',
+                                    widget.maxSelected == null
+                                        ? 'Выбрано · ${selected.length}'
+                                        : 'Получатели: ${selected.length} из ${widget.maxSelected}',
                                     chosen(false),
                                   ),
                                 ),
@@ -451,10 +451,12 @@ class _PeoplePickerState extends State<PeoplePicker> {
                               const SizedBox(height: 8),
                               SizedBox(
                                 height:
-                                    (box.maxHeight > 260 ? 104 : 80) *
+                                    (box.maxHeight > 260 ? 144 : 110) *
                                     textScale,
                                 child: panel(
-                                  'Выбрано · ${selected.length}',
+                                  widget.maxSelected == null
+                                      ? 'Выбрано · ${selected.length}'
+                                      : 'Получатели: ${selected.length} из ${widget.maxSelected}',
                                   chosen(true),
                                 ),
                               ),
@@ -487,7 +489,13 @@ class _PeoplePickerState extends State<PeoplePicker> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            onPressed: (selected.isEmpty && !personal) || busy ? null : confirm,
+            onPressed:
+                (selected.isEmpty && !personal) ||
+                    busy ||
+                    (widget.maxSelected != null &&
+                        selected.length > widget.maxSelected!)
+                ? null
+                : confirm,
             child: Text(widget.creatingGroup ? 'Создать' : 'Добавить'),
           ),
       ],

@@ -48,6 +48,7 @@ private final class NoteCapture: NSObject, FlutterTexture, AVCaptureVideoDataOut
     get { stateLock.lock(); defer { stateLock.unlock() }; return _disposed }
     set { stateLock.lock(); _disposed = newValue; stateLock.unlock() }
   }
+  private var initializing: FlutterResult?
   private var starting: FlutterResult?
   private var stopping: FlutterResult?
   private var exporting: AVAssetExportSession?
@@ -103,6 +104,10 @@ private final class NoteCapture: NSObject, FlutterTexture, AVCaptureVideoDataOut
       disposed = true
       registry.unregisterTexture(previous)
       queue.async {
+        if let result = self.initializing {
+          self.initializing = nil
+          self.fail(result, "Камера закрыта.")
+        }
         self.exporting?.cancelExport()
         self.movie.stopRecording()
         self.session.stopRunning()
@@ -164,9 +169,10 @@ private final class NoteCapture: NSObject, FlutterTexture, AVCaptureVideoDataOut
         let video = try AVCaptureDeviceInput(device: device)
         self.session.beginConfiguration()
         defer { self.session.commitConfiguration() }
-        self.session.sessionPreset = .vga640x480
         guard self.session.canAddInput(video) else { throw NSError(domain: "camera", code: 6) }
         self.session.addInput(video); self.input = video
+        // VGA letterboxes the wide FaceTime frame into 4:3 before encoding.
+        self.session.sessionPreset = self.session.canSetSessionPreset(.hd1280x720) ? .hd1280x720 : .high
         if self.audio {
           guard let microphone = AVCaptureDevice.default(for: .audio) else { throw NSError(domain: "camera", code: 7) }
           let audioInput = try AVCaptureDeviceInput(device: microphone)
@@ -181,8 +187,9 @@ private final class NoteCapture: NSObject, FlutterTexture, AVCaptureVideoDataOut
         self.session.addOutput(self.movie)
         self.queue.async {
           guard !self.disposed else { self.fail(result, "Камера закрыта."); return }
+          // The capture preset does not guarantee the delivered buffer dimensions.
+          self.initializing = result
           self.session.startRunning()
-          self.complete(result, ["width": 640, "height": 480])
         }
       } catch { self.fail(result, "Не удалось открыть камеру и микрофон.") }
     }
@@ -195,6 +202,10 @@ private final class NoteCapture: NSObject, FlutterTexture, AVCaptureVideoDataOut
   func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
     guard !disposed, let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
     lock.lock(); pixel = buffer; lock.unlock()
+    if let result = initializing {
+      initializing = nil
+      complete(result, ["width": CVPixelBufferGetWidth(buffer), "height": CVPixelBufferGetHeight(buffer)])
+    }
     DispatchQueue.main.async { if self.texture != -1 { self.registry.textureFrameAvailable(self.texture) } }
   }
   func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {

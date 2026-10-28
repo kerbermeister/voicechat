@@ -17,7 +17,7 @@ void main() {
           return switch (call.method) {
             'cameras' => ['built-in'],
             'create' => 42,
-            'initialize' => {'width': 640, 'height': 480},
+            'initialize' => {'width': 1920, 'height': 1080},
             'stop' => '/private/cache/REC123.mp4',
             _ => null,
           };
@@ -40,7 +40,8 @@ void main() {
       await camera.initialize();
       expect(camera.value.isInitialized, isTrue);
       expect(camera.value.deviceOrientation, DeviceOrientation.landscapeLeft);
-      expect(camera.value.previewSize?.width, 640);
+      expect(camera.value.previewSize, const Size(1920, 1080));
+      expect(camera.value.aspectRatio, closeTo(16 / 9, .001));
       await camera.startVideoRecording();
       expect(camera.value.isRecordingVideo, isTrue);
       final file = await camera.stopVideoRecording();
