@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voicechat_probe/p2p/panel.dart';
 import 'package:voicechat_probe/p2p/flow.dart';
+import 'package:voicechat_probe/p2p/file_icon.dart';
 import 'package:voicechat_probe/p2p/protocol.dart';
 
 void main() {
@@ -91,6 +92,10 @@ void main() {
       find.byType(CircularProgressIndicator),
     );
     expect(ring.value, closeTo(.3742, .00001));
+    expect(
+      tester.getSize(find.byType(CircularProgressIndicator)).width,
+      greaterThan(tester.getSize(find.byType(P2pFileIcon)).width + 10),
+    );
   });
   testWidgets(
     'draft stays local until explicit send, then cancel releases its source',

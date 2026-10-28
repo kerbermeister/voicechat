@@ -102,6 +102,10 @@ class P2pFileProgress extends StatelessWidget {
                         ? Duration.zero
                         : const Duration(milliseconds: 250),
                     builder: (context, n, _) => CircularProgressIndicator(
+                      constraints: const BoxConstraints.tightFor(
+                        width: 52,
+                        height: 52,
+                      ),
                       value: n,
                       strokeWidth: 3,
                       backgroundColor: Theme.of(
@@ -365,6 +369,10 @@ class _P2pPanelState extends State<P2pPanel> {
                       alignment: Alignment.center,
                       children: [
                         CircularProgressIndicator(
+                          constraints: const BoxConstraints.tightFor(
+                            width: 52,
+                            height: 52,
+                          ),
                           value: 0,
                           strokeWidth: 3,
                           backgroundColor: Theme.of(
