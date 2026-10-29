@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "status": "failed",
+  "production_changed": false,
+  "vm_source": "/srv/voicechat-edge-fixture/legacy-preflight-source-srtf3xut",
+  "pre_public_failure_rollback_preserved_account_data_written_after_backup": true,
+  "failed_phase": "stopping on explicit retry after completed rollback",
+  "error": "Unknown or duplicate migration container",
+  "cause": "Compose retained exact previous recovery override in container config-files labels after normal up reused containers.",
+  "committed_core_public_recovery_drills_reached": false,
+  "fixture_containers_bridge_and_units_removed": true,
+  "original_network_active": true,
+  "limits": [
+    "Failure drills caught a real initial-controller retry defect. Core/public lost-reply checks are not claimed."
+  ]
+}

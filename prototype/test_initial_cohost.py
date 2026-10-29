@@ -51,6 +51,30 @@ class InitialCohostPlanningTests(unittest.TestCase):
         self.candidate['control'] = self.candidate['control'].replace('1'*64,'3'*64)
         self.assertNotEqual(role_release.json_digest(self.target()),before)
 
+    def test_legacy_retirement_is_idempotent_and_blocks_deploy_before_side_effects(self):
+        legacy, managed = self.base/'legacy', self.base/'managed'
+        legacy.mkdir(mode=0o700)
+        target = self.target()
+        expected = initial_cohost.legacy_guard(legacy,managed,target)
+        self.assertFalse((legacy/'role-deployment.json').exists())
+        initial_cohost.legacy_guard(legacy,managed,target,publish=True)
+        initial_cohost.legacy_guard(legacy,managed,target,publish=True)
+        self.assertEqual(managed_state.read(legacy/'role-deployment.json'),expected)
+        with patch.object(initial_cohost.legacy,'manifest') as manifest:
+            with self.assertRaisesRegex(SystemExit,'core/edge roles'):
+                initial_cohost.legacy.deploy(legacy,legacy/'releases/candidate',None)
+            manifest.assert_not_called()
+        self.assertFalse((legacy/'runtime').exists())
+        changed = {**target,'backend_sha256':'c'*64}
+        with self.assertRaisesRegex(ValueError,'Foreign legacy retirement'):
+            initial_cohost.legacy_guard(legacy,managed,changed,publish=True)
+        self.assertEqual(managed_state.read(legacy/'role-deployment.json'),expected)
+        (legacy/'role-deployment.json').unlink()
+        foreign = self.base/'foreign';foreign.write_text('private original')
+        (legacy/'role-deployment.json').symlink_to(foreign)
+        with self.assertRaises(OSError):initial_cohost.legacy_guard(legacy,managed,target,publish=True)
+        self.assertEqual(foreign.read_text(),'private original')
+
     def test_initial_migration_rejects_missing_legacy_turn_or_separate_edge(self):
         self.inventory['edges'][0]['legacy_turn'] = False
         with self.assertRaisesRegex(ValueError,'legacy TURN'):self.target()
@@ -58,7 +82,8 @@ class InitialCohostPlanningTests(unittest.TestCase):
         self.public['edges'].append({'id':'b','origin':'https://b.example.com','turn_host':'turn-b.example.com'})
         with self.assertRaises(ValueError):self.target()
 
-    def test_public_artifacts_are_copied_without_overwriting_unknown_files_or_symlinks(self):
+    @patch('initial_cohost.shutil.disk_usage',return_value=SimpleNamespace(free=8*1024**3))
+    def test_public_artifacts_are_copied_without_overwriting_unknown_files_or_symlinks(self,_space):
         source, target = self.base/'public', self.base/'target'
         source.mkdir(mode=0o700); target.mkdir(mode=0o755)
         (source/'23').mkdir(mode=0o755)
@@ -75,6 +100,16 @@ class InitialCohostPlanningTests(unittest.TestCase):
         (target/'appcast.xml').write_bytes((source/'appcast.xml').read_bytes())
         (source/'unexpected').symlink_to(self.base/'private')
         with self.assertRaises(ValueError):initial_cohost.copy_public(source,target)
+
+    def test_public_artifact_copy_refuses_to_consume_working_data_reserve(self):
+        source,target=self.base/'public',self.base/'target'
+        source.mkdir(mode=0o700);raw=b'fixture signed archive'
+        (source/'VoiceChat.zip').write_bytes(raw)
+        with patch('initial_cohost.shutil.disk_usage',return_value=SimpleNamespace(free=2*1024**3+len(raw)-1)):
+            with self.assertRaisesRegex(ValueError,'retain 2 GiB'):
+                initial_cohost.copy_public(source,target)
+        self.assertFalse(list(target.iterdir()))
+        self.assertEqual((source/'VoiceChat.zip').read_bytes(),raw)
 
     def test_invalid_catalog_is_rejected_before_any_migration_directory_is_created(self):
         root = self.base / 'new-managed'
@@ -212,6 +247,37 @@ class InitialCohostPlanningTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'Unclaimed'):
             initial_cohost.disable_role(root,'core',None,system_root=system,run=run)
         self.assertFalse(calls)
+
+    def test_retry_accepts_only_its_exact_previous_legacy_recovery_config_labels(self):
+        case=test_legacy_core.LegacyCorePreflightTests();case.setUp();self.addCleanup(case.doCleanups)
+        volume='8'*64
+        case.image_volumes[case.images['turn']]={'/var/lib/coturn':{}}
+        case.containers['turn']['mounts'].append({'Type':'volume','Name':volume,'Destination':'/var/lib/coturn','RW':True})
+        baseline=case.inspect();attempt='c'*64
+        root=self.base/'managed';folder=root/('attempt-'+attempt);folder.mkdir(parents=True,mode=0o700)
+        recovery=folder/'legacy-recovery.json'
+        override=legacy_core.rollback_override(baseline);managed_state.persist(recovery,override)
+        merged=deepcopy(case.model)
+        merged['services']['turn']['volumes'].append({'type':'volume','source':'legacy-turn-runtime','target':'/var/lib/coturn'})
+        merged['volumes']['legacy-turn-runtime']={'name':volume,'external':True}
+        arguments=initial_cohost.legacy.compose_command(case.release)
+        expected=initial_cohost.configuration_files([*arguments,'-f',str(recovery)])
+        for value in case.containers.values():
+            value['labels']['com.docker.compose.project.config_files']=','.join(map(str,expected))
+        def execute(args,**kwargs):
+            if args[:2]==['docker','compose']:
+                return json.dumps(merged if str(recovery) in args else case.model).encode()
+            return case.execute(args,**kwargs)
+        models=initial_cohost.legacy_models(root,baseline,attempt,execute=execute)
+        self.assertEqual(len(initial_cohost.namespace('voicechat',models,execute=execute)),6)
+        with self.assertRaisesRegex(ValueError,'Unknown or duplicate'):
+            initial_cohost.namespace('voicechat',models[:1],execute=execute)
+        override['volumes']['legacy-turn-runtime']['name']='9'*64
+        managed_state.persist(recovery,override)
+        with self.assertRaisesRegex(ValueError,'missing or changed'):
+            initial_cohost.legacy_models(root,baseline,attempt,execute=execute)
+        with self.assertRaisesRegex(ValueError,'previous rollback owner'):
+            initial_cohost.legacy_models(root,baseline,'../foreign',execute=execute)
 
     def test_namespace_cleanup_requires_exact_compose_source_and_preserves_every_volume(self):
         case = test_legacy_core.LegacyCorePreflightTests();case.setUp();self.addCleanup(case.doCleanups)

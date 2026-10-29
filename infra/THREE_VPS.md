@@ -1245,3 +1245,72 @@ preflight сохраняет strict policy/healthy PG contract. Запуск PG 
 Type=notify maintenance success/NRestarts=0, nonce-owned SQL и legacy recreation
 с прежними account/device/PG/signing/coturn identity. Это отдельные компоненты,
 общий production full coordinator ещё не подключён.
+
+### Общий первоначальный legacy → core/cohost переход
+
+`initial_cohost.py` объединяет компоненты для одного data host и его canonical
+cohost edge с `legacy_turn` и `shared_tls`. Обычный полный сценарий прошёл на
+marked VM с точными исходниками legacy 8bcbd91, синтетическими account/CA/catalog
+key: [evidence](../docs/iterations/three-vps-evidence/2026-10-29-vm-initial-cohost.json).
+Account/device/account data, PG/signing identity и legacy pointer сохранились.
+Failure drills ещё выполняются; workflow и production переход не завершены.
+
+Контракт будущего CI entry point (не обход действующего routed-deploy gate):
+
+```sh
+python3 -B infra/initial_cohost.py \
+  --root /srv/voicechat-managed --legacy-root /srv/voicechat \
+  --shared-root /var/lib/voicechat-shared-ingress \
+  --topology /private/topology.json --inventory /private/inventory.json \
+  --candidate release.json --backend-file backend.sha256 \
+  --catalog /private/routes.json --catalog-key-file /private/catalog-public.txt
+```
+
+`catalog-public.txt` содержит одну base64 строку публичного Ed25519 key, как
+`CLIENT_ROUTE_CATALOG_KEY`, а не PEM и не приватный signing key. Подписанный
+каталог выпускается offline; приватный ключ не нужен и не передаётся VPS.
+Runtime/data остаются на A; edge получает TURN secret и публичные артефакты.
+Копирование архива обновления заранее проверяет запас 2 GiB для рабочей БД.
+
+В private `initial.json` сохраняются exact target/source hashes, nonce и фаза.
+Обычный повтор продолжает тот же frozen artifact; `--retry` разрешён только после
+завершённого rollback и создаёт новый nonce. Legacy labels могут сохранять путь
+к recovery override предыдущей попытки: принимается только её owned private файл,
+равный override с прежним anonymous TURN volume. Чужие `-f` не принимаются.
+Boot/scheduler slots и shared-front ownership проверяются до остановки writers;
+boot units устанавливаются после network unit, до запуска нового core.
+
+До public commit ошибка восстанавливает legacy и прежний timer без восстановления
+старой БД поверх свежих записей. После фактического public commit выполняется
+только forward recovery. При прерывании процесса/reboot посреди full fence нужен
+повтор того же frozen entry point: незавершённую миграцию boot monitor не обходит.
+Новый revision после завершённой adoption требует обычного managed rollout;
+initial controller не выдаётся за реализацию всех scopes.
+
+### Immutable доставка CI исходников
+
+`release_delivery.py` — standalone stdlib receiver для private SSH stdin. Он
+проверяет SHA256 архива и candidate commit до записи, ограничивает gzip/tar,
+отвергает traversal, ссылки, runtime и неизвестные вложенные пути. Допустимы flat
+`infra/*`, четыре policy-файла `prototype`, `release.json` и `backend.sha256`.
+Получатель атомарно публикует `/ROOT/bundles/ARCHIVE_SHA256`; повтор сверяет весь
+file set и содержимое, не перезаписывает неизвестный или изменённый каталог.
+
+```sh
+python3 -B /private/bootstrap/release_delivery.py --root /srv/voicechat-managed \
+  --sha256 "$ARCHIVE_SHA256" --commit "$GITHUB_SHA" < /private/release.tar.gz
+```
+
+Bootstrap копируется через pinned SSH в отдельный private temporary directory;
+receiver не требует ещё не установленных модулей проекта. Он не запускает службы,
+не копирует runtime/credentials и не меняет current pointers. Build source-proof
+по-прежнему обязан выполнить CI через `release_source.py` на clean checkout;
+receiver не заменяет этот guard формально корректной строкой fingerprint.
+[Linux stdin/repeat proof](../docs/iterations/three-vps-evidence/2026-10-29-vm-source-delivery.json),
+7 negative/idempotence unit tests прошли; интеграция в release workflow впереди.
+
+SSH source transport: `ssh_deploy.py receive` проверяет точные bytes архива по чистому
+Git commit и backend fingerprint до обращения к хосту. Пinned host key обязателен;
+bootstrap берётся из проверенного архива, передаётся stdin и удаляется после приёма.
+`--output` создаёт новый private receipt, не перезаписывает существующий файл.
+Проверки: 5 unit и Linux VM SSH/repeat (86 public files); workflow ещё не подключён.

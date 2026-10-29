@@ -104,10 +104,16 @@ def check_configure_snapshots(snapshots, *, run):
             raise AssertionError('Committed full recovery re-executed configure')
 
 
-def fault_sequence(root,core,edge,shared,deploy,api,path,account_data,*,run):
+def fault_sequence(root,core,edge,shared,deploy,api,path,account_data,retained_volumes,*,run):
     # Write new account data after the stopped-writer snapshot. A rollback that
     # restored that snapshot would lose it, even if account login still worked.
     def before_public(*args,**kwargs):
+        record=edge_deploy.read_state(edge,'a')['current']
+        release=role_deploy.release_path(edge,record)
+        model=json.loads(edge_deploy.compose(edge,record,'config','--format','json',execute=run))
+        owned=initial_cohost.namespace('voicechat-edge-a',
+            [((release/'infra/compose.edge.json',),model)],execute=run)['turn']
+        retained_volumes.extend(item['Name'] for item in owned['mounts'] if item['Destination']=='/var/lib/coturn')
         account_data['nonce']=secrets.token_hex(16)
         api('http://10.88.0.1:8088',path,'PUT',account_data)
         raise ValueError('Injected failure before public commit')
@@ -203,6 +209,7 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
     if not prior_stamps[legacy_backup.TIMER]:stamps[legacy_backup.TIMER].touch(mode=0o600)
     run(['systemctl','daemon-reload']);run(['systemctl','enable','--now',legacy_backup.TIMER])
     result=None
+    retained_volumes=[]
     try:
         with business(directory,edge,public,inventory,neighbor,run=run) as (shared,execute,ca):
             try:
@@ -210,7 +217,7 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
                 def deploy(**options):
                     return initial_cohost.migrate(root,old_root,shared,public,inventory,candidate,envelope,catalog_key,
                         backend_sha256=hashlib.sha256(b'synthetic-full-vm-candidate').hexdigest(),execute=execute,ca_file=ca,**options)
-                current=(fault_sequence(root,core,edge,shared,deploy,api,path,account_data,run=run)
+                current=(fault_sequence(root,core,edge,shared,deploy,api,path,account_data,retained_volumes,run=run)
                          if fault_drills else deploy())
                 assert current['data_identity']==baseline['data_identity']
                 assert core_deploy.data_identity(core,core_deploy.read_state(core)['current'],execute=execute)==baseline['data_identity']
@@ -273,6 +280,16 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
             if any(drop.parent.iterdir()):raise ValueError('Unknown backup drop-in must be preserved')
             drop.parent.rmdir()
         remove_units(legacy_units,(legacy_backup.TIMER,),run=run)
+        for volume in retained_volumes:
+            if not run(['docker','volume','ls','-q','--filter','name=^'+volume+'$']).strip():continue
+            info=json.loads(run(['docker','volume','inspect',volume]))[0]
+            if (info['Name']!=volume or info['Driver']!='local' or info.get('Options') or
+                    'com.docker.volume.anonymous' not in (info.get('Labels') or {}) or
+                    run(['docker','ps','-aq','--filter','volume='+volume]).strip()):
+                raise ValueError('Unknown retained fixture volume must be preserved')
+            run(['docker','volume','rm',volume])
+            if run(['docker','volume','ls','-q','--filter','name=^'+volume+'$']).strip():
+                raise AssertionError('Retained fixture volume was not removed')
         for name,path in stamps.items():
             if not prior_stamps[name] and path.exists():path.unlink()
     if result is None:raise AssertionError('Full migration did not complete')

@@ -553,13 +553,13 @@ current/previous per node, происхождение build artifacts, CI и dep
 29.10: добавлен кандидат общего первоначального `initial_cohost.py`: frozen artifact,
 общий nonce/fence, stopped-writer backup, URL-only push migration, boot recovery,
 peerless network, core/edge warm-up, публичный commit и восстановление legacy
-без отката БД. Девять focused проверок и полный набор 459 Python tests прошли. Отдельный
+без отката БД. 14 focused проверок и полный набор 479 Python tests (3 skip) прошли. Отдельный
 legacy→push→legacy proof повторён на точных исходниках production 8bcbd91
 ([evidence](../iterations/three-vps-evidence/2026-10-29-vm-exact-legacy-rollout-fence.json));
 обычный целый VM сценарий завершён:
 [initial migration PASS](../iterations/three-vps-evidence/2026-10-29-vm-initial-cohost.json),
 account/device/account data и PG/signing identity сохранены, source legacy 8bcbd91.
-Failure drills и подключение к workflow пока открыты. Не использовать как
+[Failure drills PASS](../iterations/three-vps-evidence/2026-10-29-vm-initial-cohost-faults.json): rollback сохраняет новые записи, retry и lost core/public commit восстанавливаются без повторного configure. Подключение к workflow пока открыто. Не использовать как
 подтверждённый production deploy.
 
 

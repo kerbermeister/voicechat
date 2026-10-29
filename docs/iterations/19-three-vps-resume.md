@@ -12,7 +12,7 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 
 `infra/initial_cohost.py` связывает подготовленные компоненты в один журналируемый
 legacy→core/cohost сценарий на A. Это **кандидат**, ещё не разрешённый CI production
-путь: цельный VM переход, fault drills и интеграция workflow не завершены.
+путь: цельный VM переход и fault drills пройдены; интеграция workflow не завершена.
 Приватный snapshot рабочей policy остаётся на A; rollback меняет текущие URL pushers,
 сохраняет данные/ключи/тома и возвращает legacy без восстановления старой БД.
 После commit публичного ingress предусмотрено только доведение нового режима вперёд.
@@ -21,8 +21,8 @@ Boot recovery committed роли под full fence разрешён только
 исходного fingerprint; новый peerless registry привязан к generation и сохраняет ключ.
 Неверный SSH host и remote Docker отвергаются до записи состояния.
 
-Последний подтверждённый полный набор — **464 Python tests, OK, skipped=3**;
-координатор после следующего исправления — **12 focused PASS**, fixture cleanup — **2 PASS**. CLI и backup scheduler используют одну выбранную
+Последний подтверждённый полный набор — **479 Python tests, OK, skipped=3**;
+координатор после следующего исправления — **14 focused PASS**, shared front — **10 PASS**, fixture cleanup — **2 PASS**. CLI и backup scheduler используют одну выбранную
 подсеть. Commit **76707dc** сохраняет первый кандидат координатора.
 В VM завершена проверка старого Git **8bcbd91** с source-built legacy control
 **bc8327…** и candidate **abc8e6…**:
@@ -75,14 +75,46 @@ Fixture resources удалены; независимая проверка под
 Это synthetic data/CA/key/fingerprint; настоящие устройства/media и production
 не проверены этим прогоном.
 
-**Теперь идут failure drills**, ещё не приняты: отказ до public commit, запись
-account data после snapshot с проверкой rollback без её потери, потеря ответа
-после core commit, actual role boot fence при остановленных контейнерах,
-потеря ответа после public commit и forward recovery без повторного configure.
-Wrapper `/tmp/voicechat-initial-cohost-faults-vm.py`, runner session **88699**,
-source `/srv/voicechat-edge-fixture/legacy-preflight-source-v9jzj5za`.
-Private probe log находится в source-каталоге. Не запускать параллельно другой
-fixture project=voicechat/deploy. Не удалять архив исходной сети/кеша при ошибке.
+**Failure drills завершены успешно после двух исправленных отказов fixture/retry.**
+- [Fault attempt1](three-vps-evidence/2026-10-29-vm-initial-cohost-faults-attempt1.json)
+  отказал на оставшемся пустом external TLS bridge предыдущего fixture. Bridge
+  удалён только после проверки labels/config hash/IPAM и отсутствия endpoints.
+  Business cleanup теперь удаляет его после Caddy; coordinator проверяет front
+  ownership до maintenance. Guard `owned=False` не ослаблен.
+- [Fault attempt2](three-vps-evidence/2026-10-29-vm-initial-cohost-faults-attempt2.json)
+  прошёл intentional pre-public rollback и сохранил account data, записанные после
+  snapshot. Следующий `retry` выявил реальную ошибку: Compose сохранил предыдущий
+  recovery override в config-files labels. `legacy_models` теперь допускает только
+  exact owned prior override с прежним TURN volume, проверяет его до maintenance;
+  регрессия с retained labels всех шести services и чужим volume покрыта unit test.
+  Этот отказ не считается подтверждением восстановления после core/public commit.
+- [Финальный fault proof PASS](three-vps-evidence/2026-10-29-vm-initial-cohost-faults.json):
+  rollback сохранил новые account data после snapshot; явный retry завершился;
+  lost reply после core commit и после public commit восстановлен вперёд.
+  Actual Type=notify boot под full fence завершался без restart loop; configure
+  committed core/edge не выполнялся повторно. Исходная сеть восстановлена с тем же
+  public key. Текущие fixture containers/units/networks удалены; два старых
+  анонимных volume от 28.10 сохранены. Активных VM прогонов сейчас нет.
+
+`release_delivery.py`: bounded stdlib stdin receiver, immutable `/ROOT/bundles/SHA`,
+exact repeat без overwrite — **7 unit PASS**. `ssh_deploy.py receive` сверяет архив
+с чистым Git commit, полным набором tracked sources и backend fingerprint до SSH;
+исполняет bootstrap только из проверенного архива, через закреплённый SSH host key.
+**5 transport tests PASS**, [Linux SSH transport/repeat PASS](three-vps-evidence/2026-10-29-vm-source-transport.json),
+86 публичных files, synthetic image pins, без app/data/credentials. К workflow ещё
+не подключено. Полный набор **479 PASS, skipped=3**.
+
+Для продолжения в этом же чате создан heartbeat **voicechat-core-edge**, каждые
+30 минут. Он продолжает доступные работы, не дублирует активные прогоны и молчит
+при неизменном состоянии; при завершении/настоящем внешнем блокере его надо
+приостановить, сохранив остальные настройки. Новые чаты/агенты не создаются.
+
+GitHub repo подтверждён UI и main SHA **2cca4d3**; `origin` теперь SSH
+`git@github.com:kerbermeister/voicechat.git`, fetch выполнен. Существующий
+`/Users/anton/.ssh/id_ed25519` аутентифицирует **kerbermeister**, push **dry-run**
+успешен. Ветка ещё не опубликована; HTTPS без credentials не использовался для push.
+CUA docs восстановлены; tab2/browser2 — GitHub variables, binding `rolloutGitHub`.
+
 Production transition, normal managed core/full/edge/web CI orchestration,
 client releases и реальные устройства/media остаются впереди.
 
@@ -1145,3 +1177,11 @@ Runner использует `en_US.UTF-8`, необходимый при хол�
 `C` годился только для ранее закешированной сборки, `C.UTF-8` отсутствует на macOS.
 Проверять версии по `infra/crypto-tools.json`, не заменять датированный web nightly
 произвольным stable. Полный production build здесь не нужен.
+
+Дополнительная защита после VM proof: initial controller после public commit
+публикует owner-only `legacy_root/role-deployment.json`; текущий старый controller
+отказывает до runtime/Docker. Проверены repeat, foreign marker и symlink refusal
+(15 initial-focused PASS). Это не защита от запуска исходников старого 8bcbd91:
+перед production нужно также переключить canonical DEPLOY_ROOT на managed root
+и проверить отказ старого workflow. Финальный fault proof выше относится к
+предыдущему hash initial controller; новая защита пока покрыта unit, не новым VM.

@@ -15,6 +15,7 @@ import managed_state
 import role_config
 import role_deploy
 import shared_config
+import shared_front
 import shared_ingress as ingress
 import shared_update
 
@@ -31,6 +32,9 @@ def business(directory, edge, public, inventory, network, *, run=role_deploy.run
     for name in ('deploy_caddy_data','deploy_caddy_config'):
         if run(['docker','volume','ls','-q','--filter','name=^'+name+'$']).strip():
             raise ValueError('Existing Caddy data must be preserved')
+    profile=inventory['edges'][0]['shared_tls']
+    if run(['docker','network','ls','-q','--filter','name=^'+profile['network']+'$']).strip():
+        raise ValueError('Existing fixture TLS bridge must be preserved before setup')
     deploy=repo/'deploy';deploy.mkdir(parents=True)
     ca,ca_key,leaf,key,chain=(directory/name for name in ('ca.crt','ca.key','server.crt','server.key','server.chain'))
     run(['openssl','req','-x509','-newkey','ec','-pkeyopt','ec_paramgen_curve:P-256','-nodes',
@@ -104,6 +108,19 @@ def business(directory, edge, public, inventory, network, *, run=role_deploy.run
                 raise ValueError('Modified operator must be preserved')
             wrapper.unlink()
         run([*command,'down','--volumes','--remove-orphans'])
+        # Caddy used this external bridge until business down. Front down before
+        # that point cannot remove it while Caddy is attached.
+        warm=root/'front/warm.json'
+        if warm.exists():
+            plan=root/'front/plans'/managed_state.read(warm)['plan']
+            _,front_model=shared_front.read_plan(root/'front',plan)
+            shared_front._networks(front_model,execute=run,owned=True)
+            for network_value in front_model['networks'].values():
+                name=network_value['name']
+                if run(['docker','network','ls','-q','--filter','name=^'+name+'$']).strip():
+                    if json.loads(run(['docker','network','inspect','--format','{{json .Containers}}',name])):
+                        raise ValueError('Attached fixture bridge must be preserved')
+                    run(['docker','network','rm',name])
         if trust_installed:
             if trust.read_bytes()!=ca.read_bytes():raise ValueError('Modified trust must be preserved')
             trust.unlink();run(['update-ca-certificates'])

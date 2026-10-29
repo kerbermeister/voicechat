@@ -127,6 +127,17 @@ class SharedFrontWarmTests(unittest.TestCase):
             with self.assertRaises(BlockingIOError): self.warm()
         self.assertFalse(self.calls)
 
+    def test_initial_preflight_checks_ownership_without_starting_or_claiming_front(self):
+        with managed_state.locked(self.root):
+            model,saved,current=shared_front._preflight_locked(self.root,self.plan,
+                execute=self.execute,system_root=self.system)
+        self.assertEqual(model,self.model);self.assertIsNone(saved);self.assertIsNone(current)
+        self.assertFalse((self.root/'warm.json').exists());self.assertFalse(self.mutations())
+        self.create()
+        with managed_state.locked(self.root), self.assertRaisesRegex(ValueError,'existing shared front network'):
+            shared_front._preflight_locked(self.root,self.plan,execute=self.execute,system_root=self.system)
+        self.assertFalse((self.root/'warm.json').exists());self.assertFalse(self.mutations())
+
     def test_foreign_container_or_network_are_never_adopted(self):
         self.create()
         with self.assertRaisesRegex(ValueError, 'existing shared front network'): self.warm()

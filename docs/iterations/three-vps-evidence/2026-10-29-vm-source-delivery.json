@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "actual_linux_stdin_delivery_and_repeat_preserved_inodes": true,
+  "archive_sha256": "0f02d5024cf041991d31db9550d2801fbb349c7498ce8c0573fa8d6840985fc3",
+  "source_file_count": 86,
+  "fixture_removed": true,
+  "limits": [
+    "Synthetic manifest/fingerprint and public source files only; no deployment, registry credentials or user data."
+  ],
+  "date": "2026-10-29",
+  "receiver_sha256": "a2cef793f1ee1f3bb47e43ccd46259d6d9a308426abb74eae1c73f0770f4f6c9"
+}

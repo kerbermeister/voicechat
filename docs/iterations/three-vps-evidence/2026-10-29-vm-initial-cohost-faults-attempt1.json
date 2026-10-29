@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "status": "failed",
+  "production_changed": false,
+  "vm_source": "/srv/voicechat-edge-fixture/legacy-preflight-source-v9jzj5za",
+  "failed_phase": "edge",
+  "cause": "Previous successful fixture left its empty external TLS bridge after stopping front before Caddy.",
+  "error": "Refusing to adopt an existing shared front network",
+  "production_network_owner_guard_unchanged": true,
+  "controller_legacy_rollback_returned_before_original_error": true,
+  "fixture_containers_removed": true,
+  "original_network_active": true,
+  "subsequent_manual_cleanup_verified_empty_bridge_labels_config_hash_and_ipam_before_removal": true,
+  "limits": [
+    "Failure drills did not reach their injected boundary; this is not a successful fault-drill result."
+  ]
+}

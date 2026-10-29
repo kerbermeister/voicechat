@@ -164,6 +164,22 @@ def _networks(model, *, execute, owned):
             raise ValueError('Shared front network ownership or addressing changed')
 
 
+
+def _preflight_locked(root, plan, *, execute, system_root):
+    """Check the exact warm owner before a caller stops legacy writers."""
+    _, model = read_plan(root, plan, system_root=system_root)
+    state = root / 'warm.json'
+    saved = managed_state.read(state) if state.exists() or state.is_symlink() else None
+    expected = {'schema': 1, 'plan': plan.name, 'phase': 'applying'}
+    if saved not in (None, expected, {**expected, 'phase': 'running'}):
+        raise ValueError('Resume the same shared front warm plan')
+    _networks(model, execute=execute, owned=saved is not None)
+    current = _container(plan, model, execute=execute, required=False)
+    if current is not None and saved is None:
+        raise ValueError('Refusing to adopt an unclaimed shared front container')
+    return model, saved, current
+
+
 def warm(root, plan, *, execute=role_deploy.run, system_root=Path('/')):
     """Start only the loopback listener; retry the same journal after failure.
 
@@ -172,16 +188,9 @@ def warm(root, plan, *, execute=role_deploy.run, system_root=Path('/')):
     """
     root, plan = Path(root).absolute(), Path(plan).absolute()
     with managed_state.locked(root):
-        record, model = read_plan(root, plan, system_root=system_root)
+        model, saved, current = _preflight_locked(root, plan, execute=execute, system_root=system_root)
         state = root / 'warm.json'
-        saved = managed_state.read(state) if state.exists() or state.is_symlink() else None
         expected = {'schema': 1, 'plan': plan.name, 'phase': 'applying'}
-        if saved not in (None, expected, {**expected, 'phase': 'running'}):
-            raise ValueError('Resume the same shared front warm plan')
-        _networks(model, execute=execute, owned=saved is not None)
-        current = _container(plan, model, execute=execute, required=False)
-        if current is not None and saved is None:
-            raise ValueError('Refusing to adopt an unclaimed shared front container')
         if saved == {**expected, 'phase': 'running'} and current is not None and current['running']:
             return saved
         image = model['services']['ingress']['image']

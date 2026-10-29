@@ -1,11 +1,15 @@
 """Use the runner's pinned SSH identity to read production or deliver a release."""
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
 import re
 import shlex
 import subprocess
+
+import release_delivery
+import release_source
 
 
 def connection():
@@ -18,12 +22,73 @@ def connection():
     return ['ssh', '-o', 'StrictHostKeyChecking=yes', '-o', 'BatchMode=yes', target], target, root
 
 
+
+def verify_checkout(files, record, root):
+    """Bind public source bytes to the clean Git tree used by this CI build."""
+    git=['git','-C',str(root)]
+    commit=record['manifest']['commit']
+    if subprocess.check_output([*git,'rev-parse','HEAD']).decode().strip()!=commit:
+        raise ValueError('Candidate is not the checked-out Git revision')
+    if subprocess.run([*git,'diff','--quiet','HEAD','--'],check=False).returncode:
+        raise ValueError('Commit reviewed source changes before delivery')
+    source={}
+    for entry in subprocess.check_output([*git,'ls-tree','-rz','HEAD']).split(b'\0'):
+        if not entry:continue
+        header,path=entry.split(b'\t',1);name=path.decode()
+        if not (name.startswith('infra/') or name in {'prototype/'+value for value in release_delivery.POLICIES}):continue
+        mode,kind,checksum=header.decode().split()
+        if mode not in ('100644','100755') or kind!='blob':raise ValueError('Only tracked regular deployment sources allowed')
+        source[name]=checksum
+    if set(files)-{'release.json','backend.sha256'} != source.keys():
+        raise ValueError('Source archive differs from the complete tracked deployment file set')
+    for name in source:
+        expected=subprocess.check_output([*git,'show',commit+':'+name])
+        if files[name]!=expected:raise ValueError('Source archive bytes differ from the checked-out Git tree')
+    if record['backend']!=release_source.backend_fingerprint(root):
+        raise ValueError('Source archive backend fingerprint differs from the Git tree')
+
+
+def receive(ssh, managed_root, commit, archive, *, checkout=None):
+    """Stage only an immutable source package; do not select or run a release."""
+    if not re.fullmatch(r'/[a-zA-Z0-9/_-]+',managed_root) or '..' in managed_root.split('/'):
+        raise ValueError('Invalid managed root')
+    with Path(archive).open('rb') as stream:raw=stream.read(release_delivery.MAX_COMPRESSED+1)
+    checksum=hashlib.sha256(raw).hexdigest()
+    files,record=release_delivery.unpack(raw,checksum,commit)
+    verify_checkout(files,record,Path(checkout) if checkout is not None else Path(__file__).resolve().parents[1])
+    bootstrap=files['infra/release_delivery.py']
+    command=('umask 077; voicechat_source_dir=$(mktemp -d /tmp/voicechat-source.XXXXXXXXXX) || exit; '
+             'cat > "$voicechat_source_dir/receiver.py" || exit; printf "%s\n" "$voicechat_source_dir"')
+    temporary=subprocess.check_output([*ssh,command],input=bootstrap).decode().strip()
+    if not re.fullmatch(r'/tmp/voicechat-source\.[A-Za-z0-9]{10}',temporary):
+        raise ValueError('Unexpected private source bootstrap path')
+    receiver=temporary+'/receiver.py'
+    try:
+        command=['python3','-B',receiver,'--root',managed_root,'--sha256',checksum,'--commit',commit]
+        response=json.loads(subprocess.check_output([*ssh,shlex.join(command)],input=raw))
+        expected={'schema':1,'path':managed_root+'/bundles/'+checksum,'archive_sha256':checksum}
+        if response!=expected:raise ValueError('Immutable receiver returned an unexpected artifact')
+        return response
+    finally:
+        # Only our one public bootstrap file and its unique private directory.
+        cleanup=shlex.join(['rm','-f',receiver])+' && '+shlex.join(['rmdir',temporary])
+        subprocess.run([*ssh,cleanup],check=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=('read', 'deploy'))
+    parser.add_argument('action', choices=('read', 'deploy', 'receive'))
     parser.add_argument('--web-only', action='store_true')
+    parser.add_argument('--output',type=Path)
     args = parser.parse_args()
     ssh, target, root = connection()
+    if args.action == 'receive':
+        if args.web_only or args.output is None:parser.error('Receive needs --output and does not select a release scope')
+        result=receive(ssh,os.environ.get('MANAGED_ROOT',root+'-managed'),os.environ['GITHUB_SHA'],Path('/tmp/release.tar.gz'))
+        descriptor=os.open(args.output,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(descriptor,'w') as output:
+            json.dump(result,output);output.write('\n');output.flush();os.fsync(output.fileno())
+        return
     if args.action == 'read':
         current = json.loads(subprocess.check_output([*ssh, 'cat '+shlex.quote(root+'/current.json')]))
         if current.get('backend') != Path('backend.sha256').read_text().strip():

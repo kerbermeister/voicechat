@@ -25,5 +25,7 @@
     "prototype/initial_cohost_business.py": "2592e9d8fd5973715e41883bfdaf82afd50f9f9b3173dd36ae3b75d9f86d6e86",
     "prototype/initial_cohost_network.py": "90d734b93533028ebd609f2f6b1c2ab46e11c2271696a0464f99fc4e8cce6c59",
     "infra/initial_cohost.py": "5a4d79182e8f262f259cdeb0d9512d4568d905731567a556a4a4aa3891a3e3d9"
-  }
+  },
+  "initial_cleanup_left_empty_external_tls_bridge": true,
+  "subsequent_manual_cleanup_verified_empty_bridge_labels_config_hash_and_ipam_before_removal": true
 }

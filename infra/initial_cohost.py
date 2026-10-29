@@ -134,6 +134,23 @@ def marker(root, manifest, attempt):
             'owner': role_release.json_digest(managed_state.read(root / 'role.json'))}
 
 
+def legacy_guard(legacy_root, managed_root, target, *, publish=False):
+    """Retire the legacy controller only after the public role commit.
+
+    Old release metadata remains intact for audit/recovery. The existing legacy
+    controller rejects this marker before creating runtime paths or using Docker.
+    """
+    path = legacy_root / 'role-deployment.json'
+    expected = {'schema': 1, 'kind': 'roles', 'root': str(managed_root),
+                'initial_target': role_release.json_digest(target)}
+    if path.exists() or path.is_symlink():
+        if managed_state.read(path) != expected:
+            raise ValueError('Foreign legacy retirement marker must be preserved')
+    elif publish:
+        managed_state.persist(path, expected)
+    return expected
+
+
 def private_file(path, raw):
     if not raw or len(raw) > 65536: raise ValueError('Bounded private migration input required')
     old = network_bootstrap.existing(path)
@@ -182,6 +199,8 @@ def copy_public(source, destination):
                     existing.st_mode & 0o022 or digest(path) != digest(item)):
                 raise ValueError('Existing edge artifact differs from its legacy source')
             continue
+        if shutil.disk_usage(path.parent).free < info.st_size + 2 * 1024**3:
+            raise ValueError('Public artifact copy must retain 2 GiB free for working data')
         descriptor, temporary = tempfile.mkstemp(prefix='.full-copy-', dir=path.parent)
         try:
             with os.fdopen(descriptor, 'wb') as output, item.open('rb') as original:
@@ -217,6 +236,25 @@ def policy(baseline, snapshot, *, restore, execute):
 
 def configuration_files(arguments):
     return tuple(Path(arguments[index + 1]).resolve() for index, value in enumerate(arguments) if value == '-f')
+
+
+
+def legacy_models(root, baseline, previous_attempt=None, *, execute):
+    arguments = legacy.compose_command(Path(baseline['record']['release']))
+    configurations = [arguments]
+    if previous_attempt is not None:
+        if not isinstance(previous_attempt,str) or not role_release.SHA.fullmatch(previous_attempt):
+            raise ValueError('Exact previous rollback owner required')
+        recovery = root / ('attempt-' + previous_attempt) / 'legacy-recovery.json'
+        if (not recovery.exists() or recovery.resolve() != recovery or
+                recovery.parent.stat().st_uid != os.geteuid() or recovery.parent.stat().st_mode & 0o077 or
+                managed_state.read(recovery) != legacy_core.rollback_override(baseline)):
+            raise ValueError('Owned legacy recovery override is missing or changed')
+        # Compose can retain these labels even after normal up reuses the same
+        # container. Accept only our exact prior volume override, never arbitrary -f.
+        configurations.append([*arguments,'-f',str(recovery)])
+    return [(configuration_files(args),json.loads(execute([*args,'config','--format','json'],
+             env=legacy_core.environment(baseline['record'])))) for args in configurations]
 
 
 def namespace(project, models, *, execute):
@@ -358,6 +396,10 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
         path = root / 'initial.json'
         journal = managed_state.read(path) if path.exists() or path.is_symlink() else None
         previous = None
+        retirement = old_root / 'role-deployment.json'
+        if journal is None and (retirement.exists() or retirement.is_symlink()):
+            raise ValueError('Retired legacy installation requires its original migration journal')
+        legacy_guard(old_root, root, target)
         if journal is not None:
             topology.fields(journal, ('schema', 'target', 'attempt', 'phase', 'baseline', 'source_root',
                                      'network_preexisting', 'network_fingerprint', 'shared_plan', 'front_plan', 'previous_roles'))
@@ -377,6 +419,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
             elif journal['phase'] == 'complete':
                 current = managed_state.read(root / 'current.json')
                 if current['target'] != target: raise ValueError('Use the normal role rollout for an updated installation')
+                legacy_guard(old_root, root, target, publish=True)
                 return current
             elif journal['phase'] == 'rolled-back':
                 raise ValueError('Initial migration rolled back; retry explicitly with a fresh attempt')
@@ -418,7 +461,10 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
             return execute(legacy.compose_command(Path(baseline['record']['release']), *args),
                            env=legacy_core.environment(baseline['record']))
 
+        old_models = legacy_models(root,baseline,journal['previous_roles']['attempt'] if journal['previous_roles'] else None,
+                                   execute=execute)
         if journal['phase'] == 'preparing':
+            namespace('voicechat',old_models,execute=execute)
             # Source-only manager upgrade owns its lock; no writer has stopped.
             shared_update.install(shared, execute=execute, system_root=system_root)
         with managed_state.locked(shared):
@@ -481,6 +527,8 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                 plan = ingress._store_plan_locked(shared, shared_target, ingress.configuration(business, shared_target),
                                                   system_root=system_root)
                 front = shared_front.prepare(shared / 'front', edge, target['edge'])
+                with managed_state.locked(shared / 'front'):
+                    shared_front._preflight_locked(shared / 'front',front,execute=execute,system_root=system_root)
                 journal = {**journal, 'shared_plan': plan.name, 'front_plan': front.name}
                 core_deploy.compose(core, core_record, 'pull', '--policy', 'missing', execute=execute)
                 edge_deploy.compose(edge, edge_deploy.record_for(public, inventory, target['edge']),
@@ -500,8 +548,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                     role_deploy.require_rollout_owner(directory, attempt, manifest)
 
             def models():
-                old_arguments = legacy.compose_command(Path(baseline['record']['release']))
-                values = [(configuration_files(old_arguments), json.loads(old_compose('config', '--format', 'json')))]
+                values = list(old_models)
                 release = role_deploy.release_path(core, core_record)
                 values.append(((release / 'infra/compose.core.json',), core_deploy.configuration(core, core_record, execute=execute)))
                 edge_release = role_deploy.release_path(edge, edge_record)
@@ -671,6 +718,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                     phase('rollback-stop'); rollback()
                 raise
             if journal['phase'] == 'finish':
+                legacy_guard(old_root, root, target, publish=True)
                 for directory, role, identifier in ((core,'core',None),(edge,'edge',edge_id)):
                     role_boot.start(directory,role,identifier,execute=execute,network_directory=network,rollout_attempt=attempt)
                 cohost_tls._refresh_locked(shared,execute=execute,system_root=system_root,
