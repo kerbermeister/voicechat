@@ -301,9 +301,10 @@ class InitialCohostPlanningTests(unittest.TestCase):
     def test_unstarted_preparation_cancellation_archives_original_journal_and_is_idempotent(self):
         case,root,attempt,value,serving,source=self.unstarted_preparation()
         original=(root/'initial.json').read_bytes();pointer=(case.root/'current.json').read_bytes()
-        with patch.object(initial_cohost.ingress,'read_plan',return_value=(serving,{})):
+        with patch.object(initial_cohost.ingress,'read_plan',return_value=(serving,{})) as plan:
             result=initial_cohost.cancel_preparation(root,attempt,execute=case.execute,system_root=self.base/'system')
             self.assertEqual(initial_cohost.cancel_preparation(root,attempt,execute=case.execute,system_root=self.base/'system'),result)
+            self.assertIs(plan.call_args.kwargs['current_sources'],False)
         self.assertFalse((root/'initial.json').exists())
         self.assertEqual((root/('attempt-'+attempt)/'cancelled-preparation.json').read_bytes(),original)
         self.assertEqual((case.root/'current.json').read_bytes(),pointer)

@@ -413,7 +413,9 @@ def cancel_preparation(root, attempt, *, execute=role_deploy.run, system_root=Pa
             if legacy_core._inspect_locked(old,execute=execute)!=value['baseline']:
                 raise ValueError('Legacy state changed; explicit recovery required')
             pointer=managed_state.read(shared/'current.json')
-            serving,_=ingress.read_plan(shared,shared/'plans'/pointer['plan'],system_root=system_root)
+            # Cancellation verifies the recorded historical operator; it must not
+            # require installing today's operator before abandoning preparation.
+            serving,_=ingress.read_plan(shared,shared/'plans'/pointer['plan'],system_root=system_root,current_sources=False)
             if (serving['mode']!='legacy-certs' or serving['edge_root']!=str(root/'edges'/target['edge']['edge_id']) or
                     serving['public']!=target['public'] or serving['node']!=target['inventory']['core']):
                 raise ValueError('Public ingress changed; cancellation is unsafe')
