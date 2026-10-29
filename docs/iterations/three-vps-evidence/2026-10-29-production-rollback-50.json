@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "workflow_run": 40930173085,
+  "phase": "rolled-back",
+  "legacy_release_runtime_source_data_and_turn_volume_identity_preserved": true,
+  "neighbor_upstream_processes_unchanged": true,
+  "legacy_backup_timer_enabled_active": true,
+  "https_status": {
+    "univc.duckdns.org": 200,
+    "listing-helper.flashhub.net": 200
+  },
+  "source_bundle_sha256": "3497d2d411ab8379d20d9261c717c44221d6953ef6340ba2682498c48cb20bce",
+  "original_rolled_back_journal_preserved_on_A": true,
+  "original_database_and_signing_identity": {
+    "postgres_system_identifier": "7699984398180954145",
+    "signing_sha256": "aa2dbe341c20ee62f88663b32942008e11ab9dfa4b782bba1076217bd302dbb0"
+  },
+  "failure_cause": "Docker Compose up --wait treats a fast successful configure exit0 as failure; independently reproduced."
+}

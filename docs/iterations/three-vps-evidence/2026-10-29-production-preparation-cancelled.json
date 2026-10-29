@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "operator_commit": "469cea9663d7ceccb9f9b73a4478db241b049abb",
+  "operation": "Reviewed read-only namespace preflight, then archive the exact empty preparation",
+  "actual_six_legacy_containers_matched_captured_baseline": true,
+  "original_journal_archived_verbatim": true,
+  "legacy_release_pointer_and_all_container_processes_unchanged": true,
+  "user_data_runtime_and_network_not_changed": true,
+  "result": {
+    "schema": 1,
+    "cancelled": "unstarted-preparation",
+    "attempt": "2fdbc7c007544a987b51a9d4c10505226290712f127c9be50ed27d0d4a796f8b",
+    "source": "/srv/voicechat-managed/bundles/adb77321e414ff4499f2d846f524ad29bb235eddf33b57a7010c36ac12fd3633"
+  },
+  "old_source_bundle_not_modified": true
+}

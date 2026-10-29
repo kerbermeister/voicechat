@@ -177,6 +177,35 @@ class CoreDeployTests(unittest.TestCase):
         self.deploy(self.old)
         self.assertEqual(self.state()['current']['manifest'], self.old)
 
+    def test_fast_successful_configure_is_waited_for_before_starting_writers(self):
+        original=self.execute;finished=False
+        def execute(arguments,**kwargs):
+            nonlocal finished
+            if 'up' in arguments and arguments[-1]=='configure':
+                if '--wait' in arguments:raise RuntimeError('Compose reports fast exited(0) as failure')
+            elif 'wait' in arguments and arguments[-1]=='configure':finished=True
+            elif 'up' in arguments:self.assertTrue(finished,'Writers started before configure completion')
+            return original(arguments,**kwargs)
+        self.execute=execute
+        self.deploy(self.old)
+        self.assertTrue(finished)
+        self.assertEqual(self.state()['current']['manifest'],self.old)
+
+    def test_configure_nonzero_exit_restores_previous_code_without_restoring_database(self):
+        self.deploy(self.old);original=self.execute
+        identity=self.data_identity.copy()
+        def execute(arguments,**kwargs):
+            if 'wait' in arguments and arguments[-1]=='configure':
+                manifest=role_release.load(Path(arguments[arguments.index('-f')+1]).parent.parent/'release.json')
+                if manifest==self.new:raise RuntimeError('Configure exited with code 7')
+            return original(arguments,**kwargs)
+        self.execute=execute;self.calls.clear()
+        with self.assertRaisesRegex(RuntimeError,'code 7'):self.deploy(self.new)
+        self.assertEqual(self.state()['current']['manifest'],self.old)
+        self.assertIsNone(self.state()['pending']);self.assertTrue(self.running)
+        self.assertEqual(self.data_identity,identity)
+        self.assertFalse(any('pg_restore' in arguments or 'rm' in arguments for arguments in self.calls))
+
     def test_replaced_database_is_rejected_before_stopping_or_reinitializing_services(self):
         self.deploy(self.old)
         self.data_identity['postgres_system_identifier'] = '987654321'

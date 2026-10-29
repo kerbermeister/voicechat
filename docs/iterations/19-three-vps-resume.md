@@ -1450,3 +1450,81 @@ operator code для read-only namespace check на A, затем reviewed cance
 commit и повторить штатный initial/full CI. Предыдущие native24 artifacts сохранять:
 их compile inputs не менялись. #49 остаётся failed preflight; source49 не править.
 Активных production/VM/build exec jobs сейчас нет. Недоставленных permission asks нет.
+
+## Активен исправленный production run50
+
+Исправленный readonly namespace preflight **успешно проверил все6 реальных legacy
+контейнеров**. Первая cancellation попытка отказала до rename: historical operator
+не должен совпадать с новым source package. Вызов read_plan исправлен на штатный
+`current_sources=False` (полные hashes/ownership исторического пакета сохраняются,
+как в других maintenance helpers), contract закреплён test assertion. Новый полный
+набор **501 PASS/skipped3**,34.808s.
+
+Commit **469cea9663d7ceccb9f9b73a4478db241b049abb** опубликован. Reviewed public operator
+code доставлен по pinned SSH во временный private каталог, сверены Git bytes/hashes;
+после проверки исходного immutable49 bundle и healthy baseline exact empty attempt
+**2fdbc7…** штатно архивирован в
+`/srv/voicechat-managed/attempt-2fdbc7c007544a987b51a9d4c10505226290712f127c9be50ed27d0d4a796f8b/cancelled-preparation.json`.
+[Production cancellation PASS](three-vps-evidence/2026-10-29-production-preparation-cancelled.json):
+исходные bytes журнала сохранены, current/все процессы/runtime/data/network
+неизменны. Исходный49 blob adb773… не модифицирован. Временный operator code удалён.
+
+Release ветка **codex/three-vps-initial** fast-forward на **469cea9** после этой
+cancellation. **Активный [Build and deploy #50](https://github.com/kerbermeister/voicechat/actions/runs/40930173085)**,
+job **123646194415**, initial/full/deploy=true, retry_initial=false (это новый attempt
+после отмены empty preparing, не retry rollback). Начальные tests/config прошли;
+последнее наблюдение — сборка control image. Дубликат не запускать; ветку не двигать.
+#49 остаётся failed preflight, его manual continuation44264 также завершилась до
+fencing. Все pipeline artifacts50 будут новыми после исправления исходников.
+
+Браузер rolloutGitHub tab2 сейчас job50; markHandoff сделан. Native app binding
+rolloutInstalledApp — /Applications/VoiceChat.app23, открыт About23. Координатные
+native clicks не работают; AX clicks с fresh full AX работают. Получены account/
+device и visible history23, затем штатный Quit → verified private backup
+VoiceChatRelease/before-update-24 → запуск23; прежняя история видна. Никаких сообщений
+не отправляли, данные/Keychain не очищали. CUA private comparison bindings остаются
+в памяти; не копировать их тексты в публичные docs.
+
+Точный signed ZIP24 также распакован в `.prototype/macos-24-extracted/VoiceChat.app`,
+checksum, version24, embedded key и codesign проверены; **не запущен/не установлен**.
+Signed candidate `.prototype/macos-candidate-24-signed` не менять/не переподписывать;
+source commit9d4, состав клиента неизменен после него. Android24 `.prototype/android-candidate-24`
+проверен, sourceDirty=false, sha079440…, не опубликован; физического Android нет.
+
+Готов read-only postcheck `/tmp/voicechat-production-postcheck.py` для successful50:
+требует complete/commit469cea9; проверяет source receipt, actual core/edge baseline,
+исходный PG systemID7699984398180954145/signingSHAaa2d…, legacy pointer+retirement,
+neighbor4 processes vs before-initial snapshot, HTTPS обоих сайтов, backup/TLS timers
+и retired old timer. Даёт running backup спокойно закончить (до300s), не убивает его.
+Пока не запускали — сначала дождаться phasecomplete/run50. После этого выполнять
+native24 prepublish acceptance и штатный Sparkle publish/update23→24.
+Обычный managed rollout executor/web-edge-core-full CI и real-device/media проверки
+ещё не завершены. Активных локальных VM/build/exec jobs нет, только GitHub run50.
+
+
+## Run50: проверенный откат; исправлено ожидание configure
+
+[Run50](https://github.com/kerbermeister/voicechat/actions/runs/40930173085)
+прошёл backup, migration, private network и boot installation, но остановился на
+configure при запуске core. Автоматический откат завершён, phase=rolled-back.
+[Независимая проверка](three-vps-evidence/2026-10-29-production-rollback-50.json):
+legacy source/runtime/data/anonymous TURN volume identity сохранены, исходные PG
+system ID и signing SHA прежние, четыре neighboring процесса неизменны, старый
+backup timer enabled/active, оба публичных HTTPS отвечают200. Оригинальный журнал
+сохранён на A в attempt/rolled-back-initial.json; role dirs, network key и desired
+state не удалять. Следующий штатный запуск обязан иметь retry_initial=true.
+
+[Диагностика configure](three-vps-evidence/2026-10-29-production-configure-diagnostic.json)
+на фактическом env и read-only mounts прошла input validation с подавлением4 writes.
+[Изолированное воспроизведение](three-vps-evidence/2026-10-29-production-oneshot-compose.json)
+на реальном Compose5.5.1: быстрый exit0 при up --wait ошибочно даёт exit1,
+медленный exit0 проходит. Явный compose wait возвращает0 при успехе и7 при ошибке.
+Диагностические проекты без сети, томов и credentials удалены, production не меняли.
+
+core_deploy теперь запускает configure отдельно, явно ждёт его exit code, затем
+поднимает остальные службы с health wait. Добавлены два regression tests: fast
+success до старта writers и nonzero с rollback предыдущего кода без DB restore.
+Полный Python набор: **503 PASS/skipped3**,35.105s. Клиентские compile inputs не
+менялись; подписанные macOS24/Android24 artifacts не пересобирать ради controller fix.
+GitHub DEPLOY_ROOT=/srv/voicechat-managed уже сохранён после подтверждения пользователя.
+Далее commit/push, fast-forward release ветки, initial/full/deploy=true/retry=true.

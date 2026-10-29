@@ -454,9 +454,11 @@ def deploy(root, public, inventory, manifest, *, subnet='10.241.0.0/28', execute
         def stop(record):
             compose(root, record, 'stop', 'synapse', 'control', execute=execute)
         def up(record):
-            # A stable one-shot service lets retry wait for an interrupted
-            # configure instead of starting a concurrent writer container.
-            compose(root, record, 'up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'configure', execute=execute)
+            # up --wait races a fast successful one-shot: Compose may report
+            # exited(0) as failure. Explicit wait checks the actual exit code
+            # and also waits for an already running configure after interruption.
+            compose(root, record, 'up', '-d', '--no-deps', 'configure', execute=execute)
+            compose(root, record, 'wait', 'configure', execute=execute)
             compose(root, record, 'up', '-d', '--wait', '--wait-timeout', '180', execute=execute)
         def verify_previous_identity():
             if identify_data(root, old, execute=execute) != state['data_identity']:
