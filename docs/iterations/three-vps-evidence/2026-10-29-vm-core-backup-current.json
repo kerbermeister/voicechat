@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "image": "ghcr.io/voicechat-fixture/control@sha256:abc8e6e2f226aec43a3e59e0229b18b72070f4046f79e5a63b99ea410fd7b9d4",
+  "source": "locally built fixture image from repository Dockerfile; never published",
+  "production_changed": false,
+  "stopped_writer_backup_resumes_real_core_without_pointer_changes": true,
+  "planned_backup_monitor_exited_without_retry": true,
+  "interrupted_snapshot_fences_boot_and_repeats_backup": true,
+  "interrupted_writer_resume_does_not_repeat_completed_backup": true,
+  "failed_backup_restores_availability_and_reports_failure": true,
+  "account_device_account_data_and_signing_identity_preserved": true,
+  "installed_owned_timer_and_real_systemd_backup_preserved_account": true,
+  "limits": [
+    "Disposable synthetic account and volumes; no production or physical device acceptance.",
+    "Legacy-to-core adoption and full release remain separate integration steps."
+  ],
+  "fixture_resources_removed": true,
+  "controller_sha256": "656dbecabaf1dc7053bec774d0f35f6b3af350282ed0fc9aa06c946f118f855f",
+  "date": "2026-10-29",
+  "vm": {
+    "vcpu": 4,
+    "memory_mib": 4096,
+    "acceleration": "qemu-tcg-multi"
+  },
+  "source_sha256": {
+    "infra/core_deploy.py": "656dbecabaf1dc7053bec774d0f35f6b3af350282ed0fc9aa06c946f118f855f",
+    "infra/role_boot.py": "c1aa16a08aae7fa55d7d10ac09045682b6802fc46dc7e8538c5b3382ee17cd54",
+    "infra/role_bootstrap.py": "f8507ec5fba910819822848070934586ce1830af6c87ab636f526c9b49ddaa82",
+    "infra/core_backup_bootstrap.py": "4214ccc37e912caaa4dadb8fd8cfaad6dea7ddf8b9f9fdf69923c4313e2bf620",
+    "prototype/check_core_backup_current.py": "ef5864efe37c9d630adc711081abd59e6fbd091a09523196a1e775754a2c7b89"
+  }
+}

@@ -621,8 +621,11 @@ rollback к прежнему HTTPS, сохранение соседних upstre
 соседнего business deploy; port controller переиспользует его без двойного lock.
 [Evidence](../iterations/three-vps-evidence/2026-10-29-vm-shared-port-cutover.json).
 `core_deploy --backup-only` добавляет отдельный backup текущей managed роли без
-configure и смены pointers; локально проверены failure/recovery/boot fence/data
-identity. Новый scheduler, legacy adoption и общий production full ещё открыты.
+configure и смены pointers. Backup interruption/recovery, boot fence, NRestarts=0
+при maintenance и actual installed sealed systemd service прошли в VM с синтетическим
+аккаунтом: [evidence](../iterations/three-vps-evidence/2026-10-29-vm-core-backup-current.json).
+Новый owned scheduler подготовлен и проверен; согласованная замена legacy timer,
+legacy adoption и общий production full ещё открыты.
 
 Подготовлен URL-only migration primitive для прежних pushers: journal до DB commit,
 повтор после прерывания и транзакционный rollback проверены на настоящем PostgreSQL

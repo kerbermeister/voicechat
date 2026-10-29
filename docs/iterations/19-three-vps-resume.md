@@ -20,7 +20,7 @@ active/enabled, последний03:30UTC status0; его надо соглас
 
 Последние завершённые commits: **94b9c3e** — reuse parent ingress lock в full
 migration (VM port-cutover повторён), **1c08288** — durable core backup и boot fence.
-Следующий локальный шаг добавил owned `core_backup_bootstrap.py` и исправления,
+Commit **4d07fa2** добавил owned `core_backup_bootstrap.py` и исправления,
 выявленные фактическим запуском: monitor распознаёт backup как planned maintenance
 и не запускает restart loop; sealed backup проверяет recorded committed bundle и
 точные topology/node fingerprints без обращения к отсутствующему source checkout.
@@ -39,24 +39,27 @@ units не переписываются. Backup service повторяет crash
 После power loss с backup journal требуется явный запуск backup service: до этого
 core boot закрыт. Это известное fail-closed ограничение, не автоматическое recovery.
 
-**Новый VM backup + systemd proof выполняется; success receipt пока нет.**
-Первый2vCPU/2GiB прогон проверил4 snapshots, но Docker Python healthcheck превысил3s
-при TCG recovery, процесс control оставался running. После cleanup и штатного
-poweroff тот же диск запущен с **4vCPU/4GiB, multi-thread TCG**, с прежним SSH key;
-network/Docker восстановились. Следующий прогон прошёл5 backup/failure scenarios,
-но фактический systemd backup выявил отсутствие renderer checkout — исправлено
-как описано выше. Оба неуспешных fixtures/units удалены, успех не заявлен.
-Последний полный прогон повторяет оба исправления, ждёт planned monitor exit и
-проверяет NRestarts=0 перед snapshots, затем реальный installed systemd backup.
-Helper: `/tmp/voicechat-backup-current-vm.py`, local log:
-`.prototype/vm-core-backup-current.log`; VM параметры: `.prototype/vm/active.json`.
-Public evidence `three-vps-evidence/2026-10-29-vm-core-backup-current.json`
-создаётся helper только после полного успеха и cleanup. Не запускать второй core
-fixture параллельно. Текущая implementation ещё не активирована на production.
+**Реальный VM backup + systemd proof PASS**:
+[evidence](three-vps-evidence/2026-10-29-vm-core-backup-current.json).
+Сохранены current/previous, аккаунт/device/account data и Matrix signing identity;
+пройдены snapshot interruption, boot fence, повтор незавершённого backup,
+продолжение завершённого без нового snapshot и возврат доступности при ошибке.
+Монитор перед snapshots штатно inactive с NRestarts=0; installed sealed systemd
+backup service выполнился успешно. Все fixture volumes/containers/units удалены.
+Это synthetic account в **4vCPU/4GiB multi-thread TCG VM**, не production/device
+acceptance. Предыдущие отказавшие прогоны не выдаются за успех; найденные monitor
+и renderer-checkout дефекты исправлены и повторены в этом полном proof.
 
-Далее: закончить этот VM proof, зафиксировать source32/evidence; explicit legacy
-core adoption/full coordinator и rollback, замена backup scheduler, TLS delivery/
-renewal, CI scopes, обязательный macOS/Android release и приёмка устройств.
+Следующий локальный шаг уже начат: initial peerless network rollback/restore для
+legacy adoption. 7 focused tests PASS; нужно закончить review, полный regression
+и настоящий kernel/systemd proof перед включением в full coordinator. Нормальный
+peer replacement/revocation нельзя откатывать этим механизмом. Production network
+этот код не использует. До запуска следующего core fixture убедиться, что прежний
+cleanup завершён (последний закончился успешно).
+
+Далее: explicit legacy core adoption/full coordinator и rollback, согласованная
+замена scheduler, TLS delivery/renewal, CI scopes, обязательный macOS/Android release
+и приёмка устройств. Helpers/VM параметры остаются в `.prototype/vm/active.json`.
 
 ### Ранее подтверждённые шаги и исторические пакеты
 
