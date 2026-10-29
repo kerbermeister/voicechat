@@ -86,6 +86,23 @@ class TLSActivationTests(TLSRuntimeTests):
                 with self.assertRaises(ValueError): self.activate()
                 self.assertFalse((self.root / 'web.json').exists())
 
+    def test_prepared_release_runtime_alias_resolves_only_to_the_owned_tls_directory(self):
+        alias = self.root.parent / 'release/infra/runtime'
+        alias.parent.mkdir(parents=True)
+        alias.symlink_to(self.root.parent, target_is_directory=True)
+        value = self.inspect_result()
+        value['mounts'][0]['Source'] = str(alias / 'tls/web')
+        with patch.object(self, 'inspect_result', return_value=value), \
+                patch.object(tls_activation, 'docker', side_effect=self.docker), \
+                patch.object(tls_activation, 'verify_live'):
+            self.activate()
+            before = (self.root / 'web.activation.json').read_bytes()
+            signals = len(self.signals)
+            alias.unlink(); alias.symlink_to(self.root.parent / 'foreign', target_is_directory=True)
+            with self.assertRaisesRegex(ValueError, 'TLS mount'): self.activate('new')
+            self.assertEqual((self.root / 'web.activation.json').read_bytes(), before)
+            self.assertEqual(len(self.signals), signals)
+
     def test_restart_during_handshake_leaves_pending_receipt(self):
         def restarted(*args, **kwargs): self.process['restarts'] += 1
         with patch.object(tls_activation, 'docker', side_effect=self.docker), \

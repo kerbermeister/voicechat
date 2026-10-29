@@ -19,7 +19,7 @@ import shared_ingress as ingress
 import shared_update
 
 
-def exercise(directory, edge, manifest, public, inventory, run):
+def exercise(directory, edge, manifest, public, inventory, run, *, after_commit=None):
     root, repo = directory / 'shared', directory / 'repo'
     front_plan = root / 'front/plans' / managed_state.read(root / 'front/warm.json')['plan']
     wrapper = Path('/usr/local/sbin/voicechat-shared-deploy')
@@ -164,13 +164,14 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
         assert ingress.snapshot({'deploy', 'voicechat-shared-front'}, execute=execute) == before
         assert environment.read_bytes() == original_environment + (legacy / 'compose.env-line').read_bytes()
         assert not (root / 'configuration.json').exists()
+        extra = after_commit(directory, edge, public, inventory, run) if after_commit else {}
         return {'loopback_listener_only': False, 'real_public_port_cutover': True,
             'operator_sha256': managed_state.read(root / 'manager.json')['operator']['operator_sha256'],
             'caddy_recreation_interruption_resumed': True, 'front_recreation_interruption_resumed': True,
             'actual_failed_cutover_restored_legacy_https': True, 'unrelated_upstream_processes_preserved': True,
             'committed_cutover_repeat_preserved_processes': True, 'business_manager_shared_mode_noop_verified': True,
             'limits': ['Marked disposable VM ports 80/443 and synthetic business/API/TURN TLS backends.',
-                       'No production migration, real core database, TURN allocation/media or reboot.']}
+                       'No production migration, real core database, TURN allocation/media or reboot.'], **extra}
     except BaseException:
         print(run([*command, 'logs', '--tail', '20']).decode(), file=sys.stderr, flush=True)
         raise

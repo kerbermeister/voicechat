@@ -1181,3 +1181,42 @@ full coordinator. [Реальный systemd VM proof](../docs/iterations/three-v
 подтвердил отказ от исполнения backup по condition, repeat и restore после потерянного
 ответа запуска timer. Гонка с in-flight backup проверена отдельным unit test;
 настоящий backup в этом proof не прерывался и не имитируется как проверенный случай.
+
+
+### Co-host TLS refresh и owned scheduler
+
+`cohost_tls.py --root <shared-root>` сохраняет прежний capture-only режим.
+`--refresh` требует committed edge и свой frontend: current ingress mode должен
+совпасть с running/public phase frontend, а его plan, image, bind mounts, networks
+и loopback binding проверяются до активации. Lock order: ingress → front → edge →
+TLS writer каждого сервиса. Full caller может переиспользовать уже удерживаемый
+ingress lock через `_refresh_locked` / `_capture_locked`.
+
+Обе пары проверяются на `127.0.0.1:<owned warm port>` с точным доверенным leaf,
+SNI и hostname. Public443 перед takeover отвечает старым Caddy, поэтому он не
+доказывает активацию edge. Cache/key bytes остаются на A. Перезапуск контейнера
+считается ошибкой; pending activation receipt допускает повтор, неизменные пары
+проверяются без новых сигналов. Web и TURN имеют независимые TLS receipts: успех
+одного сервиса не выдаётся за успех обоих, сбой требует повторить весь refresh.
+
+Docker сохраняет lexical Source bind mount из `<release>/infra/runtime`, хотя
+prepared release направляет runtime symlink на постоянный каталог. TLS activation
+теперь сравнивает его разрешённый путь с точным canonical service directory.
+Чужой target, read-write mount, image/role mismatch по-прежнему запрещены.
+
+`cohost_tls_bootstrap.py --root <shared-root>` устанавливает owned timer только
+после committed shared public ingress, при committed edge без pending deploy и
+из текущего reviewed sealed operator. Первая проверка через5min после активации
+timer, последующие каждые15min с jitter до60s. Он использует существующий Caddy
+HTTP-01 issuer и вызывает `cohost_tls.py --refresh`; DNS credentials не нужны.
+Private install journal продолжает тот же target после сбоя; неизвестные units
+не заменяются. Этот installer запускается из полного deployment artifact; runtime
+service использует уже установленный immutable operator package.
+
+Локальные guards и crash-resume проверены unit tests.
+[Сквозной VM proof PASS](../docs/iterations/three-vps-evidence/2026-10-29-vm-cohost-refresh.json):
+настоящие Caddy/coturn из prepared edge Compose, rotation, потеря ответа reload,
+повтор без сигналов для неизменных пар, возврат прежнего trusted leaf и сохранение
+процессов. Установленный sealed systemd service тоже выполнился успешно; временная
+fixture CA и ресурсы удалены. ACME storage был синтетическим, core и реальные
+аккаунты/медиапотоки не запускались. Это не production renewal и не выпуск клиентов.

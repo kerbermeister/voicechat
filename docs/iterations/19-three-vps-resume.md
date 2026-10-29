@@ -94,6 +94,43 @@ ConditionResult=no/ExecMainStart=0, retirement repeat и восстановле�
 units/state удалены. В production это не установлено; общий caller обязан держать
 full+legacy lock и завершить rollback data services до restore scheduler.
 
+TLS refresh и owned scheduler завершены как отдельные компоненты:
+`cohost_tls.refresh` / `--refresh` используют owned loopback19443 и общий порядок
+locks; capture-only по умолчанию сохранён. Full caller переиспользует ingress lock
+через `_capture_locked` / `_refresh_locked`. `cohost_tls_bootstrap.py` ставит timer
+после committed shared public mode и без pending edge, из текущего reviewed sealed
+operator. Первый запуск через5min после активации timer, затем каждые15min с jitter.
+Установка same-target resumable; чужие units не заменяются.
+
+**5 refresh +6 timer focused tests PASS**, **16 TLS activation tests PASS**;
+полный suite **440 tests OK, skipped=3**.
+[Сквозной VM proof PASS](three-vps-evidence/2026-10-29-vm-cohost-refresh.json):
+повторён public cutover/rollback; затем запущены настоящие cached web Caddy и
+pinned coturn из unmodified prepared edge Compose. Проверены activation обоих
+leaf через owned loopback, реальная web rotation, потеря ответа actual SIGUSR1,
+same-target resume, no signals на неизменных парах, возврат прежней trusted pair,
+неизменные ID/StartedAt/RestartCount. Установленный sealed systemd renewal service
+выполнился успешно, timer enabled/active. Временная fixture CA добавлялась только
+в disposable VM trust и удалена вместе с fixture units/state/containers/wrapper.
+Core в этом proof не запускался, ACME storage был синтетическим; реального ACME
+renewal, аккаунта, allocation/media и production перехода этот proof не доказывает.
+Унаследованный warm-stage scope flag исправлен в evidence и выводе helper; actual
+executed source hashes сохранены. Runtime operator точно совпал с local32-file
+plan: **2b978af938912d1e5e21001992201fd2c51437844443baf2f15b41737630821d**.
+
+Ранний fs69jzpm proof выявил реальный дефект `tls_activation.inspect`: Docker
+сохраняет lexical bind Source через release/infra/runtime symlink. Отдельная actual
+Docker probe подтвердила это. Теперь actual Source разрешается в **точный canonical
+TLS service root**; foreign retargeting всё ещё запрещён до публикации. Исправление
+проверено новым regression и последующим полным proof r3x6g5mw. Первый harness
+также был исправлен: в payload добавлены пропущенные public Caddyfile inputs.
+Ни одного app deploy, service change или DNS update на production в этой итерации
+не выполнялось. Завершены commits94cd2a5 (legacy preflight/SQL) и1d3f63a (backup fence).
+Далее source-only manager upgrade старого production28→текущий32 на VM и общий
+legacy→core/edge coordinator с rollback. Нужен общий maintenance fence для role
+boot/monitor на весь multi-step transition, не только child apply locks; не допустить
+возврата writers во время SQL/policy reversal или после reboot pending full.
+
 Далее: explicit legacy core adoption/full coordinator и rollback, согласованная
 замена scheduler, TLS delivery/renewal, CI scopes, обязательный macOS/Android release
 и приёмка устройств. Helpers/VM параметры остаются в `.prototype/vm/active.json`.

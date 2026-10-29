@@ -33,11 +33,16 @@ def inspect(container, root, edge_id, service, image):
     value = json.loads(docker('inspect', '--format', template, container))
     labels = value.get('labels') or {}
     mounts = [item for item in value.get('mounts', []) if item.get('Destination') == '/tls']
+    source = mounts[0].get('Source') if len(mounts) == 1 else None
+    # Docker retains the lexical release/infra/runtime bind source. Prepared
+    # releases point runtime at the stable canonical directory through a symlink.
+    same_directory = (isinstance(source, str) and Path(source).is_absolute() and
+                      Path(source).resolve() == root / service)
     if (value.get('id') != container or value.get('image') != image or value.get('running') is not True or
             labels.get('com.docker.compose.project') != 'voicechat-edge-' + edge_id or
             labels.get('com.docker.compose.service') != service or len(mounts) != 1 or
             mounts[0].get('Type') != 'bind' or mounts[0].get('RW') is not False or
-            mounts[0].get('Source') != str(root / service)):
+            not same_directory):
         raise ValueError('Container image, role or read-only TLS mount does not match')
     return {key: value[key] for key in ('id', 'started', 'restarts')}
 

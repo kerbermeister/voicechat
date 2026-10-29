@@ -1,4 +1,4 @@
-"""Capture verified cohost Caddy certificates locally, without serving changes."""
+"""Capture cohost Caddy certificates and refresh the owned committed edge locally."""
 import argparse
 import json
 import os
@@ -94,56 +94,106 @@ def capture(root, *, execute=run, system_root=Path('/'), ca_file=None):
     root = Path(root).absolute()
     if root.resolve() != root or not root.is_dir(): raise ValueError('Prepared canonical ingress root required')
     with managed_state.locked(root):
-        target, source, volume = _source(root, execute=execute, system_root=system_root)
-        public, edge = target['public'], target['edge_id']
-        identity = {'service_id': public['service_id'], 'canonical_origin': public['canonical_origin'],
-                    'matrix_server_name': public['matrix_server_name'], 'edge_id': edge, 'volume': volume}
-        receipt = root / 'certificates.json'
-        if receipt.exists() or receipt.is_symlink():
-            previous = managed_state.read(receipt)
-            topology.fields(previous, ('schema', 'identity', 'generations'))
-            if type(previous['schema']) is not int or previous['schema'] != 1 or previous['identity'] != identity:
-                raise ValueError('Caddy certificate cache belongs to another identity')
-            topology.fields(previous['generations'], ('web', 'turn'))
-            if any(not isinstance(value, str) or not re.fullmatch(r'[a-f0-9]{64}', value)
-                   for value in previous['generations'].values()):
-                raise ValueError('Invalid Caddy certificate cache generation')
-        generations = {}
+        return _capture_locked(root, execute=execute, system_root=system_root, ca_file=ca_file)
+
+
+def _capture_locked(root, *, execute=run, system_root=Path('/'), ca_file=None):
+    """Caller holds the ingress lock across a full migration or renewal."""
+    target, source, volume = _source(root, execute=execute, system_root=system_root)
+    public, edge = target['public'], target['edge_id']
+    identity = {'service_id': public['service_id'], 'canonical_origin': public['canonical_origin'],
+                'matrix_server_name': public['matrix_server_name'], 'edge_id': edge, 'volume': volume}
+    receipt = root / 'certificates.json'
+    if receipt.exists() or receipt.is_symlink():
+        previous = managed_state.read(receipt)
+        topology.fields(previous, ('schema', 'identity', 'generations'))
+        if type(previous['schema']) is not int or previous['schema'] != 1 or previous['identity'] != identity:
+            raise ValueError('Caddy certificate cache belongs to another identity')
+        topology.fields(previous['generations'], ('web', 'turn'))
+        if any(not isinstance(value, str) or not re.fullmatch(r'[a-f0-9]{64}', value)
+               for value in previous['generations'].values()):
+            raise ValueError('Invalid Caddy certificate cache generation')
+    generations = {}
+    for service in ('web', 'turn'):
+        names = tls_material.names(public, edge, service)
+        if len(names) != 1: raise ValueError('Caddy capture requires one exact hostname per service')
+        directory = source / names[0]; _owned_directory(directory)
+        chain, key = directory / (names[0] + '.crt'), directory / (names[0] + '.key')
+        for path in (chain, key):
+            info = path.lstat()
+            if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
+                raise ValueError('Caddy certificate source file is not owned or regular')
+        if key.stat().st_mode & 0o077: raise ValueError('Caddy private key must remain owner-only')
+        for attempt in range(3):
+            try:
+                staged = tls_material.stage(root / 'certificates', public, edge, service, chain, key, ca_file=ca_file)
+                if target['mode'] == 'legacy-certs':
+                    # Here Caddy still owns :443, so also require its exact
+                    # live leaf. After shared cutover :443 belongs to edge.
+                    tls_activation.verify_live('127.0.0.1', 443, names,
+                        tls_material.read_material(staged / (service + '.crt'), private=True), ca_file=ca_file)
+                break
+            except (OSError, ValueError):
+                if attempt == 2: raise RuntimeError('Caddy TLS source is not a complete trusted current pair') from None
+                time.sleep(.2)
+        generations[service] = staged.name
+    result = {'schema': 1, 'identity': identity, 'generations': generations}
+    managed_state.persist(receipt, result)
+    return result
+
+
+def refresh(root, *, execute=run, system_root=Path('/'), ca_file=None):
+    """Activate cached Caddy pairs only through the owned edge loopback frontend."""
+    root = Path(root).absolute()
+    if root.resolve() != root or not root.is_dir():
+        raise ValueError('Prepared canonical ingress root required')
+    with managed_state.locked(root):
+        return _refresh_locked(root, execute=execute, system_root=system_root, ca_file=ca_file)
+
+
+def _refresh_locked(root, *, execute=run, system_root=Path('/'), ca_file=None):
+    """Lock order matches cutover: ingress, front, edge, then each TLS writer."""
+    import shared_front
+    import shared_cutover
+    target, _, _ = _source(root, execute=execute, system_root=system_root)
+    front_root, edge_root = root / 'front', Path(target['edge_root'])
+    with managed_state.locked(front_root), managed_state.locked(edge_root):
+        state = managed_state.read(front_root / 'warm.json')
+        topology.fields(state, ('schema', 'plan', 'phase'))
+        if (type(state['schema']) is not int or state['schema'] != 1 or
+                not isinstance(state['plan'], str) or not re.fullmatch(r'[a-f0-9]{64}', state['plan']) or
+                state['phase'] != ('public' if target['mode'] == 'shared' else 'running')):
+            raise ValueError('Serving frontend phase differs from committed ingress mode')
+        plan = front_root / 'plans' / state['plan']
+        front, warm = shared_front.read_plan(front_root, plan, system_root=system_root)
+        edge, public = shared_cutover._edge(edge_root, target, plan, front, warm)
+        model = public if state['phase'] == 'public' else warm
+        shared_front._networks(model, execute=execute, owned=True)
+        shared_front._container(plan, model, execute=execute, required=True)
+        # Both modes retain this exact loopback listener. Public :443 still
+        # belongs to old Caddy before takeover and cannot prove edge activation.
+        captured = _capture_locked(root, execute=execute, system_root=system_root, ca_file=ca_file)
         for service in ('web', 'turn'):
-            names = tls_material.names(public, edge, service)
-            if len(names) != 1: raise ValueError('Caddy capture requires one exact hostname per service')
-            directory = source / names[0]; _owned_directory(directory)
-            chain, key = directory / (names[0] + '.crt'), directory / (names[0] + '.key')
-            for path in (chain, key):
-                info = path.lstat()
-                if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
-                    raise ValueError('Caddy certificate source file is not owned or regular')
-            if key.stat().st_mode & 0o077: raise ValueError('Caddy private key must remain owner-only')
-            for attempt in range(3):
-                try:
-                    staged = tls_material.stage(root / 'certificates', public, edge, service, chain, key, ca_file=ca_file)
-                    if target['mode'] == 'legacy-certs':
-                        # Here Caddy still owns :443, so also require its exact
-                        # live leaf. After shared cutover :443 belongs to edge.
-                        tls_activation.verify_live('127.0.0.1', 443, names,
-                            tls_material.read_material(staged / (service + '.crt'), private=True), ca_file=ca_file)
-                    break
-                except (OSError, ValueError):
-                    if attempt == 2: raise RuntimeError('Caddy TLS source is not a complete trusted current pair') from None
-                    time.sleep(.2)
-            generations[service] = staged.name
-        result = {'schema': 1, 'identity': identity, 'generations': generations}
-        managed_state.persist(receipt, result)
-        return result
+            identifiers = execute(['docker', 'ps', '-q', '--no-trunc', '--filter',
+                'label=com.docker.compose.project=voicechat-edge-' + target['edge_id'], '--filter',
+                'label=com.docker.compose.service=' + service]).decode().split()
+            if len(identifiers) != 1 or not re.fullmatch(r'[a-f0-9]{64}', identifiers[0]):
+                raise ValueError('One running owned edge TLS service required')
+            cached = root / 'certificates' / captured['generations'][service]
+            tls_activation.activate(edge_root / 'runtime/tls', target['public'], target['edge_id'], service,
+                cached / (service + '.crt'), cached / (service + '.key'), container=identifiers[0],
+                image=edge['manifest']['images'][service], address='127.0.0.1', port=front['warm_port'], ca_file=ca_file)
+        return {'edge_id': target['edge_id'], 'generations': captured['generations']}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, required=True)
+    parser.add_argument('--refresh', action='store_true', help='Activate both pairs on the committed cohost edge')
     args = parser.parse_args()
     if os.geteuid() != 0: raise SystemExit('Capture requires the cohost deployment owner/root')
-    result = capture(args.root)
-    print(json.dumps({'staged_only': True, 'generations': result['generations']}))
+    result = refresh(args.root) if args.refresh else capture(args.root)
+    print(json.dumps({'staged_only': not args.refresh, 'generations': result['generations']}))
 
 
 if __name__ == '__main__': main()

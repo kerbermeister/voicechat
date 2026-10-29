@@ -644,6 +644,13 @@ backup и restart Synapse обязательны. [Evidence](../iterations/three
 legacy Compose без потери account/device/PG/signing/coturn identity и без подмены
 старого release pointer. Это synthetic baseline; production adoption/full ещё открыт.
 
+29.10: cohost TLS refresh и owned periodic scheduler прошли
+[сквозной VM proof](../iterations/three-vps-evidence/2026-10-29-vm-cohost-refresh.json)
+с actual prepared edge Caddy/coturn, rotation/rollback/lost reply и выполнением
+установленного sealed systemd service без рестартов. Исправлен bind Source guard
+для prepared runtime symlink; foreign target по-прежнему запрещён. Storage CA/ACME
+синтетический; production activation/renewal и общий full coordinator ещё открыты.
+
 ### V3-21 — Автоматизировать замену входного VPS
 
 Зависимости: V3-15, V3-16, V3-17, V3-20.
