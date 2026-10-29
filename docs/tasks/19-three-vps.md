@@ -21,9 +21,9 @@ API и медиа, выбор и восстановление маршрута, 
 **29 октября: production initial core+edge-a на одном A выполнен, run51 SUCCESS.**
 [Postcheck](../iterations/three-vps-evidence/2026-10-29-production-initial-postcheck.json)
 подтвердил данные/identity/digests/соседние процессы/HTTPS/timers. B/C не закуплены,
-обычный managed executor/scopes ещё в работе. macOS24 собран/подписан, физическая
-проверка сохранённого профиля ждёт системного Keychain handoff владельца; публикация
-ещё не выполнена. Это не завершение всего MVP и не отказ от открытых проверок.
+обычный managed executor/scopes ещё в работе. macOS24 опубликован и установлен штатной кнопкой23→24, сохранены account/device/history
+и точный signed payload. Android24 остаётся непубликованным без телефона. Это не
+завершение всего MVP и не отказ от открытых проверок.
 
 ## 1. Порядок работы и контрольные точки
 

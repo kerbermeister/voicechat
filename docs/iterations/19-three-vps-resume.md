@@ -20,29 +20,31 @@ Release веткуcodex/three-vps-initial не двигали после24c42bf.
 журнал на A, per-role fences/проверки, последовательные core/edges, recovery/rollback,
 pinned SSH delivery и CI web/edge/core/full; затем actualVM proofs и production.
 
-**macOS24 не опубликован: Keychain handoff.** Exact signed ZIP распакован/запущен,
-About=1.12.0(24), PID84413 из `.prototype/macos-24-extracted/VoiceChat.app`.
-Независимая lsof/sample диагностика без вывода приватных данных: secureDB ещё не
-открыт, нативная библиотека загружена, поток ждёт SecItemCopyMatching. SecurityAgent
-PID84436 появился при запуске24; CUA явно запрещает com.apple.SecurityAgent.
-Асинхронно попросили владельца локально подтвердить запрос и написать
-«Keychain подтверждён»; пароль в чат не просили. Оставить candidate ожидающим,
-не обходить ограничение CUA и не удалять Keychain/profile. Новый `/health/route`
-публично JSON200 matrix/control=true; прежний feed23 сохранён с hash03cc2b….
+**macOS24 опубликован и установлен23→24 через кнопку, PASS.** Владелец подтвердил
+Keychain; кандидат открыл прежний профиль. Exact signed ZIP/DMG опубликованы штатным
+publish_macos.py в `/srv/voicechat-managed/edges/a/runtime/macos-updates`.
+[Evidence](three-vps-evidence/2026-10-29-macos24-published.json): HTTPS/feed/cache/hash,
+Sparkle feed signature и archive embedded public key проверены. Installed23
+предложил24; «Скачать и установить» реально обновила `/Applications/VoiceChat.app`,
+PID89685, About1.12.0(24), codesign и все285 файлов/ссылок равны exact ZIP.
+Account/device и10 прежних history markers совпали; новая24 проверила updater через
+route-aware путь и получила «Совместимых обновлений нет». Приватные сравнения в CUA,
+не копировать сами ID/тексты в docs. Backup app23+полного профиля сохранён в
+VoiceChatRelease/before-update-24; Keychain не удаляли, приватный Sparkle key не
+покидал Mac. User handoff закрыт, повторно не спрашивать подтверждение.
 
-App23+профиль заранее сохранены в VoiceChatRelease/before-update-24. Точный DMG
-readonly/codesign/full payload comparison с ZIP прошёл, volume detached. Native
-before user/device/history в CUA-памяти: выводить только сравнение, не сами значения.
-После handoff проверить sameaccount/device/history на exact24, затем штатный
-publish_macos.py в **edges/a/runtime/macos-updates**, HTTPS feed+hashes/signatures,
-запустить installed23 и выполнить About→Checkupdates→Install23→24 с проверкой
-прежней истории. Не объявлять выпуск готовым до этого. Android24 exact signed APK
-готов, физических устройств нет, не опубликован, acceptance не подделывать.
+Android24 exact signed APK готов, физических устройств нет, не опубликован,
+acceptance не подделывать. Real call/screen/E2EE и15s failover остаются открытыми;
+нет B/C, нет Windows hardware/client. Новый normal journal **локально** в
+infra/managed_journal.py:14 tests, вместе с managed baseline30 PASS; полный набор
+**520 PASS/skipped3**,50.571s. На VPS этот journal **не установлен/не запущен**;
+ещё нужны peer operations, pinned SSH driver, CLI/CI и actual VM scenario.
 
-Активного deployment/VM/build job нет; потенциальные старые exec sessions уже
-завершены. PID84413 candidate остаётся в системном Keychain ожидании. Heartbeat
-voicechat-core-edge сохраняется; не создавать дубликат и не останавливаться из-за
-этого локального handoff — продолжать независимый managed executor.
+Активного production deployment/VM/native build job нет; последний полный Python
+job80628 завершён PASS. Installed24 остаётся открытым в About; temporary candidate
+закрыт. Текущие uncommitted files проверить git status: journal/test fixture и
+Mac publication evidence/docs. Heartbeat voicechat-core-edge сохраняется; не
+создавать дубликат. Продолжать независимую managed executor реализацию.
 
 ## История предыдущих этапов
 
@@ -1605,3 +1607,16 @@ visualizations текущего чата. Это не приёмка web account
 ordered per-role operations, CAS/lost reply, no duplicate apply), затем pinned SSH
 role operations и CI scopes. Не выдавать готовый initial handler за ordinary full.
 macOS24 остаётся в Keychain handoff, приложение/профиль23 сохранены, feed23 прежний.
+
+
+## macOS Keychain подтверждён, выпуск24 доведён до установки
+
+Владелец ответил «готово». На exact candidate24 прежние account/device и10 фрагментов
+истории видны. `publish_macos.py` опубликован по pinned SSH только с публичными
+артефактами, без передачи private signing key; обе SHA и feed signature проверены
+после скачивания по HTTPS. App23 предложил24, кнопка выполнила Sparkle replacement
+и restart. Все285 файлов/ссылок installed24 равны ZIP, подпись и прежний профиль
+проверены на macOS15.3.1. Updater24 через новый маршрут также работает. Исторические
+неуспешные22→23 не переписаны как PASS; текущая функция UA-48 обновлена результатом24.
+Нативный выпуск больше не blocker. Дальше normal managed journal/peer driver/CI и
+реальные медиа/отказы в доступной среде; отсутствие Android/B/C не выдавать за успех.
