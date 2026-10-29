@@ -17,17 +17,17 @@ import role_deploy
 import role_release
 
 
-def start(root, role, edge_id=None, *, execute=role_deploy.run, network_directory=Path('/var/lib/voicechat-network')):
+def start(root, role, edge_id=None, *, execute=role_deploy.run, network_directory=Path('/var/lib/voicechat-network'), rollout_attempt=None):
     root = Path(root).absolute()
     if root.resolve() != root: raise ValueError('Role root must not traverse symlinks')
     with managed_state.locked(root):
-        role_deploy.require_rollout_owner(root)
+        state = core_deploy.read_state(root) if role == 'core' else edge_deploy.read_state(root, edge_id)
+        record = state['current']
+        role_deploy.require_rollout_owner(root, rollout_attempt, record['manifest'] if record is not None else None)
         role_bootstrap.ready(root, role, edge_id)
         if role == 'core': core_deploy.require_no_backup(root)
-        state = core_deploy.read_state(root) if role == 'core' else edge_deploy.read_state(root, edge_id)
         if state['pending'] is not None and state['pending']['phase'] != 'prepared':
             raise ValueError('Resume the pending deployment before starting this role')
-        record = state['current']
         if record is None: raise ValueError('No committed role is available to start')
         role_deploy.release_path(root, record)
         desired = managed_state.read(network_directory / 'desired.json')

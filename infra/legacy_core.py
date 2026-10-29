@@ -24,6 +24,14 @@ SERVICES = ('configure', 'postgres', 'synapse', 'control', 'turn', 'web')
 VOLUMES = ('postgres', 'synapse', 'control', 'media-config', 'turn-config', 'certificates', 'caddy-config')
 
 
+CONTAINER_TEMPLATE = ('{"id":{{json .Id}},"image":{{json .Config.Image}},"image_id":{{json .Image}},'
+    '"labels":{{json .Config.Labels}},"readonly":{{json (index .HostConfig "ReadonlyRootfs")}},'
+    '"restart":{{json .HostConfig.RestartPolicy}},"cap_add":{{json (index .HostConfig "CapAdd")}},'
+    '"cap_drop":{{json (index .HostConfig "CapDrop")}},"security_opt":{{json (index .HostConfig "SecurityOpt")}},'
+    '"tmpfs":{{json (index .HostConfig "Tmpfs")}},"mounts":{{json .Mounts}},"state":{{json .State}},'
+    '"ports":{{json (index .HostConfig "PortBindings")}},"networks":{{json .NetworkSettings.Networks}}}')
+
+
 def _json(path):
     raw = network_bootstrap.existing(path)
     if raw is None or len(raw) > 65536: raise ValueError('Missing or oversized legacy metadata')
@@ -79,8 +87,8 @@ def _ports(service, actual):
     if found != expected: raise ValueError('Legacy container port bindings differ from its baseline')
 
 
-def _container(service, current, model, *, running, implicit=(), restart_policy='legacy'):
-    if (current['image'] != service['image'] or current['labels'].get('com.docker.compose.project') != 'voicechat' or
+def _container(service, current, model, *, running, implicit=(), restart_policy='legacy', project='voicechat'):
+    if (current['image'] != service['image'] or current['labels'].get('com.docker.compose.project') != project or
             current['readonly'] != service.get('read_only', False)):
         raise ValueError('Legacy container image, project or filesystem contract changed')
     restart = service.get('restart', 'no')
@@ -186,15 +194,9 @@ def _inspect_locked(root, *, execute=role_deploy.run, require_running=True, rest
     ids = execute(['docker', 'ps', '-aq', '--no-trunc', '--filter', 'label=com.docker.compose.project=voicechat']).decode().split()
     if len(ids) != len(SERVICES) or any(not re.fullmatch(r'[a-f0-9]{64}', value) for value in ids):
         raise ValueError('Exactly the known legacy containers are required before adoption')
-    template = ('{"id":{{json .Id}},"image":{{json .Config.Image}},"image_id":{{json .Image}},'
-        '"labels":{{json .Config.Labels}},"readonly":{{json (index .HostConfig "ReadonlyRootfs")}},'
-        '"restart":{{json .HostConfig.RestartPolicy}},"cap_add":{{json (index .HostConfig "CapAdd")}},'
-        '"cap_drop":{{json (index .HostConfig "CapDrop")}},"security_opt":{{json (index .HostConfig "SecurityOpt")}},'
-        '"tmpfs":{{json (index .HostConfig "Tmpfs")}},"mounts":{{json .Mounts}},"state":{{json .State}},'
-        '"ports":{{json (index .HostConfig "PortBindings")}},"networks":{{json .NetworkSettings.Networks}}}')
     found, implicit_volumes = {}, {}
     for identifier in ids:
-        current = json.loads(execute(['docker', 'inspect', '--format', template, identifier]))
+        current = json.loads(execute(['docker', 'inspect', '--format', CONTAINER_TEMPLATE, identifier]))
         name = current['labels'].get('com.docker.compose.service')
         if current['id'] != identifier or name not in SERVICES or name in found:
             raise ValueError('Unknown or duplicated legacy container ownership')

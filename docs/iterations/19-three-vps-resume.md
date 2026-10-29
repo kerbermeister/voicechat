@@ -8,6 +8,27 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 Владелец просит продолжать все доступные локальные задачи без дополнительных
 подтверждений; новая просьба — итоговая схема сети, не остановка реализации.
 
+## Текущий локальный шаг: общий первоначальный переход
+
+`infra/initial_cohost.py` связывает подготовленные компоненты в один журналируемый
+legacy→core/cohost сценарий на A. Это **кандидат**, ещё не разрешённый CI production
+путь: цельный VM переход, fault drills и интеграция workflow не завершены.
+Приватный snapshot рабочей policy остаётся на A; rollback меняет текущие URL pushers,
+сохраняет данные/ключи/тома и возвращает legacy без восстановления старой БД.
+После commit публичного ingress предусмотрено только доведение нового режима вперёд.
+Boot recovery committed роли под full fence разрешён только владельцу точного nonce
+и manifest, без повторного configure. Восстановление существующей сети требует
+исходного fingerprint; новый peerless registry привязан к generation и сохраняет ключ.
+Неверный SSH host и remote Docker отвергаются до записи состояния.
+
+Последний подтверждённый полный набор — **458 Python tests, OK, skipped=3**;
+последующая проверка координатора — **9 focused PASS** (добавлен ещё один сценарий).
+В VM идёт дополнительная проверка старого Git **8bcbd91** с source-built legacy
+control **bc8327…** и candidate **abc8e6…**; старый source package сверяется по
+[точным Git hashes](three-vps-evidence/2026-10-29-vm-legacy-release-source.json).
+Пока не записано успешное свидетельство, этот прогон не считать завершённым.
+Production службы, данные и DNS в этом шаге не менялись.
+
 ## Актуальное состояние: production ingress, 29 октября
 
 Production приложение всё ещё **8bcbd91**, manager **e964…**, ingress plan **5b27…**.

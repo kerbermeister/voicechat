@@ -550,6 +550,13 @@ current/previous per node, происхождение build artifacts, CI и dep
 
 ### V3-20 — Реализовать раздельный deploy и последовательный rollback
 
+29.10: добавлен кандидат общего первоначального `initial_cohost.py`: frozen artifact,
+общий nonce/fence, stopped-writer backup, URL-only push migration, boot recovery,
+peerless network, core/edge warm-up, публичный commit и восстановление legacy
+без отката БД. Девять focused проверок прошли; целый VM сценарий и подключение к
+workflow пока открыты. Не использовать как подтверждённый production deploy.
+
+
 Зависимости: V3-07, V3-08, V3-09, V3-10, V3-19.
 
 - [ ] Реализовать явные области `web`, `edge`, `core`, `full`, выбор узлов и

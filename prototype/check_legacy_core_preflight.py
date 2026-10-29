@@ -8,6 +8,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import shutil
@@ -34,6 +35,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--control-image', required=True)
     parser.add_argument('--web-image', required=True)
+    parser.add_argument('--legacy-source', type=Path, help='Verified exact Git source staged on this disposable VM')
+    parser.add_argument('--candidate-control-image')
     args = parser.parse_args()
     base = Path('/srv/voicechat-edge-fixture')
     if sys.platform != 'linux' or os.geteuid() != 0 or not base.is_dir() or base.is_symlink():
@@ -58,7 +61,23 @@ def main():
         if run(arguments).strip(): raise ValueError('Existing legacy resources must not be adopted by a fixture')
     boot_unit = Path('/etc/systemd/system/voicechat-core.service')
     if boot_unit.exists() or boot_unit.is_symlink(): raise ValueError('Existing core boot unit must not be adopted by a fixture')
-    for image in (args.control_image, args.web_image): run(['docker', 'image', 'inspect', image])
+    source = ROOT
+    source_record = None
+    if args.legacy_source is not None:
+        source = args.legacy_source.absolute()
+        if source.resolve() != source or source.parent != base or not source.is_dir():
+            raise ValueError('Canonical staged disposable source required')
+        source_record = managed_state.read(source / 'source.json')
+        if (source_record['schema'] != 1 or not re.fullmatch(r'[a-f0-9]{40}', source_record['commit']) or
+                not role_release.SHA.fullmatch(source_record['backend'])):
+            raise ValueError('Invalid staged Git identity')
+        for name, expected in source_record['files'].items():
+            path = source / name
+            if (Path(name).parts[0] not in ('infra','prototype') or len(Path(name).parts) != 2 or
+                    path.resolve() != path or not path.is_file() or
+                    hashlib.sha256(path.read_bytes()).hexdigest() != expected):
+                raise ValueError('Staged Git source hash differs')
+    for image in (args.control_image, args.web_image, args.candidate_control_image or args.control_image): run(['docker', 'image', 'inspect', image])
     nonce = uuid.uuid4().hex[:10]
     neighbor = 'vc-legacy-neighbor-' + nonce
     root = Path(tempfile.mkdtemp(prefix='legacy-preflight-', dir=base))
@@ -66,14 +85,16 @@ def main():
     runtime = root / 'runtime'; runtime.mkdir(mode=0o700)
     (root / 'deploy.lock').touch(mode=0o644)
     for name in ('android-updates', 'macos-updates'): (runtime / name).mkdir(mode=0o755)
-    release = root / 'releases' / ('a' * 40)
+    release = root / 'releases' / (source_record['commit'] if source_record else 'a' * 40)
     release.mkdir(parents=True)
     for folder in ('infra', 'prototype'):
         destination = release / folder; destination.mkdir(mode=0o755)
-        for source in (ROOT / folder).iterdir():
-            if source.is_file() and not source.is_symlink():
-                target = destination / source.name
-                target.write_bytes(source.read_bytes()); target.chmod(0o644)
+        for item in (source / folder).iterdir():
+            if item.is_file() and not item.is_symlink():
+                if source_record is not None and str(item.relative_to(source)) not in source_record['files']:
+                    raise ValueError('Unrecorded staged Git source')
+                target = destination / item.name
+                target.write_bytes(item.read_bytes()); target.chmod(0o644)
     (release / 'infra/runtime').symlink_to(runtime)
     origin, server_name = 'https://chat.fixture.invalid', 'chat.fixture.invalid'
     values = {'LOCAL_STAND': '0', 'MATRIX_SERVER_NAME': server_name, 'PUBLIC_URL': origin,
@@ -96,11 +117,12 @@ networks:
     external: true
     name: ''' + neighbor + '\n'
     override.write_text(original); override.chmod(0o600)
-    manifest = {'schema': 1, 'commit': 'a' * 40, 'origin': origin,
+    manifest = {'schema': 1, 'commit': source_record['commit'] if source_record else 'a' * 40, 'origin': origin,
                 'control': args.control_image, 'web': args.web_image}
     (release / 'release.json').write_text(json.dumps(manifest))
-    # This is a newly created synthetic baseline, not a production fingerprint.
-    (release / 'backend.sha256').write_text(hashlib.sha256(b'synthetic-legacy-preflight').hexdigest())
+    # Exact Git fingerprint when staged; the runtime/accounts remain synthetic.
+    (release / 'backend.sha256').write_text(source_record['backend'] if source_record else
+        hashlib.sha256(b'synthetic-legacy-preflight').hexdigest())
     env = legacy_core.environment({'manifest': manifest})
     def compose(*arguments): return run(deploy.compose_command(release, *arguments), env=env)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -149,7 +171,7 @@ networks:
             'matrix_server_name': server_name, 'web_origins': [origin],
             'edges': [{'id': 'a', 'origin': origin, 'turn_host': 'turn.fixture.invalid'}]}
         core = root / 'managed-core'
-        target = role_release.make(public, inventory, 'core', 'b' * 40, args.control_image)
+        target = role_release.make(public, inventory, 'core', 'b' * 40, args.candidate_control_image or args.control_image)
         legacy_core.require_compatible(baseline, target)
         role_prepare.prepare(core, public, inventory, target)
         shutil.copyfile(runtime / 'stand.env', core / 'runtime/stand.env')
@@ -271,7 +293,12 @@ value['database']['args']['host']=sys.argv[1];path.write_text(json.dumps(value))
             'actual_pusher_forward_resume_and_current_metadata_reverse': True,
             'legacy_recreation_preserved_account_device_database_signing_and_coturn_runtime': True,
             'normal_legacy_up_after_temporary_volume_binding_preserved_runtime': True,
-            'limits': ['Synthetic legacy Compose from current repository sources, cached source-built control and web images.',
+            'legacy_source_commit': source_record['commit'] if source_record else None,
+            'legacy_source_files': source_record['files'] if source_record else None,
+            'legacy_control_image': args.control_image,
+            'candidate_control_image': args.candidate_control_image or args.control_image,
+            'limits': [('Exact staged legacy Git source with source-built legacy control; synthetic accounts/configuration.'
+                        if source_record else 'Synthetic legacy Compose from current repository sources, cached source-built control and web images.'),
                        'No production baseline adoption, core/edge transition or physical device acceptance.']}
     finally:
         if boot_unit.exists() or boot_unit.is_symlink():

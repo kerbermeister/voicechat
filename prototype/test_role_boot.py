@@ -14,6 +14,7 @@ import role_prepare
 import role_release
 from test_node_inventory import fixture
 from test_tunnel_runtime import state as tunnel_state
+from test_full_rollout_fence import fence
 from topology import load
 
 
@@ -47,6 +48,27 @@ class RoleBootTests(unittest.TestCase):
         self.assertEqual(self.start(), self.record)
         self.compose.assert_not_called()
         self.assertEqual((self.root / 'state.json').read_bytes(), before)
+
+    def test_full_owner_can_recover_only_its_committed_target_without_configure(self):
+        marker = fence(self.root, self.record['manifest'])
+        with self.assertRaisesRegex(ValueError, 'Finish the full rollout'): self.start()
+        self.compose.assert_not_called()
+        self.health.side_effect = [ValueError('stopped after power loss'), None]
+        before = (self.root / 'state.json').read_bytes()
+        result = role_boot.start(self.root, 'core', network_directory=self.network,
+                                 rollout_attempt=marker['attempt'])
+        self.assertEqual(result, self.record)
+        self.assertEqual((self.root / 'state.json').read_bytes(), before)
+        self.assertEqual(self.compose.call_count, 2)
+        self.assertTrue(all('--no-deps' in call.args and 'configure' not in call.args
+                            for call in self.compose.call_args_list))
+        value = managed_state.read(self.root / 'runtime/full-rollout.json')
+        value['target'] = '0' * 64
+        managed_state.persist(self.root / 'runtime/full-rollout.json', value)
+        self.compose.reset_mock()
+        with self.assertRaisesRegex(ValueError, 'Finish the full rollout'):
+            role_boot.start(self.root, 'core', network_directory=self.network, rollout_attempt=marker['attempt'])
+        self.compose.assert_not_called()
 
     def test_stopped_role_starts_only_after_data_identity_and_network_checks(self):
         self.health.side_effect = [ValueError('stopped'), None]

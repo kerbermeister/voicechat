@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "backend": "ad44fd7f678349ff7e225a077c21b183c9ec66b49754ded1fd5de03274c62a49",
+  "files": {
+    "infra/Caddyfile": "aef0a040489b7679e5122aa24df889c188b5f0fa1c96e8707bc0c01f9499f28d",
+    "infra/MACOS.md": "1fc23af0fe47ecb4ba6db2e653d175a27233ed311c9395d50fb763ac30bebd56",
+    "infra/README.md": "d733e94b511e3eb408ce26c5f07d06e4ae7f899e27b4eabfe832c459d498ef70",
+    "infra/VPS.md": "889c47e7ddd82580ca534dc02620d693be05941c11a7d6de66b29ef966c4543d",
+    "infra/android_release.py": "dc80e6717588a9b9921f35984cca7892fad0bb9cbaa2761f8a35459eaff0608e",
+    "infra/bootstrap.py": "05c8e94c6ece6051fe7b82036d355767cbad31eebb1b7b76f3fb5b3b13dafc88",
+    "infra/client_config.py": "7a127f65105820aa496962a78be5de48294b9c9f0b08d85993bee0825627f6bd",
+    "infra/compose.proxy.yaml": "a50714ef80c0dd5ae54dd895fd3de82cb32ac23762297fdbd1e0643c24d0d997",
+    "infra/compose.yaml": "b7b85c69bcd067a0cbd702708f3bb142e2accfac71e37ed5060979a15aa2cf02",
+    "infra/configure.py": "cb9a2ff362b3bcc81eda0ef7fd34f3b53ec634c62b00410debf789cd2947569c",
+    "infra/control.Dockerfile": "2749805ec8f0b143242bc31d6dcd5e354b9eceb754b56812d6ca71920fa7ac30",
+    "infra/crypto-tools.json": "58927c4a2156b7dbcb02ab20c2a4f2753b1e951f948a3cef2ca0aa7262433484",
+    "infra/deploy.py": "3fb2463ccf77fa3dcfe57ae09ef32c06a9932aed401c16c542fe92ab58ede2bb",
+    "infra/macos_release.py": "4a94bc07f88f7688f81d7653ed500ed0facb8e8b97eaeb09bda43ea38238656f",
+    "infra/publish_android_ssh.py": "e7028aee748fefef3aa169f3cfff32cbf6ffe3226fc45a7fb670576c14386aa4",
+    "infra/publish_macos.py": "a0c4de880d1545402c6f33ab0af23f5344185f5fa2d431d9b53ce6f763f8b291",
+    "infra/push-requirements.txt": "b577c26d99b01e45321e7e00c07ab2802c56f2a8d5dd27085d6d421eec045393",
+    "infra/release_source.py": "e0fd947ac11f4552d3b67f2e3630d034c475ef1e9f84fa4303120e7adf3cda08",
+    "infra/setup_yandex.py": "f4ff4865c6a1cc1a22bf53d8a1d94e0f2a050ed7d1bd84079d9fe9934bfb1e71",
+    "infra/ssh_deploy.py": "5c529bf5ff64c6c48080cf61d149615693ea959fc5b336091e24b7023195b768",
+    "infra/supervise.py": "957815e8c5687ac0944d5a4eb6f4c674b2fa14d165b8766bce0366fde5a47d9c",
+    "infra/verify_macos_signature.swift": "c258bba7def72ae56e14165d6b108b51c26b31a8f50c97cd3c2724e9d76ab9c4",
+    "infra/voicechat-backup.service": "0f9d3c6a2126688eeb56b8654ba205d10e1964d44cdc0899f35b1ba8cb26de52",
+    "infra/voicechat-backup.timer": "cebc353aaa51950bbb68ba2de803011e4843f84e6c34337a8eed5cfa1935c5f0",
+    "infra/web.Dockerfile": "d6e9ac1e4ee986499633b51fb3f778a7b7a783c29220a4f988043d3b2695a6e8",
+    "prototype/client-policy.json": "8fd8fb62e25ba0be4f27d5310e79263752f83b839e8450f575ea76f73a7d53d5",
+    "prototype/voicechat_policy.py": "301695d294c562527b8e7ee631458eaeef6963d5809a1f4305b32cec34e5b500",
+    "prototype/client_policy.py": "2485d44c6a6125cc7642e73125c4a2f341603321c99d36bac9545b3e95342796",
+    "prototype/scheduled_messages.py": "f45f69aac9ec96855c0e75d5ef9a15069b8ae359cda2099e9c4797c24b023bfd"
+  },
+  "date": "2026-10-29",
+  "production_changed": false,
+  "vm_source_path": "/srv/voicechat-edge-fixture/legacy-8bcbd91-source-ze8bfbg4",
+  "limits": [
+    "Exact Git source metadata only; fixture origin, credentials and images remain synthetic. No production data copied."
+  ]
+}
