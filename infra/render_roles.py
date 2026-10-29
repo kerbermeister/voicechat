@@ -28,7 +28,7 @@ def bundle(public, inventory, role, edge_id=None, subnet='10.241.0.0/28'):
         node = inventory['core']
         generated = {'known_hosts': node_inventory.known_host(inventory, node),
                      'node.json': json.dumps({'schema':1, 'role':'core', 'service_id':public['service_id'],
-                                             **node, 'ssh_user':inventory['ssh_user'], 'ssh_port':inventory['ssh_port']}, indent=2)}
+                                             **node, 'ssh_user':inventory['ssh_user'], 'ssh_port':inventory['ssh_port']}, sort_keys=True, indent=2)}
         runtime = ['runtime']
     elif role == 'edge':
         compose, generated = role_config.edge(public, inventory, edge_id, subnet)

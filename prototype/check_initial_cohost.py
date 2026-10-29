@@ -238,6 +238,10 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
                 planned=managed_release.plan(typed,candidate,typed['backend'],scope='web')
                 assert planned['core']==typed['core']
                 assert planned['steps']==[{'role':'edge','edge_id':'a'}]
+                actual_core=managed_release.inspect_role(core,public,inventory,typed['core'],execute=execute)
+                actual_edge=managed_release.inspect_role(edge,public,inventory,typed['edges']['a'],execute=execute)
+                assert actual_core['data_identity']==baseline['data_identity']
+                assert len(actual_core['processes'])==3 and len(actual_edge['processes'])==3
                 for role_root in (core,edge):assert not (role_root/'runtime/full-rollout.json').exists()
                 assert initial_cohost.migrate(root,old_root,shared,public,inventory,candidate,envelope,catalog_key,
                     backend_sha256=hashlib.sha256(b'synthetic-full-vm-candidate').hexdigest(),execute=execute,ca_file=ca)==current
@@ -246,6 +250,7 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
                     'legacy_release_pointer_unchanged':True,'production_changed':False,
                     'legacy_controller_retired_before_runtime_or_docker':True,
                     'typed_initial_baseline_and_web_scope_plan_verified':True,
+                    'actual_core_edge_baseline_reader_verified':True,
                     'limits':['Synthetic accounts, CA, catalog key and candidate fingerprint on the marked VM.',
                               'No real device/media acceptance, production transition or actual machine reboot.'],
                     'pre_public_rollback_and_committed_core_public_recovery_drills':fault_drills}

@@ -45,6 +45,17 @@ class ManagedReleaseTests(unittest.TestCase):
         self.assertEqual(self.baseline,before)
         self.assertEqual(value,self.plan('web',edges=['c']))
 
+    def test_persisted_sorted_json_baseline_does_not_look_like_a_core_change(self):
+        restored=json.loads(json.dumps(self.baseline,sort_keys=True))
+        for scope in ('web','edge','core','full'):
+            value=managed_release.plan(restored,self.candidate,restored['backend'],scope=scope)
+            self.assertEqual(value,self.plan(scope))
+        for role,identifier in (('core',None),('edge','b')):
+            image=self.image('1' if role=='core' else '2')
+            original=role_release.make(self.baseline['public'],self.baseline['inventory'],role,'a'*40,image,identifier)
+            reordered=role_release.make(restored['public'],restored['inventory'],role,'a'*40,image,identifier)
+            self.assertEqual(original,reordered)
+
     def test_core_reuses_every_mixed_web_revision_without_client_build(self):
         public,inventory=self.baseline['public'],self.baseline['inventory']
         self.baseline['edges']['c']=role_release.make(public,inventory,'edge','c'*40,self.image('4'),'c')

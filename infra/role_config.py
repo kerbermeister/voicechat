@@ -64,7 +64,7 @@ def core(public, inventory):
     for name in ('postgres', 'synapse', 'control'):
         services[name]['restart'] = 'no'
     services['configure'].update(environment={
-        'VOICECHAT_ROUTE_CONFIG': json.dumps(public, separators=(',', ':')),
+        'VOICECHAT_ROUTE_CONFIG': json.dumps(public, separators=(',', ':'), sort_keys=True),
         'PUBLIC_IP': inventory['core']['public_ip'],
         'VOICECHAT_PUSH_GATEWAY_IP': address,
     }, volumes=[bind('./topology.py', '/topology.py'), bind('./client_config.py', '/client_config.py'),

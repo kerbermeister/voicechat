@@ -1226,3 +1226,35 @@ shared TLS profile, canonical edge a, root /srv/voicechat-managed; катало�
 после его проверок настроить public config variables и выполнять initial full.
 Затем canonical DEPLOY_ROOT→managed (защита от старых workflows), обычные managed
 обновления, обязательный Sparkle выпуск24 и реальная приёмка устройств/media.
+
+### После запуска первого CI build-only
+
+Ветка опубликована: commit **b0b7040096457cb1347ea4396ef0293cd9b379a5**.
+[Build and deploy #48](https://github.com/kerbermeister/voicechat/actions/runs/40918217857),
+`rollout=initial, mode=full, deploy=false`, запущен через GitHub UI. Server/client
+checks прошли, на момент наблюдения — cold crypto tool/assets cache. Этот commit
+**не выкатывать**: следующая VM проверка выявила дефект durable baseline.
+
+[Retirement attempt1 — отказ, не принят](three-vps-evidence/2026-10-29-vm-initial-cohost-retirement-attempt1.json):
+переход и account/device/data assertions завершились, legacy retirement guard
+сработал. Затем web planner отказал, потому что managed_state сохраняет JSON с
+sort_keys, а core VOICECHAT_ROUTE_CONFIG и node.json рендерились с insertion order.
+`role_config.py` и `render_roles.py` теперь используют canonical sorted JSON.
+Регрессия проверяет все четыре scopes после persisted sorted round-trip и
+идентичность core/edge manifests при перестановке полей. Полный набор **498 PASS,
+skipped=3**, 40.480s. Старые артефакты #48 полезны только для проверки сборки/кеша.
+
+Уточнение активного прогона: session97397 завершился отказом; его fixture удалён,
+исходная network active. Теперь идёт session **1044**, тот же wrapper
+`/tmp/voicechat-initial-cohost-retirement-vm.py`, source
+`/srv/voicechat-edge-fixture/legacy-preflight-source-u5sgkaje`.
+В него включены canonical JSON fix и actual core/edge baseline reader. Не запускать
+параллельный fixture. Текущие незакоммиченные source changes — только эта регрессия;
+их надо commit/push и использовать исправленный revision для следующего CI/deploy.
+
+Production дополнительный read-only preflight: modprobe -n wireguard успешен,
+/var/lib/voicechat-network, managed root и legacy retirement marker отсутствуют.
+Публичные production SERVER_ROLE_CONFIG / SIGNED_ROUTE_CATALOG подготовлены локально;
+начата настройка GitHub vars через tab8 (rolloutVariables). Пока проверять UI,
+а не считать обе переменные сохранёнными автоматически. Приватный signing key
+остаётся на Mac. DEPLOY_ROOT пока /srv/voicechat, ещё не менять до public commit.
