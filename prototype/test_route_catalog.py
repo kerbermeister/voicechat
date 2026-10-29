@@ -2,6 +2,7 @@ import base64
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -87,7 +88,7 @@ class CatalogTests(unittest.TestCase):
 
     def test_monotonic_publication_and_corrupt_or_missing_state(self):
         with tempfile.TemporaryDirectory() as temporary:
-            directory = Path(temporary)
+            directory = Path(temporary).resolve()
             first = self.envelope(2)
             with self.assertRaises(ValueError): publish(directory, first, self.public, self.bootstrap)
             publish(directory, first, self.public, self.bootstrap, initialize=True)
@@ -112,7 +113,7 @@ class CatalogTests(unittest.TestCase):
 
     def test_interrupted_write_preserves_signed_state_and_concurrent_writers_cannot_roll_back(self):
         with tempfile.TemporaryDirectory() as temporary:
-            directory = Path(temporary)
+            directory = Path(temporary).resolve()
             first = self.envelope()
             publish(directory, first, self.public, self.bootstrap, initialize=True)
             with patch('publish_catalog.os.replace', side_effect=OSError('simulated failure')):
@@ -130,12 +131,41 @@ class CatalogTests(unittest.TestCase):
 
     def test_invalid_catalog_does_not_touch_directory_and_reads_are_bounded(self):
         with tempfile.TemporaryDirectory() as temporary:
-            directory = Path(temporary)
+            directory = Path(temporary).resolve()
             with self.assertRaises(ValueError): publish(directory, b'{}', self.public, self.bootstrap, initialize=True)
             self.assertEqual(list(directory.iterdir()), [])
             path = directory / 'oversized'
             path.write_bytes(b'x' * 65537)
             with self.assertRaises(ValueError): read_envelope(path)
+
+    def test_publication_refuses_symlinks_unsafe_permissions_and_nonregular_state(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            directory = root / 'catalog'; directory.mkdir()
+            first = self.envelope()
+            alias = root / 'alias'; alias.symlink_to(directory, target_is_directory=True)
+            with self.assertRaises(ValueError): publish(alias, first, self.public, self.bootstrap, initialize=True)
+            directory.chmod(0o777)
+            with self.assertRaises(ValueError): publish(directory, first, self.public, self.bootstrap, initialize=True)
+            directory.chmod(0o755)
+            untouched = root / 'untouched'; untouched.write_bytes(b'preserve')
+            lock = directory / '.publish.lock'; lock.symlink_to(untouched)
+            with self.assertRaises(OSError): publish(directory, first, self.public, self.bootstrap, initialize=True)
+            self.assertEqual(untouched.read_bytes(), b'preserve')
+            lock.unlink(); os.mkfifo(lock)
+            with self.assertRaises(OSError): publish(directory, first, self.public, self.bootstrap, initialize=True)
+            lock.unlink(); lock.touch(mode=0o644)
+            with self.assertRaises(ValueError): publish(directory, first, self.public, self.bootstrap, initialize=True)
+            lock.chmod(0o600)
+            destination = directory / 'routes.json'; destination.symlink_to(root / 'missing')
+            with self.assertRaises(OSError): publish(directory, first, self.public, self.bootstrap, initialize=True)
+            destination.unlink(); os.mkfifo(destination)
+            with self.assertRaises(ValueError): publish(directory, first, self.public, self.bootstrap, initialize=True)
+            destination.unlink()
+            publish(directory, first, self.public, self.bootstrap, initialize=True)
+            destination.chmod(0o666)
+            with self.assertRaises(ValueError): publish(directory, self.envelope(2), self.public, self.bootstrap)
+            self.assertEqual(destination.read_bytes(), first)
 
 
 if __name__ == '__main__':

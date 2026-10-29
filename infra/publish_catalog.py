@@ -3,9 +3,10 @@ import argparse
 import fcntl
 import os
 from pathlib import Path
+import stat
 import tempfile
 
-from route_catalog import read_envelope, verify
+from route_catalog import MAX_ENVELOPE, read_envelope, verify
 from topology import load
 
 
@@ -13,15 +14,29 @@ def publish(directory, envelope, public, bootstrap, *, initialize=False):
     # Reject invalid input before touching runtime. The lock then serializes
     # comparison and replacement of the single signed revision/content record.
     verify(envelope, public, bootstrap)
-    destination = Path(directory) / 'routes.json'
-    lock = os.open(Path(directory) / '.publish.lock', os.O_WRONLY | os.O_CREAT, 0o600)
+    directory = Path(directory).absolute()
+    info = directory.lstat()
+    if (directory.resolve() != directory or not stat.S_ISDIR(info.st_mode) or
+            info.st_uid != os.geteuid() or info.st_mode & 0o022):
+        raise ValueError('Catalog directory must be canonical, owned and not writable by others')
+    destination = directory / 'routes.json'
+    lock = os.open(directory / '.publish.lock', os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
     with os.fdopen(lock, 'w') as stream:
+        info = os.fstat(stream.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o077:
+            raise ValueError('Catalog lock must be an owned private regular file')
         fcntl.flock(stream, fcntl.LOCK_EX)
         previous = None
-        if destination.exists():
+        if destination.exists() or destination.is_symlink():
+            descriptor = os.open(destination, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            with os.fdopen(descriptor, 'rb') as source:
+                info = os.fstat(source.fileno())
+                if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
+                    raise ValueError('Published catalog must be an owned regular file')
+                saved = source.read(MAX_ENVELOPE + 1)
             if initialize:
                 raise ValueError('Catalog already initialized')
-            previous = verify(read_envelope(destination), public, bootstrap, restoring=True)
+            previous = verify(saved, public, bootstrap, restoring=True)
         elif not initialize:
             raise ValueError('Catalog state missing; initialize only a new runtime explicitly')
         current = verify(envelope, public, bootstrap, previous=previous)

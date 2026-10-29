@@ -10,6 +10,12 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 
 ## Актуальное состояние: production ingress, 29 октября
 
+Перед production publication усилены файловые границы `publish_catalog.py`:
+canonical owned runtime без чужой записи, private regular no-follow lock и
+bounded no-follow чтение прежнего signed high-water mark. Symlink, FIFO и
+writable state отвергаются до замены документа. Anti-rollback/concurrency/crash
+tests сохранены; 6 catalog tests PASS. Production catalog ещё не опубликован.
+
 Новый `shared_front.py` подготавливает независимый HAProxy plan из проверенного
 edge bundle и запускает только `127.0.0.1:19443`. Ни Caddy, ни public 443,
 ни core/edge приложения он не меняет. Private journal, проверка SSH host,

@@ -68,7 +68,7 @@ def main():
     edge_id = 'probe-' + uuid.uuid4().hex[:12]
     project = 'voicechat-edge-' + edge_id
     with tempfile.TemporaryDirectory(prefix=project) as temporary:
-        root = Path(temporary)
+        root = Path(temporary).resolve()
         (root / 'ca.key').touch(mode=0o600)
         subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '3',
             '-keyout', str(root / 'ca.key'), '-out', str(root / 'ca.crt'), '-subj', '/CN=Disposable VoiceChat CA',
