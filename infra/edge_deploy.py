@@ -72,7 +72,7 @@ def read_state(root, edge_id):
         pending = state['pending']
         topology.fields(pending, ('target', 'scope', 'phase'))
         validate_record(pending['target'], edge_id)
-        if pending['scope'] not in ('web', 'edge') or pending['phase'] not in ('prepared', 'applying', 'rollback'):
+        if pending['scope'] not in ('web', 'edge') or pending['phase'] not in ('prepared', 'applying', 'rollback', 'managed-rollback'):
             raise ValueError('Invalid pending edge deployment')
     return state
 
@@ -161,6 +161,8 @@ def deploy(root, public, inventory, manifest, core_manifest, *, scope='edge', su
         role_release.verify_bundle(release, manifest, public, inventory, subnet)
         state = read_state(root, edge_id)
         old = state['current']
+        if state['pending'] is not None and state['pending']['phase'] == 'managed-rollback':
+            raise ValueError('Finish the owned managed edge rollback before deployment')
         if old:
             release_path(root, old)
             if any(old['manifest'][name] != manifest[name] for name in ('service_id', 'identity', 'contracts', 'node_sha256')):
