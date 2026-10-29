@@ -997,7 +997,11 @@ Source/host/env/ports/mounts остаются неизменными. Успех
 Ошибка возвращает прежние routes, interrupted apply продолжает тот же plan,
 interrupted rollback сначала возвращает рабочий старый config. Это ещё не перенос
 443 в HAProxy и не доставка ключей в edge. [Stock Caddy 2.8 parser proof](../docs/iterations/three-vps-evidence/2026-10-29-vm-cohost-certificates-parser.json)
-прошёл без сети; настоящий внешний выпуск сертификата пока не выполнен.
+прошёл без сети. [Настоящий production HTTP-01 выпуск](../docs/iterations/three-vps-evidence/2026-10-29-production-cohost-certificates.json)
+29 октября прошёл на текущем A: trusted SNI обоих имён, прежний canonical cert,
+те же container processes, внешний TURN TLS verify=0/HTTP421. Последний статус
+означает только готовый certificate sink; TURN/TLS relay443 ещё не включён.
+Доставка ключей в edge и автоматический activation/renewal ещё остаются.
 
 Для начальной миграции старого A можно явно добавить `legacy_turn: true` к
 `{"id":"a","host":"core"}`: host3488 TCP/UDP направляется на авторизованный

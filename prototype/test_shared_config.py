@@ -155,5 +155,16 @@ class CohostCertificatePreparationTests(unittest.TestCase):
         self.assertFalse(self.reloads())
         self.assertFalse((self.root / 'configuration.json').exists())
 
+    def test_later_business_deployment_keeps_the_certificate_sinks(self):
+        self.configure()
+        self.business.paths = ['deploy/Caddyfile']
+        self.business.business = self.fixture.business.replace(' reverse_proxy', ' header X-Fixture changed\n reverse_proxy')
+        result = self.business.update()
+        target, files = shared_ingress.read_plan(self.root, self.root / 'plans' / result['plan'], system_root=self.system)
+        self.assertEqual(target['mode'], 'legacy-certs')
+        self.assertEqual(files['Caddyfile'].count(b'disable_tlsalpn_challenge'), 2)
+        self.assertIn(b'header X-Fixture changed', files['Caddyfile'])
+        self.assertIn(b'respond 421', files['Caddyfile'])
+
 
 if __name__ == '__main__': unittest.main()

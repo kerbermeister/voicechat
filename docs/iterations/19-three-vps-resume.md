@@ -10,7 +10,21 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 
 ## Актуальное состояние: production ingress, 29 октября
 
-Последний кодовый checkpoint — `4786380`, ветка `codex/three-vps-rollout`.
+Последний кодовый checkpoint — `60cb9aa`, ветка `codex/three-vps-rollout`.
+На production уже manager package
+`e9648a0be5de03eedd75dcd1e06d2b82d10d04f53f53927cf775ffb468f50696`,
+current **legacy-certs** plan
+`5b27dc08f1cc4ffb267fd06508ac47ece34a421cb2f090b70f70d71f1648f69f`.
+Подготовительный HTTP-01 выпуск TURN сертификата прошёл за 8.65s без DNS change
+и перезапуска контейнеров. Trusted SNI fingerprints проверены на A, внешняя
+проверка TURN даёт verify=0/HTTP421 (certificate sink, ещё не TURN relay443).
+Канонический cert остался прежним. Installed manager no-op после смены mode тоже
+прошёл, все журналы clear. [Production certificate proof](three-vps-evidence/2026-10-29-production-cohost-certificates.json).
+Далее — source certificate capture/fanout/renewal, shared-front/full/core migration.
+`/srv/voicechat-managed` всё ещё не создавался; VoiceChat release остаётся 8bcbd91.
+Ниже начальный ingress checkpoint, после него — подробная история. Старые
+b5ab/e977/7b08 состояния не являются текущими.
+
 **198 infrastructure tests PASS** и полная disposable VM проверка manager.
 На production выполнен подготовительный legacy Caddy adoption: directory mount
 и pinned прежний Caddy, private server-local dotenv snapshot/managed COMPOSE_FILE,
@@ -59,13 +73,15 @@ legacy core adoption/full orchestration/CI scopes, реальный role release
 Fixture очищен. [Certificate config](three-vps-evidence/2026-10-29-vm-cohost-certificates-parser.json)
 валидирован stock Caddy 2.8 без сети, TLS-ALPN disabled у обоих VoiceChat имён.
 
-Production сейчас всё ещё на manager b5ab… и legacy plan e977…; новый code-only
-upgrade и certificate plan **ещё не выполнялись**. Read-only preflight: canonical
+На момент локального certificate checkpoint production был на manager b5ab…/e977….
+После commit 60cb9aa source-only upgrade и certificate preparation уже выполнены
+(см. актуальный блок в начале), все container processes сохранены. Read-only preflight: canonical
 и turn.univc.duckdns.org дают только 84.200.80.13, ACME directory HTTPS доступен,
 текущий trusted canonical cert expires Jan21 2027, в Caddy volume есть одна его
-пара (private key не читался/не экспортировался). Следующее — сохранить commit,
-доставить reviewed 28-file package, выполнить install upgrade, затем stage/apply
-`legacy-certs` с настоящим SNI/CA подтверждением. User permissions уже даны.
+пара (private key не читался/не экспортировался). Reviewed 28-file package доставлен, install upgrade и stage/apply `legacy-certs`
+прошли с настоящим SNI/CA подтверждением. User permissions уже даны.
+Дополнительный focused test бизнес-деплоя после certificate mode прошёл (10 tests
+в test_shared_config); предыдущий полный regression — 210 PASS.
 
 ## Текущая рабочая копия после интеграции
 

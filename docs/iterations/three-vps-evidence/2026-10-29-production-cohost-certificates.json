@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "kind": "production-cohost-certificate-preparation",
+  "source_commit": "60cb9aa",
+  "operator_sha256": "e9648a0be5de03eedd75dcd1e06d2b82d10d04f53f53927cf775ffb468f50696",
+  "plan_sha256": "5b27dc08f1cc4ffb267fd06508ac47ece34a421cb2f090b70f70d71f1648f69f",
+  "elapsed_seconds": 8.65,
+  "trusted_sni_certificate_sha256": {
+    "turn.univc.duckdns.org": "ba7f1aff22659a073643ff577393e0b709f15a92d5f7fdf7a6a163b6b954f7b9",
+    "univc.duckdns.org": "92192a385cfcdb965c14e86821aff863bfbec245acbb79d64350720839f0c6e9"
+  },
+  "all_container_processes_unchanged": true,
+  "legacy_web_upstream_retained": true,
+  "both_existing_https_routes_verified": true,
+  "tls_alpn_challenge_disabled_for_voicechat_names": true,
+  "dns_unchanged": true,
+  "configuration_pending_cleared": true,
+  "wireguard_or_core_changed": false,
+  "private_keys_exported": false,
+  "limits": [
+    "Caddy certificates prepared on existing A; no key fanout/renewal scheduler, shared-front cutover, role migration or client release."
+  ],
+  "external_turn_tls_verification_result": 0,
+  "external_turn_http_status": 421,
+  "production_manager_noop_after_certificate_preparation": true,
+  "all_container_processes_unchanged_after_manager_noop": true,
+  "immutable_source_package_verified_after_cli": true
+}
