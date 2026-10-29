@@ -126,8 +126,12 @@ TLS service root**; foreign retargeting всё ещё запрещён до пу
 также был исправлен: в payload добавлены пропущенные public Caddyfile inputs.
 Ни одного app deploy, service change или DNS update на production в этой итерации
 не выполнялось. Завершены commits94cd2a5 (legacy preflight/SQL) и1d3f63a (backup fence).
-Далее source-only manager upgrade старого production28→текущий32 на VM и общий
-legacy→core/edge coordinator с rollback. Нужен общий maintenance fence для role
+[Source-only manager upgrade production28→32 PASS на VM](three-vps-evidence/2026-10-29-vm-manager-28-to-32.json):
+точный прежний e964… пакет обновлён на2b978… без смены процессов; повторены
+installed CLI, workflow-only deploy, business reload, lost reply/Git recovery и
+application service recreate с сохранением соседей. Fixture очищен. Production
+operator по-прежнему старый, не обновлялся этим proof.
+Далее общий legacy→core/edge coordinator с rollback. Нужен общий maintenance fence для role
 boot/monitor на весь multi-step transition, не только child apply locks; не допустить
 возврата writers во время SQL/policy reversal или после reboot pending full.
 
