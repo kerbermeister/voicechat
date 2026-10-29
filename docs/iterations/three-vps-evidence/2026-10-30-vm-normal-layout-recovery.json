@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "layout_rejected_before_normal_begin": true,
+  "owned_units_and_containers_removed": true,
+  "original_private_network_and_key_restored": true,
+  "synthetic_ca_removed": true,
+  "systemd_running": true,
+  "legacy_implicit_volumes_removed_by_original_receipt": true
+}

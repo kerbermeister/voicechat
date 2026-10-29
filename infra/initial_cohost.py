@@ -85,8 +85,9 @@ def target_for(root, legacy_root, shared_root, public, inventory, candidate, cat
         raise ValueError('Explicit shared TLS profile required for initial adoption')
     if candidate['origin'] != public['canonical_origin']: raise ValueError('Candidate belongs to another origin')
     roots = [Path(value).absolute() for value in (root, legacy_root, shared_root)]
-    if len(set(roots)) != 3 or any(path.resolve() != path for path in roots):
-        raise ValueError('Distinct canonical migration roots required')
+    if (len(set(roots)) != 3 or any(path.resolve() != path for path in roots) or
+            any(left in right.parents for left in roots for right in roots if left != right)):
+        raise ValueError('Distinct canonical nonnested migration roots required')
     for path in roots: ingress.absolute_path(str(path))
     core = role_release.make(public, inventory, 'core', candidate['commit'], candidate['control'])
     edge = role_release.make(public, inventory, 'edge', candidate['commit'], candidate['web'], edge_id, subnet)

@@ -147,7 +147,9 @@ class ManagedTransportTests(unittest.TestCase):
         from test_node_inventory import key
         with tempfile.TemporaryDirectory() as folder:
             identity=Path(folder)/'identity';identity.write_text('synthetic fixture identity');identity.chmod(0o600)
-            peer={'host':'192.0.2.10','host_key':key(1),'user':'root','port':2222}
+            from test_node_inventory import fixture
+            inventory=fixture();inventory['ssh_port']=2222
+            peer={'node':'core','inventory':inventory,'host':'192.0.2.10','host_key':key(1),'user':'root','port':2222}
             with managed_ssh.connection(peer,identity) as ssh:
                 name=next(item.split('=',1)[1] for item in ssh if item.startswith('UserKnownHostsFile='))
                 known=Path(name);self.assertEqual(known.read_text(),'[192.0.2.10]:2222 '+key(1)+'\n')
@@ -159,7 +161,8 @@ class ManagedTransportTests(unittest.TestCase):
         from test_node_inventory import key
         with tempfile.TemporaryDirectory() as folder:
             private=Path(folder)/'core';private.write_text('synthetic');private.chmod(0o600)
-            peer={'node':'core','host':'192.0.2.10','host_key':key(1),'user':'root','port':22}
+            from test_node_inventory import fixture
+            peer={'node':'core','inventory':fixture(),'host':'192.0.2.10','host_key':key(1),'user':'root','port':22}
             with managed_ssh.connection(peer,{'core':str(private)}) as ssh:
                 self.assertEqual(ssh[ssh.index('-i')+1],str(private))
             with self.assertRaisesRegex(ValueError,'physical node SSH identity'):

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "same_hints_through_shared_inventory_pinned_transport": true,
+  "host_key_algorithm_ed25519_and_no_agent_forwarding": true,
+  "hints": {
+    "schema": 1,
+    "baseline": "b26ecc16a3b5de6f71e1871d5480fe09158e4516d3b470226be4f48e02fa1419",
+    "backend": "adb695a0c92683e1108bc50fa8b1e37ae4db87579750447c9756343297062626",
+    "origin": "https://univc.duckdns.org",
+    "control": "ghcr.io/kerbermeister/voicechat/control@sha256:8a7117660bf425112e4a3a82a108d95a7e876434a1fd73ff0f7d24d8a64ee0bf",
+    "web": {
+      "a": "ghcr.io/kerbermeister/voicechat/web@sha256:b0165839b83a7f044c3b8a46f8c62a51bb8ebf823b2636f234a0b22d28b01583"
+    },
+    "pending": null
+  },
+  "limits": [
+    "Read-only build hints; no deploy, image pull, source installation or role health/media acceptance."
+  ]
+}

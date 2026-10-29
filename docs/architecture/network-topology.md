@@ -13,8 +13,8 @@ core и cohost edge-a, shared-front и сохранёнными данными/i
 flowchart LR
     U["Клиенты: Android, macOS, web<br/>будущий Windows — тот же контракт"]
     subgraph VPS["Один VPS: две отдельные роли"]
+        I["shared-front HAProxy :443<br/>отдельный project · HTTPS/TURN по SNI"]
         subgraph E["edge-a · отдельный Compose project"]
-            I["HAProxy :443<br/>HTTPS и TURN/TLS по SNI"]
             W["Caddy<br/>web, API/WSS proxy, каталог входов"]
             T["coturn<br/>временный медиарелей"]
             I -->|"API / сайт"| W
@@ -105,7 +105,7 @@ flowchart LR
 | Сигнализация LiveKit | Клиент → WSS edge → WireGuard → LiveKit на A. |
 | Медиа через SFU | Клиент → TURN на доступном edge → публичный медиапорт SFU A. Firewall допускает входы из inventory, прямой доступ клиента к SFU закрыт. Внешний адрес A должен быть доступен самому edge. |
 | Личный WebRTC/P2P путь | ICE выбирает прямое соединение участников или TURN. Эти потоки не обязаны проходить через SFU A. |
-| Push callback (новые подписки) | Synapse на A → private IP A:8090 → control; затем HTTPS к push provider. Для старых pushers ещё требуется миграция URL. |
+| Push callback (новые подписки) | Synapse на A → private IP A:8090 → control; затем HTTPS к push provider. Миграция старых URL включена в initial transition; доставка push требует отдельной приёмки. |
 | Выбор/обновление входов | HTTPS readiness и проверяемый подписанный каталог на известных edge; приватный ключ подписи хранится отдельно. |
 
 В текущем конфиге **TURN→SFU идёт к публичному медиапорту A, не через WireGuard**.
@@ -161,8 +161,11 @@ IP в конфиге не устанавливает ПО, не выпускае
   сохранение C и приватный адрес единственного A без peers.
 - Scoped firewall и его atomic apply/resume прошли локальный Linux kernel fixture:
   INPUT/FORWARD, DNAT, отказ постороннему клиенту/транзиту, совмещённые роли.
-- Схемы/генераторы ролей и guarded role manifests. Полный host bootstrap,
-  TLS renewal, CI rollout/rollback и production миграция остаются открытыми.
+- Initial migration уже выполнена на production (run51), cohost TLS/daily backup
+  timers включены. Два genuine VM core rollback сохранили post-backup данные.
+- Ordinary scoped SSH/CI controller реализован; его сквозная VM/production проверка
+  ещё идёт. Автоматизация нового physical host/replacement и физические B/C остаются
+  отдельными незавершёнными этапами.
 
 Без внешней копии потеря A означает потерю единственной серверной копии данных.
 Дополнительные входы защищают доступность сетевого пути, но не заменяют backup A.

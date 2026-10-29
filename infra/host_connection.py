@@ -4,6 +4,7 @@ Remote arguments are quoted as data. Never put credentials in arguments; pass
 private payloads through stdin and do not print captured output indiscriminately.
 This does not provision a host or authorize production changes by itself.
 """
+from contextlib import contextmanager
 import os
 from pathlib import Path
 import shlex
@@ -15,15 +16,10 @@ import node_inventory
 from tunnel_config import physical_nodes
 
 
-def execute(inventory, node, identity_file, arguments, *, input=None, timeout=120):
+@contextmanager
+def connection(inventory, node, identity_file):
     nodes = physical_nodes(inventory)
     if node not in nodes: raise ValueError('Unknown physical SSH node')
-    if (not isinstance(arguments, (list, tuple)) or not arguments or
-            any(not isinstance(value, str) or '\x00' in value for value in arguments) or
-            not arguments[0]):
-        raise ValueError('Nonempty remote argument vector required')
-    if type(timeout) is not int or not 1 <= timeout <= 3600:
-        raise ValueError('Bounded SSH operation timeout required')
     identity_file = Path(identity_file).absolute()
     descriptor = os.open(identity_file, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
     try:
@@ -45,6 +41,17 @@ def execute(inventory, node, identity_file, arguments, *, input=None, timeout=12
                    'ConnectTimeout=10', 'ServerAliveInterval=15', 'ServerAliveCountMax=2')
         command = ['ssh', '-F', '/dev/null', '-T', '-i', str(identity_file), '-p', str(inventory['ssh_port'])]
         for option in options: command.extend(('-o', option))
-        command += ['--', inventory['ssh_user'] + '@' + nodes[node]['public_ip'], shlex.join(arguments)]
-        return subprocess.run(command, input=input, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              timeout=timeout, check=True)
+        command += ['--', inventory['ssh_user'] + '@' + nodes[node]['public_ip']]
+        yield command
+
+
+def execute(inventory, node, identity_file, arguments, *, input=None, timeout=120):
+    if (not isinstance(arguments, (list, tuple)) or not arguments or
+            any(not isinstance(value, str) or '\x00' in value for value in arguments) or
+            not arguments[0]):
+        raise ValueError('Nonempty remote argument vector required')
+    if type(timeout) is not int or not 1 <= timeout <= 3600:
+        raise ValueError('Bounded SSH operation timeout required')
+    with connection(inventory, node, identity_file) as command:
+        return subprocess.run([*command, shlex.join(arguments)], input=input, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, timeout=timeout, check=True)

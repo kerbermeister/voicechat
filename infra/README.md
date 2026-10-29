@@ -1,15 +1,21 @@
-# Один сервер: Docker и GitHub Actions
+# Развёртывание VoiceChat: core и серверы входа
 
 Конкретный план для `univc.duckdns.org` → `84.200.80.13`: [VPS, DuckDNS,
 первый запуск, ежедневный backup и восстановление](VPS.md).
 
 ## Локальная подготовка нескольких входов
 
-Новый multi-VPS режим пока не подключён к production workflow. Реализованы публичная
-topology/подписанный каталог и offline render proxy; полный role deploy ещё в работе.
-Состояние и точка продолжения: [журнал](../docs/iterations/19-three-vps.md).
-Новые самостоятельные Compose bundle и границы прав:
-[подготовка core/edge](THREE_VPS.md). Старый production workflow ими пока не заменён.
+Production уже переведён на один физический A с отдельными `core` и `edge-a`:
+[первоначальный release51 и postcheck](../docs/iterations/three-vps-evidence/2026-10-29-production-initial-postcheck.json).
+Рабочие данные находятся в core; вход обслуживает HTTPS/API/WSS/TURN и установщики.
+Обычный managed workflow с областями `full/web/core/edge` реализован, проходит
+сквозную VM-проверку и пока не использовался для следующего production-релиза.
+Актуальная [точка продолжения](../docs/iterations/19-three-vps-resume.md) отличает
+опубликованное от проверенного только локально. Инструкции и ограничения:
+[core/edge и normal release](THREE_VPS.md#обычный-managed-release).
+
+Ниже сохранены команды offline render и прежнего локального/legacy стенда.
+Они не заменяют managed rollout и не должны обновлять текущий production.
 
 `three-vps.example.json` содержит публичные логические адреса. Отдельный
 `node-inventory.example.json` описывает физические IPv4, private tunnel IP,
@@ -38,7 +44,8 @@ SSH host key. DNS-имена и tunnel IP прежнего логическог�
 публичная клиентская конфигурация при смене только physical IP не меняется.
 Для нового D добавить записи в topology и inventory и выпустить подписанный
 каталог с большей revision после подготовки входа. Публикация каталога описана
-в [журнале](../docs/iterations/19-three-vps.md), автоматизация deploy ещё открыта.
+в [журнале](../docs/iterations/19-three-vps.md). Добавление/замена physical node — отдельная
+операция с generation/revocation и TLS; ordinary release не принимает новую topology.
 
 ## Флаг демонстрации экрана
 
@@ -83,7 +90,7 @@ docker compose -f infra/compose.yaml --env-file infra/runtime/stand.env up -d --
 
 Caddy обслуживает web, `/_matrix`, `/api` и `/rtc` на одном origin. Административные и внутренние API, лабораторные отчёты закрыты на внешнем адресе. Служебный Matrix-порт 8088 доступен только loopback хоста для локальных проверок/администрирования. API и SFU работают одним непривилегированным контейнером под supervisor: падение/неисправность авторизатора завершает и SFU. Это обрывает звонки при обслуживании; бесшовный рестарт не обещается.
 
-## Подготовка VPS и Actions
+## Legacy: подготовка VPS и Actions
 
 Нужен Linux VPS с Docker Compose, Python 3 и свободным местом под медиа/резервные копии. На хосте один экземпляр проекта Compose `voicechat`. DNS указывает на публичный IPv4 VPS. Порты: TCP 80/443 (Caddy), TCP 7981 и UDP 50300–50400 (SFU), TCP/UDP 3488 и UDP 49300–49400 (TURN). Сетевой план требует проверки с реального телефона и сети; TURN через TLS/443 пока не настроен.
 

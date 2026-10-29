@@ -39,6 +39,13 @@ class InitialCohostPlanningTests(unittest.TestCase):
         return initial_cohost.target_for(self.base/'managed',self.base/'legacy',self.base/'shared',
             self.public,self.inventory,self.candidate,'public-fixture-key',subnet='10.241.0.0/28',backend_sha256='b'*64)
 
+    def test_initial_plan_rejects_nested_roots_before_creating_an_unreadable_normal_baseline(self):
+        for root,legacy,shared in ((self.base/'legacy/managed',self.base/'legacy',self.base/'shared'),
+                                   (self.base/'managed',self.base/'legacy',self.base/'managed/shared')):
+            with self.subTest(root=root,shared=shared),self.assertRaisesRegex(ValueError,'nonnested'):
+                initial_cohost.target_for(root,legacy,shared,self.public,self.inventory,self.candidate,
+                    'public-fixture-key',subnet='10.241.0.0/28',backend_sha256='b'*64)
+
     def test_target_binds_source_roles_legacy_identity_and_compatibility_port(self):
         result = self.target()
         self.assertEqual(result, self.target())

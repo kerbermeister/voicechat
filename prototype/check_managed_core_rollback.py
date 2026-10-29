@@ -179,7 +179,8 @@ with sqlite3.connect(p/'calls.sqlite',timeout=10) as db:
         initial_cohost.namespace('voicechat',models,execute=role_deploy.run)
         assert unit.read_bytes()==role_bootstrap.plan(root,'core',None)[3]
         subprocess.run(['systemctl','disable','--now','voicechat-core.service'],check=True,capture_output=True)
-        subprocess.run(['systemctl','reset-failed','voicechat-core.service'],check=True,capture_output=True)
+        if subprocess.check_output(['systemctl','show','voicechat-core.service','--property=ActiveState','--value']).strip()==b'failed':
+            subprocess.run(['systemctl','reset-failed','voicechat-core.service'],check=True,capture_output=True)
         unit.unlink();subprocess.run(['systemctl','daemon-reload'],check=True)
         compose(old,'down','--volumes','--remove-orphans')
         shutil.rmtree(root)

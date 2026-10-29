@@ -2,6 +2,54 @@
 
 ## Актуальная сводка: production core/edge включены
 
+**ПЕРЕД СЛЕДУЮЩИМ RETRY, 30.10 local:** parent19475 завершён, driver29758 упал на
+первом coordinator status **до begin/fences**. Причина — старый fixture создавал
+managed/shared внутри legacy root, тогда как normal journal и initial SSH entry
+требуют distinct nonnested roots; production /srv roots уже соответствуют этому
+контракту. Initial lower-level target_for теперь также отклоняет nesting (новый
+regression PASS). Fixture создаёт отдельный cohost-fixture-* sibling и проверяет
+реальный initial_entry.request до cutover. Mac driver assert обновлён на этот prefix.
+34 initial tests +3 cleanup regressions PASS; полный набор620 ранее PASS, новый
+focused shared transport15 тоже PASS. Не ослаблять normal baseline validator.
+
+При cleanup обнаружен второй test-only нюанс: reset-failed inactive/not-loaded
+service возвращает error. Теперь reset выполняется **только** при ActiveState=failed;
+owned unit bytes всё равно проверяются до stop. Это закреплено отдельным regression.
+После остановки nested fixture применён guarded cleanup старых known models,
+legacy public pointer прочитан штатным legacy parser (0644 допустим для legacy,
+не менять private managed_state boundary). [Recovery PASS](three-vps-evidence/2026-10-30-vm-normal-layout-recovery.json):
+все owned units/containers убраны, legacy anonymous volumes удалены только по
+original receipt, synthetic CA снята, original private network/key восстановлены,
+systemd running. Recovery scripts `/tmp/voicechat-recover-normal-vm-owned.py` и
+`/tmp/voicechat-finish-normal-vm-recovery.py`, последний session21631 exit0.
+
+**Активных VM/production jobs сейчас нет.** Следующий шаг: commit текущего diff,
+повторить один `/tmp/voicechat-managed-normal-vm.py`, затем один driver. Старый
+ready.json относится к g0y48bb9, не запускать driver до нового source/run.json.
+Production остаётся24c42bf, только read-only проверки; signed Mac24 уже установлен.
+
+
+**АКТИВНО: retry676613e, 29.10 22:42 UTC.** Parent session19475
+`/tmp/voicechat-managed-normal-vm.py`, source
+`/srv/voicechat-edge-fixture/managed-normal-source-7vcoa1mv`, log
+`.prototype/vm-managed-normal.log`. Driver session29758
+`/tmp/voicechat-managed-normal-driver.py`, log `.prototype/managed-normal-driver.log`.
+Он ждёт ready после первоначальной migration; в source log уже прошёл consistent
+backup. Новый clone676 и fingerprint — `.prototype/managed-normal-run.json`.
+Не запускать ещё один parent/driver. Старые50323/76852 завершены/остановлены, recovery
+оригинальной сети успешно выполнен до retry. Новый сценарий дополнен real core-only
+с проверкой неизменных edge PID, а bad full использует отдельный temporary Git commit,
+чтобы core действительно обновился/сделал snapshot перед отказом edge.
+
+После676 локально сокращено дублирование SSH: `managed_ssh` переиспользует
+`host_connection.connection`, прежний execute/argv API сохранён; host pin + node ID
+сверяются с inventory, отдельные identity maps остаются. Три старых SSH теста и12
+managed SSH tests PASS. Реальный strictly read-only запрос к A через общий transport
+вернул идентичные build hints ([proof](three-vps-evidence/2026-10-29-production-managed-shared-ssh.json)).
+Runtime/native source не менялся; production всё ещё24c42bf, no normal deploy.
+Обновляются operator runbooks; Git status может содержать docs + shared transport diff.
+
+
 **Следующее продолжение после53e15b8 (29.10, 22:22 UTC):** production всё ещё24c42bf,
 новых mutations нет. [Read-only CI hints на A PASS](three-vps-evidence/2026-10-29-production-managed-build-hints.json):
 один edge-a, pending=null, точные immutable control/web digests. Это не runtime/media proof.

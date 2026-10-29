@@ -6,11 +6,10 @@ import os
 import re
 from pathlib import Path
 import shlex
-import stat
 import subprocess
-import tempfile
 import time
 
+import host_connection
 import managed_entry
 import managed_peer
 import managed_probe
@@ -19,6 +18,7 @@ import node_inventory
 import release_delivery
 import ssh_deploy
 import topology
+from tunnel_config import physical_nodes
 
 
 class RemoteFailure(RuntimeError):
@@ -27,27 +27,17 @@ class RemoteFailure(RuntimeError):
 
 @contextmanager
 def connection(peer,identity):
-    host=node_inventory.ipv4(peer['host'])
-    key=node_inventory.host_key(peer['host_key'])
-    user=peer['user'];port=peer['port']
-    # Reuse the inventory validator for the common transport contract.
-    if not isinstance(user,str) or not re.fullmatch(r'[a-z_][a-z0-9_-]*',user) or type(port) is not int or not 1<=port<=65535:
-        raise ValueError('Pinned SSH user and port required')
+    inventory=peer.get('inventory') or peer['request']['inventory']
+    nodes=physical_nodes(inventory);node=peer['node']
+    if node not in nodes:raise ValueError('Unknown physical SSH node')
+    expected={'host':nodes[node]['public_ip'],'host_key':nodes[node]['ssh_host_key'],
+              'user':inventory['ssh_user'],'port':inventory['ssh_port']}
+    if any(peer[key]!=value for key,value in expected.items()):
+        raise ValueError('SSH instruction differs from its physical inventory')
     if isinstance(identity,dict):
-        if peer.get('node') not in identity:raise ValueError('Configure this physical node SSH identity first')
-        identity=identity[peer['node']]
-    identity=Path(identity).absolute()
-    info=identity.lstat()
-    if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.geteuid() or info.st_mode&0o077:
-        raise ValueError('Owned private SSH identity required')
-    with tempfile.TemporaryDirectory(prefix='voicechat-managed-ssh-') as folder:
-        known=Path(folder)/'known_hosts'
-        known.write_text((host if port==22 else '['+host+']:'+str(port))+' '+key+'\n');known.chmod(0o600)
-        yield ['ssh','-F','/dev/null','-T','-i',str(identity),'-p',str(port),
-            '-o','IdentitiesOnly=yes','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
-            '-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile=/dev/null',
-            '-o','ForwardAgent=no','-o','ClearAllForwardings=yes','-o','ConnectTimeout=10',
-            '-o','ServerAliveInterval=15','-o','ServerAliveCountMax=2',user+'@'+host]
+        if node not in identity:raise ValueError('Configure this physical node SSH identity first')
+        identity=identity[node]
+    with host_connection.connection(inventory,node,identity) as ssh:yield ssh
 
 
 def invoke(ssh,root,source,entry,value):
@@ -151,7 +141,7 @@ def release(ssh,root,commit,archive,identity,*,scope='full',edges=None,retry=Fal
                 delivered.add(node)
             proof=invoke(remote,root,source,'managed_peer',peer['request'])
         if (not isinstance(proof,dict) or set(proof)!= {'facts','fence'} or proof['fence'] is not None or
-                proof['facts'].get('manifest')!=peer['request']['before']):
+                not isinstance(proof['facts'],dict) or proof['facts'].get('manifest')!=peer['request']['before']):
             raise ValueError('Peer preflight did not confirm the expected running baseline')
         if peer['request']['target']['role']=='core' and proof['facts'].get('data_identity')!=peer['request']['data_identity']:
             raise ValueError('Data identity changed during release preflight')
@@ -178,7 +168,7 @@ def main():
     root=os.environ['DEPLOY_ROOT']
     if config['root']!=root:raise ValueError('Managed installation differs from DEPLOY_ROOT')
     inventory=config['inventory'];node=inventory['core']
-    peer={'node':'core','host':node['public_ip'],'host_key':node['ssh_host_key'],'user':inventory['ssh_user'],'port':inventory['ssh_port']}
+    peer={'node':'core','inventory':inventory,'host':node['public_ip'],'host_key':node['ssh_host_key'],'user':inventory['ssh_user'],'port':inventory['ssh_port']}
     identity=args.identity
     if args.identity_map is not None:
         _,identity=managed_probe.read(args.identity_map)

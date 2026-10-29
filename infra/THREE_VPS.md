@@ -1,10 +1,91 @@
 # Подготовка отдельных core/edge ролей
 
-Это локально проверенные описания служб и генераторы конфигурации. Существующий
-production workflow остаётся single-host; новые bundle нельзя передавать старому
-`deploy.py` как готовый релиз. Boot gates и отдельные core/edge controllers
-подготовлены; общий bootstrap/full rollout, renewal scheduler и переход production
-ещё требуют завершения и приёмки.
+Текущий production — один физический A с отдельными core/edge-a после
+[release51](../docs/iterations/three-vps-evidence/2026-10-29-production-initial-postcheck.json).
+Ordinary managed workflow реализован; сквозная VM/CI-проверка следующего production
+выпуска ещё идёт. Наличие команд ниже не означает выполненную физическую приёмку.
+Текущая [точка продолжения](../docs/iterations/19-three-vps-resume.md) и единый
+[реестр пользовательской приёмки](../docs/user-acceptance.md) имеют приоритет над
+историческими отметками этапов ниже. Старый `deploy.py` не получает role bundles.
+
+## Обычный managed release
+
+GitHub Actions → **Build and deploy**, `rollout=managed`. Для первой миграции
+legacy используется отдельный `rollout=initial`, а не ordinary full.
+
+| `mode` | Сборка артефактов | Изменение приложений |
+| --- | --- | --- |
+| `full` | control + web | core и все входы, последовательно |
+| `web` | web, deployed control digest повторно | web выбранных входов, `--no-deps`; core и остальные edge-процессы сохраняются |
+| `edge` | web, deployed control digest повторно | полная роль выбранных входов |
+| `core` | control, каждый deployed web digest сохраняется | только core; edge-процессы сохраняются |
+
+`edges` — необязательные ID через пробел только для web/edge. Пустое значение
+выбирает все существующие входы. Core/full требуют полной согласованной baseline.
+Неизвестные ID, несовместимые contracts, смена DB engine и изменение конфигурации
+за пределами scope отклоняются. Protected fingerprint не ослабляется ради web/edge.
+Даже build-only частичный релиз читает baseline A для reuse digests.
+`deploy=false` публикует артефакты и **не продолжает** pending release на VPS.
+Server/client tests сохраняются во всех режимах. Core пропускает сборку web/crypto;
+независимый Prototype checks по push/PR по-прежнему может собирать Android.
+
+Перед новым build/deploy возобновляется имеющийся journal из **его исходного
+immutable source**, затем сверяются actual role state, host pins, boot receipts,
+здоровье и data identity. На все участвующие хосты заранее доставляются публичные
+исходники и скачиваются immutable образы. Только затем создаётся общий attempt,
+по ролям берутся maintenance fences, core получает stopped-writer consistent
+backup, роли применяются/проверяются и A атомарно сохраняет новый typed pointer.
+Backend restart при core/full может прервать звонок; бесшовный rollout A не обещается.
+
+Подтверждённая ошибка applying/verifying возвращает затронутые роли к exact previous
+bundles и исходной private policy. Базы и пользовательские записи после snapshot
+не восстанавливаются поверх текущих. Неопределённый результат SSH или busy сохраняет
+attempt для retry; ошибка fencing также сохраняет его, поскольку peer мог ещё не
+получить intent. После общего commit путь только вперёд. Owned backup/TLS/neighbor
+manager delegates обновляются после release fences, их собственные journals
+идемпотентны. Чужие службы, файлы и listeners не присваиваются.
+
+### Доступы и команды оператора
+
+`SERVER_ROLE_CONFIG` сохраняет существующие root/public/inventory/subnet;
+`DEPLOY_ROOT=/srv/voicechat-managed`. Для одного A используется прежний
+`DEPLOY_SSH_KEY`. Дополнительный secret **DEPLOY_NODE_SSH_KEYS** — JSON object:
+ключи `edge-b`, `edge-c`, `edge-d`… и значения — соответствующие private SSH keys.
+`core` можно задать этим же object для явной ротации. Каждый physical node получает
+отдельный ключ; cohost edge-a использует core. Ключи пишутся только в приватный
+каталог CI, не в archive/cache/runtime edge. Host keys берутся из inventory,
+TOFU и agent forwarding отключены. Требуется root SSH на подготовленном Linux
+host; установка OS packages не входит в ordinary release.
+
+Локальный оператор может использовать ту же точку входа из clean checkout,
+с готовым проверенным CI archive и окружением production:
+
+```sh
+# Только чтение metadata для выбора артефактов; это не runtime health proof:
+python3 infra/managed_ssh.py --read-build-hints --scope full --output /tmp/reuse.json
+# Реально продолжает прерванную операцию и может перезапускать её службы:
+python3 infra/managed_ssh.py --resume-only
+# Реальный scoped deploy, CI вызывает этот же entrypoint:
+python3 infra/managed_ssh.py --scope web --edges a --archive /private/release.tar.gz
+```
+
+Для нескольких машин передать `--identity-map /private/identities.json`:
+JSON `physical node ID → путь к его private key`. Для одного A достаточно
+`--identity /private/core-key`; default — `~/.ssh/id_ed25519`. Требуются
+`SERVER_ROLE_CONFIG`, `PUBLIC_URL`, `DEPLOY_ROOT`, при новом release — `GITHUB_SHA`.
+После завершённого rollback новый attempt требует `retry_managed=true` в Actions
+или `--retry` локально. Это не удаляет прежний журнал и не повторяет failed attempt
+бесконечно. Никогда не править вручную fingerprint/current/previous/fence файлы,
+не убивать Restic и не удалять locks ради продолжения.
+
+Ordinary release не добавляет и не заменяет physical hosts, не меняет DNS,
+постоянную Matrix identity, tunnel generation или signed catalog. Такие изменения
+требуют отдельной подготовки/revocation, проверки нового входа и публикации нового
+каталога. Клиенты24 уже поддерживают signed discovery без обновления приложения;
+наличие одного A пока не даёт физической отказоустойчивости. Offsite backup и свой
+DNS API остаются отдельными целевыми задачами, DuckDNS сохраняется.
+
+## История подготовки компонентов
 
 Наглядные схемы: [один VPS, разнесённые роли, WireGuard и медиапути](../docs/architecture/network-topology.md).
 
@@ -1337,12 +1418,11 @@ bootstrap берётся из проверенного архива, перед�
 После завершённого rollback новый attempt требует явного `retry_initial=true`.
 Прерванный незавершённый attempt продолжается тем же source artifact; новый commit
 вместо незавершённого не принимается. Public commit восстанавливается вперёд.
-`rollout=legacy` сохраняет запрет routed deployment; обычные managed scopes ещё
-не подключены. `managed_release.py` планирует web/edge/core/full, читает фактический
-per-role baseline с locks/host/bundle/boot/data checks, но не исполняет этот план.
+`rollout=legacy` сохраняет запрет routed deployment. Ordinary managed scopes
+описаны в актуальном разделе выше; этот initial handler выполняет только первую миграцию.
 
-Текущий CI initial handler покрыт unit/contract checks; настоящий GitHub initial
-release ещё не выполнен. Не считать изменение workflow завершённым production-переходом.
+CI initial handler выполнен на production в release51; независимый postcheck
+сохранён по ссылке в начале документа. Ordinary release проходит отдельную проверку.
 
 Pre-maintenance repair: Compose may retain config-files labels from historical
 releases when it reuses containers. Initial namespace checks may use the current

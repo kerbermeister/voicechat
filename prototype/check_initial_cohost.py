@@ -5,8 +5,11 @@ No production credentials, data, certificate keys or signing key are used.
 """
 import hashlib
 import json
+import os
 from pathlib import Path
 import secrets
+import shutil
+import tempfile
 import sys
 import time
 import urllib.parse
@@ -20,6 +23,7 @@ import core_backup_bootstrap
 import core_deploy
 import edge_deploy
 import initial_cohost
+import initial_entry
 import legacy_backup
 import managed_state
 import managed_release
@@ -55,7 +59,8 @@ def remove_units(expected, timers, *, run):
                 time.sleep(.5);continue
             break
         run(['systemctl','disable','--now',name])
-        run(['systemctl','reset-failed',name])
+        if run(['systemctl','show',name,'--property=ActiveState','--value']).strip()==b'failed':
+            run(['systemctl','reset-failed',name])
     for path in present.values():path.unlink()
     run(['systemctl','daemon-reload'])
 
@@ -188,9 +193,16 @@ def fault_sequence(root,core,edge,shared,deploy,api,path,account_data,retained_v
 
 
 def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fault_drills=False,managed_backend=None):
+    base=Path('/srv/voicechat-edge-fixture')
+    if (sys.platform!='linux' or os.geteuid()!=0 or old_root.parent!=base or old_root.resolve()!=old_root or
+            base.is_symlink()):raise ValueError('Use the marked disposable VM fixture root')
+    host=' '.join(Path('/etc/ssh/ssh_host_ed25519_key.pub').read_text().split()[:2])
+    if json.loads((base/'.disposable-vm').read_text())!={'kind':'voicechat-disposable-vm',
+            'ssh_host_key_sha256':hashlib.sha256(host.encode()).hexdigest()}:
+        raise ValueError('Disposable VM marker differs from this host')
     if Path('/var/lib/voicechat-network').exists():
         raise ValueError('Isolate the original marked VM network before creating legacy resources')
-    directory=old_root/'full-fixture';directory.mkdir(mode=0o700)
+    directory=Path(tempfile.mkdtemp(prefix='cohost-fixture-',dir=old_root.parent));directory.chmod(0o700)
     root=directory/'managed';edge=root/'edges/a';core=root/'core'
     key=' '.join(Path('/etc/ssh/ssh_host_ed25519_key.pub').read_text().split()[:2])
     address=json.loads(run(['ip','-j','-4','route','get','198.51.100.10']))[0]['prefsrc']
@@ -208,6 +220,9 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
     run(['openssl','genpkey','-algorithm','ED25519','-out',str(private)]);private.chmod(0o600)
     catalog_key=route_catalog.public_key(private);now=int(time.time())
     envelope=json.dumps(route_catalog.sign(public,private,1,now,now+86400)).encode()
+    initial_entry.request(json.dumps({'schema':1,'root':str(root),'legacy_root':str(old_root),
+        'shared_root':str(directory/'shared'),'public':public,'inventory':inventory,'subnet':'10.241.0.0/28',
+        'catalog':json.loads(envelope),'catalog_key':catalog_key}).encode())
     legacy_pointer=(old_root/'current.json').read_bytes()
     opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
     path='/_matrix/client/v3/user/'+urllib.parse.quote(session['user_id'],safe='')+'/account_data/dev.voicechat.full_fixture'
@@ -337,4 +352,5 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
         for name,path in stamps.items():
             if not prior_stamps[name] and path.exists():path.unlink()
     if result is None:raise AssertionError('Full migration did not complete')
+    shutil.rmtree(directory)
     return result
