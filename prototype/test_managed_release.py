@@ -19,6 +19,20 @@ import topology
 from test_node_inventory import fixture, key
 
 
+def baseline_32(original):
+    baseline = deepcopy(original)
+    public, inventory = baseline['public'], baseline['inventory']
+    public['edges'] = [{'id': 'e'+str(n), 'origin': 'https://edge'+str(n)+'.example.com',
+                        'turn_host': 'turn'+str(n)+'.example.com'} for n in range(32)]
+    inventory['edges'] = [{'id': 'e'+str(n), 'generation': 1, 'public_ip': '192.0.2.'+str(n+20),
+                           'tunnel_ip': '10.88.0.'+str(n+2), 'ssh_host_key': key(n+2)} for n in range(32)]
+    baseline['core'] = role_release.make(public,inventory,'core','a'*40,baseline['core']['images']['control'])
+    image = lambda digit: 'ghcr.io/example/voicechat@sha256:'+digit*64
+    baseline['edges'] = {item['id']: role_release.make(public,inventory,'edge',
+        ('a' if n%2 else 'b')*40,image('2' if n%2 else '3'),item['id']) for n,item in enumerate(public['edges'])}
+    return baseline
+
+
 class ManagedReleaseTests(unittest.TestCase):
     def setUp(self):
         public=topology.load(ROOT/'infra/three-vps.example.json')
@@ -145,14 +159,7 @@ class ManagedBaselineStorageTests(unittest.TestCase):
         self.assertEqual(list(self.root.iterdir()),[])
 
     def test_32_edges_roundtrip_without_increasing_managed_document_limit(self):
-        public = self.baseline['public']; inventory = self.baseline['inventory']
-        public['edges'] = [{'id': 'e'+str(n), 'origin': 'https://edge'+str(n)+'.example.com',
-                            'turn_host': 'turn'+str(n)+'.example.com'} for n in range(32)]
-        inventory['edges'] = [{'id': 'e'+str(n), 'generation': 1, 'public_ip': '192.0.2.'+str(n+20),
-                               'tunnel_ip': '10.88.0.'+str(n+2), 'ssh_host_key': key(n+2)} for n in range(32)]
-        self.baseline['core'] = role_release.make(public,inventory,'core','a'*40,self.image('1'))
-        self.baseline['edges'] = {item['id']: role_release.make(public,inventory,'edge',
-            ('a' if n%2 else 'b')*40,self.image('2' if n%2 else '3'),item['id']) for n,item in enumerate(public['edges'])}
+        self.baseline = baseline_32(self.baseline)
         self.assertGreater(len(json.dumps(self.baseline).encode()),65536)
         checksum = managed_release.store_baseline(self.root,self.baseline)
         self.assertEqual(managed_release.load_baseline(self.root,checksum),self.baseline)

@@ -36,7 +36,7 @@ VoiceChatRelease/before-update-24; Keychain не удаляли, приватн�
 Android24 exact signed APK готов, физических устройств нет, не опубликован,
 acceptance не подделывать. Real call/screen/E2EE и15s failover остаются открытыми;
 нет B/C, нет Windows hardware/client. Новый normal journal **локально** в
-infra/managed_journal.py:14 tests, вместе с managed baseline30 PASS; полный набор
+infra/managed_journal.py:17 tests, вместе с managed baseline33 PASS (9.671s); полный набор
 **520 PASS/skipped3**,50.571s. На VPS этот journal **не установлен/не запущен**;
 ещё нужны peer operations, pinned SSH driver, CLI/CI и actual VM scenario.
 
@@ -1620,3 +1620,30 @@ macOS24 остаётся в Keychain handoff, приложение/профил�
 неуспешные22→23 не переписаны как PASS; текущая функция UA-48 обновлена результатом24.
 Нативный выпуск больше не blocker. Дальше normal managed journal/peer driver/CI и
 реальные медиа/отказы в доступной среде; отсутствие Android/B/C не выдавать за успех.
+
+
+## Normal-release journal: локальная реализация протокола
+
+`infra/managed_journal.py` связывает bounded baseline index с immutable delivery,
+preflight baseline fingerprint и оригинальным current snapshot. Упорядочены
+fencing→core/selected edges→verification→public commit→release fences; каждый peer
+должен прислать фактические typed manifest/process/data/runtime/fence proofs.
+Модуль **не исполняет peer actions и не генерирует proofs**. CAS/nonce и записанные
+acknowledgements исключают повторный advance после потерянного ответа; interruption
+между proof/journal и current/journal восстановим. После начала public commit
+только forward resume. До него rollback идёт в обратном порядке touched roles,
+сохраняет before/current/data identity; повтор после rolled-back требует explicit
+retry, прежний журнал архивируется verbatim. Чужие pointer/attempt/source paths,
+symlink/public directory, runtime/data substitution, missing/out-of-order proof
+отклоняются. Early abort до первого fencing proof допускает только восстановление
+committed baseline, не выдумывает отсутствовавший process snapshot.
+
+17 journal tests +16 managed baseline tests PASS (33 total,9.671s); полный набор
+520 PASS/skipped3,50.571s был до последних3 дополнительных negative tests, код
+после полного прогона не менялся. Maximum32 baseline/journal/first-proof отдельно
+проверены без увеличения64KiB boundary. Historical completed intent не пересчитывается
+новым renderer. **Нужны дальше:** actual pinned-host role claim/apply/rollback/
+inspect/release, exact frozen source entry, SSH orchestration, CI scopes и genuine
+VM release/partial/full interruption tests. Пока обычный managed CI release не
+доступен; legacy path намеренно не может менять новую схему. Production51 здоров,
+Mac24 release/update завершён, Android/внешние B/C/реальные медиа остаются открыты.
