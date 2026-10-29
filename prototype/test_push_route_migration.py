@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'infra'))
 import push_route_migration as migration
@@ -39,6 +40,15 @@ class PushRouteTests(unittest.TestCase):
         for origin, ip in [('http://chat.example', '10.88.0.1'), ('https://chat.example/path', '10.88.0.1'),
                            ('https://chat.example', '8.8.8.8'), ('https://chat.example', '127.0.0.1')]:
             with self.subTest(origin=origin, ip=ip), self.assertRaises(ValueError): migration.routes(origin, ip)
+
+    def test_full_rollback_uses_fresh_current_private_to_public_migration(self):
+        with patch.object(migration, '_migrate', return_value=3) as apply:
+            self.assertEqual(migration.restore_public('connection', 'fresh-journal',
+                'https://chat.example', '10.88.0.1'), 3)
+        apply.assert_called_once_with('connection', 'fresh-journal', self.new, self.old)
+        raw = json.dumps({'url': self.new, 'format': 'event_id_only', 'new_metadata': 42})
+        changed = migration.entries([(10, raw)], self.new, self.old)
+        self.assertEqual(json.loads(changed[0]['after']), {**json.loads(raw), 'url': self.old})
 
 
 if __name__ == '__main__': unittest.main()

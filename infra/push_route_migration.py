@@ -57,6 +57,22 @@ def migrate(connection, directory, origin, private_ip, *, rollback=False):
     The journal is private, contains IDs and data only, and is not a DB backup.
     """
     old_url, new_url = routes(origin, private_ip)
+    return _migrate(connection, directory, old_url, new_url, rollback=rollback)
+
+
+def restore_public(connection, directory, origin, private_ip):
+    """Reverse the current private route on a full rollback, including new rows.
+
+    Use a fresh journal directory for this stopped-writer maintenance step.
+    Subscriptions created while the candidate served must also reach the public
+    endpoint after legacy recovery. Preserve their current metadata and all
+    unrelated destinations; never restore an old database or row snapshot.
+    """
+    public, private = routes(origin, private_ip)
+    return _migrate(connection, directory, private, public)
+
+
+def _migrate(connection, directory, old_url, new_url, *, rollback=False):
     with managed_state.locked(directory) as directory:
         path = directory / 'push-route.json'
         journal = validate(managed_state.read(path), old_url, new_url) if path.exists() or path.is_symlink() else None

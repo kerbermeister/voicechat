@@ -88,6 +88,30 @@ def main():
             pass
         else:
             raise AssertionError('Reverted operation cannot silently reapply')
-    print(json.dumps({'schema': 1, 'postgres_transaction_proof': True, 'url_only_change': True, 'foreign_pushers_unchanged': True, 'commit_crash_resumed': True, 'rollback_conflict_atomic': True, 'deleted_subscription_not_recreated': True, 'repeat_idempotent': True, 'limits': ['Synthetic PostgreSQL pusher table matching inspected Synapse columns; not a full production migration.', 'Caller must enforce stopped writers, verified backup and Synapse restart; core orchestration not yet wired.']}))
+        # A full rollout rollback must also handle subscriptions registered
+        # after the forward journal was committed, without restoring old rows.
+        candidate = Path(temp) / 'candidate'
+        migration.migrate(db, candidate, 'https://chat.example', '10.88.0.1')
+        fresh = json.dumps({'url': new, 'format': 'event_id_only', 'candidate_metadata': 42})
+        write('INSERT INTO pushers VALUES (%s,%s,%s,%s,%s,%s,%s)',
+              (10, migration.APP_ID, 'http', fresh, 1234, 'synthetic-new-subscription', True))
+        changed = json.dumps({'url': new, 'format': 'event_id_only', 'updated_metadata': 'preserve'})
+        write('UPDATE pushers SET data=%s WHERE id=%s', (changed, 5))
+        current = rows()
+        reverse = Path(temp) / 'full-rollback'
+        with patch.object(managed_state, 'persist', side_effect=crash_after_commit):
+            try: migration.restore_public(db, reverse, 'https://chat.example', '10.88.0.1')
+            except OSError: pass
+            else: raise AssertionError('Expected reverse commit interruption')
+        assert migration.restore_public(db, reverse, 'https://chat.example', '10.88.0.1') == 3
+        restored = rows()
+        for previous, result in zip(current, restored):
+            assert previous[:3] == result[:3] and previous[4:] == result[4:]
+            if previous[0] in (5, 6, 10):
+                assert json.loads(result[3]) == {**json.loads(previous[3]), 'url': old}
+            else: assert result == previous
+        assert migration.restore_public(db, reverse, 'https://chat.example', '10.88.0.1') == 3
+        assert rows() == restored and all(row[0] != 1 for row in restored)
+    print(json.dumps({'schema': 1, 'postgres_transaction_proof': True, 'url_only_change': True, 'foreign_pushers_unchanged': True, 'commit_crash_resumed': True, 'rollback_conflict_atomic': True, 'deleted_subscription_not_recreated': True, 'repeat_idempotent': True, 'full_rollback_includes_new_subscriptions': True, 'full_rollback_preserves_current_metadata': True, 'reverse_commit_crash_resumed': True, 'limits': ['Synthetic PostgreSQL pusher table matching inspected Synapse columns; not a full production migration.', 'Caller must enforce stopped writers, verified backup and Synapse restart; core orchestration not yet wired.']}))
 if __name__ == '__main__':
     main()

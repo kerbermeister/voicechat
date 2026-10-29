@@ -10,6 +10,16 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 
 ## Актуальное состояние: production ingress, 29 октября
 
+Для полного отката добавлен `push_route_migration.restore_public`: отдельная
+URL-only транзакция по актуальным private pushers, включая подписки, созданные
+после запуска candidate. Прежний rollback точного forward journal оставлен для
+своего узкого сценария. В настоящем PostgreSQL disposable VM проверены новые
+подписки, сохранение свежих metadata/stream offsets/pushkeys, удалённые строки,
+foreign app/kind, interruption после reverse commit и повтор. Fixture удалён.
+[Evidence](three-vps-evidence/2026-10-29-vm-push-full-rollback.json).
+Вызывать только под core lock, при остановленных writers и проверенном backup;
+затем перезапустить Synapse. Общий production orchestrator ещё не подключён.
+
 Manager теперь умеет сохранять уже committed `shared` mode при business update:
 единый renderer для stage/install/preview, strict PROXY source, certificate sinks,
 порт 80 и external bridge сохраняются. Legacy adoption/recovery по-прежнему
