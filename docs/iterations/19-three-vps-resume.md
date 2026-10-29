@@ -10,23 +10,55 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 
 ## Актуальное состояние: production ingress, 29 октября
 
-Последняя локальная итерация: `shared_cutover` допускает вызов под уже удерживаемым
-общим ingress lock для full migration, не освобождая fence соседнего deploy.
-11 cutover tests PASS. Добавлен отдельный `core_deploy --backup-only` с durable
-stopping/resuming journal, запретом раннего boot/deploy и восстановлением текущих
-writers без configure/смены pointers. Полный Python suite в проектном venv с
-synthetic env secrets: **390 tests, OK, skipped=3**; после него добавлены
-identity-substitution и registry-failure scenarios, focused backup suite **8 PASS**. Ошибочные первые
-запуски без project dependencies/fixture secrets исправлены окружением, исходные
-проверки не отключались. Реальная VM проверка нового backup controller выполняется; receipt будет сохранён
-после полного успешного прогона и cleanup.
+Production приложение всё ещё **8bcbd91**, manager **e964…**, ingress plan **5b27…**.
+В этой итерации production проверялся только read-only, под legacy deploy.lock;
+службы, данные и DNS не менялись. Полный core/edge transition ещё не выполнен.
+[Проверенный baseline](three-vps-evidence/2026-10-29-production-core-baseline.json):
+manifest/release record совпали, службы работают; PostgreSQL cluster ID и hash
+Matrix signing key зафиксированы без вывода ключа. Старый daily backup от root
+active/enabled, последний03:30UTC status0; его надо согласованно заменить.
 
-Production проверен read-only: `/srv/voicechat` и runtime root:root0700, stand.env
-0600, current.json/deploy.lock0644, без symlinks. Старый backup service запускается
-от root через current release `deploy.py --backup-only`; timer enabled/active,
-последний запуск 29.10 03:30UTC status0. При adoption его необходимо согласованно
-заменить, чтобы старый deploy не запускал legacy services после смены ролей.
-Эта итерация не изменяла production службы/данные/DNS.
+Последние завершённые commits: **94b9c3e** — reuse parent ingress lock в full
+migration (VM port-cutover повторён), **1c08288** — durable core backup и boot fence.
+Следующий локальный шаг добавил owned `core_backup_bootstrap.py` и исправления,
+выявленные фактическим запуском: monitor распознаёт backup как planned maintenance
+и не запускает restart loop; sealed backup проверяет recorded committed bundle и
+точные topology/node fingerprints без обращения к отсутствующему source checkout.
+Новые candidate deploy/prepare сохраняют полный `verify_bundle`, guard не ослаблен.
+Runtime/data identity и все хеши старого bundle по-прежнему перепроверяются.
+
+Текущие проверки: **400 Python tests, OK, skipped=3** (явные opt-in Docker);
+focused backup/timer **15 PASS**, monitor **6 PASS**, boot/bootstrap **11 PASS**,
+cutover **11 PASS**. Sealed roster теперь **32 files**, старый31 PORT_SOURCES и
+25/26/27/28/29 packages остаются допустимыми и неизменяемыми.
+
+Новый daily03:30UTC Persistent timer устанавливается только после общего commit,
+для committed core с актуальным boot operator и неактивными legacy backup units.
+Owned units/config имеют private receipt и same-target install resume. Старые
+units не переписываются. Backup service повторяет crash с ограничением частоты.
+После power loss с backup journal требуется явный запуск backup service: до этого
+core boot закрыт. Это известное fail-closed ограничение, не автоматическое recovery.
+
+**Новый VM backup + systemd proof выполняется; success receipt пока нет.**
+Первый2vCPU/2GiB прогон проверил4 snapshots, но Docker Python healthcheck превысил3s
+при TCG recovery, процесс control оставался running. После cleanup и штатного
+poweroff тот же диск запущен с **4vCPU/4GiB, multi-thread TCG**, с прежним SSH key;
+network/Docker восстановились. Следующий прогон прошёл5 backup/failure scenarios,
+но фактический systemd backup выявил отсутствие renderer checkout — исправлено
+как описано выше. Оба неуспешных fixtures/units удалены, успех не заявлен.
+Последний полный прогон повторяет оба исправления, ждёт planned monitor exit и
+проверяет NRestarts=0 перед snapshots, затем реальный installed systemd backup.
+Helper: `/tmp/voicechat-backup-current-vm.py`, local log:
+`.prototype/vm-core-backup-current.log`; VM параметры: `.prototype/vm/active.json`.
+Public evidence `three-vps-evidence/2026-10-29-vm-core-backup-current.json`
+создаётся helper только после полного успеха и cleanup. Не запускать второй core
+fixture параллельно. Текущая implementation ещё не активирована на production.
+
+Далее: закончить этот VM proof, зафиксировать source32/evidence; explicit legacy
+core adoption/full coordinator и rollback, замена backup scheduler, TLS delivery/
+renewal, CI scopes, обязательный macOS/Android release и приёмка устройств.
+
+### Ранее подтверждённые шаги и исторические пакеты
 
 Завершён `shared_cutover.py`: общий private journal, Caddy→HAProxy public port
 transfer, trusted TLS/API/neighbor health, rollback освобождает 443 до восстановления

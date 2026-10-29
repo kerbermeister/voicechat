@@ -108,6 +108,22 @@ def load(path):
     return validate(topology.read_json(path))
 
 
+def verify_configuration(manifest, public, inventory):
+    """Bind an already committed manifest to its exact public and host inputs.
+
+    Pair with verify_recorded_bundle for maintenance of trusted current state.
+    New candidates still require verify_bundle and its full source reconstruction.
+    """
+    validate(manifest)
+    topology.validate(public)
+    node_inventory.validate(inventory, public)
+    node = inventory['core'] if manifest['role'] == 'core' else node_inventory.edge_assignment(inventory, manifest['edge_id'])
+    if (manifest['service_id'] != public['service_id'] or
+            manifest['identity'] != {key: public[key] for key in ('canonical_origin', 'matrix_server_name')} or
+            manifest['topology_sha256'] != json_digest(public) or manifest['node_sha256'] != json_digest(node)):
+        raise ValueError('Committed role configuration differs from its manifest')
+
+
 def verify_bundle(release, manifest, public, inventory, subnet='10.241.0.0/28'):
     """Reconstruct the complete expected file set, not just the supplied checksums."""
     validate(manifest)

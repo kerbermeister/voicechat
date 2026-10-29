@@ -1065,3 +1065,26 @@ writers. Замена data identity запрещает автоматическ�
 `voicechat-backup.timer` входят в legacy-to-core migration. На production старый
 timer пока сохранён. Данные и Restic password остаются на A; независимое offsite
 хранилище и восстановление после потери A по-прежнему целевая задача.
+
+`core_backup_bootstrap.py --root <core-root> --topology <public.json> --inventory
+<inventory.json>` устанавливает отдельные `voicechat-core-backup.service/.timer`
+после commit общего перехода и проверки public HTTPS. Требует committed core,
+актуальный sealed boot operator, неизменный runtime и неактивные прежние
+`voicechat-backup.timer/.service`. Старые units этим installer не изменяются.
+
+Собственные unit/config files проверяются по private receipt; прерванная установка
+продолжает только тот же target, неизвестные правки не перезаписываются. Timer
+ежедневный, 03:30 UTC, Persistent; пропущенный запуск может начаться после enable,
+поэтому запускать installer посреди full migration нельзя. Service выполняет
+только новый `core_deploy --backup-only`, повторяет процесс при ошибке с ограничением
+частоты и не зависит от состояния notify monitor, который выходит при maintenance.
+После reboot с оставшимся backup journal оператор явно запускает этот service
+для завершения recovery; до этого core boot остаётся закрыт. Это fail-closed
+поведение сохраняет данные, но требует вмешательства при прерывании питания.
+
+Backup из sealed operator не требует repository checkout: записанные файлы
+committed release перепроверяются по принятому manifest, переданные topology/node
+должны совпасть с его fingerprints. Это не проверка нового candidate; deploy и
+prepare сохраняют полную реконструкцию ожидаемых source/config files. Монитор
+core распознаёт backup journal и выходит штатно при остановке writers, не создавая
+systemd restart loop; после recovery оператор запускает его снова.

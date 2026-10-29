@@ -26,7 +26,8 @@ SHARED_SOURCES = (*LEGACY_SOURCES, 'shared_ingress.py')
 MANAGER_SOURCES = (*SHARED_SOURCES, 'shared_update.py')
 CONFIG_SOURCES = (*MANAGER_SOURCES, 'shared_config.py')
 CAPTURE_SOURCES = (*CONFIG_SOURCES, 'cohost_tls.py')
-SOURCES = (*CAPTURE_SOURCES, 'shared_front.py', 'shared_cutover.py')
+PORT_SOURCES = (*CAPTURE_SOURCES, 'shared_front.py', 'shared_cutover.py')
+SOURCES = (*PORT_SOURCES, 'core_backup_bootstrap.py')
 
 
 def unit_name(role, edge_id):
@@ -73,7 +74,7 @@ def verify_record(system_root, record):
     name = unit_name(record['role'], record['edge_id'])
     if type(record['schema']) is not int or record['schema'] != 1 or not isinstance(record['files'], dict):
         raise ValueError('Invalid boot ownership record')
-    if set(record['files']) not in (set(SOURCES), set(CAPTURE_SOURCES), set(CONFIG_SOURCES), set(MANAGER_SOURCES), set(SHARED_SOURCES), set(LEGACY_SOURCES)) or any(not isinstance(value, str) or not re.fullmatch(r'[a-f0-9]{64}', value) for value in record['files'].values()):
+    if set(record['files']) not in (set(SOURCES), set(PORT_SOURCES), set(CAPTURE_SOURCES), set(CONFIG_SOURCES), set(MANAGER_SOURCES), set(SHARED_SOURCES), set(LEGACY_SOURCES)) or any(not isinstance(value, str) or not re.fullmatch(r'[a-f0-9]{64}', value) for value in record['files'].values()):
         raise ValueError('Invalid boot source hashes')
     if hashlib.sha256(json.dumps(record['files'], sort_keys=True).encode()).hexdigest() != record['operator_sha256']:
         raise ValueError('Boot source identity changed')

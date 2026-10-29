@@ -38,6 +38,14 @@ class RoleMonitorTests(unittest.TestCase):
         self.state.return_value = {'pending': {'phase': 'prepared'}}
         self.assertEqual(role_boot.watch(self.root, 'core'), 1)
 
+    def test_core_backup_is_planned_maintenance_without_deployment_pointer_changes(self):
+        (self.root / 'runtime').mkdir(mode=0o700)
+        managed_state.persist(self.root / 'runtime/backup.json', {'phase': 'stopping'})
+        self.assertEqual(role_boot.watch(self.root, 'core'), 0)
+        self.state.assert_not_called()
+        self.assertEqual(self.process.call_count, 3)
+        self.waiter.terminate.assert_not_called()
+
     def test_shared_edge_monitor_does_not_control_the_shared_listener(self):
         record = {'manifest': {'images': dict.fromkeys(('configure', 'web', 'turn', 'route-health'))}}
         self.start.return_value = record

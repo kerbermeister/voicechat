@@ -1,7 +1,9 @@
 from contextlib import nullcontext
+from copy import deepcopy
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'infra'))
@@ -71,6 +73,17 @@ class CoreBackupCurrentTests(unittest.TestCase):
         self.assertFalse(self.path.exists())
         self.assertEqual((self.root / 'state.json').read_bytes(), self.before)
         self.assertFalse(any('pg_restore' in args or 'down' in args for args in self.fixture.calls))
+
+    def test_sealed_operator_maintains_committed_bundle_without_a_source_checkout(self):
+        with patch.object(core_deploy.role_release.role_config, 'ROOT', self.root / 'absent-checkout'):
+            self.run_backup()
+        self.assertEqual(self.events, ['stop', 'backup', 'resume', 'monitor'])
+        public = deepcopy(self.fixture.public)
+        self.fixture.public['web_origins'].append('https://foreign.example.com')
+        self.events.clear()
+        with self.assertRaisesRegex(ValueError, 'configuration differs'): self.run_backup()
+        self.assertNotIn('stop', self.events)
+        self.fixture.public = public
 
     def test_registry_failure_before_maintenance_does_not_stop_writers(self):
         execute = self.execute

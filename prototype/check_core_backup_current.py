@@ -4,7 +4,7 @@ Starts real Synapse/control/PostgreSQL using the already cached source-built
 fixture control image. Refuses existing core containers/volumes. Only synthetic
 accounts and owned volumes are created; cleanup never runs on a production host.
 """
-import argparse,hashlib,hmac,json,os,secrets,subprocess,sys,tempfile,urllib.request,urllib.parse
+import argparse,hashlib,hmac,json,os,secrets,subprocess,sys,tempfile,time,urllib.request,urllib.parse
 from pathlib import Path
 SOURCE=Path(__file__).resolve().parents[1];sys.path[:0]=[str(SOURCE/'infra'),str(SOURCE/'prototype')]
 BASE=Path('/srv/voicechat-edge-fixture')
@@ -13,16 +13,20 @@ if sys.platform!='linux' or not BASE.is_dir() or BASE.is_symlink():
 key=' '.join(Path('/etc/ssh/ssh_host_ed25519_key.pub').read_text().split()[:2])
 if json.loads((BASE/'.disposable-vm').read_text())!={'kind':'voicechat-disposable-vm','ssh_host_key_sha256':hashlib.sha256(key.encode()).hexdigest()}:
  raise ValueError('Disposable VM ownership differs from this host')
-import core_deploy,managed_state,role_prepare,role_release,role_bootstrap
+import core_backup_bootstrap,core_deploy,managed_state,role_prepare,role_release,role_bootstrap
 from topology import load
 inventory=json.loads(Path('/var/lib/voicechat-network/desired.json').read_text())['inventory']
 public=load(SOURCE/'infra/single-vps.example.json');public['service_id']=inventory['service_id']
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--control-image',required=True)
-image=parser.parse_args().control_image
+parser.add_argument('--check-timer',action='store_true')
+options=parser.parse_args()
+image=options.control_image
 subprocess.run(['docker','image','inspect',image],check=True,stdout=subprocess.DEVNULL)
 assert not subprocess.check_output(['docker','ps','-aq','--filter','label=com.docker.compose.project=voicechat']).strip()
 assert not subprocess.check_output(['docker','volume','ls','-q','--filter','name=^voicechat_']).strip()
+for name in (core_backup_bootstrap.SERVICE,core_backup_bootstrap.TIMER):
+ if (Path('/etc/systemd/system')/name).exists():raise ValueError('Existing backup unit must not be adopted by a fixture')
 root=Path(tempfile.mkdtemp(prefix='core-rollout-',dir=SOURCE));root.chmod(0o700)
 values={'LOCAL_STAND':'0','MATRIX_SERVER_NAME':public['matrix_server_name'],'PUBLIC_URL':public['canonical_origin'],'PUBLIC_IP':inventory['core']['public_ip'],'SMTP_HOST':'smtp.example.com','SMTP_PORT':'587',**{key:secrets.token_hex(32) for key in ('POSTGRES_PASSWORD','LIVEKIT_SECRET','POLICY_SECRET','REGISTRATION_SECRET','MACAROON_SECRET','TURN_SECRET')}}
 releases=[]
@@ -53,6 +57,11 @@ def backup(path,record):
  global backups,interrupt
  ids=core_deploy.compose(path,record,'ps','-q','synapse','control').strip()
  assert not ids, 'Application writers must be stopped before the snapshot'
+ deadline=time.monotonic()+30
+ while subprocess.check_output(['systemctl','show','voicechat-core.service','--property=ActiveState','--value']).decode().strip()!='inactive':
+  if time.monotonic()>=deadline:raise AssertionError('Planned backup monitor must exit without a restart loop')
+  time.sleep(.2)
+ assert subprocess.check_output(['systemctl','show','voicechat-core.service','--property=NRestarts','--value']).strip()==b'0'
  core_deploy.backup(path,record);backups+=1
  if interrupt=='backup':
   interrupt=None;raise KeyboardInterrupt('Lost response after real backup')
@@ -81,6 +90,7 @@ try:
  snapshot();verify();assert backups==1
  assert (root/'state.json').read_bytes()==before
  result['stopped_writer_backup_resumes_real_core_without_pointer_changes']=True
+ result['planned_backup_monitor_exited_without_retry']=True
  interrupt='backup'
  try:snapshot()
  except KeyboardInterrupt:pass
@@ -107,8 +117,17 @@ try:
  result['failed_backup_restores_availability_and_reports_failure']=True
  assert (root/'state.json').read_bytes()==before
  result['account_device_account_data_and_signing_identity_preserved']=True
+ if options.check_timer:
+  target=core_backup_bootstrap.install(root,public,inventory)
+  assert core_backup_bootstrap.install(root,public,inventory)==target
+  subprocess.run(['systemctl','start',core_backup_bootstrap.SERVICE],check=True,capture_output=True,timeout=900)
+  status=subprocess.check_output(['systemctl','show',core_backup_bootstrap.SERVICE,'--property=Result','--value']).decode().strip()
+  assert status=='success'
+  assert (root/'state.json').read_bytes()==before
+  verify()
+  result['installed_owned_timer_and_real_systemd_backup_preserved_account']=True
  result['limits']=['Disposable synthetic account and volumes; no production or physical device acceptance.',
-                   'Scheduler installation and legacy-to-core adoption are separate integration steps.']
+                   'Legacy-to-core adoption and full release remain separate integration steps.']
 except BaseException:
  for service in ('postgres','synapse','control'):
   identifiers=subprocess.check_output(['docker','ps','-aq','--filter','label=com.docker.compose.project=voicechat','--filter','label=com.docker.compose.service='+service]).decode().split()
@@ -118,9 +137,21 @@ except BaseException:
    state=SOURCE/('core-rollout-'+service+'-state.json');state.write_bytes(subprocess.check_output(['docker','inspect','--format','{{json .State}}',identifier]));state.chmod(0o600)
  raise
 finally:
- subprocess.run(['systemctl','disable','--now','voicechat-core.service'],check=True,capture_output=True)
+ backup=root/'runtime/backup-boot'
+ receipt=backup/'current.json';pending=backup/'pending.json'
+ owner=managed_state.read(receipt) if receipt.exists() else (managed_state.read(pending)['target'] if pending.exists() else None)
+ if owner is not None:
+  expected=core_backup_bootstrap.files(owner,system_root=Path('/'))
+  for name,content in expected.items():
+   path=Path('/etc/systemd/system')/name
+   if path.exists() and path.read_bytes()!=content:raise ValueError('Foreign backup unit changed during fixture; preserve it')
+  subprocess.run(['systemctl','disable','--now',core_backup_bootstrap.TIMER],check=True,capture_output=True)
+  subprocess.run(['systemctl','stop',core_backup_bootstrap.SERVICE],check=True,capture_output=True,timeout=120)
+  for name in expected:(Path('/etc/systemd/system')/name).unlink(missing_ok=True)
  unit=Path('/etc/systemd/system/voicechat-core.service')
- assert unit.read_bytes()==role_bootstrap.plan(root,'core',None)[3];unit.unlink()
+ assert unit.read_bytes()==role_bootstrap.plan(root,'core',None)[3]
+ subprocess.run(['systemctl','disable','--now','voicechat-core.service'],check=True,capture_output=True)
+ unit.unlink()
  subprocess.run(['systemctl','daemon-reload'],check=True)
  record=core_deploy.record_for(root,inventory,current)
  core_deploy.compose(root,record,'down','--volumes','--remove-orphans')

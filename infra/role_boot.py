@@ -115,6 +115,8 @@ def watch(root, role, edge_id=None, *, execute=role_deploy.run):
         notify_ready()
         while not stopping:
             if any(waiter.poll() is not None for waiter in waiters):
+                backup = root / 'runtime/backup.json'
+                if role == 'core' and (backup.exists() or backup.is_symlink()): return 0
                 state = core_deploy.read_state(root) if role == 'core' else edge_deploy.read_state(root, edge_id)
                 pending = state['pending']
                 return 0 if pending is not None and pending['phase'] != 'prepared' else 1

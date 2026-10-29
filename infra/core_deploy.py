@@ -213,6 +213,9 @@ def backup_current(root, public, inventory, *, subnet='10.241.0.0/28', execute=r
     root = Path(root).absolute()
     if root.resolve() != root: raise ValueError('Core root must not traverse symlinks')
     with role_bootstrap.monitor_after(root, 'core', activate=activate_monitor), managed_state.locked(root), check_network(inventory, 'core', subnet, execute=execute):
+        installation = root / 'runtime/backup-boot/pending.json'
+        if installation.exists() or installation.is_symlink():
+            raise ValueError('Finish the pending core backup timer installation')
         check_boot(root, 'core')
         state = read_state(root)
         record = state['current']
@@ -221,7 +224,7 @@ def backup_current(root, public, inventory, *, subnet='10.241.0.0/28', execute=r
         if runtime_digest(root) != record['runtime_sha256']:
             raise ValueError('Core runtime changed since the committed release')
         release = role_deploy.release_path(root, record)
-        role_release.verify_bundle(release, record['manifest'], public, inventory, subnet)
+        role_release.verify_configuration(record['manifest'], public, inventory)
         configuration(root, record, execute=execute)
         if identify_data(root, record, execute=execute) != state['data_identity']:
             raise ValueError('Core data identity changed before backup')
