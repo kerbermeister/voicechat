@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "real_caddy_git_environment_preflight": true,
+  "active_and_on_disk_caddy_configs_matched_plan": true,
+  "image_ports_networks_and_volume_identity_verified": true,
+  "environment_git_and_container_processes_unchanged": true,
+  "raw_credentials_absent_from_result": true,
+  "source_sha256": {
+    "infra/shared_ingress.py": "f30b8d0bed8882a1705d29b4b78331edf1dd67d3b427aba5671be361c8ddbc6b",
+    "infra/role_bootstrap.py": "fe43293ee9147abb29df679d8d6a029c723bad303523736f62c0487704b4fc07",
+    "prototype/check_shared_legacy_inspect.py": "f20106a20890932055ed819ad700ba79581d02286623e185644f01d4429ea3a1"
+  },
+  "limits": [
+    "Read-only preflight on synthetic Git/env/upstreams and internal certificates; no live adoption or port cutover.",
+    "Public content-addressed operator package retained; no service unit activated."
+  ],
+  "fixture_resources_removed": true
+}

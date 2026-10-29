@@ -295,8 +295,8 @@ TCP80/443, UDP443 отсутствует. Изменений production/DNS по
 
 ### 29 октября: следующий блок shared ingress
 
-Проверенный core checkpoint сохранён commit `4ca5f3a`. Новые изменения ниже пока
-не закоммичены. `shared_ingress.py` содержит renderers legacy config/Compose override
+Проверенный core checkpoint сохранён commit `4ca5f3a`, staging/legacy TURN —
+`9c469ac`. `shared_ingress.py` содержит renderers legacy config/Compose override
 и `stage(...)`: immutable планы по digest + тот же reviewed operator package,
 без создания runtime/.env/Git checkout/systemd unit. Реальная VM staging проверка
 прошла, включая идемпотентность обоих режимов и сохранение прежнего плана:
@@ -343,6 +343,21 @@ candidate validation, journal, targeted Caddy-only recreate/reload + HTTPS check
 preserve neighbor IDs и автоматический возврат при ошибке. Публикация нового
 shared-front/port443, ACME issuance/renewal/export в edge, legacy core adoption,
 full/SSH/CI integration, production release и обязательный macOS update остаются.
+
+### 29 октября: read-only проверка перед adoption
+
+`inspect_legacy_plan` сверяет SSH identity, private immutable plan/operator,
+Git main/HEAD/изменённые пути, native Compose dotenv interpolation, pinned Caddy
+binary, restart policy, ports, mounts/volumes/networks. Adapted staged и on-disk
+Caddy config должны совпадать с активным admin config. Результат содержит только
+hashes/IDs; environment остаётся на сервере, соседние процессы не меняются.
+Пять negative/positive tests и реальная disposable VM проверка прошли:
+[evidence](three-vps-evidence/2026-10-29-vm-shared-legacy-inspect.json).
+VM fixture использовал synthetic Git/env/upstreams/internal certificates; два
+последовательных inspection дали одинаковый baseline, все его Docker resources
+удалены. Это ещё не adoption, ACME или port cutover. Legacy operator source roster
+зафиксирован явно, чтобы добавление следующих modules не меняло его задним числом.
+Полная инфраструктурная regression — **177 tests PASS**. Production без изменений.
 
 ## Неизменные условия
 

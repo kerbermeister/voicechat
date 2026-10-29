@@ -16,13 +16,13 @@ import network_bootstrap
 import topology
 from tunnel_runtime import command
 
-SOURCES = ('role_boot.py', 'role_bootstrap.py', 'core_deploy.py', 'edge_deploy.py',
+LEGACY_SOURCES = ('role_boot.py', 'role_bootstrap.py', 'core_deploy.py', 'edge_deploy.py',
     'role_deploy.py', 'role_prepare.py', 'role_release.py', 'render_roles.py', 'role_config.py',
     'render_edge.py', 'edge_config.py', 'deploy.py', 'tls_activation.py', 'tls_runtime.py',
     'tls_material.py', 'client_config.py', 'topology.py', 'node_inventory.py', 'managed_state.py',
     'network_bootstrap.py', 'network_runtime.py', 'firewall_runtime.py', 'firewall_config.py',
-    'tunnel_runtime.py', 'tunnel_config.py', 'shared_ingress.py')
-LEGACY_SOURCES = tuple(name for name in SOURCES if name != 'shared_ingress.py')
+    'tunnel_runtime.py', 'tunnel_config.py')
+SOURCES = (*LEGACY_SOURCES, 'shared_ingress.py')
 
 
 def unit_name(role, edge_id):
