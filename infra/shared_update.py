@@ -242,7 +242,7 @@ def update(root, *, execute=run, health=ingress._https_health, system_root=Path(
         environment = {**os.environ, 'PWD': str(repo / 'deploy')}
         if intent['application']:
             execute([*command, 'pull'], env=environment)
-            execute([*command, 'up', '-d', '--remove-orphans'], env=environment)
+            execute([*command, 'up', '-d', '--no-build', '--pull', 'never', '--wait', '--wait-timeout', '180', '--remove-orphans'], env=environment)
         # Directory mount remains attached across atomic replacement. Reload is
         # required even when Compose's service hash has not changed.
         if ingress.read_environment(path) != files['Caddyfile']:
@@ -255,6 +255,10 @@ def update(root, *, execute=run, health=ingress._https_health, system_root=Path(
                 execute(reload, env=environment)
             ingress._verify_live(root, target, files, updated, managed=True, execute=execute, health=health)
         except Exception:
+            if (ingress.read_environment(repo / 'deploy/.env') != expected or
+                    ingress.read_environment(root / 'runtime/compose.override.yaml') != files['compose.override.yaml']):
+                raise ValueError('Refusing recovery commands with an externally changed Compose environment')
+            _git_state(target, updated, execute=execute)
             if ingress.read_environment(path) not in (old_files['Caddyfile'], files['Caddyfile']):
                 raise ValueError('Refusing to overwrite externally changed routes during recovery')
             # Keep the fetched target pending, but restore the known routes so

@@ -418,6 +418,20 @@ DEPLOY_KNOWN_HOSTS/DEPLOY_SSH_KEY. Repository variables/secrets отсутств
 catalog key/config там не настроены. Значения secrets не читались, настройки не
 менялись. CI запуск и подготовку public routing config можно выполнить агентом.
 
+Расширенный повтор manager VM fixture тоже PASS:
+[полное свидетельство](three-vps-evidence/2026-10-29-vm-shared-business-update-full.json).
+После принятого Caddy reload искусственно потерян ответ: прежние routes реально
+возвращены, pending сохранён, установленный CLI успешно повторил target.
+Настоящий public-image pull и application `up --no-build --pull never --wait`
+пересоздали только frontend после изменения его CPU config; остальные процессы
+и VoiceChat routes сохранились. Повтор без новой revision ничего не перезапустил.
+Это не migration прикладной БД. Failed reload recovery дополнительно отказывается
+исполнять Compose при внешнем dotenv/override/source edit. Всего **198 tests PASS**,
+включая 12 manager tests. Контролируемый cache неудачной первой CLI пробы удалён
+только после проверки content-addressed package hash; public sources сохранены.
+Production read-only baseline повторно подтверждён: прежние commits/процессы,
+оба HTTPS 200; manager и `/srv/voicechat-managed` ещё отсутствуют.
+
 ## Неизменные условия
 
 - Продолжать по `docs/tasks/19-three-vps.md` и `docs/three-vps-spec.md`.

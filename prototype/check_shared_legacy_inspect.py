@@ -235,14 +235,55 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
                     assert json.loads((shared / 'current.json').read_text())['baseline']['head'] == recovered_revision
                     installed_update()
                     assert processes() == before
+                    # Lose the response after Caddy has accepted a real reload.
+                    # The controller must restore the previous routes, keep the
+                    # target pending and let the installed command retry it.
+                    revised = revised.replace('shared-manager', 'shared-manager-retried')
+                    (incoming / 'deploy/Caddyfile').write_text(revised)
+                    reload_revision = publish('lost reload response fixture')
+                    lost_reload = False
+                    def fail_after_reload(arguments, *, env=None):
+                        nonlocal lost_reload
+                        output = execute(arguments, env=env)
+                        if arguments[:2] == ['docker', 'compose'] and 'reload' in arguments and not lost_reload:
+                            lost_reload = True
+                            raise RuntimeError('synthetic lost reload response')
+                        return output
+                    try:
+                        shared_update.update(shared, execute=fail_after_reload)
+                        raise AssertionError('Reload failure was not injected')
+                    except RuntimeError: pass
+                    assert lost_reload and (shared / 'update.json').exists()
+                    assert b'header X-Fixture shared-manager\n' in (shared / 'runtime/caddy/Caddyfile').read_bytes()
+                    assert processes() == before
+                    installed_update()
+                    assert not (shared / 'update.json').exists() and processes() == before
+                    assert json.loads((shared / 'current.json').read_text())['baseline']['head'] == reload_revision
+                    # Exercise the normal application pull/up path with public
+                    # pinned fixture images and one real service recreation.
+                    proposed = json.loads((incoming / 'deploy/docker-compose.yml').read_text())
+                    proposed['services']['frontend']['cpus'] = 0.75
+                    (incoming / 'deploy/docker-compose.yml').write_text(json.dumps(proposed))
+                    app_revision = publish('application compose fixture')
+                    old_frontend = run(*command, 'ps', '-q', 'frontend').decode().strip()
+                    installed_update()
+                    new_frontend = run(*command, 'ps', '-q', 'frontend').decode().strip()
+                    assert new_frontend != old_frontend
+                    after_application = processes()
+                    assert sorted(row for row in before if not row.startswith(old_frontend)) == sorted(
+                        row for row in after_application if not row.startswith(new_frontend))
+                    assert json.loads((shared / 'current.json').read_text())['baseline']['head'] == app_revision
+                    installed_update()
+                    assert processes() == after_application
                     assert environment.read_bytes() == original + (plan / 'compose.env-line').read_bytes()
                     assert not run('git', '-C', str(repo), 'diff', '--name-only', 'HEAD').strip()
                     assert wrapper.read_bytes() == wrapper_bytes
                     result.update(installed_immutable_manager_cli=True, workflow_only_deploy_preserved_all_processes=True,
                         business_caddy_update_reloaded_without_process_restart=True, interrupted_git_checkout_resumed_by_installed_cli=True,
-                        business_git_clean_and_environment_bytes_preserved=True)
+                        business_git_clean_and_environment_bytes_preserved=True, lost_reload_response_restored_known_routes=True,
+                        installed_cli_retried_pending_reload=True, application_pull_and_service_recreate_preserved_other_processes=True)
                     result['source_sha256']['infra/shared_update.py'] = hashlib.sha256((ROOT / 'infra/shared_update.py').read_bytes()).hexdigest()
-                    result['limits'] = ['Synthetic Git/env/upstreams and internal certificates; no application image deploy, external ACME, shared port cutover or production migration.',
+                    result['limits'] = ['Synthetic Git/env/upstreams, public pinned images and internal certificates; no application schema migration, external ACME, shared port cutover or production migration.',
                                         'Public immutable operator packages retained; fixture manager wrapper removed; no systemd unit activated.']
                     wrapper.unlink()
         except BaseException:

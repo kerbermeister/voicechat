@@ -30,6 +30,7 @@ class SharedBusinessUpdateTests(unittest.TestCase):
         self.calls = []
         self.fail_reload = False
         self.fail_merge = False
+        self.fail_application = False
         self.protected_change = False
         self.neighbor_started = 'preserved-start'
         self.installed = shared_update.install(self.root, execute=self.execute,
@@ -80,7 +81,11 @@ class SharedBusinessUpdateTests(unittest.TestCase):
                 content = (self.root / 'runtime/caddy/Caddyfile').read_bytes()
                 self.fixture.live = self.fixture.active if content == self.fixture.legacy else {'unreviewed': True}
                 return b''
-            if 'pull' in args or 'up' in args: return b''
+            if 'pull' in args or 'up' in args:
+                if 'up' in args and self.fail_application:
+                    self.fail_application = False
+                    raise RuntimeError('synthetic application failure')
+                return b''
         if args[:2] == ['docker', 'inspect'] and 'State.StartedAt}} {{.RestartCount' in args[args.index('--format') + 1]:
             return (self.fixture.neighbor + ' ' + self.neighbor_started + ' 0\n').encode()
         return self.adoption.execute(args, env=env)
@@ -124,6 +129,8 @@ class SharedBusinessUpdateTests(unittest.TestCase):
         self.assertTrue(any('pull' in args for args in actions))
         self.assertTrue(any('up' in args for args in actions))
         self.assertTrue(all(str(self.root / 'runtime/compose.override.yaml') in args for args in actions))
+        up = next(args for args in actions if 'up' in args)
+        self.assertIn('--wait', up); self.assertIn('--no-build', up); self.assertIn('never', up)
 
     def test_reload_failure_resumes_pinned_revision_without_fetching_again(self):
         self.paths = ['deploy/Caddyfile']
@@ -193,6 +200,33 @@ class SharedBusinessUpdateTests(unittest.TestCase):
         self.assertEqual(source.read_text(), 'foreign route change\n')
         self.assertFalse(self.mutations())
         self.assertTrue((self.root / 'update.json').exists())
+
+    def test_environment_edit_during_health_check_blocks_recovery_commands(self):
+        self.paths = ['deploy/Caddyfile']
+        self.business = self.fixture.business + '\n# changed fixture routes\n'
+        original_health = self.adoption.health
+        def health(*args, **kwargs):
+            original_health(*args, **kwargs)
+            if self.fixture.live != self.fixture.active:
+                self.fixture.environment.write_bytes(b'EXTERNAL_EDIT=preserve\n')
+        self.adoption.health = health
+        with self.assertRaisesRegex(ValueError, 'externally changed Compose environment'): self.update()
+        reloads = [args for args in self.mutations() if 'reload' in args]
+        self.assertEqual(len(reloads), 1)
+        self.assertEqual(self.fixture.environment.read_bytes(), b'EXTERNAL_EDIT=preserve\n')
+        self.assertTrue((self.root / 'update.json').exists())
+
+    def test_application_failure_keeps_same_target_pending_without_undoing_data_or_git(self):
+        self.paths = ['backend/main.py']
+        self.fail_application = True
+        environment = self.fixture.environment.read_bytes()
+        with self.assertRaisesRegex(RuntimeError, 'application failure'): self.update()
+        self.assertEqual(self.head, 'e' * 40)
+        self.assertEqual(self.fixture.environment.read_bytes(), environment)
+        self.assertEqual(managed_state.read(self.root / 'update.json')['phase'], 'applying')
+        self.calls.clear(); self.revision = 'f' * 40
+        self.assertEqual(self.update()['baseline']['head'], 'e' * 40)
+        self.assertFalse(any('fetch' in args or 'restore' in args or 'down' in args for args in self.calls))
 
 
 if __name__ == '__main__': unittest.main()

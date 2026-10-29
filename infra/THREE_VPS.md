@@ -963,8 +963,10 @@ Application schema/data не откатываются этим контролл�
 Wrapper запускает sealed Python package с `-B`, чтобы не писать `__pycache__` в
 проверяемый неизменяемый каталог. [Реальная CLI проверка в VM](../docs/iterations/three-vps-evidence/2026-10-29-vm-shared-business-update.json)
 подтвердила workflow-only, Caddy reload, process-death recovery после Git merge
-и сохранение HTTPS/процессов/окружения. Application image deploy и shared port
-cutover этим fixture не проверялись.
+и сохранение HTTPS/процессов/окружения. [Расширенный повтор](../docs/iterations/three-vps-evidence/2026-10-29-vm-shared-business-update-full.json)
+проверил lost reload response recovery и настоящий public-image pull/application
+up с health wait: изменился только frontend после его config change. Прикладная
+schema migration и shared port cutover этим fixture не проверялись.
 
 Для начальной миграции старого A можно явно добавить `legacy_turn: true` к
 `{"id":"a","host":"core"}`: host3488 TCP/UDP направляется на авторизованный
