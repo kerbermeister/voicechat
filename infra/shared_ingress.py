@@ -103,6 +103,19 @@ def legacy_certificates_config(business_routes, public, edge_id):
     return config[:-len(ending)] + issuer + ending + '\n' + edge['turn_host'] + ' {\n' + issuer + '    respond 421\n}\n'
 
 
+def configuration(business_routes, target):
+    """Render the serving mode identically for staging and business updates."""
+    if target['mode'] == 'shared':
+        import edge_config
+        profile = node_inventory.shared_tls(target['shared_tls'])
+        return edge_config.shared_legacy_proxy(business_routes, target['public'],
+            target['edge_id'], profile['ingress_ip'])
+    if target['mode'] == 'legacy-certs':
+        return legacy_certificates_config(business_routes, target['public'], target['edge_id'])
+    if target['mode'] == 'legacy': return legacy_config(business_routes, target['public'])
+    raise ValueError('Unknown shared ingress mode')
+
+
 def stage(root, repo, edge_root, public, inventory, edge_id, business_routes, *, mode='legacy', system_root=Path('/')):
     """Stage an immutable plan/package without touching a live service or Git."""
     import managed_state
@@ -114,7 +127,6 @@ def stage(root, repo, edge_root, public, inventory, edge_id, business_routes, *,
 
 
 def _stage_locked(root, repo, edge_root, public, inventory, edge_id, business_routes, *, mode='legacy', system_root=Path('/')):
-    import edge_config
     import managed_state
     import network_bootstrap
     import role_bootstrap
@@ -129,15 +141,12 @@ def _stage_locked(root, repo, edge_root, public, inventory, edge_id, business_ro
     if mode not in ('legacy', 'legacy-certs', 'shared'): raise ValueError('Unknown shared ingress mode')
     profile = entry.get('shared_tls') if mode == 'shared' else None
     if mode == 'shared' and profile is None: raise ValueError('Shared TLS profile required before cutover')
-    configuration = (edge_config.shared_legacy_proxy(business_routes, public, edge_id, profile['ingress_ip'])
-                     if profile else legacy_certificates_config(business_routes, public, edge_id)
-                     if mode == 'legacy-certs' else legacy_config(business_routes, public))
     _, code, contents, _, operator = role_bootstrap.plan(edge_root, 'edge', edge_id)
     target = {'schema': 1, 'repo': repo, 'edge_root': str(edge_root), 'edge_id': edge_id,
               'mode': mode, 'public': public, 'node': inventory['core'], 'shared_tls': profile,
               'operator': operator}
     role_bootstrap.install_sources(Path(system_root).resolve(), code, contents)
-    return _store_plan_locked(root, target, configuration, system_root=system_root)
+    return _store_plan_locked(root, target, configuration(business_routes, target), system_root=system_root)
 
 
 def _store_plan_locked(root, target, configuration, *, system_root):
@@ -513,7 +522,7 @@ def _verify_live(root, target, files, record, *, managed, execute, health):
         raise ValueError('Environment or neighboring services changed during HTTPS verification')
 
 
-def _attempt(root, record, *, system_root):
+def _attempt(root, record, *, system_root, allow_shared=False):
     """Validate an owned pending/committed journal before any recovery commands."""
     import topology
     topology.fields(record, ('schema', 'attempt', 'plan', 'baseline', 'managed_environment_sha256',
@@ -524,7 +533,8 @@ def _attempt(root, record, *, system_root):
     if record['environment_mode'] not in (0o600, 0o640, 0o644): raise ValueError('Invalid environment recovery permissions')
     plan = root / 'plans' / record['plan']
     target, files = read_plan(root, plan, system_root=system_root, current_sources=False)
-    if target['mode'] not in ('legacy', 'legacy-certs'): raise ValueError('Legacy journal cannot activate a shared cutover')
+    if target['mode'] == 'shared' and not allow_shared:
+        raise ValueError('Legacy journal cannot activate a shared cutover')
     host = Path(system_root) / 'etc/ssh/ssh_host_ed25519_key.pub'
     if node_inventory.host_key(' '.join(read_environment(host).decode().split()[:2])) != target['node']['ssh_host_key']:
         raise ValueError('Shared recovery journal belongs to another SSH host')

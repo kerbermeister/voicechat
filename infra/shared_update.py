@@ -40,7 +40,7 @@ def _current(root, *, execute, health, system_root):
     if (root / 'configuration.json').exists() or (root / 'configuration.json').is_symlink():
         raise ValueError('Finish the pending ingress configuration change before business deployment')
     record = managed_state.read(root / 'current.json')
-    target, files, _, _, expected = ingress._attempt(root, record, system_root=system_root)
+    target, files, _, _, expected = ingress._attempt(root, record, system_root=system_root, allow_shared=True)
     if ingress.read_environment(Path(target['repo']) / 'deploy/.env') != expected:
         raise ValueError('Managed business environment changed; explicit configuration update required')
     for name, content in (('caddy/Caddyfile', files['Caddyfile']), ('compose.override.yaml', files['compose.override.yaml'])):
@@ -83,8 +83,7 @@ def install(root, *, execute=run, health=ingress._https_health, system_root=Path
             # Refresh only code ownership. Changed renderers need a separate
             # configuration transition; install must never silently reload TLS.
             business = execute(['git', '--no-pager', '-C', target['repo'], 'show', 'HEAD:deploy/Caddyfile']).decode()
-            rendered = (ingress.legacy_certificates_config(business, target['public'], target['edge_id'])
-                        if target['mode'] == 'legacy-certs' else ingress.legacy_config(business, target['public']))
+            rendered = ingress.configuration(business, target)
             if rendered.encode() != files['Caddyfile']: raise ValueError('Renderer changed; explicit ingress configuration upgrade required')
             role_bootstrap.install_sources(system_root, code, contents)
             target = {**target, 'operator': expected}
@@ -144,8 +143,7 @@ def _preview(root, target, record, revision, git, *, execute, system_root):
     """Parse proposed Compose/routes before changing the business checkout."""
     repo = Path(target['repo'])
     business = execute([*git, 'show', revision + ':deploy/Caddyfile']).decode()
-    configuration = (ingress.legacy_certificates_config(business, target['public'], target['edge_id'])
-                     if target['mode'] == 'legacy-certs' else ingress.legacy_config(business, target['public']))
+    configuration = ingress.configuration(business, target)
     candidate = ingress._store_plan_locked(root, target, configuration, system_root=system_root)
     source = execute([*git, 'show', revision + ':deploy/docker-compose.yml'])
     with tempfile.TemporaryDirectory(prefix='voicechat-business-preview-') as temporary:
@@ -216,7 +214,7 @@ def update(root, *, execute=run, health=ingress._https_health, system_root=Path(
                 not re.fullmatch(r'[a-f0-9]{40}', intent['revision']) or not re.fullmatch(r'[a-f0-9]{64}', intent['plan'])):
             raise ValueError('Invalid business update journal')
         record = intent['old']
-        target, _, _, _, expected = ingress._attempt(root, record, system_root=system_root)
+        target, _, _, _, expected = ingress._attempt(root, record, system_root=system_root, allow_shared=True)
         if target['operator'] != owner['operator']: raise ValueError('Update owner sources changed')
         candidate_target, files = ingress.read_plan(root, root / 'plans' / intent['plan'], system_root=system_root, current_sources=False)
         if candidate_target != target: raise ValueError('Business update cannot change the VoiceChat ingress target')

@@ -231,6 +231,78 @@ class SharedBusinessUpdateTests(unittest.TestCase):
         self.assertFalse(any('fetch' in args or 'restore' in args or 'down' in args for args in self.calls))
 
 
+class SharedModeBusinessUpdateTests(unittest.TestCase):
+    """Model an already committed port cutover; never perform that migration."""
+    def setUp(self):
+        self.business = SharedBusinessUpdateTests()
+        self.business.setUp()
+        self.addCleanup(self.business.doCleanups)
+        b = self.business
+        f = b.fixture
+        inventory = deepcopy(f.inventory)
+        profile = {'network': 'voicechat-shared-ingress', 'subnet': '172.29.0.0/29',
+                   'legacy_ip': '172.29.0.2', 'ingress_ip': '172.29.0.3'}
+        inventory['edges'][0]['shared_tls'] = profile
+        plan = shared_ingress.stage(b.root, b.repo, f.directory / 'edge', f.public,
+            inventory, 'a', f.business, mode='shared', system_root=b.system)
+        target, files = shared_ingress.read_plan(b.root, plan, system_root=b.system)
+        record = managed_state.read(b.root / 'current.json')
+        record['plan'] = plan.name
+        record['ports'] = {'80/tcp': f.ports['80/tcp']}
+        record['networks'] = ['deploy_default', profile['network']]
+        f.current['ports'] = record['ports']
+        f.current['networks'][profile['network']] = {'IPAddress': profile['legacy_ip']}
+        f.config['services']['caddy']['ports'] = f.config['services']['caddy']['ports'][:1]
+        f.config['services']['caddy']['networks']['shared-tls'] = {'ipv4_address': profile['legacy_ip']}
+        f.config['networks']['shared-tls'] = {'name': profile['network'], 'external': True}
+        f.legacy = files['Caddyfile']
+        shared_ingress._write(b.root / 'runtime/caddy/Caddyfile', f.legacy)
+        shared_ingress._write(b.root / 'runtime/compose.override.yaml', files['compose.override.yaml'])
+        managed_state.persist(b.root / 'current.json', record)
+        self.target = target
+        b.calls.clear()
+
+    def assert_shared(self, record):
+        b = self.business
+        target, files = shared_ingress.read_plan(b.root, b.root / 'plans' / record['plan'], system_root=b.system)
+        self.assertEqual(target['mode'], 'shared')
+        self.assertIn(b'allow 172.29.0.3/32', files['Caddyfile'])
+        self.assertIn(b'fallback_policy reject', files['Caddyfile'])
+        self.assertIn(b'respond 421', files['Caddyfile'])
+        self.assertNotIn(b'reverse_proxy voicechat-web', files['Caddyfile'])
+        self.assertNotIn(b'"443:443"', files['compose.override.yaml'])
+        self.assertEqual(record['networks'], ['deploy_default', 'voicechat-shared-ingress'])
+
+    def test_workflow_and_routes_keep_shared_proxy_and_certificate_sinks(self):
+        b = self.business
+        self.assert_shared(b.update())
+        self.assertFalse(b.mutations())
+        b.revision = 'f' * 40
+        b.paths = ['deploy/Caddyfile']
+        b.business = b.fixture.business.replace(' reverse_proxy', ' header X-Fixture changed\n reverse_proxy')
+        self.assert_shared(b.update())
+        self.assertFalse(any('up' in args or 'pull' in args for args in b.calls))
+
+    def test_shared_reload_failure_preserves_mode_and_resumes_same_target(self):
+        b = self.business
+        b.paths = ['deploy/Caddyfile']
+        b.business = b.fixture.business + '\n# changed business routes\n'
+        b.fail_reload = True
+        with self.assertRaises(RuntimeError): b.update()
+        self.assertEqual((b.root / 'runtime/caddy/Caddyfile').read_bytes(), b.fixture.legacy)
+        self.assertTrue((b.root / 'update.json').exists())
+        self.assert_shared(b.update())
+        self.assertFalse((b.root / 'update.json').exists())
+
+    def test_legacy_recovery_rejects_shared_but_installed_manager_accepts_it(self):
+        b = self.business
+        record = managed_state.read(b.root / 'current.json')
+        with self.assertRaisesRegex(ValueError, 'Legacy journal'):
+            shared_ingress._attempt(b.root, record, system_root=b.system)
+        shared_update.install(b.root, execute=b.execute, health=b.adoption.health, system_root=b.system)
+        self.assert_shared(b.update())
+
+
 class SharedManagerSourceUpgradeTests(unittest.TestCase):
     def setUp(self):
         self.fixture = SharedBusinessUpdateTests()

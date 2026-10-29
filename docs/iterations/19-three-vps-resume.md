@@ -10,6 +10,14 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 
 ## Актуальное состояние: production ingress, 29 октября
 
+Manager теперь умеет сохранять уже committed `shared` mode при business update:
+единый renderer для stage/install/preview, strict PROXY source, certificate sinks,
+порт 80 и external bridge сохраняются. Legacy adoption/recovery по-прежнему
+отвергает shared journal: автоматический возврат старого leaf mount не разрешён.
+Три новых unit сценария покрывают workflow/route update, reload failure/resume
+и разделение legacy recovery/manager. Это подготовка controller, ещё не реальный
+port cutover; production manager пока не обновлялся этими исходниками.
+
 Следующий завершённый блок: `cohost_tls.py`, 29-file reader package
 `2b37777501e3bfc74de52b7ae55ef84ca3add991dc2432e0ea73f7fa01531ab7`.
 На A дважды выполнен capture обеих реальных доверенных TLS-пар в закрытый
