@@ -1343,3 +1343,16 @@ per-role baseline с locks/host/bundle/boot/data checks, но не исполн�
 
 Текущий CI initial handler покрыт unit/contract checks; настоящий GitHub initial
 release ещё не выполнен. Не считать изменение workflow завершённым production-переходом.
+
+Pre-maintenance repair: Compose may retain config-files labels from historical
+releases when it reuses containers. Initial namespace checks may use the current
+legacy model only for the exact immutable IDs captured by the complete legacy
+preflight. Image IDs, mounts, ports, networks and security checks remain mandatory;
+this does not adopt an unknown container or trust a historical path as code.
+
+If preparation failed before it created any role, network or backup/fence state,
+`python3 -B infra/cancel_initial.py --root /srv/voicechat-managed --attempt <exact-nonce>`
+can archive the original journal verbatim. The tool verifies the original source
+receipt, unchanged healthy legacy baseline, legacy-certs ingress and an empty
+attempt directory. It refuses prepared/fenced/public state. The corrected artifact
+then starts a fresh attempt; never edit pending target/source/pointers manually.

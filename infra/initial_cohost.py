@@ -30,6 +30,7 @@ import network_bootstrap
 import network_runtime
 import node_inventory
 import publish_catalog
+import release_delivery
 import role_boot
 import role_bootstrap
 import role_deploy
@@ -257,7 +258,7 @@ def legacy_models(root, baseline, previous_attempt=None, *, execute):
              env=legacy_core.environment(baseline['record'])))) for args in configurations]
 
 
-def namespace(project, models, *, execute):
+def namespace(project, models, *, execute, baseline=None):
     identifiers = execute(['docker', 'ps', '-aq', '--no-trunc', '--filter',
                            'label=com.docker.compose.project=' + project]).decode().split()
     found = {}
@@ -267,6 +268,15 @@ def namespace(project, models, *, execute):
         name = value['labels'].get('com.docker.compose.service')
         files = tuple(Path(part).resolve() for part in value['labels'].get('com.docker.compose.project.config_files', '').split(',') if part)
         candidates = [model for expected, model in models if expected == files and name in model['services']]
+        captured = False
+        if not candidates and baseline is not None and project == 'voicechat' and baseline['containers'].get(name) == identifier:
+            # Compose keeps original config-files labels when it reuses a
+            # container across releases. Only a captured, fully verified legacy
+            # ID may use the current baseline model instead of that stale hint.
+            expected_files = configuration_files(legacy.compose_command(Path(baseline['record']['release'])))
+            candidates = [model for expected, model in models if expected == expected_files and
+                          {key:value['image'] for key,value in model['services'].items()} == baseline['images']]
+            captured = True
         if len(candidates) != 1 or name in found: raise ValueError('Unknown or duplicate migration container')
         model = candidates[0]; service = model['services'][name]
         if not isinstance(service['image'], str) or not role_release.IMAGE.fullmatch(service['image']):
@@ -281,13 +291,13 @@ def namespace(project, models, *, execute):
         if implicit and (name != 'turn' or implicit != {'/var/lib/coturn'}):
             raise ValueError('Unknown migration image volume must be preserved')
         legacy_core._container(service, value, model, running=False, implicit=implicit,
-                               restart_policy='fencing', project=project, allow_created=True)
+                               restart_policy='fencing', project=project, allow_created=not captured)
         found[name] = value
     return found
 
 
-def remove_namespace(project, models, *, execute):
-    current = namespace(project, models, execute=execute)
+def remove_namespace(project, models, *, execute, baseline=None):
+    current = namespace(project, models, execute=execute, baseline=baseline)
     identifiers = [value['id'] for value in current.values()]
     if identifiers:
         execute(['docker', 'stop', *identifiers])
@@ -360,6 +370,57 @@ def disable_role(root, role, edge_id, *, system_root, run):
     if role_release.digest(network_bootstrap.existing(path) or b'') != receipt['unit_sha256']:
         raise ValueError('Modified role boot unit must be preserved')
     run('systemctl', 'disable', '--now', name)
+
+
+def cancel_preparation(root, attempt, *, execute=role_deploy.run, system_root=Path('/')):
+    """Archive only an unstarted, empty adoption attempt; never change services.
+
+    This permits a corrected artifact after a pre-maintenance guard failure.
+    Anything prepared/fenced requires recovery by its original coordinator.
+    """
+    root, system_root = Path(root).absolute(), Path(system_root).resolve()
+    if root.resolve()!=root or not isinstance(attempt,str) or not role_release.SHA.fullmatch(attempt):
+        raise ValueError('Canonical root and exact initial attempt required')
+    with managed_state.locked(root):
+        path=root/'initial.json';folder=root/('attempt-'+attempt)
+        archived=folder/'cancelled-preparation.json'
+        if folder.resolve()!=folder or not folder.is_dir() or folder.stat().st_uid!=os.geteuid() or folder.stat().st_mode&0o077:
+            raise ValueError('Owned empty preparation directory required')
+        pending=path.exists() or path.is_symlink()
+        value=managed_state.read(path if pending else archived)
+        topology.fields(value,('schema','target','attempt','phase','baseline','source_root',
+            'network_preexisting','network_fingerprint','shared_plan','front_plan','previous_roles'))
+        if (type(value['schema']) is not int or value['schema']!=1 or value['attempt']!=attempt or
+                value['phase']!='preparing' or value['network_preexisting'] is not False or
+                any(value[key] is not None for key in ('network_fingerprint','shared_plan','front_plan','previous_roles'))):
+            raise ValueError('Only a fresh unstarted preparation may be cancelled')
+        if {p.name for p in folder.iterdir()} != (set() if pending else {'cancelled-preparation.json'}):
+            raise ValueError('Preparation has effects; resume the original coordinator')
+        for item in (root/'current.json',root/'core',root/'edges',root/'network.key',system_root/'var/lib/voicechat-network'):
+            if item.exists() or item.is_symlink():raise ValueError('Prepared roles/network must be recovered, never cancelled')
+        target=value['target'];old=Path(target['legacy_root']);shared=Path(target['shared_root'])
+        if target['root']!=str(root) or old.resolve()!=old or shared.resolve()!=shared or len({root,old,shared})!=3:
+            raise ValueError('Initial cancellation roots changed')
+        source=Path(value['source_root'])
+        if source.resolve()!=source or source.parent!=root/'bundles' or not role_release.SHA.fullmatch(source.name):
+            raise ValueError('Original immutable source delivery required')
+        record=managed_state.read(source/'delivery.json')
+        if record['archive_sha256']!=source.name or record['backend']!=target['backend_sha256']:
+            raise ValueError('Original source receipt changed')
+        release_delivery.verify(source,record)
+        if source_files(source)!=target['source_files']:raise ValueError('Original migration source changed')
+        with legacy_core.locked(old),managed_state.locked(shared):
+            if legacy_core._inspect_locked(old,execute=execute)!=value['baseline']:
+                raise ValueError('Legacy state changed; explicit recovery required')
+            pointer=managed_state.read(shared/'current.json')
+            serving,_=ingress.read_plan(shared,shared/'plans'/pointer['plan'],system_root=system_root)
+            if (serving['mode']!='legacy-certs' or serving['edge_root']!=str(root/'edges'/target['edge']['edge_id']) or
+                    serving['public']!=target['public'] or serving['node']!=target['inventory']['core']):
+                raise ValueError('Public ingress changed; cancellation is unsafe')
+            if pending:
+                os.rename(path,archived)
+                tls_material.sync_directory(folder);tls_material.sync_directory(root)
+        return {'schema':1,'cancelled':'unstarted-preparation','attempt':attempt,'source':str(source)}
 
 
 def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelope, catalog_key, *,
@@ -464,7 +525,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
         old_models = legacy_models(root,baseline,journal['previous_roles']['attempt'] if journal['previous_roles'] else None,
                                    execute=execute)
         if journal['phase'] == 'preparing':
-            namespace('voicechat',old_models,execute=execute)
+            namespace('voicechat',old_models,execute=execute,baseline=baseline)
             # Source-only manager upgrade owns its lock; no writer has stopped.
             shared_update.install(shared, execute=execute, system_root=system_root)
         with managed_state.locked(shared):
@@ -558,7 +619,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
 
             def pg_ready():
                 core_models, _ = models()
-                current = namespace('voicechat', core_models, execute=execute)
+                current = namespace('voicechat', core_models, execute=execute, baseline=baseline)
                 if 'postgres' not in current:
                     if core_deploy.data_identity(core, core_record, execute=execute) != baseline['data_identity']:
                         raise ValueError('Refusing to initialize missing adoption data')
@@ -580,7 +641,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                 else: execute(['docker', 'start', current['postgres']['id']])
                 deadline = time.monotonic() + 60
                 while True:
-                    current = namespace('voicechat', core_models, execute=execute)
+                    current = namespace('voicechat', core_models, execute=execute, baseline=baseline)
                     if current.get('postgres', {}).get('state', {}).get('Health', {}).get('Status') == 'healthy': break
                     if time.monotonic() >= deadline: raise TimeoutError('Owned PostgreSQL did not recover')
                     time.sleep(.5)
@@ -590,7 +651,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                     disable_role(core, 'core', None, system_root=system_root, run=run)
                     disable_role(edge, 'edge', edge_id, system_root=system_root, run=run)
                     core_models, _ = models()
-                    current = namespace('voicechat', core_models, execute=execute)
+                    current = namespace('voicechat', core_models, execute=execute, baseline=baseline)
                     writers = [item['id'] for name, item in current.items() if name != 'postgres']
                     if writers: execute(['docker', 'stop', *writers])
                     pg_ready(); phase('rollback-data')
@@ -602,7 +663,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                 if journal['phase'] == 'rollback-remove':
                     core_models, edge_models = models()
                     remove_namespace('voicechat-edge-' + edge_id, edge_models, execute=execute)
-                    remove_namespace('voicechat', core_models, execute=execute)
+                    remove_namespace('voicechat', core_models, execute=execute, baseline=baseline)
                     if execute(['docker', 'network', 'ls', '-q', '--filter', 'name=^voicechat_default$']).strip():
                         owner = json.loads(execute(['docker','network','inspect','--format','{{json .Labels}}','voicechat_default']))
                         if owner.get('com.docker.compose.project') != 'voicechat': raise ValueError('Foreign data bridge must be preserved')
@@ -662,7 +723,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                     phase('legacy-down')
                 if journal['phase'] == 'legacy-down':
                     core_models, _ = models()
-                    namespace('voicechat', core_models, execute=execute)
+                    namespace('voicechat', core_models, execute=execute, baseline=baseline)
                     old_compose('down')  # All named and anonymous data volumes remain.
                     phase('network')
                 if journal['phase'] == 'network':

@@ -18,6 +18,7 @@ import network_runtime
 import role_release
 import role_bootstrap
 import topology
+import test_release_delivery
 from test_node_inventory import fixture
 import test_legacy_core
 
@@ -278,6 +279,76 @@ class InitialCohostPlanningTests(unittest.TestCase):
             initial_cohost.legacy_models(root,baseline,attempt,execute=execute)
         with self.assertRaisesRegex(ValueError,'previous rollback owner'):
             initial_cohost.legacy_models(root,baseline,'../foreign',execute=execute)
+
+    def unstarted_preparation(self):
+        case=test_legacy_core.LegacyCorePreflightTests();case.setUp();self.addCleanup(case.doCleanups)
+        source_case=test_release_delivery.ImmutableSourceDeliveryTests();source_case.setUp();self.addCleanup(source_case.doCleanups)
+        root=source_case.root;raw,sha=source_case.archive()
+        source=initial_cohost.release_delivery.install(raw,root,sha,source_case.commit)
+        shared=source_case.base/'shared';shared.mkdir(mode=0o700)
+        managed_state.persist(shared/'current.json',{'plan':'d'*64})
+        target={**self.target(),'root':str(root),'legacy_root':str(case.root),'shared_root':str(shared),
+                'source_files':initial_cohost.source_files(source)}
+        attempt='c'*64;folder=root/('attempt-'+attempt);folder.mkdir(mode=0o700)
+        value={'schema':1,'target':target,'attempt':attempt,'phase':'preparing','baseline':case.inspect(),
+            'source_root':str(source),'network_preexisting':False,'network_fingerprint':None,
+            'shared_plan':None,'front_plan':None,'previous_roles':None}
+        managed_state.persist(root/'initial.json',value)
+        serving={'mode':'legacy-certs','edge_root':str(root/'edges/a'),'public':target['public'],
+                 'node':target['inventory']['core']}
+        return case,root,attempt,value,serving,source
+
+    def test_unstarted_preparation_cancellation_archives_original_journal_and_is_idempotent(self):
+        case,root,attempt,value,serving,source=self.unstarted_preparation()
+        original=(root/'initial.json').read_bytes();pointer=(case.root/'current.json').read_bytes()
+        with patch.object(initial_cohost.ingress,'read_plan',return_value=(serving,{})):
+            result=initial_cohost.cancel_preparation(root,attempt,execute=case.execute,system_root=self.base/'system')
+            self.assertEqual(initial_cohost.cancel_preparation(root,attempt,execute=case.execute,system_root=self.base/'system'),result)
+        self.assertFalse((root/'initial.json').exists())
+        self.assertEqual((root/('attempt-'+attempt)/'cancelled-preparation.json').read_bytes(),original)
+        self.assertEqual((case.root/'current.json').read_bytes(),pointer)
+        self.assertTrue((source/'delivery.json').is_file())
+        self.assertEqual(result['cancelled'],'unstarted-preparation')
+
+    def test_cancellation_refuses_prepared_state_foreign_owner_and_changed_legacy_or_source(self):
+        mutations=(
+            lambda root,value,source: value.update(phase='fencing'),
+            lambda root,value,source: value.update(attempt='e'*64),
+            lambda root,value,source: value.update(shared_plan='f'*64),
+            lambda root,value,source: (root/'core').mkdir(),
+            lambda root,value,source: (root/('attempt-'+value['attempt'])/'policy.json').write_text('preserve'),
+            lambda root,value,source: (source/'infra/core_deploy.py').write_text('changed'),
+            lambda root,value,source: value['baseline'].update(source_sha256='0'*64),
+        )
+        for mutation in mutations:
+            case,root,attempt,value,serving,source=self.unstarted_preparation()
+            mutation(root,value,source);managed_state.persist(root/'initial.json',value)
+            original=(root/'initial.json').read_bytes()
+            with patch.object(initial_cohost.ingress,'read_plan',return_value=(serving,{})),self.assertRaises(ValueError):
+                initial_cohost.cancel_preparation(root,attempt,execute=case.execute,system_root=self.base/'system')
+            self.assertEqual((root/'initial.json').read_bytes(),original)
+            self.assertFalse((root/('attempt-'+attempt)/'cancelled-preparation.json').exists())
+
+    def test_captured_legacy_ids_allow_retained_historical_labels_but_keep_all_runtime_guards(self):
+        case=test_legacy_core.LegacyCorePreflightTests();case.setUp();self.addCleanup(case.doCleanups)
+        baseline=case.inspect()
+        expected=initial_cohost.configuration_files(initial_cohost.legacy.compose_command(case.release))
+        models=[(expected,case.model)]
+        for name,value in case.containers.items():
+            value['labels']['com.docker.compose.project.config_files']='/historical/'+name+'/compose.yaml'
+        with self.assertRaisesRegex(ValueError,'Unknown or duplicate'):
+            initial_cohost.namespace('voicechat',models,execute=case.execute)
+        self.assertEqual(len(initial_cohost.namespace('voicechat',models,execute=case.execute,baseline=baseline)),6)
+        changed=deepcopy(baseline);changed['containers']['control']='f'*64
+        with self.assertRaisesRegex(ValueError,'Unknown or duplicate'):
+            initial_cohost.namespace('voicechat',models,execute=case.execute,baseline=changed)
+        case.containers['control']['readonly']=not case.containers['control']['readonly']
+        with self.assertRaisesRegex(ValueError,'filesystem contract'):
+            initial_cohost.namespace('voicechat',models,execute=case.execute,baseline=baseline)
+        case.containers['control']['readonly']=not case.containers['control']['readonly']
+        case.containers['postgres']['mounts'][0]['Name']='foreign-data'
+        with self.assertRaisesRegex(ValueError,'volume identity'):
+            initial_cohost.namespace('voicechat',models,execute=case.execute,baseline=baseline)
 
     def test_namespace_cleanup_requires_exact_compose_source_and_preserves_every_volume(self):
         case = test_legacy_core.LegacyCorePreflightTests();case.setUp();self.addCleanup(case.doCleanups)

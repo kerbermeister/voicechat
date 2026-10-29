@@ -1328,3 +1328,125 @@ workflow не запускали; tab9 закрыт. `adb devices -l` — ни �
 Физическую приёмку и promotion APK не объявлять завершёнными/не обходить guard.
 При packaging после docs-only commit проверить неизменность всех compile inputs
 относительно 9d4a1ae; не менять уже подписанный Mac package или его provenance.
+
+## Production initial workflow запущен — не дублировать
+
+Владелец подтвердил GitHub access. UI фактически показывает environment production
+**DEPLOY_ROOT=/srv/voicechat-managed**; SSH/rules не менялись. Предыдущий auth blocker
+снят, старое значение /srv/voicechat больше не считать действующим в GitHub vars.
+legacy_root=/srv/voicechat остаётся явной частью SERVER_ROLE_CONFIG.
+
+Закреплена release ветка **codex/three-vps-initial** на
+**f3ec45717d638eff9c9539482afa27b637207086** (только docs/evidence относительно 9d4a1ae;
+все compile/deploy inputs проверены `git diff` без изменений). Не двигать эту ветку
+во время initial run. Основная рабочая ветка по-прежнему codex/three-vps-rollout.
+VM proof проверяет перечисленные role/coordinator hashes; не выдавать его за
+проверку всех CI/source files (SSH framing покрыт отдельным unit).
+
+**Активный [Build and deploy #49](https://github.com/kerbermeister/voicechat/actions/runs/40923745658)**,
+job **123623616357**, `rollout=initial, mode=full, deploy=true`, выбранная ветка
+codex/three-vps-initial/f3ec457. Стартовал через UI 29.10. Проверки/сборка идут перед
+переходом; на момент запуска production по-прежнему8bcbd91, managed root отсутствовал,
+legacy release lock доступен. Не запускать второй workflow/ручной Compose. При
+отказе смотреть фактический `/srv/voicechat-managed/initial.json` и exact source
+bundle на A; не подменять target новым HEAD и не трогать данные/ключи. `retry_initial`
+только после завершённого rolled-back; незавершённый attempt продолжать тем же
+frozen source. После public commit — только forward recovery. Последний известный
+production app ещё старый, не считать сам запуск доказательством перехода.
+
+Android **1.12.0(24)** также упакован и проверен штатным android_release.py:
+`.prototype/android-candidate-24`, sourceDirty=false, existing certificate37d98d…,
+три ABI. APK SHA256 **079440582ba1923e7adea319719369409a003cd4507098457b04541185501610**.
+Build source9d4a1ae, packaging sourcef3ec457 — diff только docs, все compile inputs
+отдельно сверены; APK не пересобирали. Не опубликован, physical acceptance=false
+(реального Android в adb нет). Mac signed candidate указан выше; ещё не установлен
+и не опубликован. Активных локальных build/VM exec sessions больше нет.
+
+Текущий браузер: rolloutGitHub tab2 — run49; rolloutVariables tab8 — production env
+с сохранённым новым root, оба handoff. Скриншоты в разрешённом visualizations root:
+voicechat-managed-root-confirmed.png и voicechat-production-initial-run.png.
+Следующий приоритет: дождаться/проверить run49, проверить manifest/digests, data/signing
+identity, соседний HTTPS/процессы, backup/boot/TLS timers и повтор API/клиента.
+Затем backup app/profile, обязательный Sparkle23→24 через UI с прежним аккаунтом/
+device/history; штатная публикация exact signed candidate на новый canonical edge.
+Обычный managed rollout executor и scopes ещё не завершены; planner/reader есть.
+
+## Внимание: production continuation сейчас активен
+
+CI #49 прошёл tests/build/upload и отказал на начальном legacy preflight (7s),
+**до создания initial.json и до остановки служб**: infra старого release имела UID1001
+от GitHub tar, guard требует root. Guard не ослаблен. Все29 public source files
+сверены с точным Git8bcbd91; только их/каталогов/metadata owner нормализован в root.
+[Evidence](three-vps-evidence/2026-10-29-production-source-ownership.json): bytes,
+release pointer, все container IDs/StartedAt/RestartCount и runtime/data неизменны.
+
+По согласованному контракту продолжения frozen entry запущен **тот же** артефакт
+CI49, без новой сборки, без ручного Compose. **Активный exec session44264**:
+`/tmp/voicechat-resume-production-initial.py`; remote entry
+`/srv/voicechat-managed/bundles/adb77321e414ff4499f2d846f524ad29bb235eddf33b57a7010c36ac12fd3633/infra/initial_entry.py`,
+`--root /srv/voicechat-managed --source-sha adb77321e414ff4499f2d846f524ad29bb235eddf33b57a7010c36ac12fd3633`.
+Private stdin — сохранённый `.prototype/production/initial-request.json`, public
+config/envelope. Private operator log `.prototype/production/initial-resume-49.log`.
+НЕ запускать дубликат/новый target, не менять initial.json/source/current pointers.
+При завершении wrapper пишет `2026-10-29-production-initial-completion.json`; CI49
+остаётся failure preflight и не выдаётся за зелёный release. Для восстановления
+проверить фактический journal phase и завершить тем же entry; после public commit
+только forward recovery. Для нового retry после rolled-back нужен явный --retry.
+
+Перед продолжением снят [neighbor process snapshot](three-vps-evidence/2026-10-29-production-before-initial.json)
+для frontend/backend/stt/postgres; Caddy может штатно recreate при port handoff.
+После completion сравнить эти четыре процесса и data/signing identity с baseline.
+
+Перед обновлением Mac штатно закрыта /Applications/VoiceChat.app build23; создана
+и по всем regular files/symlinks проверена private backup
+`~/Library/Application Support/VoiceChatRelease/before-update-24` (app+Container Data).
+Keychain symlink не разворачивали, его содержимое не копировали/не меняли.
+Backup app codesign verified. Старый клиент снова запущен, история видна, без
+нового входа. CUA binding rolloutInstalledApp; initial getApp timeout был только
+холодным запуском, повтор успешен. Для Flutter UI использовать AX clicks и
+getAXState({disableDiffing:true}); coordinate clicks возвращали noWindowsAvailable,
+но AX работают. Before account/device и history marker strings сохранены только
+в памяти CUA (`rolloutPreviousUser`, `rolloutPreviousDevice`,
+`rolloutBeforeHistoryTexts`), не переносить приватный текст в отчёты/реестр.
+Сейчас открыт About23, feed24 ещё не опубликован. Порядок оставшейся macOS-проверки
+обязателен: production health → launch exact24/prepublish physical acceptance →
+publish exact signed package → previous23 «Проверить обновления»/install button →
+same account/device/visible history, без удаления Keychain/profile.
+
+## Production preparing guard repair — текущая точка
+
+Session44264 завершился отказом в **preparing**, до любых role/network/backup/fence
+изменений. Причина: postgres/turn сохранили config-files labels от49f09…, control
+от36ca37…, хотя complete legacy preflight подтвердил текущие images/mounts/ports/
+security/data. Это штатное Compose reuse между прошлымі web/full релизами; fixture
+с одним исходным release такую историю не моделировал. Приложение8bcbd91 healthy.
+
+Точный pending attempt **2fdbc7c007544a987b51a9d4c10505226290712f127c9be50ed27d0d4a796f8b**,
+phase=preparing, attempt directory пуст, core/edges/network/current отсутствуют.
+Исходный f3ec457 bundle **adb773…** не менять. В f3 release branch больше не запускать
+initial: ей нужен исправленный coordinator, но journal сначала надо штатно отменить.
+
+`initial_cohost.namespace` исправлен: только immutable container IDs из полного
+captured legacy baseline могут использовать проверенный current model при старых
+labels. Image/mount/network/port/security guards сохранены, новый ID/чужая модель
+не принимаются. Все voicechat namespace/cleanup calls передают baseline; новые
+core/edge containers по-прежнему требуют exact config-files. **18 initial-focused
+PASS**, полный набор **501 PASS / skipped3**,36.035s. [Actual Docker low-level PASS](three-vps-evidence/2026-10-29-vm-retained-legacy-labels.json)
+проверил retained hint, rejection нового ID/изменённого read-only; fixture удалён.
+Первый probe неверно описал Docker none network, setup исправлен, guard не ослаблен.
+Это не новый полный migration proof.
+
+Добавлен `cancel_initial.py`/cancel_preparation: только empty preparing без roles/
+network/backup/fence, полный original source receipt+healthy legacy+legacy-certs
+проверяются, journal **перемещается целиком** в attempt/cancelled-preparation.json,
+не переписывается. Повтор безопасен; при подготовленных ресурсах/другом nonce/
+изменённых source или legacy — отказ. Это операторская отмена не начавшегося
+attempt, не подмена successful rollback и не очистка пользовательских данных.
+
+Дальше: commit исправления; pinned SSH delivery только публичного проверенного
+operator code для read-only namespace check на A, затем reviewed cancellation
+точного empty attempt и сохранение evidence (без Compose/service изменений).
+После cancellation обновить release ветку codex/three-vps-initial на исправленный
+commit и повторить штатный initial/full CI. Предыдущие native24 artifacts сохранять:
+их compile inputs не менялись. #49 остаётся failed preflight; source49 не править.
+Активных production/VM/build exec jobs сейчас нет. Недоставленных permission asks нет.

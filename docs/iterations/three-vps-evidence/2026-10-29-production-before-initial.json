@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "before_initial_transition": true,
+  "legacy_commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "neighbor_processes": [
+    "/deploy-backend-1 3fd937c2ef6da148d130bfb733be1378fb95480f6e8f5edc032889ed1edfb1bb 2026-10-26T07:13:05.01469252Z 0",
+    "/deploy-frontend-1 923e088abb814b746ce4e2921ec93475730b74ec0dca873bc8cde8f2767a853b 2026-10-26T07:13:05.02282237Z 0",
+    "/deploy-postgres-1 23fe66be645c739550e59657d845a114e9794474f13ae3b10fb244a5fbc34581 2026-10-26T07:13:04.999798589Z 0",
+    "/deploy-stt-1 629c3ebeb59ad094feeb0351561b510075974953d314c5aede628374812efb8c 2026-10-26T07:13:04.95938781Z 0"
+  ],
+  "limits": [
+    "Caddy is deliberately recreated for managed public port handoff; upstream application processes must stay unchanged."
+  ]
+}
