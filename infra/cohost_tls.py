@@ -10,6 +10,7 @@ import time
 import managed_state
 import node_inventory
 from role_deploy import run
+import role_deploy
 import shared_ingress as ingress
 import shared_update
 import tls_activation
@@ -151,7 +152,7 @@ def refresh(root, *, execute=run, system_root=Path('/'), ca_file=None):
         return _refresh_locked(root, execute=execute, system_root=system_root, ca_file=ca_file)
 
 
-def _refresh_locked(root, *, execute=run, system_root=Path('/'), ca_file=None):
+def _refresh_locked(root, *, execute=run, system_root=Path('/'), ca_file=None, rollout_attempt=None):
     """Lock order matches cutover: ingress, front, edge, then each TLS writer."""
     import shared_front
     import shared_cutover
@@ -167,6 +168,7 @@ def _refresh_locked(root, *, execute=run, system_root=Path('/'), ca_file=None):
         plan = front_root / 'plans' / state['plan']
         front, warm = shared_front.read_plan(front_root, plan, system_root=system_root)
         edge, public = shared_cutover._edge(edge_root, target, plan, front, warm)
+        role_deploy.require_rollout_owner(edge_root, rollout_attempt, edge['manifest'])
         model = public if state['phase'] == 'public' else warm
         shared_front._networks(model, execute=execute, owned=True)
         shared_front._container(plan, model, execute=execute, required=True)

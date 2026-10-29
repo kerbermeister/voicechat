@@ -14,6 +14,7 @@ import shutil
 import sys
 import subprocess
 import tempfile
+import time
 import urllib.request
 import uuid
 
@@ -26,6 +27,7 @@ import role_deploy
 import role_release
 import role_prepare
 import core_deploy
+import role_bootstrap
 
 
 def main():
@@ -54,6 +56,8 @@ def main():
                       ['docker', 'volume', 'ls', '-q', '--filter', 'name=^voicechat_'],
                       ['docker', 'network', 'ls', '-q', '--filter', 'name=^voicechat_default$']):
         if run(arguments).strip(): raise ValueError('Existing legacy resources must not be adopted by a fixture')
+    boot_unit = Path('/etc/systemd/system/voicechat-core.service')
+    if boot_unit.exists() or boot_unit.is_symlink(): raise ValueError('Existing core boot unit must not be adopted by a fixture')
     for image in (args.control_image, args.web_image): run(['docker', 'image', 'inspect', image])
     nonce = uuid.uuid4().hex[:10]
     neighbor = 'vc-legacy-neighbor-' + nonce
@@ -107,6 +111,7 @@ networks:
             None if body is None else json.dumps(body).encode(), headers)
         with opener.open(request, timeout=20) as response: return json.load(response)
     baseline = None
+    owned_unit = None
     try:
         run(['docker', 'network', 'create', '--label', 'voicechat.fixture=' + nonce, neighbor])
         # Fixture images are already cached; do not request registry credentials.
@@ -155,10 +160,52 @@ networks:
         except ValueError as error:
             if 'Stop all Synapse/control' not in str(error): raise
         else: raise AssertionError('Migration must reject active writers')
+        marker = {'schema':1, 'operation':'full-rollout', 'root':str(core), 'attempt':attempt,
+                  'target':role_release.json_digest(target),
+                  'owner':role_release.json_digest(managed_state.read(core/'role.json'))}
+        managed_state.persist(core/'runtime/full-rollout.json',marker)
+        # A real Type=notify unit must exit successfully under planned full
+        # maintenance, without starting a role or entering a restart loop.
+        role_bootstrap.install(core,'core')
+        owned_unit = role_bootstrap.plan(core,'core',None)[3]
+        run(['systemctl','reset-failed','voicechat-core.service'])
+        run(['systemctl','start','voicechat-core.service'])
+        deadline = time.monotonic() + 15
+        while True:
+            boot = dict(line.split('=',1) for line in run(['systemctl','show','voicechat-core.service',
+                '--property=ActiveState,Result,ExecMainStatus,NRestarts']).decode().splitlines() if '=' in line)
+            if boot.get('ActiveState') in ('inactive','failed') or time.monotonic() >= deadline: break
+            time.sleep(.1)
+        if boot != {'ActiveState':'inactive','Result':'success','ExecMainStatus':'0','NRestarts':'0'}:
+            raise AssertionError('Full maintenance did not suppress role boot without restarts: '+json.dumps(boot))
+        identifiers = list(baseline['containers'].values())
+        def processes():
+            return run(['docker','inspect','--format','{{.Id}} {{.State.StartedAt}} {{.RestartCount}}',*identifiers])
+        before_restart_fence = processes()
+        lost = True
+        def lost_reply(arguments, **kwargs):
+            nonlocal lost
+            value = run(arguments, **kwargs)
+            if arguments[:2]==['docker','update'] and lost:
+                lost=False;raise SystemExit('Lost actual restart policy reply')
+            return value
+        try: legacy_core.fence_restart(root,baseline,execute=lost_reply)
+        except SystemExit: pass
+        else: raise AssertionError('Expected lost restart policy response')
+        legacy_core.fence_restart(root,baseline,execute=run)
+        if processes()!=before_restart_fence: raise AssertionError('Restart fencing changed a legacy process')
         compose('stop', 'web', 'synapse', 'control', 'turn')
-        stopped = legacy_core.inspect(root, require_running=False, execute=run)
+        stopped = legacy_core.inspect(root, require_running=False, restart_policy='fenced', execute=run)
         if stopped['data_identity'] != baseline['data_identity']:
             raise AssertionError('Stopped-writer preflight changed the database/signing identity')
+        compose('stop','postgres')
+        if legacy_core.inspect(root,require_running=False,restart_policy='fenced',execute=run)!=baseline:
+            raise AssertionError('Stopped-database fenced resume changed legacy identity')
+        run(['docker','start',baseline['containers']['postgres']])
+        deadline=time.monotonic()+60
+        while json.loads(run(['docker','inspect','--format','{{json .State.Health.Status}}',baseline['containers']['postgres']]))!='healthy':
+            if time.monotonic()>=deadline:raise TimeoutError('Fixture PostgreSQL did not recover')
+            time.sleep(.5)
         # The maintenance caller holds the legacy lock and verifies its backup.
         with legacy_core.locked(root):
             deploy.backup(root, release, env)
@@ -173,13 +220,13 @@ value['database']['args']['host']=sys.argv[1];path.write_text(json.dumps(value))
                     '--mount','type=volume,source=voicechat_synapse,target=/data,volume-nocopy',
                     '--entrypoint','python3',baseline['images']['configure'],'-B','-c',change_host,host])
             database_host('foreign.example.invalid')
-            try: core_deploy.migrate_push_routes(core, target_record, attempt, baseline['data_identity'], execute=run)
+            try: core_deploy.migrate_push_routes(core, target_record, attempt, baseline['data_identity'], execute=run, rollout_attempt=attempt)
             except RuntimeError: pass
             else: raise AssertionError('Foreign database target must be rejected before SQL')
             database_host('postgres')
             def migrate(reverse=False):
                 return core_deploy.migrate_push_routes(core, target_record, attempt,
-                    baseline['data_identity'], reverse=reverse, execute=run)
+                    baseline['data_identity'], reverse=reverse, execute=run, rollout_attempt=attempt)
             if migrate()!=1 or migrate()!=1: raise AssertionError('Forward driver/resume did not find the test pusher')
             def pusher():
                 return json.loads(compose('exec','-T','postgres','psql','-U','synapse','-d','synapse','-At','-c',
@@ -211,6 +258,9 @@ value['database']['args']['host']=sys.argv[1];path.write_text(json.dumps(value))
         if (root / 'current.json').read_bytes() != before:
             raise AssertionError('Legacy recreation forged the release baseline')
         result = {'schema': 1, 'production_changed': False,
+            'actual_restart_policy_fence_lost_reply_resume_preserved_processes':True,
+            'fenced_stopped_database_identity_checked_then_restarted':True,
+            'actual_systemd_full_maintenance_exited_successfully_with_zero_restarts':True,
             'real_legacy_six_services_seven_declared_and_coturn_implicit_volumes_verified': True,
             'real_readonly_probe_preserved_account_device_and_pointer': True,
             'actual_changed_compose_override_rejected': True,
@@ -224,6 +274,11 @@ value['database']['args']['host']=sys.argv[1];path.write_text(json.dumps(value))
             'limits': ['Synthetic legacy Compose from current repository sources, cached source-built control and web images.',
                        'No production baseline adoption, core/edge transition or physical device acceptance.']}
     finally:
+        if boot_unit.exists() or boot_unit.is_symlink():
+            if owned_unit is None or boot_unit.is_symlink() or boot_unit.read_bytes()!=owned_unit:
+                raise ValueError('Unknown core boot unit must be preserved')
+            run(['systemctl','disable','--now','voicechat-core.service'])
+            boot_unit.unlink();run(['systemctl','daemon-reload'])
         override.write_text(original)
         compose('down', '--volumes', '--remove-orphans')
         if baseline is not None:

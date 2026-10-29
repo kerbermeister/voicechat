@@ -13,6 +13,7 @@ import subprocess
 
 import managed_state
 import network_bootstrap
+import role_deploy
 import topology
 from tunnel_runtime import command
 
@@ -203,6 +204,7 @@ def monitor_after(root, role, edge_id=None, *, activate=activate):
                 pending = state.get('pending')
                 backup = root / 'runtime/backup.json'
                 maintenance = role == 'core' and (backup.exists() or backup.is_symlink())
+                maintenance = maintenance or role_deploy.pending_rollout(root) is not None
                 if not maintenance and state.get('current') is not None and (pending is None or pending.get('phase') == 'prepared'):
                     activate(root, role, edge_id)
         except Exception:

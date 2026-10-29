@@ -135,6 +135,56 @@ operator по-прежнему старый, не обновлялся этим 
 boot/monitor на весь multi-step transition, не только child apply locks; не допустить
 возврата writers во время SQL/policy reversal или после reboot pending full.
 
+Full maintenance fence завершён отдельно: `runtime/full-rollout.json` привязан к
+canonical root, role owner, случайному attempt и SHA точного target manifest.
+Отдельные core/edge deploy, backup, push SQL и TLS refresh не обходят его; full
+caller передаёт свой nonce. Boot/monitor не запускают и не останавливают writers
+за coordinator; planned Type=notify exit проходит без restart loop, monitor_after
+отложен до снятия fence. `legacy_core.fence_restart` меняет только captured legacy
+containers на restart=no до backup, повторяя потерянный/частичный update по точному
+baseline. Явные fencing/fenced read-only profiles допускают остановленную PG при
+recovery, обычный strict profile по-прежнему требует healthy PG и прежние политики.
+
+**6 full fence +10 legacy preflight tests PASS**, refresh **6 PASS**; полный suite
+**449 tests OK, skipped=3**.
+[Реальный Docker/systemd VM proof PASS](three-vps-evidence/2026-10-29-vm-legacy-rollout-fence.json):
+restart policy update/lost reply/resume сохранили все процессы; stopped PG metadata
+прочитана и PG запущена; actual maintenance boot success с NRestarts=0. Затем вновь
+выполнены backup/check, nonce-owned SQL forward/resume/reverse и legacy recreation
+с сохранением account/device/PG/signing/coturn. Fixture удалён. Ранний failed probe
+был assertion race: systemctl start возвращает до окончательного inactive; journal
+подтвердил успешный exit. Harness теперь ждёт конечного состояния, runtime ради
+этого не менялся. Текущий32-file operator hash **888ecfec49650211ca41de4b5efc6b8d2bfde5248a82384535669373247c7c96**;
+предыдущий source-upgrade proof2b978… остаётся историческим точным тестом.
+
+Для следующего integrated baseline proof подготовлен source-built control из
+**точного production Git commit8bcbd91**:
+[image provenance](three-vps-evidence/2026-10-29-vm-legacy-control-source-build.json),
+`ghcr.io/voicechat-fixture/legacy-control@sha256:bc8327d779a99c7be95ae057a1d8f1a791c6bf52618fbf0317dfd08292376084`.
+Это новый local VM digest, не production image export и не bit-for-bit claim.
+Все18 runtime COPY inputs cached candidateABC совпали с текущим checkout:
+[проверка](three-vps-evidence/2026-10-29-vm-candidate-control-source-match.json).
+Никакие control registry credentials из production не вывозились. Старый8b supervisor
+имеет5s startup budget, новый30s; при cold TCG проверке учитывать реальный старый
+budget, не подменять код старого image и не скрывать его неудачные старты.
+
+Следующий конкретный шаг — initial one-A coordinator, связывающий эти компоненты.
+Нужны: source-only manager upgrade до parent ingress lock, immutable target/nonce
+journal, legacy timer fence + restart=no до stopped-writer backup, policy snapshot,
+URL-only migration, legacy down **без volumes**, node-local initial WG bootstrap,
+explicit core adoption seed с captured data identity, core/edge warm deploy, TLS
+activation, shared public cutover, catalog и timers. После фактического ingress
+commit только finish-forward; rollback до commit делает current-row push reverse,
+policy restore, удаляет только owned containers (без data volumes), retire initial
+network и legacy recreate с original coturn anonymous volume. Public Mac/Android
+artifacts тоже должны быть сохранены и обслуживаться edge; новые publish paths
+обязательны. Не восстанавливать старый DB dump поверх новых записей и не подделывать
+legacy current.json/backend fingerprint. Full markers оставлять на staged roles
+после rollback, units отключать; новый attempt разрешён только по завершённому
+rollback с явной заменой своего прежнего nonce. При committed child + reboot owner
+должен уметь восстановить current core без повторного configure, пока full fence
+ещё активен; обычный boot по-прежнему заблокирован.
+
 Далее: explicit legacy core adoption/full coordinator и rollback, согласованная
 замена scheduler, TLS delivery/renewal, CI scopes, обязательный macOS/Android release
 и приёмка устройств. Helpers/VM параметры остаются в `.prototype/vm/active.json`.

@@ -154,7 +154,7 @@ print(json.dumps({'server_name': name, 'sha256': hashlib.sha256(key).hexdigest()
     return validate_data_identity({'postgres_system_identifier': match.group(1).decode(), 'signing_sha256': value['sha256']})
 
 
-def migrate_push_routes(root, record, attempt, identity, *, reverse=False, execute=role_deploy.run):
+def migrate_push_routes(root, record, attempt, identity, *, reverse=False, execute=role_deploy.run, rollout_attempt=None):
     """URL-only maintenance before adoption or rollback, with verified backup upstream.
 
     Caller owns the full migration/legacy lock and verified stopped-writer backup.
@@ -167,6 +167,7 @@ def migrate_push_routes(root, record, attempt, identity, *, reverse=False, execu
     if type(reverse) is not bool: raise ValueError('Explicit migration direction required')
     validate_record(record); validate_data_identity(identity)
     with managed_state.locked(root):
+        role_deploy.require_rollout_owner(root, rollout_attempt, record['manifest'])
         require_no_backup(root)
         if runtime_digest(root) != record['runtime_sha256']:
             raise ValueError('Core runtime changed before pusher migration')
@@ -341,6 +342,7 @@ def backup_current(root, public, inventory, *, subnet='10.241.0.0/28', execute=r
     root = Path(root).absolute()
     if root.resolve() != root: raise ValueError('Core root must not traverse symlinks')
     with role_bootstrap.monitor_after(root, 'core', activate=activate_monitor), managed_state.locked(root), check_network(inventory, 'core', subnet, execute=execute):
+        role_deploy.require_rollout_owner(root)
         installation = root / 'runtime/backup-boot/pending.json'
         if installation.exists() or installation.is_symlink():
             raise ValueError('Finish the pending core backup timer installation')
@@ -406,11 +408,12 @@ def backup_current(root, public, inventory, *, subnet='10.241.0.0/28', execute=r
 
 
 def deploy(root, public, inventory, manifest, *, subnet='10.241.0.0/28', execute=role_deploy.run,
-           check_network=role_deploy.network_ready, check_health=healthy, create_backup=backup, check_boot=role_bootstrap.ready, identify_data=data_identity, activate_monitor=role_bootstrap.activate):
+           check_network=role_deploy.network_ready, check_health=healthy, create_backup=backup, check_boot=role_bootstrap.ready, identify_data=data_identity, activate_monitor=role_bootstrap.activate, rollout_attempt=None):
     root = Path(root).absolute()
     if root.resolve() != root: raise ValueError('Core root must not traverse symlinks')
     target = record_for(root, inventory, manifest)
     with role_bootstrap.monitor_after(root, 'core', activate=activate_monitor), managed_state.locked(root), check_network(inventory, 'core', subnet, execute=execute):
+        role_deploy.require_rollout_owner(root, rollout_attempt, manifest)
         require_no_backup(root)
         check_boot(root, 'core')
         release = role_deploy.release_path(root, target)

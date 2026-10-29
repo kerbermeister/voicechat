@@ -192,6 +192,47 @@ class LegacyCorePreflightTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Engine upgrades'):
                 legacy_core.require_compatible(baseline, changed)
 
+    def test_restart_fence_resumes_partial_docker_update_without_changing_processes_or_baseline(self):
+        baseline = self.inspect()
+        calls = []
+        lost = True
+        def execute(args, **kwargs):
+            nonlocal lost
+            if args[:2] == ['docker', 'update']:
+                calls.append(args)
+                for identifier in args[3:]:
+                    current = next(item for item in self.containers.values() if item['id'] == identifier)
+                    current['restart']['Name'] = 'no'
+                    if lost:
+                        lost = False
+                        raise SystemExit('Lost partial restart policy reply')
+                return b''
+            return self.execute(args, **kwargs)
+        with self.assertRaises(SystemExit): legacy_core.fence_restart(self.root, baseline, execute=execute)
+        with self.assertRaisesRegex(ValueError, 'restart contract'): self.inspect()
+        self.assertEqual(legacy_core.fence_restart(self.root, baseline, execute=execute), baseline)
+        self.assertEqual(self.inspect(restart_policy='fenced'), baseline)
+        self.assertTrue(all(item['restart']['Name'] == 'no' for item in self.containers.values()))
+        self.assertTrue(all(item['state']['Running'] for key,item in self.containers.items() if key != 'configure'))
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(json.loads((self.root / 'current.json').read_text()), self.record)
+
+    def test_fenced_resume_can_inspect_stopped_database_but_never_adopts_changed_data_or_policy(self):
+        baseline = self.inspect()
+        for item in self.containers.values():
+            item['restart']['Name'] = 'no'
+            item['state'].update(Running=False, Status='exited')
+            item['networks'] = {}
+        self.assertEqual(self.inspect(require_running=False, restart_policy='fenced'), baseline)
+        self.containers['postgres']['restart']['Name'] = 'always'
+        with self.assertRaisesRegex(ValueError, 'restart contract'):
+            self.inspect(require_running=False, restart_policy='fencing')
+        self.containers['postgres']['restart']['Name'] = 'no'
+        changed = {**baseline, 'source_sha256': '0' * 64}
+        with self.assertRaisesRegex(ValueError, 'baseline changed'):
+            legacy_core.fence_restart(self.root, changed, execute=self.execute)
+        self.assertFalse(any(args[:2] == ['docker','update'] for args in self.calls))
+
     def test_port_ranges_support_docker_expansion_and_preserve_private_bindings(self):
         service = {'ports': [{'target': '50300-50302', 'published': '50300-50302', 'host_ip': '0.0.0.0', 'protocol': 'udp'}]}
         actual = {str(port) + '/udp': [{'HostPort': str(port), 'HostIp': '0.0.0.0'}] for port in range(50300, 50303)}

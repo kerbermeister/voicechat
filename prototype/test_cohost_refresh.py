@@ -9,6 +9,7 @@ import cohost_tls
 import managed_state
 import shared_ingress
 import test_shared_cutover
+from test_full_rollout_fence import fence
 
 
 class CohostRefreshTests(unittest.TestCase):
@@ -44,13 +45,14 @@ class CohostRefreshTests(unittest.TestCase):
         if self.fail_turn and service == 'turn': raise RuntimeError('Fixture TLS reload failure')
         return {'generation': self.generations[service]}
 
-    def refresh(self, *, locked=False):
+    def refresh(self, *, locked=False, rollout_attempt=None):
         with patch.object(cohost_tls, '_source', side_effect=self.source), \
                 patch.object(cohost_tls, '_capture_locked', return_value={'generations': self.generations}) as capture, \
                 patch.object(cohost_tls.tls_activation, 'activate', side_effect=self.activate):
             self.capture = capture
             operation = cohost_tls._refresh_locked if locked else cohost_tls.refresh
-            return operation(self.root, execute=self.execute, system_root=self.system)
+            options = {'rollout_attempt': rollout_attempt} if locked else {}
+            return operation(self.root, execute=self.execute, system_root=self.system, **options)
 
     def test_both_legacy_warm_and_shared_public_modes_verify_the_owned_loopback(self):
         expected = {'edge_id': 'a', 'generations': self.generations}
@@ -65,6 +67,15 @@ class CohostRefreshTests(unittest.TestCase):
             with self.assertRaises(BlockingIOError): self.refresh()
             self.assertEqual(self.calls, [])
             self.refresh(locked=True)
+        self.assertEqual(self.calls, ['web', 'turn'])
+
+    def test_periodic_refresh_cannot_bypass_full_maintenance_but_the_owner_can_resume(self):
+        manifest = managed_state.read(self.edge / 'state.json')['current']['manifest']
+        marker = fence(self.edge, manifest)
+        with self.assertRaisesRegex(ValueError, 'Finish the full rollout'): self.refresh()
+        self.capture.assert_not_called(); self.assertEqual(self.calls, [])
+        with managed_state.locked(self.root):
+            self.refresh(locked=True, rollout_attempt=marker['attempt'])
         self.assertEqual(self.calls, ['web', 'turn'])
 
     def test_wrong_frontend_phase_or_public_binding_fails_before_capture_or_reload(self):

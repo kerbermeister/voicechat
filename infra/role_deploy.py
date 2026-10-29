@@ -2,10 +2,36 @@
 from contextlib import contextmanager
 from pathlib import Path
 import subprocess
+import re
 
 import managed_state
 import network_runtime
 import role_release
+import topology
+
+
+def pending_rollout(root):
+    """Read the role-bound maintenance fence owned by the full coordinator."""
+    root = Path(root).absolute()
+    path = root / 'runtime/full-rollout.json'
+    if not path.exists() and not path.is_symlink(): return None
+    value = managed_state.read(path)
+    topology.fields(value, ('schema', 'operation', 'root', 'attempt', 'target', 'owner'))
+    if (type(value['schema']) is not int or value['schema'] != 1 or value['operation'] != 'full-rollout' or
+            root.resolve() != root or value['root'] != str(root) or
+            any(not isinstance(value[key], str) or not re.fullmatch(r'[a-f0-9]{64}', value[key])
+                for key in ('attempt', 'target', 'owner')) or
+            value['owner'] != role_release.json_digest(managed_state.read(root / 'role.json'))):
+        raise ValueError('Invalid or foreign full rollout fence; explicit recovery required')
+    return value
+
+
+def require_rollout_owner(root, attempt=None, manifest=None):
+    pending = pending_rollout(root)
+    if pending is None:
+        if attempt is not None: raise ValueError('Full rollout owner has no role maintenance fence')
+    elif attempt != pending['attempt'] or manifest is None or role_release.json_digest(manifest) != pending['target']:
+        raise ValueError('Finish the full rollout before a separate role operation')
 
 
 def run(arguments, *, env=None, input=None):

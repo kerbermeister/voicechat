@@ -147,7 +147,7 @@ def healthy(root, record, *, execute=run, warm_port=None):
 
 
 def deploy(root, public, inventory, manifest, core_manifest, *, scope='edge', subnet='10.241.0.0/28',
-           execute=run, check_network=network_ready, check_health=healthy, check_boot=role_bootstrap.ready, activate_monitor=role_bootstrap.activate):
+           execute=run, check_network=network_ready, check_health=healthy, check_boot=role_bootstrap.ready, activate_monitor=role_bootstrap.activate, rollout_attempt=None):
     if scope not in ('web', 'edge'): raise ValueError('Choose web or edge scope')
     root = Path(root).absolute()
     if root.resolve() != root: raise ValueError('Deployment root must not traverse symlinks')
@@ -155,6 +155,7 @@ def deploy(root, public, inventory, manifest, core_manifest, *, scope='edge', su
     target = record_for(public, inventory, manifest)
     edge_id = manifest['edge_id']
     with role_bootstrap.monitor_after(root, 'edge', edge_id, activate=activate_monitor), managed_state.locked(root), check_network(inventory, edge_id, subnet, execute=execute):
+        role_deploy.require_rollout_owner(root, rollout_attempt, manifest)
         check_boot(root, 'edge', edge_id)
         release = release_path(root, target)
         role_release.verify_bundle(release, manifest, public, inventory, subnet)

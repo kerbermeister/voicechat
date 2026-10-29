@@ -79,12 +79,13 @@ def _ports(service, actual):
     if found != expected: raise ValueError('Legacy container port bindings differ from its baseline')
 
 
-def _container(service, current, model, *, running, implicit=()):
+def _container(service, current, model, *, running, implicit=(), restart_policy='legacy'):
     if (current['image'] != service['image'] or current['labels'].get('com.docker.compose.project') != 'voicechat' or
             current['readonly'] != service.get('read_only', False)):
         raise ValueError('Legacy container image, project or filesystem contract changed')
     restart = service.get('restart', 'no')
-    if (current['restart']['Name'] or 'no') != restart or current['restart']['MaximumRetryCount'] != 0:
+    allowed = {'no'} if restart_policy == 'fenced' else {restart, 'no'} if restart_policy == 'fencing' else {restart}
+    if (current['restart']['Name'] or 'no') not in allowed or current['restart']['MaximumRetryCount'] != 0:
         raise ValueError('Legacy container restart contract changed')
     for name in ('cap_add', 'cap_drop'):
         normalize = lambda values: {value.removeprefix('CAP_') for value in (values or [])}
@@ -150,13 +151,15 @@ def _sources(root, release):
     return role_release.json_digest(hashes)
 
 
-def inspect(root, *, execute=role_deploy.run, require_running=True):
+def inspect(root, *, execute=role_deploy.run, require_running=True, restart_policy='legacy'):
     with locked(root) as root:
-        return _inspect_locked(root, execute=execute, require_running=require_running)
+        return _inspect_locked(root, execute=execute, require_running=require_running, restart_policy=restart_policy)
 
 
-def _inspect_locked(root, *, execute=role_deploy.run, require_running=True):
+def _inspect_locked(root, *, execute=role_deploy.run, require_running=True, restart_policy='legacy'):
     """Caller holds the existing legacy deploy lock for the entire maintenance."""
+    if restart_policy not in ('legacy', 'fencing', 'fenced'):
+        raise ValueError('Unknown legacy restart fence profile')
     root = Path(root)
     record = _json(root / 'current.json')
     topology.fields(record, ('release', 'manifest', 'backend', 'backend_config'))
@@ -206,7 +209,8 @@ def _inspect_locked(root, *, execute=role_deploy.run, require_running=True):
         if implicit and (name != 'turn' or implicit != {'/var/lib/coturn'}):
             raise ValueError('Unknown image-declared legacy volume requires separate migration')
         anonymous = _container(service, current, model,
-            running=name == 'postgres' or (require_running and name != 'configure'), implicit=implicit)
+            running=(name == 'postgres' and restart_policy == 'legacy') or (require_running and name != 'configure'),
+            implicit=implicit, restart_policy=restart_policy)
         for volume in anonymous.values():
             value = json.loads(execute(['docker', 'volume', 'inspect', '--format',
                 '{"name":{{json .Name}},"driver":{{json .Driver}},"labels":{{json .Labels}},"options":{{json .Options}}}', volume]))
@@ -222,6 +226,27 @@ def _inspect_locked(root, *, execute=role_deploy.run, require_running=True):
     return {'schema': 1, 'root': str(root), 'record': record, 'matrix_server_name': server_name,
             'runtime_sha256': runtime, 'source_sha256': _sources(root, release),
             'images': images, 'containers': found, 'implicit_volumes': implicit_volumes, 'data_identity': identity}
+
+
+def fence_restart(root, baseline, *, execute=role_deploy.run):
+    with locked(root) as root:
+        return _fence_restart_locked(root, baseline, execute=execute)
+
+
+def _fence_restart_locked(root, baseline, *, execute=role_deploy.run):
+    """Fence only captured legacy containers before the stopped-writer backup.
+
+    Caller holds the legacy lock and has durably recorded the fencing phase.
+    Docker may acknowledge only part of a multi-container update before death;
+    resume accepts exactly old/no policies, never another source or data object.
+    """
+    current = _inspect_locked(root, execute=execute, require_running=False, restart_policy='fencing')
+    if current != baseline: raise ValueError('Legacy baseline changed before restart fencing')
+    identifiers = [baseline['containers'][name] for name in SERVICES if name != 'configure']
+    execute(['docker', 'update', '--restart=no', *identifiers])
+    if _inspect_locked(root, execute=execute, require_running=False, restart_policy='fenced') != baseline:
+        raise ValueError('Legacy identity changed during restart fencing')
+    return baseline
 
 
 def rollback_override(baseline):

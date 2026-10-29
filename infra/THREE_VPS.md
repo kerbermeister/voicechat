@@ -1220,3 +1220,28 @@ service использует уже установленный immutable operato
 процессов. Установленный sealed systemd service тоже выполнился успешно; временная
 fixture CA и ресурсы удалены. ACME storage был синтетическим, core и реальные
 аккаунты/медиапотоки не запускались. Это не production renewal и не выпуск клиентов.
+
+
+### Общий maintenance fence initial/full transaction
+
+Private `runtime/full-rollout.json` привязывает staged роль к canonical root,
+role owner, случайному attempt и SHA конкретного target manifest. Пока он есть,
+обычные deploy/backup/boot/push SQL/periodic TLS refresh запрещены. Full caller
+передаёт свой attempt только для точного target. Runtime monitor при известном
+maintenance не запускает/не останавливает приложения; перезапуск после child commit
+не разрешён до завершения общего coordinator. Снятие fence не подменяет public
+readiness или проверку общего commit.
+
+`legacy_core.fence_restart` нужен до остановки writers и backup: старые контейнеры
+не должны возобновить запись при reboot незавершённой adoption. Меняется только
+restart policy captured IDs, без recreate. Потеря ответа/частичный update повторяются
+по точному source/runtime/data baseline. `fencing` принимает только прежнюю/no policy,
+`fenced` — только no; оба являются явными read-only recovery profiles. Обычный
+preflight сохраняет strict policy/healthy PG contract. Запуск PG перед SQL проверяется
+отдельно; разрешение metadata probe остановленной PG не означает её готовность.
+
+[Реальный VM proof](../docs/iterations/three-vps-evidence/2026-10-29-vm-legacy-rollout-fence.json)
+прошёл update/lost reply/resume без смены процессов, stopped PG metadata, actual
+Type=notify maintenance success/NRestarts=0, nonce-owned SQL и legacy recreation
+с прежними account/device/PG/signing/coturn identity. Это отдельные компоненты,
+общий production full coordinator ещё не подключён.
