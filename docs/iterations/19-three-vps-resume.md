@@ -85,6 +85,15 @@ account/device, PG/signing identity, coturn runtime и pointer сохранен�
 точно совпадают с штатными файлами, кроме User=root; нет drop-ins. Timer enabled/
 active, service static/inactive. Деплой/службы/DNS не менялись.
 
+`legacy_backup.py` завершён отдельно: **6 focused tests PASS**, полный suite
+**428 tests OK, skipped=3**. Private receipt + owned condition drop-in блокируют
+новые legacy backup starts, не убивают in-flight service и сохраняют прежний timer
+state. [Реальный systemd VM proof PASS](three-vps-evidence/2026-10-29-vm-legacy-backup-fence.json):
+ConditionResult=no/ExecMainStart=0, retirement repeat и восстановление enabled/active
+после потерянного ответа actual timer start; исходные units не менялись, fixture
+units/state удалены. В production это не установлено; общий caller обязан держать
+full+legacy lock и завершить rollback data services до restore scheduler.
+
 Далее: explicit legacy core adoption/full coordinator и rollback, согласованная
 замена scheduler, TLS delivery/renewal, CI scopes, обязательный macOS/Android release
 и приёмка устройств. Helpers/VM параметры остаются в `.prototype/vm/active.json`.

@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "actual_systemd_condition_prevented_legacy_backup_execution": true,
+  "retirement_repeat_preserved_original_enabled_active_state": true,
+  "real_timer_restore_lost_response_resumed": true,
+  "legacy_unit_source_unchanged": true,
+  "limits": [
+    "Disposable VM scheduler only; no production adoption or in-flight real backup."
+  ],
+  "fixture_units_and_state_removed": true,
+  "date": "2026-10-29",
+  "source_sha256": {
+    "infra/legacy_backup.py": "a6ddfa00b6a3bb421d28ef3aa067b9d9399a9bb54db39fcc4e0ae38329c25a91",
+    "prototype/check_legacy_backup.py": "fe9e12cfbbad8179cc7c6a902a1a09c5a518b5b28a410dc5f2e26eab8f5f9069"
+  }
+}

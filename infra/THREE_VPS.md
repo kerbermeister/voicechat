@@ -1160,3 +1160,24 @@ backup/check, отказ от foreign DB/active writer, forward/resume и curren
 recreate legacy с теми же account/device/PG/signing/coturn identities и subsequent
 обычный legacy up. Все fixture volumes/containers/network удалены. Это current-source
 synthetic legacy baseline, а не применение к production release или full transition.
+
+
+### Fence прежнего backup scheduler во время adoption
+
+`legacy_backup.retire(attempt_directory, legacy_root)` вызывается под общим migration
+и старым deploy.lock. Он принимает только штатные service/timer файлы для этого root
+с User=root либо voicechat, без чужих drop-ins. Private durable receipt сохраняет
+исходные enabled/active flags. Owned `ConditionPathExists=!<receipt>` drop-in запрещает
+новые старты старого backup, затем timer отключается. Уже начавшийся backup не
+завершается принудительно: операция оставляет fence и требует отпустить deploy.lock,
+дождаться штатного завершения и повторить её до любого изменения data services.
+
+`restore` вызывается после готовности восстановленных legacy служб. Он удаляет
+только свой drop-in, возвращает исходное enabled/active состояние timer и продолжает
+потерянный ответ systemctl по тому же receipt. После завершённого rollback новая
+попытка adoption использует новый attempt directory. Исходные units не переписываются,
+Docker и приложения этим helper не рестартуются. Сам helper ещё не заменяет общий
+full coordinator. [Реальный systemd VM proof](../docs/iterations/three-vps-evidence/2026-10-29-vm-legacy-backup-fence.json)
+подтвердил отказ от исполнения backup по condition, repeat и restore после потерянного
+ответа запуска timer. Гонка с in-flight backup проверена отдельным unit test;
+настоящий backup в этом proof не прерывался и не имитируется как проверенный случай.
