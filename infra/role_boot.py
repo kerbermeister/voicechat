@@ -46,8 +46,7 @@ def start(root, role, edge_id=None, *, execute=role_deploy.run, network_director
                 try:
                     core_deploy.healthy(root, record, execute=execute)
                 except (ValueError, OSError, RuntimeError, subprocess.SubprocessError):
-                    core_deploy.compose(root, record, 'up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'postgres', execute=execute)
-                    core_deploy.compose(root, record, 'up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'synapse', 'control', execute=execute)
+                    core_deploy.start_committed(root, record, execute=execute)
                     core_deploy.healthy(root, record, execute=execute)
             else:
                 with managed_state.locked(root / 'runtime/tls'):

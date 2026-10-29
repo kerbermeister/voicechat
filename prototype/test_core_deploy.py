@@ -62,7 +62,8 @@ class CoreDeployTests(unittest.TestCase):
         if 'cat' in arguments: return json.dumps(self.policy).encode()
         if 'up' in arguments:
             if manifest['commit'] == self.fail_up: raise RuntimeError('Injected startup failure')
-            phase = core_deploy.read_state(self.root)['pending']['phase']
+            pending = core_deploy.read_state(self.root)['pending']
+            phase = pending['phase'] if pending else None
             if phase == self.interrupt_phase:
                 self.interrupt_phase = None
                 raise KeyboardInterrupt('Injected termination')
@@ -176,6 +177,32 @@ class CoreDeployTests(unittest.TestCase):
         self.assertIsNone(self.state()['current'])
         self.deploy(self.old)
         self.assertEqual(self.state()['current']['manifest'], self.old)
+
+    def test_orphaned_backup_reader_blocks_configuration_and_writer_recovery(self):
+        self.deploy(self.old)
+        repository=self.root/'backups/repository';repository.mkdir(parents=True,mode=0o700)
+        record=self.state()['current'];self.calls.clear()
+        def execute(arguments,**kwargs):
+            self.calls.append(arguments)
+            if arguments[:2]==['docker','ps']:return ('1'*64+'\n').encode()
+            if arguments[:2]==['docker','inspect']:
+                return (json.dumps([{'Type':'bind','Source':str(repository),'Destination':'/repository'}])+'\n').encode()
+            raise AssertionError('Writer command ran while a backup still owns the repository')
+        for start in (core_deploy.start_configured,core_deploy.start_committed):
+            with self.assertRaisesRegex(ValueError,'backup container still uses'):
+                start(self.root,record,execute=execute)
+        self.assertFalse(any('up' in arguments or 'run' in arguments for arguments in self.calls))
+        self.assertEqual(self.state()['current'],record)
+
+    def test_other_repository_does_not_block_and_invalid_inspection_fails_closed(self):
+        repository=self.root/'backups/repository';repository.mkdir(parents=True,mode=0o700)
+        def execute(arguments,**kwargs):
+            if arguments[:2]==['docker','ps']:return ('1'*64+'\n').encode()
+            return (json.dumps([{'Type':'bind','Source':'/other/backups/repository'}])+'\n').encode()
+        core_deploy.require_backup_idle(self.root,execute=execute)
+        for invalid in (b'{}\n',b'[]\n[]\n',b'not-json'):
+            with self.assertRaises((ValueError,json.JSONDecodeError)):
+                core_deploy.require_backup_idle(self.root,execute=lambda args,**kw: ('1'*64+'\n').encode() if 'ps' in args else invalid)
 
     def test_fast_successful_configure_is_waited_for_before_starting_writers(self):
         original=self.execute;finished=False

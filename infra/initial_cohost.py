@@ -646,6 +646,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                     time.sleep(.5)
 
             def rollback():
+                core_deploy.require_backup_idle(old_root, execute=execute)
                 if journal['phase'] == 'rollback-stop':
                     disable_role(core, 'core', None, system_root=system_root, run=run)
                     disable_role(edge, 'edge', edge_id, system_root=system_root, run=run)

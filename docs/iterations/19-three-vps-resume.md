@@ -13,22 +13,33 @@ B/C и физической отказоустойчивости пока нет
 Release веткуcodex/three-vps-initial не двигали после24c42bf. Initial повтор не нужен:
 обычный managed release executor/scopes **ещё не реализован**.
 
-Локально послеa9b7a6a добавлены **host-local peer maintenance primitives** в
-infra/managed_fence.py: claim/observe/retarget/release, подготовка immutable target
-без запуска, exact host/nonce/role guards, ожидание выхода boot monitor, durable
-peer intent и восстановление marker↔intent/release gaps. Core и dedicated edge
-прошли одинаковые failure tests. Общее managed inspection допускает чтение под
-fence только exact owner+target; default reads по-прежнему отклоняются. Initial
-coordinator использует тот же marker factory; старое поведение проверено регрессией.
-Full Python **544 PASS/skipped3**,54.772s; managed focused51 PASS,11.121s.
-На VPS новые primitives **не выполнялись**: лишь [read-only reader proof](three-vps-evidence/2026-10-29-production-managed-reader.json)
-на точных Git a9b7a6a sources, current/initial bytes и все running containers
-неизменны, временный public source удалён. Нового rollout/baseline store на A нет.
+Последний committed этап83e051c: host-local claim/observe/retarget/release и
+строгие maintenance guards для core/edge. После него **локально** реализован
+`infra/managed_core_rollback.py`: возврат previous code + исходной private policy,
+без DB restore/volume removal, включая partially applied inner deploy и lost
+rollback commit reply. Source-owned `managed-rollback` phase не допускает обхода
+обычным core deploy. Сохранены early cancel/no-configure и остановка writers перед
+повтором configure при неизвестном результате старта. Добавлен общий guard против
+оставшегося Docker backup reader, используемый перед configure/writer recovery,
+daily backup resume и первоначальным legacy rollback. Нельзя убивать backup/удалять
+его locks для прохождения проверки. Full regression **556 PASS/skipped3**,52.945s;
+10 focused outer core rollback tests PASS. При первом полном прогоне был пойман
+локальный IndentationError в initial rollback guard, исправлен; все touched modules
+прошли py_compile, полный повтор PASS. На production эти изменения не выполнялись.
 
-Следующий этап: actual role apply и безопасный outer rollback, frozen peer entry,
-pinned SSH driver, CI scopes; genuine VM partial/full/interruption tests и затем
-production ordinary release. Нельзя считать journal/maintenance primitives готовым
-обычным deploy. Production source остаётся24c42bf, normal CI ещё не подключён.
+[Production reader proof](three-vps-evidence/2026-10-29-production-managed-reader.json)
+на точных Git a9b7a6a sources: current/initial bytes и все running containers
+неизменны, временный public source удалён. [Production TURN/TLS](three-vps-evidence/2026-10-29-production-turn-tls.json):
+на A через public SNI прошли authenticated allocation, expired credential denial,
+private-peer403 и SFU public-peer permission. Статический secret **остался на A**,
+успешные allocations освобождены, payload не отправляли. С Mac отдельно проверен
+внешний trusted TLS443. Это не реальные аудио/видео/E2EE/failover.
+
+Следующий этап: genuine VM outer-core rollback (реальные Synapse/control/Postgres,
+synthetic session + post-backup writes, private policy и lost commit reply), затем
+edge outer rollback/apply, frozen peer entry, pinned SSH driver и CI scopes.
+Обычный managed CI пока не подключён. Production остаётся24c42bf/core+edge-a,
+никаких новых mutations/rollout/baseline store на A не было.
 
 **macOS24 опубликован и установлен23→24 через кнопку, PASS.** Владелец подтвердил
 Keychain; кандидат открыл прежний профиль. Exact signed ZIP/DMG опубликованы штатным
@@ -46,9 +57,9 @@ VoiceChatRelease/before-update-24; Keychain не удаляли, приватн�
 Android24 exact signed APK готов, физических устройств нет, не опубликован,
 acceptance не подделывать. Real call/screen/E2EE и15s failover остаются открытыми;
 нет B/C, нет Windows hardware/client. Новый normal journal и peer maintenance primitives **локально**, на VPS не
-развёрнуты. Последний полный Python job49364 завершён PASS544/skipped3. Активного
+развёрнуты. Последний полный Python job61417 завершён PASS556/skipped3. Активного
 production/VM/native build job нет. Installed24 открыт в About; candidate закрыт.
-Проверить git status перед продолжением: новые maintenance modules/tests и docs
+Проверить git status перед продолжением: новый core rollback module/tests и docs
 могут быть ещё не закоммичены. Heartbeat voicechat-core-edge сохраняется, дубликат
 не создавать. Продолжать normal apply/rollback/SSH/CI, не повторять initial51 или
 Mac build24. Read-only proof A не означал выполнения peer mutations.
@@ -1691,3 +1702,35 @@ lost retarget, lost release receipt, unknown nonce/host, runtime symlink/mode,
 прежнюю конструкцию с дополнительной owner/runtime проверкой. Весь Python набор
 544 PASS/skipped3,54.772s. Следующий required шаг — actual apply + policy-preserving
 outer rollback, затем transport/CI. Mac24 release закрыт; production51 не менялся.
+
+
+## Policy-preserving outer core rollback + production TURN check
+
+`managed_core_rollback.rollback` принимает только owned baseline fence, проверяет
+runtime/data/host manifest identity и исходный snapshot policy. Работающий backup
+reader блокирует configure/возврат writers, но не убивается. Prepared/ещё не
+сконфигурированный кандидат отменяется без configure/stale snapshot; завершённый
+inner rollback не применяется повторно. После lost outer core state commit reply
+возобновление проверяет committed previous и не повторяет configure. При неизвестном
+precommit результате старта writers останавливаются перед повтором. Новая pending
+phase блокирует ошибочный generic deploy. 10 содержательных unit cases PASS,
+556 full PASS/skipped3,52.945s; **actual VM proof ещё нужен**.
+
+Для следующего VM proof использовать cached fixture control
+`ghcr.io/voicechat-fixture/control@sha256:abc8e6e2f226aec43a3e59e0229b18b72070f4046f79e5a63b99ea410fd7b9d4`.
+VM проверена: /srv/voicechat-edge-fixture/.disposable-vm присутствует, Docker
+контейнеров сейчас нет, voicechat-network active/exited. Original peerless WG
+intent/key не менять/не регенерировать. Можно переиспользовать setup из
+prototype/check_core_backup_current.py без network isolation: берёт текущую VM
+inventory и стартует core на5 новых synthetic named volumes. Перед стартом
+отказать при любых existing voicechat containers/volumes/unit. Synthetic account
+seed через admin registration HMAC; secrets/tokens не печатать. Real policy
+проверять валидным изменением text_max_length в fixture volume после candidate,
+остановив writers на время правки, затем start_committed. Перед обратным откатом
+записать post-backup account data/SQLite sentinel и доказать их сохранение. Можно
+включить managed_fence claim/retarget/release и настоящий monitor quiescence.
+Cleanup только собственных контейнеров/5 volumes/owned unit, не удалять два старых
+anonymous coturn volumes и original network. Source wrapper .prototype/vm-exec.py,
+VM SSH54926, marker synthetic host key закреплён. Временный test source только
+точные Git public infra/prototype files; production keys/images/credentials не
+копировать. После proof проверить original network active/bytes unchanged.

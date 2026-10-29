@@ -1,0 +1,19 @@
+{
+  "a_public_sni_turn_authenticated": true,
+  "expired_credential_denied": true,
+  "private_peer_permissions_denied": true,
+  "configured_sfu_public_peer_permission_allowed": true,
+  "successful_test_allocations_released": true,
+  "turn_process_unchanged": true,
+  "static_turn_secret_remained_on_A": true,
+  "relay_payloads_sent": false,
+  "mac_external_tls443_trusted": true,
+  "mac_observed_leaf_sha256": "ba7f1aff22659a073643ff577393e0b709f15a92d5f7fdf7a6a163b6b954f7b9",
+  "schema": 1,
+  "date": "2026-10-29",
+  "production_commit": "24c42bf866ba7d2ee3e17bd7d0f6a51a05705172",
+  "limits": [
+    "TURN authentication/permissions on A; external trusted TLS from Mac.",
+    "No media payload, real call, E2EE or 15-second failover acceptance in this check."
+  ]
+}

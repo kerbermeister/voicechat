@@ -23,7 +23,7 @@ import role_bootstrap
 import role_release
 import topology
 
-PHASES = ('prepared', 'stopping', 'backed-up', 'applying', 'rollback')
+PHASES = ('prepared', 'stopping', 'backed-up', 'applying', 'rollback', 'managed-rollback')
 
 
 def runtime_digest(root):
@@ -320,6 +320,47 @@ def restore_policy(root, old, target, *, execute):
             '--entrypoint', 'python3', 'configure', '-c', script, execute=execute)
 
 
+def require_backup_idle(root, *, execute=role_deploy.run):
+    """A lost SSH process may leave its Docker Restic child reading volumes.
+
+    Never resume/configure writers while that repository is still mounted by
+    a running container. Ignore other projects' repositories; do not kill a
+    backup, delete its locks or manufacture a successful snapshot.
+    """
+    repository = Path(root) / 'backups/repository'
+    if not repository.exists() and not repository.is_symlink(): return
+    if repository.resolve() != repository or not repository.is_dir():
+        raise ValueError('Canonical core backup repository required')
+    identifiers = execute(['docker','ps','-q','--no-trunc']).decode().split()
+    if not identifiers: return
+    if len(identifiers) > 1024 or any(not re.fullmatch(r'[a-f0-9]{64}',item) for item in identifiers):
+        raise ValueError('Unexpected backup container inspection response')
+    rows = execute(['docker','inspect','--format','{{json .Mounts}}',*identifiers]).decode().splitlines()
+    if len(rows) != len(identifiers): raise ValueError('Incomplete backup container inspection')
+    for row in rows:
+        mounts = json.loads(row)
+        if not isinstance(mounts,list) or any(not isinstance(item,dict) for item in mounts):
+            raise ValueError('Invalid backup container mounts')
+        if any(item.get('Type') == 'bind' and item.get('Source') == str(repository) for item in mounts):
+            raise ValueError('A backup container still uses this repository; wait and resume the owned operation')
+
+
+def start_configured(root, record, *, execute=role_deploy.run):
+    require_backup_idle(root, execute=execute)
+    # up --wait alone races a fast successful one-shot. Check its exit code
+    # explicitly before dependent writers are allowed to start.
+    compose(root, record, 'up', '-d', '--no-deps', 'configure', execute=execute)
+    compose(root, record, 'wait', 'configure', execute=execute)
+    compose(root, record, 'up', '-d', '--wait', '--wait-timeout', '180', execute=execute)
+
+
+def start_committed(root, record, *, execute=role_deploy.run):
+    """Recover existing committed services without replaying configure."""
+    require_backup_idle(root, execute=execute)
+    compose(root, record, 'up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'postgres', execute=execute)
+    compose(root, record, 'up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', 'synapse', 'control', execute=execute)
+
+
 def backup(root, old):
     legacy.backup(root, role_deploy.release_path(root, old), environment(old), core=True)
 
@@ -380,6 +421,7 @@ def backup_current(root, public, inventory, *, subnet='10.241.0.0/28', execute=r
             if identify_data(root, record, execute=execute) != state['data_identity']:
                 raise ValueError('Core data identity changed during backup')
             # Never run configure, another release or a restore to resume writers.
+            require_backup_idle(root, execute=execute)
             compose(root, record, 'up', '-d', '--no-deps', '--no-build', '--pull', 'never',
                     '--wait', '--wait-timeout', '180', 'postgres', 'synapse', 'control', execute=execute)
             check_health(root, record, execute=execute)
@@ -422,6 +464,8 @@ def deploy(root, public, inventory, manifest, *, subnet='10.241.0.0/28', execute
             raise ValueError('At least 2 GiB free space required before core deployment')
         state = read_state(root)
         old, pending = state['current'], state['pending']
+        if pending is not None and pending['phase'] == 'managed-rollback':
+            raise ValueError('Resume the owned managed core rollback before deployment')
         if old:
             role_deploy.release_path(root, old)
             if any(old['manifest'][name] != manifest[name] for name in ('service_id', 'identity', 'contracts', 'node_sha256')) or any(old[name] != target[name] for name in ('address', 'runtime_sha256')):
@@ -454,16 +498,12 @@ def deploy(root, public, inventory, manifest, *, subnet='10.241.0.0/28', execute
         def stop(record):
             compose(root, record, 'stop', 'synapse', 'control', execute=execute)
         def up(record):
-            # up --wait races a fast successful one-shot: Compose may report
-            # exited(0) as failure. Explicit wait checks the actual exit code
-            # and also waits for an already running configure after interruption.
-            compose(root, record, 'up', '-d', '--no-deps', 'configure', execute=execute)
-            compose(root, record, 'wait', 'configure', execute=execute)
-            compose(root, record, 'up', '-d', '--wait', '--wait-timeout', '180', execute=execute)
+            start_configured(root, record, execute=execute)
         def verify_previous_identity():
             if identify_data(root, old, execute=execute) != state['data_identity']:
                 raise ValueError('Rollback data identity changed; explicit recovery is required')
         def rollback():
+            require_backup_idle(root, execute=execute)
             stop(target)
             restore_policy(root, old, target, execute=execute)
             up(old)
