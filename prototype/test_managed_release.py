@@ -139,6 +139,11 @@ class ManagedBaselineStorageTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
 
+    def test_read_of_missing_storage_does_not_initialize_it(self):
+        with self.assertRaisesRegex(ValueError,'Existing immutable baseline storage'):
+            managed_release.load_baseline(self.root,'f'*64)
+        self.assertEqual(list(self.root.iterdir()),[])
+
     def test_32_edges_roundtrip_without_increasing_managed_document_limit(self):
         public = self.baseline['public']; inventory = self.baseline['inventory']
         public['edges'] = [{'id': 'e'+str(n), 'origin': 'https://edge'+str(n)+'.example.com',

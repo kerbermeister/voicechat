@@ -1,7 +1,8 @@
 """Conservative release planning from a typed, per-role production baseline.
 
-Planning is read-only: no SSH, containers, catalog publication or pointer writes.
-The caller must obtain the baseline from verified role state on pinned hosts.
+Planning and inspection never publish catalogs or change release pointers.
+Explicit baseline storage writes bounded immutable objects only. The caller must
+obtain the baseline from verified role state on pinned hosts.
 """
 from copy import deepcopy
 import argparse
@@ -108,7 +109,10 @@ def load_baseline(root, checksum):
     root = Path(root).absolute()
     if root.resolve() != root or not root.is_dir():
         raise ValueError('Existing canonical managed root required')
-    with managed_state.locked(root / 'baselines') as directory:
+    directory = root / 'baselines'
+    if directory.is_symlink() or not directory.is_dir():
+        raise ValueError('Existing immutable baseline storage required')
+    with managed_state.locked(directory):
         value = _baseline_object(directory, checksum)
         topology.fields(value, ('schema', 'backend', 'public', 'inventory', 'subnet', 'core', 'edges'))
         if not isinstance(value['edges'], dict) or not 1 <= len(value['edges']) <= 32:

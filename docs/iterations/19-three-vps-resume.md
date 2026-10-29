@@ -1,33 +1,48 @@
 # Точка продолжения: три и более VPS
 
-## Актуальная сводка: production retry51
+## Актуальная сводка: production core/edge включены
 
-29.10.2026: GitHub sudo подтверждён владельцем, production DEPLOY_ROOT сохранён
-как `/srv/voicechat-managed`. **Активный [run51](https://github.com/kerbermeister/voicechat/actions/runs/40935478252)**,
-job123664752501, commit24c42bf866ba7d2ee3e17bd7d0f6a51a05705172,
-веткаcodex/three-vps-initial, initial/full/deploy=true/**retry_initial=true**.
-Ветку не двигать и второй deployment не запускать. Тесты CI и web build прошли;
-последнее наблюдение — сборка control. Run50 failed/rolled-back, независимо
-проверены legacy/data/keys/тома, соседние процессы и HTTPS. Причина — Compose5.5.1
-гонка успешного one-shot configure, в24c42bf исправлена explicit compose wait.
+29.10.2026: **[run51 SUCCESS](https://github.com/kerbermeister/voicechat/actions/runs/40935478252)**,
+initial/full/deploy=true/retry_initial=true, commit24c42bf866ba7d2ee3e17bd7d0f6a51a05705172.
+Source bundle02899e149483a3ebf20c7ae44902e320f268c863571192f630f9b7f1ec49c3ba.
+[Независимый postcheck](three-vps-evidence/2026-10-29-production-initial-postcheck.json):
+initial phasecomplete, typed current/actual core+edge baseline, PG systemID/signingSHA
+сохранены, соседние4 процесса неизменны, оба HTTPS200, backup/TLS timers enabled/
+active, old backup timer inactive. Работа идёт на **одном физическом A, core+edge-a**;
+B/C и физической отказоустойчивости пока нет. GitHub DEPLOY_ROOT=/srv/voicechat-managed.
+Release веткуcodex/three-vps-initial не двигали после24c42bf. Initial повтор не нужен:
+обычный managed release executor/scopes **ещё не реализован**.
 
-В worktree после24c42bf идут **отдельные локальные** изменения managed_release
-store/load baseline: content-addressed bounded objects/index для32 входов,
-без изменения production pointers. Они не входят в run51 и не означают готовый
-обычный managed executor/scopes. Не подмешивать их в immutable run51 bundle.
+Текущий локальный HEAD424c61d добавил store/load baseline objects/index для32 входов,
+без изменения production pointers. После него уточнено read-only missing-store
+поведение (16 focused tests PASS). Полный набор:506 PASS/skipped3,37.907s.
+Это подготовка следующего coordinator, не готовый normal rollout. Следующий этап:
+журнал на A, per-role fences/проверки, последовательные core/edges, recovery/rollback,
+pinned SSH delivery и CI web/edge/core/full; затем actualVM proofs и production.
 
-macOS24 exact signed ZIP распакован и запущен через CUA, About=1.12.0(24),
-процесс из `.prototype/macos-24-extracted/VoiceChat.app`. Профиль/installed23 заранее
-сохранены в VoiceChatRelease/before-update-24. Candidate пока ждёт saved session:
-legacy `/health/route` возвращает HTML200 вместо нового JSON, поэтому такую
-проверку продолжить **после успешного cutover**, не объявлять принятой. Native
-About закрыт, главное окно кандидата открыто; private beforeIDs/history в CUA.
-DMG readonly mounted, codesign verified, полный app payload равен exact signed ZIP;
-volume detached. Ничего не опубликовано, installed23 не заменён, Keychain не удаляли.
+**macOS24 не опубликован: Keychain handoff.** Exact signed ZIP распакован/запущен,
+About=1.12.0(24), PID84413 из `.prototype/macos-24-extracted/VoiceChat.app`.
+Независимая lsof/sample диагностика без вывода приватных данных: secureDB ещё не
+открыт, нативная библиотека загружена, поток ждёт SecItemCopyMatching. SecurityAgent
+PID84436 появился при запуске24; CUA явно запрещает com.apple.SecurityAgent.
+Асинхронно попросили владельца локально подтвердить запрос и написать
+«Keychain подтверждён»; пароль в чат не просили. Оставить candidate ожидающим,
+не обходить ограничение CUA и не удалять Keychain/profile. Новый `/health/route`
+публично JSON200 matrix/control=true; прежний feed23 сохранён с hash03cc2b….
 
-Postcheck `/tmp/voicechat-production-postcheck.py` закреплён на24c42bf; запускать
-только после complete/run51. Активные jobs проверять по факту; при возобновлении
-сначала посмотреть CI/initial.json, не повторять уже прошедшие VM/native builds.
+App23+профиль заранее сохранены в VoiceChatRelease/before-update-24. Точный DMG
+readonly/codesign/full payload comparison с ZIP прошёл, volume detached. Native
+before user/device/history в CUA-памяти: выводить только сравнение, не сами значения.
+После handoff проверить sameaccount/device/history на exact24, затем штатный
+publish_macos.py в **edges/a/runtime/macos-updates**, HTTPS feed+hashes/signatures,
+запустить installed23 и выполнить About→Checkupdates→Install23→24 с проверкой
+прежней истории. Не объявлять выпуск готовым до этого. Android24 exact signed APK
+готов, физических устройств нет, не опубликован, acceptance не подделывать.
+
+Активного deployment/VM/build job нет; потенциальные старые exec sessions уже
+завершены. PID84413 candidate остаётся в системном Keychain ожидании. Heartbeat
+voicechat-core-edge сохраняется; не создавать дубликат и не останавливаться из-за
+этого локального handoff — продолжать независимый managed executor.
 
 ## История предыдущих этапов
 
@@ -1573,3 +1588,20 @@ GitHub DEPLOY_ROOT=/srv/voicechat-managed уже сохранён после п�
 39.410s. Это подготовка ordinary coordinator, **не его готовая реализация/CI**.
 [macOS24 предварительные проверки](three-vps-evidence/2026-10-29-macos24-prepublish.json)
 сохраняют границу: ZIP/DMG/signatures/About проверены, session/update ещё не приняты.
+
+
+## Production51 принят технически; normal coordinator остаётся
+
+Independent postcheck SUCCESS на точном24c42bf/source02899e…; значения commit/digests,
+полная role baseline, PG/signingidentity, HTTPS и timers сохранены в evidence.
+Первичный переход **не повторять**. Полный исправленный порядок configure→wait→
+dependent writers также отдельно прошёл actual Docker Compose на A без production
+данных/сети/credentials, временный проект удалён. Проверка fresh production web
+через CUA IAB: обычный экран входа, семантика и About1.12.0(24) открылись; аккаунт
+не вводился. Скриншоты production-initial-51-complete и production-web24-about в
+visualizations текущего чата. Это не приёмка web account recovery/медиа.
+
+Следующий локальный шаг — durable normal release journal на A (baseline references,
+ordered per-role operations, CAS/lost reply, no duplicate apply), затем pinned SSH
+role operations и CI scopes. Не выдавать готовый initial handler за ordinary full.
+macOS24 остаётся в Keychain handoff, приложение/профиль23 сохранены, feed23 прежний.

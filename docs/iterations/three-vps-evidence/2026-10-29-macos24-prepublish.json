@@ -13,7 +13,9 @@
   "previous_app_and_profile_backed_up": true,
   "installed_23_not_replaced": true,
   "keychain_not_deleted": true,
-  "candidate_session_acceptance": "pending: legacy readiness endpoint returns HTML rather than route JSON before core/edge cutover",
+  "candidate_session_acceptance": "blocked: native SecItemCopyMatching waits for system Keychain confirmation; CUA refuses SecurityAgent",
   "published": false,
-  "sparkle_23_to_24_update_verified": false
+  "sparkle_23_to_24_update_verified": false,
+  "system_keychain_confirmation_required": true,
+  "user_confirmation_requested": true
 }

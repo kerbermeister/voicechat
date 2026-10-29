@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "production_initial_committed": true,
+  "commit": "24c42bf866ba7d2ee3e17bd7d0f6a51a05705172",
+  "source_bundle_sha256": "02899e149483a3ebf20c7ae44902e320f268c863571192f630f9b7f1ec49c3ba",
+  "control_image": "ghcr.io/kerbermeister/voicechat/control@sha256:8a7117660bf425112e4a3a82a108d95a7e876434a1fd73ff0f7d24d8a64ee0bf",
+  "web_image": "ghcr.io/kerbermeister/voicechat/web@sha256:b0165839b83a7f044c3b8a46f8c62a51bb8ebf823b2636f234a0b22d28b01583",
+  "actual_core_and_edge_baseline_verified": true,
+  "original_database_and_signing_identity_preserved": true,
+  "legacy_release_pointer_preserved_and_controller_retired": true,
+  "neighbor_upstream_processes_unchanged": true,
+  "https_status": {
+    "univc.duckdns.org": 200,
+    "listing-helper.flashhub.net": 200
+  },
+  "timers": {
+    "voicechat-cohost-tls.timer": "enabled/active",
+    "voicechat-core-backup.timer": "enabled/active"
+  },
+  "legacy_backup_timer_inactive": true,
+  "limits": [
+    "One physical A with cohost edge a; no physical B/C redundancy.",
+    "No real-device call/screen/E2EE or 15-second failover acceptance in this check."
+  ]
+}

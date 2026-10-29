@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "two_stage_configure_then_dependent_writers_passed": true,
+  "production_services_and_data_not_modified": true,
+  "scope": "unique disposable project, network none, no volumes or credentials"
+}

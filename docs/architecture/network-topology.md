@@ -1,7 +1,9 @@
 # Сетевая топология VoiceChat: от одного VPS к нескольким входам
 
-28 октября 2026. Схема согласованного решения и локально подготовленного кода;
-это не описание уже выполненного production-развёртывания. Основание:
+29 октября 2026. Production работает по первой схеме: один VPS A с отдельными
+core и cohost edge-a, shared-front и сохранёнными данными/identity. Переход выполнен
+[run51](../iterations/three-vps-evidence/2026-10-29-production-initial-postcheck.json).
+Схема расширения B/C/D/E ниже — целевая, дополнительные VPS ещё не подключены. Основание:
 [ТЗ](../three-vps-spec.md), [план](../tasks/19-three-vps.md),
 [проверки и ограничения](../iterations/19-three-vps.md).
 
@@ -41,7 +43,7 @@ single-host web/TURN. Этот переход требует отдельной 
 
 Если на том же VPS уже работает другой сайт, общий порт 443 принадлежит отдельному
 shared-front. Он не зависит от `voicechat-network.service` и не управляется edge
-deploy/stop. Ниже целевой профиль текущего VPS; миграция ещё не применена.
+deploy/stop. Ниже профиль текущего VPS после production миграции.
 
 ```mermaid
 flowchart LR
