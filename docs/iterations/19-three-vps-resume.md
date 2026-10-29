@@ -65,13 +65,26 @@ code cache без ownership receipt в новой сети VM. Global coordinato
 production не ослаблен. Расширенный isolation proof повторён успешно.
 Scheduler slots предварительно проверяются до maintenance. Fixture cleanup покрыта
 проверками отказа чужого unit и запрета остановки активного backup.
-**Второй цельный прогон запущен, ещё не принят**; сеть и boot units установлены,
-журнал дошёл до `core`, PostgreSQL/control healthy, Synapse стартует. Wrapper локально:
-`/tmp/voicechat-initial-cohost-vm.py`; runner session **76081**, frozen source VM
-`/srv/voicechat-edge-fixture/legacy-preflight-source-2v604tbj`.
-Private probe log находится в этом source-каталоге. Не запускать параллельно другой
-fixture с project=voicechat/deploy и не удалять архив исходной сети при ошибке.
-Новый suite 464 PASS не заменяет цельный VM proof; fault drills ещё впереди.
+**Второй цельный прогон прошёл**:
+[initial cohost PASS](three-vps-evidence/2026-10-29-vm-initial-cohost.json).
+Проверены exact legacy 8bcbd91→backup/check→push migration→fresh network/boot→core
+и edge→warm TLS→public shared ingress→timers→same-target repeat. Сохранились
+account/device/account data, PG/signing identity и прежний legacy pointer.
+Fixture resources удалены; независимая проверка подтвердила отсутствие контейнеров,
+именованных VoiceChat volumes и role/backup units, original network active.
+Это synthetic data/CA/key/fingerprint; настоящие устройства/media и production
+не проверены этим прогоном.
+
+**Теперь идут failure drills**, ещё не приняты: отказ до public commit, запись
+account data после snapshot с проверкой rollback без её потери, потеря ответа
+после core commit, actual role boot fence при остановленных контейнерах,
+потеря ответа после public commit и forward recovery без повторного configure.
+Wrapper `/tmp/voicechat-initial-cohost-faults-vm.py`, runner session **88699**,
+source `/srv/voicechat-edge-fixture/legacy-preflight-source-v9jzj5za`.
+Private probe log находится в source-каталоге. Не запускать параллельно другой
+fixture project=voicechat/deploy. Не удалять архив исходной сети/кеша при ошибке.
+Production transition, normal managed core/full/edge/web CI orchestration,
+client releases и реальные устройства/media остаются впереди.
 
 Production службы, данные и DNS в этом шаге не менялись.
 

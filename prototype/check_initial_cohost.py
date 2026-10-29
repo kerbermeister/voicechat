@@ -11,6 +11,7 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'infra'))
@@ -27,6 +28,7 @@ import role_deploy
 import role_release
 import route_catalog
 import shared_front
+import shared_cutover
 from initial_cohost_business import business
 
 
@@ -56,7 +58,106 @@ def remove_units(expected, timers, *, run):
     run(['systemctl','daemon-reload'])
 
 
-def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run):
+
+def fenced_stop(core, edge, *, run, roles=('core','edge')):
+    snapshots = {}
+    for root, role, edge_id in ((core,'core',None),(edge,'edge','a')):
+        if role not in roles:continue
+        state = core_deploy.read_state(root) if role == 'core' else edge_deploy.read_state(root,edge_id)
+        if state['current'] is None: continue
+        record = state['current']
+        compose = core_deploy.compose if role == 'core' else edge_deploy.compose
+        configuration = compose(root,record,'ps','-a','-q','configure',execute=run).decode().strip()
+        if not configuration: raise AssertionError('Missing committed configure container')
+        snapshots[str(root)] = run(['docker','inspect','--format',
+            '{{.Id}} {{.State.StartedAt}} {{.RestartCount}}',configuration])
+        services = ['postgres','synapse','control'] if role == 'core' else ['route-health','web','turn']
+        compose(root,record,'stop',*services,execute=run)
+        identifiers = compose(root,record,'ps','-a','-q',*services,execute=run).decode().split()
+        if not identifiers: raise AssertionError('Missing stopped committed roles')
+        role_bootstrap.ready(root,role,edge_id)
+        if initial_cohost.role_deploy.pending_rollout(root) is None:
+            raise AssertionError('Full owner fence was cleared before global commit')
+        unit = role_bootstrap.unit_name(role,edge_id)
+        run(['systemctl','start',unit])
+        deadline=time.monotonic()+20
+        while True:
+            status=dict(line.split('=',1) for line in run(['systemctl','show',unit,
+                '--property=ActiveState,Result,ExecMainStatus,NRestarts']).decode().splitlines() if '=' in line)
+            if status.get('ActiveState') in ('inactive','failed') or time.monotonic()>=deadline:break
+            time.sleep(.1)
+        if status != {'ActiveState':'inactive','Result':'success','ExecMainStatus':'0','NRestarts':'0'}:
+            raise AssertionError('Full fence failed to suppress actual role boot')
+        if any(value != 'false' for value in run(['docker','inspect','--format',
+                '{{.State.Running}}',*identifiers]).decode().split()):
+            raise AssertionError('Boot fence restarted a stopped role')
+    return snapshots
+
+
+def check_configure_snapshots(snapshots, *, run):
+    for name,expected in snapshots.items():
+        root=Path(name);role='core' if root.name=='core' else 'edge'
+        state=core_deploy.read_state(root) if role=='core' else edge_deploy.read_state(root,'a')
+        compose=core_deploy.compose if role=='core' else edge_deploy.compose
+        identifier=compose(root,state['current'],'ps','-a','-q','configure',execute=run).decode().strip()
+        if run(['docker','inspect','--format','{{.Id}} {{.State.StartedAt}} {{.RestartCount}}',identifier]) != expected:
+            raise AssertionError('Committed full recovery re-executed configure')
+
+
+def fault_sequence(root,core,edge,shared,deploy,api,path,account_data,*,run):
+    # Write new account data after the stopped-writer snapshot. A rollback that
+    # restored that snapshot would lose it, even if account login still worked.
+    def before_public(*args,**kwargs):
+        account_data['nonce']=secrets.token_hex(16)
+        api('http://10.88.0.1:8088',path,'PUT',account_data)
+        raise ValueError('Injected failure before public commit')
+    with patch.object(shared_cutover,'_activate_locked',side_effect=before_public):
+        try:deploy()
+        except ValueError as error:
+            if str(error)!='Injected failure before public commit':raise
+        else:raise AssertionError('Expected pre-public rollback')
+    if managed_state.read(root/'initial.json')['phase']!='rolled-back':
+        raise AssertionError('Initial controller did not finish legacy rollback')
+    if api('http://127.0.0.1:8088',path)!=account_data:
+        raise AssertionError('Legacy rollback restored stale account data')
+    run(['systemctl','is-active','--quiet',legacy_backup.TIMER])
+    original_persist=managed_state.persist;original_activate=shared_cutover._activate_locked
+    lost={'core':False,'public':False}
+    def core_reply(path,value):
+        original_persist(path,value)
+        if (path==core/'state.json' and value.get('current') is not None and
+                value.get('pending') is None and not lost['core']):
+            lost['core']=True
+            raise SystemExit('Injected lost committed core reply')
+    def public_reply(*args,**kwargs):
+        result=original_activate(*args,**kwargs)
+        if not lost['public']:
+            lost['public']=True
+            raise RuntimeError('Injected lost committed public reply')
+        return result
+    with patch.object(managed_state,'persist',side_effect=core_reply), \
+            patch.object(shared_cutover,'_activate_locked',side_effect=public_reply):
+        try:deploy(retry=True)
+        except SystemExit as error:
+            if str(error)!='Injected lost committed core reply':raise
+        else:raise AssertionError('Expected core commit interruption')
+        if managed_state.read(root/'initial.json')['phase']!='core':
+            raise AssertionError('Lost core reply did not preserve its global phase')
+        core_snapshot=fenced_stop(core,edge,run=run,roles=('core',))
+        try:deploy()
+        except RuntimeError as error:
+            if str(error)!='Injected lost committed public reply':raise
+        else:raise AssertionError('Expected public commit interruption')
+        check_configure_snapshots(core_snapshot,run=run)
+        if managed_state.read(root/'initial.json')['phase']!='finish':
+            raise AssertionError('Committed public transition did not select forward recovery')
+        public_snapshot=fenced_stop(core,edge,run=run)
+        current=deploy()
+        check_configure_snapshots(public_snapshot,run=run)
+    return current
+
+
+def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fault_drills=False):
     if Path('/var/lib/voicechat-network').exists():
         raise ValueError('Isolate the original marked VM network before creating legacy resources')
     directory=old_root/'full-fixture';directory.mkdir(mode=0o700)
@@ -106,8 +207,11 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run):
         with business(directory,edge,public,inventory,neighbor,run=run) as (shared,execute,ca):
             try:
                 print('Full fixture: starting journaled initial migration',file=sys.stderr,flush=True)
-                current=initial_cohost.migrate(root,old_root,shared,public,inventory,candidate,envelope,catalog_key,
-                    backend_sha256=hashlib.sha256(b'synthetic-full-vm-candidate').hexdigest(),execute=execute,ca_file=ca)
+                def deploy(**options):
+                    return initial_cohost.migrate(root,old_root,shared,public,inventory,candidate,envelope,catalog_key,
+                        backend_sha256=hashlib.sha256(b'synthetic-full-vm-candidate').hexdigest(),execute=execute,ca_file=ca,**options)
+                current=(fault_sequence(root,core,edge,shared,deploy,api,path,account_data,run=run)
+                         if fault_drills else deploy())
                 assert current['data_identity']==baseline['data_identity']
                 assert core_deploy.data_identity(core,core_deploy.read_state(core)['current'],execute=execute)==baseline['data_identity']
                 assert managed_state.read(root/'initial.json')['phase']=='complete'
@@ -123,7 +227,8 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run):
                     'account_device_account_data_database_and_signing_identity_preserved':True,
                     'legacy_release_pointer_unchanged':True,'production_changed':False,
                     'limits':['Synthetic accounts, CA, catalog key and candidate fingerprint on the marked VM.',
-                              'No real device/media acceptance, production transition or full-phase fault drills.']}
+                              'No real device/media acceptance, production transition or actual machine reboot.'],
+                    'pre_public_rollback_and_committed_core_public_recovery_drills':fault_drills}
             finally:
                 expected={}
                 for role_root,role,edge_id in ((core,'core',None),(edge,'edge','a')):

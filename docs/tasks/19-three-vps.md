@@ -556,8 +556,11 @@ peerless network, core/edge warm-up, публичный commit и восстан
 без отката БД. Девять focused проверок и полный набор 459 Python tests прошли. Отдельный
 legacy→push→legacy proof повторён на точных исходниках production 8bcbd91
 ([evidence](../iterations/three-vps-evidence/2026-10-29-vm-exact-legacy-rollout-fence.json));
-целый VM сценарий и подключение к
-workflow пока открыты. Не использовать как подтверждённый production deploy.
+обычный целый VM сценарий завершён:
+[initial migration PASS](../iterations/three-vps-evidence/2026-10-29-vm-initial-cohost.json),
+account/device/account data и PG/signing identity сохранены, source legacy 8bcbd91.
+Failure drills и подключение к workflow пока открыты. Не использовать как
+подтверждённый production deploy.
 
 
 Зависимости: V3-07, V3-08, V3-09, V3-10, V3-19.
