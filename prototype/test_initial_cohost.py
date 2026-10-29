@@ -16,6 +16,7 @@ import legacy_core
 import managed_state
 import network_runtime
 import role_release
+import role_bootstrap
 import topology
 from test_node_inventory import fixture
 import test_legacy_core
@@ -159,6 +160,46 @@ class InitialCohostPlanningTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'differs'):
                 initial_cohost.existing_network(directory,inventory,subnet,previous,execute=lambda *_:b'')
 
+    def test_boot_preflight_rejects_unclaimed_slots_without_installing_anything(self):
+        root=self.base/'role';root.mkdir(mode=0o700)
+        system=self.base/'system';units=system/'etc/systemd/system';units.mkdir(parents=True)
+        initial_cohost.check_role_boot(root,'core',None,system_root=system)
+        self.assertFalse((root/'runtime').exists())
+        name,_,_,unit,target=role_bootstrap.plan(root,'core',None)
+        (units/name).write_bytes(unit)
+        with self.assertRaisesRegex(ValueError,'Unclaimed'):
+            initial_cohost.check_role_boot(root,'core',None,system_root=system)
+        self.assertEqual((units/name).read_bytes(),unit)
+        boot=root/'runtime/boot';boot.mkdir(parents=True,mode=0o700)
+        managed_state.persist(boot/'pending.json',{'target':target,'previous':None})
+        initial_cohost.check_role_boot(root,'core',None,system_root=system)
+        self.assertFalse((boot/'current.json').exists())
+        (units/(name+'.d')).mkdir()
+        with self.assertRaisesRegex(ValueError,'drop-in'):
+            initial_cohost.check_role_boot(root,'core',None,system_root=system)
+
+    def test_rollback_before_boot_install_or_after_partial_owned_install(self):
+        root=self.base/'role';root.mkdir(mode=0o700)
+        system=self.base/'system';units=system/'etc/systemd/system';units.mkdir(parents=True)
+        calls=[]
+        def run(*args):calls.append(args)
+        initial_cohost.disable_role(root,'core',None,system_root=system,run=run)
+        self.assertEqual(calls,[])
+        name,_,_,unit,target=role_bootstrap.plan(root,'core',None)
+        boot=root/'runtime/boot';boot.mkdir(parents=True,mode=0o700)
+        managed_state.persist(boot/'pending.json',{'target':target,'previous':None})
+        (units/name).write_bytes(unit)
+        initial_cohost.disable_role(root,'core',None,system_root=system,run=run)
+        self.assertEqual(calls,[('systemctl','disable','--now',name)])
+        calls.clear();(units/name).write_bytes(unit+b'# foreign change')
+        with self.assertRaisesRegex(ValueError,'Modified pending'):
+            initial_cohost.disable_role(root,'core',None,system_root=system,run=run)
+        self.assertFalse(calls)
+        (boot/'pending.json').unlink()
+        with self.assertRaisesRegex(ValueError,'Unclaimed'):
+            initial_cohost.disable_role(root,'core',None,system_root=system,run=run)
+        self.assertFalse(calls)
+
     def test_namespace_cleanup_requires_exact_compose_source_and_preserves_every_volume(self):
         case = test_legacy_core.LegacyCorePreflightTests();case.setUp();self.addCleanup(case.doCleanups)
         expected = (case.release/'infra/compose.yaml',)
@@ -171,6 +212,12 @@ class InitialCohostPlanningTests(unittest.TestCase):
             return case.execute(args,**kwargs)
         models=[(expected,case.model)]
         self.assertEqual(len(initial_cohost.namespace('voicechat',models,execute=execute)),6)
+        # Failed Compose startup may leave fully owned containers never started.
+        case.containers['control']['state']['Status']='created'
+        case.containers['control']['state']['Running']=False
+        with self.assertRaisesRegex(ValueError,'lifecycle'):
+            legacy_core._container(case.model['services']['control'],case.containers['control'],
+                                   case.model,running=False)
         initial_cohost.remove_namespace('voicechat',models,execute=execute)
         self.assertEqual([args[1] for args in mutations],['stop','rm'])
         self.assertFalse(any('-v' in args or '--volumes' in args for args in mutations))

@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "production_changed": false,
+  "vm_directory": "/srv/voicechat-edge-fixture/boot-dependency-probe-61ju5gfq",
+  "observed_missing_network_unit_verification_exit": 1,
+  "observed_error": "Unit voicechat-network.service not found.",
+  "original_network_restoration_phase": "restored",
+  "original_network_active_after_probe": true,
+  "actual_docker_stop_rm_never_started_container_succeeded": true,
+  "limits": [
+    "Marked disposable Debian VM. This identifies boot installation ordering and checks cleanup behavior; it is not a full migration proof."
+  ]
+}

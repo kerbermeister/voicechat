@@ -87,7 +87,7 @@ def _ports(service, actual):
     if found != expected: raise ValueError('Legacy container port bindings differ from its baseline')
 
 
-def _container(service, current, model, *, running, implicit=(), restart_policy='legacy', project='voicechat'):
+def _container(service, current, model, *, running, implicit=(), restart_policy='legacy', project='voicechat', allow_created=False):
     if (current['image'] != service['image'] or current['labels'].get('com.docker.compose.project') != project or
             current['readonly'] != service.get('read_only', False)):
         raise ValueError('Legacy container image, project or filesystem contract changed')
@@ -104,7 +104,8 @@ def _container(service, current, model, *, running, implicit=(), restart_policy=
     state = current['state']
     if running and (not state['Running'] or ('healthcheck' in service and state.get('Health', {}).get('Status') != 'healthy')):
         raise ValueError('Existing legacy services must be running and healthy')
-    if not running and state['Status'] not in ('running', 'exited'):
+    lifecycle = ('running', 'exited', 'created') if allow_created else ('running', 'exited')
+    if not running and state['Status'] not in lifecycle:
         raise ValueError('Unknown legacy container lifecycle state')
     networks = {model['networks'][key]['name'] for key in service.get('networks', {'default': {}})}
     if set(current['networks']) != networks and (state['Running'] or current['networks']):

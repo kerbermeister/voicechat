@@ -21,8 +21,8 @@ Boot recovery committed роли под full fence разрешён только
 исходного fingerprint; новый peerless registry привязан к generation и сохраняет ключ.
 Неверный SSH host и remote Docker отвергаются до записи состояния.
 
-Последний подтверждённый полный набор — **459 Python tests, OK, skipped=3**;
-координатор — **9 focused PASS**. CLI и backup scheduler используют одну выбранную
+Последний подтверждённый полный набор — **461 Python tests, OK, skipped=3**;
+координатор после следующего исправления — **11 focused PASS**. CLI и backup scheduler используют одну выбранную
 подсеть. Commit **76707dc** сохраняет первый кандидат координатора.
 В VM завершена проверка старого Git **8bcbd91** с source-built legacy control
 **bc8327…** и candidate **abc8e6…**:
@@ -35,6 +35,33 @@ Fixture ресурсы удалены; исходная VM network незави�
 Следующий шаг — цельный сценарий координатора с подготовленным cohost ingress,
 изолированной новой сетью VM, public commit, fault drills и восстановлением
 исходной VM-сети без смены её ключа.
+
+Новый [VM isolation proof](three-vps-evidence/2026-10-29-vm-network-isolation.json)
+проверил atomic archive/restore исходного peerless intent/key и active network.
+`prototype/initial_cohost_network.py` нужен только полному disposable-VM harness;
+в production этот тестовый helper не запускается. Начальный network key не удаляется.
+[Проверка systemd](three-vps-evidence/2026-10-29-vm-initial-boot-dependency.json)
+выявила обязательный порядок: boot-unit с Requires=network не проходит verify до
+появления network unit. Координатор теперь заранее только проверяет свободные/
+owned boot slots, а устанавливает их после network и до запуска core. Rollback
+обрабатывает ещё не установленный/частично установленный owned unit; чужие unit и
+drop-ins отвергаются. Namespace cleanup допускает строго проверенный `created`
+контейнер после неудачного Compose up; legacy baseline preflight остаётся строгим.
+Actual Docker stop/rm never-started контейнера проверен, временный контейнер удалён.
+
+Цельный VM harness теперь подготовлен: `check_legacy_core_preflight.py
+--initial-cohost` использует `check_initial_cohost.py`, `initial_cohost_business.py`
+и `initial_cohost_network.py`. Он создаёт старый 8bcbd91, соседний Caddy/HTTP-сервис,
+synthetic CA/catalog key, запускает coordinator и проверяет account/device/account
+ data, data/signing identity и same-target repeat. Оригинальная VM network хранится
+целиком в private fixture root до удаления тестовых приложений, затем восстанавливается.
+**Первый цельный прогон запущен, ещё не принят.** Wrapper локально:
+`/tmp/voicechat-initial-cohost-vm.py`; runner session **54811**, frozen source VM
+`/srv/voicechat-edge-fixture/legacy-preflight-source-_qro8dki`.
+Private probe log находится в этом source-каталоге. Не запускать параллельно другой
+fixture с project=voicechat/deploy и не удалять архив исходной сети при ошибке.
+Новый suite 461 PASS не заменяет цельный VM proof; fault drills ещё впереди.
+
 Production службы, данные и DNS в этом шаге не менялись.
 
 ## Актуальное состояние: production ingress, 29 октября

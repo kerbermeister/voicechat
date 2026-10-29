@@ -243,7 +243,7 @@ def namespace(project, models, *, execute):
         if implicit and (name != 'turn' or implicit != {'/var/lib/coturn'}):
             raise ValueError('Unknown migration image volume must be preserved')
         legacy_core._container(service, value, model, running=False, implicit=implicit,
-                               restart_policy='fencing', project=project)
+                               restart_policy='fencing', project=project, allow_created=True)
         found[name] = value
     return found
 
@@ -257,8 +257,52 @@ def remove_namespace(project, models, *, execute):
     return current
 
 
+
+def check_role_boot(root, role, edge_id, *, system_root):
+    """Reject occupied boot slots before stopping any legacy writer."""
+    name, code, contents, unit, target = role_bootstrap.plan(root, role, edge_id)
+    destination = system_root / 'etc/systemd/system' / name
+    if destination.with_name(name + '.d').exists():
+        raise ValueError('Unknown role boot drop-in must be preserved')
+    current_path, pending_path = root/'runtime/boot/current.json', root/'runtime/boot/pending.json'
+    current = managed_state.read(current_path) if current_path.exists() or current_path.is_symlink() else None
+    if current is not None:
+        if role_bootstrap.verify_record(system_root,current) != name or current['root'] != str(root):
+            raise ValueError('Boot service belongs to another installation')
+    pending = managed_state.read(pending_path) if pending_path.exists() or pending_path.is_symlink() else None
+    if pending is not None:
+        topology.fields(pending, ('target','previous'))
+        if pending['target'] != target or (pending['previous'] != current and current != target):
+            raise ValueError('Resume the same pending boot installation first')
+    installed = network_bootstrap.existing(destination)
+    allowed = {None}
+    if current is not None: allowed.add(current['unit_sha256'])
+    if pending is not None: allowed.add(role_release.digest(unit))
+    if installed is not None and role_release.digest(installed) not in allowed:
+        raise ValueError('Unclaimed or modified role boot unit must be preserved')
+    role_bootstrap.check_sources(system_root,code,contents)
+
+
 def disable_role(root, role, edge_id, *, system_root, run):
-    receipt = managed_state.read(root / 'runtime/boot/current.json')
+    name = role_bootstrap.unit_name(role, edge_id)
+    if (system_root / 'etc/systemd/system' / (name + '.d')).exists():
+        raise ValueError('Unknown role boot drop-in must be preserved')
+    receipt_path = root / 'runtime/boot/current.json'
+    if not receipt_path.exists() and not receipt_path.is_symlink():
+        pending = root / 'runtime/boot/pending.json'
+        name, _, _, expected_unit, expected = role_bootstrap.plan(root, role, edge_id)
+        destination = system_root / 'etc/systemd/system' / name
+        installed = network_bootstrap.existing(destination)
+        if pending.exists() or pending.is_symlink():
+            if managed_state.read(pending) != {'target':expected,'previous':None}:
+                raise ValueError('Foreign pending boot installation must be preserved')
+            if installed not in (None, expected_unit):
+                raise ValueError('Modified pending boot unit must be preserved')
+            if installed is not None: run('systemctl', 'disable', '--now', name)
+        elif installed is not None or destination.with_name(name + '.d').exists():
+            raise ValueError('Unclaimed boot unit must be preserved')
+        return
+    receipt = managed_state.read(receipt_path)
     name = role_bootstrap.verify_record(system_root, receipt)
     if receipt['root'] != str(root) or receipt['role'] != role or receipt['edge_id'] != edge_id:
         raise ValueError('Foreign role boot unit must be preserved')
@@ -389,6 +433,8 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                     raise ValueError('Existing edge state needs its own rollout or adoption')
                 if execute(['docker','ps','-aq','--filter','label=com.docker.compose.project=voicechat-edge-'+edge_id]).strip():
                     raise ValueError('Existing edge containers need an explicit adoption before initial migration')
+                for directory, role, identifier in ((core,'core',None),(edge,'edge',edge_id)):
+                    check_role_boot(directory,role,identifier,system_root=system_root)
                 private_file(core / 'runtime/stand.env', private_environment(old_root, baseline['runtime_sha256']))
                 core_record = core_deploy.record_for(core, inventory, target['core'])
                 configuration = core_deploy.configuration(core, core_record, execute=execute)
@@ -404,7 +450,6 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                         prior = marker(directory, previous_roles[manifest['role']], previous_roles['attempt']) if previous_roles else None
                         if existing not in (None, prior, expected_marker): raise ValueError('Another full rollout owns the role')
                         managed_state.persist(directory / 'runtime/full-rollout.json', expected_marker)
-                    role_bootstrap.install(directory, manifest['role'], manifest['edge_id'], system_root=system_root, run=run)
                 for name in ('android-updates', 'macos-updates'):
                     copy_public(old_root / 'runtime' / name, edge / 'runtime' / name)
                 captured = cohost_tls._capture_locked(shared, execute=execute, system_root=system_root, ca_file=ca_file)
@@ -575,6 +620,8 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                     if not retired.exists(): network_runtime.reconcile(network, intent, run=run)
                     network_bootstrap.install(system_root, run=run, shared_host=True,
                                               restore_initial=fingerprint if retired.exists() else None)
+                    for directory, manifest in ((core,target['core']),(edge,target['edge'])):
+                        role_bootstrap.install(directory,manifest['role'],manifest['edge_id'],system_root=system_root,run=run)
                     phase('core')
                 if journal['phase'] == 'core':
                     with managed_state.locked(core):
