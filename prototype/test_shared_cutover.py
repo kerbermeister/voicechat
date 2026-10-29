@@ -101,6 +101,20 @@ class SharedPortCutoverTests(unittest.TestCase):
         return shared_cutover.activate(self.root, self.plan, self.front_plan, execute=self.execute,
             check_edge=self.edge_health, check_business=self.business_health, system_root=self.system)
 
+    def test_full_migration_reuses_parent_lock_and_keeps_neighbor_deployments_fenced(self):
+        with managed_state.locked(self.root):
+            with self.assertRaises(BlockingIOError): self.activate()
+            self.assertEqual(self.events, [])
+            result = shared_cutover._activate_locked(self.root, self.plan, self.front_plan,
+                execute=self.execute, check_edge=self.edge_health,
+                check_business=self.business_health, system_root=self.system)
+            self.assertEqual(result['plan'], self.plan.name)
+            with self.assertRaises(BlockingIOError):
+                with managed_state.locked(self.root): pass
+        # The coordinator releasing its lock also releases the neighbor fence.
+        self.assertEqual(self.activate(), result)
+        self.assertEqual(self.events, ['caddy', 'front-public'])
+
     def test_cutover_and_repeat_preserve_environment_and_select_shared_ownership(self):
         environment = self.fixture.environment.read_bytes()
         result = self.activate()

@@ -155,12 +155,27 @@ def _read(root, plan, front_plan, intent, *, execute, system_root):
 def activate(root, plan, front_plan, *, execute=role_deploy.run, check_edge=edge_deploy.healthy,
              check_business=business_healthy, system_root=Path('/')):
     """Commit only after trusted edge readiness and neighboring HTTPS succeed."""
+    root = Path(root).absolute()
+    if root.resolve() != root:
+        raise ValueError('Canonical shared ingress required')
+    with managed_state.locked(root):
+        return _activate_locked(root, plan, front_plan, execute=execute, check_edge=check_edge,
+                                check_business=check_business, system_root=system_root)
+
+
+def _activate_locked(root, plan, front_plan, *, execute=role_deploy.run, check_edge=edge_deploy.healthy,
+                     check_business=business_healthy, system_root=Path('/')):
+    """Caller holds the shared ingress lock throughout the full installation migration.
+
+    Reusing that lock fences neighboring deployments across core maintenance and
+    port takeover; the child locks retain the normal frontend/edge/TLS ordering.
+    """
     root, plan, front_plan = (Path(path).absolute() for path in (root, plan, front_plan))
     if root.resolve() != root or front_plan.parent.parent != root / 'front':
         raise ValueError('Canonical shared ingress and its owned frontend required')
     target, _ = ingress.read_plan(root, plan, system_root=system_root)
     edge_root = Path(target['edge_root'])
-    with managed_state.locked(root), managed_state.locked(root / 'front'), managed_state.locked(edge_root), managed_state.locked(edge_root / 'runtime/tls'):
+    with managed_state.locked(root / 'front'), managed_state.locked(edge_root), managed_state.locked(edge_root / 'runtime/tls'):
         if any((root / name).exists() or (root / name).is_symlink() for name in ('pending.json', 'update.json')):
             raise ValueError('Finish pending ingress adoption or business deployment before port cutover')
         journal = root / 'configuration.json'
