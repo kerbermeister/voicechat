@@ -8,7 +8,7 @@
   "raw_credentials_absent_from_result": true,
   "source_sha256": {
     "infra/shared_ingress.py": "8a77b39f99904153df60fb9adc09a66d56a3524852d670f494d9ca8348e691d0",
-    "infra/role_bootstrap.py": "f8507ec5fba910819822848070934586ce1830af6c87ab636f526c9b49ddaa82",
+    "infra/role_bootstrap.py": "897ad02cd2009fb31e93dd852bd70dc1f59e5ba4acb072a91bdb82a00644b60c",
     "prototype/check_shared_legacy_inspect.py": "1ec03f63248ac6bf1759aa81c89e384a7266a684f15dbeeebf1ada04273d369b",
     "infra/shared_update.py": "2259f0baed940850fcd94d79412b39b36b08a828dfa7b2fff82cb60aecac7453",
     "infra/shared_config.py": "20032071cb67c154cfa531cde88c4c1352fe16a1e2f625140aa00210d1f1785b"
@@ -25,7 +25,7 @@
   "historical_adoption_faults_not_repeated": true,
   "actual_historical_operator_source_upgrade": true,
   "previous_operator_sha256": "e9648a0be5de03eedd75dcd1e06d2b82d10d04f53f53927cf775ffb468f50696",
-  "upgraded_operator_sha256": "2b978af938912d1e5e21001992201fd2c51437844443baf2f15b41737630821d",
+  "upgraded_operator_sha256": "876ae8f4c7d2128c6ae56ae32e111706441ad2e6143dc8f59669ec25e485b833",
   "manager_source_upgrade_preserved_all_container_processes": true,
   "installed_immutable_manager_cli": true,
   "workflow_only_deploy_preserved_all_processes": true,

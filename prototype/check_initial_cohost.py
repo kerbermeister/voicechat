@@ -22,6 +22,7 @@ import edge_deploy
 import initial_cohost
 import legacy_backup
 import managed_state
+import managed_release
 import network_bootstrap
 import role_bootstrap
 import role_deploy
@@ -227,12 +228,24 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
                 assert who['user_id']==session['user_id'] and who['device_id']==session['device_id']
                 assert api(private_origin,path)==account_data
                 assert (old_root/'current.json').read_bytes()==legacy_pointer
+                retirement=initial_cohost.legacy_guard(old_root,root,current['target'])
+                assert managed_state.read(old_root/'role-deployment.json')==retirement
+                try:initial_cohost.legacy.deploy(old_root,old_root/'releases/forbidden',None)
+                except SystemExit as error:
+                    if 'core/edge roles' not in str(error):raise
+                else:raise AssertionError('Legacy controller ignored the retirement marker')
+                typed=managed_release.from_initial(current)
+                planned=managed_release.plan(typed,candidate,typed['backend'],scope='web')
+                assert planned['core']==typed['core']
+                assert planned['steps']==[{'role':'edge','edge_id':'a'}]
                 for role_root in (core,edge):assert not (role_root/'runtime/full-rollout.json').exists()
                 assert initial_cohost.migrate(root,old_root,shared,public,inventory,candidate,envelope,catalog_key,
                     backend_sha256=hashlib.sha256(b'synthetic-full-vm-candidate').hexdigest(),execute=execute,ca_file=ca)==current
                 result={'full_initial_cohost_migration_committed':True,'same_target_complete_resume':True,
                     'account_device_account_data_database_and_signing_identity_preserved':True,
                     'legacy_release_pointer_unchanged':True,'production_changed':False,
+                    'legacy_controller_retired_before_runtime_or_docker':True,
+                    'typed_initial_baseline_and_web_scope_plan_verified':True,
                     'limits':['Synthetic accounts, CA, catalog key and candidate fingerprint on the marked VM.',
                               'No real device/media acceptance, production transition or actual machine reboot.'],
                     'pre_public_rollback_and_committed_core_public_recovery_drills':fault_drills}

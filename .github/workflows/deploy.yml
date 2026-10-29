@@ -6,6 +6,15 @@ on:
         description: Deploy to VPS after publishing images
         type: boolean
         default: true
+      rollout:
+        description: Legacy release or the one-time journaled core/cohost transition
+        type: choice
+        options: [legacy, initial]
+        default: legacy
+      retry_initial:
+        description: Explicit new attempt after a completed initial rollback
+        type: boolean
+        default: false
       mode:
         description: Full release or web only (requires an unchanged deployed backend)
         type: choice
@@ -29,6 +38,8 @@ jobs:
       DEPLOY_USER: ${{ vars.DEPLOY_USER }}
       DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT }}
       RELEASE_MODE: ${{ inputs.mode }}
+      SERVER_ROLE_CONFIG: ${{ vars.SERVER_ROLE_CONFIG }}
+      SIGNED_ROUTE_CATALOG: ${{ vars.SIGNED_ROUTE_CATALOG }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - name: Validate public deployment configuration
@@ -37,10 +48,17 @@ jobs:
           python3 infra/client_config.py --environment "$PUBLIC_URL" /tmp/client.json
           python3 -c 'import json; assert json.load(open("/tmp/client.json"))["MATRIX_URL"].startswith("https://")'
           python3 infra/release_source.py
+      - name: Validate initial rollout contract
+        if: ${{ inputs.rollout == 'initial' }}
+        run: |
+          test "$RELEASE_MODE" = full
+          if [ '${{ inputs.deploy }}' = true ]; then
+            python3 infra/initial_entry.py --check-environment
+          fi
       - name: Reject routed client deployment through legacy single-host deploy
-        if: ${{ inputs.deploy }}
-        # shortcut: routed builds remain build-only until role deploy gates are connected.
-        run: python3 -c 'import json; assert "ROUTE_CONFIG" not in json.load(open("/tmp/client.json")), "Use deploy=false for routed candidates until role rollout is implemented"'
+        if: ${{ inputs.deploy && inputs.rollout != 'initial' }}
+        # Ordinary managed scopes remain gated until their full controller is proven.
+        run: python3 -c 'import json; assert "ROUTE_CONFIG" not in json.load(open("/tmp/client.json")), "Select initial for the first transition, or deploy=false for build-only"'
       - name: Set up pinned SSH identity
         if: ${{ inputs.deploy || inputs.mode == 'web' }}
         env:
@@ -165,8 +183,18 @@ jobs:
           name: release-${{ github.sha }}
           path: /tmp/release.tar.gz
           retention-days: 30
+      - name: Deploy the initial cohost transition using pinned host identity
+        if: ${{ inputs.deploy && inputs.rollout == 'initial' }}
+        env:
+          RETRY_INITIAL: ${{ inputs.retry_initial }}
+        run: |
+          if [ "$RETRY_INITIAL" = true ]; then
+            python3 infra/ssh_deploy.py initial --retry
+          else
+            python3 infra/ssh_deploy.py initial
+          fi
       - name: Deploy using pinned host identity
-        if: ${{ inputs.deploy }}
+        if: ${{ inputs.deploy && inputs.rollout != 'initial' }}
         run: |
           if [ "$RELEASE_MODE" = web ]; then
             python3 infra/ssh_deploy.py deploy --web-only

@@ -559,7 +559,7 @@ legacy→push→legacy proof повторён на точных исходник
 обычный целый VM сценарий завершён:
 [initial migration PASS](../iterations/three-vps-evidence/2026-10-29-vm-initial-cohost.json),
 account/device/account data и PG/signing identity сохранены, source legacy 8bcbd91.
-[Failure drills PASS](../iterations/three-vps-evidence/2026-10-29-vm-initial-cohost-faults.json): rollback сохраняет новые записи, retry и lost core/public commit восстанавливаются без повторного configure. Подключение к workflow пока открыто. Не использовать как
+[Failure drills PASS](../iterations/three-vps-evidence/2026-10-29-vm-initial-cohost-faults.json): rollback сохраняет новые записи, retry и lost core/public commit восстанавливаются без повторного configure. Initial handler подключён к отдельному `rollout=initial, mode=full`; настоящие CI/production проверки ещё открыты. Planner web/edge/core/full и чтение per-role baseline покрыты 12 unit checks, исполнение обычных managed scopes ещё открыто. Не использовать как
 подтверждённый production deploy.
 
 

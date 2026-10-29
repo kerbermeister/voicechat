@@ -1185,3 +1185,44 @@ Runner использует `en_US.UTF-8`, необходимый при хол�
 перед production нужно также переключить canonical DEPLOY_ROOT на managed root
 и проверить отказ старого workflow. Финальный fault proof выше относится к
 предыдущему hash initial controller; новая защита пока покрыта unit, не новым VM.
+
+## Сквозной CI initial путь — следующий этап
+
+29.10: `managed_release.py` добавляет read-only план web/edge/core/full и фактический
+per-role baseline: pinned host, role/bundle/boot ownership, locks, pending/fence,
+process IDs/StartedAt/RestartCount, runtime hash и data identity. Выбор произвольных
+edge IDs и mixed web versions покрыт 12 unit checks. Это пока план/чтение, не обычный
+managed rollout controller.
+
+`initial_entry.py` + `ssh_deploy.py initial` соединяют frozen source delivery с
+проверенным initial coordinator; GitHub `Build and deploy` получает явный
+`rollout=initial, mode=full`, build-only остаётся доступен. Envelope/raw public key
+передаются stdin; private signing key/runtime/registry credentials не принимаются.
+5 entry/transport checks и workflow YAML PASS. Последний уникальный полный набор **497 PASS/3 skip** (39.662s);
+повторный импорт test class исправлен. Клиентский кандидат поднят до **1.12.0+24**, не выпущен.
+
+Повтор old28/e964 manager→current32/**876ae8…** прошёл на VM с сохранением всех
+процессов: [evidence](three-vps-evidence/2026-10-29-vm-manager-28-to-32.json).
+Текущий цельный VM proof retirement/typed baseline **ещё идёт**:
+`/tmp/voicechat-initial-cohost-retirement-vm.py`, exec session **97397**, source
+`/srv/voicechat-edge-fixture/legacy-preflight-source-unml653o`, fixture
+`/srv/voicechat-edge-fixture/legacy-preflight-p7pzzrjy`; последняя фаза **edge**.
+Не запускать параллельно другой VM fixture. Новые `initial_entry.py`/baseline reader
+появились после freeze этого прогона; этот proof не проверяет сам CI entry point.
+
+Production baseline обновлён read-only: app по-прежнему 8bcbd91, backend ad44fd…,
+plan 5b27…, managed root отсутствует, контейнеры healthy, свободно около 36.6 GB.
+По разрешению владельца установлен **только wireguard-tools 1.0.20210914-1ubuntu4**:
+[evidence](three-vps-evidence/2026-10-29-production-wireguard-tools.json).
+Проверены неизменность всех running container IDs/StartedAt/RestartCount и network
+links; WG interface не активирован, DNS и приложение не менялись.
+
+В private `.prototype/production/` готовы `server-role-config.json`,
+`signed-route-catalog.json`, `initial-request.json`: исходный production inventory,
+shared TLS profile, canonical edge a, root /srv/voicechat-managed; каталог revision1
+на 30 суток подписан существующим offline key и проверен. На VPS/GitHub ещё не
+отправлены; ключ не меняли и не вывозили. Следующее: закончить активный VM proof,
+проверить exact CI entry bundle, commit/push, запустить штатный build-only CI;
+после его проверок настроить public config variables и выполнять initial full.
+Затем canonical DEPLOY_ROOT→managed (защита от старых workflows), обычные managed
+обновления, обязательный Sparkle выпуск24 и реальная приёмка устройств/media.

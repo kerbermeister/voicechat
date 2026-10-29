@@ -8,6 +8,7 @@ import re
 import shlex
 import subprocess
 
+import initial_entry
 import release_delivery
 import release_source
 
@@ -75,13 +76,38 @@ def receive(ssh, managed_root, commit, archive, *, checkout=None):
         subprocess.run([*ssh,cleanup],check=True)
 
 
+def initial(ssh, config, commit, archive, *, checkout=None, retry=False):
+    """Run only the verified initial controller, through the same pinned SSH."""
+    raw=json.dumps(config,separators=(',',':')).encode()
+    initial_entry.request(raw)  # Fail before staging sources on the selected host.
+    delivery=receive(ssh,config['root'],commit,archive,checkout=checkout)
+    arguments=['python3','-B',delivery['path']+'/infra/initial_entry.py',
+               '--root',config['root'],'--source-sha',delivery['archive_sha256']]
+    if retry:arguments.append('--retry')
+    value=json.loads(subprocess.check_output([*ssh,shlex.join(arguments)],input=raw))
+    if (set(value)!={'schema','kind','root','commit','target'} or type(value['schema']) is not int or
+            value['schema']!=1 or value['kind']!='roles' or value['root']!=config['root'] or
+            value['commit']!=commit or not isinstance(value['target'],str) or
+            not release_delivery.SHA.fullmatch(value['target'])):
+        raise ValueError('Initial controller returned an unexpected completion record; inspect its journal')
+    return value
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', choices=('read', 'deploy', 'receive'))
+    parser.add_argument('action', choices=('read', 'deploy', 'receive', 'initial'))
     parser.add_argument('--web-only', action='store_true')
     parser.add_argument('--output',type=Path)
+    parser.add_argument('--retry',action='store_true')
     args = parser.parse_args()
     ssh, target, root = connection()
+    if args.retry and args.action!='initial':parser.error('Explicit retry applies only to initial migration')
+    if args.action == 'initial':
+        if args.web_only or args.output is not None:parser.error('Initial deployment does not use web-only or receiver output')
+        config=initial_entry.environment()
+        if root not in (config['root'],config['legacy_root']):raise ValueError('Deployment root differs from the configured installation')
+        result=initial(ssh,config,os.environ['GITHUB_SHA'],Path('/tmp/release.tar.gz'),retry=args.retry)
+        print(json.dumps(result));return
     if args.action == 'receive':
         if args.web_only or args.output is None:parser.error('Receive needs --output and does not select a release scope')
         result=receive(ssh,os.environ.get('MANAGED_ROOT',root+'-managed'),os.environ['GITHUB_SHA'],Path('/tmp/release.tar.gz'))

@@ -1314,3 +1314,32 @@ Git commit и backend fingerprint до обращения к хосту. Пinned
 bootstrap берётся из проверенного архива, передаётся stdin и удаляется после приёма.
 `--output` создаёт новый private receipt, не перезаписывает существующий файл.
 Проверки: 5 unit и Linux VM SSH/repeat (86 public files); workflow ещё не подключён.
+
+### CI: первоначальный переход одного физического A
+
+`Build and deploy`: `rollout=initial`, `mode=full`. При `deploy=false` только
+сборка; при `deploy=true` обязательны проверенные environment variables:
+
+- `SERVER_ROLE_CONFIG`: JSON с `schema=1`, `root`, `legacy_root`, `shared_root`,
+  `public` (topology), `inventory`, `subnet`. Для первого перехода — ровно один
+  canonical cohost edge с `legacy_turn=true` и shared TLS profile.
+- `SIGNED_ROUTE_CATALOG`: публичный envelope от offline Ed25519 signer для
+  точного `public`; `CLIENT_ROUTE_CATALOG_KEY` — существующий raw public key.
+- `PUBLIC_URL`, `DEPLOY_HOST/USER/ROOT` и существующие pinned SSH secrets.
+
+`initial_entry.py --check-environment` проверяет контракт до сборки. SSH transport
+сверяет clean Git/archive/backend fingerprint, получает immutable source bundle
+и вызывает entry point из него. JSON передаётся stdin; секреты runtime, registry
+и private signing key не входят в этот контракт. На A ещё раз проверяются все
+файлы receipt, подпись, хост и ограничения координатора. Host tools должны быть
+подготовлены заранее; workflow не устанавливает пакеты автоматически.
+
+После завершённого rollback новый attempt требует явного `retry_initial=true`.
+Прерванный незавершённый attempt продолжается тем же source artifact; новый commit
+вместо незавершённого не принимается. Public commit восстанавливается вперёд.
+`rollout=legacy` сохраняет запрет routed deployment; обычные managed scopes ещё
+не подключены. `managed_release.py` планирует web/edge/core/full, читает фактический
+per-role baseline с locks/host/bundle/boot/data checks, но не исполняет этот план.
+
+Текущий CI initial handler покрыт unit/contract checks; настоящий GitHub initial
+release ещё не выполнен. Не считать изменение workflow завершённым production-переходом.
