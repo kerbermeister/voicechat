@@ -8,8 +8,8 @@ import network_runtime
 import role_release
 
 
-def run(arguments, *, env=None):
-    result = subprocess.run(arguments, env=env, capture_output=True, timeout=300)
+def run(arguments, *, env=None, input=None):
+    result = subprocess.run(arguments, env=env, input=input, capture_output=True, timeout=300)
     if result.returncode:
         raise RuntimeError('Role deployment command failed; consult private service logs')
     if len(result.stdout) > 1024 * 1024:

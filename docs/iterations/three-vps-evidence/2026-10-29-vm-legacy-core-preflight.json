@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "real_legacy_six_services_seven_declared_and_coturn_implicit_volumes_verified": true,
+  "real_readonly_probe_preserved_account_device_and_pointer": true,
+  "actual_changed_compose_override_rejected": true,
+  "actual_stopped_writer_preflight_preserved_data_identity": true,
+  "cohost_web_external_alias_and_no_public_ports_verified": true,
+  "actual_stopped_writer_backup_before_sql_driver": true,
+  "active_writer_and_foreign_database_target_refused": true,
+  "actual_pusher_forward_resume_and_current_metadata_reverse": true,
+  "legacy_recreation_preserved_account_device_database_signing_and_coturn_runtime": true,
+  "normal_legacy_up_after_temporary_volume_binding_preserved_runtime": true,
+  "limits": [
+    "Synthetic legacy Compose from current repository sources, cached source-built control and web images.",
+    "No production baseline adoption, core/edge transition or physical device acceptance."
+  ],
+  "fixture_resources_removed": true,
+  "date": "2026-10-29",
+  "source_sha256": {
+    "infra/legacy_core.py": "d83260e672e84806477f74640bca597a857d08489a2f1e464c1541a4f0e2f642",
+    "infra/core_deploy.py": "55193ac7a37408f484444c3fdd672fa11d050fc860e06561ef45ba1e9c6018bf",
+    "infra/role_deploy.py": "7978e83316d32a0dbd7b309f68e5ff23dbce2e784ceb02ad1f853bc1f67bb11e",
+    "infra/push_route_migration.py": "dbeb243b28f38a5ddb5dd93fc2945c7a075b5ea2d22f7cdd990cd84924588a06",
+    "prototype/check_legacy_core_preflight.py": "0e1e211e0d72a8d87ad3cf9694ffcf033d73e97810320fba177c53968985b2e0"
+  }
+}

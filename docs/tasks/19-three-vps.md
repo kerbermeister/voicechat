@@ -638,6 +638,12 @@ Guard запрещает этот механизм для нормальной m
 backup и restart Synapse обязательны. [Evidence](../iterations/three-vps-evidence/2026-10-28-vm-push-migration.json).
 
 
+29.10: legacy read-only preflight и host-local private-stdin push SQL bridge прошли
+[реальный VM proof](../iterations/three-vps-evidence/2026-10-29-vm-legacy-core-preflight.json).
+Проверены stopped-writer backup/check, forward/resume/current-row reverse, возврат
+legacy Compose без потери account/device/PG/signing/coturn identity и без подмены
+старого release pointer. Это synthetic baseline; production adoption/full ещё открыт.
+
 ### V3-21 — Автоматизировать замену входного VPS
 
 Зависимости: V3-15, V3-16, V3-17, V3-20.

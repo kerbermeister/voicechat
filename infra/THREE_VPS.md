@@ -1113,3 +1113,50 @@ WG и после network start, same-intent resume, неизменные key/pri
 Docker PID, neighbor container/HTTP и чужие nft tables.
 [Evidence](../docs/iterations/three-vps-evidence/2026-10-29-vm-initial-network-rollback.json).
 Это компонент полного rollback; сам production legacy adoption ещё не выполнен.
+
+
+### Read-only preflight и push SQL bridge для первоначального core adoption
+
+`legacy_core.inspect(root)` берёт существующий `deploy.lock`, не меняет pointer,
+Compose, конфигурацию или контейнеры. Он сверяет immutable legacy manifest и
+recorded backend/config baseline, ровно шесть служб, семь именованных томов,
+image IDs, mount permissions, capabilities, restart policy, tmpfs, ports и сети.
+Неизвестные данные и контейнеры нельзя автоматически принять или удалить.
+`require_running=False` допускает остановленные writers при продолжении maintenance;
+PostgreSQL всё равно должен быть healthy. Результат содержит только fingerprints,
+идентичность данных и публичную метаинформацию, без runtime credentials.
+`require_compatible` запрещает менять Matrix/public identity и версии PG/Synapse
+во время adoption; upgrade engines требует отдельной процедуры.
+
+Закреплённый coturn image дополнительно создаёт anonymous `/var/lib/coturn`.
+Он допускается только с точным Docker image declaration, local anonymous label,
+проверенными mount/permissions и исходным 64-символьным volume ID. При возврате
+legacy после `down` **без `--volumes`** временный extra Compose из
+`legacy_core.rollback_override` подключает именно этот external volume. Исходные
+Compose, current.json и backend fingerprint при этом не переписываются.
+
+`core_deploy.migrate_push_routes` — maintenance bridge, не самостоятельный full
+deploy. Вызывать под общим migration lock и legacy deploy.lock после остановки
+Synapse/control и проверенного backup. Он дополнительно берёт core lock, проверяет
+prepared source/config, runtime hash, точный healthy PG image/data mount/network,
+останавливает работу при active writers и сверяет PG/Matrix identity до/после SQL.
+Reader UID991 без сети читает только свою private generated homeserver config;
+он не получает доступ к root-private operator tree. PG password передаётся SQL
+контейнеру через stdin, не argv/env, public logs или файлы. Остальные master secrets
+не читаются. Driver использует проверенный pinned Synapse image и существующий
+URL-only primitive. После SQL Synapse должен быть перезапущен вызывающей стороной.
+
+Forward и reverse используют отдельные private journals в
+`runtime/adoption-push/<attempt>/`. Повтор той же interrupted операции сохраняет
+attempt; новая попытка после завершённого rollback обязана получить новый случайный
+attempt. Reverse обрабатывает **актуальные** pushers и сохраняет новые metadata и
+подписки; старый database snapshot поверх пользовательских записей не восстанавливается.
+Общий core/edge coordinator и production adoption пока не подключены.
+
+
+[Реальный VM proof](../docs/iterations/three-vps-evidence/2026-10-29-vm-legacy-core-preflight.json)
+проверил этот bridge на настоящей Synapse/PostgreSQL с синтетическим аккаунтом:
+backup/check, отказ от foreign DB/active writer, forward/resume и current-row reverse,
+recreate legacy с теми же account/device/PG/signing/coturn identities и subsequent
+обычный legacy up. Все fixture volumes/containers/network удалены. Это current-source
+synthetic legacy baseline, а не применение к production release или full transition.

@@ -112,18 +112,31 @@ def validate_data_identity(value):
 
 def data_identity(root, record, *, execute=role_deploy.run):
     config = configuration(root, record, execute=execute)
-    for name in config['volumes'].values():
-        if execute(['docker', 'volume', 'ls', '-q', '--filter', 'name=^' + name['name'] + '$']).strip() != name['name'].encode():
+    return volume_identity(record['manifest']['images'], config['volumes'],
+                           record['manifest']['identity']['matrix_server_name'], execute=execute)
+
+
+def volume_identity(images, volumes, server_name, *, execute=role_deploy.run):
+    """Read existing data through pinned, isolated, read-only metadata probes."""
+    topology.hostname(server_name)
+    for name in ('postgres', 'configure'):
+        if not isinstance(images[name], str) or not role_release.IMAGE.fullmatch(images[name]):
+            raise ValueError('Immutable metadata probe image required')
+    for volume in volumes.values():
+        name = volume['name']
+        if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', name):
+            raise ValueError('Invalid metadata volume identity')
+        if execute(['docker', 'volume', 'ls', '-q', '--filter', 'name=^' + name + '$']).strip() != name.encode():
             raise ValueError('A committed core volume is missing; restore it before starting')
     # Metadata probes must not join the application bridge or register service
     # aliases. They have read-only volumes and bypass database initialization.
-    postgres = config['volumes']['postgres']['name']
-    synapse = config['volumes']['synapse']['name']
+    postgres = volumes['postgres']['name']
+    synapse = volumes['synapse']['name']
     sandbox = ['docker', 'run', '--rm', '--network', 'none', '--read-only', '--cap-drop', 'ALL',
                '--security-opt', 'no-new-privileges:true', '--memory', '64m', '--pids-limit', '32']
     raw = execute([*sandbox, '--user', 'postgres', '--env', 'LC_ALL=C', '--mount',
         f'type=volume,source={postgres},target=/data,readonly,volume-nocopy', '--entrypoint',
-        'pg_controldata', record['manifest']['images']['postgres'], '/data'])
+        'pg_controldata', images['postgres'], '/data'])
     match = re.search(rb'^Database system identifier:\s+([1-9][0-9]{0,19})\s*$', raw, re.M)
     if match is None: raise ValueError('PostgreSQL cluster identity unavailable')
     script = """import hashlib, json
@@ -135,10 +148,125 @@ print(json.dumps({'server_name': name, 'sha256': hashlib.sha256(key).hexdigest()
 """
     value = json.loads(execute([*sandbox, '--user', '991:991', '--env', 'PYTHONDONTWRITEBYTECODE=1',
         '--mount', f'type=volume,source={synapse},target=/matrix,readonly,volume-nocopy',
-        '--entrypoint', 'python3', record['manifest']['images']['configure'], '-c', script]))
-    if value.get('server_name') != record['manifest']['identity']['matrix_server_name']:
+        '--entrypoint', 'python3', images['configure'], '-c', script]))
+    if value.get('server_name') != server_name:
         raise ValueError('Matrix data belongs to another server')
     return validate_data_identity({'postgres_system_identifier': match.group(1).decode(), 'signing_sha256': value['sha256']})
+
+
+def migrate_push_routes(root, record, attempt, identity, *, reverse=False, execute=role_deploy.run):
+    """URL-only maintenance before adoption or rollback, with verified backup upstream.
+
+    Caller owns the full migration/legacy lock and verified stopped-writer backup.
+    This also fences the core, checks the actual PostgreSQL and stopped writers,
+    and keeps the database password on this host through private process stdin.
+    """
+    root = Path(root).absolute()
+    if root.resolve() != root or not isinstance(attempt, str) or not role_release.SHA.fullmatch(attempt):
+        raise ValueError('Canonical core root and unique migration attempt required')
+    if type(reverse) is not bool: raise ValueError('Explicit migration direction required')
+    validate_record(record); validate_data_identity(identity)
+    with managed_state.locked(root):
+        require_no_backup(root)
+        if runtime_digest(root) != record['runtime_sha256']:
+            raise ValueError('Core runtime changed before pusher migration')
+        release = role_deploy.release_path(root, record)
+        if 'infra/push_route_migration.py' not in record['manifest']['files']:
+            raise ValueError('Verified core migration source required')
+        config = configuration(root, record, execute=execute)
+        for name in ('synapse', 'control'):
+            identifiers = execute(['docker', 'ps', '-aq', '--no-trunc', '--filter',
+                'label=com.docker.compose.project=voicechat', '--filter',
+                'label=com.docker.compose.service=' + name]).decode().split()
+            if len(identifiers) > 1 or any(not re.fullmatch(r'[a-f0-9]{64}', value) for value in identifiers):
+                raise ValueError('Unknown core writer ownership')
+            if identifiers and json.loads(execute(['docker', 'inspect', '--format', '{{json .State.Running}}', identifiers[0]])) is not False:
+                raise ValueError('Stop all Synapse/control writers before pusher migration')
+        identifiers = execute(['docker', 'ps', '-q', '--no-trunc', '--filter',
+            'label=com.docker.compose.project=voicechat', '--filter',
+            'label=com.docker.compose.service=postgres']).decode().split()
+        if len(identifiers) != 1 or not re.fullmatch(r'[a-f0-9]{64}', identifiers[0]):
+            raise ValueError('One running owned PostgreSQL required for pusher migration')
+        template = ('{"id":{{json .Id}},"image":{{json .Config.Image}},"image_id":{{json .Image}},"labels":{{json .Config.Labels}},'
+                    '"mounts":{{json .Mounts}},"state":{{json .State}},"networks":{{json .NetworkSettings.Networks}}}')
+        postgres = json.loads(execute(['docker', 'inspect', '--format', template, identifiers[0]]))
+        mount = [item for item in postgres['mounts'] if item.get('Destination') == '/var/lib/postgresql/data']
+        image_id = execute(['docker', 'image', 'inspect', '--format', '{{.Id}}', record['manifest']['images']['postgres']]).decode().strip()
+        if (postgres['id'] != identifiers[0] or postgres['image'] != record['manifest']['images']['postgres'] or
+                postgres['image_id'] != image_id or not re.fullmatch(r'sha256:[a-f0-9]{64}', image_id) or
+                postgres['labels'].get('com.docker.compose.project') != 'voicechat' or
+                postgres['labels'].get('com.docker.compose.service') != 'postgres' or
+                not postgres['state']['Running'] or postgres['state'].get('Health', {}).get('Status') != 'healthy' or
+                set(postgres['networks']) != {'voicechat_default'} or len(mount) != 1 or
+                mount[0].get('Type') != 'volume' or mount[0].get('RW') is not True or
+                mount[0].get('Name') != config['volumes']['postgres']['name']):
+            raise ValueError('PostgreSQL image, data mount or network ownership changed')
+        if data_identity(root, record, execute=execute) != identity:
+            raise ValueError('Core data identity changed before pusher migration')
+        journal = root / 'runtime/adoption-push'
+        role_prepare.directory(journal)
+        journal /= attempt; role_prepare.directory(journal)
+        journal /= 'reverse' if reverse else 'forward'; role_prepare.directory(journal)
+        source = str(release / 'infra') + ':/operator:ro'
+        sandbox = ['docker', 'run', '--rm', '--read-only', '--cap-drop', 'ALL',
+                   '--security-opt', 'no-new-privileges:true', '--memory', '128m', '--pids-limit', '32',
+                   '--env', 'PYTHONDONTWRITEBYTECODE=1']
+        # The data-owner reader cannot traverse the root-private operator tree.
+        # Keep it stdlib-only and return only this database credential.
+        reader = """import json,os,stat,sys
+def unique_object(pairs):
+ value={}
+ for key,item in pairs:
+  if key in value:raise ValueError('Duplicate generated configuration field')
+  value[key]=item
+ return value
+fd=os.open('/data/homeserver.yaml',os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK)
+with os.fdopen(fd,'rb') as stream:
+ info=os.fstat(stream.fileno());raw=stream.read(65537)
+if not stat.S_ISREG(info.st_mode) or info.st_uid!=991 or info.st_mode&0o077 or len(raw)>65536:
+ raise ValueError('Private generated Synapse configuration required')
+value=json.loads(raw,object_pairs_hook=unique_object)
+database=value.get('database',{});args=database.get('args',{})
+if (value.get('server_name')!=sys.argv[1] or database.get('name')!='psycopg2' or
+ set(args)-{'user','password','database','host','port','cp_min','cp_max'} or
+ args.get('user')!='synapse' or args.get('database')!='synapse' or args.get('host')!='postgres' or args.get('port',5432)!=5432):
+ raise ValueError('Only the owned local Synapse database may be migrated')
+password=args.get('password')
+if not isinstance(password,str) or not 1<=len(password)<=4096:raise ValueError('Invalid database credential')
+print(json.dumps({'password':password}))
+"""
+        private = execute([*sandbox, '--network', 'none', '--user', '991:991',
+            '--mount', 'type=volume,source=' + config['volumes']['synapse']['name'] + ',target=/data,readonly,volume-nocopy',
+            '--entrypoint', 'python3', record['manifest']['images']['configure'], '-B', '-c',
+            reader, record['manifest']['identity']['matrix_server_name']])
+        driver = """import json,sys
+from pathlib import Path
+import psycopg2
+from topology import fields,unique_object
+from push_route_migration import migrate,restore_public
+raw=sys.stdin.buffer.read(32769)
+if len(raw)>32768:raise ValueError('Oversized database credential')
+value=json.loads(raw,object_pairs_hook=unique_object);fields(value,('password',))
+if not isinstance(value['password'],str) or not 1<=len(value['password'])<=4096:raise ValueError('Invalid database credential')
+connection=psycopg2.connect(user='synapse',dbname='synapse',host='postgres',port=5432,
+ password=value['password'],connect_timeout=5)
+try:
+ operation=restore_public if sys.argv[3]=='reverse' else migrate
+ count=operation(connection,Path('/journal'),sys.argv[1],sys.argv[2])
+finally:connection.close()
+print(json.dumps({'updated':count}))
+"""
+        raw = execute([*sandbox, '--interactive', '--network', 'voicechat_default',
+            '--user', str(os.geteuid()) + ':' + str(os.getegid()), '--volume', source,
+            '--volume', str(journal) + ':/journal', '--entrypoint', 'python3', record['manifest']['images']['synapse'],
+            '-B', '-c', "import sys;sys.path.insert(0,'/operator');" + driver,
+            record['manifest']['identity']['canonical_origin'], record['address'], 'reverse' if reverse else 'forward'], input=private)
+        result = json.loads(raw, object_pairs_hook=topology.unique_object)
+        topology.fields(result, ('updated',))
+        if type(result['updated']) is not int or result['updated'] < 0: raise ValueError('Invalid migration result')
+        if data_identity(root, record, execute=execute) != identity:
+            raise ValueError('Core data identity changed during pusher migration')
+        return result['updated']
 
 
 def healthy(root, record, *, execute=role_deploy.run):

@@ -67,6 +67,24 @@ VM сеть после proof восстановлена; соседний fixtur
 identity и node generation1/tunnel10.88.0.1 совпали. Использовать этот путь при
 initial full, не менять его на новый вариант при source-only manager upgrade.
 
+Следующий компонент подготовлен локально: `legacy_core.py` read-only preflight
+старого Compose baseline и `core_deploy.migrate_push_routes` — private stdin SQL
+bridge при остановленных writers, со сверкой реального PG и persistent identity.
+Исходный coturn image создаёт anonymous `/var/lib/coturn`: теперь его identity
+проверяется и сохраняется temporary external binding при rollback, без изменения
+старого pointer/Compose fingerprint. 8 focused preflight +6 maintenance tests PASS;
+полный suite: **422 tests OK, skipped=3**.
+[Сквозной VM proof PASS](three-vps-evidence/2026-10-29-vm-legacy-core-preflight.json):
+реальные шесть legacy служб и тома, healthy/read-only/stopped-writer preflight,
+backup/check, запрет active writer и foreign DB, forward/resume и reverse актуальных
+pushers с сохранением новых metadata. После down без volumes выполнены legacy
+recreate с temporary original coturn binding и последующий обычный legacy up;
+account/device, PG/signing identity, coturn runtime и pointer сохранены. Fixture
+полностью очищен. Это synthetic current-source legacy baseline, не production
+8bcbd91 и не full core/edge adoption. Рабочий VPS дополнительно read-only проверен: backup units
+точно совпадают с штатными файлами, кроме User=root; нет drop-ins. Timer enabled/
+active, service static/inactive. Деплой/службы/DNS не менялись.
+
 Далее: explicit legacy core adoption/full coordinator и rollback, согласованная
 замена scheduler, TLS delivery/renewal, CI scopes, обязательный macOS/Android release
 и приёмка устройств. Helpers/VM параметры остаются в `.prototype/vm/active.json`.
