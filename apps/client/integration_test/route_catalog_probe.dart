@@ -76,7 +76,7 @@ void checkSignedCatalog(RouteConfig bootstrap, Map<String, dynamic> topology) {
   );
 }
 
-Future<void> checkCatalogDiscovery() async {
+Future<void> checkCatalogDiscovery({bool websiteOnly = false}) async {
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   final mirror = 'http://127.0.0.1:${server.port}';
   final service = 'discovery-${DateTime.now().microsecondsSinceEpoch}';
@@ -88,7 +88,7 @@ Future<void> checkCatalogDiscovery() async {
     'service_id': service,
     'matrix_server_name': 'routes.test',
     'canonical_origin': 'http://localhost:9',
-    'web_origins': ['http://localhost:9', mirror],
+    'web_origins': ['http://localhost:9', if (!websiteOnly) mirror],
     'edges': [
       {
         'id': 'b',
@@ -133,17 +133,48 @@ Future<void> checkCatalogDiscovery() async {
     await request.response.close();
   });
   final preferences = await SharedPreferences.getInstance();
+  for (final invalid in [
+    'http://entry.example',
+    'https://fixture-user@entry.example',
+    'https://entry.example/catalog',
+  ]) {
+    expect(
+      () => RouteCatalog(
+        RouteConfig.parse(jsonEncode(bootstrapJson)),
+        key,
+        preferences,
+        discoveryOrigin: Uri.parse(invalid),
+      ),
+      throwsA(anyOf(isA<ArgumentError>(), isA<FormatException>())),
+    );
+  }
   final catalog = RouteCatalog(
     RouteConfig.parse(jsonEncode(bootstrapJson)),
     key,
     preferences,
+    discoveryOrigin: websiteOnly ? Uri.parse(mirror) : null,
   );
   try {
+    if (websiteOnly) {
+      response = '{}';
+      expect((await catalog.refresh()).edges.single.id, 'b');
+      expect(
+        catalog.current,
+        isNull,
+        reason: 'A website cannot authorize an unsigned API route',
+      );
+      response = signed(1, 'd', 'http://127.0.0.1:9');
+    }
+    final initialRequests = requests;
     expect((await catalog.refresh()).edges.single.id, 'd');
     response = signed(2, 'e', mirror);
     expect((await catalog.refresh()).edges.single.id, 'e');
     expect(catalog.current!.revision, 2);
-    expect(requests, 2, reason: 'The known mirror is fetched once per refresh');
+    expect(
+      requests - initialRequests,
+      2,
+      reason: 'The known mirror is fetched once per refresh',
+    );
     response = jsonEncode({
       'payload': base64Encode(utf8.encode('{}')),
       'signature': '',

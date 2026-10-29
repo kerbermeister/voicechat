@@ -7,6 +7,7 @@ import 'package:vodozemac/vodozemac.dart' as crypto;
 import 'package:web/web.dart' as web;
 import 'package:voicechat_probe/route_catalog.dart';
 import 'package:voicechat_probe/route_config.dart';
+import 'package:voicechat_probe/catalog_http_web.dart';
 
 void require(bool value, String message) {
   // Release builds omit assert: these checks must remain executable.
@@ -22,11 +23,18 @@ Future<void> main() async {
     final key = input['key'] as String;
     final storageKey = 'route-catalog:${bootstrap.serviceId}:$key';
     final accountKey = 'probe-account:${bootstrap.serviceId}';
+    final cookie = 'catalog_probe_${bootstrap.serviceId.replaceAll('-', '_')}';
+    web.document.cookie = '$cookie=probe-only; Path=/; SameSite=Strict';
     await crypto
         .init(wasmPath: origin.resolve('/pkg/').toString())
         .timeout(const Duration(seconds: 20));
     final preferences = await SharedPreferences.getInstance();
-    final catalog = RouteCatalog(bootstrap, key, preferences);
+    final catalog = RouteCatalog(
+      bootstrap,
+      key,
+      preferences,
+      discoveryOrigin: Uri.parse(Uri.base.origin),
+    );
     Future<void> phase(String name) async {
       final response = await http.post(origin.resolve('/fixture/$name'));
       require(response.statusCode == 200, 'Fixture phase failed');
@@ -67,19 +75,41 @@ Future<void> main() async {
           status['credentials_seen'] == false,
           'Catalog requests carried credentials',
         );
-      } else {
-        await preferences.setString(accountKey, 'preserved');
-        final response = await http.get(
-          origin.resolve('/.well-known/voicechat/routes.json'),
-        );
-        require(response.statusCode == 200, 'Initial fixture HTTP failed');
         require(
-          verifyRouteCatalog(response.body, key, bootstrap).revision == 2,
-          'WASM signature failed',
+          status['probe_cookie_seen_on_control'] == true,
+          'Cookie omission probe lacked its control cookie',
         );
+        require(
+          status['redirects_followed'] == 0,
+          'Catalog followed a redirect',
+        );
+      } else {
+        final closedClient = catalogClient();
+        final pending = closedClient.send(
+          http.Request(
+            'GET',
+            origin.resolve('/.well-known/voicechat/routes.json'),
+          )..followRedirects = false,
+        );
+        closedClient.close();
+        var closedRejected = false;
+        try {
+          await pending;
+        } catch (_) {
+          closedRejected = true;
+        }
+        require(closedRejected, 'Closed discovery client started a request');
+        final initialStatus = jsonDecode(
+          (await http.get(origin.resolve('/fixture/status'))).body,
+        );
+        require(
+          initialStatus['requests']['b'] == 0,
+          'A request escaped client.close',
+        );
+        await preferences.setString(accountKey, 'preserved');
         require(
           catalog.config.edges.length == 1,
-          'Bootstrap must contain only B',
+          'Bootstrap must contain only the unavailable initial entry',
         );
         await catalog.refresh();
         require(
@@ -97,6 +127,8 @@ Future<void> main() async {
           'expired',
           'foreign',
           'offline',
+          'oversized',
+          'redirect',
         ]) {
           await phase(invalid);
           await catalog.refresh();
@@ -127,15 +159,20 @@ Future<void> main() async {
       }
     } finally {
       catalog.close();
+      web.document.cookie = '$cookie=; Max-Age=0; Path=/; SameSite=Strict';
     }
     web.document.body!.dataset['routeResult'] = jsonEncode({
       'ok': true,
       'revision': 4,
     });
+    web.document.body!.textContent = Uri.base.queryParameters['reopen'] == '1'
+        ? 'PASS: page reload preserves revision 4, routes and account marker; credentials omitted, redirects and rollback rejected.'
+        : 'PASS: website-only discovery, WASM signature, revision 4, localStorage and rejection of invalid catalogs.';
   } catch (error) {
     web.document.body!.dataset['routeResult'] = jsonEncode({
       'ok': false,
       'error': '$error',
     });
+    web.document.body!.textContent = 'FAIL: $error';
   }
 }

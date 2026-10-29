@@ -28,6 +28,7 @@ void main() {
       };
       checkSignedCatalog(RouteConfig.parse(jsonEncode(topology)), topology);
       await checkCatalogDiscovery();
+      await checkCatalogDiscovery(websiteOnly: true);
     });
   });
 }

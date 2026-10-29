@@ -3,6 +3,7 @@ import 'personal_room.dart';
 import 'device_name.dart';
 import 'dart:async';
 import 'package:flutter_vodozemac/flutter_vodozemac.dart' as vod;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:matrix/matrix.dart';
 import 'package:matrix/encryption.dart';
 import 'package:http/http.dart' as http;
@@ -44,6 +45,7 @@ class MatrixProbe {
         bootstrap,
         const String.fromEnvironment('ROUTE_CATALOG_KEY'),
         await SharedPreferences.getInstance(),
+        discoveryOrigin: kIsWeb ? Uri.parse(Uri.base.origin) : null,
       );
       routes = RouteCoordinator(catalog.config, catalog: catalog);
       try {

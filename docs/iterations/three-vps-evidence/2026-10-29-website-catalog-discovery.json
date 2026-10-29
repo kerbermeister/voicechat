@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-29",
+  "flutter_analyze": "PASS",
+  "native_macos_integration": "PASS",
+  "browser": "Codex in-app browser, isolated loopback fixture origins",
+  "browser_initial_result": {
+    "ok": true,
+    "revision": 4
+  },
+  "browser_real_reload_result": {
+    "ok": true,
+    "revision": 4
+  },
+  "checks": {
+    "compiled_bootstrap_unreachable": true,
+    "current_website_discovery_hint": true,
+    "hint_does_not_authorize_unsigned_api": true,
+    "native_bootstrap_mirror_retained": true,
+    "real_wasm_ed25519_signature": true,
+    "real_local_storage_high_water_mark": true,
+    "unrelated_synthetic_storage_marker_preserved": true,
+    "control_cookie_present_but_catalog_credentials_omitted": true,
+    "redirect_target_not_requested": true,
+    "oversized_response_rejected": true,
+    "closed_client_did_not_start_fetch": true,
+    "rollback_conflict_tamper_expiry_foreign_identity_rejected": true
+  },
+  "source_sha256": {
+    "apps/client/lib/route_catalog.dart": "a3ff511763f6a1d2e5b06364c1e01617bc79276d35ecef2ab5ac55d4f7842ad4",
+    "apps/client/lib/matrix_probe.dart": "2a3cb494ec29a3ada0789de954c34b0f38e57224188c1979598400b1ea7d0720",
+    "apps/client/lib/catalog_http_native.dart": "8045edb4b189b22f0957b356e89ca8571af23b004a5266c5a66646fb9bf2077f",
+    "apps/client/lib/catalog_http_web.dart": "461c0438cf098b1a7dc42fb6c4ae92a57308bf153b66a7306e1bd5a035b12ce3",
+    "apps/client/tool/route_catalog_web_probe.dart": "035b0d7722a164761501d68205a719fa5cc40b0de98cbd4771bfdf50a308a7c2",
+    "prototype/check_route_catalog_web.py": "35e87d6061617558a37e846b3e0fcb9f4e2fa76e4010f070dad3efb817a7e23e"
+  },
+  "crypto_toolchain": {
+    "runner": "ubuntu-24.04",
+    "flutter": "3.47.7",
+    "rust": "1.99.1",
+    "nightly": "nightly-2026-10-24",
+    "vodozemac_commit": "774956e945a39451441e72f03195a1ad2e78c3a8",
+    "tools": {
+      "flutter_rust_bridge_codegen": "2.13.0",
+      "wasm-pack": "0.15.0",
+      "wasm-bindgen-cli": "0.2.100"
+    }
+  },
+  "production_changed": false,
+  "client_release_published": false,
+  "limits": [
+    "Native proof exercises cryptography and HTTP discovery, not full Matrix login or media.",
+    "Browser account marker is synthetic; no real account, vault or profile migration is claimed.",
+    "No production client update or physical device call/screen failover acceptance."
+  ]
+}

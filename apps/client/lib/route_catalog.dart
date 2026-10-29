@@ -4,6 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vodozemac/vodozemac.dart' as vod;
 import 'route_config.dart';
+import 'transport.dart';
+import 'catalog_http_native.dart'
+    if (dart.library.js_interop) 'catalog_http_web.dart';
 
 const routeCatalogDomain = 'voicechat-route-catalog-v1\n';
 
@@ -96,6 +99,7 @@ class RouteCatalog {
   final RouteConfig bootstrap;
   final String publicKey;
   final SharedPreferences _preferences;
+  final Uri? discoveryOrigin;
   VerifiedRouteCatalog? current;
   Future<RouteConfig>? _pending;
   final _clients = <http.Client>{};
@@ -103,9 +107,21 @@ class RouteCatalog {
   String get _cacheKey => 'route-catalog:${bootstrap.serviceId}:$publicKey';
   RouteConfig get config => current?.config ?? bootstrap;
 
-  RouteCatalog(this.bootstrap, this.publicKey, this._preferences) {
+  RouteCatalog(
+    this.bootstrap,
+    this.publicKey,
+    this._preferences, {
+    this.discoveryOrigin,
+  }) {
     if (base64Decode(publicKey).length != 32) {
       throw const FormatException('Invalid route catalog public key');
+    }
+    if (discoveryOrigin != null &&
+        secureEndpoint(discoveryOrigin.toString()).toString() !=
+            discoveryOrigin!.origin) {
+      throw const FormatException(
+        'Catalog discovery requires a canonical secure origin',
+      );
     }
     final cached = _preferences.getString(_cacheKey);
     if (cached != null) {
@@ -126,10 +142,12 @@ class RouteCatalog {
   }
 
   Future<RouteConfig> _refresh() async {
-    // Fetch through known domains only; redirects cannot expand this trust set.
+    // The current website is a discovery hint, never an authorized API route.
+    // Every response still needs the pinned signature; redirects stay disabled.
     // A reachable website/bootstrap must still recover discovery when every
     // API entry in the cached catalog has been replaced or become unreachable.
     final origins = {
+      if (discoveryOrigin != null) discoveryOrigin!,
       ...bootstrap.webOrigins,
       ...bootstrap.edges.map((edge) => edge.origin),
       ...config.webOrigins,
@@ -137,7 +155,7 @@ class RouteCatalog {
     };
     final candidates = await Future.wait(
       origins.map((origin) async {
-        final client = http.Client();
+        final client = catalogClient();
         _clients.add(client);
         final abort = Completer<void>();
         try {

@@ -36,15 +36,29 @@ VM также выявила transient EOF HTTP после backend restart: `edg
 повторяет только transport errors с ограничением времени; wrong status/body/
 identity/upstream metadata всё ещё немедленно завершают проверку ошибкой.
 
-Production остаётся e964…/5b27… ingress и 8bcbd91 app. Далее: реальный source-only
-upgrade с предыдущего production 28-file package до 31, legacy core adoption/full,
-TLS renewal, CI и client release. Новый обнаруженный client случай: fresh web на
-новом адресе должен получать подписанный catalog с текущего origin при offline
-compiled bootstrap. Native hint proof PASS; браузерный прогон выявил same-origin
-cookies стандартного BrowserClient. Credential-free fetch/stream/abort adapter и
-дополнительные cookie/redirect/size cases сейчас проверяются. Пока не объявлять
-новый web proof завершённым; local fixture session62547 уже остановлен, новый
-external-browser fixture — session79496, лог `.prototype/catalog-website-hint-browser.log`.
+Production остаётся e964…/5b27… ingress и 8bcbd91 app.
+Новый 31-file package прошёл **реальный VM source-only upgrade из точного прежнего
+production 28-file e964… package**, с сохранением всех процессов; затем повторены
+installed CLI, workflow/route/app deploy и interrupted reload/Git recovery.
+[Evidence](three-vps-evidence/2026-10-29-vm-manager-28-to-31.json). Fixture очищен.
+Production upgrade этим кодом ещё не запускался.
+
+Fresh web discovery тоже завершено: текущий website origin служит только hint
+для подписанного каталога, API доверяется после проверки pinned signature.
+Нативный Mac test и настоящий browser JS/WASM proof прошли, включая реальную
+перезагрузку страницы/localStorage, unsigned hint, контрольный cookie, credentials
+omission, запрет redirects, oversized response и client.close до fetch.
+Стандартный BrowserClient отправляет same-origin cookies; отдельный маленький web
+Fetch adapter явно ставит credentials=omit, сохраняет потоковый лимит, AbortController,
+Content-Length validation и timeout. Native HTTP путь остаётся стандартным.
+[Evidence](three-vps-evidence/2026-10-29-website-catalog-discovery.json).
+Assets пересобраны штатным генератором с pinned Flutter/Rust/nightly/tools и clean
+upstream commit; готовые файлы не копировались вслепую из прежней сборки.
+Все browser fixtures/tab закрыты, private signing fixtures удалены штатным finally.
+Пользовательский browser storage не очищался; использовался synthetic marker.
+Это ещё не новый client release и не проверка реального аккаунта/звонка/экрана.
+
+Далее: legacy core adoption/full, TLS renewal, CI и обязательный client release.
 
 Перед production publication усилены файловые границы `publish_catalog.py`:
 canonical owned runtime без чужой записи, private regular no-follow lock и

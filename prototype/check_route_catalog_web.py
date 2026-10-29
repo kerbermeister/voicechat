@@ -25,14 +25,18 @@ from route_catalog import public_key, sign
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--flutter', type=Path, required=True)
-    parser.add_argument('--node', type=Path, required=True)
+    parser.add_argument('--node', type=Path)
+    parser.add_argument('--external-browser', action='store_true', help='Let the caller drive and verify the browser')
     args = parser.parse_args()
+    if args.node is None and not args.external_browser:
+        parser.error('Provide --node or --external-browser')
     assets = ROOT / 'apps/client/web/pkg'
     allowed = {'vodozemac_bindings_dart.js': 'text/javascript',
                'vodozemac_bindings_dart_bg.wasm': 'application/wasm'}
     if any(not (assets / name).is_file() for name in allowed):
         raise ValueError('Build pinned web crypto assets first')
-    state = {'phase': 'initial', 'requests': {'b': 0, 'd': 0}, 'credentials_seen': False}
+    state = {'phase': 'initial', 'requests': {'b': 0, 'd': 0}, 'credentials_seen': False,
+             'redirects_followed': 0, 'probe_cookie_seen_on_control': False}
     catalogs = {}
     lock = threading.Lock()
     web_root = None
@@ -50,7 +54,8 @@ def main():
             self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
             self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
             self.end_headers()
-            self.wfile.write(body)
+            try: self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError): pass  # Expected bounded-response cancellation.
 
         def do_GET(self):
             if self.path.startswith('/pkg/') and self.path[5:] in allowed:
@@ -61,9 +66,20 @@ def main():
                     state['requests'][self.server.edge] += 1
                     state['credentials_seen'] |= bool(self.headers.get('Authorization') or self.headers.get('Cookie'))
                     phase = state['phase']
-                self.respond(catalogs[phase][self.server.edge], status=503 if phase == 'offline' else 200)
+                if phase == 'redirect':
+                    self.send_response(302)
+                    self.send_header('Location', '/fixture/catalog-redirect-target')
+                    self.end_headers()
+                else:
+                    self.respond(catalogs[phase][self.server.edge], status=503 if phase == 'offline' else 200)
+            elif self.path == '/fixture/catalog-redirect-target':
+                with lock: state['redirects_followed'] += 1
+                self.respond(catalogs['advance'][self.server.edge])
             elif self.path == '/fixture/status':
-                with lock: body = json.dumps(state).encode()
+                with lock:
+                    state['probe_cookie_seen_on_control'] |= any(
+                        item.strip().startswith('catalog_probe_') for item in self.headers.get('Cookie', '').split(';'))
+                    body = json.dumps(state).encode()
                 self.respond(body)
             else:
                 relative = unquote(urlsplit(self.path).path).lstrip('/') or 'index.html'
@@ -87,10 +103,12 @@ def main():
         origins = ['http://127.0.0.1:' + str(server.server_port) for server in servers]
         edges = [{'id': name, 'origin': origin, 'turn_host': 'turn-' + name + '.localhost'}
                  for name, origin in zip(('b', 'd'), origins)]
+        canonical = 'http://localhost:9'
         topology = {'schema': 1, 'service_id': 'web-proof-' + uuid.uuid4().hex[:12],
-                    'matrix_server_name': 'catalog.localhost', 'canonical_origin': origins[0],
-                    'web_origins': origins, 'edges': edges}
-        bootstrap = {**topology, 'edges': edges[:1]}
+                    'matrix_server_name': 'catalog.localhost', 'canonical_origin': canonical,
+                    'web_origins': [canonical, *origins], 'edges': edges}
+        bootstrap = {**topology, 'web_origins': [canonical], 'edges': [
+            {'id': 'a', 'origin': canonical, 'turn_host': 'turn-a.localhost'}]}
         with tempfile.TemporaryDirectory(prefix='voicechat-catalog-web-') as directory:
             root = Path(directory)
             key = root / 'signing.pem'
@@ -106,7 +124,7 @@ def main():
             for phase, envelope in {'initial': signed(2), 'rollback': signed(1),
                     'advance': signed(4), 'expired': signed(5, expires=now - 1),
                     'foreign': signed(5, value={**topology, 'service_id': 'foreign'}),
-                    'offline': b'{}'}.items():
+                    'offline': b'{}', 'oversized': b'x' * 65537, 'redirect': b'{}'}.items():
                 catalogs[phase] = dict.fromkeys(('b', 'd'), envelope)
             tampered = json.loads(signed(5))
             tampered['payload'] = 'e30='
@@ -125,9 +143,14 @@ def main():
                 thread.start(); threads.append(thread)
             # Use the production JS compilation path and real isolation headers.
             # Dart/Wasm is not supported by the pinned crypto bridge decoder.
-            subprocess.run([str(args.node.resolve()), str(ROOT / 'prototype/check_route_catalog_web.cjs')],
-                           env={**os.environ, 'ROUTE_CATALOG_PROBE_ORIGIN': origins[0]}, check=True)
-            print('PASS: browser WASM signature, discovered D, real localStorage, rollback/conflict/tamper/expiry guards')
+            if args.external_browser:
+                print('BROWSER_PROBE_ORIGIN=' + origins[0], flush=True)
+                input('Verify the initial page and /?reopen=1, then send a newline to stop the fixture: ')
+                print('External browser fixture stopped; the caller records the observed result.')
+            else:
+                subprocess.run([str(args.node.resolve()), str(ROOT / 'prototype/check_route_catalog_web.cjs')],
+                               env={**os.environ, 'ROUTE_CATALOG_PROBE_ORIGIN': origins[0]}, check=True)
+                print('PASS: browser WASM signature, website-only discovery, real localStorage, rollback/conflict/tamper/expiry guards')
     finally:
         for index, server in enumerate(servers):
             if index < len(threads): server.shutdown()

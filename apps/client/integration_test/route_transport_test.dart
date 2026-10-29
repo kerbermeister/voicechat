@@ -91,6 +91,7 @@ void main() {
           jsonDecode(const String.fromEnvironment('ROUTE_CONFIG')),
         );
         await checkCatalogDiscovery();
+        await checkCatalogDiscovery(websiteOnly: true);
         await checkEncryptedFileRecovery();
         await probe
             .login(origin.toString(), username, password)
