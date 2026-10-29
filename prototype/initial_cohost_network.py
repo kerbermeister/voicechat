@@ -39,8 +39,9 @@ def isolated_network(directory, *, execute=role_deploy.run, run=network_bootstra
     if directory.stat().st_dev != network.parent.stat().st_dev:
         raise ValueError('Atomic same-filesystem network preservation required')
     original, temporary = directory/'original-network', directory/'temporary-network'
+    original_code = directory/'original-network-code'
     receipt = directory/'network-isolation.json'
-    if any(path.exists() or path.is_symlink() for path in (original,temporary,receipt)):
+    if any(path.exists() or path.is_symlink() for path in (original,temporary,original_code,receipt)):
         raise ValueError('Resume the existing isolated network fixture explicitly')
     raw = network_bootstrap.existing(network/'desired.json')
     desired = managed_state.read(network/'desired.json')
@@ -49,14 +50,29 @@ def isolated_network(directory, *, execute=role_deploy.run, run=network_bootstra
     with role_deploy.network_ready(desired['inventory'],'core',desired['edge_subnet'],
                                   execute=execute,directory=network):
         pass
+    identity, files, code = network_bootstrap.source_plan(desired,shared_host=True)
+    cache = Path('/') / code
+    contents = {Path(name).name:raw for name,raw in files.items() if name.startswith(code+'/')}
+    def check_cache(path, *, complete):
+        if path.is_symlink() or not path.is_dir():raise ValueError('Owned network source cache required')
+        names = {item.name for item in path.iterdir()}
+        if (not names <= contents.keys() or (complete and names != contents.keys()) or
+                any(network_bootstrap.existing(path/name) != contents[name] for name in names)):
+            raise ValueError('Modified network source cache must be preserved')
+    check_cache(cache,complete=True)
+    if cache.stat().st_dev != directory.stat().st_dev:
+        raise ValueError('Atomic same-filesystem code preservation required')
     fingerprint = network_runtime.fingerprint(desired)
     record = {'schema':1,'fingerprint':fingerprint,'desired_sha256':hashlib.sha256(raw).hexdigest(),
-              'original':str(original),'phase':'retiring'}
+              'original':str(original),'code':str(cache),'source_sha256':identity['source_sha256'],'phase':'retiring'}
     managed_state.persist(receipt,record)
     archived = False
+    code_archived = False
     try:
         network_bootstrap.retire_initial(Path('/'),fingerprint,run=run)
         network.rename(original); archived = True
+        cache.rename(original_code); code_archived = True
+        tls_material.sync_directory(cache.parent)
         tls_material.sync_directory(network.parent);tls_material.sync_directory(directory)
         managed_state.persist(receipt,{**record,'phase':'isolated'})
         yield
@@ -74,6 +90,13 @@ def isolated_network(directory, *, execute=role_deploy.run, run=network_bootstra
             tls_material.sync_directory(network.parent);tls_material.sync_directory(directory)
         if network_bootstrap.existing(network/'desired.json') != raw:
             raise ValueError('Original VM network intent changed; explicit recovery required')
+        if code_archived:
+            if cache.exists() or cache.is_symlink():
+                # A new fixture may have installed the identical immutable code.
+                # Its private intent was retired above; verify rather than replace.
+                check_cache(cache,complete=False)
+            else:
+                original_code.rename(cache);tls_material.sync_directory(cache.parent)
         network_bootstrap.install(Path('/'),run=run,shared_host=True,restore_initial=fingerprint)
         with role_deploy.network_ready(desired['inventory'],'core',desired['edge_subnet'],
                                       execute=execute,directory=network):

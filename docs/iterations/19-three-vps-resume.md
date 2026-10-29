@@ -21,8 +21,8 @@ Boot recovery committed роли под full fence разрешён только
 исходного fingerprint; новый peerless registry привязан к generation и сохраняет ключ.
 Неверный SSH host и remote Docker отвергаются до записи состояния.
 
-Последний подтверждённый полный набор — **461 Python tests, OK, skipped=3**;
-координатор после следующего исправления — **11 focused PASS**. CLI и backup scheduler используют одну выбранную
+Последний подтверждённый полный набор — **464 Python tests, OK, skipped=3**;
+координатор после следующего исправления — **12 focused PASS**, fixture cleanup — **2 PASS**. CLI и backup scheduler используют одну выбранную
 подсеть. Commit **76707dc** сохраняет первый кандидат координатора.
 В VM завершена проверка старого Git **8bcbd91** с source-built legacy control
 **bc8327…** и candidate **abc8e6…**:
@@ -55,12 +55,23 @@ Actual Docker stop/rm never-started контейнера проверен, вр�
 synthetic CA/catalog key, запускает coordinator и проверяет account/device/account
  data, data/signing identity и same-target repeat. Оригинальная VM network хранится
 целиком в private fixture root до удаления тестовых приложений, затем восстанавливается.
-**Первый цельный прогон запущен, ещё не принят.** Wrapper локально:
-`/tmp/voicechat-initial-cohost-vm.py`; runner session **54811**, frozen source VM
-`/srv/voicechat-edge-fixture/legacy-preflight-source-_qro8dki`.
+**Первый цельный прогон отказал, не принят**:
+[attempt1](three-vps-evidence/2026-10-29-vm-initial-cohost-attempt1.json).
+Production guard правильно отказался принимать оставшийся от исходной сети global
+code cache без ownership receipt в новой сети VM. Global coordinator вернул legacy,
+после чего fixture cleanup отказалась от пустой owned drop-in directory. Удалены
+только сверенные backup units/пустой каталог; исходная network active, VM containers
+пусты. VM isolation теперь архивирует также точный immutable source cache, guard
+production не ослаблен. Расширенный isolation proof повторён успешно.
+Scheduler slots предварительно проверяются до maintenance. Fixture cleanup покрыта
+проверками отказа чужого unit и запрета остановки активного backup.
+**Второй цельный прогон запущен, ещё не принят**; сеть и boot units установлены,
+журнал дошёл до `core`, PostgreSQL/control healthy, Synapse стартует. Wrapper локально:
+`/tmp/voicechat-initial-cohost-vm.py`; runner session **76081**, frozen source VM
+`/srv/voicechat-edge-fixture/legacy-preflight-source-2v604tbj`.
 Private probe log находится в этом source-каталоге. Не запускать параллельно другой
 fixture с project=voicechat/deploy и не удалять архив исходной сети при ошибке.
-Новый suite 461 PASS не заменяет цельный VM proof; fault drills ещё впереди.
+Новый suite 464 PASS не заменяет цельный VM proof; fault drills ещё впереди.
 
 Production службы, данные и DNS в этом шаге не менялись.
 

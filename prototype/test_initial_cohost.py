@@ -160,6 +160,19 @@ class InitialCohostPlanningTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'differs'):
                 initial_cohost.existing_network(directory,inventory,subnet,previous,execute=lambda *_:b'')
 
+    def test_scheduler_preflight_refuses_foreign_units_before_any_migration(self):
+        system=self.base/'system';units=system/'etc/systemd/system';units.mkdir(parents=True)
+        calls=[]
+        def run(*args):calls.append(args);return 'not-found\n'
+        initial_cohost.check_scheduler_slots(system,run=run)
+        self.assertEqual(len(calls),4)
+        (units/initial_cohost.cohost_tls_bootstrap.SERVICE).write_text('foreign unit')
+        calls.clear()
+        with self.assertRaisesRegex(ValueError,'Existing scheduler'):
+            initial_cohost.check_scheduler_slots(system,run=run)
+        self.assertFalse(calls)
+        self.assertEqual((units/initial_cohost.cohost_tls_bootstrap.SERVICE).read_text(),'foreign unit')
+
     def test_boot_preflight_rejects_unclaimed_slots_without_installing_anything(self):
         root=self.base/'role';root.mkdir(mode=0o700)
         system=self.base/'system';units=system/'etc/systemd/system';units.mkdir(parents=True)

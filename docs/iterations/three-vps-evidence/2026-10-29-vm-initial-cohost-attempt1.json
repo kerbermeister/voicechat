@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "status": "failed",
+  "production_changed": false,
+  "vm_source": "/srv/voicechat-edge-fixture/legacy-preflight-source-_qro8dki",
+  "failed_phase": "network",
+  "error": "Refusing to replace an unclaimed or modified installation file",
+  "cause": "Fixture archived original network intent but retained global immutable code cache without its receipt in fresh state.",
+  "production_guard_unchanged": true,
+  "rollback_returned_before_original_error_was_raised": true,
+  "cleanup_error": "Empty owned legacy backup drop-in directory was rejected by fixture cleanup.",
+  "manual_cleanup_verified_exact_unit_bytes_before_removal": true,
+  "original_network_restored_active": true,
+  "vm_containers_empty_after_cleanup": true,
+  "limits": [
+    "Failed initial migration attempt. No core/edge success or account/device acceptance claimed."
+  ]
+}

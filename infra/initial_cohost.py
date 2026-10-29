@@ -258,6 +258,18 @@ def remove_namespace(project, models, *, execute):
 
 
 
+
+def check_scheduler_slots(system_root, *, run):
+    # Initial retries happen before any new timer is installed. Once scheduling
+    # starts the public migration is committed and resumes its own later phase.
+    for name in (cohost_tls_bootstrap.SERVICE, cohost_tls_bootstrap.TIMER,
+                 core_backup_bootstrap.SERVICE, core_backup_bootstrap.TIMER):
+        path = system_root / 'etc/systemd/system' / name
+        if (path.exists() or path.is_symlink() or path.with_name(name + '.d').exists() or
+                run('systemctl','show',name,'--property=LoadState','--value').strip() != 'not-found'):
+            raise ValueError('Existing scheduler needs its own explicit adoption before initial migration')
+
+
 def check_role_boot(root, role, edge_id, *, system_root):
     """Reject occupied boot slots before stopping any legacy writer."""
     name, code, contents, unit, target = role_bootstrap.plan(root, role, edge_id)
@@ -419,6 +431,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                 if serving_target['mode'] != 'legacy-certs': raise ValueError('Prepare the legacy certificate sinks first')
                 if legacy_core._inspect_locked(old_root, execute=execute) != baseline:
                     raise ValueError('Legacy baseline changed before preparing adoption')
+                check_scheduler_slots(system_root,run=run)
                 role_prepare.directory(root / 'edges')
                 role_prepare.prepare(core, public, inventory, target['core'])
                 role_prepare.prepare(edge, public, inventory, target['edge'], subnet)
