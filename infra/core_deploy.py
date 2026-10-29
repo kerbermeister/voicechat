@@ -195,12 +195,92 @@ def backup(root, old):
     legacy.backup(root, role_deploy.release_path(root, old), environment(old), core=True)
 
 
+def require_no_backup(root):
+    path = root / 'runtime/backup.json'
+    if path.exists() or path.is_symlink():
+        raise ValueError('Resume the pending core backup before deployment or startup')
+
+
+def backup_current(root, public, inventory, *, subnet='10.241.0.0/28', execute=role_deploy.run,
+                   check_network=role_deploy.network_ready, check_health=healthy, create_backup=backup,
+                   check_boot=role_bootstrap.ready, identify_data=data_identity,
+                   activate_monitor=role_bootstrap.activate):
+    """Back up the committed core with stopped writers and crash-resumable recovery.
+
+    The deployment pointers and policy are unchanged. An interrupted attempt
+    fences boot recovery until this operation resumes the same verified record.
+    """
+    root = Path(root).absolute()
+    if root.resolve() != root: raise ValueError('Core root must not traverse symlinks')
+    with role_bootstrap.monitor_after(root, 'core', activate=activate_monitor), managed_state.locked(root), check_network(inventory, 'core', subnet, execute=execute):
+        check_boot(root, 'core')
+        state = read_state(root)
+        record = state['current']
+        if record is None or state['pending'] is not None:
+            raise ValueError('A committed core without pending deployment is required for backup')
+        if runtime_digest(root) != record['runtime_sha256']:
+            raise ValueError('Core runtime changed since the committed release')
+        release = role_deploy.release_path(root, record)
+        role_release.verify_bundle(release, record['manifest'], public, inventory, subnet)
+        configuration(root, record, execute=execute)
+        if identify_data(root, record, execute=execute) != state['data_identity']:
+            raise ValueError('Core data identity changed before backup')
+        path = root / 'runtime/backup.json'
+        identity = role_release.json_digest({'record': record, 'data_identity': state['data_identity']})
+        if path.exists() or path.is_symlink():
+            intent = managed_state.read(path)
+            topology.fields(intent, ('schema', 'core_sha256', 'phase', 'succeeded'))
+            if (type(intent['schema']) is not int or intent['schema'] != 1 or intent['core_sha256'] != identity or
+                    intent['phase'] not in ('stopping', 'resuming') or
+                    (intent['phase'] == 'stopping' and intent['succeeded'] is not None) or
+                    (intent['phase'] == 'resuming' and type(intent['succeeded']) is not bool)):
+                raise ValueError('Resume the same valid core backup intent')
+        else:
+            check_health(root, record, execute=execute)
+            if shutil.disk_usage(root).free < 2 * 1024**3:
+                raise ValueError('At least 2 GiB free space required before core backup')
+            execute(['docker', 'pull', legacy.RESTIC])
+            intent = {'schema': 1, 'core_sha256': identity, 'phase': 'stopping', 'succeeded': None}
+            managed_state.persist(path, intent)
+
+        def resume():
+            if identify_data(root, record, execute=execute) != state['data_identity']:
+                raise ValueError('Core data identity changed during backup')
+            # Never run configure, another release or a restore to resume writers.
+            compose(root, record, 'up', '-d', '--no-deps', '--no-build', '--pull', 'never',
+                    '--wait', '--wait-timeout', '180', 'postgres', 'synapse', 'control', execute=execute)
+            check_health(root, record, execute=execute)
+            if identify_data(root, record, execute=execute) != state['data_identity']:
+                raise ValueError('Core data identity changed after backup recovery')
+            path.unlink()
+            descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+            try: os.fsync(descriptor)
+            finally: os.close(descriptor)
+
+        if intent['phase'] == 'stopping':
+            try:
+                compose(root, record, 'stop', 'synapse', 'control', execute=execute)
+                create_backup(root, record)
+            except Exception:
+                intent.update(phase='resuming', succeeded=False)
+                managed_state.persist(path, intent)
+                resume()
+                raise
+            intent.update(phase='resuming', succeeded=True)
+            managed_state.persist(path, intent)
+        resume()
+        if not intent['succeeded']:
+            raise RuntimeError('Interrupted failed backup recovered; retry backup explicitly')
+    return record
+
+
 def deploy(root, public, inventory, manifest, *, subnet='10.241.0.0/28', execute=role_deploy.run,
            check_network=role_deploy.network_ready, check_health=healthy, create_backup=backup, check_boot=role_bootstrap.ready, identify_data=data_identity, activate_monitor=role_bootstrap.activate):
     root = Path(root).absolute()
     if root.resolve() != root: raise ValueError('Core root must not traverse symlinks')
     target = record_for(root, inventory, manifest)
     with role_bootstrap.monitor_after(root, 'core', activate=activate_monitor), managed_state.locked(root), check_network(inventory, 'core', subnet, execute=execute):
+        require_no_backup(root)
         check_boot(root, 'core')
         release = role_deploy.release_path(root, target)
         role_release.verify_bundle(release, manifest, public, inventory, subnet)
@@ -305,13 +385,22 @@ def deploy(root, public, inventory, manifest, *, subnet='10.241.0.0/28', execute
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ('root', 'topology', 'inventory', 'manifest'):
+    for name in ('root', 'topology', 'inventory'):
         parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--manifest', type=Path)
+    parser.add_argument('--backup-only', action='store_true')
     parser.add_argument('--edge-subnet', default='10.241.0.0/28')
     args = parser.parse_args()
+    if args.backup_only == bool(args.manifest):
+        parser.error('Choose either --manifest or --backup-only')
     public = topology.load(args.topology)
-    deploy(args.root, public, node_inventory.load(args.inventory, public), role_release.load(args.manifest), subnet=args.edge_subnet)
-    print('Core healthy; current/previous committed. Persistent data retained.')
+    inventory = node_inventory.load(args.inventory, public)
+    if args.backup_only:
+        backup_current(args.root, public, inventory, subnet=args.edge_subnet)
+        print('Core backup checked; committed writers and monitoring resumed.')
+    else:
+        deploy(args.root, public, inventory, role_release.load(args.manifest), subnet=args.edge_subnet)
+        print('Core healthy; current/previous committed. Persistent data retained.')
 
 
 if __name__ == '__main__': main()

@@ -77,6 +77,13 @@ class RoleBootTests(unittest.TestCase):
         self.compose.assert_not_called()
         self.assertEqual(core_deploy.read_state(self.root)['pending']['phase'], 'prepared')
 
+    def test_interrupted_core_backup_refuses_boot_recovery_before_any_start(self):
+        managed_state.persist(self.root / 'runtime/backup.json', {'schema': 1, 'phase': 'stopping'})
+        with self.assertRaisesRegex(ValueError, 'pending core backup'): self.start()
+        self.compose.assert_not_called()
+        self.data.assert_not_called()
+        self.health.assert_not_called()
+
     def test_runtime_secret_change_refuses_any_start(self):
         (self.root / 'runtime/stand.env').write_text('changed-secret')
         with self.assertRaisesRegex(ValueError, 'runtime changed'): self.start()

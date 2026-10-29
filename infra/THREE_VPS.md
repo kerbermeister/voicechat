@@ -1037,3 +1037,31 @@ legacy данных, общий rollback и production workflow интегрир
 Настоящий port cutover/resume/rollback и manager no-op после перехода прошли на
 marked disposable VM: [evidence](../docs/iterations/three-vps-evidence/2026-10-29-vm-shared-port-cutover.json).
 Проба использует synthetic API/TURN TLS и не подтверждает media/core DB/reboot.
+
+Для общего перехода координатор удерживает ingress lock от начала core maintenance
+до проверки HTTPS и вызывает внутренний `shared_cutover._activate_locked`.
+Самостоятельный `activate` берёт этот lock сам; параллельный business deploy
+отказывает до изменений. Порядок child locks остаётся front → edge → TLS.
+
+### Backup уже управляемого core
+
+`core_deploy.py --root <core-root> --topology <public.json> --inventory <inventory.json>
+--backup-only` делает согласованный локальный encrypted backup текущего core.
+`--manifest` и `--backup-only` взаимоисключающие. Сначала проверяются immutable
+bundle, runtime digest, data identity, boot/network ownership и готовность служб;
+Restic скачивается до остановки writers. Core/network locks удерживаются до конца.
+
+Private `runtime/backup.json` фиксирует stopping/resuming и результат snapshot.
+Останавливаются только Synapse/control, PostgreSQL остаётся для pg_dump. Существующий
+backup сохраняет database/media/control/runtime и проверяет Restic repository.
+После snapshot возвращаются только postgres/synapse/control текущего release с
+`--no-deps`; configure, смена policy и current/previous pointers не выполняются.
+Ошибка snapshot возвращает доступность и сообщает ошибку. Неудачный запуск или
+прерывание оставляют journal; boot/deploy отказывают до продолжения той же операции.
+Прерванный незавершённый snapshot повторяется, завершённый — только возобновляет
+writers. Замена data identity запрещает автоматический запуск.
+
+Это операция backup; установка нового timer и согласованное отключение прежнего
+`voicechat-backup.timer` входят в legacy-to-core migration. На production старый
+timer пока сохранён. Данные и Restic password остаются на A; независимое offsite
+хранилище и восстановление после потери A по-прежнему целевая задача.

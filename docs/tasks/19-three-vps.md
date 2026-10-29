@@ -615,6 +615,15 @@ same-target resume после реального Compose up, no-op без restar
 Neighbor manager поддерживает уже committed shared mode, сохраняя строгий PROXY
 source и HTTP-01 sinks. Сам public cutover/full migration ещё открыты.
 
+29.10, завершённый следующий шаг: реальный shared-port cutover, interruption/resume,
+rollback к прежнему HTTPS, сохранение соседних upstreams и repeat без restart
+прошли на VM. Общий ingress lock можно удерживать весь full migration, fencing
+соседнего business deploy; port controller переиспользует его без двойного lock.
+[Evidence](../iterations/three-vps-evidence/2026-10-29-vm-shared-port-cutover.json).
+`core_deploy --backup-only` добавляет отдельный backup текущей managed роли без
+configure и смены pointers; локально проверены failure/recovery/boot fence/data
+identity. Новый scheduler, legacy adoption и общий production full ещё открыты.
+
 Подготовлен URL-only migration primitive для прежних pushers: journal до DB commit,
 повтор после прерывания и транзакционный rollback проверены на настоящем PostgreSQL
 с синтетической таблицей. В core orchestrator ещё не подключён; остановка writers,

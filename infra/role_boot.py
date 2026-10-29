@@ -22,6 +22,7 @@ def start(root, role, edge_id=None, *, execute=role_deploy.run, network_director
     if root.resolve() != root: raise ValueError('Role root must not traverse symlinks')
     with managed_state.locked(root):
         role_bootstrap.ready(root, role, edge_id)
+        if role == 'core': core_deploy.require_no_backup(root)
         state = core_deploy.read_state(root) if role == 'core' else edge_deploy.read_state(root, edge_id)
         if state['pending'] is not None and state['pending']['phase'] != 'prepared':
             raise ValueError('Resume the pending deployment before starting this role')

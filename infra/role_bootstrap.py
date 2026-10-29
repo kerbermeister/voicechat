@@ -200,7 +200,9 @@ def monitor_after(root, role, edge_id=None, *, activate=activate):
             if path.exists() or path.is_symlink():
                 state = managed_state.read(path)
                 pending = state.get('pending')
-                if state.get('current') is not None and (pending is None or pending.get('phase') == 'prepared'):
+                backup = root / 'runtime/backup.json'
+                maintenance = role == 'core' and (backup.exists() or backup.is_symlink())
+                if not maintenance and state.get('current') is not None and (pending is None or pending.get('phase') == 'prepared'):
                     activate(root, role, edge_id)
         except Exception:
             if failure is None: raise

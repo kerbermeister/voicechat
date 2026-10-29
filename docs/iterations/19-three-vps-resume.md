@@ -10,6 +10,24 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 
 ## Актуальное состояние: production ingress, 29 октября
 
+Последняя локальная итерация: `shared_cutover` допускает вызов под уже удерживаемым
+общим ingress lock для full migration, не освобождая fence соседнего deploy.
+11 cutover tests PASS. Добавлен отдельный `core_deploy --backup-only` с durable
+stopping/resuming journal, запретом раннего boot/deploy и восстановлением текущих
+writers без configure/смены pointers. Полный Python suite в проектном venv с
+synthetic env secrets: **390 tests, OK, skipped=3**; после него добавлены
+identity-substitution и registry-failure scenarios, focused backup suite **8 PASS**. Ошибочные первые
+запуски без project dependencies/fixture secrets исправлены окружением, исходные
+проверки не отключались. Реальная VM проверка нового backup controller выполняется; receipt будет сохранён
+после полного успешного прогона и cleanup.
+
+Production проверен read-only: `/srv/voicechat` и runtime root:root0700, stand.env
+0600, current.json/deploy.lock0644, без symlinks. Старый backup service запускается
+от root через current release `deploy.py --backup-only`; timer enabled/active,
+последний запуск 29.10 03:30UTC status0. При adoption его необходимо согласованно
+заменить, чтобы старый deploy не запускал legacy services после смены ролей.
+Эта итерация не изменяла production службы/данные/DNS.
+
 Завершён `shared_cutover.py`: общий private journal, Caddy→HAProxy public port
 transfer, trusted TLS/API/neighbor health, rollback освобождает 443 до восстановления
 Caddy. Unknown source/runtime/container layouts и active Caddy JSON не перезаписываются.
