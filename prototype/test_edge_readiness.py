@@ -69,5 +69,22 @@ class EdgeReadinessTests(unittest.TestCase):
             with self.assertRaises(ValueError): edge_deploy.healthy(Path('/prepared-edge'), dedicated, warm_port=19443)
             certificate.assert_not_called()
 
+    def test_transient_http_transport_close_retries_but_exhaustion_remains_an_error(self):
+        with patch.object(edge_deploy, 'certificate', return_value=b'verified-pair'), patch.object(
+                edge_deploy.tls_activation, 'verify_live'), patch.object(
+                edge_deploy.socket, 'create_connection') as connect, patch.object(
+                edge_deploy.ssl, 'create_default_context'), patch.object(
+                edge_deploy.http.client, 'HTTPResponse') as response, patch.object(edge_deploy.time, 'sleep'):
+            stream = connect.return_value
+            connect.side_effect = [ConnectionResetError('backend restarting'), stream]
+            response.return_value.status = 200
+            response.return_value.read.return_value = json.dumps(self.value).encode()
+            edge_deploy.healthy(Path('/prepared-edge'), self.record, warm_port=19443)
+            self.assertEqual(connect.call_count, 2)
+            connect.side_effect = OSError('still unavailable')
+            with patch.object(edge_deploy.time, 'monotonic', side_effect=[0, 16]):
+                with self.assertRaises(OSError):
+                    edge_deploy.healthy(Path('/prepared-edge'), self.record, warm_port=19443)
+
 
 if __name__ == '__main__': unittest.main()

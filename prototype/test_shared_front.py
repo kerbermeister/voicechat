@@ -70,6 +70,10 @@ class SharedFrontWarmTests(unittest.TestCase):
             if self.fail_parse: raise RuntimeError('synthetic parse error')
             return b'Configuration file is valid'
         self.assertEqual(args[:2], ['docker', 'compose'])
+        if 'pull' in args:
+            self.assertIn('--policy', args); self.assertIn('missing', args)
+            self.assertEqual(args[-1], 'ingress')
+            return b''
         self.assertIn('--no-deps', args); self.assertIn('--no-build', args)
         self.assertEqual(args[-1], 'ingress')
         self.create()
@@ -92,6 +96,18 @@ class SharedFrontWarmTests(unittest.TestCase):
         self.calls.clear()
         self.assertEqual(self.warm(), expected)
         self.assertFalse(self.mutations())
+
+    def test_public_definition_is_sealed_but_never_selected_by_warm(self):
+        model = json.loads((self.plan / 'compose.public.json').read_text())
+        self.assertEqual(model['services']['ingress']['ports'], ['443:8443/tcp', '127.0.0.1:19443:8443/tcp'])
+        model['services']['ingress']['ports'] = self.model['services']['ingress']['ports']
+        self.assertEqual(model, self.model)
+        self.warm()
+        self.assertFalse(any(str(self.plan / 'compose.public.json') in args for args in self.calls))
+        (self.plan / 'compose.public.json').write_text('{}')
+        self.calls.clear()
+        with self.assertRaisesRegex(ValueError, 'checksum'): self.warm()
+        self.assertFalse(self.calls)
 
     def test_interrupted_up_resumes_the_same_plan_and_rejects_another(self):
         self.interrupt = True
@@ -124,14 +140,14 @@ class SharedFrontWarmTests(unittest.TestCase):
         with self.assertRaises(RuntimeError): self.warm()
         self.assertFalse((self.root / 'warm.json').exists())
         self.assertFalse(self.container)
-        self.assertFalse(any(args[:2] == ['docker', 'compose'] for args in self.calls))
+        self.assertFalse(any(args[:2] == ['docker', 'compose'] and 'up' in args for args in self.calls))
 
     def test_owned_stopped_listener_can_be_recovered_without_other_services(self):
         self.warm()
         self.container['running'] = False
         self.calls.clear()
         self.assertEqual(self.warm()['phase'], 'running')
-        starts = [args for args in self.calls if args[:2] == ['docker', 'compose']]
+        starts = [args for args in self.calls if args[:2] == ['docker', 'compose'] and 'up' in args]
         self.assertEqual(len(starts), 1)
         self.assertEqual(starts[0][-1], 'ingress')
         self.assertTrue(self.container['running'])

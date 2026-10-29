@@ -10,8 +10,41 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 
 ## Актуальное состояние: production ingress, 29 октября
 
-Последний полный инфраструктурный regression: **234 tests PASS**.
-Текущая работа — связанный public port cutover и legacy core adoption/full.
+Завершён `shared_cutover.py`: общий private journal, Caddy→HAProxy public port
+transfer, trusted TLS/API/neighbor health, rollback освобождает 443 до восстановления
+Caddy. Unknown source/runtime/container layouts и active Caddy JSON не перезаписываются.
+10 focused controller tests PASS; инфраструктурный regression — **246 PASS**.
+Полный release Python suite — **382 tests, OK, skipped=3** (явные opt-in Docker
+scenarios; native Mac проверки, доступные обычному suite, выполнены).
+
+**Реальный VM port-cutover proof PASS**:
+[свидетельство](three-vps-evidence/2026-10-29-vm-shared-port-cutover.json).
+На VM ports80/443 выполнены потеря ответа после настоящего Caddy recreate и
+HAProxy recreate, same-intent resume, принудительная ошибка после проверенного
+public TLS/API и возврат старого HTTPS. Соседние synthetic upstream processes
+сохранены. Успешный commit/repeat и shared-mode manager no-op прошли. Fixture
+containers/networks/volumes и wrapper удалены; публичный sealed source package
+сохранён как content-addressed artifact. Это synthetic API/TURN TLS, без настоящей
+core DB, allocation/media и reboot; production этот controller ещё не использует.
+
+Sealed operator roster — 31 files, SHA
+`aebb25f2a0fd92e6151d11c6e44c7e4cd48a53b5ce5a2259e3adf5e775c1822c`.
+Старые 25/26/27/28/29 packages остаются читаемыми и не изменяются. Public front
+определение sealed отдельно, warm-up его не выбирает; после takeover сохраняется
+loopback endpoint для TLS renewal. Warm-up переиспользует cached immutable image.
+VM также выявила transient EOF HTTP после backend restart: `edge_deploy.healthy`
+повторяет только transport errors с ограничением времени; wrong status/body/
+identity/upstream metadata всё ещё немедленно завершают проверку ошибкой.
+
+Production остаётся e964…/5b27… ingress и 8bcbd91 app. Далее: реальный source-only
+upgrade с предыдущего production 28-file package до 31, legacy core adoption/full,
+TLS renewal, CI и client release. Новый обнаруженный client случай: fresh web на
+новом адресе должен получать подписанный catalog с текущего origin при offline
+compiled bootstrap. Native hint proof PASS; браузерный прогон выявил same-origin
+cookies стандартного BrowserClient. Credential-free fetch/stream/abort adapter и
+дополнительные cookie/redirect/size cases сейчас проверяются. Пока не объявлять
+новый web proof завершённым; local fixture session62547 уже остановлен, новый
+external-browser fixture — session79496, лог `.prototype/catalog-website-hint-browser.log`.
 
 Перед production publication усилены файловые границы `publish_catalog.py`:
 canonical owned runtime без чужой записи, private regular no-follow lock и

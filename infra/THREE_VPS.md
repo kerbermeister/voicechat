@@ -1015,3 +1015,25 @@ listener3478. Флаг отсутствует по умолчанию и зап�
 должен совпадать с прежним. Удалять aliases можно после принятого перехода и
 истечения кешей, отдельным edge scope. Unit и coturn fixture прошли, но настоящий
 production host3488 и пользовательские звонки этим ещё не приняты.
+
+### Согласованный перенос public443
+
+`shared_front.prepare` копирует frontend из проверенного edge bundle в отдельный
+owned plan. `warm` запускает только loopback19443 и переиспользует cached immutable
+image. Соседний Caddy и приложения этим шагом не меняются. Отдельный sealed
+`compose.public.json` добавляет public443, сохраняя loopback для TLS renewal.
+
+`shared_cutover.activate` принимает подготовленные ingress/frontend plans и
+committed edge. Под общими ingress/front/edge/TLS locks проверяются source/host,
+environment, mounts, volumes, ports, bridge addresses и active Caddy JSON.
+Private `configuration.json` фиксирует фазы caddy/front/verify/rollback. После
+trusted warm TLS/API проверки Caddy получает только port80 и strict PROXY listener,
+HAProxy получает443. Указатель commit записывается после public edge и business
+HTTPS проверок. Ошибка сначала возвращает HAProxy на loopback, затем восстанавливает
+Caddy443. Неизвестные внешние правки сохраняются, журнал остаётся для диагностики.
+
+Компонент подключается к полному координатору после готовности core/edge; перенос
+legacy данных, общий rollback и production workflow интегрируются отдельно.
+Настоящий port cutover/resume/rollback и manager no-op после перехода прошли на
+marked disposable VM: [evidence](../docs/iterations/three-vps-evidence/2026-10-29-vm-shared-port-cutover.json).
+Проба использует synthetic API/TURN TLS и не подтверждает media/core DB/reboot.

@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+from copy import deepcopy
 
 import managed_state
 import node_inventory
@@ -47,10 +48,15 @@ def prepare(root, edge_root, manifest, *, warm_port=19443):
                               'bind': {'create_host_path': False}}]:
         raise ValueError('One read-only shared proxy configuration required')
     service['ports'] = [f'127.0.0.1:{warm_port}:8443/tcp']
+    public_model = deepcopy(model)
+    # Retain the private probe endpoint for certificate activation/renewal after
+    # takeover; only the full cutover controller may select this definition.
+    public_model['services']['ingress']['ports'].insert(0, '443:8443/tcp')
     node = json.loads(shared_ingress.read_environment(release / 'infra/node.json'))
     host_key = node_inventory.host_key(node['ssh_host_key'])
     files = {'haproxy.cfg': shared_ingress.read_environment(release / 'infra/haproxy.cfg'),
-             'compose.json': (json.dumps(model, sort_keys=True, indent=2) + '\n').encode()}
+             'compose.json': (json.dumps(model, sort_keys=True, indent=2) + '\n').encode(),
+             'compose.public.json': (json.dumps(public_model, sort_keys=True, indent=2) + '\n').encode()}
     record = {'schema': 1, 'service_id': manifest['service_id'], 'edge_id': manifest['edge_id'],
               'host_key': host_key, 'warm_port': warm_port,
               'files': {name: hashlib.sha256(content).hexdigest() for name, content in files.items()}}
@@ -94,8 +100,8 @@ def read_plan(root, plan, *, system_root=Path('/')):
     host = Path(system_root) / 'etc/ssh/ssh_host_ed25519_key.pub'
     if node_inventory.host_key(' '.join(shared_ingress.read_environment(host).decode().split()[:2])) != record['host_key']:
         raise ValueError('Shared front plan belongs to another SSH host')
-    topology.fields(record['files'], ('haproxy.cfg', 'compose.json'))
-    if {item.name for item in plan.iterdir()} != {'haproxy.cfg', 'compose.json', 'plan.json'}:
+    topology.fields(record['files'], ('haproxy.cfg', 'compose.json', 'compose.public.json'))
+    if {item.name for item in plan.iterdir()} != {'haproxy.cfg', 'compose.json', 'compose.public.json', 'plan.json'}:
         raise ValueError('Unexpected shared front source')
     for name, checksum in record['files'].items():
         if not isinstance(checksum, str) or not role_release.SHA.fullmatch(checksum) or hashlib.sha256(shared_ingress.read_environment(plan / name)).hexdigest() != checksum:
@@ -103,9 +109,9 @@ def read_plan(root, plan, *, system_root=Path('/')):
     return record, json.loads(shared_ingress.read_environment(plan / 'compose.json'))
 
 
-def _command(plan):
+def _command(plan, *, public=False):
     return ['docker', 'compose', '--env-file', '/dev/null', '--project-name', PROJECT,
-            '-f', str(plan / 'compose.json')]
+            '-f', str(plan / ('compose.public.json' if public else 'compose.json'))]
 
 
 def _container(plan, model, *, execute, required):
@@ -119,14 +125,20 @@ def _container(plan, model, *, execute, required):
                 '"ports":{{json .HostConfig.PortBindings}},"networks":{{json .NetworkSettings.Networks}}}')
     value = json.loads(execute(['docker', 'inspect', '--format', template, ids[0]]))
     service = model['services']['ingress']
-    port = service['ports'][0].split(':')[1]
-    expected_ports = {'8443/tcp': [{'HostIp': '127.0.0.1', 'HostPort': port}]}
+    configured = service['ports']
+    warm = configured[-1]
+    if not re.fullmatch(r'127\.0\.0\.1:[0-9]+:8443/tcp', warm) or configured not in ([warm], ['443:8443/tcp', warm]):
+        raise ValueError('Only the known public and loopback shared front bindings are allowed')
+    expected_ports = [('127.0.0.1', warm.split(':')[1])]
+    if len(configured) == 2: expected_ports.append(('', '443'))
+    bindings = value['ports']
+    actual_ports = [(item['HostIp'], item['HostPort']) for item in bindings.get('8443/tcp', [])]
     mounts = value['mounts']
     networks = {model['networks'][name]['name']: item['ipv4_address'] for name, item in service['networks'].items()}
     if (value['id'] != ids[0] or value['image'] != service['image'] or
             value['labels'].get('com.docker.compose.project') != PROJECT or
             value['labels'].get('com.docker.compose.service') != 'ingress' or
-            value['ports'] != expected_ports or len(mounts) != 1 or
+            set(bindings) != {'8443/tcp'} or sorted(actual_ports) != sorted(expected_ports) or len(mounts) != 1 or
             mounts[0].get('Type') != 'bind' or mounts[0].get('RW') is not False or
             mounts[0].get('Source') != str(plan / 'haproxy.cfg') or
             mounts[0].get('Destination') != '/usr/local/etc/haproxy/haproxy.cfg' or
@@ -173,7 +185,8 @@ def warm(root, plan, *, execute=role_deploy.run, system_root=Path('/')):
         if saved == {**expected, 'phase': 'running'} and current is not None and current['running']:
             return saved
         image = model['services']['ingress']['image']
-        execute(['docker', 'pull', image])
+        execute([*_command(plan), 'pull', '--policy', 'missing', 'ingress'],
+                env={**os.environ, 'COMPOSE_DISABLE_ENV_FILE': 'true'})
         execute(['docker', 'run', '--rm', '--network', 'none', '--read-only',
                  '--volume', str(plan / 'haproxy.cfg') + ':/usr/local/etc/haproxy/haproxy.cfg:ro',
                  image, 'haproxy', '-c', '-f', '/usr/local/etc/haproxy/haproxy.cfg'])

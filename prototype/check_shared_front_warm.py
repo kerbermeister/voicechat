@@ -22,7 +22,7 @@ import shared_front
 import tls_runtime
 
 
-def check_tls_backends(directory, edge, manifest, public, inventory, model, run):
+def check_tls_backends(directory, edge, manifest, public, inventory, model, run, *, exercise=None):
     """Use a disposable CA and real strict-PROXY TLS, never disable verification."""
     ca, key, leaf = directory / 'ca.crt', directory / 'server.key', directory / 'server.crt'
     ca_key = directory / 'ca.key'
@@ -35,7 +35,7 @@ def check_tls_backends(directory, edge, manifest, public, inventory, model, run)
          '-nodes', '-keyout', str(key), '-out', str(csr), '-subj', '/CN=chat.fixture.invalid'])
     extensions.write_text('basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\n'
         'extendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n'
-        'subjectAltName=DNS:chat.fixture.invalid,DNS:turn.fixture.invalid\n')
+        'subjectAltName=DNS:chat.fixture.invalid,DNS:turn.fixture.invalid,DNS:neighbor.fixture.invalid\n')
     run(['openssl', 'x509', '-req', '-in', str(csr), '-CA', str(ca), '-CAkey', str(ca_key),
         '-CAcreateserial', '-out', str(leaf), '-days', '14', '-extfile', str(extensions)])
     chain = directory / 'server.chain'; chain.write_bytes(leaf.read_bytes() + ca.read_bytes())
@@ -95,6 +95,8 @@ def check_tls_backends(directory, edge, manifest, public, inventory, model, run)
         web.write_text(good); run(['docker', 'restart', names[0]])
         with managed_state.locked(edge / 'runtime/tls'):
             edge_deploy.healthy(edge, record, warm_port=19443)
+        if exercise is not None:
+            return exercise(directory, edge, manifest, public, inventory, run)
     finally:
         for name in names:
             if run(['docker', 'ps', '-aq', '--filter', 'name=^' + name + '$']).strip():
@@ -105,7 +107,7 @@ def check_tls_backends(directory, edge, manifest, public, inventory, model, run)
         else: os.environ['SSL_CERT_FILE'] = previous_ca
 
 
-def main():
+def main(*, cutover=False):
     base = Path('/srv/voicechat-edge-fixture')
     if sys.platform != 'linux' or not base.is_dir() or base.is_symlink():
         raise ValueError('Use the marked disposable Linux VM')
@@ -125,9 +127,15 @@ def main():
         'edges': [{'id': 'warmfixture', 'host': 'core', 'shared_tls': {
             'network': 'vc-warm-fixture-legacy', 'subnet': '172.30.43.0/29',
             'legacy_ip': '172.30.43.2', 'ingress_ip': '172.30.43.3'}}]}
+    if cutover:
+        # The public-endpoint check must reach this VM's real interface. A
+        # documentation-only TEST-NET address is sufficient only for loopback.
+        routes = json.loads(run(['ip', '-j', '-4', 'route', 'get', '198.51.100.10']))
+        inventory['core']['public_ip'] = routes[0]['prefsrc']
     with tempfile.TemporaryDirectory(prefix='front-warm-', dir=base) as temporary:
         directory = Path(temporary)
-        front, edge = directory / 'front', directory / 'edge'
+        shared = directory / 'shared'; shared.mkdir(mode=0o700)
+        front, edge = shared / 'front', directory / 'edge'
         manifest = role_release.make(public, inventory, 'edge', 'a' * 40,
             'ghcr.io/fixture/web@sha256:' + '1' * 64, 'warmfixture', '10.243.0.0/28')
         role_prepare.prepare(edge, public, inventory, manifest, '10.243.0.0/28')
@@ -168,7 +176,10 @@ def main():
             assert not (edge / 'state.json').exists()
             assert set(model['services']) == {'ingress'}
             assert model['services']['ingress']['ports'] == ['127.0.0.1:19443:8443/tcp']
-            check_tls_backends(directory, edge, manifest, public, inventory, model, run)
+            exercise = None
+            if cutover:
+                from check_shared_port_cutover import exercise
+            extra = check_tls_backends(directory, edge, manifest, public, inventory, model, run, exercise=exercise)
             result = {'schema': 1, 'loopback_listener_only': True,
                 'real_compose_interruption_resumed': True, 'repeat_preserved_process': True,
                 'owned_stopped_listener_recovered': True,
@@ -178,6 +189,7 @@ def main():
                 'foreign_readiness_identity_rejected': True,
                 'limits': ['Synthetic Caddy readiness and TURN TLS endpoint; no real core, TURN allocation or media.',
                            'No public port cutover or reboot in this probe.']}
+            if extra is not None: result.update(extra)
         finally:
             run([*shared_front._command(plan), 'down', '--remove-orphans'])
         assert not run(['docker', 'ps', '-aq', '--filter', 'label=com.docker.compose.project=' + project]).strip()
@@ -187,4 +199,8 @@ def main():
         print(json.dumps(result))
 
 
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--cutover', action='store_true', help='Also exercise actual VM ports 80/443 and rollback')
+    main(cutover=parser.parse_args().cutover)

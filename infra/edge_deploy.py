@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import socket
 import ssl
+import time
 from urllib.parse import urlsplit
 
 import managed_state
@@ -119,15 +120,25 @@ def healthy(root, record, *, execute=run, warm_port=None):
                                    certificate(root, record, service))
     name = urlsplit(public['edges'][0]['origin']).hostname
     context = ssl.create_default_context()
-    with socket.create_connection((address, port), timeout=5) as raw:
-        with context.wrap_socket(raw, server_hostname=name) as stream:
-            stream.sendall(('GET /health/route HTTP/1.1\r\nHost: ' + name + '\r\nConnection: close\r\n\r\n').encode())
-            response = http.client.HTTPResponse(stream)
-            response.begin()
-            body = response.read(4097)
-            if response.status != 200 or len(body) > 4096:
-                raise ValueError('Public edge readiness failed')
-            value = json.loads(body)
+    deadline = time.monotonic() + 15
+    while True:
+        try:
+            with socket.create_connection((address, port), timeout=5) as raw:
+                with context.wrap_socket(raw, server_hostname=name) as stream:
+                    stream.sendall(('GET /health/route HTTP/1.1\r\nHost: ' + name + '\r\nConnection: close\r\n\r\n').encode())
+                    response = http.client.HTTPResponse(stream)
+                    response.begin()
+                    body = response.read(4097)
+                    if response.status != 200 or len(body) > 4096:
+                        raise ValueError('Public edge readiness failed')
+                    value = json.loads(body)
+            break
+        except (OSError, http.client.HTTPException):
+            # A freshly restarted backend can close a connection after the
+            # preceding TLS probes succeeded. Retry transport only; a wrong
+            # identity/body/status must still fail immediately below.
+            if time.monotonic() >= deadline: raise
+            time.sleep(.1)
     if (not isinstance(value, dict) or type(value.get('schema')) is not int or value['schema'] != 1 or
             value.get('service_id') != public['service_id'] or
             value.get('edge_id') != edge_id or value.get('matrix') is not True or value.get('control') is not True or
