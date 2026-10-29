@@ -1274,3 +1274,57 @@ progress в CI. Unit проверяет prefix и отказ trailing garbage. 2
 изменение не трогает coordinator/data/network. После успешного текущего VM proof
 следующий штатный full запуск можно делать с `rollout=initial, deploy=true` на
 исправленном revision, предварительно сверив exact source и production baseline.
+
+## Подтверждённый initial кандидат; внешний барьер GitHub
+
+Исправленный [полный VM proof PASS](three-vps-evidence/2026-10-29-vm-initial-cohost-retirement.json)
+завершён, session1044 закрыт успешно. Canonical source hashes совпали с рабочей
+копией, прошли retirement старого controller, durable sorted baseline/web plan и
+**actual core/edge baseline reader**. Account/device/account data/PG/signing
+identity сохранены; same-target repeat успешен. Независимо подтверждены отсутствие
+fixture containers/units и active исходной VM network. Других VM jobs нет.
+Отдельно [точный старый 8bcbd91 deploy guard PASS](three-vps-evidence/2026-10-29-vm-old-workflow-guard.json):
+на synthetic typed managed root старый deploy отказывает до Docker при отсутствии
+глобального stand.env. Это не защита старого root одним новым marker.
+
+Source HEAD кандидата **9d4a1aedd2d1e43c37d42852980dbf655dfc5c13** опубликован.
+Все защищённые исходники совпадают с успешно проверенным VM набором, за исключением
+SSH completion framing, проверенного focused unit (23 PASS). Full Python **498 PASS,
+skipped=3**; новых client изменений после CI #48 нет. Следующий production initial
+workflow должен использовать этот verified source (или revision только с docs).
+
+**GitHub DEPLOY_ROOT ещё НЕ изменён.** В environment production попытка сменить
+/srv/voicechat→/srv/voicechat-managed вызвала **Confirm access / Password**. Не считать
+save завершённым; прежний root остаётся действующим до UI-подтверждения. Пользователю
+отправлен async запрос самостоятельно подтвердить вход в tab8 (rolloutVariables),
+пароль в чат не запрашивался. open_in_codex(tabId8) вернул queued; tab помечен handoff.
+Для защиты от старого workflow меняем root ДО initial dispatch: initial handler
+уже допускает DEPLOY_ROOT=managed и берёт legacy_root из SERVER_ROLE_CONFIG. Старый
+workflow будет fail-closed, runtime приложения/backup timer от смены CI var не
+меняются. После подтверждения проверить сохранение и только затем запускать
+rollout=initial, mode=full, deploy=true. Публичные SERVER_ROLE_CONFIG и
+SIGNED_ROUTE_CATALOG уже сохранены; SSH secrets и rules не менялись.
+
+Пока auth недоступен, продолжать обычный managed rollout controller и клиентские
+артефакты; не обходить аутентификацию/SSH/source guards, не подменять deployment
+состояние и не выкатывать b0b7040. Пользователь прямо просит не останавливаться.
+
+macOS **1.12.0(24)** собран на clean 9d4a1ae и упакован/подписан существующим ключом:
+`.prototype/macos-candidate-24-signed`, sourceDirty=false, personal-adhoc,
+Sparkle feed/archive signatures проверены упаковщиком против embedded public key.
+ZIP SHA256 **9ae3b1020439f19aa30bbc106782a6c4a1a66ca0ef1a48ac53b025fb40da1b61**;
+DMG **b73ed5efeda7d4e55f53f1e07761174467d68b7135a70f3072c7cbd28c20420c**.
+Не установлен/не опубликован; обязательны backup app/profile, previous installed23
+UI update и сохранение account/device/history после production перехода.
+Первая packaging попытка ошиблась путём sign_update, не принята; правильный SDK bin:
+`/Users/anton/Library/Developer/Xcode/DerivedData/Runner-esogviehnrlutigydryaphqbznxi/SourcePackages/artifacts/sparkle/Sparkle/bin`.
+Существующий private key только на Mac в VoiceChatRelease; его не вывозить.
+
+Android release APK24 собран успешно (157.7MB), исходники clean9d4; session69769
+закрыт. Ещё надо package/verify штатным android_release.py существующим certificate.
+Локальный signing config `.../IdeaProjects/VoiceChat/secrets/android/signing.json`
+0600 существует; никаких новых ключей не создавали. CI Android secrets отсутствуют,
+workflow не запускали; tab9 закрыт. `adb devices -l` — ни одного устройства.
+Физическую приёмку и promotion APK не объявлять завершёнными/не обходить guard.
+При packaging после docs-only commit проверить неизменность всех compile inputs
+относительно 9d4a1ae; не менять уже подписанный Mac package или его provenance.

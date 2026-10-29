@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "full_initial_cohost_migration_committed": true,
+  "same_target_complete_resume": true,
+  "account_device_account_data_database_and_signing_identity_preserved": true,
+  "legacy_release_pointer_unchanged": true,
+  "production_changed": false,
+  "legacy_controller_retired_before_runtime_or_docker": true,
+  "typed_initial_baseline_and_web_scope_plan_verified": true,
+  "actual_core_edge_baseline_reader_verified": true,
+  "limits": [
+    "Synthetic accounts, CA, catalog key and candidate fingerprint on the marked VM.",
+    "No real device/media acceptance, production transition or actual machine reboot."
+  ],
+  "pre_public_rollback_and_committed_core_public_recovery_drills": false,
+  "legacy_source_commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "legacy_control_image": "ghcr.io/voicechat-fixture/legacy-control@sha256:bc8327d779a99c7be95ae057a1d8f1a791c6bf52618fbf0317dfd08292376084",
+  "fixture_resources_removed": true,
+  "date": "2026-10-29",
+  "source_sha256": {
+    "infra/legacy_core.py": "dfa6ad95ccce19c31d635a5514807e5e274d379b00b67a5af412a343469c023f",
+    "infra/role_boot.py": "d47428206da9de745fab2fc0bbff8dfa47a1cc0ef04503528494e9c14d5767d6",
+    "infra/role_bootstrap.py": "897ad02cd2009fb31e93dd852bd70dc1f59e5ba4acb072a91bdb82a00644b60c",
+    "infra/core_deploy.py": "64c82dcf25e34dfda6d125cfca92ae9d1e8c4ce3ff588a3df8fda79a6a9ee0ae",
+    "infra/role_deploy.py": "c0526f1937b3e916fb7c7afa9ecb3975bc22c0c8255f58d5cb517471e3486adc",
+    "infra/push_route_migration.py": "dbeb243b28f38a5ddb5dd93fc2945c7a075b5ea2d22f7cdd990cd84924588a06",
+    "prototype/check_legacy_core_preflight.py": "2ea84cc79bad14537a955bdc392b2602919e53497778d33967ed727964baede5",
+    "prototype/check_initial_cohost.py": "4af1b2901924c51b9cc85ecfeddace5357886f909c57ad2ac41327ca0519fa07",
+    "prototype/initial_cohost_business.py": "e03f459aba2672ee5329a1aba398410338bb406b392ea3bb991c434bbc8f1741",
+    "prototype/initial_cohost_network.py": "90d734b93533028ebd609f2f6b1c2ab46e11c2271696a0464f99fc4e8cce6c59",
+    "infra/initial_cohost.py": "249c83862a20b5cbf5e4c518e482408359dd70b119e1887feaa23ba97bdb9b74",
+    "infra/role_config.py": "db78411546ae32c729df54fe2327dee7e340cfa97bdcd1b89e98424d98387196",
+    "infra/render_roles.py": "7cc9732532ebe32266d01e4d1a503eda03055d9ae6dd63e9411d58f08b75329c",
+    "infra/managed_release.py": "fff00e9b450efb5fb6dac2a427abb55284e9c36caee0d19002b04aa016abe71a",
+    "infra/initial_entry.py": "de1cb2a6975fd44ca2ef861646daecc72d98f9652d701561e39aed5e4414782c"
+  },
+  "canonical_json_sources_match_current_checkout": true,
+  "cleanup_independently_verified": true,
+  "original_network_active": true
+}
