@@ -13,10 +13,12 @@ import subprocess
 import sys
 import tempfile
 import time
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'infra'))
 import role_config
+import role_bootstrap
 import shared_ingress
 import shared_update
 import topology
@@ -28,12 +30,22 @@ def run(*arguments):
     return result.stdout
 
 
-def main(*, adoption=False, update=False):
+def main(*, adoption=False, update=False, initial_operator=None):
     if sys.platform != 'linux' or os.geteuid() != 0: raise ValueError('Disposable Linux root VM required')
     public_key = ' '.join(Path('/etc/ssh/ssh_host_ed25519_key.pub').read_text().split()[:2])
     marker = json.loads((ROOT / '.disposable-vm').read_text())
     if marker != {'kind': 'voicechat-disposable-vm', 'ssh_host_key_sha256': hashlib.sha256(public_key.encode()).hexdigest()}:
         raise ValueError('Disposable VM marker does not match this host')
+    if initial_operator is not None:
+        initial_operator = Path(initial_operator).absolute()
+        if (not update or initial_operator.resolve() != initial_operator or initial_operator.name != 'infra' or
+                not re.fullmatch(r'[a-f0-9]{64}', initial_operator.parent.name) or
+                initial_operator.parent.parent != Path('/opt/voicechat/operators') or
+                {path.name for path in initial_operator.iterdir()} != set(role_bootstrap.MANAGER_SOURCES)):
+            raise ValueError('Reviewed historical 27-file manager package required for --update')
+        hashes = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in initial_operator.iterdir()}
+        if hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest() != initial_operator.parent.name:
+            raise ValueError('Historical operator source identity changed')
     wrapper = Path('/usr/local/sbin/voicechat-shared-deploy')
     if update and (wrapper.exists() or wrapper.is_symlink()): raise ValueError('Existing manager must not be replaced by a fixture')
     for arguments in (['docker', 'ps', '-aq'], ['docker', 'network', 'ls', '-q'], ['docker', 'volume', 'ls', '-q']):
@@ -93,7 +105,34 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
         environment.write_bytes(original); environment.chmod(0o600)
         legacy = shared_ingress.legacy_config(business, public).encode()
         (deploy / 'Caddyfile').write_bytes(legacy)
-        plan = shared_ingress.stage(shared, repo, edge, public, inventory, 'a', business)
+        def historical(action):
+            # Run the actual previous sealed sources in a fresh interpreter;
+            # never mix old and current Python modules in one import cache.
+            script = '''import json,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+import shared_ingress,shared_update
+value=json.loads(sys.stdin.read())
+root=Path(value['root'])
+if value['action']=='stage':
+ result=str(shared_ingress.stage(root,value['repo'],value['edge'],value['public'],value['inventory'],'a',value['business']))
+elif value['action']=='inspect': result=shared_ingress.inspect_legacy_plan(root,Path(value['plan']))
+elif value['action']=='adopt': result=shared_ingress.adopt_legacy(root,Path(value['plan']))
+elif value['action']=='install': result=shared_update.install(root)
+else: raise ValueError('Unknown fixture operation')
+print(json.dumps(result))
+'''
+            value = {'action': action, 'root': str(shared), 'repo': str(repo), 'edge': str(edge),
+                     'public': public, 'inventory': inventory, 'business': business,
+                     'plan': str(plan) if action != 'stage' else None}
+            process = subprocess.run(['python3', '-B', '-c', script, str(initial_operator)],
+                input=json.dumps(value).encode(), capture_output=True, timeout=300,
+                env={**os.environ, 'CURL_CA_BUNDLE': str(directory / 'fixture-ca.pem')})
+            if process.returncode: raise RuntimeError('Historical synthetic operator failed: ' + process.stderr.decode()[-2500:])
+            assert secret.encode() not in process.stdout + process.stderr
+            return json.loads(process.stdout)
+        plan = (Path(historical('stage')) if initial_operator else
+                shared_ingress.stage(shared, repo, edge, public, inventory, 'a', business))
         command = ['docker', 'compose', '--project-directory', str(deploy), '--project-name', 'deploy',
                    '--env-file', str(environment), '-f', str(deploy / 'docker-compose.yml')]
         try:
@@ -107,8 +146,8 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
                 except RuntimeError:
                     if time.monotonic() >= end: raise
                     time.sleep(1)
-            baseline = shared_ingress.inspect_legacy_plan(shared, plan)
-            after = shared_ingress.inspect_legacy_plan(shared, plan)
+            baseline = historical('inspect') if initial_operator else shared_ingress.inspect_legacy_plan(shared, plan)
+            after = historical('inspect') if initial_operator else shared_ingress.inspect_legacy_plan(shared, plan)
             assert baseline == after and baseline['caddy_id'] == identifier
             assert len(baseline['neighbors']) == 2
             assert environment.read_bytes() == original and (deploy / 'Caddyfile').read_bytes() == legacy
@@ -141,7 +180,8 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
                     result = subprocess.run(arguments, env=env, capture_output=True, timeout=120)
                     if result.returncode: raise RuntimeError('Synthetic adoption command failed; private diagnostics retained in VM')
                     return result.stdout
-                for failure in (RuntimeError('lost Docker response'), SystemExit('process died')):
+                failures = () if initial_operator else (RuntimeError('lost Docker response'), SystemExit('process died'))
+                for failure in failures:
                     injected = False
                     def fail_after_up(arguments, *, env=None):
                         nonlocal injected
@@ -164,9 +204,9 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
                             assert 'Interrupted legacy adoption recovered' in str(error)
                     assert environment.read_bytes() == original
                     assert not (shared / 'pending.json').exists() and not (shared / 'current.json').exists()
-                committed = shared_ingress.adopt_legacy(shared, plan, execute=execute)
+                committed = historical('adopt') if initial_operator else shared_ingress.adopt_legacy(shared, plan, execute=execute)
                 managed_id = run(*command, '-f', str(shared / 'runtime/compose.override.yaml'), 'ps', '-q', 'caddy').decode().strip()
-                assert shared_ingress.adopt_legacy(shared, plan, execute=execute) == committed
+                assert (historical('adopt') if initial_operator else shared_ingress.adopt_legacy(shared, plan, execute=execute)) == committed
                 assert managed_id == run(*command, '-f', str(shared / 'runtime/compose.override.yaml'), 'ps', '-q', 'caddy').decode().strip()
                 assert (deploy / 'Caddyfile').read_bytes() == legacy
                 assert original in environment.read_bytes() and environment.stat().st_mode & 0o777 == 0o600
@@ -176,8 +216,23 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
                     neighboring_processes_and_data_volume_names_preserved=True, committed_retry_did_not_restart_caddy=True)
                 result['limits'] = ['Synthetic Git/env/upstreams and internal certificates; no external ACME, shared port cutover or production migration.',
                                     'Public content-addressed operator package retained; no manager wrapper or systemd unit activated.']
+                if initial_operator:
+                    del result['lost_response_automatic_rollback'], result['process_death_recovered_before_retry']
+                    result['historical_adoption_faults_not_repeated'] = True
                 if update:
+                    if initial_operator:
+                        previous = historical('install')
+                        upgrade_before = shared_ingress.snapshot({'deploy', 'voicechat'}, execute=execute)
                     receipt = shared_update.install(shared, execute=execute)
+                    if initial_operator:
+                        assert previous['operator']['operator_sha256'] == initial_operator.parent.name
+                        assert receipt['operator']['operator_sha256'] != initial_operator.parent.name
+                        assert shared_ingress.snapshot({'deploy', 'voicechat'}, execute=execute) == upgrade_before
+                        plan = shared / 'plans' / json.loads((shared / 'current.json').read_text())['plan']
+                        result.update(actual_historical_operator_source_upgrade=True,
+                            previous_operator_sha256=initial_operator.parent.name,
+                            upgraded_operator_sha256=receipt['operator']['operator_sha256'],
+                            manager_source_upgrade_preserved_all_container_processes=True)
                     wrapper_bytes = wrapper.read_bytes()
                     assert receipt['wrapper_sha256'] == hashlib.sha256(wrapper_bytes).hexdigest()
                     def publish(name):
@@ -283,16 +338,24 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
                         business_git_clean_and_environment_bytes_preserved=True, lost_reload_response_restored_known_routes=True,
                         installed_cli_retried_pending_reload=True, application_pull_and_service_recreate_preserved_other_processes=True)
                     result['source_sha256']['infra/shared_update.py'] = hashlib.sha256((ROOT / 'infra/shared_update.py').read_bytes()).hexdigest()
+                    if initial_operator:
+                        result['source_sha256']['infra/shared_config.py'] = hashlib.sha256((ROOT / 'infra/shared_config.py').read_bytes()).hexdigest()
                     result['limits'] = ['Synthetic Git/env/upstreams, public pinned images and internal certificates; no application schema migration, external ACME, shared port cutover or production migration.',
                                         'Public immutable operator packages retained; fixture manager wrapper removed; no systemd unit activated.']
+                    if initial_operator:
+                        result['limits'].append('Initial adoption used the actual historical operator; its previously proven fault drills were not repeated. Current certificate activation was not exercised.')
                     wrapper.unlink()
         except BaseException:
             print(run(*command, 'logs', '--tail', '12').decode(), file=sys.stderr)
             raise
         finally:
             if update and wrapper.exists():
-                expected_wrapper = shared_update._wrapper(shared, json.loads((plan / 'plan.json').read_text())['target']['operator'])
-                if wrapper.read_bytes() != expected_wrapper: raise ValueError('Unexpected fixture wrapper edit; preserve for inspection')
+                expected_wrappers = {shared_update._wrapper(shared, json.loads((plan / 'plan.json').read_text())['target']['operator'])}
+                current = shared / 'current.json'
+                if current.exists():
+                    recorded = shared / 'plans' / json.loads(current.read_text())['plan'] / 'plan.json'
+                    expected_wrappers.add(shared_update._wrapper(shared, json.loads(recorded.read_text())['target']['operator']))
+                if wrapper.read_bytes() not in expected_wrappers: raise ValueError('Unexpected fixture wrapper edit; preserve for inspection')
                 wrapper.unlink()
             run(*command, 'down', '--volumes', '--remove-orphans')
     for arguments in (['docker', 'ps', '-aq'], ['docker', 'network', 'ls', '-q'], ['docker', 'volume', 'ls', '-q']):
@@ -305,5 +368,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--adopt', action='store_true')
     parser.add_argument('--update', action='store_true')
+    parser.add_argument('--initial-operator', type=Path)
     args = parser.parse_args()
-    main(adoption=args.adopt or args.update, update=args.update)
+    main(adoption=args.adopt or args.update, update=args.update, initial_operator=args.initial_operator)

@@ -47,6 +47,26 @@ legacy core adoption/full orchestration/CI scopes, реальный role release
 Ниже — последовательные технические checkpoint, включая исторические ограничения
 до production ingress adoption; при расхождении ориентироваться на этот блок.
 
+### Следующий checkpoint: cohost certificate preparation
+
+Добавлены mode `legacy-certs`, `shared_config.py` и безопасный code-only upgrade
+в `shared_update.install`. Legacy + manager source roster теперь 25/26/27/28,
+старые packages не модифицируются. **210 infrastructure tests PASS**, включая
+9 certificate journal/trust-boundary cases и 3 source-upgrade interruption cases.
+Новый package `e9648a0be5de03eedd75dcd1e06d2b82d10d04f53f53927cf775ffb468f50696`
+прошёл [реальный VM upgrade из фактического прежнего b5ab…](three-vps-evidence/2026-10-29-vm-shared-manager-source-upgrade.json)
+без изменения процессов, затем повторен полный installed CLI/app deploy/recovery.
+Fixture очищен. [Certificate config](three-vps-evidence/2026-10-29-vm-cohost-certificates-parser.json)
+валидирован stock Caddy 2.8 без сети, TLS-ALPN disabled у обоих VoiceChat имён.
+
+Production сейчас всё ещё на manager b5ab… и legacy plan e977…; новый code-only
+upgrade и certificate plan **ещё не выполнялись**. Read-only preflight: canonical
+и turn.univc.duckdns.org дают только 84.200.80.13, ACME directory HTTPS доступен,
+текущий trusted canonical cert expires Jan21 2027, в Caddy volume есть одна его
+пара (private key не читался/не экспортировался). Следующее — сохранить commit,
+доставить reviewed 28-file package, выполнить install upgrade, затем stage/apply
+`legacy-certs` с настоящим SNI/CA подтверждением. User permissions уже даны.
+
 ## Текущая рабочая копия после интеграции
 
 Продолжать в `/Users/anton/.codex/worktrees/three-vps-rollout/VoiceChat`,

@@ -3,12 +3,14 @@ import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'infra'))
 import managed_state
 import shared_ingress
 import shared_update
+import role_bootstrap
 import test_shared_ingress_adopt
 
 
@@ -227,6 +229,58 @@ class SharedBusinessUpdateTests(unittest.TestCase):
         self.calls.clear(); self.revision = 'f' * 40
         self.assertEqual(self.update()['baseline']['head'], 'e' * 40)
         self.assertFalse(any('fetch' in args or 'restore' in args or 'down' in args for args in self.calls))
+
+
+class SharedManagerSourceUpgradeTests(unittest.TestCase):
+    def setUp(self):
+        self.fixture = SharedBusinessUpdateTests()
+        # Model an installed, verified historical source roster, as the role
+        # bootstrap tests do; no old Python package is executed by this unit test.
+        with patch.object(role_bootstrap, 'SOURCES', role_bootstrap.MANAGER_SOURCES):
+            self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups)
+        self.old = managed_state.read(self.fixture.root / 'manager.json')
+        self.environment = self.fixture.fixture.environment.read_bytes()
+
+    def install(self):
+        return shared_update.install(self.fixture.root, execute=self.fixture.execute,
+            health=self.fixture.adoption.health, system_root=self.fixture.system)
+
+    def test_code_upgrade_changes_only_owned_pointer_and_wrapper(self):
+        result = self.install()
+        self.assertNotEqual(result['operator']['operator_sha256'], self.old['operator']['operator_sha256'])
+        self.assertEqual(self.fixture.fixture.environment.read_bytes(), self.environment)
+        self.assertFalse(self.fixture.mutations())
+        self.assertEqual((self.fixture.root / 'runtime/caddy/Caddyfile').read_bytes(), self.fixture.fixture.legacy)
+        role_bootstrap.verify_record(self.fixture.system, self.old['operator'])
+        self.assertEqual(self.install(), result)
+
+    def test_pointer_commit_interruption_fences_old_wrapper_and_install_resumes(self):
+        persist = managed_state.persist
+        def die_after_pointer(path, value):
+            persist(path, value)
+            if path == self.fixture.root / 'current.json': raise SystemExit('interrupted owner upgrade')
+        with patch.object(managed_state, 'persist', side_effect=die_after_pointer):
+            with self.assertRaises(SystemExit): self.install()
+        self.fixture.calls.clear()
+        with self.assertRaisesRegex(ValueError, 'sources differ'): self.fixture.update()
+        self.assertFalse(any('fetch' in args for args in self.fixture.calls))
+        self.install()
+        self.assertFalse(self.fixture.mutations())
+        self.assertEqual(self.fixture.fixture.environment.read_bytes(), self.environment)
+
+    def test_wrapper_receipt_interruption_fences_commands_and_install_resumes(self):
+        persist = managed_state.persist
+        def die_before_receipt(path, value):
+            if path == self.fixture.root / 'manager.json': raise SystemExit('interrupted wrapper receipt')
+            persist(path, value)
+        with patch.object(managed_state, 'persist', side_effect=die_before_receipt):
+            with self.assertRaises(SystemExit): self.install()
+        self.fixture.calls.clear()
+        with self.assertRaisesRegex(ValueError, 'executable differs'): self.fixture.update()
+        self.assertFalse(any('fetch' in args for args in self.fixture.calls))
+        self.install()
+        self.assertFalse(self.fixture.mutations())
 
 
 if __name__ == '__main__': unittest.main()

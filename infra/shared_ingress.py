@@ -83,6 +83,26 @@ def compose_environment(repo, override):
     return 'COMPOSE_FILE=' + absolute_path(repo) + '/deploy/docker-compose.yml:' + absolute_path(override) + '\n'
 
 
+def legacy_certificates_config(business_routes, public, edge_id):
+    """Prepare cohost HTTP-01 certificates while retaining the old web upstream."""
+    config = legacy_config(business_routes, public)
+    edge = next((item for item in public['edges'] if item['id'] == edge_id), None)
+    if edge is None or edge['origin'] != public['canonical_origin']:
+        raise ValueError('Initial Caddy certificate preparation requires the canonical cohost origin')
+    if edge['turn_host'] in business_routes: raise ValueError('Remove previous TURN routes from the business source')
+    issuer = '''    tls {
+        issuer acme {
+            disable_tlsalpn_challenge
+        }
+    }
+'''
+    ending = '    reverse_proxy voicechat-web:80\n}\n'
+    if not config.endswith(ending): raise ValueError('Legacy web route layout changed')
+    # Port 80 stays with Caddy after the later SNI cutover; TLS-ALPN then belongs
+    # to HAProxy's web/TURN backends and cannot validate Caddy's certificates.
+    return config[:-len(ending)] + issuer + ending + '\n' + edge['turn_host'] + ' {\n' + issuer + '    respond 421\n}\n'
+
+
 def stage(root, repo, edge_root, public, inventory, edge_id, business_routes, *, mode='legacy', system_root=Path('/')):
     """Stage an immutable plan/package without touching a live service or Git."""
     import managed_state
@@ -106,11 +126,12 @@ def _stage_locked(root, repo, edge_root, public, inventory, edge_id, business_ro
     node_inventory.validate(inventory, public)
     entry = next((item for item in inventory['edges'] if item['id'] == edge_id), None)
     if entry is None or entry.get('host') != 'core': raise ValueError('Shared manager requires a co-located edge')
-    if mode not in ('legacy', 'shared'): raise ValueError('Unknown shared ingress mode')
+    if mode not in ('legacy', 'legacy-certs', 'shared'): raise ValueError('Unknown shared ingress mode')
     profile = entry.get('shared_tls') if mode == 'shared' else None
     if mode == 'shared' and profile is None: raise ValueError('Shared TLS profile required before cutover')
     configuration = (edge_config.shared_legacy_proxy(business_routes, public, edge_id, profile['ingress_ip'])
-                     if profile else legacy_config(business_routes, public))
+                     if profile else legacy_certificates_config(business_routes, public, edge_id)
+                     if mode == 'legacy-certs' else legacy_config(business_routes, public))
     _, code, contents, _, operator = role_bootstrap.plan(edge_root, 'edge', edge_id)
     target = {'schema': 1, 'repo': repo, 'edge_root': str(edge_root), 'edge_id': edge_id,
               'mode': mode, 'public': public, 'node': inventory['core'], 'shared_tls': profile,
@@ -167,7 +188,7 @@ def read_plan(root, plan, *, system_root=Path('/'), current_sources=True):
         raise ValueError('Shared ingress plan identity changed')
     target = record['target']
     topology.fields(target, ('schema', 'repo', 'edge_root', 'edge_id', 'mode', 'public', 'node', 'shared_tls', 'operator'))
-    if type(target['schema']) is not int or target['schema'] != 1 or target['mode'] not in ('legacy', 'shared'):
+    if type(target['schema']) is not int or target['schema'] != 1 or target['mode'] not in ('legacy', 'legacy-certs', 'shared'):
         raise ValueError('Unsupported shared ingress target')
     public = topology.validate(target['public'])
     node_inventory.validate({'schema': 1, 'service_id': public['service_id'], 'ssh_user': 'root',
@@ -503,7 +524,7 @@ def _attempt(root, record, *, system_root):
     if record['environment_mode'] not in (0o600, 0o640, 0o644): raise ValueError('Invalid environment recovery permissions')
     plan = root / 'plans' / record['plan']
     target, files = read_plan(root, plan, system_root=system_root, current_sources=False)
-    if target['mode'] != 'legacy': raise ValueError('Legacy journal cannot activate a shared cutover')
+    if target['mode'] not in ('legacy', 'legacy-certs'): raise ValueError('Legacy journal cannot activate a shared cutover')
     host = Path(system_root) / 'etc/ssh/ssh_host_ed25519_key.pub'
     if node_inventory.host_key(' '.join(read_environment(host).decode().split()[:2])) != target['node']['ssh_host_key']:
         raise ValueError('Shared recovery journal belongs to another SSH host')
@@ -555,6 +576,8 @@ def adopt_legacy(root, plan, *, execute=None, health=_https_health, system_root=
     with managed_state.locked(root):
         if (root / 'update.json').exists() or (root / 'update.json').is_symlink():
             raise ValueError('Finish the pending business deployment before ingress adoption')
+        if (root / 'configuration.json').exists() or (root / 'configuration.json').is_symlink():
+            raise ValueError('Finish the pending ingress configuration change before adoption')
         current, pending = root / 'current.json', root / 'pending.json'
         if current.exists() or current.is_symlink():
             record = managed_state.read(current)

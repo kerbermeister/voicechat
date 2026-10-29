@@ -37,6 +37,8 @@ def _ids(target, execute):
 def _current(root, *, execute, health, system_root):
     if (root / 'pending.json').exists() or (root / 'pending.json').is_symlink():
         raise ValueError('Finish the interrupted ingress adoption before business deployment')
+    if (root / 'configuration.json').exists() or (root / 'configuration.json').is_symlink():
+        raise ValueError('Finish the pending ingress configuration change before business deployment')
     record = managed_state.read(root / 'current.json')
     target, files, _, _, expected = ingress._attempt(root, record, system_root=system_root)
     if ingress.read_environment(Path(target['repo']) / 'deploy/.env') != expected:
@@ -75,7 +77,22 @@ def install(root, *, execute=run, health=ingress._https_health, system_root=Path
     with managed_state.locked(root):
         if (root / 'update.json').exists() or (root / 'update.json').is_symlink():
             raise ValueError('Finish the pending business deployment first')
-        record, target, _ = _current(root, execute=execute, health=health, system_root=system_root)
+        record, target, files = _current(root, execute=execute, health=health, system_root=system_root)
+        _, code, contents, _, expected = role_bootstrap.plan(Path(target['edge_root']), 'edge', target['edge_id'])
+        if target['operator'] != expected:
+            # Refresh only code ownership. Changed renderers need a separate
+            # configuration transition; install must never silently reload TLS.
+            business = execute(['git', '--no-pager', '-C', target['repo'], 'show', 'HEAD:deploy/Caddyfile']).decode()
+            rendered = (ingress.legacy_certificates_config(business, target['public'], target['edge_id'])
+                        if target['mode'] == 'legacy-certs' else ingress.legacy_config(business, target['public']))
+            if rendered.encode() != files['Caddyfile']: raise ValueError('Renderer changed; explicit ingress configuration upgrade required')
+            role_bootstrap.install_sources(system_root, code, contents)
+            target = {**target, 'operator': expected}
+            plan = ingress._store_plan_locked(root, target, rendered, system_root=system_root)
+            record = {**record, 'plan': plan.name}
+            # Between pointer/wrapper/receipt replacements the old command
+            # rejects an owner mismatch. Re-running install completes safely.
+            managed_state.persist(root / 'current.json', record)
         ingress.read_plan(root, root / 'plans' / record['plan'], system_root=system_root)
         operator = target['operator']
         if 'shared_update.py' not in operator['files']: raise ValueError('Restage and adopt with the reviewed manager sources')
@@ -127,7 +144,8 @@ def _preview(root, target, record, revision, git, *, execute, system_root):
     """Parse proposed Compose/routes before changing the business checkout."""
     repo = Path(target['repo'])
     business = execute([*git, 'show', revision + ':deploy/Caddyfile']).decode()
-    configuration = ingress.legacy_config(business, target['public'])
+    configuration = (ingress.legacy_certificates_config(business, target['public'], target['edge_id'])
+                     if target['mode'] == 'legacy-certs' else ingress.legacy_config(business, target['public']))
     candidate = ingress._store_plan_locked(root, target, configuration, system_root=system_root)
     source = execute([*git, 'show', revision + ':deploy/docker-compose.yml'])
     with tempfile.TemporaryDirectory(prefix='voicechat-business-preview-') as temporary:

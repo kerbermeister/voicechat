@@ -968,6 +968,37 @@ Wrapper запускает sealed Python package с `-B`, чтобы не пис
 up с health wait: изменился только frontend после его config change. Прикладная
 schema migration и shared port cutover этим fixture не проверялись.
 
+### Подготовка сертификатов совмещённого A
+
+Для начального cohost с `edge.origin == canonical_origin` есть plan mode
+`legacy-certs`: прежний VoiceChat upstream сохраняется, добавляется TURN HTTPS
+certificate sink с ответом 421. У обоих VoiceChat имён выключен TLS-ALPN challenge;
+HTTP-01 остаётся на Caddy port80, который сохранится после общего SNI cutover.
+Поэтому для текущего A не требуется DuckDNS API token или предварительная смена
+DNS, если оба имени уже разрешаются на него. Для других схем/SAN на dedicated
+входах остаётся отдельный DNS-01 issuer path; не считать его настроенным без token.
+Основание: [Caddy Automatic HTTPS](https://caddyserver.com/docs/automatic-https),
+[TLS challenge options](https://caddyserver.com/docs/caddyfile/directives/tls).
+
+Сначала `shared_update.install(...)` обновляет code ownership и wrapper: это
+разрешено только при byte-identical результате renderer и не reload службы.
+Между pointer/wrapper/receipt replacements несовпадающий прежний CLI отказывает
+до Git fetch; повтор install завершает прерванное обновление. Исторические sealed
+packages сохраняются. [Настоящая VM проба 27 → 28](../docs/iterations/three-vps-evidence/2026-10-29-vm-shared-manager-source-upgrade.json)
+использовала фактический прежний production package, сохранила все процессы и
+повторила installed CLI/application deploy/recovery после upgrade.
+
+`shared_config.prepare_certificates(root, plan)` держит тот же lock, требует новый
+проверенный manager, делает Caddy validate без сети и reload только известного
+config. Durable `configuration.json` блокирует business update/adoption.
+Source/host/env/ports/mounts остаются неизменными. Успех требует HTTPS обоих прежних
+сайтов, настоящих trusted TLS handshakes canonical + TURN и тех же процессов всех
+контейнеров. ACME readiness ограничена 180s; hostname/CA проверки не отключаются.
+Ошибка возвращает прежние routes, interrupted apply продолжает тот же plan,
+interrupted rollback сначала возвращает рабочий старый config. Это ещё не перенос
+443 в HAProxy и не доставка ключей в edge. [Stock Caddy 2.8 parser proof](../docs/iterations/three-vps-evidence/2026-10-29-vm-cohost-certificates-parser.json)
+прошёл без сети; настоящий внешний выпуск сертификата пока не выполнен.
+
 Для начальной миграции старого A можно явно добавить `legacy_turn: true` к
 `{"id":"a","host":"core"}`: host3488 TCP/UDP направляется на авторизованный
 listener3478. Флаг отсутствует по умолчанию и запрещён для dedicated edge. Он
