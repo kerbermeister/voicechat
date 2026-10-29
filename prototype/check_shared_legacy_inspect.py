@@ -41,8 +41,10 @@ def main(*, adoption=False, update=False, initial_operator=None):
         if (not update or initial_operator.resolve() != initial_operator or initial_operator.name != 'infra' or
                 not re.fullmatch(r'[a-f0-9]{64}', initial_operator.parent.name) or
                 initial_operator.parent.parent != Path('/opt/voicechat/operators') or
-                {path.name for path in initial_operator.iterdir()} != set(role_bootstrap.MANAGER_SOURCES)):
-            raise ValueError('Reviewed historical 27-file manager package required for --update')
+                {path.name for path in initial_operator.iterdir()} not in (
+                    set(role_bootstrap.MANAGER_SOURCES), set(role_bootstrap.CONFIG_SOURCES),
+                    set(role_bootstrap.CAPTURE_SOURCES))):
+            raise ValueError('Reviewed historical 27/28/29-file manager package required for --update')
         hashes = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in initial_operator.iterdir()}
         if hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest() != initial_operator.parent.name:
             raise ValueError('Historical operator source identity changed')
