@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 
 import firewall_runtime
 import managed_state
@@ -45,6 +46,14 @@ def reconcile(directory, value=None, *, run=tunnel_runtime.command):
         desired = value if value is not None else previous
         if desired is None: raise ValueError('No saved network state to resume')
         firewall, tunnel = components(desired)
+        retirement = directory / 'boot-install/initial-rollback.json'
+        if retirement.exists() or retirement.is_symlink():
+            journal = managed_state.read(retirement)
+            fields(journal, ('schema', 'fingerprint', 'source_sha256', 'phase'))
+            if (type(journal['schema']) is not int or journal['schema'] != 1 or journal['phase'] != 'restoring' or
+                    not isinstance(journal['source_sha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', journal['source_sha256']) or
+                    journal['fingerprint'] != fingerprint(desired)):
+                raise ValueError('Initial network is retired; explicit same-intent restoration required')
         if previous is not None:
             old_firewall, old_tunnel = components(previous)
             firewall_runtime.transition(old_firewall, firewall)

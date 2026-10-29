@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import stat
 import tempfile
 
@@ -113,7 +114,7 @@ def shared_containers_ready(root, run):
         run('systemctl', 'is-enabled', '--quiet', unit)
 
 
-def install(root=Path('/'), *, run=command, shared_host=False):
+def install(root=Path('/'), *, run=command, shared_host=False, restore_initial=None):
     root = Path(root).resolve()
     state_root = directory(root, 'var/lib/voicechat-network')
     info = state_root.stat()
@@ -135,6 +136,21 @@ def install(root=Path('/'), *, run=command, shared_host=False):
         receipt = receipt_root / 'desired.json'
         if (receipt_root / 'upgrade.json').exists() or (receipt_root / 'upgrade.json').is_symlink():
             raise ValueError('Resume the pending network source upgrade first')
+        retirement = receipt_root / 'initial-rollback.json'
+        restoration = None
+        if retirement.exists() or retirement.is_symlink():
+            journal = managed_state.read(retirement)
+            fields(journal, ('schema', 'fingerprint', 'source_sha256', 'phase'))
+            if (type(journal['schema']) is not int or journal['schema'] != 1 or
+                    restore_initial != journal['fingerprint'] or journal['phase'] not in ('retired', 'restoring') or
+                    not shared_host or desired['node'] != 'core' or set(physical_nodes(desired['inventory'])) != {'core'} or
+                    network_runtime.fingerprint(desired) != restore_initial or journal['source_sha256'] != digest):
+                raise ValueError('Finish the same explicit initial network rollback or restoration')
+            restoration = {**journal, 'phase': 'restoring'}
+        elif restore_initial is not None:
+            if (not shared_host or desired['node'] != 'core' or set(physical_nodes(desired['inventory'])) != {'core'} or
+                    network_runtime.fingerprint(desired) != restore_initial):
+                raise ValueError('Initial network restoration does not match the saved intent')
         previous = managed_state.read(receipt) if receipt.exists() or receipt.is_symlink() else None
         if previous is not None:
             fields(previous, (*identity, 'phase'))
@@ -156,6 +172,7 @@ def install(root=Path('/'), *, run=command, shared_host=False):
         if target.exists() and any(item.name not in SOURCES and not item.name.startswith('.voicechat-install-')
                                    for item in target.iterdir()):
             raise ValueError('Unexpected files in immutable network code directory')
+        if restoration is not None: managed_state.persist(retirement, restoration)
         managed_state.persist(receipt, {**identity, 'phase': 'prepared'})
         for name, data in files.items():
             path = root / name
@@ -168,7 +185,110 @@ def install(root=Path('/'), *, run=command, shared_host=False):
         run('systemctl', 'is-active', '--quiet', 'voicechat-network.service')
         run('systemctl', 'is-enabled', '--quiet', 'voicechat-network.service')
         managed_state.persist(receipt, {**identity, 'phase': 'complete'})
+        if retirement.exists() or retirement.is_symlink():
+            if managed_state.read(state_root / 'applied.json') != {
+                    'schema': 1, 'sha256': restore_initial, 'phase': 'complete'}:
+                raise ValueError('Restored initial network has no completed application receipt')
+            retirement.unlink()
+            descriptor = os.open(receipt_root, os.O_RDONLY | os.O_DIRECTORY)
+            try: os.fsync(descriptor)
+            finally: os.close(descriptor)
     return digest
+
+
+def retire_initial(root, fingerprint, *, run=command):
+    """Retire only a peerless initial core network after all role writers are gone.
+
+    Used by legacy adoption rollback, never by normal peer replacement. Keep the
+    private intent/key and immutable source cache for explicit same-intent retry.
+    """
+    import firewall_config
+    import firewall_runtime
+    import tunnel_runtime
+
+    if not isinstance(fingerprint, str) or not re.fullmatch(r'[a-f0-9]{64}', fingerprint):
+        raise ValueError('Exact initial network fingerprint required')
+    root = Path(root).resolve()
+    state_root = directory(root, 'var/lib/voicechat-network')
+    with managed_state.locked(state_root / 'boot-install') as boot, managed_state.locked(state_root):
+        if (boot / 'upgrade.json').exists() or (boot / 'upgrade.json').is_symlink():
+            raise ValueError('Finish the network source upgrade before initial rollback')
+        desired = managed_state.read(state_root / 'desired.json')
+        firewall, tunnel = network_runtime.components(desired)
+        if (desired['node'] != 'core' or set(physical_nodes(desired['inventory'])) != {'core'} or
+                network_runtime.fingerprint(desired) != fingerprint):
+            raise ValueError('Only the exact initial peerless core network may be retired')
+        host_key = ' '.join(existing(root / 'etc/ssh/ssh_host_ed25519_key.pub').decode().split()[:2])
+        if node_inventory.host_key(host_key) != desired['inventory']['core']['ssh_host_key']:
+            raise ValueError('Initial network rollback belongs to another host')
+        identity, files, code = source_plan(desired, shared_host=True)
+        journal_path = boot / 'initial-rollback.json'
+        journal = {'schema': 1, 'fingerprint': fingerprint,
+                   'source_sha256': identity['source_sha256'], 'phase': 'retiring'}
+        interrupted = journal_path.exists() or journal_path.is_symlink()
+        if interrupted:
+            saved = managed_state.read(journal_path)
+            fields(saved, journal)
+            if type(saved['schema']) is not int or saved not in (journal, {**journal, 'phase': 'retired'}):
+                raise ValueError('Resume the same initial network rollback')
+        receipt = boot / 'desired.json'
+        previous = managed_state.read(receipt) if receipt.exists() or receipt.is_symlink() else None
+        if previous is not None:
+            fields(previous, (*identity, 'phase'))
+            if type(previous['schema']) is not int or previous not in (
+                    {**identity, 'phase': 'prepared'}, {**identity, 'phase': 'complete'}):
+                raise ValueError('Initial rollback does not own the installed network operator')
+        cache = directory(root, code)
+        if cache.exists() and any(item.name not in SOURCES and not item.name.startswith('.voicechat-install-')
+                                  for item in cache.iterdir()):
+            raise ValueError('Unknown initial network source cache must be preserved')
+        for name, content in files.items():
+            actual = existing(root / name)
+            if actual is not None and (actual != content or (previous is None and name in (UNIT, DROP_IN))):
+                raise ValueError('Unknown network installation file must not be removed')
+            if actual is None and previous is not None and previous['phase'] == 'complete' and (
+                    name not in (UNIT, DROP_IN) or not interrupted):
+                raise ValueError('A completed initial network installation file is missing')
+        rows = run('docker', 'ps', '-a', '--format',
+                   '{{.ID}} {{.Label "com.docker.compose.project"}}').splitlines()
+        if any(len(parts := row.split()) == 2 and (parts[1] == 'voicechat' or parts[1].startswith('voicechat-edge-'))
+               for row in rows):
+            raise ValueError('Remove all owned core/edge containers before retiring their network')
+        dependencies = run('systemctl', 'show', 'docker.service', '--property=Requires,BindsTo', '--value').split()
+        if 'voicechat-network.service' in dependencies:
+            raise ValueError('Docker must not require the network being retired on a shared host')
+        units = ['voicechat-core.service', *('voicechat-edge-' + edge['id'] + '.service' for edge in desired['inventory']['edges'])]
+        for name in units:
+            if run('systemctl', 'show', name, '--property=ActiveState', '--value').strip() not in ('inactive', 'failed'):
+                raise ValueError('Stop role boot monitors before initial network rollback')
+        for name, expected in (('firewall', firewall), ('tunnel', tunnel)):
+            path = state_root / name / 'desired.json'
+            if (path.exists() or path.is_symlink()) and managed_state.read(path) != expected:
+                raise ValueError('Initial network child intent changed')
+        table_exists = firewall_runtime.inspect(firewall, owned=True, run=run)
+        link_exists, _, _, _ = tunnel_runtime.inspect(tunnel, owned=True, run=run)
+        for name, exists in (('firewall', table_exists), ('tunnel', link_exists)):
+            if exists and not (state_root / name / 'desired.json').exists():
+                raise ValueError('Unclaimed live initial network component')
+        if link_exists and run('wg', 'show', 'wg-vc', 'peers').strip():
+            raise ValueError('A tunnel with live peers must never use initial rollback')
+        managed_state.persist(journal_path, journal)
+        if existing(root / UNIT) is not None:
+            run('systemctl', 'disable', '--now', 'voicechat-network.service')
+        if link_exists: run('ip', 'link', 'delete', 'wg-vc')
+        if table_exists:
+            table, _ = firewall_config.identity(desired['inventory'], 'core')
+            run('nft', 'delete', 'table', 'inet', table)
+        for name in (UNIT, DROP_IN):
+            path = root / name
+            if existing(path) is not None:
+                path.unlink()
+                descriptor = os.open(path.parent, os.O_RDONLY | os.O_DIRECTORY)
+                try: os.fsync(descriptor)
+                finally: os.close(descriptor)
+        run('systemctl', 'daemon-reload')
+        managed_state.persist(journal_path, {**journal, 'phase': 'retired'})
+    return fingerprint
 
 
 def replace_file(path, content):
@@ -226,6 +346,9 @@ def upgrade(root=Path('/'), *, run=command, shared_host=None):
     if shared_host: shared_containers_ready(root, run)
     identity, files, code = source_plan(desired, shared_host=shared_host)
     with managed_state.locked(state_root / 'boot-install') as receipt_root:
+        retirement = receipt_root / 'initial-rollback.json'
+        if retirement.exists() or retirement.is_symlink():
+            raise ValueError('Finish initial network rollback/restoration before source upgrade')
         receipt, pending = receipt_root / 'desired.json', receipt_root / 'upgrade.json'
         current = managed_state.read(receipt)
         target = {**identity, 'phase': 'complete'}
@@ -293,16 +416,23 @@ def upgrade(root=Path('/'), *, run=command, shared_host=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--upgrade', action='store_true', help='Upgrade owned source/unit by reload, without restarting Docker')
+    action = parser.add_mutually_exclusive_group()
+    action.add_argument('--upgrade', action='store_true', help='Upgrade owned source/unit by reload, without restarting Docker')
+    action.add_argument('--retire-initial', metavar='SHA256', help='Retire the exact peerless initial core network after removing all roles')
+    action.add_argument('--restore-initial', metavar='SHA256', help='Restore only that same retired initial network')
     parser.add_argument('--shared-host', action='store_const', const=True, default=None,
         help='Keep Docker available for unrelated apps if VoiceChat networking fails; core binds must remain private')
     args = parser.parse_args()
     if platform.system() != 'Linux' or os.geteuid() != 0:
         raise SystemExit('Boot installation requires the selected Linux host as root')
+    if args.retire_initial:
+        retire_initial(Path('/'), args.retire_initial)
+        print('Initial peerless network retired; data, keys, other firewall tables and Docker retained.')
+        return
     if args.upgrade:
         upgrade(shared_host=args.shared_host)
     else:
-        install(shared_host=bool(args.shared_host))
+        install(shared_host=bool(args.shared_host or args.restore_initial), restore_initial=args.restore_initial)
     print('Owned network boot restoration verified; Docker was not restarted.')
 
 

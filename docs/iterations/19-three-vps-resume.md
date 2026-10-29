@@ -50,12 +50,22 @@ backup service выполнился успешно. Все fixture volumes/conta
 acceptance. Предыдущие отказавшие прогоны не выдаются за успех; найденные monitor
 и renderer-checkout дефекты исправлены и повторены в этом полном proof.
 
-Следующий локальный шаг уже начат: initial peerless network rollback/restore для
-legacy adoption. 7 focused tests PASS; нужно закончить review, полный regression
-и настоящий kernel/systemd proof перед включением в full coordinator. Нормальный
-peer replacement/revocation нельзя откатывать этим механизмом. Production network
-этот код не использует. До запуска следующего core fixture убедиться, что прежний
-cleanup завершён (последний закончился успешно).
+Initial peerless network rollback/restore завершён как отдельный компонент:
+**8 focused tests PASS**, полный Python **408 tests, OK, skipped=3**;
+[настоящий kernel/systemd VM proof PASS](three-vps-evidence/2026-10-29-vm-initial-network-rollback.json).
+Потеря ответа после WG delete и network start продолжена тем же intent; private
+key/state, Docker PID, соседний container/HTTP и чужие nft tables сохранены.
+Нормальная отмена peer revocation запрещена; контейнеры core/edge и active role
+monitors блокируют retirement. Обычный resume/source upgrade/role deploy не обходят
+private fence. Обработка initial runtime failure до boot install тоже проверена.
+VM сеть после proof восстановлена; соседний fixture удалён. Production этим кодом
+не изменялся. Полный coordinator ещё должен связать этот шаг с возвратом legacy
+служб и reverse migration текущих pushers, без восстановления старой БД.
+
+Дополнительно read-only подтверждён закреплённый production edge_root:
+`/srv/voicechat-managed/edges/a`, business repo `/opt/avito-helper`; one-A public
+identity и node generation1/tunnel10.88.0.1 совпали. Использовать этот путь при
+initial full, не менять его на новый вариант при source-only manager upgrade.
 
 Далее: explicit legacy core adoption/full coordinator и rollback, согласованная
 замена scheduler, TLS delivery/renewal, CI scopes, обязательный macOS/Android release

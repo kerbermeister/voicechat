@@ -1088,3 +1088,28 @@ committed release перепроверяются по принятому manifes
 prepare сохраняют полную реконструкцию ожидаемых source/config files. Монитор
 core распознаёт backup journal и выходит штатно при остановке writers, не создавая
 systemd restart loop; после recovery оператор запускает его снова.
+
+### Откат первой peerless сети при legacy adoption
+
+`network_bootstrap.py --retire-initial <fingerprint>` предназначен только для
+возврата первой одноузловой установки: physical nodes строго core без удалённых
+peers, exact source/intent fingerprint и SSH host identity, все core/edge containers
+удалены, role monitors остановлены. Проверяются собственные unit/source files,
+child intents, nft owner и live WG key; неизвестные изменения сохраняются.
+Если Docker через Requires/BindsTo зависит от этой сети, операция запрещена.
+
+Private `boot-install/initial-rollback.json` фиксирует retiring/retired/restoring.
+Удаляются только собственные WG interface, nft table и systemd unit/drop-in;
+Docker, соседние службы, data volumes, private intent/key и source cache сохраняются.
+Interrupted retirement сначала завершается тем же вызовом. Обычные network resume,
+source upgrade и role deploy блокируются. `--restore-initial <тот же fingerprint>`
+восстанавливает только тот же peerless intent и снимает fence после completed
+network receipt. Нормальные replacement/revocation этим путём не откатываются.
+Обе операции исполняются из того же frozen deployment artifact с canonical network
+service templates; boot-only source cache не заменяет полный deployment artifact.
+
+Реальный kernel/systemd proof прошёл на marked VM: потеря ответа после удаления
+WG и после network start, same-intent resume, неизменные key/private intent,
+Docker PID, neighbor container/HTTP и чужие nft tables.
+[Evidence](../docs/iterations/three-vps-evidence/2026-10-29-vm-initial-network-rollback.json).
+Это компонент полного rollback; сам production legacy adoption ещё не выполнен.

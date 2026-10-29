@@ -34,6 +34,9 @@ def network_ready(inventory, node, subnet, *, execute=run, directory=Path('/var/
     # Keep replacement/revocation from racing this rollout. Lock ordering is
     # role -> host network -> TLS; network reconciliation never takes TLS.
     with managed_state.locked(directory):
+        retirement = directory / 'boot-install/initial-rollback.json'
+        if retirement.exists() or retirement.is_symlink():
+            raise ValueError('Finish initial network rollback/restoration before deploying roles')
         upgrade = directory / 'boot-install/upgrade.json'
         if upgrade.exists() or upgrade.is_symlink():
             raise ValueError('Finish the interrupted network source upgrade before deploying')

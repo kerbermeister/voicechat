@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "actual_interface_retirement_lost_response_resumed": true,
+  "retired_network_did_not_auto_reapply": true,
+  "actual_systemd_restore_lost_response_resumed": true,
+  "role_deployment_fenced_until_restore_commit": true,
+  "wireguard_key_and_private_intent_preserved": true,
+  "neighbor_http_docker_process_and_foreign_tables_preserved": true,
+  "limits": [
+    "Marked disposable peerless core VM; no production data or legacy adoption.",
+    "This operation is forbidden for normal multi-host peer replacement/revocation."
+  ],
+  "neighbor_fixture_removed": true,
+  "date": "2026-10-29",
+  "source_sha256": {
+    "infra/network_bootstrap.py": "06a4b69efbce33c42598e98820c61cfeb3e2f16550519df293a614e750db61f7",
+    "infra/network_runtime.py": "61db23b551af81c404a4bc8c86a5b643d5d48dda322ab65b85cd92d01ee905f6",
+    "infra/role_deploy.py": "6edcc1cfd6a4fc56a24d2055dbbfc28e768b4ff4575163bde265216755193ab4",
+    "prototype/check_initial_network_rollback.py": "b442c97697029bfb774199213fc880fc9281d81b990d19c596533883d8c9d6ea"
+  }
+}

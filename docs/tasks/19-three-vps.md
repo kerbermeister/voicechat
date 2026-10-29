@@ -626,6 +626,11 @@ configure и смены pointers. Backup interruption/recovery, boot fence, NRes
 аккаунтом: [evidence](../iterations/three-vps-evidence/2026-10-29-vm-core-backup-current.json).
 Новый owned scheduler подготовлен и проверен; согласованная замена legacy timer,
 legacy adoption и общий production full ещё открыты.
+Первичный peerless network rollback/restore также прошёл unit и реальный kernel/
+systemd proof с сохранением ключа, private intent, чужих nft tables и neighbor HTTP:
+[evidence](../iterations/three-vps-evidence/2026-10-29-vm-initial-network-rollback.json).
+Guard запрещает этот механизм для нормальной multi-host replacement/revocation;
+общая связь rollback с legacy services и URL-only push reversal ещё нужна.
 
 Подготовлен URL-only migration primitive для прежних pushers: journal до DB commit,
 повтор после прерывания и транзакционный rollback проверены на настоящем PostgreSQL
