@@ -1258,3 +1258,19 @@ Production дополнительный read-only preflight: modprobe -n wiregua
 начата настройка GitHub vars через tab8 (rolloutVariables). Пока проверять UI,
 а не считать обе переменные сохранёнными автоматически. Приватный signing key
 остаётся на Mac. DEPLOY_ROOT пока /srv/voicechat, ещё не менять до public commit.
+
+GitHub repo variables **SERVER_ROLE_CONFIG** и **SIGNED_ROUTE_CATALOG** сохранены
+и подтверждены UI (tab8 rolloutVariables); только public config/envelope, без
+private keys. Скриншот `/Users/anton/.codex/visualizations/2026/10/28/01a180db-aec5-70d0-bc4d-59ec5e16b1e3/voicechat-initial-variables.png`.
+[CI #48](https://github.com/kerbermeister/voicechat/actions/runs/40918217857) завершился
+**успешно**: tests/analyze/build control+web/upload, без deploy; exact crypto caches
+сохранены. Его b0b7040 всё равно не выкатывать из-за исправленного выше baseline bug.
+Исправленный canonical commit **eb21c74ff7707d6d4572a67f22308090de7f61f5** опубликован.
+
+К обнаруженному протоколу CI добавлена небольшая правка: существующий Restic
+backup пишет progress в stdout. SSH initial теперь принимает только финальную
+JSON-строку completion, проверяет поля/commit/root/hash и не печатает private
+progress в CI. Unit проверяет prefix и отказ trailing garbage. 23 focused PASS;
+изменение не трогает coordinator/data/network. После успешного текущего VM proof
+следующий штатный full запуск можно делать с `rollout=initial, deploy=true` на
+исправленном revision, предварительно сверив exact source и production baseline.

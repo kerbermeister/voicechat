@@ -95,6 +95,10 @@ class InitialEntryTests(unittest.TestCase):
             self.assertEqual(args[:-1],ssh);self.assertIn('--retry',args[-1])
             self.assertNotIn(self.public_key,args[-1]);self.assertEqual(json.loads(execute.call_args.kwargs['input']),self.value)
             receive.assert_called_once()
+            execute.return_value=b'synthetic backup progress\n'+json.dumps(response).encode()+b'\n'
+            self.assertEqual(ssh_deploy.initial(ssh,self.value,'b'*40,'/fixture/archive'),response)
+            execute.return_value=json.dumps(response).encode()+b'\nunexpected trailing output'
+            with self.assertRaises(ValueError):ssh_deploy.initial(ssh,self.value,'b'*40,'/fixture/archive')
             execute.return_value=json.dumps({**response,'commit':'d'*40}).encode()
             with self.assertRaisesRegex(ValueError,'unexpected completion'):
                 ssh_deploy.initial(ssh,self.value,'b'*40,'/fixture/archive')

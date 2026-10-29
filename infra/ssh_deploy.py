@@ -84,7 +84,11 @@ def initial(ssh, config, commit, archive, *, checkout=None, retry=False):
     arguments=['python3','-B',delivery['path']+'/infra/initial_entry.py',
                '--root',config['root'],'--source-sha',delivery['archive_sha256']]
     if retry:arguments.append('--retry')
-    value=json.loads(subprocess.check_output([*ssh,shlex.join(arguments)],input=raw))
+    response=subprocess.check_output([*ssh,shlex.join(arguments)],input=raw)
+    # The existing backup emits Restic progress on stdout. Only the final line
+    # is the entry point completion record; never echo private progress to CI.
+    if len(response)>1024*1024:raise ValueError('Initial controller response is too large')
+    value=json.loads(response.rstrip(b'\n').rsplit(b'\n',1)[-1])
     if (set(value)!={'schema','kind','root','commit','target'} or type(value['schema']) is not int or
             value['schema']!=1 or value['kind']!='roles' or value['root']!=config['root'] or
             value['commit']!=commit or not isinstance(value['target'],str) or
