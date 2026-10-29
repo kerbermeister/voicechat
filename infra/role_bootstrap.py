@@ -24,7 +24,8 @@ LEGACY_SOURCES = ('role_boot.py', 'role_bootstrap.py', 'core_deploy.py', 'edge_d
     'tunnel_runtime.py', 'tunnel_config.py')
 SHARED_SOURCES = (*LEGACY_SOURCES, 'shared_ingress.py')
 MANAGER_SOURCES = (*SHARED_SOURCES, 'shared_update.py')
-SOURCES = (*MANAGER_SOURCES, 'shared_config.py')
+CONFIG_SOURCES = (*MANAGER_SOURCES, 'shared_config.py')
+SOURCES = (*CONFIG_SOURCES, 'cohost_tls.py')
 
 
 def unit_name(role, edge_id):
@@ -71,7 +72,7 @@ def verify_record(system_root, record):
     name = unit_name(record['role'], record['edge_id'])
     if type(record['schema']) is not int or record['schema'] != 1 or not isinstance(record['files'], dict):
         raise ValueError('Invalid boot ownership record')
-    if set(record['files']) not in (set(SOURCES), set(MANAGER_SOURCES), set(SHARED_SOURCES), set(LEGACY_SOURCES)) or any(not isinstance(value, str) or not re.fullmatch(r'[a-f0-9]{64}', value) for value in record['files'].values()):
+    if set(record['files']) not in (set(SOURCES), set(CONFIG_SOURCES), set(MANAGER_SOURCES), set(SHARED_SOURCES), set(LEGACY_SOURCES)) or any(not isinstance(value, str) or not re.fullmatch(r'[a-f0-9]{64}', value) for value in record['files'].values()):
         raise ValueError('Invalid boot source hashes')
     if hashlib.sha256(json.dumps(record['files'], sort_keys=True).encode()).hexdigest() != record['operator_sha256']:
         raise ValueError('Boot source identity changed')

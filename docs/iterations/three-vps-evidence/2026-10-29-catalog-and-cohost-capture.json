@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-29",
+  "production_capture": {
+    "staged_only": true,
+    "source_sha256": "2b37777501e3bfc74de52b7ae55ef84ca3add991dc2432e0ea73f7fa01531ab7",
+    "generations": {
+      "web": "54d100e539eb9d5e1412d408cee164d9dcf502cc5fe41dedc1db7edcb77ed105",
+      "turn": "22f3c5e51341850bdc25f1b463e4eb90624b2aeb071d75d9883f083e641560aa"
+    }
+  },
+  "repeat_same_generations": true,
+  "private_keys_remain_on_A": true,
+  "edge_activation": false,
+  "renewal_timer": false,
+  "production_application_release": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "checks": {
+    "infra_tests": 218,
+    "infra_result": "PASS",
+    "flutter_analyze": "PASS",
+    "macos_native_signed_catalog_discovery": "PASS",
+    "matrix_docker_fixture": "NOT RUN: Docker stuck before application start; scoped cleanup completed"
+  },
+  "ci_public_variables": [
+    "PUBLIC_URL",
+    "CLIENT_ROUTE_CONFIG",
+    "CLIENT_ROUTE_CATALOG_KEY"
+  ],
+  "public_catalog_key": "UV1n2w5zyEhKBYq0Y4ORasu0CFvJCIBheWbhotiZDG8=",
+  "published_signed_catalog": false,
+  "limitations": [
+    "No production core/full migration",
+    "No updated client release",
+    "No physical call/screen failover acceptance"
+  ]
+}

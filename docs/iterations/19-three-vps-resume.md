@@ -10,7 +10,31 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 
 ## Актуальное состояние: production ingress, 29 октября
 
-Последний кодовый checkpoint — `60cb9aa`, ветка `codex/three-vps-rollout`.
+Следующий завершённый блок: `cohost_tls.py`, 29-file reader package
+`2b37777501e3bfc74de52b7ae55ef84ca3add991dc2432e0ea73f7fa01531ab7`.
+На A дважды выполнен capture обеих реальных доверенных TLS-пар в закрытый
+server-local cache. Receipt одинаковый; ключи A не покидали, edge activation
+и renewal timer ещё не выполнены. Manager остаётся на прежнем e964… package.
+Полный инфраструктурный regression: **218 PASS**, Flutter analyze PASS.
+Нативный macOS integration test с настоящей Ed25519 проверкой и локальным HTTP
+mirror прошёл: клиент получает D, затем E через известный bootstrap website,
+когда все cached API недоступны; недействительная подпись не меняет revision.
+Теперь discovery сохраняет bootstrap origins и использует web mirrors, с dedup.
+Это не проверка звонка/экрана или полного Matrix восстановления.
+
+CI repository variables `PUBLIC_URL`, `CLIENT_ROUTE_CONFIG` (один A) и
+`CLIENT_ROUTE_CATALOG_KEY` сохранены и проверены через GitHub UI.
+Постоянный Ed25519 signing key находится только на Mac вне Git/cache:
+`/Users/anton/.config/voicechat/signing/route-catalog.pem` (0600, каталог 0700).
+Public key: `UV1n2w5zyEhKBYq0Y4ORasu0CFvJCIBheWbhotiZDG8=`.
+Не перевыпускать ключ; не отправлять private key в CI/VPS. Нужна отдельная
+резервная копия владельца. Первый production signed catalog ещё не опубликован.
+Docker Desktop full Matrix fixture завис до старта приложения; остановлен только
+его Compose child, штатный finally удалил только fixture containers/volumes/network.
+Standalone нативная catalog проверка выполнена успешно без Docker; основной
+профиль/Keychain пользователя не очищались. [Evidence](three-vps-evidence/2026-10-29-catalog-and-cohost-capture.json).
+
+Предыдущий ingress checkpoint — `60cb9aa`, ветка `codex/three-vps-rollout`.
 На production уже manager package
 `e9648a0be5de03eedd75dcd1e06d2b82d10d04f53f53927cf775ffb468f50696`,
 current **legacy-certs** plan

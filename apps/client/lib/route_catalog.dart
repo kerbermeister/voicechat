@@ -127,8 +127,16 @@ class RouteCatalog {
 
   Future<RouteConfig> _refresh() async {
     // Fetch through known domains only; redirects cannot expand this trust set.
+    // A reachable website/bootstrap must still recover discovery when every
+    // API entry in the cached catalog has been replaced or become unreachable.
+    final origins = {
+      ...bootstrap.webOrigins,
+      ...bootstrap.edges.map((edge) => edge.origin),
+      ...config.webOrigins,
+      ...config.edges.map((edge) => edge.origin),
+    };
     final candidates = await Future.wait(
-      config.edges.map((edge) async {
+      origins.map((origin) async {
         final client = http.Client();
         _clients.add(client);
         final abort = Completer<void>();
@@ -136,7 +144,7 @@ class RouteCatalog {
           return await (() async {
             final request = http.AbortableRequest(
               'GET',
-              edge.origin.resolve('/.well-known/voicechat/routes.json'),
+              origin.resolve('/.well-known/voicechat/routes.json'),
               abortTrigger: abort.future,
             )..followRedirects = false;
             final response = await client.send(request);

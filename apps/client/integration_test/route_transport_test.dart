@@ -3,8 +3,6 @@ import 'dart:math';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:vodozemac/vodozemac.dart' as crypto;
-import 'package:voicechat_probe/route_catalog.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:http/http.dart' as http;
@@ -16,6 +14,7 @@ import 'package:voicechat_probe/route_config.dart';
 import 'package:voicechat_probe/route_coordinator.dart';
 import 'package:voicechat_probe/chunked_file.dart';
 import 'route_file_probe.dart';
+import 'route_catalog_probe.dart';
 
 // This is a native SQLCipher/Keychain and Matrix SDK test. Its disposable
 // Synapse and proxies are started by prototype/check_three_vps.py.
@@ -87,7 +86,11 @@ void main() {
           ),
         );
         expect(coordinator.config.edges.map((e) => e.id), ['b', 'c', 'd']);
-        checkSignedCatalog(configuration);
+        checkSignedCatalog(
+          configuration,
+          jsonDecode(const String.fromEnvironment('ROUTE_CONFIG')),
+        );
+        await checkCatalogDiscovery();
         await checkEncryptedFileRecovery();
         await probe
             .login(origin.toString(), username, password)
@@ -243,75 +246,4 @@ Future<Room> waitRoom(Client client, String roomId) async {
     await Future<void>.delayed(const Duration(milliseconds: 100));
   }
   throw TimeoutException('Encrypted room did not appear in sync');
-}
-
-void checkSignedCatalog(RouteConfig bootstrap) {
-  final signer = crypto.PkSigning();
-  final key = base64Encode(signer.publicKey.toBytes());
-  final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-  final topology = jsonDecode(const String.fromEnvironment('ROUTE_CONFIG'));
-  String signed(int revision, {int? expires, String? service}) {
-    final value = jsonDecode(jsonEncode(topology));
-    if (service != null) value['service_id'] = service;
-    final payload = jsonEncode({
-      'schema': 1,
-      'revision': revision,
-      'issued_at': now - 10,
-      'expires_at': expires ?? now + 3600,
-      'topology': value,
-    });
-    return jsonEncode({
-      'payload': base64Encode(utf8.encode(payload)),
-      'signature': base64Encode(
-        signer.sign(routeCatalogDomain + payload).toBytes(),
-      ),
-    });
-  }
-
-  final current = verifyRouteCatalog(signed(2), key, bootstrap);
-  expect(current.revision, 2);
-  expect(
-    () => verifyRouteCatalog(signed(1), key, bootstrap, previous: current),
-    throwsFormatException,
-  );
-  expect(
-    () => verifyRouteCatalog(
-      signed(2, expires: now + 2000),
-      key,
-      bootstrap,
-      previous: current,
-    ),
-    throwsFormatException,
-  );
-  expect(
-    () => verifyRouteCatalog(signed(3, service: 'foreign'), key, bootstrap),
-    throwsFormatException,
-  );
-  expect(
-    () => verifyRouteCatalog(signed(3, expires: now - 1), key, bootstrap),
-    throwsFormatException,
-  );
-  expect(
-    verifyRouteCatalog(
-      signed(2, expires: now - 1),
-      key,
-      bootstrap,
-      restoring: true,
-    ).revision,
-    2,
-  );
-  final tampered = jsonDecode(signed(3));
-  tampered['payload'] = base64Encode(utf8.encode('{}'));
-  expect(
-    () => verifyRouteCatalog(jsonEncode(tampered), key, bootstrap),
-    throwsA(anything),
-  );
-  expect(
-    () => verifyRouteCatalog(
-      signed(3),
-      base64Encode(crypto.PkSigning().publicKey.toBytes()),
-      bootstrap,
-    ),
-    throwsA(anything),
-  );
 }
