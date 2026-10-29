@@ -1,12 +1,51 @@
 # Точка продолжения: три и более VPS
 
-Обновляется 28 октября 2026 после возобновления работы владельцем.
+Обновляется 29 октября 2026 после возобновления работы владельцем.
 Исходная остановка перед reboot завершала inventory/render и TLS;
 после неё добавлены отдельные core/edge роли и локальная публикация каталога.
 Последние итерации: один physical host, LiveKit resume/full restart, role manifests,
 node-local WireGuard configs, Linux peer replacement, CI build config и отдельный WSS failover.
 Владелец просит продолжать все доступные локальные задачи без дополнительных
 подтверждений; новая просьба — итоговая схема сети, не остановка реализации.
+
+## Актуальное состояние: production ingress, 29 октября
+
+Последний кодовый checkpoint — `4786380`, ветка `codex/three-vps-rollout`.
+**198 infrastructure tests PASS** и полная disposable VM проверка manager.
+На production выполнен подготовительный legacy Caddy adoption: directory mount
+и pinned прежний Caddy, private server-local dotenv snapshot/managed COMPOSE_FILE,
+sealed manager package `b5ab0d0973e8c7e2f34d009abfb6aba89cbb32b69e2776e84b0dae2762f06b6b`.
+Корень `/var/lib/voicechat-shared-ingress`, current plan
+`e9776c9f36b4c2fb5a2149b24a2dfffcecda596affb7e723396843c6fef193f6`.
+Wrapper `/usr/local/sbin/voicechat-shared-deploy avito-update` установлен/проверен.
+Изменился только Caddy; все прочие процессы и volumes сохранены, оба внешних HTTPS
+200. Это **не** общий shared-front cutover и **не** новый VoiceChat release.
+
+Avito main теперь `e2c1f05de015b242e5b9ffd3e13d1fca5f9e9c66`: только workflow hook,
+без изменений приложения. Branch `codex/preserve-shared-ingress` также опубликован;
+PR не создавался. [Настоящий deploy run](https://github.com/kerbermeister/avito-helper/actions/runs/40799014967)
+прошёл. Manager обновил Git, source Caddyfile теперь business-only/clean, runtime
+VoiceChat routes сохранились вне Git. Ни соседние процессы, ни Caddy этим workflow
+не перезапускались. Pending отсутствует. [Production evidence](three-vps-evidence/2026-10-29-production-legacy-ingress.json),
+[shell hook contract](three-vps-evidence/2026-10-29-business-workflow-hook.json).
+
+VoiceChat app/server baseline всё ещё `8bcbd91…`; VPS/DNS/WireGuard/core/edge ещё
+не переводились на новые роли. `/srv/voicechat-managed` пока не создавался, только
+задан как будущий edge_root в плане. Исходники — server-local lab
+`/srv/voicechat-lab/shared-ingress-b5ab0d0973e8c7e2f34d009abfb6aba89cbb32b69e2776e84b0dae2762f06b6b/infra`;
+истинный sealed package — `/opt/voicechat/operators/<digest>/infra`.
+Private dotenv backup остаётся только на A; не копировать его в VM/CI/edge.
+
+Следующее: certificate preparation/renewal для cohost через прежний Caddy HTTP-01
+(сейчас turn.univc.duckdns.org уже указывает на A), shared-front cutover controller,
+legacy core adoption/full orchestration/CI scopes, реальный role release и
+обязательный подписанный macOS update. Не запускать ранние `.prototype` scripts,
+которые утверждают Avito HEAD=83df69c: после workflow его HEAD уже e2c1f05.
+Они оставлены как история preflight. Локальные SSH helpers `.prototype/prod-exec.py`
+и `.prototype/vm-exec.py` используют строгие прежние known_hosts, без agent forwarding.
+
+Ниже — последовательные технические checkpoint, включая исторические ограничения
+до production ingress adoption; при расхождении ориентироваться на этот блок.
 
 ## Текущая рабочая копия после интеграции
 

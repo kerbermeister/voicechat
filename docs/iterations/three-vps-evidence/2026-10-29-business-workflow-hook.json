@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "workflow_sha256": "aa2bec2953aff6b2ee36853c94bdc0c62e98454cf085dae72b263c42bda7c53d",
+  "shell_syntax_valid": true,
+  "manager_delegation_and_failure_propagation": true,
+  "dirty_and_staged_custom_routes_preserved_without_manager": true,
+  "clean_fallback_preserves_original_deploy_commands": true,
+  "limits": [
+    "Disposable shell/Git fixtures; Git fetch and Docker commands stubbed. Actual manager deployment tested separately in VM."
+  ]
+}

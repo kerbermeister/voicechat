@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "kind": "production-legacy-ingress-adoption",
+  "adopted": true,
+  "manager_installed": true,
+  "source_commit": "4786380",
+  "operator_sha256": "b5ab0d0973e8c7e2f34d009abfb6aba89cbb32b69e2776e84b0dae2762f06b6b",
+  "plan_sha256": "e9776c9f36b4c2fb5a2149b24a2dfffcecda596affb7e723396843c6fef193f6",
+  "elapsed_seconds": 15.47,
+  "all_non_caddy_processes_unchanged": true,
+  "git_head_and_source_unchanged": true,
+  "https_both_origins_verified": true,
+  "database_volumes_untouched": true,
+  "environment_snapshot_server_local_only": true,
+  "current_pending_cleared": true,
+  "idempotent_retry_verified": true,
+  "limits": [
+    "Current legacy ingress directory ownership only; no shared-front/port cutover, WireGuard, core migration or client release."
+  ],
+  "production_manager_cli_noop_verified": true,
+  "immutable_source_package_verified_after_cli": true,
+  "workflow_run_url": "https://github.com/kerbermeister/avito-helper/actions/runs/40799014967",
+  "workflow_status": "success",
+  "business_workflow_commit": "e2c1f05de015b242e5b9ffd3e13d1fca5f9e9c66",
+  "business_git_clean_after_workflow": true,
+  "workflow_all_non_caddy_processes_match_pre_adoption_snapshot": true,
+  "caddy_process_predates_workflow_commit": true,
+  "managed_environment_exact_after_workflow": true,
+  "voicechat_release_unchanged": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "matrix_external_https": 200,
+  "business_external_https": 200
+}
