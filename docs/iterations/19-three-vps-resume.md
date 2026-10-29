@@ -10,6 +10,9 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 
 ## Актуальное состояние: production ingress, 29 октября
 
+Последний полный инфраструктурный regression: **234 tests PASS**.
+Текущая работа — связанный public port cutover и legacy core adoption/full.
+
 Перед production publication усилены файловые границы `publish_catalog.py`:
 canonical owned runtime без чужой записи, private regular no-follow lock и
 bounded no-follow чтение прежнего signed high-water mark. Symlink, FIFO и
@@ -24,7 +27,14 @@ same-plan resume и восстановление своего stopped listener. 
 не меняет frontend plan. В реальной Debian VM подтверждены lost-response после
 Compose up, повтор без смены процесса, stop/recovery и полная очистка fixture.
 [Evidence](three-vps-evidence/2026-10-29-vm-shared-front-warm.json).
-В этом probe нет TLS backends; маршруты проверены прежним отдельным TLS fixture.
+Probe затем расширен: настоящие Caddy TLS backends с disposable CA, точный
+проверенный leaf для web/TURN, strict PROXY source и API readiness через warm
+port. Ответ с чужим service ID отвергнут после успешного TLS. `edge_deploy.healthy`
+получил bounded `warm_port` только для shared role; обычные deploy/boot по-прежнему
+проверяют публичный IP:443. Три focused tests проверяют оба endpoint, identity/age/
+upstream failures и запрет warm override для dedicated edge. Реальных core/TURN
+allocation/media в этом probe нет. Безопасное чтение source переиспользует
+существующий `shared_ingress.read_environment`.
 Public promotion/demotion и связанный Caddy rollback ещё не реализованы этим шагом.
 
 Для полного отката добавлен `push_route_migration.restore_public`: отдельная

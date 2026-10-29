@@ -1,10 +1,11 @@
 """Real shared-front warm-up on the explicitly marked disposable Linux VM.
 
-No production ports, database or user profiles. There are no TLS backends in
-this probe: route/media validation belongs to the separate TLS fixtures.
+No production ports, database or user profiles. Synthetic Caddy TLS backends
+verify pre-cutover readiness; they do not prove real upstreams or TURN/media.
 """
 import hashlib
 import json
+import os
 from pathlib import Path
 import socket
 import sys
@@ -13,10 +14,95 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'infra'))
 import managed_state
+import edge_deploy
 import role_deploy
 import role_prepare
 import role_release
 import shared_front
+import tls_runtime
+
+
+def check_tls_backends(directory, edge, manifest, public, inventory, model, run):
+    """Use a disposable CA and real strict-PROXY TLS, never disable verification."""
+    ca, key, leaf = directory / 'ca.crt', directory / 'server.key', directory / 'server.crt'
+    ca_key = directory / 'ca.key'
+    for path in (key, ca_key): path.touch(mode=0o600)
+    run(['openssl', 'req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:P-256',
+        '-nodes', '-keyout', str(ca_key), '-out', str(ca), '-days', '30', '-subj', '/CN=Disposable Warm CA',
+        '-addext', 'basicConstraints=critical,CA:TRUE', '-addext', 'keyUsage=critical,keyCertSign,cRLSign'])
+    csr, extensions = directory / 'server.csr', directory / 'server.ext'
+    run(['openssl', 'req', '-new', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:P-256',
+         '-nodes', '-keyout', str(key), '-out', str(csr), '-subj', '/CN=chat.fixture.invalid'])
+    extensions.write_text('basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\n'
+        'extendedKeyUsage=serverAuth\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n'
+        'subjectAltName=DNS:chat.fixture.invalid,DNS:turn.fixture.invalid\n')
+    run(['openssl', 'x509', '-req', '-in', str(csr), '-CA', str(ca), '-CAkey', str(ca_key),
+        '-CAcreateserial', '-out', str(leaf), '-days', '14', '-extfile', str(extensions)])
+    chain = directory / 'server.chain'; chain.write_bytes(leaf.read_bytes() + ca.read_bytes())
+    for service in ('web', 'turn'):
+        tls_runtime.publish(edge / 'runtime/tls', public, 'warmfixture', service, chain, key, ca_file=ca)
+    record = edge_deploy.record_for(public, inventory, manifest)
+    network = model['networks']['edge']['name']
+    image = 'caddy@sha256:226d1f059b75399fe19182893c7184591c07b97afc8dfcf44eeb80c9a77a530f'
+    names = []
+    previous_ca = os.environ.get('SSL_CERT_FILE')
+    os.environ['SSL_CERT_FILE'] = str(ca)
+    try:
+        for service, address, port, hostname in (
+                ('web', '10.243.0.3', 8443, 'chat.fixture.invalid'),
+                ('turn', '10.243.0.4', 5349, 'turn.fixture.invalid')):
+            options = '''    servers :8443 {
+        protocols h1 h2
+        strict_sni_host on
+        listener_wrappers {
+            proxy_protocol {
+                timeout 2s
+                allow 10.243.0.2/32
+                fallback_policy reject
+            }
+            tls
+        }
+    }
+''' if service == 'web' else ''
+            body = json.dumps({'schema': 1, 'service_id': 'voicechat', 'edge_id': 'warmfixture',
+                               'matrix': True, 'control': True, 'age_ms': 0})
+            config = '{\n admin off\n auto_https off\n' + options + '}\n'
+            config += f'https://{hostname}:{port} {{\n tls /tls/server.crt /tls/server.key\n respond `{body}` 200\n}}\n'
+            path = directory / (service + '.caddy'); path.write_text(config)
+            name = 'vc-warm-' + service + '-' + directory.name
+            assert not run(['docker', 'ps', '-aq', '--filter', 'name=^' + name + '$']).strip()
+            names.append(name)
+            run(['docker', 'run', '-d', '--name', name, '--label', 'voicechat.fixture=' + directory.name,
+                '--network', network, '--ip', address, '--read-only', '--cap-drop', 'ALL',
+                '--cap-add', 'NET_BIND_SERVICE', '--security-opt', 'no-new-privileges:true',
+                '--tmpfs', '/data', '--tmpfs', '/config', '--tmpfs', '/tmp',
+                '--volume', str(path) + ':/etc/caddy/Caddyfile:ro',
+                '--volume', str(chain) + ':/tls/server.crt:ro',
+                '--volume', str(key) + ':/tls/server.key:ro', image])
+        with managed_state.locked(edge / 'runtime/tls'):
+            edge_deploy.healthy(edge, record, warm_port=19443)
+        # Identity and upstream readiness must be checked after trusted TLS.
+        web = directory / 'web.caddy'
+        good = web.read_text(); web.write_text(good.replace('"service_id": "voicechat"', '"service_id": "foreign"'))
+        # These fixture Caddies have admin off; recreate only this synthetic web.
+        run(['docker', 'restart', names[0]])
+        try:
+            with managed_state.locked(edge / 'runtime/tls'):
+                edge_deploy.healthy(edge, record, warm_port=19443)
+        except ValueError as error:
+            assert 'identity or upstream' in str(error)
+        else: raise AssertionError('A trusted certificate cannot hide a foreign readiness identity')
+        web.write_text(good); run(['docker', 'restart', names[0]])
+        with managed_state.locked(edge / 'runtime/tls'):
+            edge_deploy.healthy(edge, record, warm_port=19443)
+    finally:
+        for name in names:
+            if run(['docker', 'ps', '-aq', '--filter', 'name=^' + name + '$']).strip():
+                owner = run(['docker', 'inspect', '--format', '{{index .Config.Labels "voicechat.fixture"}}', name]).decode().strip()
+                assert owner == directory.name
+                run(['docker', 'rm', '-f', name])
+        if previous_ca is None: os.environ.pop('SSL_CERT_FILE', None)
+        else: os.environ['SSL_CERT_FILE'] = previous_ca
 
 
 def main():
@@ -82,11 +168,16 @@ def main():
             assert not (edge / 'state.json').exists()
             assert set(model['services']) == {'ingress'}
             assert model['services']['ingress']['ports'] == ['127.0.0.1:19443:8443/tcp']
+            check_tls_backends(directory, edge, manifest, public, inventory, model, run)
             result = {'schema': 1, 'loopback_listener_only': True,
                 'real_compose_interruption_resumed': True, 'repeat_preserved_process': True,
                 'owned_stopped_listener_recovered': True,
                 'owned_networks_verified': True, 'core_and_edge_not_started': True,
-                'limits': ['No TLS backends, media, public port cutover or reboot in this probe.']}
+                'trusted_web_and_turn_tls_through_warm_front': True,
+                'strict_proxy_web_readiness_checked': True,
+                'foreign_readiness_identity_rejected': True,
+                'limits': ['Synthetic Caddy readiness and TURN TLS endpoint; no real core, TURN allocation or media.',
+                           'No public port cutover or reboot in this probe.']}
         finally:
             run([*shared_front._command(plan), 'down', '--remove-orphans'])
         assert not run(['docker', 'ps', '-aq', '--filter', 'label=com.docker.compose.project=' + project]).strip()

@@ -8,7 +8,6 @@ import json
 import os
 from pathlib import Path
 import re
-import stat
 
 import managed_state
 import node_inventory
@@ -19,17 +18,6 @@ import shared_ingress
 import topology
 
 PROJECT = 'voicechat-shared-front'
-
-
-def _file(path):
-    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-    with os.fdopen(descriptor, 'rb') as stream:
-        info = os.fstat(stream.fileno())
-        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
-            raise ValueError('Shared front source must be an owned regular file')
-        result = stream.read(65537)
-    if len(result) > 65536: raise ValueError('Shared front source too large')
-    return result
 
 
 def prepare(root, edge_root, manifest, *, warm_port=19443):
@@ -48,7 +36,7 @@ def prepare(root, edge_root, manifest, *, warm_port=19443):
     release = role_deploy.release_path(edge_root, {'manifest': manifest})
     if managed_state.read(release / 'release.json') != manifest:
         raise ValueError('Prepared release receipt differs from candidate')
-    model = json.loads(_file(release / 'infra/compose.shared-front.json'))
+    model = json.loads(shared_ingress.read_environment(release / 'infra/compose.shared-front.json'))
     if model['name'] != PROJECT or set(model['services']) != {'ingress'}:
         raise ValueError('One independent shared ingress required')
     service = model['services']['ingress']
@@ -59,9 +47,9 @@ def prepare(root, edge_root, manifest, *, warm_port=19443):
                               'bind': {'create_host_path': False}}]:
         raise ValueError('One read-only shared proxy configuration required')
     service['ports'] = [f'127.0.0.1:{warm_port}:8443/tcp']
-    node = json.loads(_file(release / 'infra/node.json'))
+    node = json.loads(shared_ingress.read_environment(release / 'infra/node.json'))
     host_key = node_inventory.host_key(node['ssh_host_key'])
-    files = {'haproxy.cfg': _file(release / 'infra/haproxy.cfg'),
+    files = {'haproxy.cfg': shared_ingress.read_environment(release / 'infra/haproxy.cfg'),
              'compose.json': (json.dumps(model, sort_keys=True, indent=2) + '\n').encode()}
     record = {'schema': 1, 'service_id': manifest['service_id'], 'edge_id': manifest['edge_id'],
               'host_key': host_key, 'warm_port': warm_port,
@@ -75,7 +63,7 @@ def prepare(root, edge_root, manifest, *, warm_port=19443):
         for name, content in files.items():
             path = plan / name
             if path.exists() or path.is_symlink():
-                if _file(path) != content: raise ValueError('Immutable shared front source changed')
+                if shared_ingress.read_environment(path) != content: raise ValueError('Immutable shared front source changed')
             else:
                 descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
                 with os.fdopen(descriptor, 'wb') as stream:
@@ -110,9 +98,9 @@ def read_plan(root, plan, *, system_root=Path('/')):
     if {item.name for item in plan.iterdir()} != {'haproxy.cfg', 'compose.json', 'plan.json'}:
         raise ValueError('Unexpected shared front source')
     for name, checksum in record['files'].items():
-        if not isinstance(checksum, str) or not role_release.SHA.fullmatch(checksum) or hashlib.sha256(_file(plan / name)).hexdigest() != checksum:
+        if not isinstance(checksum, str) or not role_release.SHA.fullmatch(checksum) or hashlib.sha256(shared_ingress.read_environment(plan / name)).hexdigest() != checksum:
             raise ValueError('Shared front source checksum changed')
-    return record, json.loads(_file(plan / 'compose.json'))
+    return record, json.loads(shared_ingress.read_environment(plan / 'compose.json'))
 
 
 def _command(plan):

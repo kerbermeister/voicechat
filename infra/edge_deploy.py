@@ -104,14 +104,22 @@ def certificate(root, record, service):
     return tls_material.read_material(verified / (service + '.crt'), private=True)
 
 
-def healthy(root, record, *, execute=run):
+def healthy(root, record, *, execute=run, warm_port=None):
     public, edge_id = record['identity'], record['manifest']['edge_id']
+    address, port = record['address'], 443
+    if warm_port is not None:
+        if ('infra/compose.shared-front.json' not in record['manifest']['files'] or
+                type(warm_port) is not int or not 1024 <= warm_port <= 65535):
+            raise ValueError('A shared edge and unprivileged loopback warm port required')
+        # The full controller uses the verified warm plan before public takeover.
+        # Ordinary deployment/boot callers retain the public endpoint check.
+        address, port = '127.0.0.1', warm_port
     for service in ('web', 'turn'):
-        tls_activation.verify_live(record['address'], 443, tls_material.names(public, edge_id, service),
+        tls_activation.verify_live(address, port, tls_material.names(public, edge_id, service),
                                    certificate(root, record, service))
     name = urlsplit(public['edges'][0]['origin']).hostname
     context = ssl.create_default_context()
-    with socket.create_connection((record['address'], 443), timeout=5) as raw:
+    with socket.create_connection((address, port), timeout=5) as raw:
         with context.wrap_socket(raw, server_hostname=name) as stream:
             stream.sendall(('GET /health/route HTTP/1.1\r\nHost: ' + name + '\r\nConnection: close\r\n\r\n').encode())
             response = http.client.HTTPResponse(stream)
