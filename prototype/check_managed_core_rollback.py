@@ -87,7 +87,8 @@ with sqlite3.connect(p/'calls.sqlite',timeout=10) as db:
 """
         compose(manifest,'exec','-T','control','python3','-c',script,value or '-',json.dumps(expected) if expected is not None else '-')
     try:
-        core_deploy.deploy(root,public,inventory,old,subnet=subnet)
+        print('Stage: initial core',flush=True)
+        core_deploy.deploy(root,public,inventory,old,subnet=subnet,activate_monitor=lambda *args:None)
         nonce=api('/_synapse/admin/v1/register')['nonce'];username='managed_rollback_fixture';password=secrets.token_urlsafe(24)
         mac=hmac.new(values['REGISTRATION_SECRET'].encode(),'\0'.join((nonce,username,password,'notadmin')).encode(),hashlib.sha1).hexdigest()
         api('/_synapse/admin/v1/register',{'nonce':nonce,'username':username,'password':password,'admin':False,'mac':mac})
@@ -103,12 +104,17 @@ with sqlite3.connect(p/'calls.sqlite',timeout=10) as db:
             sqlite(manifest,expected=rows)
         set_policy(old,12000);original_policy=policy(old)
         sqlite(old,'before-upgrade');api(account,{'sentinel':'before-upgrade'},token,'PUT')
+        print('Stage: synthetic data ready; activating monitor',flush=True)
+        role_bootstrap.activate(root,'core')
         for cycle,attempt in enumerate(('a'*64,'b'*64),1):
+            print('Stage: cycle '+str(cycle)+' claim',flush=True)
             proof=managed_fence.claim(root,public,inventory,old,new,attempt,subnet=subnet)
             assert proof['facts']['manifest']==old and proof['facts']['data_identity']==original_identity
+            print('Stage: cycle '+str(cycle)+' apply with consistent backup',flush=True)
             core_deploy.deploy(root,public,inventory,new,subnet=subnet,rollout_attempt=attempt)
             set_policy(new,7000);assert policy(new)['text_max_length']==7000
             stage='after-upgrade-'+str(cycle);sqlite(new,stage);api(account,{'sentinel':stage},token,'PUT')
+            print('Stage: cycle '+str(cycle)+' rollback',flush=True)
             managed_fence.retarget(root,public,inventory,old,new,old,attempt)
             if cycle==1:
                 image=role_release.json_digest({'image':args.control_image,'root':str(root)})[:12]
@@ -160,6 +166,7 @@ with sqlite3.connect(p/'calls.sqlite',timeout=10) as db:
     finally:
         if reader is not None:
             subprocess.run(['docker','stop',reader],check=True,capture_output=True)
+        print('Stage: owned resource cleanup',flush=True)
         core_deploy.require_backup_idle(root)
         models=[]
         import deploy
