@@ -195,15 +195,25 @@ def process_snapshot(root, record, *, execute=role_deploy.run):
 
 
 def inspect_role(root, public, inventory, manifest, *, subnet='10.241.0.0/28',
-                 system_root=Path('/'), execute=role_deploy.run, run=command):
+                 system_root=Path('/'), execute=role_deploy.run, run=command,
+                 rollout_attempt=None, rollout_manifest=None):
     """Inspect one actual pinned host; return only bounded public facts/hashes.
 
     Role/network locks reject concurrent deployment, backup and replacement.
     Historical boot sources are verified by their receipt; merely installing a
     new CI source bundle does not turn it into the committed boot operator.
+    Only the exact maintenance owner may inspect the previous committed role
+    while its fence already names the candidate target; default reads still fail.
     """
     role_release.validate(manifest)
     role_release.verify_configuration(manifest,public,inventory)
+    if (rollout_attempt is None) != (rollout_manifest is None):
+        raise ValueError('Maintenance inspection needs both attempt and target manifest')
+    if rollout_manifest is not None:
+        role_release.verify_configuration(rollout_manifest,public,inventory)
+        if any(rollout_manifest[key] != manifest[key] for key in
+               ('role','edge_id','service_id','identity','contracts','node_sha256','topology_sha256')):
+            raise ValueError('Maintenance inspection target belongs to another role')
     root, system_root = Path(root).absolute(), Path(system_root).resolve()
     if root.resolve()!=root or not root.is_dir():raise ValueError('Existing canonical role root required')
     role, identifier = manifest['role'], manifest['edge_id']
@@ -216,7 +226,7 @@ def inspect_role(root, public, inventory, manifest, *, subnet='10.241.0.0/28',
                edge_deploy.network_ready(inventory,identifier,subnet,execute=execute,
                    directory=system_root/'var/lib/voicechat-network'))
     with managed_state.locked(root), network:
-        role_deploy.require_rollout_owner(root)
+        role_deploy.require_rollout_owner(root, rollout_attempt, rollout_manifest)
         owner = managed_state.read(root/'role.json')
         expected = {key:manifest[key] for key in ('schema','service_id','role','edge_id','identity')}
         if owner != expected: raise ValueError('Role ownership differs from the baseline')

@@ -69,7 +69,7 @@ def services(role, record=None):
 def stop(root, role, edge_id=None, *, execute=role_deploy.run):
     try:
         with managed_state.locked(root):
-            if role_deploy.pending_rollout(root) is not None: return
+            if role_deploy.in_maintenance(root): return
             state = core_deploy.read_state(root) if role == 'core' else edge_deploy.read_state(root, edge_id)
             if state['pending'] is not None and state['pending']['phase'] != 'prepared': return
             record = state['current']
@@ -101,7 +101,7 @@ def watch(root, role, edge_id=None, *, execute=role_deploy.run):
     rollback. The deployment controller reactivates it after releasing its locks.
     """
     root = Path(root).absolute()
-    if role_deploy.pending_rollout(root) is not None:
+    if role_deploy.in_maintenance(root):
         notify_ready()
         return 0
     stopping = False
@@ -119,7 +119,7 @@ def watch(root, role, edge_id=None, *, execute=role_deploy.run):
             waiters.append(subprocess.Popen(['docker', 'wait', identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
         notify_ready()
         while not stopping:
-            if role_deploy.pending_rollout(root) is not None: return 0
+            if role_deploy.in_maintenance(root): return 0
             if any(waiter.poll() is not None for waiter in waiters):
                 backup = root / 'runtime/backup.json'
                 if role == 'core' and (backup.exists() or backup.is_symlink()): return 0

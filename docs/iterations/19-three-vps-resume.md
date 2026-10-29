@@ -13,12 +13,22 @@ B/C и физической отказоустойчивости пока нет
 Release веткуcodex/three-vps-initial не двигали после24c42bf. Initial повтор не нужен:
 обычный managed release executor/scopes **ещё не реализован**.
 
-Текущий локальный HEAD424c61d добавил store/load baseline objects/index для32 входов,
-без изменения production pointers. После него уточнено read-only missing-store
-поведение (16 focused tests PASS). Полный набор:506 PASS/skipped3,37.907s.
-Это подготовка следующего coordinator, не готовый normal rollout. Следующий этап:
-журнал на A, per-role fences/проверки, последовательные core/edges, recovery/rollback,
-pinned SSH delivery и CI web/edge/core/full; затем actualVM proofs и production.
+Локально послеa9b7a6a добавлены **host-local peer maintenance primitives** в
+infra/managed_fence.py: claim/observe/retarget/release, подготовка immutable target
+без запуска, exact host/nonce/role guards, ожидание выхода boot monitor, durable
+peer intent и восстановление marker↔intent/release gaps. Core и dedicated edge
+прошли одинаковые failure tests. Общее managed inspection допускает чтение под
+fence только exact owner+target; default reads по-прежнему отклоняются. Initial
+coordinator использует тот же marker factory; старое поведение проверено регрессией.
+Full Python **544 PASS/skipped3**,54.772s; managed focused51 PASS,11.121s.
+На VPS новые primitives **не выполнялись**: лишь [read-only reader proof](three-vps-evidence/2026-10-29-production-managed-reader.json)
+на точных Git a9b7a6a sources, current/initial bytes и все running containers
+неизменны, временный public source удалён. Нового rollout/baseline store на A нет.
+
+Следующий этап: actual role apply и безопасный outer rollback, frozen peer entry,
+pinned SSH driver, CI scopes; genuine VM partial/full/interruption tests и затем
+production ordinary release. Нельзя считать journal/maintenance primitives готовым
+обычным deploy. Production source остаётся24c42bf, normal CI ещё не подключён.
 
 **macOS24 опубликован и установлен23→24 через кнопку, PASS.** Владелец подтвердил
 Keychain; кандидат открыл прежний профиль. Exact signed ZIP/DMG опубликованы штатным
@@ -35,16 +45,36 @@ VoiceChatRelease/before-update-24; Keychain не удаляли, приватн�
 
 Android24 exact signed APK готов, физических устройств нет, не опубликован,
 acceptance не подделывать. Real call/screen/E2EE и15s failover остаются открытыми;
-нет B/C, нет Windows hardware/client. Новый normal journal **локально** в
-infra/managed_journal.py:17 tests, вместе с managed baseline33 PASS (9.671s); полный набор
-**520 PASS/skipped3**,50.571s. На VPS этот journal **не установлен/не запущен**;
-ещё нужны peer operations, pinned SSH driver, CLI/CI и actual VM scenario.
+нет B/C, нет Windows hardware/client. Новый normal journal и peer maintenance primitives **локально**, на VPS не
+развёрнуты. Последний полный Python job49364 завершён PASS544/skipped3. Активного
+production/VM/native build job нет. Installed24 открыт в About; candidate закрыт.
+Проверить git status перед продолжением: новые maintenance modules/tests и docs
+могут быть ещё не закоммичены. Heartbeat voicechat-core-edge сохраняется, дубликат
+не создавать. Продолжать normal apply/rollback/SSH/CI, не повторять initial51 или
+Mac build24. Read-only proof A не означал выполнения peer mutations.
 
-Активного production deployment/VM/native build job нет; последний полный Python
-job80628 завершён PASS. Installed24 остаётся открытым в About; temporary candidate
-закрыт. Текущие uncommitted files проверить git status: journal/test fixture и
-Mac publication evidence/docs. Heartbeat voicechat-core-edge сохраняется; не
-создавать дубликат. Продолжать независимую managed executor реализацию.
+Важные условия следующего шага:
+- Claim пишет **full marker первым**, затем peer intent: уже установленный51
+  operator не знает новый receipt, но понимает существующий full fence. До apply/
+  release ждать MainPID=0 у owned monitor (15s bound), не вызывать stop у неизвестного
+  старого monitor: его finally мог бы остановить apps. Timeout оставляет fence.
+- Новый peer receipt held/releasing закрывает gap отсутствующего full marker для
+  новых boot/backup guards. Watch/stop/monitor_after учитывают оба вида maintenance.
+- Outer rollback успешно committed core после edge failure **не сводится** к
+  core_deploy.deploy(old): configure_policy объединяет существующие поля и может
+  оставить добавленные candidate defaults. Требуется остановить writers, восстановить
+  оригинальный private policy snapshot (core_deploy.policy_path(root,rejected)),
+  запустить old code и проверить data identity; DB restore не выполнять. Учесть
+  также прерванный inner apply/current==before с pending candidate, lost commit
+  reply и failed-edge current==before без лишнего configure.
+- Обычный shared-edge update не обновляет внешний shared-front автоматически:
+  его config/image changes требуют проверенного отдельного перехода/раннего guard,
+  чтобы не остановить core перед заведомо неподдержанным frontend изменением.
+- Preflight всех участников делать до begin/fencing. Постоянная потеря edge во
+  время fencing потребует recovery после доказанного revoke на A; произвольный
+  skip неизвестного peer недопустим. Core/data host нельзя abandon. Это ещё не
+  реализованная отдельная recovery ветка; не выдавать lost-reply resume за замену
+  навсегда недоступного host.
 
 ## История предыдущих этапов
 
@@ -1647,3 +1677,17 @@ inspect/release, exact frozen source entry, SSH orchestration, CI scopes и genu
 VM release/partial/full interruption tests. Пока обычный managed CI release не
 доступен; legacy path намеренно не может менять новую схему. Production51 здоров,
 Mac24 release/update завершён, Android/внешние B/C/реальные медиа остаются открыты.
+
+
+## Peer maintenance primitives и regression PASS544
+
+Добавлен managed_fence.py (пока без apply/rollback code executor): обе роли
+прошли claim/repeat/observe, cancel через retarget baseline, lost first-intent,
+lost retarget, lost release receipt, unknown nonce/host, runtime symlink/mode,
+архивирование прежнего receipt и monitor timeout. Только synthetic unit fixtures,
+не actual VM proof. Runtime и own role metadata проверяются до записей; apps не
+останавливаются этими функциями. Durable intent валидируется в role_deploy, guards
+учтены во всех boot watch/stop/monitor_after вызовах. Alias initial marker сохраняет
+прежнюю конструкцию с дополнительной owner/runtime проверкой. Весь Python набор
+544 PASS/skipped3,54.772s. Следующий required шаг — actual apply + policy-preserving
+outer rollback, затем transport/CI. Mac24 release закрыт; production51 не менялся.

@@ -49,6 +49,45 @@ class FullRolloutFenceTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Invalid or foreign'):
                 role_deploy.require_rollout_owner(self.root, original['attempt'], self.fixture.new)
 
+    def operation(self, phase='held'):
+        value={'schema':1,'operation':'managed-release','root':str(self.root),
+               'attempt':self.marker['attempt'],'owner':self.marker['owner'],
+               'before':self.fixture.old,'target':self.fixture.new,'active':self.fixture.new,
+               'phase':phase,'result':None if phase=='held' else self.fixture.new}
+        managed_state.persist(self.root/'runtime/managed-release.json',value)
+        return value
+
+    def test_peer_intent_alone_preserves_services_during_interrupted_fence_creation(self):
+        self.operation();(self.root/'runtime/full-rollout.json').unlink()
+        with self.assertRaisesRegex(ValueError,'Finish the managed role operation'):
+            role_deploy.require_rollout_owner(self.root)
+        with patch.object(role_boot,'start') as start, patch.object(role_boot,'notify_ready') as ready:
+            self.assertEqual(role_boot.watch(self.root,'core'),0)
+            start.assert_not_called();ready.assert_called_once()
+        role_boot.stop(self.root,'core',execute=self.fixture.execute)
+        activate=Mock()
+        with role_bootstrap.monitor_after(self.root,'core',activate=activate):pass
+        activate.assert_not_called();self.assertEqual(self.fixture.calls,[])
+
+    def test_peer_intent_must_match_fence_and_release_result(self):
+        original=self.operation()
+        role_deploy.require_rollout_owner(self.root,self.marker['attempt'],self.fixture.new)
+        for update in ({'attempt':'e'*64},{'phase':'released','result':self.fixture.new}):
+            managed_state.persist(self.root/'runtime/managed-release.json',{**original,**update})
+            with self.assertRaisesRegex(ValueError,'differs from its maintenance fence'):
+                role_deploy.require_rollout_owner(self.root,self.marker['attempt'],self.fixture.new)
+        for update in ({'owner':'0'*64},{'schema':True},{'root':'/foreign'},{'phase':'released','result':self.fixture.old}):
+            managed_state.persist(self.root/'runtime/managed-release.json',{**original,**update})
+            with self.assertRaises(ValueError):role_deploy.managed_operation(self.root)
+
+    def test_released_peer_intent_allows_normal_boot_and_cannot_claim_a_missing_fence(self):
+        self.operation('released');(self.root/'runtime/full-rollout.json').unlink()
+        role_deploy.require_rollout_owner(self.root)
+        self.assertFalse(role_deploy.in_maintenance(self.root))
+        with self.assertRaisesRegex(ValueError,'has no role maintenance fence'):
+            role_deploy.require_rollout_owner(self.root,self.marker['attempt'],self.fixture.new)
+        self.assertEqual(role_deploy.rollout_marker(self.root,self.fixture.new,self.marker['attempt']),self.marker)
+
     def test_separate_core_deploy_backup_sql_and_boot_do_not_touch_containers(self):
         with self.assertRaisesRegex(ValueError, 'Finish the full rollout'):
             self.fixture.deploy(self.fixture.new)

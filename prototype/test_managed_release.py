@@ -213,9 +213,9 @@ class ManagedBaselineInspectionTests(unittest.TestCase):
             return ('\n'.join(value*64+' true 2026-10-29T00:00:00Z 0' for value in ('1','2','3'))+'\n').encode()
         raise AssertionError('Unexpected command: '+repr(args))
 
-    def inspect(self):
+    def inspect(self, **kwargs):
         return managed_release.inspect_role(self.root,self.public,self.inventory,self.manifest,
-            system_root=self.system,execute=self.execute,run=lambda *args:b'')
+            system_root=self.system,execute=self.execute,run=lambda *args:b'',**kwargs)
 
     def test_actual_private_state_bundle_and_boot_receipt_produce_public_facts_only(self):
         value=self.inspect()
@@ -225,6 +225,30 @@ class ManagedBaselineInspectionTests(unittest.TestCase):
         self.assertNotIn('synthetic-private-do-not-return',json.dumps(value))
         self.assertEqual(managed_state.read(self.root/'state.json'),self.state)
         self.assertFalse(any('up' in args or 'stop' in args for args in self.calls))
+
+    def test_only_exact_maintenance_owner_can_observe_previous_committed_role(self):
+        target=deepcopy(self.manifest);target['commit']='b'*40
+        fence={'schema':1,'operation':'full-rollout','root':str(self.root),'attempt':'a'*64,
+               'target':role_release.json_digest(target),
+               'owner':role_release.json_digest(managed_state.read(self.root/'role.json'))}
+        managed_state.persist(self.root/'runtime/full-rollout.json',fence)
+        with self.assertRaisesRegex(ValueError,'Finish the full rollout'):self.inspect()
+        value=self.inspect(rollout_attempt='a'*64,rollout_manifest=target)
+        self.assertEqual(value['manifest'],self.manifest)
+        self.assertEqual(value['data_identity'],self.identity)
+        for options in ({'rollout_attempt':'b'*64,'rollout_manifest':target},
+                        {'rollout_attempt':'a'*64,'rollout_manifest':self.manifest}):
+            with self.assertRaisesRegex(ValueError,'Finish the full rollout'):self.inspect(**options)
+        self.assertEqual(managed_state.read(self.root/'state.json'),self.state)
+        self.assertEqual(managed_state.read(self.root/'runtime/full-rollout.json'),fence)
+        self.assertFalse(any('up' in args or 'stop' in args for args in self.calls))
+
+    def test_maintenance_parameters_are_paired_and_cannot_change_role_identity(self):
+        for options in ({'rollout_attempt':'a'*64},{'rollout_manifest':self.manifest}):
+            with self.assertRaisesRegex(ValueError,'both attempt and target'):self.inspect(**options)
+        target=deepcopy(self.manifest);target['identity']['canonical_origin']='https://other.example.com'
+        with self.assertRaises(ValueError):self.inspect(rollout_attempt='a'*64,rollout_manifest=target)
+        self.assertFalse(self.calls)
 
     def test_wrong_host_pending_release_and_runtime_tamper_are_refused(self):
         host=self.system/'etc/ssh/ssh_host_ed25519_key.pub';original=host.read_text();host.write_text(key(12))

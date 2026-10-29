@@ -129,10 +129,7 @@ def existing_network(network, inventory, subnet, previous, *, execute):
     return saved
 
 
-def marker(root, manifest, attempt):
-    return {'schema': 1, 'operation': 'full-rollout', 'root': str(root), 'attempt': attempt,
-            'target': role_release.json_digest(manifest),
-            'owner': role_release.json_digest(managed_state.read(root / 'role.json'))}
+marker = role_deploy.rollout_marker
 
 
 def legacy_guard(legacy_root, managed_root, target, *, publish=False):
