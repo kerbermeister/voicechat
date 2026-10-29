@@ -68,6 +68,56 @@ def from_initial(current):
         'edges':{identifier:deepcopy(target['edge'])}})
 
 
+def _baseline_object(directory, checksum):
+    if not isinstance(checksum, str) or not role_release.SHA.fullmatch(checksum):
+        raise ValueError('Content-addressed baseline object required')
+    value = managed_state.read(directory / (checksum + '.json'))
+    if role_release.json_digest(value) != checksum:
+        raise ValueError('Immutable baseline object changed')
+    return value
+
+
+def store_baseline(root, baseline):
+    """Keep each bounded role/config object once, with a small immutable index.
+
+    A complete 32-edge baseline exceeds the managed JSON boundary. References
+    preserve that boundary and mixed role revisions without copying manifests
+    into every journal step. This does not change any production pointer.
+    """
+    validate_baseline(baseline)
+    root = Path(root).absolute()
+    if root.resolve() != root or not root.is_dir():
+        raise ValueError('Existing canonical managed root required')
+    with managed_state.locked(root / 'baselines') as directory:
+        def store(value):
+            checksum = role_release.json_digest(value)
+            path = directory / (checksum + '.json')
+            if path.exists() or path.is_symlink():
+                if _baseline_object(directory, checksum) != value:
+                    raise ValueError('Immutable baseline object collision')
+            else:
+                managed_state.persist(path, value)
+            return checksum
+        index = {key: baseline[key] for key in ('schema', 'backend', 'subnet')}
+        index.update({key: store(baseline[key]) for key in ('public', 'inventory', 'core')})
+        index['edges'] = {identifier: store(manifest) for identifier, manifest in baseline['edges'].items()}
+        return store(index)
+
+
+def load_baseline(root, checksum):
+    root = Path(root).absolute()
+    if root.resolve() != root or not root.is_dir():
+        raise ValueError('Existing canonical managed root required')
+    with managed_state.locked(root / 'baselines') as directory:
+        value = _baseline_object(directory, checksum)
+        topology.fields(value, ('schema', 'backend', 'public', 'inventory', 'subnet', 'core', 'edges'))
+        if not isinstance(value['edges'], dict) or not 1 <= len(value['edges']) <= 32:
+            raise ValueError('Complete bounded edge baseline index required')
+        return validate_baseline({**value,
+            **{key: _baseline_object(directory, value[key]) for key in ('public', 'inventory', 'core')},
+            'edges': {identifier: _baseline_object(directory, item) for identifier, item in value['edges'].items()}})
+
+
 def plan(baseline, candidate, backend, *, scope='full', edges=None):
     """Select immutable targets, preserving unselected/mixed-version roles.
 

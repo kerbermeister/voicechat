@@ -133,6 +133,45 @@ class ManagedReleaseTests(unittest.TestCase):
         with self.assertRaises(ValueError):managed_release.from_initial({'schema':1,'manifest':{}})
 
 
+class ManagedBaselineStorageTests(unittest.TestCase):
+    def setUp(self):
+        ManagedReleaseTests.setUp(self)
+        temporary = tempfile.TemporaryDirectory(); self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+
+    def test_32_edges_roundtrip_without_increasing_managed_document_limit(self):
+        public = self.baseline['public']; inventory = self.baseline['inventory']
+        public['edges'] = [{'id': 'e'+str(n), 'origin': 'https://edge'+str(n)+'.example.com',
+                            'turn_host': 'turn'+str(n)+'.example.com'} for n in range(32)]
+        inventory['edges'] = [{'id': 'e'+str(n), 'generation': 1, 'public_ip': '192.0.2.'+str(n+20),
+                               'tunnel_ip': '10.88.0.'+str(n+2), 'ssh_host_key': key(n+2)} for n in range(32)]
+        self.baseline['core'] = role_release.make(public,inventory,'core','a'*40,self.image('1'))
+        self.baseline['edges'] = {item['id']: role_release.make(public,inventory,'edge',
+            ('a' if n%2 else 'b')*40,self.image('2' if n%2 else '3'),item['id']) for n,item in enumerate(public['edges'])}
+        self.assertGreater(len(json.dumps(self.baseline).encode()),65536)
+        checksum = managed_release.store_baseline(self.root,self.baseline)
+        self.assertEqual(managed_release.load_baseline(self.root,checksum),self.baseline)
+        files = set((self.root/'baselines').iterdir())
+        self.assertTrue(all(path.stat().st_size <= 65536 for path in files))
+        self.assertEqual(managed_release.store_baseline(self.root,self.baseline),checksum)
+        self.assertEqual(set((self.root/'baselines').iterdir()),files)
+        self.assertFalse((self.root/'current.json').exists())
+
+    def test_tampered_or_symlinked_object_and_path_reference_are_refused(self):
+        checksum = managed_release.store_baseline(self.root,self.baseline)
+        path = self.root/'baselines'/(checksum+'.json')
+        original = managed_state.read(path)
+        managed_state.persist(path,{**original,'backend':'0'*64})
+        with self.assertRaisesRegex(ValueError,'object changed'):
+            managed_release.load_baseline(self.root,checksum)
+        with self.assertRaisesRegex(ValueError,'object changed'):
+            managed_release.store_baseline(self.root,self.baseline)
+        path.unlink(); other = self.root/'other.json'; managed_state.persist(other,original);path.symlink_to(other)
+        with self.assertRaises(OSError):managed_release.load_baseline(self.root,checksum)
+        for invalid in ('../other', 'A'*64, None):
+            with self.assertRaises(ValueError):managed_release.load_baseline(self.root,invalid)
+
+
 class ManagedBaselineInspectionTests(unittest.TestCase):
     def setUp(self):
         temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup)

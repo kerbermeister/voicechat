@@ -1,5 +1,37 @@
 # Точка продолжения: три и более VPS
 
+## Актуальная сводка: production retry51
+
+29.10.2026: GitHub sudo подтверждён владельцем, production DEPLOY_ROOT сохранён
+как `/srv/voicechat-managed`. **Активный [run51](https://github.com/kerbermeister/voicechat/actions/runs/40935478252)**,
+job123664752501, commit24c42bf866ba7d2ee3e17bd7d0f6a51a05705172,
+веткаcodex/three-vps-initial, initial/full/deploy=true/**retry_initial=true**.
+Ветку не двигать и второй deployment не запускать. Тесты CI и web build прошли;
+последнее наблюдение — сборка control. Run50 failed/rolled-back, независимо
+проверены legacy/data/keys/тома, соседние процессы и HTTPS. Причина — Compose5.5.1
+гонка успешного one-shot configure, в24c42bf исправлена explicit compose wait.
+
+В worktree после24c42bf идут **отдельные локальные** изменения managed_release
+store/load baseline: content-addressed bounded objects/index для32 входов,
+без изменения production pointers. Они не входят в run51 и не означают готовый
+обычный managed executor/scopes. Не подмешивать их в immutable run51 bundle.
+
+macOS24 exact signed ZIP распакован и запущен через CUA, About=1.12.0(24),
+процесс из `.prototype/macos-24-extracted/VoiceChat.app`. Профиль/installed23 заранее
+сохранены в VoiceChatRelease/before-update-24. Candidate пока ждёт saved session:
+legacy `/health/route` возвращает HTML200 вместо нового JSON, поэтому такую
+проверку продолжить **после успешного cutover**, не объявлять принятой. Native
+About закрыт, главное окно кандидата открыто; private beforeIDs/history в CUA.
+DMG readonly mounted, codesign verified, полный app payload равен exact signed ZIP;
+volume detached. Ничего не опубликовано, installed23 не заменён, Keychain не удаляли.
+
+Postcheck `/tmp/voicechat-production-postcheck.py` закреплён на24c42bf; запускать
+только после complete/run51. Активные jobs проверять по факту; при возобновлении
+сначала посмотреть CI/initial.json, не повторять уже прошедшие VM/native builds.
+
+## История предыдущих этапов
+
+
 Обновляется 29 октября 2026 после возобновления работы владельцем.
 Исходная остановка перед reboot завершала inventory/render и TLS;
 после неё добавлены отдельные core/edge роли и локальная публикация каталога.
@@ -8,7 +40,7 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 Владелец просит продолжать все доступные локальные задачи без дополнительных
 подтверждений; новая просьба — итоговая схема сети, не остановка реализации.
 
-## Текущий локальный шаг: общий первоначальный переход
+## Ранний локальный шаг: общий первоначальный переход
 
 `infra/initial_cohost.py` связывает подготовленные компоненты в один журналируемый
 legacy→core/cohost сценарий на A. Это **кандидат**, ещё не разрешённый CI production
@@ -1528,3 +1560,16 @@ success до старта writers и nonzero с rollback предыдущего 
 менялись; подписанные macOS24/Android24 artifacts не пересобирать ради controller fix.
 GitHub DEPLOY_ROOT=/srv/voicechat-managed уже сохранён после подтверждения пользователя.
 Далее commit/push, fast-forward release ветки, initial/full/deploy=true/retry=true.
+
+
+## Следующий managed шаг: bounded baseline storage
+
+`managed_release.store_baseline/load_baseline` сохраняют public/inventory/core и
+каждый edge manifest отдельными immutable JSON objects с SHA256 ссылками. Индекс
+мал, pointer не изменяется. Это позволяет хранить полную смешанную baseline32
+входов, которая целиком превышает64KiB, сохраняя прежний лимит каждого managed
+документа. Tests проверяют32 входа/mixed revisions, повтор без новых объектов,
+подмену bytes, symlink и path traversal reference. Полный набор505 PASS/skipped3,
+39.410s. Это подготовка ordinary coordinator, **не его готовая реализация/CI**.
+[macOS24 предварительные проверки](three-vps-evidence/2026-10-29-macos24-prepublish.json)
+сохраняют границу: ZIP/DMG/signatures/About проверены, session/update ещё не приняты.
