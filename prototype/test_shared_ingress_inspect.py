@@ -56,6 +56,7 @@ class LegacyIngressInspectionTests(unittest.TestCase):
             'frontend': {'image': 'fixture/frontend', 'environment': {'PRIVATE_VALUE': self.secret}}},
             'volumes': {'caddy_data': {'name': 'deploy_caddy_data'}, 'caddy_config': {'name': 'deploy_caddy_config'}},
             'networks': {'default': {'name': 'deploy_default'}}}
+        (deploy / 'docker-compose.yml').write_text(json.dumps(self.config))
         self.calls = []
         self.changed = b'deploy/Caddyfile\n'
         self.existing_override = ''

@@ -359,6 +359,29 @@ VM fixture использовал synthetic Git/env/upstreams/internal certifica
 зафиксирован явно, чтобы добавление следующих modules не меняло его задним числом.
 Полная инфраструктурная regression — **177 tests PASS**. Production без изменений.
 
+### 29 октября: настоящий legacy adoption/rollback в VM
+
+`adopt_legacy` теперь использует тот же global lock/preflight и native Compose
+comparison: могут измениться только pinned image и configuration directory mount
+Caddy. Private server-local snapshot `.env`, durable pending/current journal,
+CAS environment/source проверки; только `up --no-deps --no-build --pull never caddy`.
+Секреты не попадают в journal/result/arguments. При ошибке восстанавливаются
+исходные dotenv bytes и leaf mount с явным прежним immutable Caddy pin; данные и
+Git не откатываются и не удаляются. После process death следующий запуск сначала
+восстанавливает старый ingress. Незнакомые изменения среды/source/host блокируют
+перезапись, незавершённый recovery остаётся pending. Проверяются volumes, ports,
+networks, active semantic config, Git/env hashes, HTTPS обоих сайтов с проверкой
+CA и неизменность процессов соседей до/после операции. Идемпотентный committed
+retry не пересоздаёт Caddy. **186 infrastructure tests PASS**, включая 9 adoption.
+
+Реальная VM проверка `check_shared_legacy_inspect.py --adopt` прошла все эти
+переходы с настоящим Caddy/Docker Compose и synthetic upstreams:
+[evidence](three-vps-evidence/2026-10-29-vm-shared-legacy-adopt.json).
+Internal CA доверяется только fixture curl через отдельный файл; system trust
+не менялся. Все fixture containers/networks/volumes удалены. Production всё ещё
+не изменён. Это не shared-front 443 cutover, внешняя ACME issuance, Avito update
+manager или full legacy core migration; эти блоки остаются следующими.
+
 ## Неизменные условия
 
 - Продолжать по `docs/tasks/19-three-vps.md` и `docs/three-vps-spec.md`.

@@ -2,7 +2,9 @@
 
 Uses synthetic Git/env/upstreams and internal Caddy certificates. Temporarily
 publishes VM ports 80/443; refuses an existing deploy project or its Caddy volumes.
+--adopt also exercises actual recreation, rollback and process-death recovery.
 """
+import argparse
 import hashlib
 import json
 import os
@@ -25,7 +27,7 @@ def run(*arguments):
     return result.stdout
 
 
-def main():
+def main(*, adoption=False):
     if sys.platform != 'linux' or os.geteuid() != 0: raise ValueError('Disposable Linux root VM required')
     public_key = ' '.join(Path('/etc/ssh/ssh_host_ed25519_key.pub').read_text().split()[:2])
     marker = json.loads((ROOT / '.disposable-vm').read_text())
@@ -109,6 +111,61 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
                     ('infra/shared_ingress.py', 'infra/role_bootstrap.py', 'prototype/check_shared_legacy_inspect.py')},
                 'limits': ['Read-only preflight on synthetic Git/env/upstreams and internal certificates; no live adoption or port cutover.',
                            'Public content-addressed operator package retained; no service unit activated.']}
+            if adoption:
+                # Trust this fixture's public CA only for its curl invocations;
+                # never install it in the VM or host trust store.
+                ca = directory / 'fixture-ca.pem'
+                end = time.monotonic() + 90
+                while True:
+                    try:
+                        ca.write_bytes(run('docker', 'exec', identifier, 'cat', '/data/caddy/pki/authorities/local/root.crt'))
+                        for hostname in ('neighbor.fixture.invalid', 'chat.fixture.invalid'):
+                            run('curl', '--fail', '--silent', '--show-error', '--noproxy', '*', '--cacert', str(ca),
+                                '--max-time', '5', '--resolve', hostname + ':443:127.0.0.1', 'https://' + hostname + '/')
+                        break
+                    except RuntimeError:
+                        if time.monotonic() >= end: raise
+                        time.sleep(1)
+                def execute(arguments, *, env=None):
+                    if arguments[0] == 'curl': arguments = [*arguments, '--cacert', str(ca)]
+                    result = subprocess.run(arguments, env=env, capture_output=True, timeout=120)
+                    if result.returncode: raise RuntimeError('Synthetic adoption command failed; private diagnostics retained in VM')
+                    return result.stdout
+                for failure in (RuntimeError('lost Docker response'), SystemExit('process died')):
+                    injected = False
+                    def fail_after_up(arguments, *, env=None):
+                        nonlocal injected
+                        output = execute(arguments, env=env)
+                        if not injected and arguments[:2] == ['docker', 'compose'] and 'up' in arguments and str(shared / 'runtime/compose.override.yaml') in arguments:
+                            injected = True
+                            raise failure
+                        return output
+                    try:
+                        shared_ingress.adopt_legacy(shared, plan, execute=fail_after_up)
+                        raise AssertionError('Injected failure was not exercised')
+                    except type(failure): pass
+                    assert injected
+                    if isinstance(failure, SystemExit):
+                        assert (shared / 'pending.json').exists()
+                        try:
+                            shared_ingress.adopt_legacy(shared, plan, execute=execute)
+                            raise AssertionError('Recovery must precede a fresh adoption')
+                        except ValueError as error:
+                            assert 'Interrupted legacy adoption recovered' in str(error)
+                    assert environment.read_bytes() == original
+                    assert not (shared / 'pending.json').exists() and not (shared / 'current.json').exists()
+                committed = shared_ingress.adopt_legacy(shared, plan, execute=execute)
+                managed_id = run(*command, '-f', str(shared / 'runtime/compose.override.yaml'), 'ps', '-q', 'caddy').decode().strip()
+                assert shared_ingress.adopt_legacy(shared, plan, execute=execute) == committed
+                assert managed_id == run(*command, '-f', str(shared / 'runtime/compose.override.yaml'), 'ps', '-q', 'caddy').decode().strip()
+                assert (deploy / 'Caddyfile').read_bytes() == legacy
+                assert original in environment.read_bytes() and environment.stat().st_mode & 0o777 == 0o600
+                assert secret not in json.dumps(committed)
+                result.update(real_directory_mount_adoption=True, lost_response_automatic_rollback=True,
+                    process_death_recovered_before_retry=True, authenticated_https_routes_after_all_recreations=True,
+                    neighboring_processes_and_data_volume_names_preserved=True, committed_retry_did_not_restart_caddy=True)
+                result['limits'] = ['Synthetic Git/env/upstreams and internal certificates; no external ACME, shared port cutover or production migration.',
+                                    'Public content-addressed operator package retained; no manager wrapper or systemd unit activated.']
         except BaseException:
             print(run(*command, 'logs', '--tail', '12').decode(), file=sys.stderr)
             raise
@@ -120,4 +177,7 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
     print(json.dumps(result, indent=2))
 
 
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--adopt', action='store_true')
+    main(adoption=parser.parse_args().adopt)
