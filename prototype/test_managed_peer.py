@@ -128,8 +128,22 @@ class ManagedPeerTests(unittest.TestCase):
 
     def test_preflight_reads_actual_baseline_without_source_intent_or_fence(self):
         self.value['operation']='preflight'
-        with patch('managed_release.inspect_role',return_value={'manifest':self.value['before']}) as inspect:
+        with patch('managed_release.inspect_role',return_value={'manifest':self.value['before']}) as inspect, \
+             patch('role_prepare.prepare') as prepare, \
+             patch('core_deploy.record_for',return_value={'manifest':self.value['target']}), \
+             patch('core_deploy.compose') as pull:
             self.assertEqual(self.operate(),{'facts':{'manifest':self.value['before']},'fence':None})
             self.assertEqual(inspect.call_args.args[-1],self.value['before'])
+            prepare.assert_called_once();self.assertEqual(pull.call_args.args[-3:],('pull','--policy','missing'))
+        self.assertFalse((self.role_root/'runtime/managed-peer').exists())
+        self.claim.assert_not_called()
+
+    def test_failed_preflight_image_download_creates_no_operation_binding(self):
+        self.value['operation']='preflight'
+        with patch('managed_release.inspect_role',return_value={'manifest':self.value['before']}), \
+             patch('role_prepare.prepare'), \
+             patch('core_deploy.record_for',return_value={'manifest':self.value['target']}), \
+             patch('core_deploy.compose',side_effect=RuntimeError('Image unavailable')):
+            with self.assertRaisesRegex(RuntimeError,'Image unavailable'):self.operate()
         self.assertFalse((self.role_root/'runtime/managed-peer').exists())
         self.claim.assert_not_called()

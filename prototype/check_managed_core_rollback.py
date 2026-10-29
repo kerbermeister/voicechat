@@ -31,6 +31,8 @@ def main():
     if json.loads((BASE/'.disposable-vm').read_text()) != {
             'kind':'voicechat-disposable-vm','ssh_host_key_sha256':hashlib.sha256(host.encode()).hexdigest()}:
         raise ValueError('Disposable VM ownership differs from this host')
+    if subprocess.check_output(['systemctl','show','--property=SystemState','--value']).strip()!=b'running':
+        raise ValueError('A healthy systemd host is required before creating fixture resources')
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--control-image',required=True)
     args=parser.parse_args()
@@ -177,6 +179,7 @@ with sqlite3.connect(p/'calls.sqlite',timeout=10) as db:
         initial_cohost.namespace('voicechat',models,execute=role_deploy.run)
         assert unit.read_bytes()==role_bootstrap.plan(root,'core',None)[3]
         subprocess.run(['systemctl','disable','--now','voicechat-core.service'],check=True,capture_output=True)
+        subprocess.run(['systemctl','reset-failed','voicechat-core.service'],check=True,capture_output=True)
         unit.unlink();subprocess.run(['systemctl','daemon-reload'],check=True)
         compose(old,'down','--volumes','--remove-orphans')
         shutil.rmtree(root)

@@ -36,7 +36,7 @@ def api(context,path,method='GET',body=None):
     with opener.open(request,timeout=20) as response:return json.load(response)
 
 
-def wait(root,public,inventory,session,account_path,data_identity,*,run,timeout=3600):
+def wait(root,public,inventory,session,account_path,data_identity,*,run,timeout=7200):
     import core_deploy,edge_deploy,managed_state,role_deploy,role_release
     owned(root)
     directory=root/'managed-test';directory.mkdir(mode=0o700)

@@ -49,6 +49,8 @@ def main():
     if json.loads((base / '.disposable-vm').read_text()) != {
             'kind': 'voicechat-disposable-vm', 'ssh_host_key_sha256': hashlib.sha256(key.encode()).hexdigest()}:
         raise ValueError('Disposable VM marker differs from this host')
+    if subprocess.check_output(['systemctl','show','--property=SystemState','--value']).strip()!=b'running':
+        raise ValueError('A healthy systemd host is required before creating fixture resources')
     def run(arguments, *, env=None, input=None):
         process = subprocess.run(arguments, env=env, input=input, capture_output=True, timeout=300)
         if process.returncode:

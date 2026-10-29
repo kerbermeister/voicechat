@@ -18,6 +18,8 @@ import managed_edge_rollback
 import managed_fence
 import managed_release
 import managed_state
+import role_prepare
+import edge_deploy
 import release_delivery
 import role_deploy
 import role_bootstrap
@@ -91,8 +93,16 @@ def operate(value,root,source_sha,*,source=None):
     common={'subnet':value['subnet']}
     arguments=(role_root,value['public'],value['inventory'],before,target)
     if value['operation']=='preflight':
-        return {'facts':managed_release.inspect_role(role_root,value['public'],value['inventory'],before,**common),
-                'fence':None}
+        facts=managed_release.inspect_role(role_root,value['public'],value['inventory'],before,**common)
+        # Stage immutable sources/images on every host before the first fence.
+        # Runtime, secrets, service processes and release pointers are untouched.
+        role_prepare.prepare(role_root,value['public'],value['inventory'],target,value['subnet'])
+        module=core_deploy if target['role']=='core' else edge_deploy
+        record=(core_deploy.record_for(role_root,value['inventory'],target) if target['role']=='core' else
+                edge_deploy.record_for(value['public'],value['inventory'],target))
+        module.compose(role_root,record,'pull','--policy','missing',
+                       *(['web'] if value['scope']=='web' else []))
+        return {'facts':facts,'fence':None}
     with managed_state.locked(role_root/'runtime/managed-peer') as directory:
         path=directory/'current.json'
         binding={'schema':1,'attempt':attempt,'source':source_sha,'before':role_release.json_digest(before),

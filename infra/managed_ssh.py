@@ -13,6 +13,8 @@ import time
 
 import managed_entry
 import managed_peer
+import managed_probe
+import release_source
 import node_inventory
 import release_delivery
 import ssh_deploy
@@ -31,6 +33,9 @@ def connection(peer,identity):
     # Reuse the inventory validator for the common transport contract.
     if not isinstance(user,str) or not re.fullmatch(r'[a-z_][a-z0-9_-]*',user) or type(port) is not int or not 1<=port<=65535:
         raise ValueError('Pinned SSH user and port required')
+    if isinstance(identity,dict):
+        if peer.get('node') not in identity:raise ValueError('Configure this physical node SSH identity first')
+        identity=identity[peer['node']]
     identity=Path(identity).absolute()
     info=identity.lstat()
     if not stat.S_ISREG(info.st_mode) or info.st_uid!=os.geteuid() or info.st_mode&0o077:
@@ -71,6 +76,21 @@ def invoke(ssh,root,source,entry,value):
         time.sleep(attempt+1)
 
 
+def read_hints(ssh,root):
+    if not re.fullmatch(r'/[A-Za-z0-9/_-]+',str(root)) or '..' in Path(root).parts:
+        raise ValueError('Canonical managed root required')
+    script=Path(__file__).with_name('managed_probe.py').read_bytes()
+    result=subprocess.run([*ssh,shlex.join(['python3','-B','-',str(root)])],input=script,
+                          capture_output=True,timeout=60)
+    if result.returncode:raise RemoteFailure('Managed build hint read failed; inspect the pinned data host')
+    if len(result.stdout)>65536:raise ValueError('Oversized build hints')
+    value=json.loads(result.stdout,object_pairs_hook=managed_probe.unique)
+    topology.fields(value,('schema','baseline','backend','origin','control','web','pending'))
+    if type(value['schema']) is not int or value['schema']!=1:
+        raise ValueError('Known managed build hints required')
+    return value
+
+
 def _coordinator(ssh,root,source,action,**values):
     return invoke(ssh,root,source,'managed_entry',{'schema':1,'action':action,**values})
 
@@ -95,7 +115,7 @@ def drive(ssh,root,source,identity,*,connect=connection):
             with connect(peer,identity) as remote:
                 proof=invoke(remote,root,source,'managed_peer',peer['request'])
         except RemoteFailure:
-            if phase in ('fencing','applying','verifying'):
+            if phase in ('applying','verifying'):
                 _coordinator(ssh,root,source,'rollback',attempt=attempt);continue
             raise
         _coordinator(ssh,root,source,'ack',attempt=attempt,phase=phase,position=operation['position'],proof=proof)
@@ -147,17 +167,48 @@ def main():
     parser.add_argument('--edges',nargs='+');parser.add_argument('--retry',action='store_true')
     parser.add_argument('--archive',type=Path,default=Path('/tmp/release.tar.gz'))
     parser.add_argument('--identity',type=Path,default=Path.home()/'.ssh/id_ed25519')
+    parser.add_argument('--identity-map',type=Path)
+    actions=parser.add_mutually_exclusive_group()
+    actions.add_argument('--read-build-hints',action='store_true')
+    actions.add_argument('--resume-only',action='store_true')
+    parser.add_argument('--output',type=Path)
     args=parser.parse_args()
     config=json.loads(os.environ['SERVER_ROLE_CONFIG'],object_pairs_hook=topology.unique_object)
     node_inventory.validate(config['inventory'],config['public'])
     root=os.environ['DEPLOY_ROOT']
     if config['root']!=root:raise ValueError('Managed installation differs from DEPLOY_ROOT')
     inventory=config['inventory'];node=inventory['core']
-    peer={'host':node['public_ip'],'host_key':node['ssh_host_key'],'user':inventory['ssh_user'],'port':inventory['ssh_port']}
-    with connection(peer,args.identity) as ssh:
-        result=release(ssh,root,os.environ['GITHUB_SHA'],args.archive,args.identity,
-                       scope=args.scope,edges=args.edges,retry=args.retry)
-    print(json.dumps(result))
+    peer={'node':'core','host':node['public_ip'],'host_key':node['ssh_host_key'],'user':inventory['ssh_user'],'port':inventory['ssh_port']}
+    identity=args.identity
+    if args.identity_map is not None:
+        _,identity=managed_probe.read(args.identity_map)
+        if not isinstance(identity,dict) or not identity or any(not isinstance(value,str) for value in identity.values()):
+            raise ValueError('Physical node to private key path map required')
+    elif any(edge.get('host')!='core' for edge in inventory['edges']):
+        raise ValueError('Configure separate SSH identities for physical nodes using --identity-map')
+    with connection(peer,identity) as ssh:
+        if args.read_build_hints or args.resume_only:
+            hints=read_hints(ssh,root)
+            if hints['origin']!=os.environ['PUBLIC_URL']:raise ValueError('Build origin differs from the deployed service')
+            if args.resume_only:
+                pending=hints['pending']
+                result=({'schema':1,'resume_needed':False} if pending is None else
+                        drive(ssh,root,pending['source'],identity))
+                if result.get('phase')=='rolled-back' and not args.retry:
+                    raise RemoteFailure('Previous managed release rolled back; use explicit retry')
+            else:
+                if hints['pending'] is not None and hints['pending']['phase'] not in ('complete','rolled-back'):
+                    raise ValueError('Resume the pending release before selecting build digests')
+                if args.scope in ('web','edge') and hints['backend']!=release_source.backend_fingerprint(Path(__file__).resolve().parents[1]):
+                    raise ValueError('Protected backend sources changed; use full release')
+                result=hints
+        else:
+            result=release(ssh,root,os.environ['GITHUB_SHA'],args.archive,identity,
+                           scope=args.scope,edges=args.edges,retry=args.retry)
+    if args.output is not None:
+        descriptor=os.open(args.output,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+        with os.fdopen(descriptor,'w') as output:json.dump(result,output);output.write('\n')
+    else:print(json.dumps(result))
 
 
 if __name__=='__main__':main()

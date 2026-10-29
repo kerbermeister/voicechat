@@ -111,6 +111,15 @@ class ManagedSshTests(unittest.TestCase):
         journal=managed_journal.read(self.root)
         self.assertEqual(journal['steps'],[{'role':'edge','edge_id':'c'}])
 
+    def test_fencing_failure_preserves_attempt_for_same_source_resume(self):
+        self.fixture.begin();attempt=self.fixture.attempt
+        self.peer.side_effect=managed_ssh.RemoteFailure('Temporary backup overlaps claim')
+        with self.assertRaises(managed_ssh.RemoteFailure):
+            managed_ssh.drive(['ssh','core'],self.root,'d'*64,'/fixture/key',connect=self.connect)
+        self.assertEqual(managed_journal.read(self.root)['phase'],'fencing')
+        self.assertEqual(managed_journal.read(self.root)['attempt'],attempt)
+        self.assertFalse(any(call.args[3]=='rollback' for call in self.coordinator.call_args_list))
+
 
 class ManagedTransportTests(unittest.TestCase):
     def test_busy_and_lost_connection_retry_without_exposing_private_progress(self):
@@ -145,3 +154,24 @@ class ManagedTransportTests(unittest.TestCase):
                 self.assertIn('StrictHostKeyChecking=yes',ssh);self.assertIn('ForwardAgent=no',ssh)
                 self.assertIn('/dev/null',ssh);self.assertEqual(known.stat().st_mode&0o777,0o600)
             self.assertFalse(known.exists())
+
+    def test_node_identity_map_selects_only_its_own_key(self):
+        from test_node_inventory import key
+        with tempfile.TemporaryDirectory() as folder:
+            private=Path(folder)/'core';private.write_text('synthetic');private.chmod(0o600)
+            peer={'node':'core','host':'192.0.2.10','host_key':key(1),'user':'root','port':22}
+            with managed_ssh.connection(peer,{'core':str(private)}) as ssh:
+                self.assertEqual(ssh[ssh.index('-i')+1],str(private))
+            with self.assertRaisesRegex(ValueError,'physical node SSH identity'):
+                with managed_ssh.connection(peer,{'edge-b':str(private)}):pass
+
+    def test_build_hint_reader_sends_only_public_script_and_rejects_bad_response(self):
+        value={'schema':1,'baseline':'a'*64,'backend':'b'*64,'origin':'https://chat.fixture.invalid',
+               'control':'ghcr.io/fixture/control@sha256:'+'c'*64,'web':{'a':'ghcr.io/fixture/web@sha256:'+'d'*64},'pending':None}
+        with patch.object(managed_ssh.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(value).encode())) as run:
+            self.assertEqual(managed_ssh.read_hints(['ssh','pinned'],'/srv/managed'),value)
+            self.assertIn('python3 -B - /srv/managed',run.call_args.args[0][-1])
+            self.assertIn(b'def hints(root)',run.call_args.kwargs['input'])
+            self.assertNotIn(b'PRIVATE KEY-----',run.call_args.kwargs['input'])
+        with patch.object(managed_ssh.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=b'{}')):
+            with self.assertRaises(ValueError):managed_ssh.read_hints(['ssh'],'/srv/managed')

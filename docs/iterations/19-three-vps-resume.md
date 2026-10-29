@@ -2,6 +2,42 @@
 
 ## Актуальная сводка: production core/edge включены
 
+**Следующее продолжение после53e15b8 (29.10, 22:22 UTC):** production всё ещё24c42bf,
+новых mutations нет. [Read-only CI hints на A PASS](three-vps-evidence/2026-10-29-production-managed-build-hints.json):
+один edge-a, pending=null, точные immutable control/web digests. Это не runtime/media proof.
+Локально подключены workflow managed/full/web/core/edge, per-node private SSH key map,
+resume-only до сборки и standalone bounded read-only probe. Web/edge reuse control,
+core reuse каждого deployed edge web; core не строит web/crypto assets. Все прежние
+server/client checks сохранены. YAML/bash/embedded Python syntax PASS, 26 steps.
+Functional workflow tests проверили generated manifests и private distinct key files.
+Полная regression **620 PASS/skipped3**,70.420s; focused managed124 PASS,29.268s.
+Diff относительно production24c42bf серверный/infra; macOS/native source относительно
+опубликованного9d4 не менялся, повторная сборка macOS не требуется.
+
+Сквозной parent50323 завершился **FAILED до normal SSH**, stage initial network install:
+после предыдущего core fixture в PID1 осталась только `voicechat-core.service`
+not-found/failed; healthy-systemd guard правильно запретил установку. Driver76852
+ждал ready и остановлен агентом (PID4326/SIGTERM), normal mutations не начинал.
+[Recovery PASS](three-vps-evidence/2026-10-29-vm-normal-bootstrap-recovery.json):
+только эта проверенная удалённая owned unit reset-failed, исходные private network/key
+bytes сохранены, штатный network_bootstrap restore по saved fingerprint завершён,
+network service ready, containers отсутствуют. Не ослаблять systemd guard.
+Fixture cleanup теперь reset-failed только проверенных owned units, precheck SystemState
+перед созданием ресурсов; parent/driver надо повторить из нового чистого commit.
+Старый source `/srv/voicechat-edge-fixture/managed-normal-source-fp3o70nm`, receipt
+`/srv/voicechat-edge-fixture/legacy-preflight-3vswjehd/network-isolation.json` restored.
+Старый clone53 и логи оставлены как forensic; не использовать старый run.json после
+нового запуска. Сценарий `/tmp/voicechat-managed-normal-driver.py` дополнен настоящим
+core-only/неизменными edge PID и fail-fast при отказе parent. Следующий retry проверит
+full+lost reply, web-only, core-only и реальный bad web/full rollback.
+
+Preflight теперь готовит immutable sources и скачивает все образы до первого fence,
+не меняя app/runtime pointers. Known failure в fencing сохраняет attempt для retry,
+например при наложении backup; автоматический rollback — applying/verifying.
+После commit новый parent `/tmp/voicechat-managed-normal-vm.py` и driver запускать
+по одному. Пока **активных VM/production jobs нет**; workflow ещё не pushed/run.
+В этой сводке следующий launch должен обновить реальные session IDs/source path.
+
 **Актуальное продолжение 29.10, 21:41 UTC:** пользователь ушёл спать и разрешил
 непрерывную автономную работу; production по-прежнему24c42bf/run51, новых mutations
 на A в этой итерации нет. **[Genuine VM core rollback PASS](three-vps-evidence/2026-10-29-vm-managed-core-rollback.json)**,

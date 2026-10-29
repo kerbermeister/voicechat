@@ -55,6 +55,7 @@ def remove_units(expected, timers, *, run):
                 time.sleep(.5);continue
             break
         run(['systemctl','disable','--now',name])
+        run(['systemctl','reset-failed',name])
     for path in present.values():path.unlink()
     run(['systemctl','daemon-reload'])
 

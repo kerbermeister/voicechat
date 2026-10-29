@@ -29,7 +29,9 @@ def instruction(baseline,target,step,attempt,scope,operation,identity,*,restorin
            'manifest':(before if restoring else after) if operation in ('observe','release') else None}
     managed_peer.request(json.dumps(value).encode())
     inventory=baseline['inventory']
-    return {'host':node['public_ip'],'host_key':node['ssh_host_key'],
+    assignment=next((item for item in inventory['edges'] if item['id']==identifier),{})
+    physical='core' if role=='core' or assignment.get('host')=='core' else 'edge-'+identifier
+    return {'node':physical,'host':node['public_ip'],'host_key':node['ssh_host_key'],
             'user':inventory['ssh_user'],'port':inventory['ssh_port'],'request':value}
 
 
