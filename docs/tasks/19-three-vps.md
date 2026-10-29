@@ -608,6 +608,13 @@ strict SNI/Host и доступность neighbor при stopped edge:
 network/config при неудачной миграции пока открыты. Текущая точка продолжения —
 [resume](../iterations/19-three-vps-resume.md).
 
+29.10: `shared_front.py` копирует проверенный frontend из подготовленного edge
+bundle и выполняет owned loopback warm-up без public 443. В VM проверены
+same-target resume после реального Compose up, no-op без restart и восстановление
+остановленного listener. [Evidence](../iterations/three-vps-evidence/2026-10-29-vm-shared-front-warm.json).
+Neighbor manager поддерживает уже committed shared mode, сохраняя строгий PROXY
+source и HTTP-01 sinks. Сам public cutover/full migration ещё открыты.
+
 Подготовлен URL-only migration primitive для прежних pushers: journal до DB commit,
 повтор после прерывания и транзакционный rollback проверены на настоящем PostgreSQL
 с синтетической таблицей. В core orchestrator ещё не подключён; остановка writers,

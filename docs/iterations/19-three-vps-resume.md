@@ -10,6 +10,17 @@ node-local WireGuard configs, Linux peer replacement, CI build config и отд�
 
 ## Актуальное состояние: production ingress, 29 октября
 
+Новый `shared_front.py` подготавливает независимый HAProxy plan из проверенного
+edge bundle и запускает только `127.0.0.1:19443`. Ни Caddy, ни public 443,
+ни core/edge приложения он не меняет. Private journal, проверка SSH host,
+immutable source/mount/image/network/port identity, отказ от чужих ресурсов,
+same-plan resume и восстановление своего stopped listener. Web image/revision
+не меняет frontend plan. В реальной Debian VM подтверждены lost-response после
+Compose up, повтор без смены процесса, stop/recovery и полная очистка fixture.
+[Evidence](three-vps-evidence/2026-10-29-vm-shared-front-warm.json).
+В этом probe нет TLS backends; маршруты проверены прежним отдельным TLS fixture.
+Public promotion/demotion и связанный Caddy rollback ещё не реализованы этим шагом.
+
 Для полного отката добавлен `push_route_migration.restore_public`: отдельная
 URL-only транзакция по актуальным private pushers, включая подписки, созданные
 после запуска candidate. Прежний rollback точного forward journal оставлен для
