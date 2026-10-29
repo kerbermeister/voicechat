@@ -21,12 +21,20 @@ Boot recovery committed роли под full fence разрешён только
 исходного fingerprint; новый peerless registry привязан к generation и сохраняет ключ.
 Неверный SSH host и remote Docker отвергаются до записи состояния.
 
-Последний подтверждённый полный набор — **458 Python tests, OK, skipped=3**;
-последующая проверка координатора — **9 focused PASS** (добавлен ещё один сценарий).
-В VM идёт дополнительная проверка старого Git **8bcbd91** с source-built legacy
-control **bc8327…** и candidate **abc8e6…**; старый source package сверяется по
-[точным Git hashes](three-vps-evidence/2026-10-29-vm-legacy-release-source.json).
-Пока не записано успешное свидетельство, этот прогон не считать завершённым.
+Последний подтверждённый полный набор — **459 Python tests, OK, skipped=3**;
+координатор — **9 focused PASS**. CLI и backup scheduler используют одну выбранную
+подсеть. Commit **76707dc** сохраняет первый кандидат координатора.
+В VM завершена проверка старого Git **8bcbd91** с source-built legacy control
+**bc8327…** и candidate **abc8e6…**:
+[PASS evidence](three-vps-evidence/2026-10-29-vm-exact-legacy-rollout-fence.json).
+Точный Git source, restart=no lost-reply resume, installed full-fence systemd,
+stopped-writer backup/check, URL forward/resume/current-row reversal и две
+legacy recreation сохранили account/device, БД/signing/coturn identity и pointer.
+Fixture ресурсы удалены; исходная VM network независимо проверена active.
+Это синтетические данные на точных старых исходниках, **не полный core/edge переход**.
+Следующий шаг — цельный сценарий координатора с подготовленным cohost ingress,
+изолированной новой сетью VM, public commit, fault drills и восстановлением
+исходной VM-сети без смены её ключа.
 Production службы, данные и DNS в этом шаге не менялись.
 
 ## Актуальное состояние: production ingress, 29 октября

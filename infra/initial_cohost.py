@@ -633,7 +633,7 @@ def migrate(root, legacy_root, shared_root, public, inventory, candidate, envelo
                 phase('scheduling')
             if journal['phase'] == 'scheduling':
                 cohost_tls_bootstrap._install_locked(shared,execute=execute,run=run,system_root=system_root)
-                core_backup_bootstrap.install(core,public,inventory,system_root=system_root,run=run)
+                core_backup_bootstrap.install(core,public,inventory,subnet=subnet,system_root=system_root,run=run)
                 phase('complete')
             return managed_state.read(root/'current.json')
 
@@ -643,6 +643,7 @@ def main():
     for name in ('root','legacy-root','shared-root','topology','inventory','candidate','catalog','catalog-key-file'):
         parser.add_argument('--'+name,type=Path,required=True)
     parser.add_argument('--backend-file', type=Path, default=Path(__file__).resolve().parents[1] / 'backend.sha256')
+    parser.add_argument('--edge-subnet', default='10.241.0.0/28')
     parser.add_argument('--retry',action='store_true')
     parser.add_argument('--ca-file',type=Path,help='Explicit trusted CA for an isolated fixture')
     args=parser.parse_args()
@@ -653,7 +654,7 @@ def main():
     migrate(args.root,args.legacy_root,args.shared_root,public,node_inventory.load(args.inventory,public),
         legacy.manifest(args.candidate),route_catalog.read_envelope(args.catalog),
         args.catalog_key_file.read_text().strip(),backend_sha256=args.backend_file.read_text().strip(),
-        retry=args.retry,ca_file=args.ca_file)
+        retry=args.retry,ca_file=args.ca_file,subnet=args.edge_subnet)
     print('Initial core/cohost migration committed; user data stayed on this host.')
 
 
