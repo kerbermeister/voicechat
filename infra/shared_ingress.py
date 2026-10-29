@@ -84,11 +84,16 @@ def compose_environment(repo, override):
 
 
 def stage(root, repo, edge_root, public, inventory, edge_id, business_routes, *, mode='legacy', system_root=Path('/')):
-    """Stage an immutable plan/package; leave Caddy, .env and Git untouched.
+    """Stage an immutable plan/package without touching a live service or Git."""
+    import managed_state
+    root = Path(root).absolute()
+    if root.resolve() != root: raise ValueError('Shared ingress root must not traverse symlinks')
+    with managed_state.locked(root):
+        return _stage_locked(root, repo, edge_root, public, inventory, edge_id, business_routes,
+                             mode=mode, system_root=system_root)
 
-    A later adoption controller must verify the existing host and activate the
-    plan. Merely preparing it does not claim ownership of the running Caddy.
-    """
+
+def _stage_locked(root, repo, edge_root, public, inventory, edge_id, business_routes, *, mode='legacy', system_root=Path('/')):
     import edge_config
     import managed_state
     import network_bootstrap
@@ -110,29 +115,37 @@ def stage(root, repo, edge_root, public, inventory, edge_id, business_routes, *,
     target = {'schema': 1, 'repo': repo, 'edge_root': str(edge_root), 'edge_id': edge_id,
               'mode': mode, 'public': public, 'node': inventory['core'], 'shared_tls': profile,
               'operator': operator}
+    role_bootstrap.install_sources(Path(system_root).resolve(), code, contents)
+    return _store_plan_locked(root, target, configuration, system_root=system_root)
+
+
+def _store_plan_locked(root, target, configuration, *, system_root):
+    import managed_state
+    import network_bootstrap
+    import role_bootstrap
+    import role_prepare
+    import role_release
+    role_bootstrap.verify_record(Path(system_root).resolve(), target['operator'])
     files = {'Caddyfile': configuration.encode(), 'compose.override.yaml':
-             compose_override(str(root / 'runtime/caddy'), shared=profile).encode(),
-             'compose.env-line': compose_environment(repo, str(root / 'runtime/compose.override.yaml')).encode()}
+             compose_override(str(root / 'runtime/caddy'), shared=target['shared_tls']).encode(),
+             'compose.env-line': compose_environment(target['repo'], str(root / 'runtime/compose.override.yaml')).encode()}
     record = {'schema': 1, 'target': target,
               'files': {name: hashlib.sha256(content).hexdigest() for name, content in files.items()}}
-    with managed_state.locked(root):
-        role_prepare.directory(root / 'plans')
-        plan = root / 'plans' / role_release.json_digest(record)
-        role_prepare.directory(plan)
-        if {item.name for item in plan.iterdir()} - (set(files) | {'plan.json'}):
-            raise ValueError('Unexpected shared ingress plan file')
-        for name, content in files.items():
-            if network_bootstrap.existing(plan / name) not in (None, content):
-                raise ValueError('Shared ingress plan changed')
-        manifest = plan / 'plan.json'
-        if (manifest.exists() or manifest.is_symlink()) and managed_state.read(manifest) != record:
-            raise ValueError('Shared ingress plan manifest changed')
-        role_bootstrap.install_sources(Path(system_root).resolve(), code, contents)
-        role_bootstrap.verify_record(Path(system_root).resolve(), operator)
-        for name, content in files.items():
-            if network_bootstrap.existing(plan / name) is None:
-                network_bootstrap.create_file(plan / name, content)
-        managed_state.persist(manifest, record)
+    role_prepare.directory(root / 'plans')
+    plan = root / 'plans' / role_release.json_digest(record)
+    role_prepare.directory(plan)
+    if {item.name for item in plan.iterdir()} - (set(files) | {'plan.json'}):
+        raise ValueError('Unexpected shared ingress plan file')
+    for name, content in files.items():
+        if network_bootstrap.existing(plan / name) not in (None, content):
+            raise ValueError('Shared ingress plan changed')
+    manifest = plan / 'plan.json'
+    if (manifest.exists() or manifest.is_symlink()) and managed_state.read(manifest) != record:
+        raise ValueError('Shared ingress plan manifest changed')
+    for name, content in files.items():
+        if network_bootstrap.existing(plan / name) is None:
+            network_bootstrap.create_file(plan / name, content)
+    managed_state.persist(manifest, record)
     return plan
 
 
@@ -540,6 +553,8 @@ def adopt_legacy(root, plan, *, execute=None, health=_https_health, system_root=
     root, plan = Path(root).absolute(), Path(plan).absolute()
     if root.resolve() != root or not root.is_dir(): raise ValueError('Prepared shared root required')
     with managed_state.locked(root):
+        if (root / 'update.json').exists() or (root / 'update.json').is_symlink():
+            raise ValueError('Finish the pending business deployment before ingress adoption')
         current, pending = root / 'current.json', root / 'pending.json'
         if current.exists() or current.is_symlink():
             record = managed_state.read(current)

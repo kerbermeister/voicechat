@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'infra'))
 import role_config
 import shared_ingress
+import shared_update
 import topology
 
 
@@ -27,12 +28,14 @@ def run(*arguments):
     return result.stdout
 
 
-def main(*, adoption=False):
+def main(*, adoption=False, update=False):
     if sys.platform != 'linux' or os.geteuid() != 0: raise ValueError('Disposable Linux root VM required')
     public_key = ' '.join(Path('/etc/ssh/ssh_host_ed25519_key.pub').read_text().split()[:2])
     marker = json.loads((ROOT / '.disposable-vm').read_text())
     if marker != {'kind': 'voicechat-disposable-vm', 'ssh_host_key_sha256': hashlib.sha256(public_key.encode()).hexdigest()}:
         raise ValueError('Disposable VM marker does not match this host')
+    wrapper = Path('/usr/local/sbin/voicechat-shared-deploy')
+    if update and (wrapper.exists() or wrapper.is_symlink()): raise ValueError('Existing manager must not be replaced by a fixture')
     for arguments in (['docker', 'ps', '-aq'], ['docker', 'network', 'ls', '-q'], ['docker', 'volume', 'ls', '-q']):
         if run(*arguments, '--filter', 'label=com.docker.compose.project=deploy').strip():
             raise ValueError('Existing deploy project must never be adopted by this fixture')
@@ -77,6 +80,13 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
         run('git', '-C', str(repo), 'init', '-b', 'main')
         run('git', '-C', str(repo), 'add', 'deploy/Caddyfile', 'deploy/docker-compose.yml', 'deploy/upstream.py')
         run('git', '-C', str(repo), '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-m', 'fixture')
+        if update:
+            remote, incoming = directory / 'remote.git', directory / 'incoming'
+            run('git', 'clone', '--bare', str(repo), str(remote))
+            run('git', '-C', str(repo), 'remote', 'add', 'origin', str(remote))
+            run('git', 'clone', str(remote), str(incoming))
+            run('git', '-C', str(incoming), 'config', 'user.name', 'Fixture')
+            run('git', '-C', str(incoming), 'config', 'user.email', 'fixture@example.invalid')
         secret = 'synthetic-private-value-not-for-export'
         environment = deploy / '.env'
         original = ('DOMAIN=neighbor.fixture.invalid\nJWT_SECRET=' + secret + '\n').encode()
@@ -166,10 +176,83 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
                     neighboring_processes_and_data_volume_names_preserved=True, committed_retry_did_not_restart_caddy=True)
                 result['limits'] = ['Synthetic Git/env/upstreams and internal certificates; no external ACME, shared port cutover or production migration.',
                                     'Public content-addressed operator package retained; no manager wrapper or systemd unit activated.']
+                if update:
+                    receipt = shared_update.install(shared, execute=execute)
+                    wrapper_bytes = wrapper.read_bytes()
+                    assert receipt['wrapper_sha256'] == hashlib.sha256(wrapper_bytes).hexdigest()
+                    def publish(name):
+                        run('git', '-C', str(incoming), 'add', '.')
+                        run('git', '-C', str(incoming), 'commit', '-m', name)
+                        run('git', '-C', str(incoming), 'push', 'origin', 'main')
+                        return run('git', '-C', str(incoming), 'rev-parse', 'HEAD').decode().strip()
+                    def installed_update():
+                        process = subprocess.run([str(wrapper), 'avito-update'],
+                            env={**os.environ, 'CURL_CA_BUNDLE': str(ca)}, capture_output=True, timeout=300)
+                        if process.returncode:
+                            raise RuntimeError('Installed synthetic manager failed: ' + process.stderr.decode()[-2500:])
+                        assert secret.encode() not in process.stdout + process.stderr
+                    def processes():
+                        ids = run(*command, '-f', str(shared / 'runtime/compose.override.yaml'), 'ps', '-q').decode().split()
+                        return sorted(run('docker', 'inspect', '--format', '{{.Id}} {{.State.StartedAt}} {{.RestartCount}}', *ids).decode().splitlines())
+                    before = processes()
+                    workflow = incoming / '.github/workflows/deploy.yml'
+                    workflow.parent.mkdir(parents=True)
+                    workflow.write_text('name: fixture-delegate\non: workflow_dispatch\n')
+                    workflow_revision = publish('workflow-only fixture')
+                    installed_update()
+                    assert processes() == before
+                    assert json.loads((shared / 'current.json').read_text())['baseline']['head'] == workflow_revision
+                    revised = business.replace('    reverse_proxy frontend:80', '    header X-Fixture shared-manager\n    reverse_proxy frontend:80')
+                    (incoming / 'deploy/Caddyfile').write_text(revised)
+                    route_revision = publish('business Caddy route fixture')
+                    installed_update()
+                    assert processes() == before
+                    headers = run('curl', '--fail', '--silent', '--show-error', '--noproxy', '*', '--cacert', str(ca),
+                        '--max-time', '10', '--resolve', 'neighbor.fixture.invalid:443:127.0.0.1',
+                        '--dump-header', '-', '--output', '/dev/null', 'https://neighbor.fixture.invalid/').lower()
+                    assert b'x-fixture: shared-manager' in headers
+                    assert json.loads((shared / 'current.json').read_text())['baseline']['head'] == route_revision
+                    # Interrupt after a real fast-forward checkout. Invoke the
+                    # actual installed package to resume its saved target.
+                    (incoming / 'docs').mkdir()
+                    (incoming / 'docs/fixture.txt').write_text('synthetic checkpoint\n')
+                    recovered_revision = publish('interrupted checkout fixture')
+                    killed = False
+                    def die_after_merge(arguments, *, env=None):
+                        nonlocal killed
+                        output = execute(arguments, env=env)
+                        if arguments[0] == 'git' and 'merge' in arguments and not killed:
+                            killed = True
+                            raise SystemExit('synthetic manager process died')
+                        return output
+                    try:
+                        shared_update.update(shared, execute=die_after_merge)
+                        raise AssertionError('Manager interruption was not injected')
+                    except SystemExit: pass
+                    assert killed and (shared / 'update.json').exists()
+                    installed_update()
+                    assert not (shared / 'update.json').exists() and processes() == before
+                    assert json.loads((shared / 'current.json').read_text())['baseline']['head'] == recovered_revision
+                    installed_update()
+                    assert processes() == before
+                    assert environment.read_bytes() == original + (plan / 'compose.env-line').read_bytes()
+                    assert not run('git', '-C', str(repo), 'diff', '--name-only', 'HEAD').strip()
+                    assert wrapper.read_bytes() == wrapper_bytes
+                    result.update(installed_immutable_manager_cli=True, workflow_only_deploy_preserved_all_processes=True,
+                        business_caddy_update_reloaded_without_process_restart=True, interrupted_git_checkout_resumed_by_installed_cli=True,
+                        business_git_clean_and_environment_bytes_preserved=True)
+                    result['source_sha256']['infra/shared_update.py'] = hashlib.sha256((ROOT / 'infra/shared_update.py').read_bytes()).hexdigest()
+                    result['limits'] = ['Synthetic Git/env/upstreams and internal certificates; no application image deploy, external ACME, shared port cutover or production migration.',
+                                        'Public immutable operator packages retained; fixture manager wrapper removed; no systemd unit activated.']
+                    wrapper.unlink()
         except BaseException:
             print(run(*command, 'logs', '--tail', '12').decode(), file=sys.stderr)
             raise
         finally:
+            if update and wrapper.exists():
+                expected_wrapper = shared_update._wrapper(shared, json.loads((plan / 'plan.json').read_text())['target']['operator'])
+                if wrapper.read_bytes() != expected_wrapper: raise ValueError('Unexpected fixture wrapper edit; preserve for inspection')
+                wrapper.unlink()
             run(*command, 'down', '--volumes', '--remove-orphans')
     for arguments in (['docker', 'ps', '-aq'], ['docker', 'network', 'ls', '-q'], ['docker', 'volume', 'ls', '-q']):
         assert not run(*arguments, '--filter', 'label=com.docker.compose.project=deploy').strip()
@@ -180,4 +263,6 @@ HTTPServer(('0.0.0.0', 80), Handler).serve_forever()
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--adopt', action='store_true')
-    main(adoption=parser.parse_args().adopt)
+    parser.add_argument('--update', action='store_true')
+    args = parser.parse_args()
+    main(adoption=args.adopt or args.update, update=args.update)

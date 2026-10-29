@@ -915,8 +915,9 @@ Dedicated edge без профиля сохраняет собственный i
 Полный rollout обязан отдельно владеть shared-front и его сетями. Web-only не
 меняет эти файлы; edge stop/down не должен удалять listener или соседний сайт.
 Прежний Caddy требует точного PROXY v2 trust и strict SNI/Host, сохранения HTTP-01
-и сертификатов. Миграция его портов/config и защита от последующего деплоя соседнего
-репозитория ещё не реализованы. Один offline bundle не разрешает занимать порт 443.
+и сертификатов. Перенос порта 443 в общий front ещё не реализован; первоначальный
+перенос прежнего Caddy на управляемый directory mount проверен отдельно ниже.
+Один offline bundle не разрешает занимать порт 443.
 Изолированный `prototype/check_shared_front.py` проверяет маршрутизацию на HAProxy
 и публичном Caddy 2.8; это синтетические TLS endpoints, без TURN allocation/media.
 `edge_config.shared_legacy_proxy` генерирует следующий Caddy config из reviewed
@@ -930,7 +931,40 @@ reviewed source package без runtime activation. `compose_override` испол
 Compose !override для портов и volumes: иначе прежний leaf mount может закрыть
 новый Caddyfile в каталоге, а прежний 443 конфликтует с shared-front. Имена Caddy
 volumes и определения остальных сервисов проверены через настоящий Compose 5.5.1.
-Это ещё не manager CLI и не команда миграции работающего Caddy.
+`inspect_legacy_plan(...)` сверяет host key, private plan/operator package,
+Git main/HEAD/dirty paths, Compose dotenv и активную Caddy-конфигурацию. Pinned
+image, ports, networks, volumes и mounts должны совпадать; неизвестные изменения
+не принимаются. В результат входят только hashes/IDs, dotenv не выводится.
+
+`adopt_legacy(...)` выполняет только начальный переход на directory mount:
+сохраняет private server-local `.env` snapshot, добавляет canonical `COMPOSE_FILE`
+и запускает только `up --no-deps --no-build --pull never caddy`. Runtime overlay
+находится вне соседнего Git. До/после проверяются HTTPS обоих сайтов с доверенным
+CA и неизменность процессов соседей. При сбое старый leaf mount и dotenv bytes
+восстанавливаются с явным прежним image pin. Process death оставляет durable
+pending: следующий вызов сначала восстанавливает прежний ingress и требует
+повторить adoption. Нельзя изменять `current.json`/`pending.json`, чтобы обойти
+guard. Эти операции прошли [реальную VM проверку](../docs/iterations/three-vps-evidence/2026-10-29-vm-shared-legacy-adopt.json)
+с синтетическими upstreams и internal CA; production ещё не переведён.
+
+Следующий слой — `shared_update.install(...)` и установленная команда
+`/usr/local/sbin/voicechat-shared-deploy avito-update`. Hook соседнего workflow
+подключать только после её проверки и успешного adoption. Команда использует
+тот же global lock, проверяет origin/рабочие изменения, fetch + fast-forward
+конкретной revision и сохраняет overlay. Она восстанавливает только известный
+custom `deploy/Caddyfile` перед merge, без глобального checkout/reset. Перед
+checkout Compose и Caddy validate проверяют candidate; ingress identity/ports/
+mounts/environment остаются защищёнными. Workflow/docs-only update не запускает
+application pull/up и не reload Caddy. Business Caddy routes reload без restart;
+прочие business changes идут через обычные pull/up с управляемым override.
+Application schema/data не откатываются этим контроллером. При ошибке target
+остаётся pending для повторения той же revision; не делается новый fetch поверх
+незавершённого deploy. Ошибка reload возвращает известные routes, сохраняя pending.
+Wrapper запускает sealed Python package с `-B`, чтобы не писать `__pycache__` в
+проверяемый неизменяемый каталог. [Реальная CLI проверка в VM](../docs/iterations/three-vps-evidence/2026-10-29-vm-shared-business-update.json)
+подтвердила workflow-only, Caddy reload, process-death recovery после Git merge
+и сохранение HTTPS/процессов/окружения. Application image deploy и shared port
+cutover этим fixture не проверялись.
 
 Для начальной миграции старого A можно явно добавить `legacy_turn: true` к
 `{"id":"a","host":"core"}`: host3488 TCP/UDP направляется на авторизованный

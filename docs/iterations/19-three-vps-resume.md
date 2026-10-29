@@ -382,6 +382,42 @@ Internal CA доверяется только fixture curl через отдел
 не изменён. Это не shared-front 443 cutover, внешняя ACME issuance, Avito update
 manager или full legacy core migration; эти блоки остаются следующими.
 
+### 29 октября: установленный neighboring-deploy manager
+
+`shared_update.py` добавлен в sealed operator package; проверяются ровно три
+известных source roster (25/26/27), ready требует актуальный полный target.
+`install(...)` после adoption устанавливает только owned wrapper/receipt.
+`avito-update` под тем же lock проверяет private runtime, owner/origin/main,
+previews native Compose + Caddy validate, journal конкретного fetched revision,
+затем known-file restore/fast-forward. Глобального checkout/reset нет. CI/docs-only
+не pull/up/reload рабочие службы; Caddy routes reload без process restart;
+application changes сохраняют overlay в обычном pull/up. При failed reload
+известные routes восстанавливаются, target остаётся pending. Прерванный merge
+возобновляется без fetch другого target. Неизвестные edits не перезаписываются.
+
+10 focused manager tests PASS; предыдущий полный regression 194 PASS до последних
+двух новых negative cases. Реальный CLI fixture прошёл:
+[evidence](three-vps-evidence/2026-10-29-vm-shared-business-update.json).
+Исполнен именно установленный `/usr/local/sbin/voicechat-shared-deploy` из sealed
+package: Git origin/fast-forward, workflow-only без restart, route header reload
+с теми же процессами, process death после настоящего merge и recovery следующей
+командой. HTTPS проверен fixture CA, dotenv bytes сохранены, Git clean. Wrapper и
+Docker resources удалены; публичные source packages остались. Application image
+deploy, shared-front cutover и production этим тестом не приняты.
+
+Первая CLI попытка обнаружила `__pycache__` в sealed package и была отклонена
+source-set guard. Wrapper исправлен на `python3 -B`; только повторная успешная
+попытка засчитана. Production по-прежнему без изменений, draft Avito workflow не
+push/merge. Следующее — проверить обычный application deploy/ошибку reload в VM,
+подключить этот защищённый legacy этап на production и продолжить общий cutover/
+core adoption/full orchestration/TLS renewal/client release.
+
+GitHub Actions settings доступны через существующую браузерную сессию (read-only).
+Production environment имеет прежние DEPLOY_HOST/ROOT/USER/PUBLIC_URL и secrets
+DEPLOY_KNOWN_HOSTS/DEPLOY_SSH_KEY. Repository variables/secrets отсутствуют; route
+catalog key/config там не настроены. Значения secrets не читались, настройки не
+менялись. CI запуск и подготовку public routing config можно выполнить агентом.
+
 ## Неизменные условия
 
 - Продолжать по `docs/tasks/19-three-vps.md` и `docs/three-vps-spec.md`.
