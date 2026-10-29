@@ -109,10 +109,11 @@ class ManagedPeerTests(unittest.TestCase):
     def test_rollback_retargets_before_restoring_core_and_returns_observed_facts(self):
         self.value['operation']='rollback';events=[]
         with patch('managed_fence.retarget',side_effect=lambda *a,**kw:events.append('retarget')), \
+             patch('role_bootstrap.install',side_effect=lambda *a,**kw:events.append('install')), \
              patch('managed_core_rollback.rollback',side_effect=lambda *a,**kw:events.append('restore')) as restore, \
              patch('managed_fence.observe',side_effect=lambda *a,**kw:events.append('observe') or {'observed':True}) as observe:
             self.assertEqual(self.operate(),{'observed':True})
-        self.assertEqual(events,['retarget','restore','observe'])
+        self.assertEqual(events,['retarget','install','restore','observe'])
         self.assertEqual(restore.call_args.args[-2],self.value['data_identity'])
         self.assertEqual(observe.call_args.args[-2],self.value['before'])
 
@@ -124,3 +125,11 @@ class ManagedPeerTests(unittest.TestCase):
         self.value.update(operation='release',manifest=self.value['target'])
         with patch('managed_fence.release',side_effect=RuntimeError('Release failed')):
             with self.assertRaisesRegex(RuntimeError,'Release failed'):self.operate()
+
+    def test_preflight_reads_actual_baseline_without_source_intent_or_fence(self):
+        self.value['operation']='preflight'
+        with patch('managed_release.inspect_role',return_value={'manifest':self.value['before']}) as inspect:
+            self.assertEqual(self.operate(),{'facts':{'manifest':self.value['before']},'fence':None})
+            self.assertEqual(inspect.call_args.args[-1],self.value['before'])
+        self.assertFalse((self.role_root/'runtime/managed-peer').exists())
+        self.claim.assert_not_called()

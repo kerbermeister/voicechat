@@ -2,6 +2,37 @@
 
 ## Актуальная сводка: production core/edge включены
 
+**Актуальное продолжение 29.10, 21:41 UTC:** пользователь ушёл спать и разрешил
+непрерывную автономную работу; production по-прежнему24c42bf/run51, новых mutations
+на A в этой итерации нет. **[Genuine VM core rollback PASS](three-vps-evidence/2026-10-29-vm-managed-core-rollback.json)**,
+точный source f5c1a26, два цикла claim→apply+consistent backup→policy rollback→release.
+Реальные Matrix session/device/account data и post-backup SQLite writes сохранены,
+исходная private policy и PG/signing identity восстановлены; active repo reader
+блокировал rollback без kill/остановки writers; lost commit reply не повторил configure.
+Fixture удалён, исходная сеть/ключ VM не менялись. Первый прогон3ea8d56 прерван
+агентом: synthetic policy менялась при уже включённом monitor; порядок исправлен,
+повтор полностью PASS. Не выдавать interrupted прогон за успех.
+
+После eee197a локально завершена связка normal coordinator→peer instructions→pinned
+SSH driver: read-only preflight до begin, core/edge/web/full scope, frozen source,
+known-error rollback и uncertain/busy SSH resume, refresh owned backup/TLS/shared
+maintenance delegates после terminal journal. Откат пересоздаёт fence даже у
+нетронутых участников и устанавливает owned boot sources до recovery. Edge обычный
+apply и rollback используют общий stop TURN→configure→wait→no-deps readers, закрывая
+ту же one-shot Compose race. Focused tests PASS; последний full **605 PASS/skipped3**,68.998s, включая
+finish/SSH/edge-order tests. Новый VM standby helper и cleanup проверены compile/diff;
+их реальная проверка будет частью следующего сквозного SSH fixture.
+
+Следующий этап — **настоящий сквозной SSH normal rollout на отмеченной VM**, затем
+подключение CI scopes и ordinary production full release. Пока настоящего normal
+SSH/CI/production proof нет. Core-only VM source был
+`/srv/voicechat-edge-fixture/managed-core-rollback-source-4mn52206`, session52840 завершён
+exit0, wrapper `/tmp/voicechat-managed-core-rollback-vm.py`.
+Ни второго fixture, ни production workflow сейчас не запущено. Проверить git status:
+coordinator/SSH/finish modules, tests, edge order и docs могут быть рабочим diff.
+Не повторять initial51 или macOS24 build. Установленный macOS24 уже принят кнопкой.
+
+
 29.10.2026: **[run51 SUCCESS](https://github.com/kerbermeister/voicechat/actions/runs/40935478252)**,
 initial/full/deploy=true/retry_initial=true, commit24c42bf866ba7d2ee3e17bd7d0f6a51a05705172.
 Source bundle02899e149483a3ebf20c7ae44902e320f268c863571192f630f9b7f1ec49c3ba.

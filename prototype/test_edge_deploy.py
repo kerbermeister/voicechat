@@ -234,3 +234,13 @@ class EdgeDeployTests(unittest.TestCase):
         managed_state.persist(directory / 'firewall/desired.json', {**firewall, 'edge_subnet': '10.242.0.0/28'})
         with self.assertRaisesRegex(ValueError, 'interrupted'):
             with guard(): pass
+
+    def test_full_deploy_stops_turn_and_waits_for_oneshot_before_readers(self):
+        self.deploy(self.old)
+        calls=self.calls
+        stop=next(i for i,a in enumerate(calls) if 'stop' in a)
+        configure=next(i for i,a in enumerate(calls) if 'up' in a and a[-1]=='configure')
+        wait=next(i for i,a in enumerate(calls) if 'wait' in a)
+        readers=next(i for i,a in enumerate(calls) if 'up' in a and a[-1]!='configure')
+        self.assertLess(stop,configure);self.assertLess(configure,wait);self.assertLess(wait,readers)
+        self.assertIn('--no-deps',calls[readers])

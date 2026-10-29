@@ -46,15 +46,9 @@ def rollback(root, public, inventory, previous_manifest, rejected_manifest, atte
         with managed_state.locked(root/'runtime/tls'):
             for service in ('web','turn'): edge_deploy.certificate(root,previous,service)
             def up():
-                if scope == 'edge':
-                    # Do not regenerate the shared TURN config while its reader
-                    # is running; explicitly wait for the one-shot writer.
-                    edge_deploy.compose(root,previous,'stop','turn',execute=execute)
-                    edge_deploy.compose(root,previous,'up','-d','--no-deps','configure',execute=execute)
-                    edge_deploy.compose(root,previous,'wait','configure',execute=execute)
-                services = ['web'] if scope == 'web' else [name for name in
-                    ('route-health','web','turn','ingress') if name in previous_manifest['images']]
-                edge_deploy.compose(root,previous,'up','-d','--no-deps','--wait','--wait-timeout','180',*services,execute=execute)
+                if scope == 'edge': edge_deploy.start_configured(root,previous,execute=execute)
+                else:
+                    edge_deploy.compose(root,previous,'up','-d','--no-deps','--wait','--wait-timeout','180','web',execute=execute)
                 check_health(root,previous,execute=execute)
             def recover():
                 try: check_health(root,previous,execute=execute)

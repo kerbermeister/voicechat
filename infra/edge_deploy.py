@@ -146,6 +146,17 @@ def healthy(root, record, *, execute=run, warm_port=None):
         raise ValueError('Public edge identity or upstream readiness failed')
 
 
+
+def start_configured(root, record, *, execute=run):
+    # TURN reads a generated shared file. Stop its reader before replacing that
+    # file, and wait explicitly for the one-shot writer before starting readers.
+    compose(root, record, 'stop', 'turn', execute=execute)
+    compose(root, record, 'up', '-d', '--no-deps', 'configure', execute=execute)
+    compose(root, record, 'wait', 'configure', execute=execute)
+    services = [name for name in ('route-health','web','turn','ingress') if name in record['manifest']['images']]
+    compose(root, record, 'up', '-d', '--no-deps', '--wait', '--wait-timeout', '180', *services, execute=execute)
+
+
 def deploy(root, public, inventory, manifest, core_manifest, *, scope='edge', subnet='10.241.0.0/28',
            execute=run, check_network=network_ready, check_health=healthy, check_boot=role_bootstrap.ready, activate_monitor=role_bootstrap.activate, rollout_attempt=None):
     if scope not in ('web', 'edge'): raise ValueError('Choose web or edge scope')
@@ -186,8 +197,9 @@ def deploy(root, public, inventory, manifest, core_manifest, *, scope='edge', su
                     *(['web'] if scope == 'web' else []), execute=execute)
         with managed_state.locked(root / 'runtime/tls'):
             def up(record):
-                compose(root, record, 'up', '-d', '--wait', '--wait-timeout', '180',
-                        *(['--no-deps', 'web'] if scope == 'web' else []), execute=execute)
+                if scope == 'web':
+                    compose(root, record, 'up', '-d', '--wait', '--wait-timeout', '180', '--no-deps', 'web', execute=execute)
+                else: start_configured(root, record, execute=execute)
             def rollback():
                 if old:
                     up(old)

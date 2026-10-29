@@ -60,6 +60,28 @@ def remove_units(expected, timers, *, run):
 
 
 
+def cleanup_role(root,public,inventory,initial,*,run):
+    role,identifier=initial['role'],initial['edge_id']
+    module=core_deploy if role=='core' else edge_deploy
+    state=module.read_state(root) if role=='core' else module.read_state(root,identifier)
+    original=(core_deploy.record_for(root,inventory,initial) if role=='core' else
+              edge_deploy.record_for(public,inventory,initial))
+    records=[original,*[state[key] for key in ('current','previous') if state[key] is not None]]
+    if state['pending'] is not None:records.append(state['pending']['target'])
+    models=[];seen=set()
+    for record in records:
+        role_release.verify_configuration(record['manifest'],public,inventory)
+        checksum=role_release.json_digest(record['manifest'])
+        if checksum in seen:continue
+        seen.add(checksum);release=role_deploy.release_path(root,record)
+        model=json.loads(module.compose(root,record,'config','--format','json',execute=run))
+        models.append((((release/('infra/compose.'+role+'.json')),),model))
+    initial_cohost.namespace('voicechat' if role=='core' else 'voicechat-edge-'+identifier,models,execute=run)
+    record=state['current'] or original
+    # Core data belongs to the outer legacy fixture and is removed there.
+    module.compose(root,record,'down',*(['--volumes'] if role=='edge' else []),execute=run)
+
+
 def fenced_stop(core, edge, *, run, roles=('core','edge')):
     snapshots = {}
     for root, role, edge_id in ((core,'core',None),(edge,'edge','a')):
@@ -164,7 +186,7 @@ def fault_sequence(root,core,edge,shared,deploy,api,path,account_data,retained_v
     return current
 
 
-def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fault_drills=False):
+def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fault_drills=False,managed_backend=None):
     if Path('/var/lib/voicechat-network').exists():
         raise ValueError('Isolate the original marked VM network before creating legacy resources')
     directory=old_root/'full-fixture';directory.mkdir(mode=0o700)
@@ -209,6 +231,8 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
     # The old timer is genuinely enabled/active, with no missed synthetic event.
     if not prior_stamps[legacy_backup.TIMER]:stamps[legacy_backup.TIMER].touch(mode=0o600)
     run(['systemctl','daemon-reload']);run(['systemctl','enable','--now',legacy_backup.TIMER])
+    backend=(managed_backend if managed_backend is not None else hashlib.sha256(b'synthetic-full-vm-candidate').hexdigest())
+    if not isinstance(backend,str) or not role_release.SHA.fullmatch(backend):raise ValueError('Exact fixture backend fingerprint required')
     result=None
     retained_volumes=[]
     try:
@@ -217,7 +241,7 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
                 print('Full fixture: starting journaled initial migration',file=sys.stderr,flush=True)
                 def deploy(**options):
                     return initial_cohost.migrate(root,old_root,shared,public,inventory,candidate,envelope,catalog_key,
-                        backend_sha256=hashlib.sha256(b'synthetic-full-vm-candidate').hexdigest(),execute=execute,ca_file=ca,**options)
+                        backend_sha256=backend,execute=execute,ca_file=ca,**options)
                 current=(fault_sequence(root,core,edge,shared,deploy,api,path,account_data,retained_volumes,run=run)
                          if fault_drills else deploy())
                 assert current['data_identity']==baseline['data_identity']
@@ -244,7 +268,7 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
                 assert len(actual_core['processes'])==3 and len(actual_edge['processes'])==3
                 for role_root in (core,edge):assert not (role_root/'runtime/full-rollout.json').exists()
                 assert initial_cohost.migrate(root,old_root,shared,public,inventory,candidate,envelope,catalog_key,
-                    backend_sha256=hashlib.sha256(b'synthetic-full-vm-candidate').hexdigest(),execute=execute,ca_file=ca)==current
+                    backend_sha256=backend,execute=execute,ca_file=ca)==current
                 result={'full_initial_cohost_migration_committed':True,'same_target_complete_resume':True,
                     'account_device_account_data_database_and_signing_identity_preserved':True,
                     'legacy_release_pointer_unchanged':True,'production_changed':False,
@@ -254,10 +278,21 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
                     'limits':['Synthetic accounts, CA, catalog key and candidate fingerprint on the marked VM.',
                               'No real device/media acceptance, production transition or actual machine reboot.'],
                     'pre_public_rollback_and_committed_core_public_recovery_drills':fault_drills}
+                if managed_backend is not None:
+                    from managed_rollout_fixture import wait
+                    result['managed_ssh']=wait(root,public,inventory,session,path,baseline['data_identity'],run=run)
             finally:
                 expected={}
                 for role_root,role,edge_id in ((core,'core',None),(edge,'edge','a')):
                     name,_,_,unit,_=role_bootstrap.plan(role_root,role,edge_id)
+                    receipt_path=role_root/'runtime/boot/current.json'
+                    if receipt_path.exists() or receipt_path.is_symlink():
+                        receipt=managed_state.read(receipt_path)
+                        if role_bootstrap.verify_record(Path('/'),receipt)!=name:
+                            raise ValueError('Fixture boot receipt belongs to another role')
+                        unit=(units/name).read_bytes()
+                        if receipt['root']!=str(role_root) or hashlib.sha256(unit).hexdigest()!=receipt['unit_sha256']:
+                            raise ValueError('Changed fixture role boot unit must be preserved')
                     expected[name]=unit
                 # Scheduler files can be derived only after the package exists.
                 for location,module in ((shared/'tls-renewal',cohost_tls_bootstrap),(core/'runtime/backup-boot',core_backup_bootstrap)):
@@ -266,21 +301,11 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
                             managed_state.read(pending)['target'] if pending.exists() else None)
                     if record is not None:expected.update(module.files(record,system_root=Path('/')))
                 remove_units(expected,(cohost_tls_bootstrap.TIMER,core_backup_bootstrap.TIMER),run=run)
-                if (edge/'role.json').exists():
-                    manifest=initial_cohost.target_for(root,old_root,shared,public,inventory,candidate,catalog_key,
-                        subnet='10.241.0.0/28',backend_sha256=hashlib.sha256(b'synthetic-full-vm-candidate').hexdigest())['edge']
-                    record=edge_deploy.record_for(public,inventory,manifest)
-                    release=role_deploy.release_path(edge,record)
-                    model=json.loads(edge_deploy.compose(edge,record,'config','--format','json',execute=execute))
-                    # Validate exact source/images/mounts before removing own apps.
-                    initial_cohost.namespace('voicechat-edge-a',[((release/'infra/compose.edge.json',),model)],execute=execute)
-                    edge_deploy.compose(edge,record,'down','--volumes',execute=execute)
-                if (core/'role.json').exists():
-                    manifest=initial_cohost.target_for(root,old_root,shared,public,inventory,candidate,catalog_key,
-                        subnet='10.241.0.0/28',backend_sha256=hashlib.sha256(b'synthetic-full-vm-candidate').hexdigest())['core']
-                    record=core_deploy.record_for(core,inventory,manifest)
-                    # Keep data volumes for the outer legacy fixture cleanup.
-                    core_deploy.compose(core,record,'down',execute=execute)
+                initial=initial_cohost.target_for(root,old_root,shared,public,inventory,candidate,catalog_key,
+                    subnet='10.241.0.0/28',backend_sha256=backend)
+                for role_root,role in ((edge,'edge'),(core,'core')):
+                    if (role_root/'role.json').exists():
+                        cleanup_role(role_root,public,inventory,initial[role],run=execute)
                 warm=shared/'front/warm.json'
                 if warm.exists():
                     plan=shared/'front/plans'/managed_state.read(warm)['plan']

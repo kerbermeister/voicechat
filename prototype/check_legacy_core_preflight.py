@@ -39,8 +39,9 @@ def main():
     parser.add_argument('--candidate-control-image')
     parser.add_argument('--initial-cohost',action='store_true',help='Exercise the complete journaled migration instead of individual legacy primitives')
     parser.add_argument('--fault-drills',action='store_true',help='Inject full rollback and committed-response losses')
+    parser.add_argument('--managed-backend',help='Pause after initial adoption for real normal SSH drills, using this source fingerprint')
     args = parser.parse_args()
-    if args.fault_drills and not args.initial_cohost:parser.error('Fault drills require --initial-cohost')
+    if (args.fault_drills or args.managed_backend) and not args.initial_cohost:parser.error('Drills require --initial-cohost')
     base = Path('/srv/voicechat-edge-fixture')
     if sys.platform != 'linux' or os.geteuid() != 0 or not base.is_dir() or base.is_symlink():
         raise ValueError('Use the marked disposable Linux VM')
@@ -168,7 +169,7 @@ networks:
             from check_initial_cohost import exercise
             result = {'schema':1, **exercise(root,baseline,neighbor,session,
                 control_image=args.candidate_control_image or args.control_image,
-                web_image=args.web_image,run=run,fault_drills=args.fault_drills),
+                web_image=args.web_image,run=run,fault_drills=args.fault_drills,managed_backend=args.managed_backend),
                 'legacy_source_commit':source_record['commit'] if source_record else None,
                 'legacy_control_image':args.control_image}
         else:

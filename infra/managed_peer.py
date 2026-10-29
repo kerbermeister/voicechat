@@ -16,15 +16,17 @@ import managed_apply
 import managed_core_rollback
 import managed_edge_rollback
 import managed_fence
+import managed_release
 import managed_state
 import release_delivery
 import role_deploy
+import role_bootstrap
 import role_config
 import role_release
 import topology
 
 MAX_INPUT=65536
-OPERATIONS=('claim','apply','observe','rollback','release')
+OPERATIONS=('preflight','claim','apply','observe','rollback','release')
 
 
 def request(raw):
@@ -88,6 +90,9 @@ def operate(value,root,source_sha,*,source=None):
     managed_fence._parameters(role_root,value['public'],value['inventory'],before,target,attempt,Path('/'))
     common={'subnet':value['subnet']}
     arguments=(role_root,value['public'],value['inventory'],before,target)
+    if value['operation']=='preflight':
+        return {'facts':managed_release.inspect_role(role_root,value['public'],value['inventory'],before,**common),
+                'fence':None}
     with managed_state.locked(role_root/'runtime/managed-peer') as directory:
         path=directory/'current.json'
         binding={'schema':1,'attempt':attempt,'source':source_sha,'before':role_release.json_digest(before),
@@ -117,6 +122,9 @@ def operate(value,root,source_sha,*,source=None):
         manifest=value['manifest']
         if operation=='rollback':
             managed_fence.retarget(*arguments,before,attempt)
+            # A failure may precede apply's operator installation. The old
+            # monitor is now quiescent under the retargeted owned fence.
+            role_bootstrap.install(role_root,target['role'],target['edge_id'])
             if target['role']=='core':
                 managed_core_rollback.rollback(*arguments,value['data_identity'],attempt,**common)
             else: managed_edge_rollback.rollback(*arguments,attempt,scope=value['scope'],**common)
@@ -129,7 +137,11 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root',type=Path,required=True);parser.add_argument('--source-sha',required=True)
     args=parser.parse_args()
-    print(json.dumps(operate(request(sys.stdin.buffer.read(MAX_INPUT+1)),args.root,args.source_sha)))
+    try:
+        result=operate(request(sys.stdin.buffer.read(MAX_INPUT+1)),args.root,args.source_sha)
+    except BlockingIOError:
+        parser.exit(75,'Managed operation is busy; preserve and resume its journal\n')
+    print(json.dumps(result))
 
 
 if __name__=='__main__':main()
