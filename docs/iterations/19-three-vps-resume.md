@@ -4,6 +4,55 @@
 
 ### Последнее состояние текущего запуска
 
+**LATEST:** FULL60 FAILED до сборки/выкладки (24s), step7 resume-only повторно
+вызвал finish закрытого старого web release. После штатного boot source upgrade
+старый finisher отказывает на source-bound boot ready. Сервисы/данные/production
+release pointers не менялись; source/SSH/signature guards не обходились.
+Исправление infra/managed_ssh.py: --resume-only продолжает только ACTIVE phases;
+новый archive не повторяет terminal old-source finish, но всегда проходит новый
+preflight/identity/network/SSH и собственный finish. Повтор ТОГО ЖЕ exact archive
+сохраняет guarded finish; rolled-back сохраняет mandatory explicit retry.
+134 managed tests PASS34.569s, final16 SSH tests PASS11.052s (добавлены регрессии
+new-source/preflight, active frozen source, terminal complete и rollback denial).
+Нужен НОВЫЙ FULL с этим source, не rerun старого be4 FULL60. После commit записать
+новый revision/run. Screenshot ошибки `/private/tmp/voicechat-full60-prebuild-failure.png`.
+
+Mac25 exact r2 staging COMPLETE: `/srv/voicechat-release-staging/macos25-126c24366359-r2`,
+пять разрешённых публичных файлов сверены; feed24 НЕ опубликован заново/не менялся.
+Proof `.prototype/macos25-stage-proof.json`. Все4 fixtures OFF с retained disks.
+
+**CURRENT после11:02UTC30.10:** live GHCR web-only derived bearer + actual Engine
+pull PASS, temporary C hosts restored, credential persistence отсутствует.
+Evidence `three-vps-evidence/2026-10-30-entry-live-web-reader.json`.
+Все четыре owned fixture VM штатно выключены, диски/keys/restart argv сохранены;
+активных add/replace/probe drivers НЕТ, не replay completed cycles.
+
+На production A штатный `network_bootstrap.upgrade(shared_host=True)` и stock
+role_bootstrap.install для core/edge-a COMPLETE. Network intent, Docker и все13
+running container IDs/StartedAt/RestartCount остались прежними; current/previous/
+rollout не редактировались. Git-аудированный source15f tar сохранён в
+`/srv/voicechat-network-upgrades/15f024e9c41ceb94515938c415584f9bbc4b91e1`.
+Evidence `three-vps-evidence/2026-10-30-entry-production-network-upgrade.json`.
+Первый local tar helper отказал ДО сетевых действий на штатном directory member
+`infra`; учтён ровно этот directory и115 файлов, hash-проверки сохранены.
+
+**Общий FULL60 запущен:** https://github.com/kerbermeister/voicechat/actions/runs/41045199001
+commit **be4edac1c6e30fecf668ed00eec61fde2e78bd41**, modefull/rolloutmanaged/deploytrue,
+retry flags false, edges blank. Не запускать второй workflow или конкурирующий
+production deploy. В IAB tab2 `github` открыт этот run; screenshot
+`/private/tmp/voicechat-full60-started.png`. До завершения workflow не выдавать
+новую серверную версию за опубликованную. PR#5 description/title актуализированы,
+main ещё НЕ merged; be4 doc-only CI требует финальной проверки перед merge.
+
+Точный Mac25 r2 staged отдельным helper `/tmp/voicechat-stage-macos25.py`
+(session68100 — проверить completion и `.prototype/macos25-stage-proof.json`).
+Только4 публичных candidate files + publish_macos.py; private keys на Mac.
+Feed24 пока не менялся. После FULL60 PASS — независимый postcheck (identity,
+source/digests/pointers,6 neighbors/timers/HTTPS), затем stock publisher EXACT r2
+и actual Sparkle24→25 кнопкой. Не публиковать v1 и не пересобирать unchanged client.
+
+Ниже предыдущие checkpoint сохраняются как история; текущий статус выше имеет приоритет.
+
 **Актуальная точка продолжения (заменяет оперативные статусы ниже):** оба VM
 lifecycle завершены: add44139 exit0 и replacement20490 exit0. Не запускать их
 повторно. Replacement attempt3c1da7... сохранил account/device/marker через три

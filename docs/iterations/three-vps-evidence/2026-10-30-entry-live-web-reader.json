@@ -1,0 +1,11 @@
+{
+  "actual_live_ghcr_engine_pull": true,
+  "expires_in": 60,
+  "image": "ghcr.io/kerbermeister/voicechat/web@sha256:794deef3d9677cb82c67838a8bffb0e36fd709ba73a78f3f5a82414d9bbc16be",
+  "limits": "Real GHCR auth/Engine pull only; no production deployment, real additional VPS or media acceptance",
+  "no_persisted_credential": true,
+  "original_A_credential_never_exported": true,
+  "repository": "kerbermeister/voicechat/web",
+  "schema": 1,
+  "temporary_hosts_mapping_restored": true
+}

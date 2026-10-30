@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 import sys
@@ -34,7 +35,7 @@ class ManagedSshTests(unittest.TestCase):
         if action=='status':
             if not (root/'rollout.json').exists():return {'attempt':None}
             journal=managed_journal.read(root)
-            return {'attempt':journal['attempt'],'active_source':journal['request']['source']}
+            return {'attempt':journal['attempt'],'active_source':journal['request']['source'],'phase':journal['phase']}
         if action=='prepare':
             return managed_control.prepare(root,source,scope=kw['scope'],edges=kw['edges'],
                 position=kw['position'],expected_baseline=kw['baseline'])
@@ -102,6 +103,46 @@ class ManagedSshTests(unittest.TestCase):
     def test_same_finished_artifact_does_not_create_another_attempt(self):
         self.release();attempt=managed_journal.read(self.root)['attempt'];self.release()
         self.assertEqual(managed_journal.read(self.root)['attempt'],attempt)
+
+    def test_new_source_does_not_refinish_completed_old_operator_before_preflight(self):
+        self.release()
+        old_source='d'*64;new_source='e'*64
+        self.receives.return_value={'schema':1,'path':str(self.root/'bundles'/new_source),'archive_sha256':new_source}
+        def coordinator(ssh,root,source,action,**kw):
+            if action=='status':return {'attempt':self.fixture.attempt,'active_source':old_source,'phase':'complete'}
+            if action=='prepare':raise ValueError('New source preflight still required')
+            self.fail('Completed old source must not be replayed: '+action)
+        self.coordinator.side_effect=coordinator
+        with self.assertRaisesRegex(ValueError,'New source preflight still required'):self.release()
+        self.assertFalse(any(call.args[3]=='finish' for call in self.coordinator.call_args_list[-2:]))
+
+    def test_new_source_still_requires_explicit_retry_after_completed_rollback(self):
+        self.receives.return_value={'schema':1,'path':str(self.root/'bundles'/('e'*64)),'archive_sha256':'e'*64}
+        self.coordinator.side_effect=None
+        self.coordinator.return_value={'attempt':'a'*64,'active_source':'d'*64,'phase':'rolled-back'}
+        with self.assertRaisesRegex(managed_ssh.RemoteFailure,'explicit retry'):self.release()
+        self.assertEqual([call.args[3] for call in self.coordinator.call_args_list],['status'])
+
+    def test_resume_only_drives_active_source_but_leaves_terminal_sources_alone(self):
+        config={'root':str(self.root),'public':self.fixture.baseline['public'],'inventory':self.fixture.baseline['inventory']}
+        environment={'SERVER_ROLE_CONFIG':json.dumps(config),'DEPLOY_ROOT':str(self.root),
+                     'PUBLIC_URL':config['public']['canonical_origin']}
+        identities=self.root/'fixture-identities.json'
+        identities.write_text(json.dumps({'core':'/fixture/core','edge-b':'/fixture/b','edge-c':'/fixture/c'}))
+        for phase in ('applying','committing','complete','rolled-back'):
+            with self.subTest(phase=phase),patch.dict(os.environ,environment), \
+                 patch.object(sys,'argv',['managed_ssh.py','--resume-only','--identity-map',str(identities)]), \
+                 patch.object(managed_ssh,'connection',side_effect=self.connect), \
+                 patch.object(managed_ssh,'read_hints',return_value={'origin':environment['PUBLIC_URL'],
+                     'pending':{'phase':phase,'source':'d'*64}}), \
+                 patch.object(managed_ssh,'drive',return_value={'phase':'complete'}) as drive, \
+                 patch('builtins.print'):
+                if phase=='rolled-back':
+                    with self.assertRaisesRegex(managed_ssh.RemoteFailure,'explicit retry'):managed_ssh.main()
+                else:managed_ssh.main()
+                if phase in ('applying','committing'):
+                    drive.assert_called_once();self.assertEqual(drive.call_args.args[2],'d'*64)
+                else:drive.assert_not_called()
 
     def test_selected_web_scope_stages_only_core_and_selected_edge(self):
         self.fixture.candidate['control']=self.fixture.baseline['core']['images']['control']

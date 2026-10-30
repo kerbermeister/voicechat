@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-30T11:02:14.650654+00:00",
+  "commit": "15f024e9c41ceb94515938c415584f9bbc4b91e1",
+  "archive_sha256": "d2e3ecc8a1314eac02981671888190f6602a8d984cfe0cbe8dac3bcd3de98afa",
+  "stock_network_upgrade_completed": true,
+  "old_network_source": "25038cef007cefd3288e3b7f42811de70aae8f8943a2794a05c12dee7733ff44",
+  "network_source": "0fc4733988eaf9085b56fb87ac72a262af363d3ccc3fe3f9c2cf08fa96c0eca4",
+  "old_applied": {
+    "phase": "complete",
+    "schema": 1,
+    "sha256": "ec7e681e3d62f4e75ae65786f664b641c92afae2f0f44bae22b6c0f7df7e6c46"
+  },
+  "applied": {
+    "phase": "complete",
+    "schema": 1,
+    "sha256": "e7cbc7e48cde75738281042a729667de2befabddc6e2207fc301c5930dcf7178"
+  },
+  "network_intent_unchanged": true,
+  "docker_process_unchanged": true,
+  "all_running_container_processes_unchanged": true,
+  "running_containers_checked": 13,
+  "core_boot_operator": "430425f1bcb00f5e063300c5bd5fcfb694c2c2b69cd7ef8569dd2eefcb43a99a",
+  "edge_boot_operator": "430425f1bcb00f5e063300c5bd5fcfb694c2c2b69cd7ef8569dd2eefcb43a99a",
+  "release_pointers_and_journal_unchanged": true,
+  "limits": "Owned network/boot source upgrade only; integrated FULL release and client update still pending"
+}

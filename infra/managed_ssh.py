@@ -121,7 +121,10 @@ def release(ssh,root,commit,archive,identity,*,scope='full',edges=None,retry=Fal
     status=_coordinator(ssh,root,source,'status')
     if status['attempt'] is not None:
         previous=status['active_source']
-        finished=drive(ssh,root,previous,identity,connect=connect)
+        # A new source must not reinstall terminal delegates from the old source.
+        # Its own preflight, role guards and final finish remain mandatory.
+        finished=(drive(ssh,root,previous,identity,connect=connect)
+                  if previous==source or status['phase'] not in ('complete','rolled-back') else status)
         if finished['phase']=='rolled-back' and not retry:
             raise RemoteFailure('Previous managed release rolled back; use explicit retry')
         if (previous==source and finished['phase']=='complete' and finished['scope']==scope and
@@ -187,8 +190,10 @@ def main():
             if hints['origin']!=os.environ['PUBLIC_URL']:raise ValueError('Build origin differs from the deployed service')
             if args.resume_only:
                 pending=hints['pending']
-                result=({'schema':1,'resume_needed':False} if pending is None else
-                        drive(ssh,root,pending['source'],identity))
+                if pending is None or pending['phase'] in ('complete','rolled-back'):
+                    result={'schema':1,'resume_needed':False}
+                    if pending is not None:result['phase']=pending['phase']
+                else:result=drive(ssh,root,pending['source'],identity)
                 if result.get('phase')=='rolled-back' and not args.retry:
                     raise RemoteFailure('Previous managed release rolled back; use explicit retry')
             else:

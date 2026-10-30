@@ -81,6 +81,15 @@ python3 infra/managed_ssh.py --resume-only
 python3 infra/managed_ssh.py --scope web --edges a --archive /private/release.tar.gz
 ```
 
+`--resume-only` продолжает только незавершённые transaction phases. Завершённый
+старый source не переустанавливает свои maintenance delegates перед новым
+релизом: после штатного network/boot source upgrade он уже несовместим с новым
+boot operator. Новый archive всё равно проходит полную preflight/source/SSH/
+network/identity проверку и собственный `finish`. Для повтора terminal maintenance
+после его ошибки повторить **тот же exact archive/source** обычной командой release;
+она сохраняет attempt и снова выполняет guarded finish, без повторного configure.
+Завершённый rollback по-прежнему требует явного `--retry` перед новым релизом.
+
 Для нескольких машин передать `--identity-map /private/identities.json`:
 JSON `physical node ID → путь к его private key`. Для одного A достаточно
 `--identity /private/core-key`; default — `~/.ssh/id_ed25519`. Требуются
