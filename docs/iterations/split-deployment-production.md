@@ -53,7 +53,9 @@ Core/full и согласованный backup могут кратко оста�
   относительно production2dae758 не изменены.
 - Full production run58: SUCCESS; независимый VPS postcheck PASS, baseline schema2 и core guard записаны; source `2eaee99516c942c2d9026290477777e69b3c6379`.
 - Core production: PASS, revision `42706c5`; реальные core processes обновлены, все edge и соседние процессы неизменны. Прежние synthetic account/device/session/Matrix marker сохранены.
-- Edge/web production: следующие отдельные проверки.
+- Edge production: PASS, revision `f51b928`; edge обновлён, core и соседние процессы неизменны. Прежняя synthetic сессия и Matrix marker сохранены.
+- Web production: последняя отдельная проверка.
+- Один параллельный read-only postcheck получил штатный nonblocking baseline lock; API-чтение завершено, последовательный повтор postcheck PASS. Отказ сохранён локально; deploy не повторялся.
 - Deployed planner отклонил несовместимые partial scopes и удаление full guard без начала операции; synthetic Matrix session/marker подготовлены через production HTTPS.
 
 Для последовательных acceptance releases используются неизменённые образы CI
