@@ -342,7 +342,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (!mounted) return;
     if (probe == null) {
       setState(() => status = value);
-    } else if (value ==
+    } else if (value.startsWith('Введите текст до ') ||
+        value ==
             'Не удалось получить превью. Ссылку можно отправить без него.' ||
         value == 'Превью временно недоступно.') {
       showTransientNotice(context, value);

@@ -91,7 +91,7 @@ def main():
         bob, b = register('bob')
         _, stranger = register('stranger')
         code, body = api('POST', '/_matrix/client/v3/createRoom', {
-            'preset': 'trusted_private_chat', 'invite': [bob],
+            'preset': 'private_chat', 'invite': [bob],
             'initial_state': [{'type': 'dev.voicechat.kind', 'state_key': '', 'content': {'kind': 'direct', 'owner': alice, 'peer': bob}},
                               {'type': 'm.room.encryption', 'state_key': '', 'content': {'algorithm': 'm.megolm.v1.aes-sha2'}}]}, a)
         assert code == 200, (code, body)
@@ -100,6 +100,29 @@ def main():
         code, body = send(room, 'first', token=a)
         assert code == 200, (code, body)
         identifier = body['event_id']
+        pin_path = '/_matrix/client/v3/rooms/' + quote(room, safe='') + '/state/m.room.pinned_events'
+        power_path = '/_matrix/client/v3/rooms/' + quote(room, safe='') + '/state/m.room.power_levels'
+        baseline = api('GET', power_path, token=a)[1]
+        assert api('PUT', pin_path, {'pinned': [identifier]}, b)[0] == 403, 'Fixture peer should initially have no pin rights'
+        def enable_pins(token, identifier=room):
+            return api('POST', '/_synapse/client/voicechat-direct-pins', {'room_id': identifier}, token)
+        assert enable_pins(None)[0] == 401
+        assert enable_pins(stranger)[0] == 403
+        assert enable_pins(b)[0] == 200
+        expected = json.loads(json.dumps(baseline))
+        expected.setdefault('events', {})['m.room.pinned_events'] = 0
+        assert api('GET', power_path, token=a)[1] == expected, 'Changed permissions beyond pinned_events'
+        assert enable_pins(b)[0] == 200, 'Repeated upgrade must be idempotent'
+        assert api('PUT', pin_path, {'pinned': [identifier]}, b)[0] == 200
+        assert api('GET', pin_path, token=a)[1]['pinned'] == [identifier], 'Pin not shared with the caller'
+        assert api('PUT', pin_path, {'pinned': []}, a)[0] == 200
+        assert api('GET', pin_path, token=b)[1]['pinned'] == []
+        restricted = json.loads(json.dumps(expected))
+        restricted['events']['m.room.pinned_events'] = 50
+        assert api('PUT', power_path, restricted, a)[0] == 200
+        assert enable_pins(b)[0] == 403, 'Explicit policy must not be loosened'
+        assert api('GET', power_path, token=a)[1] == restricted
+        assert api('PUT', power_path, expected, a)[0] == 200
         time.sleep(2.3)
         assert event(a, room, identifier)[1]['content']['ciphertext'] == 'opaque-fixture-ciphertext', 'Expired before read'
         assert read(a, room_id=room, event_id=identifier)[0] == 403
@@ -117,6 +140,7 @@ def main():
         group = body['room_id']
         assert send(group, 'group-refused', token=a)[0] == 403
         assert read(a, room_id=group, event_ids=[])[0] == 403
+        assert enable_pins(a, group)[0] == 403
         code, body = send(room, 'restart', delay=8, token=a)
         assert code == 200
         restart_id = body['event_id']
@@ -127,7 +151,7 @@ def main():
         remaining = max(0, (started['expires_at'] - time.time() * 1000) / 1000)
         time.sleep(remaining + 1)
         assert event(b, room, restart_id)[1]['content'] == {}, 'Restart lost expiry'
-        print('PASS: real pinned Synapse — unread retained; recipient only; no timer extension; ciphertext erased; group rejected; expiry survives restart')
+        print('PASS: DM peer pin permission only; shared pin/unpin; custom rules, outsiders and groups protected. Real pinned Synapse — unread retained; recipient only; no timer extension; ciphertext erased; group rejected; expiry survives restart')
     finally:
         if process and process.poll() is None:
             process.terminate()

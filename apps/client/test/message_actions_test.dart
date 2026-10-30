@@ -233,7 +233,7 @@ void main() {
     }
   });
   testWidgets(
-    'Text keeps a real pending state, then flies to one delivered message and cleans overlays',
+    'Text enters the outbox on the send tap, with no snapshot or flight before or after acknowledgement',
     (tester) async {
       final client = CaptureClient();
       final room = ForwardRoom(client, '!motion:local');
@@ -263,10 +263,12 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).last, 'Motion message');
       await tester.pumpAndSettle();
-      await tester.runAsync(() async {
-        await tester.tap(find.byTooltip('Отправить'));
-        await Future<void>.delayed(const Duration(milliseconds: 80));
-      });
+      await tester.tap(find.byTooltip('Отправить'));
+      expect(
+        actions.pending.length,
+        1,
+        reason: 'Queue insertion must happen before another frame or snapshot',
+      );
       await tester.pump();
       expect(actions.pending.length, 1);
       expect(find.text('Motion message'), findsOneWidget);
@@ -278,7 +280,7 @@ void main() {
       await tester.pump();
       expect(actions.pending, isEmpty);
       expect(find.text('Motion message'), findsOneWidget);
-      expect(find.byType(RawImage), findsWidgets);
+      expect(find.byType(RawImage), findsNothing);
       await tester.pumpWidget(const MaterialApp(home: SizedBox()));
       await tester.pumpAndSettle();
       expect(find.byType(RawImage), findsNothing);

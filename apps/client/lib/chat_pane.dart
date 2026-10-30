@@ -156,12 +156,7 @@ class _ChatPaneState extends State<ChatPane>
   final textPreviewKey = GlobalKey(),
       filesPreviewKey = GlobalKey(),
       photosPreviewKey = GlobalKey();
-  final sendSnapshots = <String, MessageSnapshot>{};
-  final expiringSnapshots = <String>{};
   final motionControllers = <AnimationController>{};
-  final observedTransactions = <String>{};
-  MessageSnapshot? sendingSnapshot;
-  bool sendingOther = false;
   String? menuEvent;
   bool selecting = false;
   final selectedMessages = <String>{};
@@ -327,47 +322,7 @@ class _ChatPaneState extends State<ChatPane>
   }
 
   void refresh() {
-    if (!mounted) return;
-    if (sendingOther) {
-      for (final item in widget.actions.pending) {
-        final id = item['id'] as String;
-        if (item['room'] == widget.room.id &&
-            item['scheduled_at'] == null &&
-            item['edit'] == null &&
-            observedTransactions.add(id)) {
-          final snapshot = sendingSnapshot?.clone();
-          if (snapshot != null) {
-            sendSnapshots[id] = snapshot;
-            if ((item['content'] as Map)['dev.voicechat.ttl_seconds'] != null) {
-              expiringSnapshots.add(id);
-            }
-          }
-        }
-      }
-    }
-    for (final id in sendSnapshots.keys.toList()) {
-      final event = widget.actions.deliveredEvent(id);
-      final pending = widget.actions.pending.any((item) => item['id'] == id);
-      if (event != null) {
-        final snapshot = sendSnapshots.remove(id)!;
-        if (expiringSnapshots.remove(id)) {
-          final delivered = widget.timeline.events
-              .where((item) => item.eventId == event)
-              .firstOrNull;
-          if (delivered == null || messageExpired(delivered)) {
-            snapshot.dispose();
-            continue;
-          }
-          snapshot.expiresAt = messageExpiry(delivered);
-        }
-        messageKeys.putIfAbsent(event, GlobalKey.new);
-        unawaited(animateSnapshot(snapshot, destination: messageKeys[event]));
-      } else if (!pending) {
-        sendSnapshots.remove(id)!.dispose();
-        expiringSnapshots.remove(id);
-      }
-    }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Future<void> animateSnapshot(
@@ -579,36 +534,7 @@ class _ChatPaneState extends State<ChatPane>
     return KeyEventResult.handled;
   }
 
-  Future<void> send() async {
-    if (unsentVoice != null || edit != null || scheduledFor != null) {
-      await sendContents();
-      return;
-    }
-    observedTransactions
-      ..clear()
-      ..addAll(widget.actions.pending.map((item) => item['id'] as String));
-    final key = draftFiles.isNotEmpty
-        ? filesPreviewKey
-        : draftPhotos.isNotEmpty
-        ? photosPreviewKey
-        : textPreviewKey;
-    sendingSnapshot = MediaQuery.disableAnimationsOf(context)
-        ? null
-        : await MessageSnapshot.capture(key);
-    if (!mounted) {
-      sendingSnapshot?.dispose();
-      sendingSnapshot = null;
-      return;
-    }
-    setState(() => sendingOther = true);
-    try {
-      await sendContents();
-    } finally {
-      sendingSnapshot?.dispose();
-      sendingSnapshot = null;
-      if (mounted) setState(() => sendingOther = false);
-    }
-  }
+  Future<void> send() => sendContents();
 
   Future<void> sendContents() async {
     if (edit != null && messageExpired(edit!)) {
@@ -1882,7 +1808,10 @@ class _ChatPaneState extends State<ChatPane>
                                 'dev.voicechat.call',
                                 'dev.voicechat.call_summary',
                               ].contains(shown.messageType))
-                            CallEventCard(event: shown)
+                            CallEventCard(
+                              event: shown,
+                              history: widget.timeline.events,
+                            )
                           else if (shown.messageType == 'dev.voicechat.album')
                             AlbumView(
                               key: ValueKey(shown.eventId),
@@ -2434,7 +2363,7 @@ class _ChatPaneState extends State<ChatPane>
                 ? RepaintBoundary(
                     key: filesPreviewKey,
                     child: AnimatedMessageBorder(
-                      active: sendingOther,
+                      active: false,
                       padding: 0,
                       child: SizedBox(
                         height: keyboardOpen ? 64 : 76,
@@ -2541,7 +2470,7 @@ class _ChatPaneState extends State<ChatPane>
                 ? RepaintBoundary(
                     key: photosPreviewKey,
                     child: AnimatedMessageBorder(
-                      active: sendingOther,
+                      active: false,
                       padding: 0,
                       child: Container(
                         margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
@@ -2804,11 +2733,10 @@ class _ChatPaneState extends State<ChatPane>
                             child: RepaintBoundary(
                               key: textPreviewKey,
                               child: AnimatedMessageBorder(
-                                active: sendingOther,
+                                active: false,
                                 padding: 0,
                                 child: TextField(
-                                  readOnly:
-                                      voiceTransaction != null || sendingOther,
+                                  readOnly: voiceTransaction != null,
                                   controller: input,
                                   focusNode: composerFocus,
                                   onChanged: (value) {
@@ -3333,10 +3261,6 @@ class _ChatPaneState extends State<ChatPane>
       controller.dispose();
     }
     motionControllers.clear();
-    for (final snapshot in sendSnapshots.values) {
-      snapshot.dispose();
-    }
-    sendSnapshots.clear();
     updateGuards.remove(prepareUpdate);
     input.removeListener(saveDraft);
     releaseCapture(voiceCancellation);

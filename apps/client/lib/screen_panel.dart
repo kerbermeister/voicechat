@@ -170,7 +170,7 @@ class ScreenPanel extends StatelessWidget {
                 const Padding(
                   padding: EdgeInsets.all(8),
                   child: Text(
-                    'В этом браузере доступен только просмотр экрана.',
+                    'На этом устройстве доступен только просмотр экрана.',
                     textAlign: TextAlign.center,
                   ),
                 ),

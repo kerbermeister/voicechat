@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:matrix/matrix.dart' as mx;
 import 'matrix_probe.dart';
+import 'user_action_error.dart';
 import 'voice_call.dart';
 import 'call_quality.dart';
 import 'camera_capture.dart';
@@ -19,6 +20,8 @@ class DirectCall implements VoiceCall {
   rtc.RTCVideoRenderer? localVideo;
   rtc.RTCVideoRenderer? remoteVideo;
   rtc.RTCRtpSender? _cameraSender;
+  final _cameraTracks = <rtc.MediaStreamTrack>{};
+  final _cameraCaptures = <rtc.MediaStream>{};
   String _cameraFacing = 'user';
   bool get mirrorLocalVideo => _cameraFacing == 'user';
   final _streams = <mx.WrappedMediaStream, rtc.RTCVideoRenderer>{};
@@ -55,15 +58,18 @@ class DirectCall implements VoiceCall {
   VideoQuality videoQuality = VideoQuality.auto;
   @override
   CallQuality quality = CallQuality.unknown;
+  bool? _videoAtClose;
   @override
   bool get video =>
-      call.type == mx.CallType.kVideo ||
-      cameraEnabled ||
-      (call.remoteUserMediaStream?.stream?.getVideoTracks().isNotEmpty ==
-              true &&
-          call.remoteUserMediaStream?.videoMuted != true);
+      _videoAtClose ??
+      (call.type == mx.CallType.kVideo ||
+          cameraEnabled ||
+          (call.remoteUserMediaStream?.stream?.getVideoTracks().isNotEmpty ==
+                  true &&
+              call.remoteUserMediaStream?.videoMuted != true));
   @override
   bool get cameraEnabled =>
+      !isClosed &&
       !call.isLocalVideoMuted &&
       (call.localUserMediaStream?.stream?.getVideoTracks().any(
             (t) => t.enabled,
@@ -260,61 +266,142 @@ class DirectCall implements VoiceCall {
     changed();
   }
 
+  Future<bool> _stopTracks(Iterable<rtc.MediaStreamTrack> tracks) async {
+    final stopped = await Future.wait(
+      tracks.toSet().map((track) async {
+        try {
+          await track.stop();
+          return true;
+        } catch (_) {
+          return false;
+        }
+      }),
+    );
+    return stopped.every((value) => value);
+  }
+
+  Future<void> _disposeCameraCaptures() async {
+    for (final capture in _cameraCaptures.toList()) {
+      try {
+        await capture.dispose();
+        _cameraCaptures.remove(capture);
+      } catch (_) {
+        debugPrint('Stopped camera container could not be released');
+      }
+    }
+  }
+
   @override
   Future<void> camera(bool enabled) async {
-    if (isClosed || enabled == cameraEnabled) return;
-    if (enabled) await authorize();
     final stream = call.localUserMediaStream?.stream;
+    if (!enabled) {
+      // Release hardware before touching a peer connection or sending mute metadata.
+      final tracks = {..._cameraTracks, ...?stream?.getVideoTracks()};
+      final stopped = await _stopTracks(tracks);
+      if (stopped) {
+        _cameraTracks.removeAll(tracks);
+        await _disposeCameraCaptures();
+      }
+      if (stream != null) {
+        for (final track in tracks) {
+          try {
+            await stream.removeTrack(track);
+          } catch (_) {
+            /* SDK may already have disposed it. */
+          }
+        }
+      }
+      call.localUserMediaStream?.setVideoMuted(true);
+      if (localVideo != null) localVideo!.srcObject = stream;
+      changed();
+      try {
+        if (_cameraSender != null) {
+          await replaceCameraTrack(
+            _cameraSender!,
+            null,
+          ).timeout(const Duration(seconds: 2));
+        }
+        if (!isClosed) {
+          await call.updateMuteStatus().timeout(const Duration(seconds: 2));
+        }
+      } catch (_) {
+        report(
+          'Камера выключена на этом устройстве. Уведомить собеседника пока не удалось.',
+        );
+      }
+      if (!stopped) {
+        throw UserActionError(
+          'Не удалось подтвердить остановку камеры. Завершите звонок; если индикатор камеры остаётся включённым, закройте приложение.',
+        );
+      }
+      return;
+    }
+    if (isClosed || cameraEnabled) return;
+    await authorize();
+    if (isClosed) return;
     if (stream == null) throw StateError('Camera stream unavailable');
     final senders = await call.pc!.getSenders();
+    if (isClosed) return;
     _cameraSender ??= senders
         .where((s) => s.track?.kind == 'video')
         .firstOrNull;
-    if (!enabled) {
-      await call.setLocalVideoMuted(true);
-      if (_cameraSender != null) await replaceCameraTrack(_cameraSender!, null);
-      for (final track in stream.getVideoTracks()) {
-        await stream.removeTrack(track);
-        await track.stop();
+    final capture = await captureCamera(_cameraFacing, videoQuality);
+    _cameraTracks.addAll(capture.getVideoTracks());
+    _cameraCaptures.add(capture);
+    var attached = false;
+    try {
+      if (isClosed) throw StateError('Call ended during camera permission');
+      final track = capture.getVideoTracks().single;
+      await stream.addTrack(track);
+      if (isClosed) throw StateError('Call ended during camera attachment');
+      if (_cameraSender == null) {
+        _cameraSender = await call.pc!.addTrack(track, stream);
+      } else {
+        await replaceCameraTrack(_cameraSender!, track);
       }
-    } else {
-      final capture = await captureCamera(_cameraFacing, videoQuality);
-      try {
-        if (isClosed) throw StateError('Call ended during camera permission');
-        final track = capture.getVideoTracks().single;
-        await stream.addTrack(track);
-        if (_cameraSender == null) {
-          _cameraSender = await call.pc!.addTrack(track, stream);
-        } else {
-          await replaceCameraTrack(_cameraSender!, track);
-        }
-        // Capture and sender replacement are complete; do not reacquire the
-        // default camera/microphone through Matrix's audio-only upgrade path.
-        call.localUserMediaStream?.setVideoMuted(false);
-        await call.updateMuteStatus();
-      } catch (_) {
-        call.localUserMediaStream?.setVideoMuted(true);
+      if (isClosed) {
+        throw StateError('Call ended during camera sender replacement');
+      }
+      // Capture and sender replacement are complete; do not reacquire the
+      // default camera/microphone through Matrix's audio-only upgrade path.
+      call.localUserMediaStream?.setVideoMuted(false);
+      await call.updateMuteStatus();
+      if (isClosed) {
+        throw StateError('Call ended during camera metadata update');
+      }
+      attached = true;
+    } catch (_) {
+      final tracks = capture.getTracks().toList();
+      if (await _stopTracks(tracks)) _cameraTracks.removeAll(tracks);
+      call.localUserMediaStream?.setVideoMuted(true);
+      for (final track in tracks) {
         try {
-          if (_cameraSender != null) {
-            await replaceCameraTrack(_cameraSender!, null);
-          }
+          await stream.removeTrack(track);
         } catch (_) {
-          // A closed peer connection cannot detach, but capture still must stop.
+          /* Stream may already be closed. */
+        }
+      }
+      try {
+        if (_cameraSender != null) {
+          await replaceCameraTrack(
+            _cameraSender!,
+            null,
+          ).timeout(const Duration(seconds: 2));
+        }
+      } catch (_) {
+        // Capture is already stopped; a closed connection cannot detach its sender.
+      }
+      rethrow;
+    } finally {
+      // Darwin's trackDispose finds its capturer by scanning native local streams.
+      // Keep the source stream (and its track membership) alive until track.stop;
+      // disposing it after transfer can orphan a late camera after SDK cleanup.
+      if (!attached && !capture.getTracks().any(_cameraTracks.contains)) {
+        try {
+          await capture.dispose();
         } finally {
-          for (final track in capture.getTracks()) {
-            try {
-              await stream.removeTrack(track);
-            } finally {
-              await track.stop();
-            }
-          }
+          _cameraCaptures.remove(capture);
         }
-        rethrow;
-      } finally {
-        for (final track in capture.getTracks()) {
-          await capture.removeTrack(track);
-        }
-        await capture.dispose();
       }
     }
     if (enabled && localVideo == null && call.localUserMediaStream != null) {
@@ -418,8 +505,25 @@ class DirectCall implements VoiceCall {
   @override
   Future<void> close() async {
     if (_closed) return;
+    _videoAtClose = video || _cameraTracks.isNotEmpty;
     _closed = true;
     _clock.stop();
+    // The SDK may already be ending and miss a camera attached during dialling.
+    // Keep explicit ownership and release tracks even when hangup/metadata cannot run.
+    final tracks = {
+      ..._cameraTracks,
+      ...?call.localUserMediaStream?.stream?.getTracks(),
+    };
+    final stopped = await _stopTracks(tracks);
+    if (stopped) {
+      _cameraTracks.clear();
+      await _disposeCameraCaptures();
+    }
+    if (!stopped) {
+      report(
+        'Не удалось подтвердить освобождение камеры или микрофона. Если системный индикатор остаётся включённым, закройте приложение.',
+      );
+    }
     _authorizationTimer?.cancel();
     for (final subscription in _subscriptions) {
       await subscription.cancel();

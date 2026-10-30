@@ -29,7 +29,12 @@ String screenCaptureNotice(Object error) {
 class ScreenCapture {
   static bool get supported => kIsWeb
       ? browserScreenCaptureSupported
-      : defaultTargetPlatform == TargetPlatform.android;
+      : const {
+          TargetPlatform.android,
+          TargetPlatform.macOS,
+          TargetPlatform.windows,
+          TargetPlatform.linux,
+        }.contains(defaultTargetPlatform);
   final lk.LocalVideoTrack source;
   bool _closed = false;
   static const _native = MethodChannel('voicechat/screen');

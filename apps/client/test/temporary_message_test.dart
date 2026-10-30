@@ -7,6 +7,7 @@ import 'package:matrix/matrix.dart';
 import 'package:voicechat_probe/chat_actions.dart';
 import 'package:voicechat_probe/media_policy.dart';
 import 'package:voicechat_probe/temporary_message.dart';
+import 'package:voicechat_probe/read_after.dart';
 import 'package:voicechat_probe/theme.dart';
 import 'package:voicechat_probe/user_action_error.dart';
 import 'chat_actions_test.dart' show OutboxDatabase, OutboxRoom, OutboxTimeline;
@@ -41,6 +42,75 @@ void main() {
     },
   }, room);
 
+  testWidgets(
+    'Read-after frame reserves space around the bubble before and after read on narrow screens',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 640));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      for (final active in [false, true]) {
+        final client = TestClient();
+        final room = Room(client: client, id: '!frame:local');
+        final event = Event.fromJson({
+          'event_id': r'$read',
+          'type': EventTypes.Message,
+          'sender': '@peer:local',
+          'content': {
+            'msgtype': MessageTypes.Text,
+            'body': 'payload',
+            readAfterKey: 30,
+          },
+        }, room);
+        if (active) {
+          final state = ReadAfterState.of(client);
+          state.observe(DateTime.now().millisecondsSinceEpoch);
+          state.deadlines[event.eventId] = state.serverNow! + 30000;
+        }
+        final payload = Container(
+          key: const ValueKey('payload'),
+          height: 64,
+          width: double.infinity,
+          color: Colors.blue,
+          child: const Text('Текст сообщения'),
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppPalette.halo.theme,
+            home: MediaQuery(
+              data: const MediaQueryData(
+                size: Size(320, 640),
+                textScaler: TextScaler.linear(1.5),
+              ),
+              child: Scaffold(
+                body: Center(
+                  child: SizedBox(
+                    width: 280,
+                    child: TemporaryMessage(
+                      key: ValueKey(active),
+                      event: event,
+                      child: payload,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 600));
+        final frame = tester.getRect(
+          find.byKey(ValueKey(active ? 'temporary-frame' : 'read-after-frame')),
+        );
+        final payloadRect = tester.getRect(
+          find.byKey(const ValueKey('payload')),
+        );
+        expect(payloadRect.left - frame.left, greaterThanOrEqualTo(8));
+        expect(frame.right - payloadRect.right, greaterThanOrEqualTo(8));
+        expect(frame.bottom - payloadRect.bottom, greaterThanOrEqualTo(8));
+        expect(payloadRect.top - frame.top, greaterThanOrEqualTo(8));
+        expect(tester.takeException(), isNull);
+      }
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
   test(
     'Duration survives the encrypted outbox and follows current server bounds',
     () async {

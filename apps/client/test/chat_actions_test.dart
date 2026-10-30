@@ -115,13 +115,24 @@ class BackgroundStream implements WrappedMediaStream {
 }
 
 class BackgroundMediaStream implements rtc.MediaStream {
+  final track = BackgroundAudioTrack();
   @override
-  List<rtc.MediaStreamTrack> getAudioTracks() => [BackgroundAudioTrack()];
+  List<rtc.MediaStreamTrack> getTracks() => [track];
+  @override
+  List<rtc.MediaStreamTrack> getAudioTracks() => [track];
+  @override
+  List<rtc.MediaStreamTrack> getVideoTracks() => [];
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class BackgroundAudioTrack implements rtc.MediaStreamTrack {
+  bool stopped = false;
+  @override
+  Future<void> stop() async {
+    stopped = true;
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

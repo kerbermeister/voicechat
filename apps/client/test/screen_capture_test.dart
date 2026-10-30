@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:livekit_client/livekit_client.dart' as lk;
@@ -32,6 +33,32 @@ class CaptureStream extends Fake implements rtc.MediaStream {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'Desktop capture support is not restricted to Android or determined by the viewer device',
+    () {
+      final original = debugDefaultTargetPlatformOverride;
+      try {
+        for (final platform in [
+          TargetPlatform.android,
+          TargetPlatform.macOS,
+          TargetPlatform.windows,
+          TargetPlatform.linux,
+        ]) {
+          debugDefaultTargetPlatformOverride = platform;
+          expect(ScreenCapture.supported, true, reason: platform.name);
+        }
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        expect(
+          ScreenCapture.supported,
+          false,
+          reason:
+              'Native iOS broadcast extension is not part of this client; web uses API detection',
+        );
+      } finally {
+        debugDefaultTargetPlatformOverride = original;
+      }
+    },
+  );
   test('Ошибки picker имеют понятные сообщения без вывода исходных данных', () {
     expect(
       screenCaptureNotice('Unable to getDisplayMedia: InvalidStateError'),

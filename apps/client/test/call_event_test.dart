@@ -5,6 +5,7 @@ import 'package:voicechat_probe/call_event.dart';
 import 'package:voicechat_probe/call_window.dart';
 import 'package:voicechat_probe/theme.dart';
 import 'package:voicechat_probe/direct_call.dart';
+import 'message_test.dart' show TestClient;
 import 'chat_actions_test.dart' show OutboxDatabase, VideoSession;
 
 class TimedSession extends VideoSession {
@@ -24,6 +25,63 @@ void main() {
     'sender': '@caller:local',
     'content': {'offer': offer},
   }, room);
+  test(
+    'Call direction follows initiator, not the participant who ended or declined',
+    () {
+      final client = TestClient();
+      final room = Room(id: '!direction:local', client: client);
+      Event event(
+        String sender,
+        Map<String, dynamic> content, {
+        String type = EventTypes.Message,
+      }) => Event.fromJson({
+        'type': type,
+        'event_id': r'$e',
+        'sender': sender,
+        'content': content,
+      }, room);
+      final outgoing = event(client.userID, {
+        'call_id': 's',
+        'offer': {'sdp': 'm=audio '},
+      }, type: EventTypes.CallInvite);
+      expect(callDirectionLabel(outgoing), 'Исходящий звонок');
+      final incoming = event('@peer:local', {
+        'msgtype': 'dev.voicechat.call',
+        'action': 'invite',
+        'session': 's',
+      });
+      expect(callDirectionLabel(incoming), 'Входящий звонок');
+      final end = event(client.userID, {
+        'msgtype': 'dev.voicechat.call',
+        'action': 'end',
+        'session': 's',
+      });
+      expect(callDirectionLabel(end, history: [incoming]), 'Входящий звонок');
+      end.content['dev.voicechat.call_initiator'] = '@peer:local';
+      expect(callDirectionLabel(end), 'Входящий звонок');
+      final declined = event('@peer:local', {
+        'msgtype': 'dev.voicechat.call',
+        'action': 'decline',
+        'session': 's',
+      });
+      expect(
+        callDirectionLabel(declined, history: [outgoing]),
+        'Исходящий звонок',
+      );
+      expect(
+        callDirectionLabel(declined),
+        isNull,
+        reason:
+            'Do not invent a direction for legacy events with missing history',
+      );
+      final summary = event(client.userID, {
+        'msgtype': 'dev.voicechat.call_summary',
+      });
+      expect(callDirectionLabel(summary), 'Исходящий звонок');
+      summary.content['dev.voicechat.forwarded_author'] = 'original';
+      expect(callDirectionLabel(summary), isNull);
+    },
+  );
   test(
     'Native Matrix invitations distinguish video without displaying SDP',
     () {

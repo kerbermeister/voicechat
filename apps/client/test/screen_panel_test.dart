@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart';
@@ -42,6 +43,37 @@ void main() {
       }
     }
   });
+  testWidgets(
+    'Mac shows the share action instead of a browser viewer-only message',
+    (tester) async {
+      final original = debugDefaultTargetPlatformOverride;
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      final client = Client('mac-screen-action', database: PanelDatabase());
+      final call = PanelCall(Room(client: client, id: '!mac-screen:local'));
+      final controller = ScreenShareController(
+        call,
+        ScreenApi('http://localhost', () => ''),
+        'ws://localhost:7880',
+      )..snapshot = ScreenSnapshot.parse(active());
+      try {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(body: ScreenPanel(controller: controller)),
+          ),
+        );
+        await tester.pump();
+        expect(find.textContaining('только просмотр экрана'), findsNothing);
+        expect(find.text('Перехватить экран'), findsOneWidget);
+        expect(find.byIcon(Icons.screen_share_outlined), findsOneWidget);
+        await tester.pumpWidget(const SizedBox());
+        await controller.close();
+        controller.dispose();
+        await client.dispose();
+      } finally {
+        debugDefaultTargetPlatformOverride = original;
+      }
+    },
+  );
   testWidgets(
     'Экран остаётся отдельным, fullscreen закрывает только просмотр',
     (tester) async {

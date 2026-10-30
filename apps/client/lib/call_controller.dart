@@ -49,6 +49,7 @@ class CallController extends ChangeNotifier
       <({String room, String sender, String session}), DateTime>{};
   late final CallDevices devices;
   VoiceCall? active;
+  String? _activeInitiator;
   final audio = CallAudio();
   ScreenShareController? screen;
   VoiceCall? _screenCall;
@@ -388,6 +389,7 @@ class CallController extends ChangeNotifier
     String action, {
     Duration? duration,
     bool video = false,
+    String? initiator,
   }) async {
     await authorizedDevices(room).timeout(const Duration(seconds: 8));
     await room.client.encryption!.keyManager.clearOrUseOutboundGroupSession(
@@ -407,6 +409,8 @@ class CallController extends ChangeNotifier
           : 'Звонок завершён',
       'video': video,
       'action': action,
+      if (initiator != null || action == 'invite')
+        'dev.voicechat.call_initiator': initiator ?? client.userID,
       'session': id,
       if (duration != null && duration > Duration.zero)
         'duration_ms': duration.inMilliseconds,
@@ -486,6 +490,7 @@ class CallController extends ChangeNotifier
         video: video,
       );
       active = call;
+      _activeInitiator = invitation?.sender ?? client.userID;
       _refresh();
       try {
         await call.connect();
@@ -540,6 +545,7 @@ class CallController extends ChangeNotifier
       invitation.session,
       'decline',
       video: invitation.video,
+      initiator: invitation.sender,
     );
   }
 
@@ -566,6 +572,7 @@ class CallController extends ChangeNotifier
         call.chat,
         call.session,
         'end',
+        initiator: _activeInitiator,
         duration: call.duration,
         video: call.video,
       );
@@ -583,6 +590,7 @@ class CallController extends ChangeNotifier
       await authorizedDevices(call.chat).timeout(const Duration(seconds: 8));
       await call.chat.sendEvent({
         'msgtype': 'dev.voicechat.call_summary',
+        'dev.voicechat.call_initiator': client.userID,
         'body': call.duration == Duration.zero
             ? 'Нет ответа / вызов завершён'
             : call.video

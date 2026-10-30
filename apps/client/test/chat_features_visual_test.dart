@@ -173,6 +173,44 @@ void main() {
       expect(find.byTooltip('Реакция ❤️'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await capture('reactions');
+      await tester.tapAt(const Offset(10, 10));
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+      actions.pending.clear();
+      timeline.events
+        ..clear()
+        ..addAll([
+          mx.Event.fromJson({
+            'type': mx.EventTypes.Message,
+            'event_id': r'$read-frame',
+            'sender': client.userID,
+            'origin_server_ts': DateTime.now().millisecondsSinceEpoch,
+            'content': {
+              'msgtype': mx.MessageTypes.Text,
+              'body': 'Сообщение в собственной рамке',
+              'dev.voicechat.read_after_seconds': 5,
+            },
+          }, room),
+          mx.Event.fromJson({
+            'type': mx.EventTypes.CallInvite,
+            'event_id': r'$incoming',
+            'sender': '@peer:local',
+            'origin_server_ts': DateTime.now().millisecondsSinceEpoch,
+            'content': {
+              'call_id': 'visual-call',
+              'offer': {'sdp': 'm=audio 9 RTP/SAVPF 111', 'type': 'offer'},
+            },
+          }, room),
+        ]);
+      actions.notifyListeners();
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+      expect(find.text('Входящий звонок'), findsOneWidget);
+      expect(find.byKey(const ValueKey('read-after-frame')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await capture('fixes');
       await tester.pumpWidget(const SizedBox());
       actions.dispose();
     }

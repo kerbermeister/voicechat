@@ -1,16 +1,61 @@
 import 'dart:async';
+import 'dart:convert';
+import 'transport.dart';
+import 'user_action_error.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 import 'hidden_messages.dart';
 import 'read_after.dart';
 import 'temporary_message.dart';
 
+bool canEnableDirectPins(Room room) {
+  final marker = room.getState('dev.voicechat.kind')?.content;
+  if (marker?['kind'] != 'direct') return false;
+  if (!room.isDirectChat || room.membership != Membership.join) return false;
+  final events = room.getState(EventTypes.RoomPowerLevels)?.content['events'];
+  return marker?['kind'] == 'direct' &&
+      marker?['owner'] is String &&
+      marker?['peer'] is String &&
+      marker?['owner'] != marker?['peer'] &&
+      [marker?['owner'], marker?['peer']].contains(room.client.userID) &&
+      (events is! Map || !events.containsKey(EventTypes.RoomPinnedEvents));
+}
+
 bool canPinMessages(Room room) =>
-    room.canChangeStateEvent(EventTypes.RoomPinnedEvents);
+    room.canChangeStateEvent(EventTypes.RoomPinnedEvents) ||
+    canEnableDirectPins(room);
+
+Future<void> setPinnedMessages(Room room, List<String> ids) async {
+  if (!room.canChangeStateEvent(EventTypes.RoomPinnedEvents)) {
+    if (!canEnableDirectPins(room)) {
+      throw UserActionError('Нет прав на закрепление сообщений.');
+    }
+    final response = await room.client.httpClient
+        .post(
+          secureEndpoint(
+            room.client.homeserver!
+                .resolve('/_synapse/client/voicechat-direct-pins')
+                .toString(),
+          ),
+          headers: {
+            'Authorization': 'Bearer ${room.client.accessToken}',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'room_id': room.id}),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (response.statusCode != 200) {
+      throw UserActionError(
+        'Не удалось разрешить общие закрепления в личном чате. Проверьте соединение и обновление сервера. Явно заданные ограничения комнаты сохраняются.',
+      );
+    }
+  }
+  await room.setPinnedEvents(ids);
+}
 
 Future<void> togglePinnedMessage(Event event) async {
   if (!canPinMessages(event.room)) {
-    throw StateError('Нет прав на закрепление сообщений.');
+    throw UserActionError('Нет прав на закрепление сообщений.');
   }
   final ids = event.room.pinnedEventIds.toList();
   if (ids.contains(event.eventId)) {
@@ -21,7 +66,7 @@ Future<void> togglePinnedMessage(Event event) async {
     }
     ids.add(event.eventId);
   }
-  await event.room.setPinnedEvents(ids);
+  await setPinnedMessages(event.room, ids);
 }
 
 class PinnedMessageBar extends StatefulWidget {
@@ -92,7 +137,8 @@ class _PinnedMessageBarState extends State<PinnedMessageBar> {
     }
     // Filter immediately for everyone; persist cleanup when this account has pin rights.
     if (expired.isNotEmpty && canPinMessages(widget.room)) {
-      await widget.room.setPinnedEvents(
+      await setPinnedMessages(
+        widget.room,
         widget.room.pinnedEventIds
             .where((id) => !expired.contains(id))
             .toList(),

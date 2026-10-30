@@ -8,6 +8,8 @@ import 'package:voicechat_probe/file_view.dart';
 import 'package:voicechat_probe/message_media_cache.dart';
 import 'package:voicechat_probe/transient_notice.dart';
 import 'package:voicechat_probe/delete_message_dialog.dart';
+import 'test_fonts.dart';
+import 'package:voicechat_probe/theme.dart';
 import 'screen_panel_test.dart' show PanelDatabase;
 
 void main() {
@@ -227,6 +229,38 @@ void main() {
       expect(find.text('Скопировано в буфер обмена'), findsNothing);
     },
   );
+  testWidgets('Text length notice is compact and clears after two seconds', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(320, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await loadAppFont();
+    const message = 'Введите текст до 16000 символов.';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppPalette.halo.theme,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showTransientNotice(context, message),
+              child: const Text('notice'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('notice'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tester.getSize(find.byType(SnackBar)).height, lessThan(60));
+    expect(
+      tester.widget<SnackBar>(find.byType(SnackBar)).duration,
+      const Duration(seconds: 2),
+    );
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text(message), findsNothing);
+  });
   testWidgets(
     'Delete choices have equal compact geometry and distinct palette colors',
     (tester) async {

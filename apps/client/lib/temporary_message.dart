@@ -115,10 +115,12 @@ class _TemporaryMessageState extends State<TemporaryMessage>
             child: child,
           ),
         ),
-        child: DecoratedBox(
+        child: Container(
+          key: const ValueKey('read-after-frame'),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             border: Border.all(color: colors.tertiary, width: 2),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(26),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,7 +142,10 @@ class _TemporaryMessageState extends State<TemporaryMessage>
                   ],
                 ),
               ),
-              widget.child,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: widget.child,
+              ),
             ],
           ),
         ),
@@ -186,6 +191,7 @@ class _TemporaryMessageState extends State<TemporaryMessage>
                 ),
               )
             : AnimatedMessageBorder(
+                key: const ValueKey('temporary-frame'),
                 radius: 26,
                 padding: 8,
                 child: Column(

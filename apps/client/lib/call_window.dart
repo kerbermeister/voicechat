@@ -728,9 +728,15 @@ class _CallAvatarState extends State<CallAvatar>
 
 class CallEventCard extends StatelessWidget {
   final mx.Event event;
-  const CallEventCard({super.key, required this.event});
+  const CallEventCard({
+    super.key,
+    required this.event,
+    this.history = const [],
+  });
+  final Iterable<mx.Event> history;
   @override
   Widget build(BuildContext context) {
+    final direction = callDirectionLabel(event, history: history);
     final duration = event.content['duration_ms'];
     final seconds = duration is int && duration > 0 && duration <= 86400000
         ? duration ~/ 1000
@@ -771,9 +777,38 @@ class CallEventCard extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Flexible(
-            child: Text(
-              '${callEventLabel(event)}${seconds == null ? '' : ' · ${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}'}',
-              style: TextStyle(color: colors.onSurface),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${callEventLabel(event)}${seconds == null ? '' : ' · ${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}'}',
+                  style: TextStyle(color: colors.onSurface),
+                ),
+                if (direction != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        direction == 'Исходящий звонок'
+                            ? Icons.call_made
+                            : Icons.call_received,
+                        size: 14,
+                        color: accent,
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          direction,
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: colors.onSurface),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
             ),
           ),
         ],

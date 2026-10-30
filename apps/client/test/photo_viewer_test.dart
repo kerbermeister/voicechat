@@ -92,4 +92,73 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+  testWidgets(
+    'Invisible side zones navigate at top and bottom while arrows and zoom gestures remain available',
+    (tester) async {
+      final bytes = img.encodePng(img.Image(width: 100, height: 80));
+      for (final size in [const Size(320, 640), const Size(1000, 800)]) {
+        await tester.binding.setSurfaceSize(size);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: PhotoViewer(
+                key: ValueKey(size),
+                photos: List.generate(
+                  3,
+                  (_) =>
+                      () async => bytes,
+                ),
+                initial: 1,
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final surface = tester.getRect(
+          find.byKey(const ValueKey('photo-navigation-surface')),
+        );
+        expect(surface.height, size.height);
+        expect(
+          tester.getSize(find.byTooltip('Следующее фото')),
+          const Size(56, 56),
+        );
+        await tester.tapAt(Offset(surface.right - 20, surface.top + 100));
+        await tester.pumpAndSettle();
+        expect(find.text('3 / 3'), findsOneWidget);
+        await tester.tapAt(Offset(surface.left + 20, surface.bottom - 30));
+        await tester.pumpAndSettle();
+        expect(find.text('2 / 3'), findsOneWidget);
+        await tester.tapAt(Offset(surface.left + 20, surface.top + 100));
+        await tester.pumpAndSettle();
+        expect(find.text('1 / 3'), findsOneWidget);
+        await tester.tapAt(Offset(surface.right - 20, surface.bottom - 30));
+        await tester.pumpAndSettle();
+        expect(find.text('2 / 3'), findsOneWidget);
+        final first = await tester.startGesture(
+          surface.center - const Offset(25, 0),
+          pointer: 1,
+        );
+        final second = await tester.startGesture(
+          surface.center + const Offset(25, 0),
+          pointer: 2,
+        );
+        await tester.pump();
+        await first.moveBy(const Offset(-30, 0));
+        await second.moveBy(const Offset(30, 0));
+        await tester.pump();
+        await first.up();
+        await second.up();
+        await tester.pumpAndSettle();
+        expect(
+          find.text('2 / 3'),
+          findsOneWidget,
+          reason: 'Pinch must not trigger a side tap',
+        );
+        expect(find.byType(InteractiveViewer), findsWidgets);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      }
+      await tester.binding.setSurfaceSize(null);
+    },
+  );
 }

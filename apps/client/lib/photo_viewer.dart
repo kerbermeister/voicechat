@@ -116,38 +116,56 @@ class _PhotoViewerState extends State<PhotoViewer> {
         body: SafeArea(
           child: Stack(
             children: [
-              PageView.builder(
-                controller: controller,
-                itemCount: widget.photos.length,
-                onPageChanged: (value) => setState(() => index = value),
-                itemBuilder: (_, i) => FutureBuilder<Uint8List>(
-                  future: loaded.putIfAbsent(i, widget.photos[i]),
-                  builder: (_, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text(
-                          'Фото недоступно. Проверьте соединение и ключи.',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                        ),
-                      );
+              LayoutBuilder(
+                builder: (_, box) => GestureDetector(
+                  key: const ValueKey('photo-navigation-surface'),
+                  behavior: HitTestBehavior.translucent,
+                  excludeFromSemantics: true,
+                  onTapUp: (details) {
+                    final zone = (box.maxWidth * .2).clamp(80.0, 160.0);
+                    if (details.localPosition.dx <= zone) {
+                      move(-1);
+                    } else if (details.localPosition.dx >=
+                        box.maxWidth - zone) {
+                      move(1);
                     }
-                    if (!snapshot.hasData) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    return InteractiveViewer(
-                      minScale: 1,
-                      maxScale: 5,
-                      child: Center(
-                        child: Image.memory(
-                          snapshot.data!,
-                          semanticLabel: 'Фото ${i + 1}',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    );
                   },
+                  child: PageView.builder(
+                    controller: controller,
+                    itemCount: widget.photos.length,
+                    onPageChanged: (value) => setState(() => index = value),
+                    itemBuilder: (_, i) => FutureBuilder<Uint8List>(
+                      future: loaded.putIfAbsent(i, widget.photos[i]),
+                      builder: (_, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'Фото недоступно. Проверьте соединение и ключи.',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          );
+                        }
+                        if (!snapshot.hasData) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        }
+                        return InteractiveViewer(
+                          minScale: 1,
+                          maxScale: 5,
+                          child: Center(
+                            child: Image.memory(
+                              snapshot.data!,
+                              semanticLabel: 'Фото ${i + 1}',
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ),
               navigation(true),

@@ -29,6 +29,7 @@ class ContactPolicy:
         self.secret = config['secret']
         self.publish_locks = Linearizer(clock=api._hs.get_clock(), name='voicechat-scheduled')
         api.register_web_resource('/_synapse/client/voicechat-read-after', ReadAfter(self))
+        api.register_web_resource('/_synapse/client/voicechat-direct-pins', DirectPins(self))
         api.register_web_resource('/_synapse/client/voicechat/presence', ContactPresence(self))
         api.register_web_resource('/_synapse/client/voicechat/scheduled-publish', ScheduledPublish(self))
         api.register_spam_checker_callbacks(user_may_invite=self.user_may_invite,
@@ -207,6 +208,20 @@ class ScheduledPublish(DirectServeJsonResource):
             return 503, {'error': 'matrix_unavailable'}
 
 
+async def direct_chat_state(policy, user, room):
+    if not isinstance(room, str) or not room.startswith('!') or len(room) > 512:
+        raise SynapseError(400, 'Invalid room')
+    state = await policy.state(room)
+    marker = state.get((KIND, ''))
+    if not marker or not policy.direct(marker.content):
+        raise SynapseError(403, 'Operation is only available in direct chats')
+    pair = {marker.content['owner'], marker.content['peer']}
+    membership = state.get(('m.room.member', user))
+    members = {key for (kind, key), item in state.items() if kind == 'm.room.member' and item.content.get('membership') in ('join', 'invite')}
+    if user not in pair or not membership or membership.content.get('membership') != 'join' or not members <= pair:
+        raise SynapseError(403, 'Not a direct-chat participant')
+    return state
+
 class ReadAfter(DirectServeJsonResource):
     """Use the pinned Synapse event_expiry transaction and restart-safe scheduler.
 
@@ -219,17 +234,7 @@ class ReadAfter(DirectServeJsonResource):
         self.policy = policy
 
     async def authorize(self, user, room):
-        if not isinstance(room, str) or not room.startswith('!') or len(room) > 512:
-            raise SynapseError(400, 'Invalid room')
-        state = await self.policy.state(room)
-        marker = state.get((KIND, ''))
-        if not marker or not self.policy.direct(marker.content):
-            raise SynapseError(403, 'Read-after is only available in direct chats')
-        pair = {marker.content['owner'], marker.content['peer']}
-        membership = state.get(('m.room.member', user))
-        members = {key for (kind, key), item in state.items() if kind == 'm.room.member' and item.content.get('membership') in ('join', 'invite')}
-        if user not in pair or not membership or membership.content.get('membership') != 'join' or not members <= pair:
-            raise SynapseError(403, 'Not a direct-chat participant')
+        return await direct_chat_state(self.policy, user, room)
 
     async def event(self, room, event_id):
         if not isinstance(event_id, str) or not event_id.startswith('$') or len(event_id) > 255:
@@ -312,3 +317,52 @@ class ReadAfter(DirectServeJsonResource):
         except (ValueError, TypeError):
             raise SynapseError(400, 'Invalid read-after request')
         return 200, result
+
+
+class DirectPins(DirectServeJsonResource):
+    """Explicit participant action: enable only the missing DM pin permission.
+
+    No room scan, user-role promotion or change to an explicitly configured pin rule.
+    Matrix's normal event authorization still applies to the room owner's state update.
+    """
+    isLeaf = True
+    def __init__(self, policy):
+        super().__init__()
+        self.policy = policy
+        self.locks = Linearizer(clock=policy.api._hs.get_clock(), name='voicechat-direct-pins')
+
+    async def _async_render_POST(self, request):
+        requester = await self.policy.api._hs.get_auth().get_user_by_req(request)
+        user = requester.user.to_string()
+        raw = request.content.read(4097)
+        try:
+            data = json.loads(raw) if 0 < len(raw) <= 4096 else None
+            if not isinstance(data, dict) or set(data) != {'room_id'}:
+                raise ValueError()
+            room = data['room_id']
+            if not isinstance(room, str) or not room.startswith('!') or len(room) > 512:
+                raise ValueError()
+        except (ValueError, TypeError):
+            raise SynapseError(400, 'Invalid room request')
+        async with self.locks.queue(room):
+            state = await direct_chat_state(self.policy, user, room)
+            owner = state[(KIND, '')].content['owner']
+            creation = state.get(('m.room.create', ''))
+            membership = state.get(('m.room.member', owner))
+            if not creation or creation.sender != owner or not membership or membership.content.get('membership') != 'join' or not self.policy.api._hs.is_mine(UserID.from_string(owner)):
+                raise SynapseError(403, 'Direct-chat owner unavailable')
+            power = (await self.policy.api.get_room_state(room, [('m.room.power_levels', '')])).get(('m.room.power_levels', ''))
+            if power is None:
+                return 200, {'enabled': True}
+            content = dict(power.content)
+            events = dict(content.get('events', {}))
+            if 'm.room.pinned_events' in events:
+                if events['m.room.pinned_events'] != 0:
+                    raise SynapseError(403, 'Explicit pin policy cannot be changed')
+                return 200, {'enabled': True}
+            events['m.room.pinned_events'] = 0
+            content['events'] = events
+            await self.policy.api.create_and_send_event_into_room({
+                'room_id': room, 'sender': owner, 'type': 'm.room.power_levels', 'state_key': '', 'content': content,
+            })
+        return 200, {'enabled': True}
