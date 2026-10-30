@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "source_commit": "39296aada09174b5e39382b909ea509d3614e964",
+  "archive_sha256": "a849ebd3894f46ded908aab862fbefbfc7103685e39ecf8e397a027bb24e1d33",
+  "clean_entry_packages_installed": true,
+  "pinned_stock_ssh_profile": true,
+  "node_local_tunnel_identity": {
+    "schema": 1,
+    "service_id": "voicechat",
+    "node": "edge-b",
+    "generation": 1,
+    "public_key": "nPwKEsKaNnBkELUr1oRjRGEUIY7IKSOet54noVJ9tAA="
+  },
+  "repeat_receipt_equal": true,
+  "scope": "Fresh Debian entry-b dependencies and tunnel identity only; no peer/network/role/TLS/catalog/production changes",
+  "image": {
+    "url": "https://cloud.debian.org/images/cloud/bookworm/20261026-2643/debian-12-genericcloud-amd64-20261026-2643.qcow2",
+    "sha512": "0464b5d4ae3aa4f658468d88da83af7857b71548b30d46dcb6282770955a747fb95a983476db90d25afd0653af607224c7ebd05122ab71faa106fd712aaad652",
+    "name": "debian-12-genericcloud-amd64-20261026-2643.qcow2"
+  }
+}

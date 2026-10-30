@@ -58,9 +58,12 @@ def business(directory, edge, public, inventory, network, *, run=role_deploy.run
     model={'name':'deploy','services':{
         'caddy':{'image':ingress.CADDY_IMAGE,'restart':'unless-stopped','environment':{'DOMAIN':'${DOMAIN:?}'},
             'ports':['80:80','443:443'],'volumes':['./Caddyfile:/etc/caddy/Caddyfile:ro','caddy_data:/data','caddy_config:/config'],
-            'depends_on':['frontend']},
+            'depends_on':{'frontend':{'condition':'service_healthy'}}},
         'frontend':{'image':role_config.pinned_image('configure'),'entrypoint':['python3','/upstream.py'],
-            'volumes':['./upstream.py:/upstream.py:ro'],'environment':{'PYTHONDONTWRITEBYTECODE':'1'}}},
+            'volumes':['./upstream.py:/upstream.py:ro'],'environment':{'PYTHONDONTWRITEBYTECODE':'1'},
+            'healthcheck':{'test':['CMD','python3','-c',
+                'import http.client; c=http.client.HTTPConnection("127.0.0.1",80,timeout=2); c.request("GET","/"); assert c.getresponse().status==200'],
+                'interval':'1s','timeout':'3s','retries':60}}},
         'volumes':{'caddy_data':{},'caddy_config':{}},'networks':{'default':{'external':True,'name':network}}}
     source=deploy/'docker-compose.yml';source.write_text(json.dumps(model))
     environment=deploy/'.env';environment.write_text('DOMAIN=neighbor.fixture.invalid\n');environment.chmod(0o600)

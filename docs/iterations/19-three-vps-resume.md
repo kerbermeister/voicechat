@@ -1,5 +1,42 @@
 # Точка продолжения: три и более VPS
 
+## Последняя точка 30.10: SSH endpoints проверены, диагностика candidate
+
+Source39296aada09174b5e39382b909ea509d3614e964 опубликован. All676 PASS/skipped3.
+[Stock SSH VM proof](three-vps-evidence/2026-10-30-vm-ssh-endpoint-profile.json):
+endpoint127.0.0.1:53689 отличается от публичного role IP192.0.2.10, без NAT-adapter
+в коде; repeat/key/network/boot exact, Docker unchanged. Session46596 завершён.
+PrepareVM3 корректно powered off после записи restart_argv в prepare-active.json.
+
+Новый entry VM `.prototype/vm/entry-b-active.json`:
+entry-b-host-2f3da9a32a, SSH52217, PID28503, 1vCPU1536MiB. Launcher
+`.prototype/start-entry-b-vm.py`, wrapper `.prototype/entry-b-vm-exec.py`.
+[Fresh entry proof](three-vps-evidence/2026-10-30-vm-entry-b-preparation.json):
+stock SSH dependencies/key/repeat PASS на39296; source bundle a849ebd3….
+Node edge-b, public192.0.2.11, tunnel10.88.0.2, generation1, publickey nPwKEs…;
+private key stays VM. Inventory `.prototype/entry-b-prepared-inventory.json`.
+NIC management NAT10.0.2/24 + fixture L2 static192.0.2.11/24, multicast
+230.88.19.1:43819 localaddr127.0.0.1, MACs savedrestartargv. MainVM ещё НЕнаL2;
+НЕ менять его NIC во время fixture. Нет peer network/role/TLS/catalog на B пока.
+
+Guard2 parent61460/driver10598 ЗАВЕРШЕНЫ failure до initial migration: curl22/502
+синтетического neighbor frontend при ingress.adopt_legacy. Full guard checks НЕ
+начались. Независимый cleanup: network b8ceb473… preserved, 2старыхтомаonly,
+0containers, network service active. Старые guard2 logs сохраняются. Candidate
+`initial_cohost_business.py` теперь имеет frontend healthcheck + service_healthy
+dependency; ранее исправленный lock retry остаётся. Нужен новый clean source run.
+
+CI57 ACTIVE source39296, managed/full/deploy=false, retriesfalse, edgesempty:
+https://github.com/kerbermeister/voicechat/actions/runs/40999759155
+job123881154356, старт04:52Berlin. Итог/артефакт получить; не deploy и неinitial.
+
+Новая node_diagnostics.py candidate:9 unit assertions PASS. Network receipt +
+живые WG peers/routes/address + owned nftpresence; отдельные upstreams/processes,
+trusted SNI TLS expiry, disk. Remote Docker rejected, exception contents redacted.
+NOT firewall-rule-equivalence/WSS/TURNmedia/decrypt/external reachability.
+Нужен actual Linux report, затем продолжить full/core guard integration.
+Production всё ещё2dae758/full53/schema1, никаких VPS mutations после53.
+
 ## Актуальная сводка: production core/edge включены
 
 **LATEST: SSH profiles + fixture retry + schema2 hints fix, all676 PASS/skipped3.**

@@ -797,6 +797,12 @@ legacy Compose без потери account/device/PG/signing/coturn identity и 
 событие, секреты отсутствуют; внешний alert не зависит от работающего VoiceChat.
 Выход: оператор может определить отказавший участок и выполнить штатное действие.
 
+Локальный прогресс 30.10: `node_diagnostics.py` разделяет node-local network,
+Matrix/control, процессы core/своих edges, trusted SNI TLS web/TURN с expiry и диск.
+Шесть unit checks PASS, включая redaction и независимый отказ Matrix. Нет доступа
+к профилям, environment, базе или контейнерным логам. Actual Linux report ещё
+проверяется; WSS/TURN media/decrypt и внешний alert явно не проверены этим отчётом.
+
 ### V3-24 — Выполнить полную автоматическую отказную и security матрицу
 
 Зависимости: V3-14, V3-15, V3-16, V3-17, V3-18, V3-20, V3-21, V3-22, V3-23.
