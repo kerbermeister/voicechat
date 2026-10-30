@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-30T17:22:03.592029+00:00",
+  "run": "https://github.com/kerbermeister/voicechat/actions/runs/41095206214",
+  "candidate_commit": "c3f96aeb95adfe367b341a5095f68598a90c1922",
+  "result": "rolled-back",
+  "failed_stage": "applying core",
+  "original_failure": "Unavailable: command stderr not retained; investigating with a bounded private log capture on explicit retry.",
+  "restored_core_commit": "79ad872032c88925ccd0e51365de0cb080142ace",
+  "restored_edge_commit": "3316a07433a8b77d9a3264d2e0458760e86e4e17",
+  "current_previous_pointers_restored": true,
+  "immutable_manifests_restored": true,
+  "postgres_and_signing_identity_preserved": true,
+  "neighbor_processes_unchanged": true,
+  "https_route_health_feed28_ok": true,
+  "limitations": "Core Synapse/control were restarted by rollback. This is successful recovery, not successful candidate deployment or group media acceptance."
+}

@@ -1,3 +1,66 @@
+## Актуально: startup race исправлен, готовить FULL69 — 30.10 17:37UTC
+
+FULL68 run41098317389/job124209762234 failed→rolled-back COMPLETE. Независимый
+.prototype/full68-rollback-proof.json PASS: exactWEB66 pointers/manifests, dataidentity,
+HTTPS/feed28/neighbors. Старые core79ad/edge3316 обслуживают production.
+Root найден в сохранённом root-only capture: token_server main→screen_service→
+call_store→CallStore.recover→media_api(DeleteRoom) получил ConnectionRefused доSFUstart.
+Проблема supervisor parallel startup, не private nodeIP; recovery нельзя пропускать.
+Исправлен infra/supervise.py: startup_ready=sfu_ready gate перед controller,
+bounded cold start30s, childdeath/shutdown checks, прежний runtime5s cutoff сохранены.
+Новые real child tests +affected39 PASS3.732s; первые4 import errors были неверным
+PYTHONPATH запуска и не выдаются за application failure. Final log
+/private/tmp/voicechat-sfu-startup-tests-final2.log. Изменены только server+tests+docs.
+Mac28 НЕ требует повторной сборки. Все boot/network SOURCES unchanged vs c3f
+проверены gitshow, новый host source upgrade не нужен.
+
+Следующий шаг commit/push fix+all pending docs/evidence, managed/full main,
+retry_managed=true. Сначала подтвердить CI68 terminal. Candidate commit после
+commit записать сюда. .prototype/post-full68.py адаптировать на новый commit,
+новые source fingerprints и full69 output; before stays WEB66. Не запускать
+его как success до реального успешного релиза. No guards bypass.
+Temporary capture /root/voicechat-diagnostics/full68 stop requested, logs retained;
+PID1320878 должен выйти после текущего цикла, максимум1500s. Не читать чужуюпочту,
+не публиковать rawlogs. No active VM fixtures, shutdown requested preservedVM.
+
+CUA webRelease27 tab15 CI68 job; prodWeb16 +secondTestWeb20 same fixture28,
+credentialless20 DO NOT reloadtop. Local harness81495/62161 active, Mac28 running,
+no activecalls. Actual direct audio28/userheard +multi-device declinebothways PASS.
+Group native/web E2EE/media and groupdecline waitsuccessfulFULL69; then monitor.
+Automation PAUSED; no agents/newVPS/Arelocation/mail.
+
+## Актуально: FULL67 rolled-back healthy, готовится FULL68 с закрытым capture — 30.10 17:22UTC
+
+HEAD/main/rollout c3f96aeb95adfe367b341a5095f68598a90c1922. Mac28 PUBLIC+INSTALLED,
+web66 source3316, actual Mac28↔web28 direct audio3:20 PASS, owner heardsoundconfirmed.
+Два web28 одного fixtureaccount: declinebothdirections PASS, fixed<11s vs45stimeout.
+Public proofs 2026-10-30-direct-audio28.json и multidevice-decline28.json; UA updated.
+Старый microphone/keychain blocker RESOLVED actualcapture, Settingsclosednochanges.
+
+Network/boot source stock upgrade VM+production c3f PASS: noprocess/data/pointerchanges,
+archive117files SHA d012f8a4054ef3f520d091fdff02b462f26f09c906361e1ae1937190dc60288d.
+VM gracefully poweredoff; data/disks/archive retained. No activeVMfixture.
+FULL67 run41095206214/job124199048206 failed duringcoreapply→stockrollback COMPLETE.
+Independent .prototype/full67-rollback-proof.json PASS pointer+previous exactWEB66,
+core79ad/edge3316 immutablemanifests, dataidentity, neighbors, HTTPShealth/feed28.
+OnlycoreSynapse/control restarted byrollback; PG/edge/others preserved.
+
+Original command stderr discarded by role_deploy.run/managed_ssh.invoke. Journals noerrorfield;
+retainedDockerdaemonlogs noactualcause. Disk29Gfree; isolated candidate LiveKit networknone
+withdummykey+node10.88.0.1 STARTED, so private nodeIP itself is NOT provenfailure.
+Temporary root-only bounded1500s logcollector now /root/voicechat-diagnostics/full68,
+pid1320878; records last160lines/128KiB of voicechat core/configure logs+State every2s;
+no env/config/keys exported. Stopfile stops; expires25min. Need captureoriginalfailure
+beforeanotherretry; do NOT loopblind. Planned FULL68 explicitretry_managed=true,
+modefull rolloutmanaged c3fmain, stockCIguards. Dispatched: run41098317389/job124209762234.
+
+Ready .prototype/post-full68.py assumes success c3f; run only after actual CI success. Rollbackscript /private/tmp/voicechat-full67-rollback-check.py complete.
+Need read privatecapturedlogs selectively onfailure; donotpublishprivate room/usercontent.
+Current CUA webRelease27 tab15 FULL68 run41098317389/job124209762234, CI tests;
+prodWeb16/secondTestWeb20 fixture28, credentialless20 DO NOT reloadtop.
+Mac28updateApp runningmainfixturecontact, noactivecalls. Harness81495/62161 active.
+No otherbuild/testsessions; automationPAUSED, noagents/mail/newVPS/Arelocation.
+
 ## Актуально: private SFU VM PASS, готовить серверный FULL — 30.10 16:56UTC
 
 Все предыдущие оперативные статусы ниже — история. Automation PAUSED.

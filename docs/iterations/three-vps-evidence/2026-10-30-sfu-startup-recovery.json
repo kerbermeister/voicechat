@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-30T17:36:48.507340+00:00",
+  "failed_run": "https://github.com/kerbermeister/voicechat/actions/runs/41098317389",
+  "failed_commit": "c3f96aeb95adfe367b341a5095f68598a90c1922",
+  "actual_failure": {
+    "process": "control/token_server.py",
+    "path": "screen_service → call_store → CallStore.recover → DeleteRoom RPC",
+    "error": "urllib.error.URLError: Connection refused",
+    "cause": "Control recovery ran before the concurrently started SFU accepted HTTP requests."
+  },
+  "rollback": {
+    "phase": "rolled-back",
+    "manifests_restored": true,
+    "data_identity_preserved": true,
+    "neighbors_unchanged": true,
+    "https_health_feed28_ok": true
+  },
+  "fix": "Supervisor waits for SFU HTTP readiness before starting control; bounded cold start, child death checks, shutdown and five-second runtime outage cutoff remain enforced. Recovery is not skipped.",
+  "supervisor_sha256": "1c9c454d32fd821892285ea33a8407881b4f69e63fef60e5530547b2cfff3744",
+  "checks": {
+    "affected_python_tests": 39,
+    "result": "PASS",
+    "real_child_process_cases": [
+      "slow SFU connection refusal then readiness before control recovery",
+      "unready/crashed SFU does not start control",
+      "shutdown during readiness wait",
+      "existing unhealthy/crashed control terminates SFU"
+    ]
+  },
+  "boot_network_sources_unchanged": true,
+  "limits": "Local supervisor/regression checks plus real failed-container trace. Fixed image production deployment and actual group media acceptance are still pending."
+}

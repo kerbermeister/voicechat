@@ -181,3 +181,47 @@ both sides до trust). Но actual multi-device decline пока не выпо�
 завершаются; native microphone permission проверено в System Settings — ON.
 Перезапуск Mac28 не устранил это. ОС/Keychain/profile не менялись, почта не
 открывалась. Это отдельный открытый дефект UA-04, не successful direct-call28.
+
+
+Mac28 direct setup root локализован в OS TCC: code requirement mismatch старой
+ad-hoc подписи, затем AUTHREQ_PROMPTING для Microphone; общий Settings switch ON
+не означал завершение нового запроса. Ни TCC, ни Keychain не редактировали. Позже
+getUserMedia завершился и настоящий Mac28 доставил два incoming на web28.
+Account-wide direct decline PASS в обе стороны; повторная сторона за10.688s
+от start, оба incoming5.546s, что исключает45s caller timeout как доказательство.
+[Evidence28](three-vps-evidence/2026-10-30-multidevice-decline28.json).
+
+c3f96ae integrated main/rollout. Frozen public archive d012f8a4054ef3f520d091fdff02b462f26f09c906361e1ae1937190dc60288d.
+Stock network_bootstrap.upgrade + role_bootstrap.install проверен сначала в VM,
+затем production: network intent/processes/current/rollout unchanged. Новые ACL
+и boot sources установлены без рестарта служб; app FULL67 run41095206214 идёт.
+Mac28 перепубликовывать для чисто серверного исправления не требуется.
+
+Mac28→web28 real direct audio PASS:3:20 completed, web UI diagnostic snapshot
+152594ms/7595receivedaudio packets, excellent/routesa/initial238ms; user прямо
+подтвердил слышимый звук. Web mute reflected on Mac; другое web того жеaccount
+показало call on another device. [Evidence](three-vps-evidence/2026-10-30-direct-audio28.json).
+ICE directP2P, не forcedTURN. Тест завершён сMac до deploy67. Camera/screen/recovery
+не выдаются за проверенные; caller fixture2/tab21 не использован, вкладказакрыта.
+
+FULL67 (c3f96ae, run41095206214) остановился при core apply и завершил штатный
+rollback. Независимое сравнение с WEB66: current/previous и immutable manifests
+восстановлены, PostgreSQL/signing identity прежние, соседние сервисы не
+перезапускались, route health и feed28 HTTPS200. Оригинальная ошибка команды
+не сохранилась в managed journal; Docker daemon log не дал причины. Private nodeIP
+проверен запуском exact candidate LiveKit в network-none контейнере с dummy key:
+сервер стартует, это само по себе не причина отказа. Для FULL68 включён временный
+root-only bounded service-log capture без чтения env/secrets; попытка явно
+retry_managed=true, stock workflow/guards. FULL68 run41098317389 запущен.
+
+FULL68 сохранил исходную ошибку: token_server screen_service→call_store→recover
+вызывает DeleteRoom до старта SFU HTTP и падает URLError/Connection refused.
+Это гонка запуска на уже существующей call database, не отказ private nodeIP.
+Штатный rollback68 и независимый identity/pointers/HTTPS/feed28/neighbors PASS.
+Supervisor теперь ждёт SFU readiness перед запуском control; bounded cold start,
+остановка дочерних процессов и runtime cutoff сохранены. Восстановление старых
+сеансов не пропускается. Адресные39 tests PASS3.732s (с project PYTHONPATH).
+Изменения чисто серверные: Mac28 повторно выпускать не нужно. Все проверенные boot/network
+source files совпадают с установленнымc3f, новый source upgrade не требуется.
+[Evidence](three-vps-evidence/2026-10-30-sfu-startup-recovery.json). Исправленный
+образ ещё не опубликован; следующий шаг — managed/full с explicit retry.

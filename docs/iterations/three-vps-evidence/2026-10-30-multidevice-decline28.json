@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "build": 28,
+  "macos": "real native macOS15.3.1",
+  "receivers": "two real IAB web sessions of one synthetic account, distinct devices",
+  "both_incoming_observed": true,
+  "secondary_decline_dismissed_primary_and_caller": true,
+  "primary_decline_dismissed_secondary_and_caller": true,
+  "reverse_case_incoming_ms": 5546,
+  "reverse_case_total_ms": 10688,
+  "sas_compared_before_trust": true,
+  "physical_phone_tested": false,
+  "checked_at": "2026-10-30T17:09:44.518833+00:00",
+  "client_commit": "3316a07433a8b77d9a3264d2e0458760e86e4e17"
+}

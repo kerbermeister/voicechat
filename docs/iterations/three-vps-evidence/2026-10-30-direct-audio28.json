@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-30T17:13:49.825016+00:00",
+  "build": 28,
+  "platforms": [
+    "real native macOS15.3.1",
+    "real IAB web28"
+  ],
+  "direct_connected_more_than_two_minutes": true,
+  "completed_duration_seconds": 200,
+  "web_snapshot_duration_ms": 152594,
+  "web_audio_packets_received": 7595,
+  "quality": "excellent",
+  "routing": {
+    "state": "connected",
+    "matrix": "a",
+    "control": "a",
+    "signaling": "a",
+    "initial_selection_ms": 238
+  },
+  "secure_turn_relay": false,
+  "secure_turn_note": "ICE selected direct P2P; this is not forced TURN fallback proof.",
+  "web_mute_reflected_on_mac": true,
+  "other_web_device_showed_call_on_other_device": true,
+  "user_confirmed_audible_sound": true,
+  "ended_normally_from_mac": true,
+  "camera_screen_and_recovery_not_tested": true
+}
