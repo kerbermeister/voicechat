@@ -1,0 +1,11 @@
+{
+  "pid": 46622,
+  "commit": "0b0e1b8552811d42aadcfccc2c7fd464dda40d5a",
+  "origin": "http://localhost:7358",
+  "control": "http://localhost:8090",
+  "client_commit": "780ae8fe21050b749c396ecb456d847ff87b3f88",
+  "client_version": "1.15.0(31)",
+  "client_main_sha256": "0f8c2a3b0886e219720328cc09a0da41d83135d2fba58d1915d752955ae86610",
+  "same_runtime_process": true,
+  "matrix_healthy": true
+}

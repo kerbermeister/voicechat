@@ -54,3 +54,10 @@ Safari desktop подтвердил реальный picker HEIC/48MP→encrypte
 и65МиБ download без preview. В31 исправлен перехват отказа ручного retry в
 меню очереди. Production и штатная установка клиента пока не объявлены готовыми:
 GitHub требует входа владельца, macOS — подтверждения системного Keychain.
+
+Финальный31:439PASS/4opt-in skips, analyze без замечаний; normal web31 локального
+стенда прошёл полный minute/reload/manual E2EE retry и shared pin. ZIP/DMG31
+подписаны прежним ключом, payload285 entries совпал; About31 и Sparkle check PASS.
+Точный публичный пакет31 размещён только в staging VPS. Production feed29 и
+установленная29 не менялись. Восстановление профиля ждёт системного Keychain;
+workflow FULL — входа в GitHub. Эти ограничения не означают готовый выпуск.

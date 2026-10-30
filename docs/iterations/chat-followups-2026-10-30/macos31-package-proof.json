@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "build": 31,
+  "version": "1.15.0",
+  "commit": "780ae8fe21050b749c396ecb456d847ff87b3f88",
+  "source_clean": true,
+  "files": {
+    "VoiceChat.dmg": "ec6e23e600b464e52aa02e6236cf3c21accd1a48454cf96a8914647b211f8f33",
+    "VoiceChat.zip": "9c1357ef3821a07450c8726afdaa956e93560c33bfd14c6e4184d0055a3b074f",
+    "appcast.xml": "e07ab7595418a64bbcd2ca07511f8a2c131a1a1b3b59574456673dbe247c1e96"
+  },
+  "app_entries": 285,
+  "zip_and_dmg_payload_match": true,
+  "payload_signatures_verified": true,
+  "same_bundle_id_sparkle_key_feed": true,
+  "private_signing_key_stayed_local": true,
+  "published": false,
+  "candidate_opened": true,
+  "installed_version": 29,
+  "about31_verified": true,
+  "sparkle_check": "no compatible update; current public feed29",
+  "profile_opened": false,
+  "keychain_wait_confirmed_by_sample": true,
+  "signed_upgrade_verified": false
+}

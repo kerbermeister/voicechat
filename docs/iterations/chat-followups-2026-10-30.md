@@ -147,3 +147,41 @@ control8090, свежие disposable пользователи, сетевой ga
 fixture проверкой localhost origin. Доказательства относятся к реальной версии30;
 в31 изменены только ожидание локального retry и номер сборки, эти сценарии
 повторно проверяются адресно.
+
+### Итог31, до внешних системных разрешений
+
+- [439PASS/4opt-in skip, analyze, хеши журналов](chat-followups-2026-10-30/validation31.json).
+- [Повтор normal web31: реальный minute/reload/manual E2EE retry и shared pin](chat-followups-2026-10-30/chat31-ui-proof.json).
+- [Локальный стенд31, прежний supervisor/runtime/volumes](chat-followups-2026-10-30/local31-server-proof.json).
+- [Точный подписанный ZIP/DMG31, UI About и Sparkle](chat-followups-2026-10-30/macos31-package-proof.json).
+- [Публичный пакет31 в VPS staging; не publication](chat-followups-2026-10-30/macos31-staged.json).
+
+Артефакт31 заморожен на чистом780ae8f; дальнейшие изменения этого журнала —
+документальные и не меняют клиентский payload. Flutter/crypto toolchain закреплён;
+обычный lib/main.dart, локальный web31 собран с отдельной localhost-конфигурацией,
+Mac31 — с production routing catalog/key, подтверждённым Ed25519.
+
+Во время независимой проверки DMG был временно подключён системой, поэтому
+hdiutil verify вернул Resource temporarily unavailable. Отключён только наш
+собственный образ, затем checksum/readonly mount/payload/codesign повторены PASS.
+Повреждение пакета не обнаружено; не ослаблялись проверки и не менялись байты.
+
+Сохранённая29 и профиль перед31 скопированы закрытыми и побайтно сверены.
+Точный ZIP31 запущен: About1.15.0(31), штатный Sparkle check «Совместимых обновлений
+нет» (публичный feed29). Профиль ожидает Keychain: стек собственного процесса
+содержит SecItemCopyMatching/SecKeychainItemCopyContent. Keychain не читался и не
+очищался, история не объявляется расшифрованной. Запрос владельцу уже отправлен.
+
+GitHub Safari остаётся на странице входа, git SSH push разрешён и завершён, но
+HTTPS workflow dispatch credential отсутствует. Auto-review запретил Password
+AutoFill; SecurityAgent также запрещён инструменту. Не обходить через cookies,
+извлечение ключей, ручной production compose или подставленную physical acceptance.
+Точный managed FULL input сохранён локально; разрешение владельца на релиз уже
+дано, повторное согласование scope не нужно. Нужны только вход GitHub и системное
+подтверждение Keychain; после них выполнить штатный FULL, release health/identity/
+rollback проверки, публикацию exact31 и настоящий Sparkle29→31 с прежней историей.
+Физические iPhone/Android остаются условными по единому реестру.
+
+Старый staging30 явно помечен superseded, его appcast переименован, чтобы случайно
+не опубликовать заменённую сборку. Production-канал не менялся. Временный сервер
+синтетических фото закрыт; локальный стенд7358/8090 оставлен работающим.
