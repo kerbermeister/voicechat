@@ -799,9 +799,9 @@ legacy Compose без потери account/device/PG/signing/coturn identity и 
 
 Локальный прогресс 30.10: `node_diagnostics.py` разделяет node-local network,
 Matrix/control, процессы core/своих edges, trusted SNI TLS web/TURN с expiry и диск.
-Шесть unit checks PASS, включая redaction и независимый отказ Matrix. Нет доступа
-к профилям, environment, базе или контейнерным логам. Actual Linux report ещё
-проверяется; WSS/TURN media/decrypt и внешний alert явно не проверены этим отчётом.
+Девять unit checks PASS, включая redaction и независимый отказ Matrix. Нет доступа
+к профилям, environment, базе или контейнерным логам. Actual Linux negative report на entry B PASS (нет приложений/сети,
+нет side effects); healthy-service report ещё не проверен; WSS/TURN media/decrypt и внешний alert явно не проверены этим отчётом.
 
 ### V3-24 — Выполнить полную автоматическую отказную и security матрицу
 

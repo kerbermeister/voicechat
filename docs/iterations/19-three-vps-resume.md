@@ -1,6 +1,80 @@
 # Точка продолжения: три и более VPS
 
-## Последняя точка 30.10: SSH endpoints проверены, диагностика candidate
+## LATEST ACTIVE: guard3 реальные SSH drills + mesh network PASS
+
+Guard3 parent93973/driver70055 ACTIVE3832455. Начальная миграция прошла до ready:
+`/srv/voicechat-edge-fixture/cohost-fixture-p4b4s0fi/managed`; driver уже печатает
+fencing core. Требуется ОБА completion: parent и driver, cleanup и full/core guards.
+Старые guard/guard2 failures остаются историей, не перезапускать их.
+
+Двухузловой transport proof PASS:
+- `.prototype/mesh-network-evidence.json` → `three-vps-evidence/2026-10-30-vm-two-host-initial-network.json`.
+- `.prototype/mesh-traffic-evidence.json` → `three-vps-evidence/2026-10-30-vm-wireguard-api-acl.json`.
+На пустом prepared core выполнен explicit fixture-only stock network_runtime peer
+reconcile (не production lifecycle); на B stock host_prepare unified network/repeat.
+Core WGkey QAKyG8… сохранился, B nPwKEs… свой. Inventory/public-registry/topology:
+`.prototype/mesh-{inventory,public-keys,topology}.json`. Global ssh_port53689,
+SSH profiles override endpoints(core53689/B52217) при реальном SSH guest22.
+Actual TCP echo roundtrip по WG10.88.0.2→10.88.0.1:8088, actual encrypted kernel
+handshake/peer endpoints192.0.2.10/.11:51820, direct publicAPI timeout при live
+listener. Echo process завершён. НЕ Matrix/WSS/TLS/TURN/media/E2EE acceptance.
+
+Multicast LAN на macOS не заработал; заменён ДО приложений документированными
+QEMU stream/hubport (https://www.qemu.org/docs/master/system/qemu-manpage.html).
+Core stream listeners127.0.0.1:55200(B)/55201(C), virtualhub19; Bclient reconnect1s.
+Management NICs10.0.2.15/NAT, LAN192.0.2.10/.11 static. Записи `.prototype/vm/{prepare,entry-b}-active.json`
+содержат restart_argv и новыеPID. Backup before-stream-{core,b}.json + prepare-before-mesh.json.
+LAN hub живёт в coreQEMU: независимая underlay availability НЕ доказана.
+Main guardVM NIC не менялся. Prepare(core) 3GiB, entryB1.5GiB, main4GiB =8.5GiB.
+
+Fixture images build ACTIVE: core session30013, B85939, harness
+`/tmp/voicechat-mesh-build-images.py {core|b}`, logs `.prototype/mesh-{core,b}-image2.log`.
+Первые attempts86938/97543 FAILED до build: профильruntime не включает buildx.
+Теперь exact official apt Buildx0.38.1-1~debian.12~bookworm извлечён в
+`/srv/voicechat-mesh-fixture/build-tools`, Docker --config own cliPluginsExtraDirs;
+НЕ глобальная установка, нет production registry creds. Source3832455 coreimage
+exactDockerfile/COPY app sources; Bwebimage exactwebDockerfile с synthetic static
+page (НЕ настоящий Flutterclient). После SUCCESS будут `.prototype/mesh-{core,b}-image.json`.
+Далее нужны actual new core role + B role/TLS/route/catalog fixtures; осторожно
+не выдавать synthetic webpage за клиентское покрытие. Private synthetic secrets
+генерировать на fixture, production credentials не копировать.
+
+Production independent postcheck56/57 PASS04:11:55UTC, proof
+`three-vps-evidence/2026-10-30-production-build-only-56-57-postcheck.json`.
+Исходная strict equality StartedAt проверка FAILED и не переименована вPASS:
+daily managed backup service SUCCESS03:30:02–03:30:24UTC, именно synapse/control
+возобновились03:30:15/17. IDs/RestartCount/corePG/edge/neighbor/pointers/data/feed
+сохранены. Новый checker проверяет совпадение ID/count и изменённые writerstart
+ТОЛЬКО внутри подтверждённого backup окна, прямо пишет strict_time_equality=false.
+Никакого нового production deploy; по-прежнему2dae758/full53/schema1.
+
+## ACTIVE 30.10: guard3 + отдельная mesh-подготовка
+
+HEAD/origin3832455b6e555ffaf1122ecfecf050587853f341. Guard3 parent93973, driver70055
+ACTIVE, sourcecheckout `.prototype/managed-guard3-run.json`, backendcdfff53…,
+core_guardfbd0570…. Logs `.prototype/managed-guard3-parent.log`,
+`.prototype/vm-managed-guard3.log`, `.prototype/managed-guard3-driver.log`.
+Не запускать дубликаты, старые guard/guard2 завершены failure/cleanup.
+
+CI57 SUCCESS11m27, downloaded artifact12953740458 SHA36c22a8a…,
+103Gitfiles exact39296 verified; guard9a225a92… и schema2 importfix присутствуют.
+Proof `three-vps-evidence/2026-10-30-ci-ssh-profile-build-only.json`.
+Это deploy=false, production всё ещё full53/schema1/2dae758.
+
+Диагностика3832455 actual Linux negative PASS: prepared B без приложений/peer
+network показывает failure отдельных участков, diskPASS; никакой новой network
+state, containers, Docker restart/изменения package/identity receipt.
+Proof `three-vps-evidence/2026-10-30-vm-node-diagnostics-negative.json`.
+Healthy-service/TLS-positive report пока не проверен. Девять unit assertions PASS.
+
+PrepareVM3 снова запущен из сохранённого restart_argv: PID30186, SSH53689.
+Его сеть ПОКА исходная NAT192.0.2/24, без нового L2; нужно прочитать public network
+config и добавить только owned fixture LAN config до изменения QEMU NIC.
+Main migration VM NIC НИКОГДА не менять во время guard3. Для mesh использовать
+отдельный PrepareVM3 (core) + entryB VM; их private keys остаются на своих дисках.
+Подготовка mesh — fixture-only, не готовый production lifecycle/coordinator.
+
+## HISTORY: SSH endpoints проверены, диагностика candidate
 
 Source39296aada09174b5e39382b909ea509d3614e964 опубликован. All676 PASS/skipped3.
 [Stock SSH VM proof](three-vps-evidence/2026-10-30-vm-ssh-endpoint-profile.json):

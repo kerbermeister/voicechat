@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "source_commit": "3832455b6e555ffaf1122ecfecf050587853f341",
+  "core": {
+    "prepared_core_peer_registration": true,
+    "private_key_preserved": true,
+    "no_applications_or_role_boot_units": true,
+    "network_sha256": "5cabfab943d0d4566f53b87fcaf441cf150a7713a74bcc53f80b90fdb260791c"
+  },
+  "entry": {
+    "target": {
+      "schema": 1,
+      "service_id": "voicechat",
+      "node": "edge-b",
+      "assignment": {
+        "id": "b",
+        "generation": 1,
+        "public_ip": "192.0.2.11",
+        "tunnel_ip": "10.88.0.2",
+        "ssh_host_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOHndUBsN1i5ZKBDcmtdBPL10jZ5yHRdNNmzW4puelSW"
+      },
+      "profile": "f613612ffe8e16d27cccf32b5011a56456df0012bc09f86219a72a77977dca9a"
+    },
+    "base": {
+      "ca-certificates": "20250419~deb12u2",
+      "iproute2": "6.1.0-3",
+      "nftables": "1.0.6-2+deb12u2",
+      "openssl": "3.0.22-1~deb12u2",
+      "wireguard-tools": "1.0.20210914-1+b1"
+    },
+    "docker": {
+      "docker-ce": "5:29.8.1-1~debian.12~bookworm",
+      "docker-ce-cli": "5:29.8.1-1~debian.12~bookworm",
+      "containerd.io": "2.4.2-3~debian.12~bookworm",
+      "docker-compose-plugin": "5.5.1-1~debian.12~bookworm"
+    },
+    "installed": true,
+    "scope": "Dependencies, tunnel identity and initial network; no role/TLS/DNS/catalog deployment",
+    "tunnel_identity": {
+      "schema": 1,
+      "service_id": "voicechat",
+      "node": "edge-b",
+      "generation": 1,
+      "public_key": "nPwKEsKaNnBkELUr1oRjRGEUIY7IKSOet54noVJ9tAA="
+    },
+    "network": {
+      "schema": 1,
+      "node": "edge-b",
+      "generation": 1,
+      "network_sha256": "295b74a97c453435266de33dbac73a0b8fa6d2d53eb939bc12d25c119c12a8c8",
+      "boot_source_sha256": "b3cc55335cc7e5166e9b4b15623fe197d0d528d48ebb8eb2e5d811b327082350"
+    }
+  },
+  "entry_repeat_equal": true,
+  "scope": "Actual two-VM initial network setup before any application/role deployment; explicit fixture-only core peer reconciliation, stock unified entry bootstrap. No production lifecycle, TLS, API or media acceptance."
+}

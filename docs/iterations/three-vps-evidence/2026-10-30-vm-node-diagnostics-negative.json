@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "report": {
+    "schema": 1,
+    "service_id": "voicechat",
+    "node": "edge-b",
+    "generation": 1,
+    "checked_at": 1793333128,
+    "checks": {
+      "network": {
+        "status": "failed"
+      },
+      "matrix": {
+        "status": "failed"
+      },
+      "control": {
+        "status": "failed"
+      },
+      "edge_b_processes": {
+        "status": "failed"
+      },
+      "edge_b_web_tls": {
+        "status": "failed"
+      },
+      "edge_b_turn_tls": {
+        "status": "failed"
+      },
+      "disk": {
+        "status": "passed",
+        "free_bytes": 22758506496
+      }
+    },
+    "available_checks_passed": false,
+    "not_checked": [
+      "authenticated_wss",
+      "turn_allocation_and_media",
+      "media_decryption",
+      "external_reachability",
+      "firewall_rule_equivalence"
+    ],
+    "scope": "Node-local network, process, upstream, trusted TLS and free-space checks only"
+  },
+  "no_network_state_created": true,
+  "docker_not_restarted": true,
+  "dependency_and_identity_receipts_unchanged": true,
+  "no_containers": true,
+  "negative_unconfigured_host_verified": true,
+  "source_commit": "3832455b6e555ffaf1122ecfecf050587853f341",
+  "source_archive_sha256": "50dc55b755f2aab9efdb99bfba28bbd9e11f288fda167ae2a0ece380f1fecf07",
+  "scope": "Actual prepared Linux entry without peer network or applications; negative report and no side effects only, not working-service readiness"
+}
