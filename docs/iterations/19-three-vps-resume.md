@@ -1,3 +1,25 @@
+## Завершено18:50UTC: выпуск29, UI regression и scheduled monitoring PASS
+
+Production core5685 +edge/webd45. WEB70SUCCESS, Mac29 published/stockSparkle28→29
+PASS exact285+codesign+account/device/history4/About29/no-moreupdates. Direct29
+короткий connected; следующийgroupdecline16→19.872s сохранилимягруппы безoldtimer.
+Monitor8manual healthy13, **настоящийscheduled9 run41109560521 SUCCESS16s/healthy13**.
+UA80закрытбезпочты; UA04/48updated. Всеpublicproofs docs/iterations/three-vps-evidence/
+2026-10-30-{web70,macos29-published-installed,call-window29,monitor-web70,monitor-scheduled9}.json.
+
+Всеbuild/publish/verify/harnesssessions завершены. Secondarytab20 CLOSED и
+harness81495 STOPPED; Mac29+web16 вернулиськпереписке, activecallsНЕТ. Неreplay
+publisher29, post-web70.py (ожидаетfeed28), completedtests421/760, VMfixtures.
+Профиль/Keychain/backup/VMdisks/исходныearchives сохранены, signingkey толькоMac.
+Automationvoicechat-core-edge PAUSED; noagents/newchats/mail/newVPS/Arelocation.
+
+Осталосьусловное: physicalphones/camera/screen/recovery/TCP443-only, external
+B/C/D/E realDNS/TLS/WG/clientfailover; Arelocation/backup/customDNS/Windowsdeferred.
+Direct28слышимостьподтвержденапользователем, group28remoteE2EEkOk проверено;
+groupaudibilityотдельноНЕподтверждена. Необъявлятьглобальный100%.
+Следующийшагтолькопоинформациипользователя/доступностиусловнойсреды; нерасширять
+scopeскрытно. Текущаяфиксациятолькоdocs, сервер/клиенты пересобиратьНЕнужно.
+
 ## Дополнение18:14UTC: CI69 SUCCESS, before70 PASS, commit29 далее
 
 GitHub69 обновлён: SUCCESS, releasejob15m39, скрин /private/tmp/voicechat-full69-success.png.

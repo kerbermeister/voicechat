@@ -125,3 +125,17 @@ permissions также недоступна (Computer Use not approved). Поэ�
 workflow enabled и manual13 checks после FULL62 подтверждены. Не выдавать
 успешный dispatch за проверку cron. Следующий шаг по UA-80 — дождаться
 события schedule в GitHub и проверить его healthy, не выключая production.
+
+
+## Итог после звонкового исправления и выпуска29
+
+Дальнейшая приёмка и исправления выполнены в [журнале24](24-call-and-connection-diagnostics.md).
+WEB70 и personal macOS1.14.2(29) опубликованы; настоящий Sparkle28→29, прежние
+account/device/history и exactpayload проверены. Direct Mac28↔web28 со слышимым
+звуком подтверждён владельцем; group28 remote E2EE kOk на обоих клиентах и
+multi-device decline проверены агентом. Реальный29 regression после нового
+короткого разговора больше не возвращает старые title/timer при decline.
+Нормальныйmonitor8 и настоящий scheduled9 SUCCESS, healthy13. TEST6 ранее
+дал явную тестовую ошибку после healthychecks; email исключён владельцем.
+UA-80 закрыт в этом объёме. Телефоны, camera/screen/recovery и внешние edge
+этими доказательствами не подменяются; точный остаток — единый реестр.

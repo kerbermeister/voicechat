@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "build": 29,
+  "published_exact_candidate": true,
+  "public_https_verified": {
+    "VoiceChat.dmg": {
+      "https_status": 200,
+      "sha256": "1a0b34c0ea8648b29e7de0c111f3431b216af9fb317f8a360570a1aefb5f2bf2",
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    "VoiceChat.zip": {
+      "https_status": 200,
+      "sha256": "aa5851c73402bdfa7cf474eda877d830ede8d8b97a725ea9560af4bb95ded62f",
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    "appcast.xml": {
+      "https_status": 200,
+      "sha256": "3fc5f1a74199f578f33f26bdaac988f85965925adbc9fb7f622a17d1574e42e0",
+      "cache_control": "no-cache"
+    }
+  },
+  "private_signing_keys_never_transferred": true,
+  "sparkle28to29_install_verified": true,
+  "from_build": 28,
+  "account_preserved": true,
+  "device_preserved": true,
+  "old_decrypted_fragments_preserved": 4,
+  "about29_verified": true,
+  "no_compatible_updates_verified": true,
+  "stock_sparkle_button_install": true,
+  "profile_or_keychain_cleared": false,
+  "date": "2026-10-30",
+  "version": "1.14.2",
+  "commit": "d45e56f70c890f2fccc415e9c4881b3b096b78b1",
+  "entries_checked": 285,
+  "exact_zip_payload_matches": true,
+  "codesign_verified": true,
+  "zip_and_dmg_payload_match": true,
+  "both_payload_signatures_verified": true,
+  "closed_app_and_profile_backup_verified": true,
+  "same_permanent_sparkle_key": true
+}

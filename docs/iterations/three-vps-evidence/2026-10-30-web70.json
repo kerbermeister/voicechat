@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41105709689",
+  "ci_result": "success",
+  "ci_duration": "15m56s",
+  "scope": "web",
+  "web_commit": "d45e56f70c890f2fccc415e9c4881b3b096b78b1",
+  "core_commit": "5685b05817a7abacde932a3579d3083f1aae2cdd",
+  "web_version": "1.14.2(29)",
+  "web_about_and_existing_device_verified": true,
+  "integrated_web70_verified": true,
+  "core_and_other_edge_processes_unchanged": true,
+  "neighbors_unchanged": true,
+  "data_identity_unchanged": true,
+  "previous_pointer_verified": true,
+  "network_intent_unchanged": true,
+  "maintenance_timers_active_enabled": true,
+  "note": "The independent postcheck was captured before separate macOS29 publication. A first read-only check met a short owned lock; its one retry passed without a second deployment."
+}

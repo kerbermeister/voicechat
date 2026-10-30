@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "caller": "installed native macOS1.14.2(29)",
+  "primary": "production web1.14.2(29)",
+  "secondary": "existing isolated web1.14.1(28), same fixture account, distinct verified device",
+  "source": "d45e56f70c890f2fccc415e9c4881b3b096b78b1",
+  "old_direct_connected": true,
+  "old_direct_summary_web_seconds": 13,
+  "old_direct_summary_native_seconds": 11,
+  "both_group_incoming_observed": true,
+  "both_incoming_ms": 15636,
+  "decline_second_ms": 15708,
+  "primary_dismissed_ms": 19872,
+  "dismissed_before_45s_timeout": true,
+  "new_group_title_preserved": true,
+  "no_old_duration": true,
+  "no_old_direct_name_in_title": true,
+  "ended_status": true,
+  "caller_room_explicitly_ended_by_agent": true,
+  "not_group_audibility_proof": true
+}

@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41109302471",
+  "event": "workflow_dispatch",
+  "ci_result": "success",
+  "ci_duration_seconds": 18,
+  "healthy_checks": 13,
+  "test_notification": false,
+  "source": "d45e56f70c890f2fccc415e9c4881b3b096b78b1",
+  "host": {
+    "cpu_count": 3,
+    "load_1m": 0.17529296875,
+    "load_5m": 0.4091796875,
+    "load_15m": 0.42333984375
+  },
+  "turn": {
+    "a": {
+      "rx_bytes": 5788620,
+      "tx_bytes": 6043306
+    }
+  },
+  "web29_diagnostic": {
+    "state": "connected",
+    "routes": {
+      "matrix": "a",
+      "control": "a",
+      "signaling": "a"
+    },
+    "initial_selection_ms": 181,
+    "call": "inactive"
+  },
+  "scheduled_run_observed": false,
+  "email_excluded_by_owner": true,
+  "limits": "Read-only availability and safe aggregate diagnostics, not media or mail delivery proof."
+}

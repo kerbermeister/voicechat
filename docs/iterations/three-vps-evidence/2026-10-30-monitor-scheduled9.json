@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41109560521",
+  "event": "schedule",
+  "ci_result": "success",
+  "ci_duration_seconds": 16,
+  "healthy_checks": 13,
+  "source": "d45e56f70c890f2fccc415e9c4881b3b096b78b1",
+  "host": {
+    "cpu_count": 3,
+    "load_1m": 0.41162109375,
+    "load_5m": 0.47021484375,
+    "load_15m": 0.44580078125
+  },
+  "turn": {
+    "a": {
+      "rx_bytes": 5831828,
+      "tx_bytes": 6100727
+    }
+  },
+  "scheduled_run_observed": true,
+  "email_excluded_by_owner": true,
+  "notification_test_previously_verified": "https://github.com/kerbermeister/voicechat/actions/runs/41070183789",
+  "limits": "Availability and safe aggregates; not media or email delivery proof. One successful schedule does not establish a long-term delivery SLA."
+}

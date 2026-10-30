@@ -256,3 +256,52 @@ Web+Mac29 ещёневыпущены, Mac28closed/profilebackup260+app285 exact 
 сохраняются, подписи/room/session guards не менялись. Mac28closed backup проверен:
 285 app entries и260 profile entries, exact+codesign PASS; Keychain не копировался.
 Нужны WEB70 и обязательный personal Mac29 exactpackage/profile/update acceptance.
+
+
+## Выпуск29 и итоговая доступная приёмка
+
+WEB70 main/d45e56f SUCCESS15m56s, scope web. Независимый postcheck подтвердил
+core5685 без перезапуска, изменение только web, прежние data identity/network/
+previous pointer и соседние процессы. [Web70](three-vps-evidence/2026-10-30-web70.json).
+About production web29 и сохранение прежнего fixture device/history проверены.
+
+Личный подписанный macOS1.14.2(29), clean source d45e56f: exact ZIP/DMG285entries,
+обе payload signatures и постоянный Sparkle key проверены. Точный кандидат открыл
+прежний профиль. Штатный publisher завершён; HTTPS SHA/cache ZIP/DMG/feed PASS.
+Installed28 предложил29, кнопка «Скачать и установить» выполнила настоящий Sparkle
+переход. Installed29 exact285+codesign, прежние account/device/4old decrypted
+fragments, About29 и «Совместимых обновлений нет» PASS. Закрытые app/profilebackup
+сохранены, Keychain не копировался/не очищался.
+[Mac29](three-vps-evidence/2026-10-30-macos29-published-installed.json).
+Первый build упал на неподдерживаемой macOS locale C.UTF-8: env-only retry
+с en_US.UTF-8 прошёл на том же clean source, завершённого принятого артефакта
+до retry не было. Первый локальный HTTPS-reader после успешного publisher
+использовал старый /28 URL; остановлен только локальный reader, stock publication
+не повторялась. Исправленный read-only reader проверил точные /29 ZIP/DMG/feed.
+
+Реальный regression29: новый короткий direct Mac29↔web29 connected/excellent,
+web completed13s/native11s. Затем group incoming на web29 и втором web28 того же
+проверенного fixture account. Decline второго15.708s от старта снял primary29
+к19.872s (4.164s после нажатия, раньше45s timeout). На29 сохранилось имя группы,
+нет старого direct title/duration; оба устройства прекратили incoming.
+Mac caller room завершена агентом отдельно, это не доказательство её autoend
+по decline. Новая слышимость29 и group audibility отдельно не заявляются.
+[UI29](three-vps-evidence/2026-10-30-call-window29.json).
+
+Нормальный внешний monitor8 после web70/macpublication29 SUCCESS18s: healthy13,
+реальные host load/owned TURN counters. Web29 diagnostics connected/routesa/
+initial181ms/inactive, без user/session/SDP/credentials.
+[Monitor](three-vps-evidence/2026-10-30-monitor-web70.json).
+Фактический schedule run всё ещё не наблюдался; dispatch не заменяет cron proof.
+Email исключён владельцем. Остаток аппаратной/многосерверной приёмки только в
+едином UA-04/UA-80 и связанных условных пунктах; новые VPS/переносA не выполнялись.
+
+
+В18:45UTC появился настоящий **event:schedule** run9 наmain/d45e56f:
+[41109560521](https://github.com/kerbermeister/voicechat/actions/runs/41109560521)
+SUCCESS16s, все13checks healthy, actual host load/owned TURN counters.
+[Scheduled9](three-vps-evidence/2026-10-30-monitor-scheduled9.json).
+Тем самым прежний открытый schedule-proof закрыт; UA-80 проверен в согласованном
+объёме без почты. GitHub schedule не обещает точную доставку раз в15мин при любой
+очереди. Тестовый второй web закрыт, localhost harness остановлен; Mac29 и web29
+вернулись к переписке, активных звонков нет. VM диски/архивы/профиль сохранены.
