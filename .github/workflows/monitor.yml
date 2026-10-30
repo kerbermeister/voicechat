@@ -1,8 +1,8 @@
 name: VoiceChat health monitor
-run-name: "${{ inputs.test_notification && 'TEST notification — VoiceChat monitor' || 'VoiceChat health monitor' }}"
+run-name: "${{ inputs.test_notification && 'TEST notification — VoiceChat monitor' || github.event_name == 'schedule' && 'Scheduled — VoiceChat monitor' || 'VoiceChat health monitor' }}"
 on:
   schedule:
-    - cron: '7,22,37,52 * * * *'
+    - cron: '13,28,43,58 * * * *'
   workflow_dispatch:
     inputs:
       test_notification:

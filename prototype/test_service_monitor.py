@@ -18,6 +18,22 @@ class ServiceMonitorTests(unittest.TestCase):
         self.public=topology.load(Path(__file__).resolve().parents[1]/'infra/three-vps.example.json')
         self.config={'root':'/srv/voicechat-managed','public':self.public,'inventory':fixture()}
 
+    def test_metrics_allow_only_finite_load_and_owned_numeric_turn_counters(self):
+        from copy import deepcopy
+        valid = {'host':{'cpu_count':2,'load_1m':.2,'load_5m':.3,'load_15m':.4},
+                 'turn':{'a':{'rx_bytes':100,'tx_bytes':200}}}
+        self.assertEqual(monitor.safe_metrics({'metrics':valid}, ['a']), valid)
+        self.assertEqual(monitor.safe_metrics({}, ['a']), {})
+        self.assertEqual(monitor.safe_metrics({'metrics':{'host':{},'turn':{'a':{}}}}, ['a']), {'host':{},'turn':{'a':{}}})
+        bad = [False, [], {'host':{},'turn':{},'token':'SECRET'}, {'host':{},'turn':{'unknown':{}}}]
+        for field, value in [('cpu_count',True), ('load_1m',float('nan')), ('load_5m',float('inf')), ('load_15m','SECRET')]:
+            item=deepcopy(valid);item['host'][field]=value;bad.append(item)
+        for value in (-1, True, 'SECRET', 2**64):
+            item=deepcopy(valid);item['turn']['a']['rx_bytes']=value;bad.append(item)
+        for value in bad:
+            with self.subTest(value=str(value)[:60]), self.assertRaises(ValueError):
+                monitor.safe_metrics({'metrics':value}, ['a'])
+
     def test_maintenance_does_not_hide_tls_disk_dns_or_missing_ssh(self):
         for failure in ('a_web_tls','core_disk','a_dns','core_ssh'):
             self.assertEqual(monitor.outcome({failure:'failed'},True),'failed')

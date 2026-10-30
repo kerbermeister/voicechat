@@ -21,6 +21,7 @@ import 'package:http/http.dart' as http;
 import 'app_update.dart' show updateOrigin;
 import 'route_transport.dart';
 import 'route_coordinator.dart';
+import 'connection_diagnostics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'identity_field.dart';
 import 'package:flutter/material.dart';
@@ -1908,6 +1909,14 @@ class _ProbeScreenState extends State<ProbeScreen> {
                       onTap: aboutApp,
                     ),
                     ListTile(
+                      leading: const Icon(Icons.network_check),
+                      title: const Text('Диагностика соединения'),
+                      subtitle: const Text(
+                        'Маршрут и звонок без данных аккаунта',
+                      ),
+                      onTap: () => openSetting('diagnostics'),
+                    ),
+                    ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: PersonAvatar(
                         name: username.text.replaceFirst('@', ''),
@@ -2122,6 +2131,33 @@ class _ProbeScreenState extends State<ProbeScreen> {
     }
     await run(() async {
       switch (chosen) {
+        case 'diagnostics':
+          final snapshot = await connectionDiagnostics(
+            probe?.routes,
+            calls?.active,
+          );
+          if (mounted) {
+            await showAppDialog<void>(
+              context: context,
+              animationStyle: appAnimationStyle(context),
+              builder: (dialogContext) => AlertDialog(
+                title: const AppDialogTitle(
+                  child: Text('Диагностика соединения'),
+                ),
+                content: SingleChildScrollView(
+                  child: SelectableText(
+                    const JsonEncoder.withIndent('  ').convert(snapshot),
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('Закрыть'),
+                  ),
+                ],
+              ),
+            );
+          }
         case 'invitations':
           await invitations();
         case 'storage':

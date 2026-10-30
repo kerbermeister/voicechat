@@ -2,6 +2,7 @@
 import argparse
 import ipaddress
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -58,6 +59,35 @@ def inspect_core(config, identity):
     return value
 
 
+def safe_metrics(report, allowed_edges):
+    value = report.get('metrics', {})
+    if not isinstance(value, dict):
+        raise ValueError('Invalid diagnostic metrics')
+    if not value:
+        return {}  # The previous deployed diagnostic has no optional metrics.
+    topology.fields(value, ('host', 'turn'))
+    if not isinstance(value['turn'], dict) or not set(value['turn']) <= set(allowed_edges):
+        raise ValueError('Unknown metric node')
+    host = value['host']
+    if host:
+        topology.fields(host, ('cpu_count', 'load_1m', 'load_5m', 'load_15m'))
+        if type(host['cpu_count']) is not int or not 1 <= host['cpu_count'] <= 65536:
+            raise ValueError('Invalid CPU count')
+        for name in ('load_1m', 'load_5m', 'load_15m'):
+            if type(host[name]) not in (int, float) or not math.isfinite(host[name]) or not 0 <= host[name] <= 10**9:
+                raise ValueError('Invalid load metric')
+    elif host != {}:
+        raise ValueError('Invalid host metrics')
+    for counters in value['turn'].values():
+        if not counters:
+            if counters != {}:raise ValueError('Invalid TURN metrics')
+            continue
+        topology.fields(counters, ('rx_bytes', 'tx_bytes'))
+        if any(type(number) is not int or not 0 <= number <= 2**64-1 for number in counters.values()):
+            raise ValueError('Invalid byte counter')
+    return value
+
+
 def outcome(checks, maintenance):
     failures = [name for name, value in checks.items() if value != 'passed']
     # Maintenance never hides missing SSH, TLS renewal or low disk space.
@@ -81,7 +111,7 @@ def monitor(config, identity):
     root = config['root']
     if not isinstance(root, str) or not re.fullmatch(r'/[A-Za-z0-9/_-]+', root) or '..' in Path(root).parts or root == '/':
         raise ValueError('Canonical managed root required')
-    checks = {}; maintenance = False
+    checks = {}; maintenance = False; metrics = {}
     for edge in config['public']['edges']:
         identifier = edge['id']; assignment = node_inventory.edge_assignment(config['inventory'], identifier)
         def dns(edge=edge, assignment=assignment):
@@ -97,6 +127,7 @@ def monitor(config, identity):
             checks[identifier+'_'+kind+'_tls'] = probe(certificate)
     try:
         value = inspect_core(config, identity); maintenance = value['maintenance']
+        metrics = safe_metrics(value['report'], [edge['id'] for edge in config['inventory']['edges'] if edge.get('host') == 'core'])
         for name, check in value['report']['checks'].items():
             if check.get('status') not in ('passed', 'failed'):raise ValueError('Unknown check status')
             checks['core_'+name] = 'passed' if check['status']=='passed' and not check.get('renewal_due', False) else 'failed'
@@ -104,7 +135,7 @@ def monitor(config, identity):
     except Exception:
         checks['core_ssh'] = 'failed'
     return {'schema':1, 'checked_at':int(time.time()), 'status':outcome(checks, maintenance),
-            'checks':checks, 'maintenance':maintenance,
+            'checks':checks, 'maintenance':maintenance, 'metrics':metrics,
             'not_checked':['authenticated_chat_and_wss','decrypted_media','physical_clients']}
 
 
@@ -124,6 +155,8 @@ def main():
         with open(summary, 'a') as output:
             output.write('VoiceChat external monitor: **'+value['status']+'**\n\n')
             for name, status in value['checks'].items():output.write('- '+name+': '+status+'\n')
+            if value.get('metrics'):
+                output.write('\nInformational host load and cumulative TURN container network bytes (includes protocol overhead):\n\n```json\n'+json.dumps(value['metrics'], sort_keys=True)+'\n```\n')
             output.write('\nThis does not verify encrypted chat or media.\n')
     raise SystemExit(0 if value['status'] in ('healthy','maintenance') else 1)
 

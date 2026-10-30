@@ -2,6 +2,58 @@
 
 ## Актуальное поручение: односерверная приёмка, диагностика и мониторинг
 
+### Последнее обновление кандидата26
+
+Точные локальные команды/пути только в игнорируемой закрытой памятке
+`.prototype/calls26-private-resume.md` (0600); приватные ключи на VPS не передавать.
+
+Candidate1.14.0+26 подготовлен: call timer fix, local client connection diagnostics,
+readiness timings, safe host/owned TURN counters и monitor validation/summary.
+Pinned full Flutter418 PASS/skipped4,3m44s; analyzer clean. Python756 PASS/skipped3,
+96.698s в .prototype/python-test-env/bin/python (НЕ system Python без cryptography).
+Все процессы тестов завершены; последний Flutter session84326 можно считать закрытым.
+No code failures. Изменения ещё НЕ опубликованы, Mac25 и FULL62 пока production.
+Cron пересохранён13/28/43/58 UTC, actual schedule event пока не наблюдался.
+Нужны clean commit/push, один FULL63 и Mac26 release+actual Sparkle25→26. Не повторять
+полные тесты без новых runtime changes; CI выполнит обязательные проверки при deploy.
+Private before `.prototype/calls26-production-before.json` снимается session86055 —
+проверить completion. Previous feed `.prototype/macos26-previous-feed.xml` pinned25.
+Public client config `.prototype/production/client-26.json` == accepted25 config.
+Sparkle tool: apps/client/build/macos/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update.
+Постоянный signing key хранится только локально; расположение в закрытой памятке.
+Локальные build config и профиль указаны только в закрытой памятке.
+До любого нового .app сделать closed backup25 app/profile; Keychain не копировать.
+Current native ended2:04; web тоже ended, code26 ещё не в UI.
+Технический журнал docs/iterations/24-call-and-connection-diagnostics.md.
+
+### Активное поручение: звонок, затем диагностика/мониторинг
+
+30.10 пользователь запретил новые VPS/перенос A/почту, разрешил исправления и release.
+HEAD1e45563, production FULL62/a35b61b, installed Mac25. **Mac → IAB web AUDIO PASS**:
+оба реальных клиента >2min connected/excellent, web mute отобразился наMac,
+пользователь подтвердил слышимый звук. Native hangup завершил вызов. До этого
+пользователь принял другой web→web call в браузере (не наMac); это не Mac proof.
+Independent localhost getUserMedia pending15s; затем production capture/call
+разрешился после взаимодействия пользователя. Точная граница permission/gesture
+не установлена; не утверждать исправление серверной сигнализации без diff.
+Screenshot /private/tmp/voicechat-mac-web-connected.jpg, safe audio evidence вdocs.
+Local diagnostic HTTP session12767 и старая flutter session73391 ОСТАНОВЛЕНЫ;
+никогда не использовать <локальный путь> (старый3.32.2). Pinned Flutter:
+<локальный путь> (3.47.7).
+
+**В работе:** пользователь заметил старые1:07 на новом входящем. Изменены
+apps/client/lib/call_window.dart и test/call_window_test.dart: скрыть старый timer
+для direct/group/remote/dialing, сохранить completed summary. Addressed4 widget
+checks PASS (session5091 завершён). Исправление ЕЩЁ НЕ выпущено. Потребуется общий
+клиентский release с build>25, подпись Sparkle, публикация и реальный update25→26
+без очистки профиля/Keychain. Пока версия ещё1.13.0+25; поднять перед выпуском.
+Дальше закрыть безопасную клиентскую route/call диагностику и node host/relay metrics,
+проверить monitor actual schedule, затем один общий production FULL (если infra
+изменится) и Mac26. Не плодить промежуточные релизы. No subagents; automation PAUSED.
+CUA IAB tab11 тестовый web account, native /Applications/VoiceChat.app owner25;
+последний call ended2:04, текущий native AX готов к Close. Не трогать реальные чаты.
+Все прежние credentials только .prototype/single-vps/*0600, ключи на VPS не вывозить.
+
 ### Последнее состояние текущего запуска
 
 **LIVE30.10 завершён server block:** main/source a35b61b; FULL62 SUCCESS16m27s:
@@ -430,7 +482,7 @@ Production кроме READ-ONLY проверки quoted epoch не менялс�
 tab/doc, не использовать Chrome и не извлекать cookies/tokens. Source CI job/upload
 артефакт видны через авторизованный IAB; prod workflow ещё не запускать до VM proofs.
 
-Пути инструментов: pinned Flutter `/Users/anton/IdeaProjects/VoiceChat/.prototype/tools/flutter/bin/flutter`,
+Пути инструментов: pinned Flutter `<локальный путь>`,
 CARGO_HOME/RUSTUP_HOME в том же original root .prototype, RUSTUP_TOOLCHAIN=stable
 (фактически1.99.1). Sparkle SDK bin из Xcode DerivedData указан ниже в истории;
 существующий key `~/Library/Application Support/VoiceChatRelease/sparkle-private.key`,
@@ -1544,7 +1596,7 @@ exact repeat без overwrite — **7 unit PASS**. `ssh_deploy.py receive` св�
 
 GitHub repo подтверждён UI и main SHA **2cca4d3**; `origin` теперь SSH
 `git@github.com:kerbermeister/voicechat.git`, fetch выполнен. Существующий
-`/Users/anton/.ssh/id_ed25519` аутентифицирует **kerbermeister**, push **dry-run**
+`<локальный путь>` аутентифицирует **kerbermeister**, push **dry-run**
 успешен. Ветка ещё не опубликована; HTTPS без credentials не использовался для push.
 CUA docs восстановлены; tab2/browser2 — GitHub variables, binding `rolloutGitHub`.
 
@@ -1843,7 +1895,7 @@ mirror прошёл: клиент получает D, затем E через и
 CI repository variables `PUBLIC_URL`, `CLIENT_ROUTE_CONFIG` (один A) и
 `CLIENT_ROUTE_CATALOG_KEY` сохранены и проверены через GitHub UI.
 Постоянный Ed25519 signing key находится только на Mac вне Git/cache:
-`/Users/anton/.config/voicechat/signing/route-catalog.pem` (0600, каталог 0700).
+`<локальный путь>` (0600, каталог 0700).
 Public key: `UV1n2w5zyEhKBYq0Y4ORasu0CFvJCIBheWbhotiZDG8=`.
 Не перевыпускать ключ; не отправлять private key в CI/VPS. Нужна отдельная
 резервная копия владельца. Первый production signed catalog ещё не опубликован.
@@ -1927,9 +1979,9 @@ Fixture очищен. [Certificate config](three-vps-evidence/2026-10-29-vm-coho
 
 ## Текущая рабочая копия после интеграции
 
-Продолжать в `/Users/anton/.codex/worktrees/three-vps-rollout/VoiceChat`,
+Продолжать в `<локальный путь>`,
 ветка `codex/three-vps-rollout`, база `2cca4d3ac7ffdb2355a39302f8fe93ec747e8b8d`.
-Исходная грязная копия `/Users/anton/IdeaProjects/VoiceChat` сохранена;
+Исходная грязная копия `<локальный путь>` сохранена;
 не переносить её целиком поверх новой. Изменения задачи перенесены через
 трёхсторонний merge; актуальные production-исправления звонков, экрана, P2P и UI
 сохранены. Lifecycle conflict объединён: refresh маршрутов + poll экрана.
@@ -2694,7 +2746,7 @@ Production дополнительный read-only preflight: modprobe -n wiregua
 
 GitHub repo variables **SERVER_ROLE_CONFIG** и **SIGNED_ROUTE_CATALOG** сохранены
 и подтверждены UI (tab8 rolloutVariables); только public config/envelope, без
-private keys. Скриншот `/Users/anton/.codex/visualizations/2026/10/28/01a180db-aec5-70d0-bc4d-59ec5e16b1e3/voicechat-initial-variables.png`.
+private keys. Скриншот `<локальный путь>`.
 [CI #48](https://github.com/kerbermeister/voicechat/actions/runs/40918217857) завершился
 **успешно**: tests/analyze/build control+web/upload, без deploy; exact crypto caches
 сохранены. Его b0b7040 всё равно не выкатывать из-за исправленного выше baseline bug.
@@ -2750,7 +2802,7 @@ DMG **b73ed5efeda7d4e55f53f1e07761174467d68b7135a70f3072c7cbd28c20420c**.
 Не установлен/не опубликован; обязательны backup app/profile, previous installed23
 UI update и сохранение account/device/history после production перехода.
 Первая packaging попытка ошиблась путём sign_update, не принята; правильный SDK bin:
-`/Users/anton/Library/Developer/Xcode/DerivedData/Runner-esogviehnrlutigydryaphqbznxi/SourcePackages/artifacts/sparkle/Sparkle/bin`.
+`<локальный путь>`.
 Существующий private key только на Mac в VoiceChatRelease; его не вывозить.
 
 Android release APK24 собран успешно (157.7MB), исходники clean9d4; session69769

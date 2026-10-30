@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "client_version": "1.13.0(25)",
+  "production": "FULL62",
+  "native_mac_to_internal_web_connected": true,
+  "conversation_exceeded_two_minutes": true,
+  "both_clients_quality_excellent": true,
+  "web_mute_received_by_native_mac": true,
+  "microphone_restored_before_hangup": true,
+  "hangup_from_native_mac_succeeded": true,
+  "user_confirmed_audio_heard": true,
+  "earlier_user_accepted_call_was_web_to_web": true,
+  "independent_localhost_get_user_media_pending_15s": true,
+  "native_process_count": 1,
+  "media_relay_path_not_measured": true,
+  "video_screen_reconnect_not_yet_verified": true,
+  "server_config_changed_for_audio_fix": false,
+  "native_profile_or_keychain_cleared": false
+}

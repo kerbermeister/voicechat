@@ -82,6 +82,24 @@ class RouteCoordinator {
   bool _monitoring = false;
   int _failures = 0;
   bool _closed = false;
+  final _selectionClock = Stopwatch()..start();
+  Stopwatch? _recoveryClock;
+  Duration? _selectionTime, _recoveryTime;
+  RouteService? _lastFailedService;
+  int _recoveryAttempts = 0;
+
+  Map<String, Object?> diagnostics() => {
+    'state': state.name,
+    'routes': {
+      for (final service in RouteService.values)
+        service.name: route(service)?.id,
+    },
+    'initial_selection_ms': _selectionTime?.inMilliseconds,
+    'last_recovery_ms': _recoveryTime?.inMilliseconds,
+    'recovery_attempts': _recoveryAttempts,
+    'last_failed_service': _lastFailedService?.name,
+  };
+
   RouteState state = RouteState.checking;
   Stream<RouteState> get changes => _changes.stream;
 
@@ -148,6 +166,9 @@ class RouteCoordinator {
   }
 
   Future<void> recover() {
+    if (_closed) return Future.value();
+    _recoveryClock ??= Stopwatch()..start();
+    _recoveryAttempts++;
     _setState(RouteState.recovering);
     return refresh();
   }
@@ -157,6 +178,7 @@ class RouteCoordinator {
   Future<void> reportFailure(RouteService service, Uri origin) {
     if (_closed) return Future.value();
     if (config.edges.any((edge) => edge.origin == origin)) {
+      _lastFailedService = service;
       _failedUntil.remove((service, origin));
       _failedUntil[(service, origin)] = DateTime.now().add(
         const Duration(seconds: 10),
@@ -225,6 +247,13 @@ class RouteCoordinator {
         previous: _selected[service],
         reconsiderHealthy: reconsiderHealthy,
       );
+    }
+    if (RouteService.values.every((service) => _selected[service] != null)) {
+      _selectionTime ??= _selectionClock.elapsed;
+      if (_recoveryClock != null) {
+        _recoveryTime = _recoveryClock!.elapsed;
+        _recoveryClock = null;
+      }
     }
     _setState(
       _selected.values.any((route) => route != null)

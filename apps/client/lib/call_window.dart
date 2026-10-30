@@ -205,7 +205,13 @@ class _CallWindowState extends State<CallWindow> {
                 textAlign: TextAlign.center,
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
-              if (current != null || active != null && !calls.starting) ...[
+              if (current != null ||
+                  active != null &&
+                      !calls.starting &&
+                      calls.dialError == null &&
+                      direct == null &&
+                      group == null &&
+                      remote == null) ...[
                 const SizedBox(height: 8),
                 Semantics(
                   label: 'Время разговора',

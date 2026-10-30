@@ -5,9 +5,10 @@ import 'package:matrix/matrix.dart';
 import 'package:voicechat_probe/call_controller.dart';
 import 'package:voicechat_probe/call_quality.dart';
 import 'package:voicechat_probe/call_window.dart';
+import 'package:voicechat_probe/direct_call.dart';
 import 'package:voicechat_probe/voice_call.dart';
 import 'package:voicechat_probe/theme.dart';
-import 'chat_actions_test.dart' show OutboxDatabase;
+import 'chat_actions_test.dart' show OutboxDatabase, VideoSession;
 
 class WindowDatabase extends OutboxDatabase {
   @override
@@ -62,6 +63,18 @@ class WindowCall implements VoiceCall {
   Future<void> close() async => isClosed = true;
 }
 
+class IncomingSession extends VideoSession {
+  @override
+  final Room room;
+  IncomingSession(this.room);
+  @override
+  CallType get type => CallType.kVoice;
+  @override
+  CallState get state => CallState.kRinging;
+  @override
+  bool get isLocalVideoMuted => true;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -69,6 +82,72 @@ void main() {
         const MethodChannel('FlutterWebRTC.Event'),
         (_) async => null,
       );
+  testWidgets(
+    'New incoming and remote calls never inherit the finished call timer',
+    (tester) async {
+      final client = Client('new-call-timer', database: WindowDatabase());
+      final room = CallRoom(client);
+      final calls = CallController(
+        client,
+        'http://localhost:8090',
+        'ws://localhost:7880',
+        (_) {},
+      )..active = (WindowCall(room, video: false)..isClosed = true);
+      final direct = DirectCall(IncomingSession(room), () {}, (_) {});
+      Future<void> render() async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: CallWindow(calls: calls, audioOutput: () async {}),
+          ),
+        );
+        await tester.pump();
+      }
+
+      await render();
+      expect(find.text('0:42'), findsOneWidget);
+      for (final kind in ['direct', 'group', 'remote', 'dialing']) {
+        if (kind == 'direct') calls.directInvitations.add(direct);
+        if (kind == 'group') {
+          calls.invitations['next'] = CallInvitation(
+            room,
+            'next',
+            '@peer:local',
+            DateTime.now(),
+          );
+        }
+        if (kind == 'remote') {
+          calls.devices.remote['next'] = (
+            room: room,
+            device: 'other',
+            expires: DateTime.now().add(const Duration(minutes: 1)),
+          );
+        }
+        if (kind == 'dialing') {
+          calls.starting = true;
+          calls.dialingRoom = room;
+        }
+        await render();
+        expect(find.text('0:42'), findsNothing, reason: kind);
+        expect(
+          find.bySemanticsLabel('Время разговора'),
+          findsNothing,
+          reason: kind,
+        );
+        calls.directInvitations.clear();
+        calls.invitations.clear();
+        calls.devices.remote.clear();
+        calls.starting = false;
+        calls.dialingRoom = null;
+      }
+      await render();
+      expect(find.text('0:42'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.runAsync(direct.close);
+      calls.active = null;
+      await tester.runAsync(calls.close);
+      await client.dispose();
+    },
+  );
   testWidgets(
     'Audio camera requires confirmation; cancel preserves microphone and camera',
     (tester) async {

@@ -6,6 +6,9 @@ intent is checked locally; keys and raw subprocess output never enter the report
 """
 import argparse
 import json
+import math
+import re
+import subprocess
 import os
 from pathlib import Path
 import shutil
@@ -85,6 +88,56 @@ def processes(root, module, identifier=None):
         return {'status': 'failed'}
 
 
+def host_metrics():
+    try:
+        loads = os.getloadavg()
+        if len(loads) != 3 or any(not math.isfinite(value) or value < 0 for value in loads):
+            return {}
+        return dict(cpu_count=os.cpu_count() or 1,
+                    **dict(zip(('load_1m', 'load_5m', 'load_15m'), loads)))
+    except (AttributeError, OSError):
+        return {}
+
+
+def netdev_bytes(raw):
+    if len(raw) > 65536:
+        raise ValueError('Unexpected network counter size')
+    received = sent = 0
+    found = False
+    for line in raw.splitlines():
+        if ':' not in line:
+            continue
+        name, values = line.split(':', 1)
+        if name.strip() == 'lo':
+            continue
+        fields = values.split()
+        if len(fields) != 16 or any(not value.isascii() or not value.isdigit() or len(value) > 20 for value in fields):
+            raise ValueError('Invalid network counters')
+        received += int(fields[0]); sent += int(fields[8]); found = True
+    if not found or max(received, sent) > 2**64-1:
+        raise ValueError('Network counters unavailable')
+    return {'rx_bytes':received, 'tx_bytes':sent}
+
+
+def turn_metrics(root, identifier):
+    try:
+        state = edge_deploy.read_state(root, identifier)
+        ids = edge_deploy.compose(root, state['current'], 'ps', '-q', 'turn').decode().split()
+        if len(ids) != 1 or not re.fullmatch('[0-9a-f]{64}', ids[0]):
+            return {}
+        def read(*args):
+            return subprocess.check_output(['docker', *args], timeout=5,
+                                           stderr=subprocess.DEVNULL, text=True)
+        mode, project, service = read('inspect', '--format',
+            '{{.HostConfig.NetworkMode}} {{index .Config.Labels "com.docker.compose.project"}} {{index .Config.Labels "com.docker.compose.service"}}', ids[0]).split()
+        # Host/shared namespaces include unrelated services and are not relay metrics.
+        if mode in ('host', 'none') or mode.startswith('container:') or project != 'voicechat-edge-'+identifier or service != 'turn':
+            return {}
+        return netdev_bytes(read('exec', ids[0], 'cat', '/proc/net/dev'))
+    except Exception:
+        return {}  # Do not expose command output, paths or exception text.
+
+
 def report(root, public, inventory, node, *, subnet='10.241.0.0/28'):
     root = Path(root).absolute()
     node_inventory.validate(inventory, public)
@@ -99,6 +152,7 @@ def report(root, public, inventory, node, *, subnet='10.241.0.0/28'):
     if host is None or ' '.join(host.decode().split()[:2]) != nodes[node]['ssh_host_key']:
         raise ValueError('Diagnostic target differs from the verified SSH host')
     checks = {'network': check(lambda: network(inventory, node, subnet))}
+    metrics = {'host':host_metrics(), 'turn':{}}
     address = inventory['core']['tunnel_ip']
     checks['matrix'] = check(lambda: route_health.upstream_ready(
         'http://' + address + ':8088/_matrix/client/versions', 'matrix'))
@@ -112,6 +166,8 @@ def report(root, public, inventory, node, *, subnet='10.241.0.0/28'):
             continue
         identifier = edge['id']
         checks['edge_' + identifier + '_processes'] = processes(root / 'edges' / identifier, edge_deploy, identifier)
+        metrics['turn'][identifier] = (turn_metrics(root / 'edges' / identifier, identifier)
+                                       if checks['edge_' + identifier + '_processes']['status'] == 'passed' else {})
         for service, hostname in (('web', urlsplit(edge['origin']).hostname), ('turn', edge['turn_host'])):
             try:
                 value = tls(nodes[node]['public_ip'], hostname)
@@ -125,9 +181,9 @@ def report(root, public, inventory, node, *, subnet='10.241.0.0/28'):
         checks['disk'] = {'status': 'failed'}
     return {'schema': 1, 'service_id': public['service_id'], 'node': node,
             'generation': nodes[node]['generation'], 'checked_at': int(time.time()),
-            'checks': checks, 'available_checks_passed': all(value['status'] == 'passed' for value in checks.values()),
+            'checks': checks, 'metrics':metrics, 'available_checks_passed': all(value['status'] == 'passed' for value in checks.values()),
             'not_checked': ['authenticated_wss', 'turn_allocation_and_media', 'media_decryption', 'external_reachability', 'firewall_rule_equivalence'],
-            'scope': 'Node-local network, process, upstream, trusted TLS and free-space checks only'}
+            'scope': 'Node-local checks; informational host load and cumulative TURN container network bytes, including protocol overhead'}
 
 
 def main():

@@ -28,6 +28,7 @@ class NodeDiagnosticTests(unittest.TestCase):
             'status':'passed','expires_in_days':30,'renewal_due':False}))
         self.processes = self.enterContext(patch.object(diagnostic, 'processes', return_value={
             'status':'passed','commit':'a'*40}))
+        self.enterContext(patch.object(diagnostic, 'turn_metrics', return_value={'rx_bytes':100, 'tx_bytes':200}))
         self.enterContext(patch.object(diagnostic.shutil, 'disk_usage', return_value=SimpleNamespace(free=10*1024**3)))
 
     def report(self, node='edge-b'):
@@ -69,6 +70,29 @@ class NodeDiagnosticTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             diagnostic.report(self.root, self.public, self.inventory, 'edge-b', subnet='0.0.0.0/0')
         self.network.assert_not_called(); self.upstream.assert_not_called(); self.tls.assert_not_called()
+
+
+class DiagnosticMetricTests(unittest.TestCase):
+    def test_network_counters_exclude_loopback_and_reject_malformed_values(self):
+        raw = 'Inter-| Receive | Transmit\n lo: ' + '999 '*16 + '\n eth0: 100 1 0 0 0 0 0 0 200 1 0 0 0 0 0 0\n'
+        self.assertEqual(diagnostic.netdev_bytes(raw), {'rx_bytes':100,'tx_bytes':200})
+        for value in ('eth0: -1 '+ '0 '*15, 'eth0: 1', 'lo: '+'0 '*16, 'x'*65537):
+            with self.subTest(value=value[:25]), self.assertRaises(ValueError):diagnostic.netdev_bytes(value)
+
+    def test_host_load_is_informational_and_omits_unavailable_values(self):
+        with patch.object(diagnostic.os, 'getloadavg', return_value=(.2,.3,.4)), patch.object(diagnostic.os, 'cpu_count', return_value=2):
+            self.assertEqual(diagnostic.host_metrics(), {'cpu_count':2,'load_1m':.2,'load_5m':.3,'load_15m':.4})
+        with patch.object(diagnostic.os, 'getloadavg', side_effect=OSError('SECRET')):
+            self.assertEqual(diagnostic.host_metrics(), {})
+
+    def test_turn_counters_require_owned_isolated_running_container(self):
+        with patch.object(diagnostic.edge_deploy, 'read_state', return_value={'current':{}}), patch.object(diagnostic.edge_deploy, 'compose', return_value=('a'*64).encode()), patch.object(diagnostic.subprocess, 'check_output') as read:
+            read.side_effect = ['bridge voicechat-edge-a turn', 'eth0: 100 1 0 0 0 0 0 0 200 1 0 0 0 0 0 0']
+            self.assertEqual(diagnostic.turn_metrics(Path('/unused'), 'a'), {'rx_bytes':100,'tx_bytes':200})
+            for identity in ('host voicechat-edge-a turn','bridge other turn','container:abc voicechat-edge-a turn'):
+                read.reset_mock();read.side_effect=None;read.return_value=identity
+                self.assertEqual(diagnostic.turn_metrics(Path('/unused'), 'a'), {})
+                self.assertEqual(read.call_count, 1)
 
 
 class PrimitiveDiagnosticTests(unittest.TestCase):

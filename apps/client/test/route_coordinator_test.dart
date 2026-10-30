@@ -37,6 +37,28 @@ http.Response health(
 
 void main() {
   test(
+    'Diagnostics expose only route IDs and measured recovery, not origins',
+    () async {
+      final router = RouteCoordinator(
+        config(),
+        clientFactory: () => MockClient((r) async => health(r)),
+      );
+      addTearDown(router.close);
+      expect(router.diagnostics()['initial_selection_ms'], isNull);
+      await router.refresh();
+      expect(router.diagnostics()['initial_selection_ms'], isNonNegative);
+      final signaling = router.route(RouteService.signaling)!;
+      await router.reportFailure(RouteService.signaling, signaling.origin);
+      final snapshot = router.diagnostics();
+      expect(snapshot['last_failed_service'], 'signaling');
+      expect(snapshot['last_recovery_ms'], isNonNegative);
+      expect(snapshot['recovery_attempts'], 1);
+      expect((snapshot['routes'] as Map)['signaling'], isNot(signaling.id));
+      expect(jsonEncode(snapshot), isNot(contains('https://')));
+      expect(jsonEncode(snapshot), isNot(contains(config().matrixServerName)));
+    },
+  );
+  test(
     'real failures override healthy probes only for the affected service',
     () async {
       final router = RouteCoordinator(
