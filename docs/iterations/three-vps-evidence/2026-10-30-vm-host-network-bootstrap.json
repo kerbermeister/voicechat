@@ -1,0 +1,46 @@
+{
+  "prepared_network_initialization": true,
+  "network_repeat_equal": true,
+  "private_key_stays_node_local": true,
+  "owned_boot_files_exact": true,
+  "network_service_active_enabled": true,
+  "docker_not_restarted": true,
+  "wireguard_self_identity_verified": true,
+  "peerless_fixture_only": true,
+  "no_role_containers": true,
+  "ssh_identity_preserved": true,
+  "schema": 1,
+  "source_commit": "a8060f416177732387f5df1d1a0dbc4a1530005a",
+  "archive_sha256": "eb1b49020826ea6bf1895123fd83535e9748c5c4b28d16c56ec22f1f61db78f7",
+  "network_receipt": {
+    "schema": 1,
+    "node": "core",
+    "generation": 1,
+    "network_sha256": "b08c3c18c29716ed60d9a87c8d96024c005aafc68e8b48eeb3011bf8d56b384c",
+    "boot_source_sha256": "b3cc55335cc7e5166e9b4b15623fe197d0d528d48ebb8eb2e5d811b327082350"
+  },
+  "repeat_receipt_equal": true,
+  "tunnel_public_key_repeat_equal": true,
+  "transport": "Actual host_connection identity/known_hosts/options; test-only loopback NAT destination and exact HostKeyAlias",
+  "scope": "Actual peerless clean-host network/boot initialization and repeat on the prepared VM; no role/TLS/DNS/catalog deployment or external peer traffic",
+  "image": {
+    "url": "https://cloud.debian.org/images/cloud/bookworm/20261026-2643/debian-12-genericcloud-amd64-20261026-2643.qcow2",
+    "sha512": "0464b5d4ae3aa4f658468d88da83af7857b71548b30d46dcb6282770955a747fb95a983476db90d25afd0653af607224c7ebd05122ab71faa106fd712aaad652",
+    "name": "debian-12-genericcloud-amd64-20261026-2643.qcow2"
+  },
+  "other_vm_records_unchanged": true,
+  "prepared_host_reboot_pass": true,
+  "private_key_bytes_preserved_after_reboot": true,
+  "identity_receipt_unchanged_after_reboot": true,
+  "repeat_without_apt_or_docker_restart": true,
+  "no_role_containers_after_reboot": true,
+  "wireguard_and_firewall_boot_restored": true,
+  "network_ready_before_docker": true,
+  "initial_network_repeat_after_reboot": true,
+  "checked_at_utc": "2026-10-30T02:15:38.841579+00:00",
+  "limitations": [
+    "Peerless core+cohost fixture only; no physical B/C, handshake with a remote peer, API/media forwarding or role deployment is claimed.",
+    "The SSH fixture used actual host_connection options with a loopback NAT destination and exact HostKeyAlias.",
+    "Host networking was initialized on the owned disposable prepare VM only; production was not changed."
+  ]
+}

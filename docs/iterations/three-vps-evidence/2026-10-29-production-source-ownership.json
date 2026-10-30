@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "operation": "Normalize only verified legacy source/metadata ownership to root",
+  "legacy_commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "verified_git_source_files": 29,
+  "previous_source_metadata": {
+    "infra": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o755"
+    },
+    "prototype": {
+      "uid": 0,
+      "gid": 0,
+      "mode": "0o755"
+    },
+    "infra/Caddyfile": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/MACOS.md": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/README.md": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/VPS.md": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/android_release.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/bootstrap.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/client_config.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/compose.proxy.yaml": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/compose.yaml": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/configure.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/control.Dockerfile": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/crypto-tools.json": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/deploy.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/macos_release.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/publish_android_ssh.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/publish_macos.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/push-requirements.txt": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/release_source.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/setup_yandex.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/ssh_deploy.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/supervise.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/verify_macos_signature.swift": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/voicechat-backup.service": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/voicechat-backup.timer": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "infra/web.Dockerfile": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "prototype/client-policy.json": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "prototype/client_policy.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "prototype/scheduled_messages.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "prototype/voicechat_policy.py": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "release.json": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    },
+    "backend.sha256": {
+      "uid": 1001,
+      "gid": 1001,
+      "mode": "0o644"
+    }
+  },
+  "source_bytes_unchanged": true,
+  "release_pointer_unchanged": true,
+  "all_container_processes_unchanged": true,
+  "runtime_symlink_and_user_data_not_changed": true,
+  "guard_not_weakened": true
+}

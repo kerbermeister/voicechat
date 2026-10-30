@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "production_changed": false,
+  "accepted": false,
+  "failure": "After successful initial commit, read-only web planning rejected a semantically identical core because persisted JSON reordered fields.",
+  "initial_migration_and_account_data_identity_assertions_passed_before_failure": true,
+  "legacy_retirement_marker_and_controller_refusal_passed_before_failure": true,
+  "root_cause": "role_config core route-config string and render_roles core node.json depended on dictionary insertion order.",
+  "source_sha256": {
+    "infra/initial_cohost.py": "249c83862a20b5cbf5e4c518e482408359dd70b119e1887feaa23ba97bdb9b74",
+    "infra/managed_release.py": "b37fb2597a8f8f5d50f7710c939207d52e79767c978f94e0371edc62da772245",
+    "infra/role_config.py": "0247db7af98e17420be0417132e951e95580806f2d2ac67779fcdb80a1d2ff07",
+    "infra/render_roles.py": "40347876035479cccb994e4f586dc8a68e29c248e9fc742aae78250356234ac0",
+    "prototype/check_initial_cohost.py": "187e00d0b3d0faf51e14f12a83af15d81c96baec194816574f30f6719b886ae2"
+  },
+  "fixture_resources_removed": true,
+  "original_network_active_after_cleanup": true,
+  "limits": [
+    "This attempt does not prove durable baseline planning or actual per-role baseline inspection.",
+    "Corrected canonical renderer requires a fresh complete proof; no production transition."
+  ]
+}

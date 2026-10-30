@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "real_synapse_private_callback_delivered": true,
+  "other_reachable_private_destination_blocked": true,
+  "pusher_revocation_stopped_callback": true,
+  "whitelist": [
+    "10.88.0.1/32"
+  ],
+  "database": "disposable SQLite; no production data",
+  "limits": [
+    "Gateway/provider simulated; no Apple/Google delivery or E2EE claim.",
+    "Existing production pusher URL migration remains pending."
+  ],
+  "fixture_containers_networks_removed": true,
+  "probe_sha256": "b6ba823c081b5bd0f21bca25307a4018c8a48b8d3d2741d8d402a455419c0527"
+}

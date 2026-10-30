@@ -14,11 +14,13 @@ class AppUpdateDialog extends StatefulWidget {
   final Future<String?> Function() prepareInstall;
   final String origin;
   final http.Client Function()? createClient;
+  final Map<String, String>? Function()? updateRoute;
   const AppUpdateDialog({
     super.key,
     required this.prepareInstall,
     this.origin = updateOrigin,
     this.createClient,
+    this.updateRoute,
   });
   @override
   State<AppUpdateDialog> createState() => _AppUpdateDialogState();
@@ -238,7 +240,10 @@ class _AppUpdateDialogState extends State<AppUpdateDialog>
   @override
   Widget build(BuildContext context) {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
-      return MacOSUpdateDialog(prepareInstall: widget.prepareInstall);
+      return MacOSUpdateDialog(
+        prepareInstall: widget.prepareInstall,
+        updateRoute: widget.updateRoute,
+      );
     }
     final version = installed?['versionName'] ?? appVersion;
     final build = installed?['versionCode'] ?? appBuild;

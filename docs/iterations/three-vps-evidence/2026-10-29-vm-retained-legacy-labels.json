@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "actual_docker_retained_config_label_verified_by_captured_id": true,
+  "uncaptured_id_and_changed_runtime_rejected": true,
+  "fixture_container_removed": true,
+  "limits": [
+    "Low-level actual Docker namespace guard with synthetic baseline and no data mounts; not another full migration."
+  ],
+  "date": "2026-10-29",
+  "initial_cohost_sha256": "bf591a7eb3feb31bb32e7d5d768840c45eeb9c0bd046f1b7144c52c90e173479"
+}

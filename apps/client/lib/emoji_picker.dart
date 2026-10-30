@@ -1,4 +1,5 @@
 import 'app_motion.dart';
+import 'animated_emoji.dart';
 import 'package:flutter/material.dart';
 
 // Unicode characters, rendered by the device; no remote image requests from chats.
@@ -20,7 +21,7 @@ const emojiCategories = <String, String>{
 Future<String?> pickEmoji(BuildContext context) => showAppDialog<String>(
   context: context,
   animationStyle: appAnimationStyle(context),
-  builder: (_) => const _EmojiPicker(),
+  builder: (_) => const EmojiMotion(child: _EmojiPicker()),
 );
 
 class _EmojiPicker extends StatefulWidget {
@@ -61,16 +62,14 @@ class _EmojiPickerState extends State<_EmojiPicker> {
             Expanded(
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                  maxCrossAxisExtent: 52,
-                  mainAxisExtent: 48,
+                  maxCrossAxisExtent: 56,
+                  mainAxisExtent: 56,
                 ),
                 itemCount: emoji.length,
                 itemBuilder: (_, i) => IconButton(
                   tooltip: emoji[i],
                   onPressed: () => Navigator.pop(context, emoji[i]),
-                  icon: ExcludeSemantics(
-                    child: Text(emoji[i], style: const TextStyle(fontSize: 25)),
-                  ),
+                  icon: ExcludeSemantics(child: AnimatedEmoji(emoji[i])),
                 ),
               ),
             ),

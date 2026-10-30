@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "build": "24",
+  "version": "1.12.0",
+  "source_commit": "9d4a1aedd2d1e43c37d42852980dbf655dfc5c13",
+  "zip_sha256": "9ae3b1020439f19aa30bbc106782a6c4a1a66ca0ef1a48ac53b025fb40da1b61",
+  "dmg_sha256": "b73ed5efeda7d4e55f53f1e07761174467d68b7135a70f3072c7cbd28c20420c",
+  "dmg_readonly_payload_matches_signed_zip": true,
+  "codesign_verified": true,
+  "exact_extracted_zip_app_launched": true,
+  "native_about_reports_1_12_0_24": true,
+  "previous_app_and_profile_backed_up": true,
+  "installed_23_not_replaced": true,
+  "keychain_not_deleted": true,
+  "candidate_session_acceptance": "passed after user confirmed Keychain: same account/device, ten previous history markers visible",
+  "published": true,
+  "sparkle_23_to_24_update_verified": true,
+  "system_keychain_confirmation_required": false,
+  "user_confirmation_requested": true
+}

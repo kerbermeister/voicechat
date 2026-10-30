@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "full_initial_cohost_migration_committed": true,
+  "same_target_complete_resume": true,
+  "account_device_account_data_database_and_signing_identity_preserved": true,
+  "legacy_release_pointer_unchanged": true,
+  "production_changed": false,
+  "limits": [
+    "Synthetic accounts, CA, catalog key and candidate fingerprint on the marked VM.",
+    "No real device/media acceptance, production transition or actual machine reboot."
+  ],
+  "pre_public_rollback_and_committed_core_public_recovery_drills": true,
+  "legacy_source_commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "legacy_control_image": "ghcr.io/voicechat-fixture/legacy-control@sha256:bc8327d779a99c7be95ae057a1d8f1a791c6bf52618fbf0317dfd08292376084",
+  "fixture_resources_removed": true,
+  "date": "2026-10-29",
+  "source_sha256": {
+    "infra/legacy_core.py": "dfa6ad95ccce19c31d635a5514807e5e274d379b00b67a5af412a343469c023f",
+    "infra/role_boot.py": "d47428206da9de745fab2fc0bbff8dfa47a1cc0ef04503528494e9c14d5767d6",
+    "infra/role_bootstrap.py": "897ad02cd2009fb31e93dd852bd70dc1f59e5ba4acb072a91bdb82a00644b60c",
+    "infra/core_deploy.py": "64c82dcf25e34dfda6d125cfca92ae9d1e8c4ce3ff588a3df8fda79a6a9ee0ae",
+    "infra/role_deploy.py": "c0526f1937b3e916fb7c7afa9ecb3975bc22c0c8255f58d5cb517471e3486adc",
+    "infra/push_route_migration.py": "dbeb243b28f38a5ddb5dd93fc2945c7a075b5ea2d22f7cdd990cd84924588a06",
+    "prototype/check_legacy_core_preflight.py": "2ea84cc79bad14537a955bdc392b2602919e53497778d33967ed727964baede5",
+    "prototype/check_initial_cohost.py": "4f5f6b6d8a93c2acc450b5bc129481a08ca50a5b6d329873021d448b2859ea5f",
+    "prototype/initial_cohost_business.py": "e03f459aba2672ee5329a1aba398410338bb406b392ea3bb991c434bbc8f1741",
+    "prototype/initial_cohost_network.py": "90d734b93533028ebd609f2f6b1c2ab46e11c2271696a0464f99fc4e8cce6c59",
+    "infra/initial_cohost.py": "26dd9f01d6ee1260f7094e98108d853fcd6c3e087422753e98c183b02e895ac9"
+  },
+  "pre_public_rollback_kept_account_data_written_after_snapshot": true,
+  "explicit_retry_after_completed_rollback_succeeded": true,
+  "actual_type_notify_boot_fenced_stopped_roles_without_restarts": true,
+  "committed_core_and_edge_configure_containers_not_reexecuted_on_recovery": true,
+  "public_commit_lost_reply_recovered_forward": true,
+  "current_fixture_cleanup_independently_verified": true,
+  "older_anonymous_volumes_preserved": 2,
+  "original_network_active_with_saved_public_key": true
+}

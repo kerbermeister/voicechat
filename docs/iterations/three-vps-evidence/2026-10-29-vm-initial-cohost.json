@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "full_initial_cohost_migration_committed": true,
+  "same_target_complete_resume": true,
+  "account_device_account_data_database_and_signing_identity_preserved": true,
+  "legacy_release_pointer_unchanged": true,
+  "production_changed": false,
+  "limits": [
+    "Synthetic accounts, CA, catalog key and candidate fingerprint on the marked VM.",
+    "No real device/media acceptance, production transition or full-phase fault drills."
+  ],
+  "legacy_source_commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "legacy_control_image": "ghcr.io/voicechat-fixture/legacy-control@sha256:bc8327d779a99c7be95ae057a1d8f1a791c6bf52618fbf0317dfd08292376084",
+  "fixture_resources_removed": true,
+  "date": "2026-10-29",
+  "source_sha256": {
+    "infra/legacy_core.py": "dfa6ad95ccce19c31d635a5514807e5e274d379b00b67a5af412a343469c023f",
+    "infra/role_boot.py": "d47428206da9de745fab2fc0bbff8dfa47a1cc0ef04503528494e9c14d5767d6",
+    "infra/role_bootstrap.py": "897ad02cd2009fb31e93dd852bd70dc1f59e5ba4acb072a91bdb82a00644b60c",
+    "infra/core_deploy.py": "64c82dcf25e34dfda6d125cfca92ae9d1e8c4ce3ff588a3df8fda79a6a9ee0ae",
+    "infra/role_deploy.py": "c0526f1937b3e916fb7c7afa9ecb3975bc22c0c8255f58d5cb517471e3486adc",
+    "infra/push_route_migration.py": "dbeb243b28f38a5ddb5dd93fc2945c7a075b5ea2d22f7cdd990cd84924588a06",
+    "prototype/check_legacy_core_preflight.py": "ea3c43f386b51a6de69e170b93aef8e08a005db0b966239b0fce62e25b2428cc",
+    "prototype/check_initial_cohost.py": "03ddd986cbabfe8abbcdd39c01ab952e0e48127a79bdc75a2a0dcb3a85734350",
+    "prototype/initial_cohost_business.py": "2592e9d8fd5973715e41883bfdaf82afd50f9f9b3173dd36ae3b75d9f86d6e86",
+    "prototype/initial_cohost_network.py": "90d734b93533028ebd609f2f6b1c2ab46e11c2271696a0464f99fc4e8cce6c59",
+    "infra/initial_cohost.py": "5a4d79182e8f262f259cdeb0d9512d4568d905731567a556a4a4aa3891a3e3d9"
+  },
+  "initial_cleanup_left_empty_external_tls_bridge": true,
+  "subsequent_manual_cleanup_verified_empty_bridge_labels_config_hash_and_ipam_before_removal": true
+}

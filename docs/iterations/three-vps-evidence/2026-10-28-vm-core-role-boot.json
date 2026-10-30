@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "boot_before": "29cf2673-67d5-4032-ae2c-6e359ba492c4",
+  "wireguard_key_sha256": "4dbf52dd3a686702febdfa6e17097c236178a5845549e5bfb4ac6112c35233c8",
+  "shared_upgrade_preserved_docker": true,
+  "starting_healthy_role_preserved_control_process": true,
+  "limits": [
+    "Disposable VM and synthetic account; no production changes or physical device/media acceptance."
+  ],
+  "systemd_recovered_killed_control_without_docker_restart_policy": true,
+  "restart_preserved_account_and_identity": true,
+  "missing_network_blocked_voicechat_but_not_neighbor_or_docker": true,
+  "restored_preserved_account_and_identity": true,
+  "startup_budget_control_image": "ghcr.io/voicechat-fixture/control@sha256:abc8e6e2f226aec43a3e59e0229b18b72070f4046f79e5a63b99ea410fd7b9d4",
+  "cold_start_before_fix_exceeded_first_probe": true,
+  "new_startup_budget_cold_reboot_without_systemd_retry": true,
+  "actual_control_initial_health_grace_seconds": 30,
+  "fixture_resources_removed": true,
+  "source_sha256": {
+    "core_deploy.py": "8a37c56bb46eb3cb90136fc507fe641fa3bf1b7e82b3115e945c5932365400bd",
+    "role_boot.py": "1726ca32e12d0253dfaa05dd5f7db9d07526ecb08964481c5f9f25e5e1451515",
+    "role_bootstrap.py": "3d85b3c2d99a7076a47ea834dabc81c499f28e310d54f87bb5d9ada693ef9dd3",
+    "network_bootstrap.py": "dc742d700675116ac4df7f6e88bc4c15aab594b2b74728999dc3b5dbe2c92584",
+    "role_config.py": "3984c022ed84d2c01a6b883836b740dfcb87d1659368f150e5f8586c1d2a0e18",
+    "supervise.py": "91f695de92746ca688abb35d89db3a21fd97b15ba5aea00e5b68c5a1bd501fb8",
+    "compose.yaml": "2c54db78e275e3c334b78dfcc8e9b7d8ad3edd369fc523b48e38be9bba5d8545"
+  },
+  "cold_boot_verified_revision": "ffffffffffffffffffffffffffffffffffffffff",
+  "health_grace_verified_revision": "1111111111111111111111111111111111111111"
+}

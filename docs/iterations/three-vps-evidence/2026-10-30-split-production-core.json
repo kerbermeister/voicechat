@@ -1,0 +1,195 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-30T05:13:32.381870+00:00",
+  "scope": "core",
+  "commit": "42706c5f6032bb56d7d718e75d0ef7b4662dfc95",
+  "edge_commit": "2eaee99516c942c2d9026290477777e69b3c6379",
+  "baseline_schema": 2,
+  "backend": "cdfff53eea70f69ba7feb7c1e053e372bbcdba893d5d907452a099f1bf0ea70f",
+  "core_guard": "fbd0570e067d3bdbe1f528714277960460359bc09426297cfeff47ad563a600e",
+  "source_bundle": "5f94331cddef5f87300009ba33ef445d68e8e0499753fb8d4f0c5c068d2b84da",
+  "pointer": {
+    "baseline": "3d91701700de2f773b918b2577d8bc34fd766841dc51788f2541856b6fdc4dec",
+    "data_identity": {
+      "postgres_system_identifier": "7699984398180954145",
+      "signing_sha256": "aa2dbe341c20ee62f88663b32942008e11ab9dfa4b782bba1076217bd302dbb0"
+    },
+    "kind": "managed",
+    "legacy_root": "/srv/voicechat",
+    "schema": 1,
+    "shared_root": "/var/lib/voicechat-shared-ingress"
+  },
+  "previous": {
+    "baseline": "10c9698d72ff458c67b1f667d764d64f125c448a0174aeb5e1575e220c2a0e3c",
+    "data_identity": {
+      "postgres_system_identifier": "7699984398180954145",
+      "signing_sha256": "aa2dbe341c20ee62f88663b32942008e11ab9dfa4b782bba1076217bd302dbb0"
+    },
+    "kind": "managed",
+    "legacy_root": "/srv/voicechat",
+    "schema": 1,
+    "shared_root": "/var/lib/voicechat-shared-ingress"
+  },
+  "facts": {
+    "core": {
+      "schema": 1,
+      "role": "core",
+      "edge_id": null,
+      "manifest": {
+        "commit": "42706c5f6032bb56d7d718e75d0ef7b4662dfc95",
+        "contracts": {
+          "core_api": 1,
+          "core_storage": 1,
+          "role_config": 1,
+          "route_schema": 1
+        },
+        "edge_id": null,
+        "files": {
+          "infra/client_config.py": "33237386efaa677d9c7dc880d687268c4e698028bb397e2247448ac9fb322d72",
+          "infra/compose.core.json": "f350f83b1bb17ab250c3847c44585b7299513423c61f439184d9ceda447b3a49",
+          "infra/compose.yaml": "d23e4bde7f42f62ab99c1ee9d3482f24a21fedb4b1fd7447fba002753320b405",
+          "infra/configure.py": "92947e793134941855d758719f726017453e4385b6076346cd0b3d7d97c45da9",
+          "infra/firewall_config.py": "ce8411fac264573564ad0c9982985223c96333cf2ed740d308e6bc5e163139b5",
+          "infra/firewall_runtime.py": "30c9ec25283be7c613548bc1a8868c14cb45b093e0e4898dcd6f511d2eff9afc",
+          "infra/host_preflight.py": "d27ebb6543e8b85bb2580cb59d7ae0f783993e02e6e1ba582f0bb7fc7dc31b0e",
+          "infra/known_hosts": "f1005740bf13b212ac9c8d0ce6e213f4f6dfdd5d5994c1fe7fca76f367afe03a",
+          "infra/managed_state.py": "4edb0656e4e4688ce673cede726c0663df11d2331f70662cc0648a1e7d30eb3d",
+          "infra/network_bootstrap.py": "06a4b69efbce33c42598e98820c61cfeb3e2f16550519df293a614e750db61f7",
+          "infra/network_runtime.py": "61db23b551af81c404a4bc8c86a5b643d5d48dda322ab65b85cd92d01ee905f6",
+          "infra/node.json": "a01d458085ba89a4410c00b517c875f6d19bca9466b526983ac7c00fbbd4d7ba",
+          "infra/node_inventory.py": "2d2e277394c51542488259061d5531303e6d20fac574d804f4ca1aa286a2f180",
+          "infra/push_route_migration.py": "dbeb243b28f38a5ddb5dd93fc2945c7a075b5ea2d22f7cdd990cd84924588a06",
+          "infra/topology.py": "6995c97f2992829894d230816624e6ebe4ef3760f242ed31aa038878ebe6ff14",
+          "infra/tunnel_config.py": "0c78473d5071a091fe1765978b10b1c9457115884927232b6247b53994210b53",
+          "infra/tunnel_runtime.py": "c9a5ffb293b48a568adf2acd0b6f2af7a9d31d6b5018e3e88b3be526baea3a32",
+          "infra/voicechat-docker-network.conf": "dd5858789491bdf323898688a23976c91cb81e49c0fc012d2aabf2ec0a588e6f",
+          "infra/voicechat-network.service": "bded12e548ed20d3bafb805f7eb7a93fbadf53970959775068114d9af6ca8221",
+          "prototype/client-policy.json": "8fd8fb62e25ba0be4f27d5310e79263752f83b839e8450f575ea76f73a7d53d5",
+          "prototype/client_policy.py": "2485d44c6a6125cc7642e73125c4a2f341603321c99d36bac9545b3e95342796",
+          "prototype/scheduled_messages.py": "f45f69aac9ec96855c0e75d5ef9a15069b8ae359cda2099e9c4797c24b023bfd",
+          "prototype/voicechat_policy.py": "301695d294c562527b8e7ee631458eaeef6963d5809a1f4305b32cec34e5b500"
+        },
+        "identity": {
+          "canonical_origin": "https://univc.duckdns.org",
+          "matrix_server_name": "univc.duckdns.org"
+        },
+        "images": {
+          "configure": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+          "control": "ghcr.io/kerbermeister/voicechat/control@sha256:f0165cbfb99157c60337a77b73a0bd5e6ce3d796dbd9b32c58c6415f0e4b568d",
+          "postgres": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+          "synapse": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0"
+        },
+        "node_sha256": "78e1d8d7cf9f79b2537a35b28329126722a533e4f35443a0b2748e368cafaea3",
+        "role": "core",
+        "schema": 1,
+        "service_id": "voicechat",
+        "topology_sha256": "bce62a70f7b1e88718806cc327544b57983313fc54f8f161d9f23d1ec956dbda"
+      },
+      "processes": [
+        "6d7c22a7b842deca70b16c0869dffb420788785931e864a6169dc5b37c243e25 true 2026-10-29T19:08:39.014458927Z 0",
+        "dbef9e3cb03ccbedc4f0e6cee38af45c198a67980c30a241446337ba694fc30a true 2026-10-30T05:12:46.667247207Z 0",
+        "e8c3f7544173f45fd584432c923342a66dc729af074402a91b1e87bce2a7f5f6 true 2026-10-30T05:12:44.756087368Z 0"
+      ],
+      "runtime_sha256": "2e8ba47dfe715d3c5b419003948c7e0965d1afaeb83bec9eb758f7b962258e6f",
+      "data_identity": {
+        "postgres_system_identifier": "7699984398180954145",
+        "signing_sha256": "aa2dbe341c20ee62f88663b32942008e11ab9dfa4b782bba1076217bd302dbb0"
+      }
+    },
+    "edge-a": {
+      "schema": 1,
+      "role": "edge",
+      "edge_id": "a",
+      "manifest": {
+        "commit": "2eaee99516c942c2d9026290477777e69b3c6379",
+        "contracts": {
+          "core_api": 1,
+          "core_storage": 1,
+          "role_config": 1,
+          "route_schema": 1
+        },
+        "edge_id": "a",
+        "files": {
+          "infra/Caddyfile": "b366341b8e6ca66e6fbab5874bdfd62e66868dd642cc36e56f9b50c9d9e89a62",
+          "infra/client_config.py": "33237386efaa677d9c7dc880d687268c4e698028bb397e2247448ac9fb322d72",
+          "infra/compose.edge.json": "298f1715d9572398ea70d38de1067718ae890f1db565f9179a6663dfcd94bec3",
+          "infra/compose.shared-front.json": "d3d977dd3d301aef88936a7023a6d014ea0354eba4ae582839c290ad9300aa5d",
+          "infra/configure.py": "92947e793134941855d758719f726017453e4385b6076346cd0b3d7d97c45da9",
+          "infra/edge_turn.py": "32ba6d941295cdf1a91fed24c72bd779ee13943757d1ffea86aabccf3bb06445",
+          "infra/firewall_config.py": "ce8411fac264573564ad0c9982985223c96333cf2ed740d308e6bc5e163139b5",
+          "infra/firewall_runtime.py": "30c9ec25283be7c613548bc1a8868c14cb45b093e0e4898dcd6f511d2eff9afc",
+          "infra/haproxy.cfg": "6bb54a26e3a6b6c8a5239368799a25088d3c6d8b398937c77593bf86f117510d",
+          "infra/host_preflight.py": "d27ebb6543e8b85bb2580cb59d7ae0f783993e02e6e1ba582f0bb7fc7dc31b0e",
+          "infra/known_hosts": "f1005740bf13b212ac9c8d0ce6e213f4f6dfdd5d5994c1fe7fca76f367afe03a",
+          "infra/managed_state.py": "4edb0656e4e4688ce673cede726c0663df11d2331f70662cc0648a1e7d30eb3d",
+          "infra/network_bootstrap.py": "06a4b69efbce33c42598e98820c61cfeb3e2f16550519df293a614e750db61f7",
+          "infra/network_runtime.py": "61db23b551af81c404a4bc8c86a5b643d5d48dda322ab65b85cd92d01ee905f6",
+          "infra/node.json": "559a49965250140e69d8020b4d0152df9b3326d42cafc0605a2c1b9f441af031",
+          "infra/node_inventory.py": "2d2e277394c51542488259061d5531303e6d20fac574d804f4ca1aa286a2f180",
+          "infra/route_health.py": "50fab59fe63ed25d3c8161b4c43f7d222d68c160f89fa6578f26658c273b96cc",
+          "infra/tls_activation.py": "56f0379a89b57b13dc931d34d6fd497f47ad575d260542f83258d41976069ab0",
+          "infra/tls_material.py": "3b8cc07325d4658c61e5b144b7497651473cf354556d6392f3e2cadcf2d58954",
+          "infra/tls_runtime.py": "1c4489e6734add4b5e1883dd5500ab39d73aafe163fc36d0c0ccc210e63b360f",
+          "infra/topology.py": "6995c97f2992829894d230816624e6ebe4ef3760f242ed31aa038878ebe6ff14",
+          "infra/tunnel_config.py": "0c78473d5071a091fe1765978b10b1c9457115884927232b6247b53994210b53",
+          "infra/tunnel_runtime.py": "c9a5ffb293b48a568adf2acd0b6f2af7a9d31d6b5018e3e88b3be526baea3a32",
+          "infra/voicechat-docker-network.conf": "dd5858789491bdf323898688a23976c91cb81e49c0fc012d2aabf2ec0a588e6f",
+          "infra/voicechat-network.service": "bded12e548ed20d3bafb805f7eb7a93fbadf53970959775068114d9af6ca8221"
+        },
+        "identity": {
+          "canonical_origin": "https://univc.duckdns.org",
+          "matrix_server_name": "univc.duckdns.org"
+        },
+        "images": {
+          "configure": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+          "route-health": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+          "turn": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+          "web": "ghcr.io/kerbermeister/voicechat/web@sha256:794deef3d9677cb82c67838a8bffb0e36fd709ba73a78f3f5a82414d9bbc16be"
+        },
+        "node_sha256": "c1897fd498957cad9554d7c8b11c23f8cc55d77fc2281af07b2f835760c6cfbb",
+        "role": "edge",
+        "schema": 1,
+        "service_id": "voicechat",
+        "topology_sha256": "bce62a70f7b1e88718806cc327544b57983313fc54f8f161d9f23d1ec956dbda"
+      },
+      "processes": [
+        "19a3cbd58189fc78204e065540db08444781d6661421439a15e16c47c50e5bb3 true 2026-10-30T05:08:30.875252393Z 0",
+        "4414d00215e718fa70627a46a0f30450fdd274d8d610e440d70d37f7bfc04cd2 true 2026-10-30T05:08:31.06667546Z 0",
+        "c06d8c3a2ef32c441741cfcc2612aeca8a332674ebf83cf59c8091c16a11166e true 2026-10-30T05:08:30.692861622Z 0"
+      ]
+    }
+  },
+  "services": {
+    "core": {
+      "configure": "b49b7f8dfde806f8f8d55b351d98dadc65cbf9c10aa23a5ae97b79267bb032d2 2026-10-30T05:12:44.087363088Z 0",
+      "control": "e8c3f7544173f45fd584432c923342a66dc729af074402a91b1e87bce2a7f5f6 2026-10-30T05:12:44.756087368Z 0",
+      "postgres": "6d7c22a7b842deca70b16c0869dffb420788785931e864a6169dc5b37c243e25 2026-10-29T19:08:39.014458927Z 0",
+      "synapse": "dbef9e3cb03ccbedc4f0e6cee38af45c198a67980c30a241446337ba694fc30a 2026-10-30T05:12:46.667247207Z 0"
+    },
+    "edge-a": {
+      "configure": "320a6670a9d47e85dc5cd637c0c7f76742c38ebc51c66e110046fc86c3f87fa4 2026-10-30T05:08:09.372137721Z 0",
+      "route-health": "c06d8c3a2ef32c441741cfcc2612aeca8a332674ebf83cf59c8091c16a11166e 2026-10-30T05:08:30.692861622Z 0",
+      "turn": "4414d00215e718fa70627a46a0f30450fdd274d8d610e440d70d37f7bfc04cd2 2026-10-30T05:08:31.06667546Z 0",
+      "web": "19a3cbd58189fc78204e065540db08444781d6661421439a15e16c47c50e5bb3 2026-10-30T05:08:30.875252393Z 0"
+    }
+  },
+  "neighbors": [
+    "/deploy-backend-1 3fd937c2ef6da148d130bfb733be1378fb95480f6e8f5edc032889ed1edfb1bb 2026-10-26T07:13:05.01469252Z 0",
+    "/deploy-caddy-1 5ead024ec426244acdbd9b491019d34e2711748290b7644bf6f9a30e5dc387ac 2026-10-29T19:09:12.695869201Z 0",
+    "/deploy-frontend-1 923e088abb814b746ce4e2921ec93475730b74ec0dca873bc8cde8f2767a853b 2026-10-26T07:13:05.02282237Z 0",
+    "/deploy-postgres-1 23fe66be645c739550e59657d845a114e9794474f13ae3b10fb244a5fbc34581 2026-10-26T07:13:04.999798589Z 0",
+    "/deploy-stt-1 629c3ebeb59ad094feeb0351561b510075974953d314c5aede628374812efb8c 2026-10-26T07:13:04.95938781Z 0",
+    "/voicechat-shared-front-ingress-1 368088048bca475b5b66aa31d51990627aafbcf5726355d2ccbca8d9fb30903a 2026-10-29T19:09:15.200049297Z 0"
+  ],
+  "https": {
+    "univc.duckdns.org/": 200,
+    "univc.duckdns.org/health/route": 200,
+    "univc.duckdns.org/updates/macos/appcast.xml": 200,
+    "listing-helper.flashhub.net/": 200
+  },
+  "maintenance_timers_active_enabled": true,
+  "macos24_feed_unchanged": true,
+  "stage": "core",
+  "candidate_applied_verified": true,
+  "untouched_services_verified": true
+}

@@ -18,22 +18,26 @@ def stop(children):
             child.wait()
 
 
-def run(commands, healthy, deadline=5):
+def run(commands, healthy, deadline=5, startup_deadline=None):
     stopping = threading.Event()
     def terminate(*_): stopping.set()
     signal.signal(signal.SIGTERM, terminate)
     signal.signal(signal.SIGINT, terminate)
     children = []
     failed_since = time.monotonic()
+    started = False
+    startup_deadline = deadline if startup_deadline is None else startup_deadline
     try:
         for command in commands: children.append(subprocess.Popen(command))
         while not stopping.wait(.5):
             if any(child.poll() is not None for child in children): return 1
             try: ready = healthy()
             except (OSError, ValueError): ready = False
-            if ready: failed_since = None
+            if ready:
+                started = True
+                failed_since = None
             elif failed_since is None: failed_since = time.monotonic()
-            elif time.monotonic() - failed_since >= deadline: return 1
+            elif time.monotonic() - failed_since >= (deadline if started else startup_deadline): return 1
         return 0
     finally: stop(children)
 
@@ -46,7 +50,9 @@ def healthy():
 
 
 if __name__ == '__main__':
+    # Cold imports/SFU startup can exceed the runtime outage cutoff. Once ready,
+    # keep the five-second cutoff so an unhealthy controller still cuts media.
     raise SystemExit(run([
         ['/usr/local/bin/livekit-server','--config','/config/livekit.json'],
         [sys.executable,'-u','prototype/token_server.py'],
-    ], healthy))
+    ], healthy, startup_deadline=30))

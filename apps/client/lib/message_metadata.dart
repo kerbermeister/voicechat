@@ -1,3 +1,4 @@
+import 'emoji_style.dart';
 import 'package:flutter/material.dart';
 
 /// A reserved footer keeps reaction updates from resizing the message bubble.
@@ -74,7 +75,17 @@ class MessageMetadata extends StatelessWidget {
                             ).textTheme.labelSmall?.copyWith(fontSize: 12),
                           ),
                           onPressed: () => onReaction(entry.key),
-                          child: Text('${entry.key} ${entry.value.length}'),
+                          child: Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: entry.key,
+                                  style: emojiStyle.copyWith(fontSize: 14.4),
+                                ),
+                                TextSpan(text: ' ${entry.value.length}'),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),

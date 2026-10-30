@@ -38,7 +38,29 @@ class TestRoom implements Room {
   }
 }
 
+class FixtureAccountDatabase implements DatabaseApi {
+  final values = <String, BasicEvent>{};
+  @override
+  Future<Map<String, BasicEvent>> getAccountData() async => Map.of(values);
+  @override
+  Future<void> storeAccountData(
+    String type,
+    Map<String, Object?> content,
+  ) async {
+    values[type] = BasicEvent(type: type, content: content);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class TestClient implements Client {
+  final _sync = CachedStreamController<SyncUpdate>();
+  @override
+  CachedStreamController<SyncUpdate> get onSync => _sync;
+  final _database = FixtureAccountDatabase();
+  @override
+  DatabaseApi get database => _database;
   @override
   final onPresenceChanged = CachedStreamController<CachedPresence>();
   @override

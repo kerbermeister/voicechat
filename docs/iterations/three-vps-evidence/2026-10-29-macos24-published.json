@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "build": "24",
+  "version": "1.12.0",
+  "source_commit": "9d4a1aedd2d1e43c37d42852980dbf655dfc5c13",
+  "publication_root": "/srv/voicechat-managed/edges/a/runtime/macos-updates",
+  "exact_accepted_package_published": true,
+  "keychain_confirmed_by_user": true,
+  "candidate_same_account_and_device": true,
+  "candidate_previous_history_markers_visible": 10,
+  "feed_https_and_no_cache": true,
+  "feed_signature_verified": true,
+  "archive_signature_matches_embedded_public_key": true,
+  "archives": {
+    "VoiceChat.zip": {
+      "sha256": "9ae3b1020439f19aa30bbc106782a6c4a1a66ca0ef1a48ac53b025fb40da1b61",
+      "bytes": 37202349,
+      "https_verified": true,
+      "immutable_cache": true
+    },
+    "VoiceChat.dmg": {
+      "sha256": "b73ed5efeda7d4e55f53f1e07761174467d68b7135a70f3072c7cbd28c20420c",
+      "bytes": 41962865,
+      "https_verified": true,
+      "immutable_cache": true
+    }
+  },
+  "sparkle_23_to_24_installation_verified": true,
+  "private_signing_key_remained_on_Mac": true,
+  "installed_app_payload_matches_signed_zip": true,
+  "payload_files_and_links": 285,
+  "installed_same_account_and_device": true,
+  "installed_previous_history_markers_visible": 10,
+  "os_version": "15.3.1",
+  "installed_app_path": "/Applications/VoiceChat.app",
+  "native_ui_version_verified": "1.12.0(24)",
+  "profile_and_keychain_not_deleted": true,
+  "installed24_route_aware_update_check_passed": true
+}

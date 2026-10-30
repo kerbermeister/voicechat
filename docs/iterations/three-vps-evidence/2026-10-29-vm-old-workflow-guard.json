@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "production_changed": false,
+  "legacy_source_commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "legacy_deploy_sha256": "3fb2463ccf77fa3dcfe57ae09ef32c06a9932aed401c16c542fe92ab58ede2bb",
+  "legacy_full_deploy_to_managed_root_refused_before_docker": true,
+  "typed_global_pointer_unchanged": true,
+  "fixture_resources_removed": true,
+  "limits": [
+    "Exact historical deploy.py with synthetic typed pointer and absent global stand.env; no production variables changed.",
+    "Canonical DEPLOY_ROOT must change to managed root after public transition; the marker alone cannot stop this old revision."
+  ]
+}

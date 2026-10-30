@@ -278,4 +278,48 @@ class DeploymentTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,'key is missing'):
                 deploy.backup(root, release, {})
 
+    def test_core_backup_uses_core_compose_volumes_and_durable_role_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / 'runtime').mkdir()
+            release = root / 'releases' / ('b' * 64)
+            names = ('synapse', 'control', 'media-config', 'turn-config')
+            config = json.dumps({'volumes': {name: {'name': 'isolated_' + name} for name in names}}).encode()
+            with patch.object(deploy.subprocess, 'check_output', return_value=config) as inspect, \
+                 patch.object(deploy, 'execute') as execute:
+                deploy.backup(root, release, {}, core=True)
+            self.assertIn(str(release / 'infra/compose.core.json'), inspect.call_args.args[0])
+            commands = [call.args[0] for call in execute.call_args_list]
+            dump = next(args for args in commands if 'pg_dump' in args)
+            self.assertIn(str(release / 'infra/compose.core.json'), dump)
+            snapshot = next(args for args in commands if 'backup' in args)
+            self.assertIn(f'{root}/state.json:/snapshot/state.json:ro', snapshot)
+            self.assertIn('isolated_turn-config:/snapshot/turn-config:ro', snapshot)
+            self.assertFalse(any('certificates:' in value or 'current.json:' in value for value in snapshot))
+            self.assertEqual(commands[-1][-1], 'check')
+
+    def test_core_compose_refuses_legacy_override(self):
+        with tempfile.TemporaryDirectory() as directory:
+            release = Path(directory)
+            runtime = release / 'infra/runtime'
+            runtime.mkdir(parents=True)
+            (runtime / 'compose.override.yaml').write_text('services: {}')
+            with self.assertRaisesRegex(ValueError, 'Legacy Compose override'):
+                deploy.compose_command(release, 'config', core=True)
+
+    def test_legacy_deploy_cannot_mutate_an_installation_migrated_to_roles(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            marker = root / 'role-deployment.json'
+            marker.write_text('{}')
+            with patch.object(deploy, 'execute') as execute:
+                with self.assertRaisesRegex(SystemExit, 'core/edge roles'):
+                    deploy.deploy(root, root / 'releases/candidate', None)
+                execute.assert_not_called()
+                marker.unlink()
+                marker.symlink_to(root / 'missing')
+                with self.assertRaisesRegex(SystemExit, 'core/edge roles'):
+                    deploy.deploy(root, root / 'releases/candidate', None)
+                execute.assert_not_called()
+
 if __name__=='__main__': unittest.main()

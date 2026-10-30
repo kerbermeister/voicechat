@@ -1,0 +1,37 @@
+{
+  "unified_bootstrap_repeat_verified": true,
+  "network_repeat_equal": true,
+  "private_key_stays_node_local": true,
+  "owned_boot_files_exact": true,
+  "network_service_active_enabled": true,
+  "docker_not_restarted": true,
+  "wireguard_self_identity_verified": true,
+  "peerless_fixture_only": true,
+  "no_role_containers": true,
+  "ssh_identity_preserved": true,
+  "schema": 1,
+  "source_commit": "3a8bf192f5e134667f2311e2c57fe5b72ee5bb8c",
+  "archive_sha256": "03b04182ef07a94618231dc1ed53f33fe42cee93a7f800141bd4376e34c824cf",
+  "network_receipt": {
+    "schema": 1,
+    "node": "core",
+    "generation": 1,
+    "network_sha256": "b08c3c18c29716ed60d9a87c8d96024c005aafc68e8b48eeb3011bf8d56b384c",
+    "boot_source_sha256": "b3cc55335cc7e5166e9b4b15623fe197d0d528d48ebb8eb2e5d811b327082350"
+  },
+  "repeat_receipt_equal": true,
+  "tunnel_public_key_repeat_equal": true,
+  "transport": "Actual host_connection identity/known_hosts/options; test-only loopback NAT destination and exact HostKeyAlias",
+  "scope": "Unified SSH dependency/key/network bootstrap repeat on the already prepared peerless VM; initial install/network/reboot proven separately; no role/TLS/DNS/catalog deployment or external peer traffic",
+  "image": {
+    "url": "https://cloud.debian.org/images/cloud/bookworm/20261026-2643/debian-12-genericcloud-amd64-20261026-2643.qcow2",
+    "sha512": "0464b5d4ae3aa4f658468d88da83af7857b71548b30d46dcb6282770955a747fb95a983476db90d25afd0653af607224c7ebd05122ab71faa106fd712aaad652",
+    "name": "debian-12-genericcloud-amd64-20261026-2643.qcow2"
+  },
+  "other_vm_records_unchanged": true,
+  "checked_at_utc": "2026-10-30T02:33:48.458337+00:00",
+  "limitations": [
+    "Unified path repeated on the already initialized peerless VM. Fresh dependency installation, initial network and reboot are documented in separate evidence.",
+    "No application role, remote peer handshake, TLS/DNS/catalog publication, real media or physical VPS redundancy is claimed."
+  ]
+}

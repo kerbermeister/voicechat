@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "time": "2026-10-30T02:13:29.235930+00:00",
+  "commit": "2dae7580c6b229dcd8c804a4efac21055230a6cc",
+  "source_bundle_sha256": "b951f522fa6fd6ba0c08bcb155a8a47a9acfc0491dad8359f7d7c7080dabd968",
+  "managed_full_complete": true,
+  "checked_after_core_build_only_run": 54,
+  "all_role_processes_unchanged_since_full53": true,
+  "build_only_candidate_not_installed": true,
+  "actual_role_baselines_and_source_delivery_verified": true,
+  "control": "ghcr.io/kerbermeister/voicechat/control@sha256:ee3d5d33fc1f1dbed66904560ffd77e39351a96df6787e39515bfed820a7a9cb",
+  "web": {
+    "a": "ghcr.io/kerbermeister/voicechat/web@sha256:6dcb6c33c7f61b002c246fba81a2054f7225a1ed9fe8040d89ac6f3b3230d2ac"
+  },
+  "original_data_identity_preserved": true,
+  "previous_pointer_retained": true,
+  "all_role_fences_released": true,
+  "neighbor_processes_unchanged": true,
+  "shared_front_process_unchanged": true,
+  "maintenance_timers_enabled_active": true,
+  "macos24_feed_unchanged": true,
+  "https_status": {
+    "univc.duckdns.org/": 200,
+    "univc.duckdns.org/health/route": 200,
+    "univc.duckdns.org/updates/macos/appcast.xml": 200,
+    "listing-helper.flashhub.net/": 200
+  },
+  "limits": [
+    "One physical A, no physical B/C redundancy.",
+    "No actual call/screen/E2EE/15-second failover or physical Android proof."
+  ]
+}

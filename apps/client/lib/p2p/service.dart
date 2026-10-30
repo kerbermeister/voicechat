@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart' as mx;
 import '../contact_service.dart';
 import '../matrix_probe.dart';
+import '../media_routes.dart';
 import '../picked_file.dart';
 import '../transport.dart';
 import '../file_io.dart' as io;
@@ -368,7 +369,7 @@ class P2pService extends ChangeNotifier {
   }
 
   Future<void> _connect(P2pTransfer t) async {
-    final credentials = await client.getTurnServer();
+    final servers = await mediaIceServers(client);
     if (!t.active || _closed) return;
     t.wire = P2pWire(
       files: t.files,
@@ -407,13 +408,7 @@ class P2pService extends ChangeNotifier {
         }
       },
     );
-    await t.wire!.open([
-      {
-        'urls': credentials.uris.map((u) => u.toString()).toList(),
-        'username': credentials.username,
-        'credential': credentials.password,
-      },
-    ]);
+    await t.wire!.open(servers);
   }
 
   Future<void> _receive(mx.ToDeviceEvent event) async {

@@ -1237,6 +1237,11 @@ class Room {
           content['dev.voicechat.ttl_seconds'];
     }
 
+    if (mustEncrypt && content.containsKey('dev.voicechat.read_after_seconds')) {
+      sendMessageContent['dev.voicechat.read_after_seconds'] =
+          content['dev.voicechat.read_after_seconds'];
+    }
+
     return await client.sendMessage(
       id,
       sendMessageContent.containsKey('ciphertext')
@@ -1295,7 +1300,7 @@ class Room {
     if (inReplyTo != null) {
       final temporary = inReplyTo.content.containsKey(
         'dev.voicechat.ttl_seconds',
-      );
+      ) || inReplyTo.content.containsKey('dev.voicechat.read_after_seconds');
       var replyText =
           '<${inReplyTo.senderId}> ${temporary ? 'Временное сообщение' : _stripBodyFallback(inReplyTo.body)}';
       replyText = replyText.split('\n').map((line) => '> $line').join('\n');

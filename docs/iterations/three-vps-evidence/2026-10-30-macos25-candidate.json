@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "source_commit": "2d181e1b791efcd647929b54c0acebc24675aa51",
+  "version": "1.13.0",
+  "build": "25",
+  "signing_mode": "personal-adhoc",
+  "minimum_os": "12.0",
+  "architecture": "arm64",
+  "release_aot_build": true,
+  "package_source_clean": true,
+  "package_checks_completed": true,
+  "archive_and_feed_signatures_verified_by_stock_packager": true,
+  "private_signing_key_remained_on_Mac": true,
+  "previous_feed_sha256": "c15668627f72afa8ea8d5154da12f4299cfa3fd55323550b9cc892a83bd07392",
+  "files": {
+    "VoiceChat.dmg": {
+      "sha256": "fb6d14c73ecd341d06cb9fc4fa9550351084c568a8bee7c7258596b1dbed3cc7",
+      "bytes": 42163894
+    },
+    "VoiceChat.zip": {
+      "sha256": "0c31cd57e5b2cdeece836b3da955db97ef79f4cbd59d3a9b1612bfb93d3d3b0e",
+      "bytes": 37398007
+    },
+    "appcast.xml": {
+      "sha256": "284fb848245b63b5ba0c46b7a825a121aefc98a5cfa74ba216dd5844d7e7dfd2",
+      "bytes": 23150
+    }
+  },
+  "published": false,
+  "installed_24_to_25_verified": false,
+  "existing_profile_preservation_verified_for_25": false,
+  "limitations": "Signed local candidate only. No publication or update installation is claimed; physical Android, real-client read-after E2EE and media acceptance remain open."
+}

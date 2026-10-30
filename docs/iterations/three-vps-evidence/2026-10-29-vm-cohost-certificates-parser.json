@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "operation_on_production": false,
+  "stock_caddy_2_8_adapt_and_validate_passed": true,
+  "canonical_legacy_upstream_retained": true,
+  "both_voicechat_names_disable_tls_alpn_challenge": true,
+  "network_disabled_no_acme_issuance_attempted": true,
+  "source_sha256": {
+    "infra/shared_ingress.py": "2a31745ae2faef9f839010f802233ddf69a746c80acfcbadf6d8e32d087ce0ce",
+    "infra/shared_config.py": "20032071cb67c154cfa531cde88c4c1352fe16a1e2f625140aa00210d1f1785b",
+    "infra/shared_update.py": "103084cfcf15f411b134502a9f4d708adf4161c283caa29033c83e38a7ec0b40",
+    "infra/role_bootstrap.py": "42a1031d367ff87ca98afc6e6dbc46fe3db083971756fb0eed4ed3f30a0256ce"
+  },
+  "limits": [
+    "Offline parser/provisioning validation only; no real certificate issuance, reload or production configuration change."
+  ]
+}

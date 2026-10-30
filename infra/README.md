@@ -1,7 +1,51 @@
-# Один сервер: Docker и GitHub Actions
+# Развёртывание VoiceChat: core и серверы входа
 
 Конкретный план для `univc.duckdns.org` → `84.200.80.13`: [VPS, DuckDNS,
 первый запуск, ежедневный backup и восстановление](VPS.md).
+
+## Локальная подготовка нескольких входов
+
+Production уже переведён на один физический A с отдельными `core` и `edge-a`:
+[первоначальный release51 и postcheck](../docs/iterations/three-vps-evidence/2026-10-29-production-initial-postcheck.json).
+Рабочие данные находятся в core; вход обслуживает HTTPS/API/WSS/TURN и установщики.
+Обычный managed workflow с областями `full/web/core/edge` реализован, проходит
+сквозную VM-проверку и пока не использовался для следующего production-релиза.
+Актуальная [точка продолжения](../docs/iterations/19-three-vps-resume.md) отличает
+опубликованное от проверенного только локально. Инструкции и ограничения:
+[core/edge и normal release](THREE_VPS.md#обычный-managed-release).
+
+Ниже сохранены команды offline render и прежнего локального/legacy стенда.
+Они не заменяют managed rollout и не должны обновлять текущий production.
+
+`three-vps.example.json` содержит публичные логические адреса. Отдельный
+`node-inventory.example.json` описывает физические IPv4, private tunnel IP,
+поколения и SSH host keys. В inventory намеренно стоят непригодные для запуска
+placeholder-ключи: заменить их проверенными вне SSH-сеанса ключами новых машин.
+Адреса `192.0.2.0/24` — только документационный пример. Приватные ключи и пароли
+не входят ни в один из этих JSON. Реальный inventory хранить вне Git/runtime web.
+
+После заполнения копий конфигурации локальный вызов из корня:
+
+```sh
+python3 infra/render_edge.py --topology topology.json --inventory inventory.json \
+  --edge c --ingress-ip 10.241.0.2 --output /tmp/voicechat-edge-c-review
+```
+
+`--ingress-ip` — точный адрес контейнера HAProxy в будущей выделенной bridge-сети,
+не публичный IP VPS. В текущем offline шаге он задаётся явно; перед deployment
+нужна проверка пересечения подсетей. Генератор создаёт только `Caddyfile`,
+`haproxy.cfg`, `known_hosts`, `node.json` в новом каталоге 0700, файлы 0600.
+Он не устанавливает службы, не выполняет SSH и не меняет DNS. TLS файлы,
+runtime/Compose/tunnel, сертификаты и renewal этим вызовом не создаются.
+
+При замене узла добавить `--previous-inventory previous-inventory.json`:
+изменение host assignment требует большего `generation` и нового проверенного
+SSH host key. DNS-имена и tunnel IP прежнего логического C можно сохранить;
+публичная клиентская конфигурация при смене только physical IP не меняется.
+Для нового D добавить записи в topology и inventory и выпустить подписанный
+каталог с большей revision после подготовки входа. Публикация каталога описана
+в [журнале](../docs/iterations/19-three-vps.md). Добавление/замена physical node — отдельная
+операция с generation/revocation и TLS; ordinary release не принимает новую topology.
 
 ## Флаг демонстрации экрана
 
@@ -46,7 +90,7 @@ docker compose -f infra/compose.yaml --env-file infra/runtime/stand.env up -d --
 
 Caddy обслуживает web, `/_matrix`, `/api` и `/rtc` на одном origin. Административные и внутренние API, лабораторные отчёты закрыты на внешнем адресе. Служебный Matrix-порт 8088 доступен только loopback хоста для локальных проверок/администрирования. API и SFU работают одним непривилегированным контейнером под supervisor: падение/неисправность авторизатора завершает и SFU. Это обрывает звонки при обслуживании; бесшовный рестарт не обещается.
 
-## Подготовка VPS и Actions
+## Legacy: подготовка VPS и Actions
 
 Нужен Linux VPS с Docker Compose, Python 3 и свободным местом под медиа/резервные копии. На хосте один экземпляр проекта Compose `voicechat`. DNS указывает на публичный IPv4 VPS. Порты: TCP 80/443 (Caddy), TCP 7981 и UDP 50300–50400 (SFU), TCP/UDP 3488 и UDP 49300–49400 (TURN). Сетевой план требует проверки с реального телефона и сети; TURN через TLS/443 пока не настроен.
 

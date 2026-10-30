@@ -3,10 +3,20 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from pathlib import Path
-from client_policy import load_policy, expiry_content
+from client_policy import load_policy, expiry_content, read_after_duration
 
 
 class PolicyTests(unittest.TestCase):
+    def test_read_after_duration_requires_exact_integer_and_one_retention_mode(self):
+        for delay in (1, 5, 86400):
+            self.assertEqual(read_after_duration({'dev.voicechat.read_after_seconds': delay}), delay)
+        for delay in (None, True, False, 0, -1, 86401, '5', 5.0, [], {}):
+            with self.assertRaises(ValueError):
+                read_after_duration({'dev.voicechat.read_after_seconds': delay})
+        for key in ('dev.voicechat.ttl_seconds', 'org.matrix.self_destruct_after'):
+            with self.assertRaises(ValueError):
+                read_after_duration({'dev.voicechat.read_after_seconds': 5, key: 10})
+
     def test_defaults_and_boundaries(self):
         defaults = load_policy()
         self.assertEqual(defaults['photo_max_count'], 24)

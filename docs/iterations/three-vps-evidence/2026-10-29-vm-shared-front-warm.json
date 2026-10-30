@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "loopback_listener_only": true,
+  "real_compose_interruption_resumed": true,
+  "repeat_preserved_process": true,
+  "owned_stopped_listener_recovered": true,
+  "owned_networks_verified": true,
+  "core_and_edge_not_started": true,
+  "trusted_web_and_turn_tls_through_warm_front": true,
+  "strict_proxy_web_readiness_checked": true,
+  "foreign_readiness_identity_rejected": true,
+  "limits": [
+    "Synthetic Caddy readiness and TURN TLS endpoint; no real core, TURN allocation or media.",
+    "No public port cutover or reboot in this probe."
+  ],
+  "fixture_resources_removed": true,
+  "date": "2026-10-29"
+}

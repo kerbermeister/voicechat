@@ -42,10 +42,67 @@ class ForwardActions extends ChatActions {
     String? edit,
     bool preparing = false,
     int? ttlSeconds,
+    int? readAfterSeconds,
     DateTime? scheduledFor,
   }) async {
     sent.add((room.id, content));
     return 'queued';
+  }
+}
+
+class ReplyTimeline extends CaptureTimeline {
+  ReplyTimeline(super.room);
+  @override
+  Future<mx.Event?> getEventById(String id) async =>
+      events.where((e) => e.eventId == id).firstOrNull;
+}
+
+void addMembers(mx.Room room) {
+  room.states[mx.EventTypes.RoomMember] = {
+    for (final id in [room.client.userID!, '@peer:local'])
+      id: mx.StrippedStateEvent(
+        type: mx.EventTypes.RoomMember,
+        senderId: id,
+        stateKey: id,
+        content: {'membership': 'join', 'displayname': id},
+      ),
+  };
+}
+
+class SelectionActions extends ForwardActions {
+  SelectionActions(super.client);
+  final hidden = <String>[];
+  @override
+  Future<void> hideMessage(mx.Event event) async {
+    hidden.add(event.eventId);
+  }
+}
+
+class PartialForwardActions extends ForwardActions {
+  PartialForwardActions(super.client);
+  bool failed = false;
+  @override
+  Future<String> enqueue(
+    mx.Room room,
+    Map<String, dynamic> content, {
+    String type = mx.EventTypes.Message,
+    mx.Event? reply,
+    String? edit,
+    bool preparing = false,
+    int? ttlSeconds,
+    int? readAfterSeconds,
+    DateTime? scheduledFor,
+  }) async {
+    sent.add((room.id, content));
+    return 'forward-${sent.length}';
+  }
+
+  @override
+  Future<void> waitForDelivery(String id) async {
+    if (id == 'forward-2' && !failed) {
+      failed = true;
+      throw StateError('offline');
+    }
   }
 }
 
@@ -71,6 +128,7 @@ class MotionActions extends ChatActions {
     String? edit,
     bool preparing = false,
     int? ttlSeconds,
+    int? readAfterSeconds,
     DateTime? scheduledFor,
   }) async {
     const id = 'motion-transaction';
@@ -113,6 +171,7 @@ class DropActions extends ForwardActions {
     String caption, {
     mx.Event? reply,
     int? ttlSeconds,
+    int? readAfterSeconds,
     DateTime? scheduledFor,
   }) async {
     albums++;
@@ -130,6 +189,7 @@ class DropActions extends ForwardActions {
     void Function(double)? progress,
     bool Function()? cancelled,
     int? ttlSeconds,
+    int? readAfterSeconds,
     DateTime? scheduledFor,
   }) async {
     if (failFile) throw StateError('test upload failure');
@@ -601,9 +661,13 @@ void main() {
             ),
           ),
         );
-        await tester.pumpAndSettle();
+        for (var frame = 0; frame < 6; frame++) {
+          await tester.pump(const Duration(milliseconds: 80));
+        }
         await tester.tap(find.byTooltip('Действия с сообщением'));
-        await tester.pumpAndSettle();
+        for (var frame = 0; frame < 6; frame++) {
+          await tester.pump(const Duration(milliseconds: 80));
+        }
         final dots = tester
             .widgetList<PopupMenuItem<String>>(
               find.byType(PopupMenuItem<String>),
@@ -611,9 +675,13 @@ void main() {
             .map((w) => w.value)
             .toList();
         await tester.tapAt(const Offset(10, 10));
-        await tester.pumpAndSettle();
+        for (var frame = 0; frame < 6; frame++) {
+          await tester.pump(const Duration(milliseconds: 80));
+        }
         await tester.longPress(find.text('Forward me'));
-        await tester.pumpAndSettle();
+        for (var frame = 0; frame < 6; frame++) {
+          await tester.pump(const Duration(milliseconds: 80));
+        }
         expect(find.text('Ответить'), findsOneWidget);
         expect(
           tester
@@ -626,7 +694,9 @@ void main() {
         );
         expect(find.byIcon(Icons.reply), findsOneWidget);
         await tester.tapAt(const Offset(10, 10));
-        await tester.pumpAndSettle();
+        for (var frame = 0; frame < 6; frame++) {
+          await tester.pump(const Duration(milliseconds: 80));
+        }
         for (final target in rooms) {
           final mouse = await tester.startGesture(
             tester.getCenter(find.text('Forward me')),
@@ -634,7 +704,9 @@ void main() {
             buttons: kSecondaryMouseButton,
           );
           await mouse.up();
-          await tester.pumpAndSettle();
+          for (var frame = 0; frame < 6; frame++) {
+            await tester.pump(const Duration(milliseconds: 80));
+          }
           expect(
             tester
                 .widgetList<PopupMenuItem<String>>(
@@ -646,10 +718,14 @@ void main() {
           );
           expect(find.byType(AdaptiveTextSelectionToolbar), findsNothing);
           await tester.tap(find.text('Переслать'));
-          await tester.pumpAndSettle();
+          for (var frame = 0; frame < 6; frame++) {
+            await tester.pump(const Duration(milliseconds: 80));
+          }
           if (!target.isDirectChat) {
             await tester.tap(find.text('Группы'));
-            await tester.pumpAndSettle();
+            for (var frame = 0; frame < 6; frame++) {
+              await tester.pump(const Duration(milliseconds: 80));
+            }
           }
           await tester.tap(
             find.descendant(
@@ -657,7 +733,9 @@ void main() {
               matching: find.byKey(ValueKey(target.id)),
             ),
           );
-          await tester.pumpAndSettle();
+          for (var frame = 0; frame < 6; frame++) {
+            await tester.pump(const Duration(milliseconds: 80));
+          }
           if (source != target) expect(opened.last, target.id);
           expect(actions.sent.last.$1, target.id);
           expect(actions.sent.last.$2[forwardedAuthorKey], 'Alice');
@@ -667,6 +745,226 @@ void main() {
       expect(actions.sent, hasLength(8));
       expect(opened, hasLength(6));
       await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets(
+    'Selection keeps draft and deletes chosen messages in one confirmation',
+    (tester) async {
+      final client = CaptureClient();
+      final room = ForwardRoom(client, '!selection:local');
+      addMembers(room);
+      final timeline = CaptureTimeline(room);
+      for (final id in ['one', 'two']) {
+        timeline.events.add(
+          mx.Event.fromJson({
+            'type': mx.EventTypes.Message,
+            'event_id': '\$$id',
+            'sender': '@peer:local',
+            'origin_server_ts': DateTime.now().millisecondsSinceEpoch,
+            'content': {'msgtype': mx.MessageTypes.Text, 'body': id},
+          }, room),
+        );
+      }
+      final actions = SelectionActions(client);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ChatPane(
+              room: room,
+              timeline: timeline,
+              actions: actions,
+              header: const SizedBox(height: 40),
+              report: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Написать сообщение…'),
+        'saved draft',
+      );
+      await tester.tap(find.byTooltip('Действия с сообщением').first);
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+      await tester.tap(find.text('Выбрать'));
+      await tester.pumpAndSettle();
+      expect(find.text('Выбрано: 1'), findsOneWidget);
+      expect(
+        find.widgetWithText(TextField, 'Написать сообщение…'),
+        findsNothing,
+      );
+      await tester.tap(
+        find
+            .ancestor(of: find.text('two'), matching: find.byType(InkWell))
+            .first,
+      );
+      await tester.pump();
+      expect(find.text('Выбрано: 2'), findsOneWidget);
+      await tester.tap(find.byTooltip('Удалить выбранные сообщения'));
+      await tester.pumpAndSettle();
+      expect(find.text('Удалить выбранные сообщения (2)?'), findsOneWidget);
+      await tester.tap(find.text('Удалить у меня'));
+      await tester.pumpAndSettle();
+      expect(actions.hidden.toSet(), {r'$one', r'$two'});
+      expect(find.text('saved draft'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      actions.dispose();
+    },
+  );
+  testWidgets(
+    'Reply to a reply quotes the immediate message without nested fallback and jumps to it',
+    (tester) async {
+      final client = CaptureClient();
+      final room = ForwardRoom(client, '!reply:local');
+      addMembers(room);
+      final timeline = ReplyTimeline(room);
+      final jumps = <String?>[];
+      for (final (id, body, parent) in [
+        (r'$a', 'original', null),
+        (r'$b', '> <@peer:local> original\n\nsecond', r'$a'),
+        (r'$c', '> <@peer:local> second\n\nthird', r'$b'),
+      ]) {
+        timeline.events.insert(
+          0,
+          mx.Event.fromJson({
+            'type': mx.EventTypes.Message,
+            'event_id': id,
+            'sender': '@peer:local',
+            'origin_server_ts': DateTime.now().millisecondsSinceEpoch,
+            'content': {
+              'msgtype': mx.MessageTypes.Text,
+              'body': body,
+              if (parent != null)
+                'm.relates_to': {
+                  'm.in_reply_to': {'event_id': parent},
+                },
+            },
+          }, room),
+        );
+      }
+      final actions = ForwardActions(client);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ChatPane(
+              room: room,
+              timeline: timeline,
+              actions: actions,
+              onJump: (id) async {
+                jumps.add(id);
+              },
+              header: const SizedBox(height: 40),
+              report: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('> <@peer'), findsNothing);
+      final quotes = find.byWidgetPredicate(
+        (w) =>
+            w is Semantics &&
+            w.properties.label == 'Перейти к исходному сообщению',
+      );
+      expect(quotes, findsNWidgets(2));
+      expect(
+        find.descendant(of: quotes.first, matching: find.text('second')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: quotes.first, matching: find.text('original')),
+        findsNothing,
+      );
+      await tester.tap(
+        find.descendant(of: quotes.first, matching: find.text('second')),
+      );
+      await tester.pumpAndSettle();
+      expect(jumps, [r'$b']);
+      await tester.pumpWidget(const SizedBox());
+      actions.dispose();
+    },
+  );
+  testWidgets(
+    'Batch forward retry keeps order and never re-enqueues successful or uncertain transactions',
+    (tester) async {
+      final client = CaptureClient();
+      final source = ForwardRoom(client, '!source:local'),
+          target = ForwardRoom(client, '!target:local');
+      client.rooms.addAll([source, target]);
+      client.directChats['@peer:local'] = [target.id];
+      addMembers(source);
+      addMembers(target);
+      final timeline = CaptureTimeline(source);
+      for (final (index, text) in ['one', 'two', 'three'].indexed) {
+        timeline.events.insert(
+          0,
+          mx.Event.fromJson({
+            'type': mx.EventTypes.Message,
+            'event_id': '\$m$index',
+            'sender': '@peer:local',
+            'origin_server_ts': DateTime.now().millisecondsSinceEpoch + index,
+            'content': {'msgtype': mx.MessageTypes.Text, 'body': text},
+          }, source),
+        );
+      }
+      final actions = PartialForwardActions(client);
+      final errors = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ChatPane(
+              room: source,
+              timeline: timeline,
+              actions: actions,
+              header: const SizedBox(height: 40),
+              report: errors.add,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Действия с сообщением').first);
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+      await tester.tap(find.text('Выбрать'));
+      await tester.pumpAndSettle();
+      for (final text in ['one', 'two']) {
+        await tester.tap(
+          find
+              .ancestor(of: find.text(text), matching: find.byType(InkWell))
+              .first,
+        );
+        await tester.pump();
+      }
+      expect(find.text('Выбрано: 3'), findsOneWidget);
+      Future<void> forward() async {
+        await tester.tap(find.byTooltip('Переслать выбранные сообщения'));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byKey(ValueKey(target.id)),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      await forward();
+      expect(actions.sent.map((item) => item.$2['body']), ['one', 'two']);
+      expect(find.text('Выбрано: 2'), findsOneWidget);
+      expect(errors, hasLength(1));
+      await forward();
+      expect(actions.sent.map((item) => item.$2['body']), [
+        'one',
+        'two',
+        'three',
+      ]);
+      expect(find.byTooltip('Переслать выбранные сообщения'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      actions.dispose();
     },
   );
 }

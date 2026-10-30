@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "provider": "duckdns",
+  "environment": "staging",
+  "email": "operator@example.com",
+  "domains": ["univc.duckdns.org"]
+}

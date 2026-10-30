@@ -1,0 +1,94 @@
+{
+  "recorded_at": "2026-10-28T17:27:50.193595+00:00",
+  "baseline_commit": "2cca4d3ac7ffdb2355a39302f8fe93ec747e8b8d",
+  "source": "Uncommitted integration worktree before checkpoint commit",
+  "production_changed": false,
+  "dns_changed": false,
+  "fixture_projects": [
+    "voicechat-edge-probe-cbaaa6c498ab"
+  ],
+  "checks": [
+    "PASS: signed catalog atomic update visible through running TLS proxy; rollback rejected; no proxy restart",
+    "PASS: host activation controller verified container identity, read-only mounts, same processes and TLS certificates under one lock",
+    "PASS: atomic TLS pair selection, signal reload and rollback; same processes, fresh HTTPS and existing TURN allocation verified (not WSS continuity)",
+    "PASS: TURN secret overlap accepts old/new; retirement rejects old; expired credentials rejected",
+    "PASS: generated edge role, private upstream, catalog/readiness/failure, authenticated TURN TLS allocation, private/metadata peers denied, PROXY trust and no request logs",
+    "PASS: one TLS ingress port, HTTPS and coturn binding via SNI, trusted CA/hostname, CORS/private routes/forwarded headers, unknown SNI and untrusted CA rejected"
+  ],
+  "postflight": {
+    "production_commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+    "services": [
+      {
+        "name": "/voicechat-web-1",
+        "started": "2026-10-28T05:17:54.008991418Z",
+        "restarts": 0
+      },
+      {
+        "name": "/voicechat-synapse-1",
+        "started": "2026-10-28T03:30:21.084165734Z",
+        "restarts": 0
+      },
+      {
+        "name": "/voicechat-control-1",
+        "started": "2026-10-28T03:30:19.197291955Z",
+        "restarts": 0
+      },
+      {
+        "name": "/voicechat-turn-1",
+        "started": "2026-10-28T03:30:17.469823262Z",
+        "restarts": 0
+      },
+      {
+        "name": "/voicechat-postgres-1",
+        "started": "2026-10-26T07:13:04.951164669Z",
+        "restarts": 0
+      },
+      {
+        "name": "/deploy-frontend-1",
+        "started": "2026-10-26T07:13:05.02282237Z",
+        "restarts": 0
+      },
+      {
+        "name": "/deploy-backend-1",
+        "started": "2026-10-26T07:13:05.01469252Z",
+        "restarts": 0
+      },
+      {
+        "name": "/deploy-stt-1",
+        "started": "2026-10-26T07:13:04.95938781Z",
+        "restarts": 0
+      },
+      {
+        "name": "/deploy-caddy-1",
+        "started": "2026-10-26T07:13:05.06030014Z",
+        "restarts": 0
+      },
+      {
+        "name": "/deploy-postgres-1",
+        "started": "2026-10-26T07:13:04.999798589Z",
+        "restarts": 0
+      }
+    ],
+    "public_http": {
+      "/_matrix/client/versions": 200,
+      "/api/health": 200
+    },
+    "remaining_fixture_containers": [],
+    "remaining_fixture_networks": [],
+    "remaining_fixture_volumes": []
+  },
+  "log_sha256": "e098cbc562889f2d8ce29983d3194c296d0103ec833696b21e1298e26e7b0125",
+  "source_sha256": {
+    "infra/tls_activation.py": "b486c342ec0e2e83c7d072054710a7be90582592350239325eac7fb127bc5b14",
+    "infra/tls_runtime.py": "1c4489e6734add4b5e1883dd5500ab39d73aafe163fc36d0c0ccc210e63b360f",
+    "infra/tls_material.py": "3b8cc07325d4658c61e5b144b7497651473cf354556d6392f3e2cadcf2d58954",
+    "infra/render_roles.py": "fe256a2b951885d23a284168b449d8a0adf8483196d67d6b7ce7cf4912c6c64a",
+    "prototype/check_route_tls.py": "7f77d7d19d30813aa9ee19058943ce1a0a195ef788975a68cad273bd694206e5",
+    "prototype/test_tls_activation.py": "adac1d1b504ce200093cb4fe11aa11db25fef1fe5085367920cea5618373e7ef"
+  },
+  "limits": [
+    "Isolated synthetic CA, not public ACME issuance",
+    "No proof of application E2EE media or active WSS continuity",
+    "Role deployment orchestration and production ingress migration remain incomplete"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "commit": "87a4a9eb73099fcfc745c37c4e57db3034b264a1",
+  "runs": [
+    {
+      "number": 95,
+      "event": "push",
+      "id": 40978202914,
+      "job": 123811375572,
+      "job_duration_seconds": 837,
+      "status": "success"
+    },
+    {
+      "number": 96,
+      "event": "pull_request",
+      "id": 40978207688,
+      "job": 123811390714,
+      "duration_seconds": 862,
+      "status": "success"
+    }
+  ],
+  "production_changed": false,
+  "limits": [
+    "CI includes server/client tests, analyze and Android debug preview; not actual Android hardware or media acceptance."
+  ]
+}

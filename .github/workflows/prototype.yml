@@ -30,9 +30,11 @@ jobs:
       - name: Build ordinary Android preview
         env:
           PUBLIC_URL: ${{ vars.PUBLIC_URL || 'http://localhost:7360' }}
+          CLIENT_ROUTE_CONFIG: ${{ vars.CLIENT_ROUTE_CONFIG }}
+          CLIENT_ROUTE_CATALOG_KEY: ${{ vars.CLIENT_ROUTE_CATALOG_KEY }}
           CARGO_BUILD_JOBS: '2'
         run: |
-          python3 infra/client_config.py "$PUBLIC_URL" /tmp/client.json
+          python3 infra/client_config.py --environment "$PUBLIC_URL" /tmp/client.json
           cd apps/client
           flutter build apk --debug --target lib/main.dart --dart-define-from-file /tmp/client.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f

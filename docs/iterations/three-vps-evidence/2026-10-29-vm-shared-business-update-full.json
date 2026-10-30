@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "real_caddy_git_environment_preflight": true,
+  "active_and_on_disk_caddy_configs_matched_plan": true,
+  "image_ports_networks_and_volume_identity_verified": true,
+  "environment_git_and_container_processes_unchanged": true,
+  "raw_credentials_absent_from_result": true,
+  "source_sha256": {
+    "infra/shared_ingress.py": "6f98fc40f810f46df0ff54256f59d314ed8eec30a1f05f05691344da9179b2bc",
+    "infra/role_bootstrap.py": "8aa9aa84e694c5ab3450d0e4625a327c9647fac14522f9143726574568624562",
+    "prototype/check_shared_legacy_inspect.py": "6a3a1e65645ca56c83e88fefa70a0db028a6e43c9e2c06fc2cbf475dbf78ee80",
+    "infra/shared_update.py": "045faf26e51926500fd173556df2890f2b46aa84e1a4be31536d1b891b2bbabd"
+  },
+  "limits": [
+    "Synthetic Git/env/upstreams, public pinned images and internal certificates; no application schema migration, external ACME, shared port cutover or production migration.",
+    "Public immutable operator packages retained; fixture manager wrapper removed; no systemd unit activated."
+  ],
+  "real_directory_mount_adoption": true,
+  "lost_response_automatic_rollback": true,
+  "process_death_recovered_before_retry": true,
+  "authenticated_https_routes_after_all_recreations": true,
+  "neighboring_processes_and_data_volume_names_preserved": true,
+  "committed_retry_did_not_restart_caddy": true,
+  "installed_immutable_manager_cli": true,
+  "workflow_only_deploy_preserved_all_processes": true,
+  "business_caddy_update_reloaded_without_process_restart": true,
+  "interrupted_git_checkout_resumed_by_installed_cli": true,
+  "business_git_clean_and_environment_bytes_preserved": true,
+  "lost_reload_response_restored_known_routes": true,
+  "installed_cli_retried_pending_reload": true,
+  "application_pull_and_service_recreate_preserved_other_processes": true,
+  "fixture_resources_removed": true
+}

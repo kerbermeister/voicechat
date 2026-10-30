@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "reader_commit": "a9b7a6acddc1fbd7513f47122e1b1af45b0453d2",
+  "production_managed_baseline_reader_passed": true,
+  "current_and_initial_bytes_unchanged": true,
+  "all_running_container_processes_unchanged": true,
+  "original_data_identity_preserved": true,
+  "no_baseline_store_or_release_journal_created": true,
+  "temporary_exact_git_public_sources_removed": true,
+  "limits": [
+    "Read-only actual A check; normal role operations and CI executor remain unimplemented."
+  ]
+}

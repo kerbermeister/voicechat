@@ -163,3 +163,33 @@ test('Receiver gain reuses the existing element, isolates participants and reapp
   assert.equal(bob.volume, .5);
   assert.equal(graphs[0].gain.value, 0);
 });
+
+test('Routed push preserves click permission and binding without direct canonical fetch', async () => {
+  const env = clientEnvironment();
+  const requests = [];
+  const request = async (path, body) => {
+    requests.push([path, body && JSON.parse(body)]);
+    return JSON.stringify(path === 'config' ? {public_key: Buffer.alloc(65).toString('base64url')} : {binding: 'routed-binding'});
+  };
+  const pending = env.api.enable('https://voice.example/api', 'secret', request);
+  assert.deepEqual(env.calls, ['permission']);
+  await pending;
+  assert.deepEqual(env.calls, ['permission', 'register']);
+  assert.equal(env.binding, 'routed-binding');
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0][0], 'config');
+  assert.equal(requests[1][1].action, 'register');
+});
+
+test('Routed binding failure cleans up through the same transport, with no fallback fetch', async () => {
+  const env = clientEnvironment({bindingOK: false});
+  const actions = [];
+  const request = async (path, body) => {
+    if (body) actions.push(JSON.parse(body).action);
+    return JSON.stringify(path === 'config' ? {public_key: Buffer.alloc(65).toString('base64url')} : {binding: 'routed-binding'});
+  };
+  await assert.rejects(env.api.enable('https://voice.example/api', 'secret', request), /сохранить настройку/);
+  assert.deepEqual(actions, ['register', 'remove']);
+  assert.ok(env.calls.includes('unsubscribe'));
+  assert.ok(!env.calls.some(value => value.startsWith('https:')));
+});

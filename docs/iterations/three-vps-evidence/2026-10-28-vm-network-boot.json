@@ -1,0 +1,48 @@
+{
+  "reboot": {
+    "schema": 1,
+    "boot_changed": true,
+    "wireguard_key_preserved": true,
+    "default_route_preserved": true,
+    "network_intent_complete": true,
+    "owned_firewall_restored": true,
+    "network_completed_before_docker": true,
+    "network_done_usec": 37410344,
+    "docker_started_usec": 37447106,
+    "docker_version": "29.8.1",
+    "compose_version": "5.5.1"
+  },
+  "failure_recovery": {
+    "schema": 1,
+    "missing_intent_network_state": "failed",
+    "missing_intent_docker_state": "inactive",
+    "docker_blocked_without_network": true,
+    "wireguard_absent_on_failed_boot": true,
+    "restored_intent_recovers_both_services": true
+  },
+  "network_source_sha256": "a45e1f8d2b0d63cd26d8261b0f6c05a960f3fdd219cbd01b4f145c2b05dea3f1",
+  "kernel": "6.1.0-54-cloud-amd64",
+  "packages": [
+    "containerd.io 2.4.2-3~debian.12~bookworm",
+    "docker-ce 5:29.8.1-1~debian.12~bookworm",
+    "docker-ce-cli 5:29.8.1-1~debian.12~bookworm",
+    "docker-compose-plugin 5.5.1-1~debian.12~bookworm",
+    "nftables 1.0.6-2+deb12u2",
+    "wireguard-tools 1.0.20210914-1+b1"
+  ],
+  "date": "2026-10-28",
+  "environment": "Disposable local Debian 12 amd64 cloud VM; QEMU 11.1.2 TCG on macOS arm64; 2 GiB / 2 vCPU",
+  "base_commit": "35c7649",
+  "production_changed": false,
+  "limitations": [
+    "Synthetic single physical core+edge network; no remote WireGuard peer or Internet reachability acceptance.",
+    "No real core, database, user profile, call or screen-sharing workload in the VM.",
+    "Package installation was a fixture preparation, not the finished host package installer.",
+    "Real edge deploy/rollback still pending; private web image not available in VM."
+  ],
+  "assertions": [
+    "Initial clean-host preflight passed with memory-capacity warning.",
+    "Repeated network boot installation preserved running Docker PID and default route.",
+    "An absent exact-name systemctl list-unit-files query returned exit 1 on Debian 12; installer now checks the full listing and exact unit name."
+  ]
+}

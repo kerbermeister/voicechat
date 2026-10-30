@@ -1,0 +1,434 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-30T04:54:15.671830+00:00",
+  "scope": "full",
+  "commit": "2dae7580c6b229dcd8c804a4efac21055230a6cc",
+  "edge_commit": "2dae7580c6b229dcd8c804a4efac21055230a6cc",
+  "baseline_schema": 1,
+  "backend": "7f5751bb6df936a45b95fe8e84f3b687e1a1f0773e2cfe3af62433655b0003e6",
+  "core_guard": null,
+  "source_bundle": "b951f522fa6fd6ba0c08bcb155a8a47a9acfc0491dad8359f7d7c7080dabd968",
+  "pointer": {
+    "baseline": "8b51c500a29705826f221ae66c397ac40bb1952887b6b683b494b46bbde793bf",
+    "data_identity": {
+      "postgres_system_identifier": "7699984398180954145",
+      "signing_sha256": "aa2dbe341c20ee62f88663b32942008e11ab9dfa4b782bba1076217bd302dbb0"
+    },
+    "kind": "managed",
+    "legacy_root": "/srv/voicechat",
+    "schema": 1,
+    "shared_root": "/var/lib/voicechat-shared-ingress"
+  },
+  "previous": {
+    "core_root": "/srv/voicechat-managed/core",
+    "data_identity": {
+      "postgres_system_identifier": "7699984398180954145",
+      "signing_sha256": "aa2dbe341c20ee62f88663b32942008e11ab9dfa4b782bba1076217bd302dbb0"
+    },
+    "edge_root": "/srv/voicechat-managed/edges/a",
+    "kind": "roles",
+    "legacy_root": "/srv/voicechat",
+    "schema": 1,
+    "target": {
+      "backend_sha256": "adb695a0c92683e1108bc50fa8b1e37ae4db87579750447c9756343297062626",
+      "catalog_key": "UV1n2w5zyEhKBYq0Y4ORasu0CFvJCIBheWbhotiZDG8=",
+      "core": {
+        "commit": "24c42bf866ba7d2ee3e17bd7d0f6a51a05705172",
+        "contracts": {
+          "core_api": 1,
+          "core_storage": 1,
+          "role_config": 1,
+          "route_schema": 1
+        },
+        "edge_id": null,
+        "files": {
+          "infra/client_config.py": "33237386efaa677d9c7dc880d687268c4e698028bb397e2247448ac9fb322d72",
+          "infra/compose.core.json": "f350f83b1bb17ab250c3847c44585b7299513423c61f439184d9ceda447b3a49",
+          "infra/compose.yaml": "d23e4bde7f42f62ab99c1ee9d3482f24a21fedb4b1fd7447fba002753320b405",
+          "infra/configure.py": "92947e793134941855d758719f726017453e4385b6076346cd0b3d7d97c45da9",
+          "infra/firewall_config.py": "ce8411fac264573564ad0c9982985223c96333cf2ed740d308e6bc5e163139b5",
+          "infra/firewall_runtime.py": "30c9ec25283be7c613548bc1a8868c14cb45b093e0e4898dcd6f511d2eff9afc",
+          "infra/host_preflight.py": "d27ebb6543e8b85bb2580cb59d7ae0f783993e02e6e1ba582f0bb7fc7dc31b0e",
+          "infra/known_hosts": "f1005740bf13b212ac9c8d0ce6e213f4f6dfdd5d5994c1fe7fca76f367afe03a",
+          "infra/managed_state.py": "4edb0656e4e4688ce673cede726c0663df11d2331f70662cc0648a1e7d30eb3d",
+          "infra/network_bootstrap.py": "06a4b69efbce33c42598e98820c61cfeb3e2f16550519df293a614e750db61f7",
+          "infra/network_runtime.py": "61db23b551af81c404a4bc8c86a5b643d5d48dda322ab65b85cd92d01ee905f6",
+          "infra/node.json": "a01d458085ba89a4410c00b517c875f6d19bca9466b526983ac7c00fbbd4d7ba",
+          "infra/node_inventory.py": "2d2e277394c51542488259061d5531303e6d20fac574d804f4ca1aa286a2f180",
+          "infra/push_route_migration.py": "dbeb243b28f38a5ddb5dd93fc2945c7a075b5ea2d22f7cdd990cd84924588a06",
+          "infra/topology.py": "6995c97f2992829894d230816624e6ebe4ef3760f242ed31aa038878ebe6ff14",
+          "infra/tunnel_config.py": "0c78473d5071a091fe1765978b10b1c9457115884927232b6247b53994210b53",
+          "infra/tunnel_runtime.py": "c9a5ffb293b48a568adf2acd0b6f2af7a9d31d6b5018e3e88b3be526baea3a32",
+          "infra/voicechat-docker-network.conf": "dd5858789491bdf323898688a23976c91cb81e49c0fc012d2aabf2ec0a588e6f",
+          "infra/voicechat-network.service": "bded12e548ed20d3bafb805f7eb7a93fbadf53970959775068114d9af6ca8221",
+          "prototype/client-policy.json": "8fd8fb62e25ba0be4f27d5310e79263752f83b839e8450f575ea76f73a7d53d5",
+          "prototype/client_policy.py": "2485d44c6a6125cc7642e73125c4a2f341603321c99d36bac9545b3e95342796",
+          "prototype/scheduled_messages.py": "f45f69aac9ec96855c0e75d5ef9a15069b8ae359cda2099e9c4797c24b023bfd",
+          "prototype/voicechat_policy.py": "301695d294c562527b8e7ee631458eaeef6963d5809a1f4305b32cec34e5b500"
+        },
+        "identity": {
+          "canonical_origin": "https://univc.duckdns.org",
+          "matrix_server_name": "univc.duckdns.org"
+        },
+        "images": {
+          "configure": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+          "control": "ghcr.io/kerbermeister/voicechat/control@sha256:8a7117660bf425112e4a3a82a108d95a7e876434a1fd73ff0f7d24d8a64ee0bf",
+          "postgres": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+          "synapse": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0"
+        },
+        "node_sha256": "78e1d8d7cf9f79b2537a35b28329126722a533e4f35443a0b2748e368cafaea3",
+        "role": "core",
+        "schema": 1,
+        "service_id": "voicechat",
+        "topology_sha256": "bce62a70f7b1e88718806cc327544b57983313fc54f8f161d9f23d1ec956dbda"
+      },
+      "edge": {
+        "commit": "24c42bf866ba7d2ee3e17bd7d0f6a51a05705172",
+        "contracts": {
+          "core_api": 1,
+          "core_storage": 1,
+          "role_config": 1,
+          "route_schema": 1
+        },
+        "edge_id": "a",
+        "files": {
+          "infra/Caddyfile": "b366341b8e6ca66e6fbab5874bdfd62e66868dd642cc36e56f9b50c9d9e89a62",
+          "infra/client_config.py": "33237386efaa677d9c7dc880d687268c4e698028bb397e2247448ac9fb322d72",
+          "infra/compose.edge.json": "298f1715d9572398ea70d38de1067718ae890f1db565f9179a6663dfcd94bec3",
+          "infra/compose.shared-front.json": "d3d977dd3d301aef88936a7023a6d014ea0354eba4ae582839c290ad9300aa5d",
+          "infra/configure.py": "92947e793134941855d758719f726017453e4385b6076346cd0b3d7d97c45da9",
+          "infra/edge_turn.py": "32ba6d941295cdf1a91fed24c72bd779ee13943757d1ffea86aabccf3bb06445",
+          "infra/firewall_config.py": "ce8411fac264573564ad0c9982985223c96333cf2ed740d308e6bc5e163139b5",
+          "infra/firewall_runtime.py": "30c9ec25283be7c613548bc1a8868c14cb45b093e0e4898dcd6f511d2eff9afc",
+          "infra/haproxy.cfg": "6bb54a26e3a6b6c8a5239368799a25088d3c6d8b398937c77593bf86f117510d",
+          "infra/host_preflight.py": "d27ebb6543e8b85bb2580cb59d7ae0f783993e02e6e1ba582f0bb7fc7dc31b0e",
+          "infra/known_hosts": "f1005740bf13b212ac9c8d0ce6e213f4f6dfdd5d5994c1fe7fca76f367afe03a",
+          "infra/managed_state.py": "4edb0656e4e4688ce673cede726c0663df11d2331f70662cc0648a1e7d30eb3d",
+          "infra/network_bootstrap.py": "06a4b69efbce33c42598e98820c61cfeb3e2f16550519df293a614e750db61f7",
+          "infra/network_runtime.py": "61db23b551af81c404a4bc8c86a5b643d5d48dda322ab65b85cd92d01ee905f6",
+          "infra/node.json": "559a49965250140e69d8020b4d0152df9b3326d42cafc0605a2c1b9f441af031",
+          "infra/node_inventory.py": "2d2e277394c51542488259061d5531303e6d20fac574d804f4ca1aa286a2f180",
+          "infra/route_health.py": "50fab59fe63ed25d3c8161b4c43f7d222d68c160f89fa6578f26658c273b96cc",
+          "infra/tls_activation.py": "56f0379a89b57b13dc931d34d6fd497f47ad575d260542f83258d41976069ab0",
+          "infra/tls_material.py": "3b8cc07325d4658c61e5b144b7497651473cf354556d6392f3e2cadcf2d58954",
+          "infra/tls_runtime.py": "1c4489e6734add4b5e1883dd5500ab39d73aafe163fc36d0c0ccc210e63b360f",
+          "infra/topology.py": "6995c97f2992829894d230816624e6ebe4ef3760f242ed31aa038878ebe6ff14",
+          "infra/tunnel_config.py": "0c78473d5071a091fe1765978b10b1c9457115884927232b6247b53994210b53",
+          "infra/tunnel_runtime.py": "c9a5ffb293b48a568adf2acd0b6f2af7a9d31d6b5018e3e88b3be526baea3a32",
+          "infra/voicechat-docker-network.conf": "dd5858789491bdf323898688a23976c91cb81e49c0fc012d2aabf2ec0a588e6f",
+          "infra/voicechat-network.service": "bded12e548ed20d3bafb805f7eb7a93fbadf53970959775068114d9af6ca8221"
+        },
+        "identity": {
+          "canonical_origin": "https://univc.duckdns.org",
+          "matrix_server_name": "univc.duckdns.org"
+        },
+        "images": {
+          "configure": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+          "route-health": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+          "turn": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+          "web": "ghcr.io/kerbermeister/voicechat/web@sha256:b0165839b83a7f044c3b8a46f8c62a51bb8ebf823b2636f234a0b22d28b01583"
+        },
+        "node_sha256": "c1897fd498957cad9554d7c8b11c23f8cc55d77fc2281af07b2f835760c6cfbb",
+        "role": "edge",
+        "schema": 1,
+        "service_id": "voicechat",
+        "topology_sha256": "bce62a70f7b1e88718806cc327544b57983313fc54f8f161d9f23d1ec956dbda"
+      },
+      "inventory": {
+        "core": {
+          "generation": 1,
+          "public_ip": "84.200.80.13",
+          "ssh_host_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII8ABuxjCF9lTEgXfyLThLp7O2SmAatlzCUlae1H0f32",
+          "tunnel_ip": "10.88.0.1"
+        },
+        "edges": [
+          {
+            "host": "core",
+            "id": "a",
+            "legacy_turn": true,
+            "shared_tls": {
+              "ingress_ip": "172.29.0.3",
+              "legacy_ip": "172.29.0.2",
+              "network": "voicechat-shared-ingress",
+              "subnet": "172.29.0.0/29"
+            }
+          }
+        ],
+        "schema": 1,
+        "service_id": "voicechat",
+        "ssh_port": 22,
+        "ssh_user": "root"
+      },
+      "legacy_root": "/srv/voicechat",
+      "public": {
+        "canonical_origin": "https://univc.duckdns.org",
+        "edges": [
+          {
+            "id": "a",
+            "origin": "https://univc.duckdns.org",
+            "turn_host": "turn.univc.duckdns.org"
+          }
+        ],
+        "matrix_server_name": "univc.duckdns.org",
+        "schema": 1,
+        "service_id": "voicechat",
+        "web_origins": [
+          "https://univc.duckdns.org"
+        ]
+      },
+      "root": "/srv/voicechat-managed",
+      "schema": 1,
+      "shared_root": "/var/lib/voicechat-shared-ingress",
+      "source_files": {
+        "infra/Caddyfile": "aef0a040489b7679e5122aa24df889c188b5f0fa1c96e8707bc0c01f9499f28d",
+        "infra/MACOS.md": "1fc23af0fe47ecb4ba6db2e653d175a27233ed311c9395d50fb763ac30bebd56",
+        "infra/README.md": "a39bd84a699a354a2ae62bc32ddf364658524e4d9edfff27d1c1b0758b418a59",
+        "infra/THREE_VPS.md": "666dab809d34d2444516697c8c017914d957d5de428582b603ca38baa295072c",
+        "infra/VPS.md": "889c47e7ddd82580ca534dc02620d693be05941c11a7d6de66b29ef966c4543d",
+        "infra/acme-duckdns.example.json": "47d3ad7fadad1223cde6d6b7170546c6355ade2896071faac5e19a0a271cc73c",
+        "infra/acme-tools.json": "0ea0ef87b727621aa788f72d504ae7f5c7c25abe789fbfb29583aaca72558d6e",
+        "infra/acme.py": "d7b65c42a29d623274af94bf24c8abe90c20d8074348c936f434d9fe4a6836ea",
+        "infra/android_release.py": "dc80e6717588a9b9921f35984cca7892fad0bb9cbaa2761f8a35459eaff0608e",
+        "infra/bootstrap.py": "05c8e94c6ece6051fe7b82036d355767cbad31eebb1b7b76f3fb5b3b13dafc88",
+        "infra/cancel_initial.py": "cbc1f29c5a305bd7a7be2be2ab1ede43995cb3e2b8a66acf70719540f00c1a78",
+        "infra/client_config.py": "33237386efaa677d9c7dc880d687268c4e698028bb397e2247448ac9fb322d72",
+        "infra/cohost_tls.py": "50ac1dbed357eb25de86e0a75158a627f18f84e75bc7f51db9e7b4808ac3cc5f",
+        "infra/cohost_tls_bootstrap.py": "23fbe9474605bedbb2f0e57b0caae67d04bfcb9ec5fefd56f32452f76330df1e",
+        "infra/compose.proxy.yaml": "a50714ef80c0dd5ae54dd895fd3de82cb32ac23762297fdbd1e0643c24d0d997",
+        "infra/compose.yaml": "2c54db78e275e3c334b78dfcc8e9b7d8ad3edd369fc523b48e38be9bba5d8545",
+        "infra/configure.py": "92947e793134941855d758719f726017453e4385b6076346cd0b3d7d97c45da9",
+        "infra/control.Dockerfile": "2749805ec8f0b143242bc31d6dcd5e354b9eceb754b56812d6ca71920fa7ac30",
+        "infra/core_backup_bootstrap.py": "4214ccc37e912caaa4dadb8fd8cfaad6dea7ddf8b9f9fdf69923c4313e2bf620",
+        "infra/core_deploy.py": "26589820abfc5bea503d95e6ecf718440dcd12dc46555cc085839f846694e9f4",
+        "infra/crypto-tools.json": "58927c4a2156b7dbcb02ab20c2a4f2753b1e951f948a3cef2ca0aa7262433484",
+        "infra/deploy.py": "d93639ec9e4ae3b236f821c37417e60ba14942101c994d4ed8bd02e43f819d4c",
+        "infra/edge-images.json": "fa44d7f1172438320aa3253a8b41d29b3cb5bf36f09ca1d075775f89af2e047f",
+        "infra/edge_config.py": "441ee98343b2b016329c561f506ad3fb105055f78e5532c02744a99df6da70e3",
+        "infra/edge_deploy.py": "68dca5150dbf69b0086628497d6890bf0d3caa573adc4c85db95768408ded0c5",
+        "infra/edge_turn.py": "32ba6d941295cdf1a91fed24c72bd779ee13943757d1ffea86aabccf3bb06445",
+        "infra/firewall_config.py": "ce8411fac264573564ad0c9982985223c96333cf2ed740d308e6bc5e163139b5",
+        "infra/firewall_runtime.py": "30c9ec25283be7c613548bc1a8868c14cb45b093e0e4898dcd6f511d2eff9afc",
+        "infra/host_connection.py": "33bdc90ad21924d6345b9c94941cfbcd088989cb680712fd6ef4512a8ccec909",
+        "infra/host_preflight.py": "d27ebb6543e8b85bb2580cb59d7ae0f783993e02e6e1ba582f0bb7fc7dc31b0e",
+        "infra/initial_cohost.py": "e54de9cdad78b716467579a59a81d1e2fcf29d5dd3c18269e61da540680f3d5c",
+        "infra/initial_entry.py": "de1cb2a6975fd44ca2ef861646daecc72d98f9652d701561e39aed5e4414782c",
+        "infra/legacy_backup.py": "a6ddfa00b6a3bb421d28ef3aa067b9d9399a9bb54db39fcc4e0ae38329c25a91",
+        "infra/legacy_core.py": "dfa6ad95ccce19c31d635a5514807e5e274d379b00b67a5af412a343469c023f",
+        "infra/macos_release.py": "4a94bc07f88f7688f81d7653ed500ed0facb8e8b97eaeb09bda43ea38238656f",
+        "infra/managed_release.py": "fff00e9b450efb5fb6dac2a427abb55284e9c36caee0d19002b04aa016abe71a",
+        "infra/managed_state.py": "4edb0656e4e4688ce673cede726c0663df11d2331f70662cc0648a1e7d30eb3d",
+        "infra/network_bootstrap.py": "06a4b69efbce33c42598e98820c61cfeb3e2f16550519df293a614e750db61f7",
+        "infra/network_runtime.py": "61db23b551af81c404a4bc8c86a5b643d5d48dda322ab65b85cd92d01ee905f6",
+        "infra/node-inventory.example.json": "2d6ab485542188c32094ac1391952cb780a80c017c1b76622a69547a53091a35",
+        "infra/node_inventory.py": "2d2e277394c51542488259061d5531303e6d20fac574d804f4ca1aa286a2f180",
+        "infra/publish_android_ssh.py": "e7028aee748fefef3aa169f3cfff32cbf6ffe3226fc45a7fb670576c14386aa4",
+        "infra/publish_catalog.py": "9b9b20fc8e73bf8c91115de9cf5967937588cadeb60fa2e372ff6ae05cd081c7",
+        "infra/publish_macos.py": "a0c4de880d1545402c6f33ab0af23f5344185f5fa2d431d9b53ce6f763f8b291",
+        "infra/push-requirements.txt": "b577c26d99b01e45321e7e00c07ab2802c56f2a8d5dd27085d6d421eec045393",
+        "infra/push_route_migration.py": "dbeb243b28f38a5ddb5dd93fc2945c7a075b5ea2d22f7cdd990cd84924588a06",
+        "infra/release_delivery.py": "c9f22f516b34d6be65c53a11203475b4f35c2c77f0627967495a0c14598f4af9",
+        "infra/release_source.py": "e0fd947ac11f4552d3b67f2e3630d034c475ef1e9f84fa4303120e7adf3cda08",
+        "infra/render_edge.py": "f89091b682dec1fcabab0c37e8bf2059981ca85af2ea0fc529b73713b580039b",
+        "infra/render_roles.py": "7cc9732532ebe32266d01e4d1a503eda03055d9ae6dd63e9411d58f08b75329c",
+        "infra/role_boot.py": "d47428206da9de745fab2fc0bbff8dfa47a1cc0ef04503528494e9c14d5767d6",
+        "infra/role_bootstrap.py": "897ad02cd2009fb31e93dd852bd70dc1f59e5ba4acb072a91bdb82a00644b60c",
+        "infra/role_config.py": "db78411546ae32c729df54fe2327dee7e340cfa97bdcd1b89e98424d98387196",
+        "infra/role_deploy.py": "c0526f1937b3e916fb7c7afa9ecb3975bc22c0c8255f58d5cb517471e3486adc",
+        "infra/role_prepare.py": "8961970e51be68969118bb85f391c4f51f8208257c10289f1a7f1539e2d3ced0",
+        "infra/role_release.py": "5daeb40aa7a6cd4c88baab91d289b66331de611e6c310c12cc7a9259b8c80909",
+        "infra/route_catalog.py": "8627900901d7c146e0be6fe038c462a95bae128571f1b9a84c3fd1922649ef1d",
+        "infra/route_health.py": "50fab59fe63ed25d3c8161b4c43f7d222d68c160f89fa6578f26658c273b96cc",
+        "infra/setup_yandex.py": "f4ff4865c6a1cc1a22bf53d8a1d94e0f2a050ed7d1bd84079d9fe9934bfb1e71",
+        "infra/shared-node-inventory.example.json": "92d33e9d95d9076ddc1ce2c3cf2811b84f3ac385db53efb255dc02c511926645",
+        "infra/shared_config.py": "20032071cb67c154cfa531cde88c4c1352fe16a1e2f625140aa00210d1f1785b",
+        "infra/shared_cutover.py": "79b27ce583231f6ee80ef0e6439211f1d65388ff8282d6bc8b697db7c243ea7c",
+        "infra/shared_front.py": "506c84039136222308d42ace27c821b3087f066843a014f6ad49ba3f2addf7b0",
+        "infra/shared_ingress.py": "8a77b39f99904153df60fb9adc09a66d56a3524852d670f494d9ca8348e691d0",
+        "infra/shared_update.py": "2259f0baed940850fcd94d79412b39b36b08a828dfa7b2fff82cb60aecac7453",
+        "infra/single-node-inventory.example.json": "b0937dedc51eab042758121c3c75530d4c9a734a674c6d067e8037478b8b62fb",
+        "infra/single-vps.example.json": "b281046e0af6a6bd2b61cdcf487401599c2de1788dfe112a36d6763030086435",
+        "infra/ssh_deploy.py": "d8b8ca67549d0d1cb766001ecc822f264becf8adf2a33e71ffcd905aceedd864",
+        "infra/supervise.py": "91f695de92746ca688abb35d89db3a21fd97b15ba5aea00e5b68c5a1bd501fb8",
+        "infra/three-vps.example.json": "f5a8f5644a81e9e503ea2c61ff4e84d9ac414ef130b12354a9df00264da34889",
+        "infra/tls_activation.py": "56f0379a89b57b13dc931d34d6fd497f47ad575d260542f83258d41976069ab0",
+        "infra/tls_material.py": "3b8cc07325d4658c61e5b144b7497651473cf354556d6392f3e2cadcf2d58954",
+        "infra/tls_runtime.py": "1c4489e6734add4b5e1883dd5500ab39d73aafe163fc36d0c0ccc210e63b360f",
+        "infra/topology.py": "6995c97f2992829894d230816624e6ebe4ef3760f242ed31aa038878ebe6ff14",
+        "infra/tunnel-public-keys.example.json": "607218490917039ea1a6042ebcb15951ff5f2e61de378dcd962c483b3e63bbe9",
+        "infra/tunnel_config.py": "0c78473d5071a091fe1765978b10b1c9457115884927232b6247b53994210b53",
+        "infra/tunnel_runtime.py": "c9a5ffb293b48a568adf2acd0b6f2af7a9d31d6b5018e3e88b3be526baea3a32",
+        "infra/verify_macos_signature.swift": "c258bba7def72ae56e14165d6b108b51c26b31a8f50c97cd3c2724e9d76ab9c4",
+        "infra/voicechat-backup.service": "0f9d3c6a2126688eeb56b8654ba205d10e1964d44cdc0899f35b1ba8cb26de52",
+        "infra/voicechat-backup.timer": "cebc353aaa51950bbb68ba2de803011e4843f84e6c34337a8eed5cfa1935c5f0",
+        "infra/voicechat-docker-network.conf": "dd5858789491bdf323898688a23976c91cb81e49c0fc012d2aabf2ec0a588e6f",
+        "infra/voicechat-network.service": "bded12e548ed20d3bafb805f7eb7a93fbadf53970959775068114d9af6ca8221",
+        "infra/web.Dockerfile": "d6e9ac1e4ee986499633b51fb3f778a7b7a783c29220a4f988043d3b2695a6e8",
+        "prototype/client-policy.json": "8fd8fb62e25ba0be4f27d5310e79263752f83b839e8450f575ea76f73a7d53d5",
+        "prototype/client_policy.py": "2485d44c6a6125cc7642e73125c4a2f341603321c99d36bac9545b3e95342796",
+        "prototype/scheduled_messages.py": "f45f69aac9ec96855c0e75d5ef9a15069b8ae359cda2099e9c4797c24b023bfd",
+        "prototype/voicechat_policy.py": "301695d294c562527b8e7ee631458eaeef6963d5809a1f4305b32cec34e5b500"
+      },
+      "subnet": "10.241.0.0/28"
+    }
+  },
+  "facts": {
+    "core": {
+      "schema": 1,
+      "role": "core",
+      "edge_id": null,
+      "manifest": {
+        "commit": "2dae7580c6b229dcd8c804a4efac21055230a6cc",
+        "contracts": {
+          "core_api": 1,
+          "core_storage": 1,
+          "role_config": 1,
+          "route_schema": 1
+        },
+        "edge_id": null,
+        "files": {
+          "infra/client_config.py": "33237386efaa677d9c7dc880d687268c4e698028bb397e2247448ac9fb322d72",
+          "infra/compose.core.json": "f350f83b1bb17ab250c3847c44585b7299513423c61f439184d9ceda447b3a49",
+          "infra/compose.yaml": "d23e4bde7f42f62ab99c1ee9d3482f24a21fedb4b1fd7447fba002753320b405",
+          "infra/configure.py": "92947e793134941855d758719f726017453e4385b6076346cd0b3d7d97c45da9",
+          "infra/firewall_config.py": "ce8411fac264573564ad0c9982985223c96333cf2ed740d308e6bc5e163139b5",
+          "infra/firewall_runtime.py": "30c9ec25283be7c613548bc1a8868c14cb45b093e0e4898dcd6f511d2eff9afc",
+          "infra/host_preflight.py": "d27ebb6543e8b85bb2580cb59d7ae0f783993e02e6e1ba582f0bb7fc7dc31b0e",
+          "infra/known_hosts": "f1005740bf13b212ac9c8d0ce6e213f4f6dfdd5d5994c1fe7fca76f367afe03a",
+          "infra/managed_state.py": "4edb0656e4e4688ce673cede726c0663df11d2331f70662cc0648a1e7d30eb3d",
+          "infra/network_bootstrap.py": "06a4b69efbce33c42598e98820c61cfeb3e2f16550519df293a614e750db61f7",
+          "infra/network_runtime.py": "61db23b551af81c404a4bc8c86a5b643d5d48dda322ab65b85cd92d01ee905f6",
+          "infra/node.json": "a01d458085ba89a4410c00b517c875f6d19bca9466b526983ac7c00fbbd4d7ba",
+          "infra/node_inventory.py": "2d2e277394c51542488259061d5531303e6d20fac574d804f4ca1aa286a2f180",
+          "infra/push_route_migration.py": "dbeb243b28f38a5ddb5dd93fc2945c7a075b5ea2d22f7cdd990cd84924588a06",
+          "infra/topology.py": "6995c97f2992829894d230816624e6ebe4ef3760f242ed31aa038878ebe6ff14",
+          "infra/tunnel_config.py": "0c78473d5071a091fe1765978b10b1c9457115884927232b6247b53994210b53",
+          "infra/tunnel_runtime.py": "c9a5ffb293b48a568adf2acd0b6f2af7a9d31d6b5018e3e88b3be526baea3a32",
+          "infra/voicechat-docker-network.conf": "dd5858789491bdf323898688a23976c91cb81e49c0fc012d2aabf2ec0a588e6f",
+          "infra/voicechat-network.service": "bded12e548ed20d3bafb805f7eb7a93fbadf53970959775068114d9af6ca8221",
+          "prototype/client-policy.json": "8fd8fb62e25ba0be4f27d5310e79263752f83b839e8450f575ea76f73a7d53d5",
+          "prototype/client_policy.py": "2485d44c6a6125cc7642e73125c4a2f341603321c99d36bac9545b3e95342796",
+          "prototype/scheduled_messages.py": "f45f69aac9ec96855c0e75d5ef9a15069b8ae359cda2099e9c4797c24b023bfd",
+          "prototype/voicechat_policy.py": "301695d294c562527b8e7ee631458eaeef6963d5809a1f4305b32cec34e5b500"
+        },
+        "identity": {
+          "canonical_origin": "https://univc.duckdns.org",
+          "matrix_server_name": "univc.duckdns.org"
+        },
+        "images": {
+          "configure": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+          "control": "ghcr.io/kerbermeister/voicechat/control@sha256:ee3d5d33fc1f1dbed66904560ffd77e39351a96df6787e39515bfed820a7a9cb",
+          "postgres": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+          "synapse": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0"
+        },
+        "node_sha256": "78e1d8d7cf9f79b2537a35b28329126722a533e4f35443a0b2748e368cafaea3",
+        "role": "core",
+        "schema": 1,
+        "service_id": "voicechat",
+        "topology_sha256": "bce62a70f7b1e88718806cc327544b57983313fc54f8f161d9f23d1ec956dbda"
+      },
+      "processes": [
+        "1643ab643312988f451796e6ecbcb23d0c26e5dae95ddadfce9b03178abd3920 true 2026-10-30T03:30:15.075886745Z 0",
+        "36f19a2d5d50ab8b125569ea32d635b44339f40468e955a0ac29298d17754410 true 2026-10-30T03:30:17.009602365Z 0",
+        "6d7c22a7b842deca70b16c0869dffb420788785931e864a6169dc5b37c243e25 true 2026-10-29T19:08:39.014458927Z 0"
+      ],
+      "runtime_sha256": "2e8ba47dfe715d3c5b419003948c7e0965d1afaeb83bec9eb758f7b962258e6f",
+      "data_identity": {
+        "postgres_system_identifier": "7699984398180954145",
+        "signing_sha256": "aa2dbe341c20ee62f88663b32942008e11ab9dfa4b782bba1076217bd302dbb0"
+      }
+    },
+    "edge-a": {
+      "schema": 1,
+      "role": "edge",
+      "edge_id": "a",
+      "manifest": {
+        "commit": "2dae7580c6b229dcd8c804a4efac21055230a6cc",
+        "contracts": {
+          "core_api": 1,
+          "core_storage": 1,
+          "role_config": 1,
+          "route_schema": 1
+        },
+        "edge_id": "a",
+        "files": {
+          "infra/Caddyfile": "b366341b8e6ca66e6fbab5874bdfd62e66868dd642cc36e56f9b50c9d9e89a62",
+          "infra/client_config.py": "33237386efaa677d9c7dc880d687268c4e698028bb397e2247448ac9fb322d72",
+          "infra/compose.edge.json": "298f1715d9572398ea70d38de1067718ae890f1db565f9179a6663dfcd94bec3",
+          "infra/compose.shared-front.json": "d3d977dd3d301aef88936a7023a6d014ea0354eba4ae582839c290ad9300aa5d",
+          "infra/configure.py": "92947e793134941855d758719f726017453e4385b6076346cd0b3d7d97c45da9",
+          "infra/edge_turn.py": "32ba6d941295cdf1a91fed24c72bd779ee13943757d1ffea86aabccf3bb06445",
+          "infra/firewall_config.py": "ce8411fac264573564ad0c9982985223c96333cf2ed740d308e6bc5e163139b5",
+          "infra/firewall_runtime.py": "30c9ec25283be7c613548bc1a8868c14cb45b093e0e4898dcd6f511d2eff9afc",
+          "infra/haproxy.cfg": "6bb54a26e3a6b6c8a5239368799a25088d3c6d8b398937c77593bf86f117510d",
+          "infra/host_preflight.py": "d27ebb6543e8b85bb2580cb59d7ae0f783993e02e6e1ba582f0bb7fc7dc31b0e",
+          "infra/known_hosts": "f1005740bf13b212ac9c8d0ce6e213f4f6dfdd5d5994c1fe7fca76f367afe03a",
+          "infra/managed_state.py": "4edb0656e4e4688ce673cede726c0663df11d2331f70662cc0648a1e7d30eb3d",
+          "infra/network_bootstrap.py": "06a4b69efbce33c42598e98820c61cfeb3e2f16550519df293a614e750db61f7",
+          "infra/network_runtime.py": "61db23b551af81c404a4bc8c86a5b643d5d48dda322ab65b85cd92d01ee905f6",
+          "infra/node.json": "559a49965250140e69d8020b4d0152df9b3326d42cafc0605a2c1b9f441af031",
+          "infra/node_inventory.py": "2d2e277394c51542488259061d5531303e6d20fac574d804f4ca1aa286a2f180",
+          "infra/route_health.py": "50fab59fe63ed25d3c8161b4c43f7d222d68c160f89fa6578f26658c273b96cc",
+          "infra/tls_activation.py": "56f0379a89b57b13dc931d34d6fd497f47ad575d260542f83258d41976069ab0",
+          "infra/tls_material.py": "3b8cc07325d4658c61e5b144b7497651473cf354556d6392f3e2cadcf2d58954",
+          "infra/tls_runtime.py": "1c4489e6734add4b5e1883dd5500ab39d73aafe163fc36d0c0ccc210e63b360f",
+          "infra/topology.py": "6995c97f2992829894d230816624e6ebe4ef3760f242ed31aa038878ebe6ff14",
+          "infra/tunnel_config.py": "0c78473d5071a091fe1765978b10b1c9457115884927232b6247b53994210b53",
+          "infra/tunnel_runtime.py": "c9a5ffb293b48a568adf2acd0b6f2af7a9d31d6b5018e3e88b3be526baea3a32",
+          "infra/voicechat-docker-network.conf": "dd5858789491bdf323898688a23976c91cb81e49c0fc012d2aabf2ec0a588e6f",
+          "infra/voicechat-network.service": "bded12e548ed20d3bafb805f7eb7a93fbadf53970959775068114d9af6ca8221"
+        },
+        "identity": {
+          "canonical_origin": "https://univc.duckdns.org",
+          "matrix_server_name": "univc.duckdns.org"
+        },
+        "images": {
+          "configure": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+          "route-health": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+          "turn": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+          "web": "ghcr.io/kerbermeister/voicechat/web@sha256:6dcb6c33c7f61b002c246fba81a2054f7225a1ed9fe8040d89ac6f3b3230d2ac"
+        },
+        "node_sha256": "c1897fd498957cad9554d7c8b11c23f8cc55d77fc2281af07b2f835760c6cfbb",
+        "role": "edge",
+        "schema": 1,
+        "service_id": "voicechat",
+        "topology_sha256": "bce62a70f7b1e88718806cc327544b57983313fc54f8f161d9f23d1ec956dbda"
+      },
+      "processes": [
+        "6697938ce333b018f90e05c721478c6c90b6dd667f11367583574114acc9ce3a true 2026-10-30T01:15:42.29671489Z 0",
+        "abc3e2b51b7f023520cda1367f617c3ba253189ce180c3746912578e5ce43fa7 true 2026-10-30T01:15:39.179970922Z 0",
+        "ddeffc0e4bad2eb8dbcea4bf133946700263feef1ab2c44fa2653e5280461d4b true 2026-10-30T01:15:42.098355842Z 0"
+      ]
+    }
+  },
+  "services": {
+    "core": {
+      "configure": "dd66f2d052e8d3959b3dd805b1cd1ed61da47580a79cd29d630008de34a06c8c 2026-10-30T01:14:48.324997484Z 0",
+      "control": "1643ab643312988f451796e6ecbcb23d0c26e5dae95ddadfce9b03178abd3920 2026-10-30T03:30:15.075886745Z 0",
+      "postgres": "6d7c22a7b842deca70b16c0869dffb420788785931e864a6169dc5b37c243e25 2026-10-29T19:08:39.014458927Z 0",
+      "synapse": "36f19a2d5d50ab8b125569ea32d635b44339f40468e955a0ac29298d17754410 2026-10-30T03:30:17.009602365Z 0"
+    },
+    "edge-a": {
+      "configure": "9816c7ce15b41f6a85943b68282f89f7a81141ad53068d97734cd6bfe80b9746 2026-10-30T01:15:18.678500124Z 0",
+      "route-health": "ddeffc0e4bad2eb8dbcea4bf133946700263feef1ab2c44fa2653e5280461d4b 2026-10-30T01:15:42.098355842Z 0",
+      "turn": "abc3e2b51b7f023520cda1367f617c3ba253189ce180c3746912578e5ce43fa7 2026-10-30T01:15:39.179970922Z 0",
+      "web": "6697938ce333b018f90e05c721478c6c90b6dd667f11367583574114acc9ce3a 2026-10-30T01:15:42.29671489Z 0"
+    }
+  },
+  "neighbors": [
+    "/deploy-backend-1 3fd937c2ef6da148d130bfb733be1378fb95480f6e8f5edc032889ed1edfb1bb 2026-10-26T07:13:05.01469252Z 0",
+    "/deploy-caddy-1 5ead024ec426244acdbd9b491019d34e2711748290b7644bf6f9a30e5dc387ac 2026-10-29T19:09:12.695869201Z 0",
+    "/deploy-frontend-1 923e088abb814b746ce4e2921ec93475730b74ec0dca873bc8cde8f2767a853b 2026-10-26T07:13:05.02282237Z 0",
+    "/deploy-postgres-1 23fe66be645c739550e59657d845a114e9794474f13ae3b10fb244a5fbc34581 2026-10-26T07:13:04.999798589Z 0",
+    "/deploy-stt-1 629c3ebeb59ad094feeb0351561b510075974953d314c5aede628374812efb8c 2026-10-26T07:13:04.95938781Z 0",
+    "/voicechat-shared-front-ingress-1 368088048bca475b5b66aa31d51990627aafbcf5726355d2ccbca8d9fb30903a 2026-10-29T19:09:15.200049297Z 0"
+  ],
+  "https": {
+    "univc.duckdns.org/": 200,
+    "univc.duckdns.org/health/route": 200,
+    "univc.duckdns.org/updates/macos/appcast.xml": 200,
+    "listing-helper.flashhub.net/": 200
+  },
+  "maintenance_timers_active_enabled": true,
+  "macos24_feed_unchanged": true,
+  "stage": "before"
+}

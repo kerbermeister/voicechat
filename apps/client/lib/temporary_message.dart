@@ -1,10 +1,14 @@
 import 'animated_message_border.dart';
+import 'read_after.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart';
 
 DateTime? messageExpiry(Event event) {
+  if (readAfterSeconds(event) != null) {
+    return ReadAfterState.of(event.room.client).expiry(event.eventId);
+  }
   final ttl =
       event.content['dev.voicechat.ttl_seconds'] ??
       event.originalSource?.content['dev.voicechat.ttl_seconds'];
@@ -14,6 +18,8 @@ DateTime? messageExpiry(Event event) {
 }
 
 bool messageExpired(Event event, {DateTime? now}) =>
+    (readAfterSeconds(event) != null &&
+        ReadAfterState.of(event.room.client).expired(event.eventId)) ||
     messageExpiry(event)?.isAfter(now ?? DateTime.now()) == false;
 
 bool emptyEncryptedEvent(Event event) {
@@ -37,6 +43,7 @@ class _TemporaryMessageState extends State<TemporaryMessage>
     duration: const Duration(milliseconds: 1000),
   );
   Timer? deadline, countdown;
+  DateTime? scheduledExpiry;
   bool expired = false, hidden = false;
   @override
   void initState() {
@@ -49,6 +56,7 @@ class _TemporaryMessageState extends State<TemporaryMessage>
     deadline?.cancel();
     countdown?.cancel();
     final expiry = messageExpiry(widget.event);
+    scheduledExpiry = expiry;
     expired = expiry != null && !expiry.isAfter(DateTime.now());
     hidden = expired;
     if (expiry == null || expired) return;
@@ -75,7 +83,7 @@ class _TemporaryMessageState extends State<TemporaryMessage>
   @override
   void didUpdateWidget(TemporaryMessage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (messageExpiry(oldWidget.event) != messageExpiry(widget.event)) {
+    if (!expired && scheduledExpiry != messageExpiry(widget.event)) {
       schedule();
     }
   }
@@ -90,14 +98,59 @@ class _TemporaryMessageState extends State<TemporaryMessage>
   @override
   Widget build(BuildContext context) {
     final expiry = messageExpiry(widget.event);
-    if (expiry == null) return widget.child;
+    if (expiry == null && readAfterSeconds(widget.event) == null) {
+      return widget.child;
+    }
     final colors = Theme.of(context).colorScheme;
     final reduce = MediaQuery.disableAnimationsOf(context);
+    final afterRead = readAfterSeconds(widget.event);
+    if (expiry == null) {
+      return TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: 1),
+        duration: Duration(milliseconds: reduce ? 0 : 500),
+        builder: (_, value, child) => Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 10 * (1 - value)),
+            child: child,
+          ),
+        ),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border.all(color: colors.tertiary, width: 2),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.visibility_off_outlined, color: colors.tertiary),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'Исчезнет через $afterRead с после прочтения',
+                        style: TextStyle(color: colors.tertiary),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              widget.child,
+            ],
+          ),
+        ),
+      );
+    }
     final remaining =
         ((expiry.difference(DateTime.now()).inMilliseconds + 999) ~/ 1000)
             .clamp(0, 86400);
     // The deadline also gates builds after a backgrounded tab's timer was throttled.
-    final elapsed = expired || !expiry.isAfter(DateTime.now());
+    final elapsed = expired || messageExpired(widget.event);
     return RepaintBoundary(
       child: AnimatedSize(
         duration: Duration(milliseconds: reduce ? 0 : 250),
@@ -114,11 +167,18 @@ class _TemporaryMessageState extends State<TemporaryMessage>
                   child: SizedBox(
                     height: 52,
                     child: Center(
-                      child: Opacity(
-                        opacity: 1 - fade.value,
-                        child: Text(
-                          'Сообщение исчезает',
-                          style: TextStyle(color: colors.primary),
+                      child: ClipRect(
+                        child: Align(
+                          widthFactor: afterRead == null ? 1 : 1 - fade.value,
+                          child: Opacity(
+                            opacity: 1 - fade.value,
+                            child: Text(
+                              afterRead == null
+                                  ? 'Сообщение исчезает'
+                                  : 'Сообщение уничтожается',
+                              style: TextStyle(color: colors.primary),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -144,7 +204,9 @@ class _TemporaryMessageState extends State<TemporaryMessage>
                             turns: reduce ? 0 : -remaining / 60,
                             duration: Duration(milliseconds: reduce ? 0 : 600),
                             child: Icon(
-                              Icons.hourglass_bottom_rounded,
+                              afterRead == null
+                                  ? Icons.hourglass_bottom_rounded
+                                  : Icons.visibility_off_outlined,
                               size: 17,
                               color: colors.tertiary,
                             ),

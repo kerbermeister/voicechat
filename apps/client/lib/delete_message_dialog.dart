@@ -3,7 +3,12 @@ import 'package:flutter/material.dart';
 
 class DeleteMessageDialog extends StatelessWidget {
   final bool allowAll;
-  const DeleteMessageDialog({super.key, required this.allowAll});
+  final int count;
+  const DeleteMessageDialog({
+    super.key,
+    required this.allowAll,
+    this.count = 1,
+  });
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, viewport) {
@@ -29,7 +34,11 @@ class DeleteMessageDialog extends StatelessWidget {
         ),
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         actionsPadding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-        title: const Text('Удалить сообщение?'),
+        title: Text(
+          count == 1
+              ? 'Удалить сообщение?'
+              : 'Удалить выбранные сообщения ($count)?',
+        ),
         content: const Text(
           'Удаление у вас не меняет сообщения у других участников.',
         ),

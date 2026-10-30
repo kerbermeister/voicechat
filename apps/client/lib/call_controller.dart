@@ -12,6 +12,8 @@ import 'call_devices.dart';
 import 'direct_call.dart';
 import 'voice_call.dart';
 import 'screen_api.dart';
+import 'route_transport.dart';
+import 'media_routes.dart';
 import 'screen_binding.dart';
 import 'screen_controller.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
@@ -91,7 +93,7 @@ class CallController extends ChangeNotifier
       });
     }
     _screenSignals = client.onCallEvents.stream.listen(_screenParties.observe);
-    voip = VoIP(client, this);
+    voip = RoutedVoIP(client, this);
     _events = client.onTimelineEvent.stream.listen(receive);
     // Matrix 14.2 does not emit late-decrypted messages on onTimelineEvent.
     // Listen only to that missing update, without replaying historical calls.
@@ -112,6 +114,9 @@ class CallController extends ChangeNotifier
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_closed) return;
     if (state == AppLifecycleState.resumed) {
+      if (client.httpClient is RouteTransport) {
+        unawaited((client.httpClient as RouteTransport).coordinator?.refresh());
+      }
       unawaited(screen?.poll());
       _refresh();
     }
@@ -211,7 +216,13 @@ class CallController extends ChangeNotifier
     screen = null;
     await previous?.close();
     previous?.dispose();
-    final api = ScreenApi(tokenUrl, () => client.accessToken ?? '');
+    final api = ScreenApi(
+      tokenUrl,
+      () => client.accessToken ?? '',
+      client: client.httpClient is RouteTransport
+          ? (client.httpClient as RouteTransport).fork()
+          : null,
+    );
     ScreenShareController? next;
     try {
       final capability = await api.request('capabilities');

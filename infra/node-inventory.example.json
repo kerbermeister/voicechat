@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "service_id": "voicechat",
+  "ssh_user": "root",
+  "ssh_port": 22,
+  "core": {
+    "generation": 1,
+    "public_ip": "192.0.2.10",
+    "tunnel_ip": "10.88.0.1",
+    "ssh_host_key": "REPLACE_WITH_VERIFIED_CORE_SSH_ED25519_KEY"
+  },
+  "edges": [
+    {
+      "id": "b",
+      "generation": 1,
+      "public_ip": "192.0.2.11",
+      "tunnel_ip": "10.88.0.2",
+      "ssh_host_key": "REPLACE_WITH_VERIFIED_B_SSH_ED25519_KEY"
+    },
+    {
+      "id": "c",
+      "generation": 1,
+      "public_ip": "192.0.2.12",
+      "tunnel_ip": "10.88.0.3",
+      "ssh_host_key": "REPLACE_WITH_VERIFIED_C_SSH_ED25519_KEY"
+    }
+  ]
+}

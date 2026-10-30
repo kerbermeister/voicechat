@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "host": "84.200.80.13",
+  "operation": "read-only legacy core baseline under deploy.lock",
+  "production_application_modified": false,
+  "dns_modified": false,
+  "release": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "manifest_matches_pointer": true,
+  "release_record_matches_pointer": true,
+  "root_and_runtime_owner_uid": 0,
+  "root_and_runtime_mode": "0700",
+  "runtime_environment_mode": "0600",
+  "pointer_and_deploy_lock_mode": "0644",
+  "legacy_backup_service_user": "root",
+  "legacy_backup_timer_enabled": true,
+  "legacy_backup_timer_active": true,
+  "legacy_backup_last_exit_status": 0,
+  "legacy_backup_last_start_utc": "2026-10-29 03:30:02",
+  "running_services": [
+    "postgres",
+    "synapse",
+    "control",
+    "turn",
+    "web"
+  ],
+  "healthy_services": [
+    "postgres",
+    "synapse",
+    "control",
+    "web"
+  ],
+  "turn_has_no_docker_healthcheck": true,
+  "core_services_network": [
+    "voicechat_default"
+  ],
+  "web_networks": [
+    "deploy_default",
+    "voicechat_default"
+  ],
+  "postgres_system_identifier": "7699984398180954145",
+  "matrix_server_name": "univc.duckdns.org",
+  "matrix_signing_key_sha256": "aa2dbe341c20ee62f88663b32942008e11ab9dfa4b782bba1076217bd302dbb0",
+  "limits": [
+    "Read-only inspection; no stopped-writer backup, migration or role activation performed.",
+    "Existing scheduler still calls the legacy deployer and must be coordinated with adoption."
+  ]
+}

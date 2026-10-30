@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "loopback_listener_only": false,
+  "real_compose_interruption_resumed": true,
+  "repeat_preserved_process": true,
+  "owned_stopped_listener_recovered": true,
+  "owned_networks_verified": true,
+  "core_and_edge_not_started": false,
+  "trusted_web_and_turn_tls_through_warm_front": true,
+  "strict_proxy_web_readiness_checked": true,
+  "foreign_readiness_identity_rejected": true,
+  "limits": [
+    "Marked disposable VM ports 80/443 and synthetic business/API/TURN TLS backends.",
+    "No production migration, real core database, TURN allocation/media or reboot."
+  ],
+  "real_public_port_cutover": true,
+  "operator_sha256": "2b978af938912d1e5e21001992201fd2c51437844443baf2f15b41737630821d",
+  "caddy_recreation_interruption_resumed": true,
+  "front_recreation_interruption_resumed": true,
+  "actual_failed_cutover_restored_legacy_https": true,
+  "unrelated_upstream_processes_preserved": true,
+  "committed_cutover_repeat_preserved_processes": true,
+  "business_manager_shared_mode_noop_verified": true,
+  "actual_installed_sealed_renewal_service_succeeded": true,
+  "owned_timer_enabled_and_fixture_trust_restored": true,
+  "actual_cohost_refresh_real_caddy_and_coturn": true,
+  "actual_web_rotation_and_lost_signal_response_resumed": true,
+  "unchanged_pairs_periodic_repeat_sent_no_signals": true,
+  "previous_valid_pair_restored": true,
+  "both_live_pairs_verified_through_owned_loopback": true,
+  "edge_container_processes_preserved_during_refresh": true,
+  "renewal_limits": [
+    "Synthetic ACME storage, actual cached web and pinned coturn images.",
+    "No real ACME issuance/renewal, core account, media, active TURN allocation or reboot."
+  ],
+  "fixture_resources_removed": true,
+  "date": "2026-10-29",
+  "source_sha256": {
+    "infra/cohost_tls.py": "b414353b925a126144c3b137df09ffdfa55c98a6f5db9edbfc62e9e53b985a1b",
+    "infra/cohost_tls_bootstrap.py": "23fbe9474605bedbb2f0e57b0caae67d04bfcb9ec5fefd56f32452f76330df1e",
+    "prototype/check_cohost_refresh.py": "2c39f86e4fb86926917e49d374c8762702f84ea141c47ba9ffb10c4294e6739d",
+    "prototype/check_shared_port_cutover.py": "2b408fd9d5574a07de3a1ec6c103257d27ae7dfb984823bca14709a295f4ca92",
+    "infra/tls_activation.py": "56f0379a89b57b13dc931d34d6fd497f47ad575d260542f83258d41976069ab0"
+  },
+  "core_not_started": true,
+  "edge_services_started_for_refresh": true,
+  "scope_note": "Warm phase used synthetic TLS endpoints; the renewal extension then started real edge services. No core services ran."
+}

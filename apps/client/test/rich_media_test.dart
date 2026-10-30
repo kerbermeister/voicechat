@@ -455,7 +455,7 @@ void main() {
       ),
     );
     await tester.tap(find.text('Открыть'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(GridView), findsOneWidget);
     await tester.tap(find.byTooltip('😀'));
     await tester.pumpAndSettle();

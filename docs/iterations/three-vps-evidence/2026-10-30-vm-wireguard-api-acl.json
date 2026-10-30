@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "source_commit": "3832455b6e555ffaf1122ecfecf050587853f341",
+  "core": {
+    "private_tcp_payload_roundtrip": true,
+    "actual_peer_source": "10.88.0.2",
+    "public_peer_endpoint_preserved": true,
+    "kernel_wireguard_handshake": true,
+    "public_api_listener_not_reached": true
+  },
+  "entry": {
+    "private_tcp_payload_roundtrip": true,
+    "public_api_connection_timed_out_while_listener_alive": true,
+    "kernel_wireguard_handshake": true,
+    "public_core_endpoint_preserved": true
+  },
+  "production_changed": false,
+  "scope": "Two actual Linux kernels, WireGuard and scoped firewall with synthetic TCP echo on API port; not Matrix, calls, WSS, TLS, TURN or application E2EE acceptance",
+  "fixture_underlay": "QEMU documented stream/hubport bound only to loopback; preserves guest public source IPs; hub is hosted by core QEMU and does not prove independent underlay availability"
+}

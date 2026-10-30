@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "production_changed": false,
+  "actual_pinned_ssh_bootstrap_stdin_delivery_and_same_artifact_repeat": true,
+  "clean_fixture_git_tree_and_backend_fingerprint_verified": true,
+  "source_file_count": 86,
+  "archive_sha256": "9dd1292b961492cf5b0f2d6b403ed7286d7099bc4e7e028ad25bd879b717a23d",
+  "fixture_removed": true,
+  "receiver_sha256": "c9f22f516b34d6be65c53a11203475b4f35c2c77f0627967495a0c14598f4af9",
+  "transport_sha256": "a1c0df12c3d8036c9903b51a502cba3c7a71c823385adf2e6319a89dcdbdd197",
+  "limits": [
+    "Synthetic fixture Git repository and image digests, public source files only. No application deployment, credentials or user data transferred."
+  ]
+}

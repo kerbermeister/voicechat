@@ -1,4 +1,7 @@
 import 'hidden_messages.dart';
+import 'reaction_usage.dart';
+import 'send_failure.dart';
+import 'read_after.dart';
 import 'message_receipts.dart';
 import 'dart:async';
 import 'dart:convert';
@@ -31,13 +34,38 @@ class ChatActions extends ChangeNotifier {
   Timer? _retry;
   final _sending = <String, bool>{};
   final _delivered = <String, String>{};
+  final _confirmed = <Map<String, dynamic>>[];
+
+  /// Keep the acknowledged local card until the timeline has its server event.
+  List<Map<String, dynamic>> outgoing(Room room, Timeline timeline) {
+    bool echoed(Map<String, dynamic> item) => timeline.events.any(
+      (event) =>
+          event.status.isSent &&
+          (event.eventId == item['event_id'] ||
+              event.transactionId == item['id']),
+    );
+    _confirmed.removeWhere((item) => item['room'] == room.id && echoed(item));
+    // A room's confirmed transactions precede its remaining queue, even if the clock moves.
+    return [..._confirmed, ...pending]
+        .where(
+          (item) =>
+              item['room'] == room.id &&
+              !echoed(item) &&
+              (item['error'] != null ||
+                  item['type'] != EventTypes.Reaction && item['edit'] == null),
+        )
+        .toList();
+  }
+
   String? deliveredEvent(String transaction) => _delivered[transaction];
   bool _closed = false;
   final _preparing = <String>{};
+  final _savingItems = <String>{};
   final _activeItems = <String, String>{};
   final _publishing = <String, String>{};
   Future<void> _writes = Future.value();
   ChatActions(this.client, {this.policyUrl, this.onSent, this.onDeleted});
+  late final reactionUsage = ReactionUsage(client.database);
   static const _storageKey = 'dev.voicechat.local.outbox';
   static const _draftKey = 'dev.voicechat.local.drafts';
   static const _mediaVolumeKey = 'dev.voicechat.local.media_volumes';
@@ -66,7 +94,10 @@ class ChatActions extends ChangeNotifier {
   final composerDrafts = <String, ComposerDraft>{};
   Future<void> _draftWrites = Future.value();
   bool get updateBusy =>
-      _sending.isNotEmpty || _preparing.isNotEmpty || _publishing.isNotEmpty;
+      _sending.isNotEmpty ||
+      _preparing.isNotEmpty ||
+      _publishing.isNotEmpty ||
+      _savingItems.isNotEmpty;
 
   Future<void> saveDraft(String roomId, String text) {
     if (text.isEmpty) {
@@ -180,6 +211,7 @@ class ChatActions extends ChangeNotifier {
   }
 
   Future<void> open() async {
+    await ReadAfterState.of(client).load();
     final volumes =
         (await client.database.getAccountData())[_mediaVolumeKey]?.content;
     for (final entry in volumes?.entries ?? <MapEntry<String, dynamic>>[]) {
@@ -239,6 +271,7 @@ class ChatActions extends ChangeNotifier {
     String? edit,
     bool preparing = false,
     int? ttlSeconds,
+    int? readAfterSeconds,
     DateTime? scheduledFor,
   }) async {
     if (_closed) {
@@ -248,6 +281,22 @@ class ChatActions extends ChangeNotifier {
       throw UserActionError(
         'Отправка возможна только в зашифрованный чат, в который вы вступили.',
       );
+    }
+    final readDelay = readAfterSeconds ?? content[readAfterKey];
+    if (readDelay != null) {
+      if (readDelay is! int ||
+          readDelay < 1 ||
+          readDelay > 86400 ||
+          !room.isDirectChat ||
+          ttlSeconds != null ||
+          content.containsKey('dev.voicechat.ttl_seconds') ||
+          scheduledFor != null ||
+          edit != null ||
+          type != EventTypes.Message) {
+        throw UserActionError(
+          'Исчезновение после прочтения доступно только в личном чате, без отложенной отправки и другого таймера.',
+        );
+      }
     }
     if (pending.length >= 100) {
       throw UserActionError('В очереди уже 100 сообщений. Дождитесь отправки.');
@@ -274,6 +323,7 @@ class ChatActions extends ChangeNotifier {
       'content': {
         ...content,
         if (ttlSeconds != null) 'dev.voicechat.ttl_seconds': ttlSeconds,
+        if (readDelay != null) readAfterKey: readDelay,
       },
       'type': type,
       'created': DateTime.now().millisecondsSinceEpoch,
@@ -284,13 +334,18 @@ class ChatActions extends ChangeNotifier {
       if (preparing) 'preparing': true,
     };
     pending.add(item);
+    _savingItems.add(item['id'] as String);
+    notifyListeners();
     try {
       await _save();
     } catch (_) {
       pending.remove(item);
+      if (!_closed) notifyListeners();
       rethrow;
+    } finally {
+      _savingItems.remove(item['id']);
     }
-    notifyListeners();
+    if (!_closed) notifyListeners();
     unawaited(flush());
     return item['id'] as String;
   }
@@ -305,9 +360,9 @@ class ChatActions extends ChangeNotifier {
     void Function(double)? progress,
     bool Function()? cancelled,
     int? ttlSeconds,
+    int? readAfterSeconds,
     DateTime? scheduledFor,
   }) async {
-    await refreshPolicy();
     final video = source.mime.startsWith('video/');
     final limit = video ? policy.videoMaxBytes : policy.fileMaxBytes;
     if (source.size < 1 ||
@@ -336,6 +391,7 @@ class ChatActions extends ChangeNotifier {
       reply: reply,
       preparing: true,
       ttlSeconds: ttlSeconds,
+      readAfterSeconds: readAfterSeconds,
       scheduledFor: scheduledFor,
     );
     final item = pending.firstWhere((i) => i['id'] == id);
@@ -424,9 +480,9 @@ class ChatActions extends ChangeNotifier {
     String? edit,
     List<LinkPreview> previews = const [],
     int? ttlSeconds,
+    int? readAfterSeconds,
     DateTime? scheduledFor,
   }) async {
-    await refreshPolicy();
     text = text.trim();
     if (text.isEmpty || text.length > policy.textMaxLength) {
       throw UserActionError(
@@ -459,6 +515,7 @@ class ChatActions extends ChangeNotifier {
       reply: reply,
       edit: edit,
       ttlSeconds: ttlSeconds,
+      readAfterSeconds: readAfterSeconds,
       scheduledFor: scheduledFor,
     );
   }
@@ -470,6 +527,7 @@ class ChatActions extends ChangeNotifier {
     List<int>? waveform,
     String caption = '',
     int? ttlSeconds,
+    int? readAfterSeconds,
     DateTime? scheduledFor,
   }) async {
     if (caption.trim().length > policy.textMaxLength) {
@@ -504,6 +562,7 @@ class ChatActions extends ChangeNotifier {
       },
       reply: reply,
       ttlSeconds: ttlSeconds,
+      readAfterSeconds: readAfterSeconds,
       scheduledFor: scheduledFor,
     );
   }
@@ -514,9 +573,9 @@ class ChatActions extends ChangeNotifier {
     String caption, {
     Event? reply,
     int? ttlSeconds,
+    int? readAfterSeconds,
     DateTime? scheduledFor,
   }) async {
-    await refreshPolicy();
     if (photos.isEmpty ||
         photos.length > policy.photoMaxCount ||
         caption.trim().length > policy.textMaxLength) {
@@ -550,6 +609,7 @@ class ChatActions extends ChangeNotifier {
       },
       reply: reply,
       ttlSeconds: ttlSeconds,
+      readAfterSeconds: readAfterSeconds,
       scheduledFor: scheduledFor,
     );
   }
@@ -599,6 +659,7 @@ class ChatActions extends ChangeNotifier {
   }
 
   String pendingStatus(Map<String, dynamic> item) {
+    if (_savingItems.contains(item['id'])) return 'Сохранение на устройстве…';
     if (item['error'] is String) return item['error'] as String;
     final head = pending
         .where(
@@ -609,6 +670,20 @@ class ChatActions extends ChangeNotifier {
       return head['error'] is String
           ? 'Ожидает отправки предыдущего сообщения. ${head['error']}'
           : 'Ожидает отправки предыдущего сообщения';
+    }
+    final content = item['content'] as Map;
+    final parts = content['parts'];
+    if (item['preparing'] != true && parts is List && parts.isNotEmpty) {
+      final total = parts.fold<int>(
+        0,
+        (sum, part) => sum + (part['size'] as int),
+      );
+      final uploaded = parts
+          .where((part) => (part['file'] as Map)['url'] != null)
+          .fold<int>(0, (sum, part) => sum + (part['size'] as int));
+      if (total > 0 && uploaded < total) {
+        return 'Загрузка вложения: ${(uploaded * 100 / total).floor()}%';
+      }
     }
     return item['preparing'] == true
         ? 'Подготовка вложения…'
@@ -629,6 +704,7 @@ class ChatActions extends ChangeNotifier {
       for (final entry in heads.entries) {
         if (_sending.containsKey(entry.key) ||
             attempted.contains(entry.key) ||
+            _savingItems.contains(entry.value['id']) ||
             entry.value['preparing'] == true ||
             entry.value['schedule_rejected'] == true) {
           continue;
@@ -669,7 +745,7 @@ class ChatActions extends ChangeNotifier {
                   item['room'] == roomId && item['schedule_rejected'] != true,
             )
             .firstOrNull;
-        if (item == null) break;
+        if (item == null || _savingItems.contains(item['id'])) break;
         if (item['cancelled'] == true && !_preparing.contains(item['id'])) {
           pending.remove(item);
           await _save();
@@ -682,9 +758,30 @@ class ChatActions extends ChangeNotifier {
         if (!_reserveSending(roomId, item)) break;
         _activeItems[roomId] = item['id'] as String;
         try {
+          item.remove('error');
+          item.remove('failure');
+          if (!_closed) notifyListeners();
           final room = client.getRoomById(item['room'] as String);
           if (room == null || !room.encrypted) {
             throw StateError('Room unavailable');
+          }
+          await refreshPolicy();
+          final queuedContent = item['content'] as Map;
+          final caption =
+              queuedContent['caption'] ??
+              queuedContent['dev.voicechat.caption'];
+          if ((queuedContent['msgtype'] == MessageTypes.Text &&
+                  (queuedContent['body'] as String).length >
+                      policy.textMaxLength) ||
+              (caption is String && caption.length > policy.textMaxLength) ||
+              (queuedContent['msgtype'] == 'dev.voicechat.file' &&
+                  (queuedContent['size'] as int) >
+                      ((queuedContent['mime'] as String).startsWith('video/')
+                          ? policy.videoMaxBytes
+                          : policy.fileMaxBytes))) {
+            throw UserActionError(
+              'Сообщение превышает актуальный лимит. Оно осталось в очереди; сократите текст или вложение.',
+            );
           }
           String? id;
           if (item['scheduled_at'] != null && item['sealed'] != null) {
@@ -754,6 +851,8 @@ class ChatActions extends ChangeNotifier {
                 txid: item['id'] as String,
                 inReplyTo: reply,
                 extraContent: {
+                  if (content.containsKey(readAfterKey))
+                    readAfterKey: content[readAfterKey],
                   if (content.containsKey('dev.voicechat.ttl_seconds'))
                     'dev.voicechat.ttl_seconds':
                         content['dev.voicechat.ttl_seconds'],
@@ -780,9 +879,36 @@ class ChatActions extends ChangeNotifier {
           }
           if (_closed) break;
           if (id == null) throw StateError('Send not confirmed');
+          if (item['type'] == EventTypes.Reaction) {
+            final relation = (item['content'] as Map)['m.relates_to'];
+            if (relation is Map && relation['key'] is String) {
+              try {
+                await reactionUsage.record(
+                  relation['key'] as String,
+                  item['id'] as String,
+                );
+              } catch (_) {
+                debugPrint('Reaction preference could not be saved');
+              }
+            }
+          }
           _delivered[item['id'] as String] = id;
           while (_delivered.length > 128) {
             _delivered.remove(_delivered.keys.first);
+          }
+          if (item['type'] == EventTypes.Message &&
+              item['edit'] == null &&
+              item['scheduled_at'] == null) {
+            _confirmed.add(
+              {
+                ...item,
+                'content': Map<String, dynamic>.from(item['content'] as Map)
+                  ..remove('bytes'),
+                'event_id': id,
+                'confirmed': true,
+              }..remove('error'),
+            );
+            if (_confirmed.length > 128) _confirmed.removeAt(0);
           }
           pending.remove(item);
           await _save();
@@ -802,14 +928,20 @@ class ChatActions extends ChangeNotifier {
             continue;
           }
           if (error is ScheduleRejected) item['schedule_rejected'] = true;
-          item['error'] = error is UserActionError
-              ? error.message
-              : error is MatrixException &&
-                    error.error == MatrixError.M_FORBIDDEN
-              ? item['content']['dev.voicechat.ttl_seconds'] != null
-                    ? 'Сервер отклонил временное сообщение. Проверьте доступ к чату и доступность сервиса срока жизни. Сообщение сохранено; повторим автоматически.'
-                    : 'Сервер запретил отправку в этот чат. Проверьте доступ. Сообщение сохранено.'
-              : 'Нет подтверждения отправки. Повторим при восстановлении связи.';
+          final failure = describeSendFailure(
+            error,
+            temporary:
+                (item['content'] as Map).containsKey(
+                  'dev.voicechat.ttl_seconds',
+                ) ||
+                (item['content'] as Map).containsKey(readAfterKey),
+          );
+          item['error'] = failure.reason;
+          item['failure'] = {
+            'reason': failure.reason,
+            'recommendation': failure.recommendation,
+            if (failure.code != null) 'code': failure.code,
+          };
           await _save();
           break; // Retry this chat later; unrelated chats continue independently.
         }
@@ -945,6 +1077,7 @@ class ChatActions extends ChangeNotifier {
       }
     }
     composerDrafts.clear();
+    _confirmed.clear();
     _retry?.cancel();
     await _sync?.cancel();
     try {
@@ -1047,7 +1180,7 @@ class ComposerDraft {
   final List<int>? wave;
   final Event? reply, edit, voiceReply;
   final bool videoNote;
-  final int? videoDuration, temporarySeconds;
+  final int? videoDuration, temporarySeconds, readAfterSeconds;
   final DateTime? scheduledFor;
   ComposerDraft({
     required this.files,
@@ -1061,6 +1194,7 @@ class ComposerDraft {
     required this.videoNote,
     this.videoDuration,
     this.temporarySeconds,
+    this.readAfterSeconds,
     this.scheduledFor,
   });
 }

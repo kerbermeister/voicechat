@@ -1,0 +1,120 @@
+{
+  "recorded_at": "2026-10-28T07:22:32.067941+00:00",
+  "state": "Paused at user request before reboot; offline inventory/render subtask complete; overall MVP incomplete",
+  "baseline_commit": "bca5b46f582cac1bee080736985950d039b46a0e",
+  "source": "Uncommitted working tree; includes prior changes from other tasks; no production baseline read",
+  "source_sha256": {
+    "apps/client/integration_test/route_transport_test.dart": "c599f1346bed3ad22257c8ae142244d641ea76704ad34d0bc3c24e77610a43e8",
+    "apps/client/lib/call_controller.dart": "0bb7c81baf08efa414f011768156df0faf64a9c007220ab2338df5490adac724",
+    "apps/client/lib/call_probe.dart": "410489279048d0d2f7e4b82c830ec4e0b9cb84a707974923727ae55e19ddfec4",
+    "apps/client/lib/main.dart": "c7791ee89864fe518b788c5cc35197640af358e1f48792a507e12e84d675c59e",
+    "apps/client/lib/matrix_probe.dart": "a160ef16bc9d83cd82b8fbe5de63ab1e58baf624898421870feb30b3505ae8f8",
+    "apps/client/lib/media_routes.dart": "ed1fbd30c4cbf7e25964b0124d4d8cf0faf861c9690bb2eeccd869f6364ff626",
+    "apps/client/lib/route_catalog.dart": "4caa6d80685c965baeb6c01054cfe4efe6c7796210dcc14afc8a223a2751676c",
+    "apps/client/lib/route_config.dart": "7db21b136bd8f2459d872d8c959b1d94246f819d3b1ba9d8e86fef0f7d2ae286",
+    "apps/client/lib/route_coordinator.dart": "3daa32a2567305c28a14684d6202b8bcc2b29347d278c727334e90e4956dfb2f",
+    "apps/client/lib/route_status_banner.dart": "bc465465b1bf71efba25d2f03b3b98b08aa7e4765f594f41e67c841c5332b7b2",
+    "apps/client/lib/route_transport.dart": "c40015bbab1e4b51938c021949ee57312dfc305a76b8e831a16856bf9b51bca8",
+    "apps/client/lib/screen_controller.dart": "4e257ea0bf51d00c34818a793646cf5cbba408b6dbb94d9c9242d519903fe7c6",
+    "apps/client/test/media_routes_test.dart": "540af6a498d90ed0ab66bf9169f25626558f4cd5d900153cb461cdc7c9ddd13e",
+    "apps/client/test/route_coordinator_test.dart": "d155c74c7ab6f9c3043c7a528facf4224bef75cda2e2210274c278dc61de2bdd",
+    "apps/client/test/route_status_banner_test.dart": "7360a4c4bc40f7305d99b5cbe205c668d3fd118e0f36515f30f1dc6fac9a05a5",
+    "apps/client/test/route_transport_test.dart": "a5ae2e99fa7b2151abe7ec8974816d4a0d3e9c19f1fb8adebb092c07ec6539ce",
+    "infra/Caddyfile": "aef0a040489b7679e5122aa24df889c188b5f0fa1c96e8707bc0c01f9499f28d",
+    "infra/client_config.py": "f89112846c08de986db0fb661972f6c894aa59019c20b65c2757aef1e77d5e60",
+    "infra/edge-images.json": "fa44d7f1172438320aa3253a8b41d29b3cb5bf36f09ca1d075775f89af2e047f",
+    "infra/edge_config.py": "a325f790c2a9fc51cfbac2234c551d4de658ba052835b419e8eef595ca3d9f0e",
+    "infra/node-inventory.example.json": "2d6ab485542188c32094ac1391952cb780a80c017c1b76622a69547a53091a35",
+    "infra/node_inventory.py": "49f461db54aff2e5ec53f29a4e647bc1a2e75f78a8828d0cd6c18f5a5d396634",
+    "infra/render_edge.py": "6abe19bcbab540139a47b414a2f883aba2faf73fbe2ea773f33a461233061823",
+    "infra/route_catalog.py": "7e71bf1e4cdd3ee66838d6e9ea3dc774b2a35d9ce3d79115c801e8e661a967ad",
+    "infra/route_health.py": "50fab59fe63ed25d3c8161b4c43f7d222d68c160f89fa6578f26658c273b96cc",
+    "infra/three-vps.example.json": "f5a8f5644a81e9e503ea2c61ff4e84d9ac414ef130b12354a9df00264da34889",
+    "infra/topology.py": "a1c7449fba71f22389598deb2bdbe1524bf72b296cdead270b0bd643a6ca95d6",
+    "prototype/check_route_tls.py": "97d82d82bc0d064dd82b56c00c478cd4086b388c041b5e154bb682d062cb2473",
+    "prototype/check_route_turn.cjs": "385fc02113df96e644b00c6328bd7d439d36bae481aad272418048d12b204ef5",
+    "prototype/check_route_turn.py": "95e04614fd9176cf2e613713013da9f59cb2c3dc977a3d347b54ff48e95e6baa",
+    "prototype/check_three_vps.py": "a1a79b4244222e8f553922d6a653f16ae94e69b1387bb160a393638d9ba32bf5",
+    "prototype/test_edge_config.py": "7613e1875383317aedc741a53633e0cfa8f92492c299d44ae2d3fcb6f1a8204e",
+    "prototype/test_node_inventory.py": "c0dc15c71370a48454933fe65e7204ae240e0b25454a86ea6f4591ea357f146d",
+    "prototype/test_route_health.py": "59ee08dea847bee96bdd913850798898df42d3bd9f44f5a69f15d6f70d313d9f",
+    "prototype/test_three_vps.py": "7c2bc3d0ac0b1cf4cf4d29e8880b838bc9414bf77d3eb97f430540089987488e",
+    "prototype/test_topology.py": "67dc18c84bc6c48ebaecfaec87b34926034eff5e96effd75bfe10fa8cc9858ba",
+    "vendor/matrix/lib/src/voip/call_session.dart": "bfbf72275307d2db756a28ceaf71fe2b6ae46984c051f52aeebdfff8dd184883"
+  },
+  "production_changed": false,
+  "dns_changed": false,
+  "committed_or_pushed": false,
+  "flutter_tests_passed": 51,
+  "python_tests_passed": 25,
+  "flutter_analyze": "No issues found",
+  "native_matrix": {
+    "result": "passed",
+    "project": "voicechat-routes-549dff223bef",
+    "checks": [
+      "B/C-only build learns D from signed catalog",
+      "B and C stopped; requests through D",
+      "server ciphertext decrypted before and after outage and profile reopen",
+      "same account/device/token/fingerprint; exactly one device"
+    ],
+    "log_sha256": "de9b5b94dac330c524463cc89e8f66c4ac4ce02cdf2b30425c4f7d6cd6599639"
+  },
+  "turn_browser": {
+    "result": "passed",
+    "project": "voicechat-turn-803f6b87843d",
+    "before": {
+      "relay": true,
+      "decodedSyntheticAudio": true,
+      "dataChannelEcho": true
+    },
+    "after": {
+      "relay": true,
+      "decodedSyntheticAudio": true,
+      "dataChannelEcho": true
+    },
+    "same_peer_connections": true,
+    "restart_elapsed_ms": 465,
+    "excludes": "Detection latency, app call E2EE, real microphones/devices, TURN TLS"
+  },
+  "tls_sni": {
+    "result": "passed",
+    "project": "voicechat-sni-ab69f2fe8cad",
+    "checks": [
+      "one loopback ingress port for HTTPS and TURN TLS",
+      "private CA and hostname verification enabled",
+      "CORS exact allowlist, preflight, private routes denied",
+      "spoofed forwarded IP removed",
+      "unknown SNI and untrusted CA rejected"
+    ],
+    "turn_check": "STUN binding over TLS, not an audio call",
+    "system_trust_changed": false
+  },
+  "inventory": {
+    "result": "passed",
+    "checks": [
+      "replacement C keeps public client config and proxy config",
+      "D uses existing generator",
+      "invalid/unverified/replayed/duplicate host assignments rejected",
+      "no overwrite and private output permissions",
+      "validation failure creates no output"
+    ]
+  },
+  "cleanup": "All new disposable Docker projects removed; read-only docker ps shows only pre-existing voicechat-prototype containers; test subprocesses completed",
+  "log_sha256": {
+    "checkpoint-client-tests.log": "387d813fcf70d8f85265b67b1dbf22627c10c897894098b2f3055910076f6082",
+    "checkpoint-python-tests.log": "e2386c37ff208182b483e0cef5f7554ae6ed3337cff439985210b89f8c354a86",
+    "final-analyze.log": "d306c11a573041846ee1c85fe9f763c3f2f7206e3c529630ee0f4f67d3c100b5",
+    "checkpoint-tls-sni-run.log": "4cc5b14f9dbb35ea851333efaf0af7e9c86ac5d94e0217ee08aa13fa1c9363da",
+    "catalog-matrix-final-run.log": "c5c37b433377890cee9485cedebb737fef355a3f421db5a3ae64252c71d692a7",
+    "turn-restart-run.log": "782c670ca78f787136a7b5890b70404f9a252664102ac6a6e6d43a8bfcad153e"
+  },
+  "not_proven": [
+    "Full app direct/group/screen reconnect and media E2EE after failover",
+    "LiveKit in-place WSS/ICE config refresh",
+    "Android/web/external network acceptance and end-to-end 15 second target",
+    "Role Compose, bootstrap, WireGuard/firewall, certificate issuance/renewal",
+    "Production catalog publication, role release/deploy/rollback, node replacement",
+    "External backup and recovery after loss of A"
+  ],
+  "resume": "docs/iterations/19-three-vps-resume.md"
+}

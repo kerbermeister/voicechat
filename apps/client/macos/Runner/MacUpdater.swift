@@ -13,6 +13,7 @@ final class MacUpdater: NSObject, SPUUserDriver, SPUUpdaterDelegate {
   private var active = false
   private(set) var installationPending = false
   private var received: UInt64 = 0
+  private var route: MacUpdateRoute?
 
   init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(name: "voicechat/macos_update", binaryMessenger: messenger)
@@ -35,14 +36,22 @@ final class MacUpdater: NSObject, SPUUserDriver, SPUUpdaterDelegate {
                 Data(base64Encoded: key)?.count == 32 else {
             throw NSError(domain: "VoiceChatUpdate", code: 1, userInfo: [NSLocalizedDescriptionKey: "Канал обновлений этой сборки ещё не настроен."])
           }
+          try self.selectRoute(call.arguments, feed: url)
           self.active = true
           if !self.started { try self.updater.start(); self.started = true }
           self.updater.checkForUpdates()
           result(nil)
         } catch { self.active = false; self.emit("error", error.localizedDescription); result(nil) }
       case "download":
-        let reply = self.choice; self.choice = nil
-        reply?(.install); result(nil)
+        do {
+          guard let feed = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String,
+                let url = URL(string: feed) else { throw self.routeError() }
+          try self.selectRoute(call.arguments, feed: url)
+          let reply = self.choice; self.choice = nil
+          reply?(.install); result(nil)
+        } catch {
+          result(FlutterError(code: "update_route", message: error.localizedDescription, details: nil))
+        }
       case "install":
         self.prepareInstallation { allowed in
           guard allowed, let reply = self.choice else { return }
@@ -54,6 +63,24 @@ final class MacUpdater: NSObject, SPUUserDriver, SPUUpdaterDelegate {
       default: result(FlutterMethodNotImplemented)
       }
     }
+  }
+
+  private func routeError() -> NSError {
+    NSError(domain: "VoiceChatUpdate", code: 4,
+            userInfo: [NSLocalizedDescriptionKey: "Не удалось выбрать доверенный адрес обновления."])
+  }
+  private func selectRoute(_ arguments: Any?, feed: URL) throws {
+    guard let arguments = arguments else { route = nil; return }
+    guard let values = arguments as? [String: String],
+          Set(values.keys) == ["canonicalOrigin", "selectedOrigin"],
+          let selected = MacUpdateRoute(feed: feed, canonicalOrigin: values["canonicalOrigin"]!,
+                                       selectedOrigin: values["selectedOrigin"]!) else { throw routeError() }
+    route = selected
+  }
+
+  func feedURLString(for updater: SPUUpdater) -> String? { route?.feedURL.absoluteString }
+  func updater(_ updater: SPUUpdater, willDownloadUpdate item: SUAppcastItem, with request: NSMutableURLRequest) {
+    if let url = request.url, let rewritten = route?.rewrite(url) { request.url = rewritten }
   }
 
   private func emit(_ phase: String, _ message: String = "") {
@@ -86,6 +113,7 @@ final class MacUpdater: NSObject, SPUUserDriver, SPUUpdaterDelegate {
     let feed = URL(string: Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String ?? "")
     guard let url = item.fileURL, url.scheme == "https", url.host == feed?.host,
           url.port == feed?.port, url.user == nil, url.password == nil,
+          url.query == nil, url.fragment == nil, route == nil || route?.rewrite(url) != nil,
           url.path.hasPrefix("/updates/macos/"), !item.isInformationOnlyUpdate,
           item.contentLength > 0, item.contentLength <= 1024 * 1024 * 1024,
           let build = UInt64(item.versionString),
@@ -100,6 +128,7 @@ final class MacUpdater: NSObject, SPUUserDriver, SPUUpdaterDelegate {
     installationPending = false
     choice = nil
     cancellation = nil
+    route = nil
   }
   func show(_ request: SPUUpdatePermissionRequest, reply: @escaping (SUUpdatePermissionResponse) -> Void) {
     reply(SUUpdatePermissionResponse(automaticUpdateChecks: false, sendSystemProfile: false))

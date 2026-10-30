@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "time": "2026-10-30T00:25:35.679596+00:00",
+  "before_commit": "24c42bf866ba7d2ee3e17bd7d0f6a51a05705172",
+  "current_pointer_sha256": "acf3fe980cdb65e8591b835b9cdf7492ba787200f3e590678fe57955b477a3f5",
+  "data_identity": {
+    "postgres_system_identifier": "7699984398180954145",
+    "signing_sha256": "aa2dbe341c20ee62f88663b32942008e11ab9dfa4b782bba1076217bd302dbb0"
+  },
+  "shared_front_and_neighbor_processes": [
+    "/deploy-backend-1 3fd937c2ef6da148d130bfb733be1378fb95480f6e8f5edc032889ed1edfb1bb 2026-10-26T07:13:05.01469252Z 0",
+    "/deploy-caddy-1 5ead024ec426244acdbd9b491019d34e2711748290b7644bf6f9a30e5dc387ac 2026-10-29T19:09:12.695869201Z 0",
+    "/deploy-frontend-1 923e088abb814b746ce4e2921ec93475730b74ec0dca873bc8cde8f2767a853b 2026-10-26T07:13:05.02282237Z 0",
+    "/deploy-postgres-1 23fe66be645c739550e59657d845a114e9794474f13ae3b10fb244a5fbc34581 2026-10-26T07:13:04.999798589Z 0",
+    "/deploy-stt-1 629c3ebeb59ad094feeb0351561b510075974953d314c5aede628374812efb8c 2026-10-26T07:13:04.95938781Z 0",
+    "/voicechat-shared-front-ingress-1 368088048bca475b5b66aa31d51990627aafbcf5726355d2ccbca8d9fb30903a 2026-10-29T19:09:15.200049297Z 0"
+  ],
+  "disk_free_bytes": 34444832768,
+  "backup_service_state": "inactive",
+  "read_only": true,
+  "normal_release_not_started": true
+}

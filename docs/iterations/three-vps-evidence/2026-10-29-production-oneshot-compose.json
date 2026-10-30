@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "date": "2026-10-29",
+  "production_services_and_data_not_modified": true,
+  "compose_version": "5.5.1",
+  "cases": [
+    {
+      "case": "fast-success",
+      "up_exit": 1,
+      "container_exit": "0"
+    },
+    {
+      "case": "slow-success",
+      "up_exit": 0,
+      "container_exit": "0"
+    },
+    {
+      "case": "explicit-wait-success",
+      "up_exit": 0,
+      "wait_exit": 0,
+      "container_exit": "0"
+    },
+    {
+      "case": "explicit-wait-failure",
+      "up_exit": 0,
+      "wait_exit": 7,
+      "container_exit": "7"
+    }
+  ],
+  "diagnostic_scope": "Unique temporary projects, network none, no volumes, no credentials; removed after execution."
+}

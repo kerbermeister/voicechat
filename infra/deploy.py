@@ -33,19 +33,21 @@ def execute(args, **kwargs):
     return subprocess.run(args, check=True, **kwargs)
 
 
-def compose_command(release, *args):
+def compose_command(release, *args, core=False):
     command = ['docker', 'compose', '--env-file', str(release/'infra/runtime/stand.env'),
-               '-f', str(release/'infra/compose.yaml')]
+               '-f', str(release / ('infra/compose.core.json' if core else 'infra/compose.yaml'))]
     override = release/'infra/runtime/compose.override.yaml'
+    if core and (override.exists() or override.is_symlink()):
+        raise ValueError('Legacy Compose override cannot be applied to a core role')
     if override.is_file(): command.extend(['-f', str(override)])
     return [*command, *args]
 
 
-def compose(release, env, *args, **kwargs):
-    return execute(compose_command(release, *args), env=env, **kwargs)
+def compose(release, env, *args, core=False, **kwargs):
+    return execute(compose_command(release, *args, core=core), env=env, **kwargs)
 
 
-def backup(root, release, env):
+def backup(root, release, env, *, core=False):
     repository = root/'backups/repository'
     password = root/'runtime/backup-password'
     repository.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -54,10 +56,13 @@ def backup(root, release, env):
         descriptor = os.open(password, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         with os.fdopen(descriptor, 'w') as output: output.write(secrets.token_urlsafe(48))
     config = json.loads(subprocess.check_output(
-        compose_command(release, 'config', '--format', 'json'), env=env))
+        compose_command(release, 'config', '--format', 'json', core=core), env=env))
     # Resolve actual names, including an isolated Compose project or external volumes.
     volumes = config['volumes']
-    mounts = [item for name in ('synapse', 'control', 'media-config', 'certificates', 'caddy-config')
+    names = ('synapse', 'control', 'media-config', 'turn-config') if core else (
+        'synapse', 'control', 'media-config', 'certificates', 'caddy-config')
+    pointer = 'state.json' if core else 'current.json'
+    mounts = [item for name in names
               for item in ('-v', f"{volumes[name]['name']}:/snapshot/{name}:ro")]
     command = ['docker', 'run', '--rm', '-e', 'RESTIC_PASSWORD_FILE=/password',
         '-v', f'{password}:/password:ro', '-v', f'{repository}:/repository', RESTIC, '-r', '/repository']
@@ -73,11 +78,11 @@ def backup(root, release, env):
         descriptor = os.open(dump, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         with os.fdopen(descriptor, 'wb') as output:
             compose(release, env, 'exec', '-T', 'postgres', 'pg_dump', '-U', 'synapse',
-                '-d', 'synapse', '--format=custom', stdout=output)
+                '-d', 'synapse', '--format=custom', core=core, stdout=output)
         execute(['docker', 'run', '--rm', '-e', 'RESTIC_PASSWORD_FILE=/password',
             '-v', f'{password}:/password:ro', '-v', f'{repository}:/repository',
             '-v', f'{root}/runtime/stand.env:/snapshot/runtime/stand.env:ro',
-            '-v', f'{root}/current.json:/snapshot/current.json:ro',
+            '-v', f'{root}/{pointer}:/snapshot/{pointer}:ro',
             '-v', f'{release}:/snapshot/release:ro', '-v', f'{directory}:/snapshot/database:ro',
             *mounts,
             RESTIC, '-r', '/repository', 'backup', '/snapshot', '--tag', 'voicechat'])
@@ -171,6 +176,9 @@ def main():
 
 
 def deploy(root, release, old, backup_only=False, web_only=False):
+    marker = root / 'role-deployment.json'
+    if marker.exists() or marker.is_symlink():
+        raise SystemExit('This installation uses core/edge roles; use the role rollout controller')
     if not release.is_relative_to(root/'releases'): raise SystemExit('Release must be inside root/releases')
     target = manifest(release/'release.json')
     runtime = root/'runtime'

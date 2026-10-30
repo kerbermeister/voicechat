@@ -732,10 +732,25 @@ class CallEventCard extends StatelessWidget {
         ? duration ~/ 1000
         : null;
     final colors = Theme.of(context).colorScheme;
+    final started =
+        event.type == mx.EventTypes.CallInvite ||
+        event.content['action'] == 'invite';
+    final seed = started
+        ? HSLColor.fromColor(
+            colors.primary,
+          ).withHue(145).withSaturation(.55).toColor()
+        : colors.error;
+    final accent = ColorScheme.fromSeed(
+      seedColor: seed,
+      brightness: colors.brightness,
+    ).primary;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: colors.secondaryContainer,
+        color: Color.alphaBlend(
+          accent.withValues(alpha: .18),
+          colors.surfaceContainerLow,
+        ),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -748,13 +763,13 @@ class CallEventCard extends StatelessWidget {
                       event.type == mx.EventTypes.CallInvite
                 ? Icons.call_outlined
                 : Icons.call_end_outlined,
-            color: colors.onSecondaryContainer,
+            color: accent,
           ),
           const SizedBox(width: 10),
           Flexible(
             child: Text(
               '${callEventLabel(event)}${seconds == null ? '' : ' · ${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}'}',
-              style: TextStyle(color: colors.onSecondaryContainer),
+              style: TextStyle(color: colors.onSurface),
             ),
           ),
         ],

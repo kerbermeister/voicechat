@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "deployed_planner_source_guards_rejected_unsafe_partial_scopes": {
+    "core": true,
+    "edge": true,
+    "web": true
+  },
+  "full_cannot_drop_recorded_guard": true,
+  "current_pointer_unchanged": true,
+  "no_deployment_or_fence_attempted": true,
+  "baseline_schema": 2,
+  "core_guard": "fbd0570e067d3bdbe1f528714277960460359bc09426297cfeff47ad563a600e"
+}

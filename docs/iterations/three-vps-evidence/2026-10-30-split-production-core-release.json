@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "scope": "core",
+  "commit": "42706c5f6032bb56d7d718e75d0ef7b4662dfc95",
+  "ci_full_commit": "2eaee99516c942c2d9026290477777e69b3c6379",
+  "protected_sources_and_application_inputs_unchanged": true,
+  "reuse_build_hints_verified": true,
+  "source_archive_sha256": "5f94331cddef5f87300009ba33ef445d68e8e0499753fb8d4f0c5c068d2b84da",
+  "manifest": {
+    "schema": 1,
+    "commit": "42706c5f6032bb56d7d718e75d0ef7b4662dfc95",
+    "origin": "https://univc.duckdns.org",
+    "control": "ghcr.io/kerbermeister/voicechat/control@sha256:f0165cbfb99157c60337a77b73a0bd5e6ce3d796dbd9b32c58c6415f0e4b568d",
+    "web": "ghcr.io/kerbermeister/voicechat/web@sha256:794deef3d9677cb82c67838a8bffb0e36fd709ba73a78f3f5a82414d9bbc16be"
+  },
+  "result": {
+    "schema": 1,
+    "attempt": "c632ff90ae0117ad422967d50251bfa34e05dfba0069d4aa08fa20f1c18de891",
+    "phase": "complete",
+    "maintenance_ready": true,
+    "core_commit": "42706c5f6032bb56d7d718e75d0ef7b4662dfc95",
+    "scope": "core",
+    "selected_edges": null,
+    "edges": {
+      "a": "2eaee99516c942c2d9026290477777e69b3c6379"
+    }
+  },
+  "delivery": "Stock managed_ssh coordinator with clean Git-bound source package and reused immutable CI full images; no manual Compose/pointer edits"
+}

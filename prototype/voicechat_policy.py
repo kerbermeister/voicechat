@@ -12,7 +12,7 @@ from synapse.http.servlet import parse_string
 from synapse.handlers.presence import format_user_presence_state
 from synapse.types import UserID, create_requester
 from synapse.util.async_helpers import Linearizer
-from client_policy import expiry_content
+from client_policy import expiry_content, read_after_duration
 from scheduled_messages import ScheduleError, audience_digest, scheduled_audience, validate_envelope
 
 KIND = 'dev.voicechat.kind'
@@ -28,6 +28,7 @@ class ContactPolicy:
         self.url = config['url']
         self.secret = config['secret']
         self.publish_locks = Linearizer(clock=api._hs.get_clock(), name='voicechat-scheduled')
+        api.register_web_resource('/_synapse/client/voicechat-read-after', ReadAfter(self))
         api.register_web_resource('/_synapse/client/voicechat/presence', ContactPresence(self))
         api.register_web_resource('/_synapse/client/voicechat/scheduled-publish', ScheduledPublish(self))
         api.register_spam_checker_callbacks(user_may_invite=self.user_may_invite,
@@ -50,6 +51,22 @@ class ContactPolicy:
                 return False, None
             if event.type.startswith('m.call.') or event.type.startswith('org.matrix.msc3401.call'):
                 return False, None
+        if 'dev.voicechat.read_after_seconds' in content:
+            marker = state.get((KIND, ''))
+            if not marker or not self.direct(marker.content) or event.is_state() or event.type != 'm.room.encrypted':
+                return False, None
+            pair = {marker.content['owner'], marker.content['peer']}
+            members = {key for (kind, key), item in state.items() if kind == 'm.room.member' and item.content.get('membership') in ('join', 'invite')}
+            if event.sender not in pair or not members <= pair:
+                return False, None
+            try:
+                read_after_duration(content)
+            except ValueError:
+                return False, None
+            relation = content.get('m.relates_to', {})
+            if isinstance(relation, Mapping) and relation.get('rel_type') == 'm.replace':
+                return False, None
+            return True, None
         relation = content.get('m.relates_to', {})
         editing = isinstance(relation, Mapping) and relation.get('rel_type') == 'm.replace'
         temporary = 'dev.voicechat.ttl_seconds' in content or 'org.matrix.self_destruct_after' in content
@@ -61,6 +78,8 @@ class ContactPolicy:
             if editing:
                 original = await self.api._hs.get_datastores().main.get_event(relation.get('event_id'), allow_none=True)
                 if original is None or original.room_id != event.room_id or original.sender != event.sender:
+                    return False, None
+                if 'dev.voicechat.read_after_seconds' in original.content:
                     return False, None
                 original_deadline = original.content.get('org.matrix.self_destruct_after')
                 if not original.content: return False, None
@@ -186,3 +205,110 @@ class ScheduledPublish(DirectServeJsonResource):
         except Exception as error:
             logging.getLogger(__name__).warning('Scheduled publication unavailable: %s', type(error).__name__)
             return 503, {'error': 'matrix_unavailable'}
+
+
+class ReadAfter(DirectServeJsonResource):
+    """Use the pinned Synapse event_expiry transaction and restart-safe scheduler.
+
+    The API returns no plaintext and only operates inside an authenticated DM.
+    Its public path deliberately stays outside the private /voicechat/* endpoints.
+    """
+    isLeaf = True
+    def __init__(self, policy):
+        super().__init__()
+        self.policy = policy
+
+    async def authorize(self, user, room):
+        if not isinstance(room, str) or not room.startswith('!') or len(room) > 512:
+            raise SynapseError(400, 'Invalid room')
+        state = await self.policy.state(room)
+        marker = state.get((KIND, ''))
+        if not marker or not self.policy.direct(marker.content):
+            raise SynapseError(403, 'Read-after is only available in direct chats')
+        pair = {marker.content['owner'], marker.content['peer']}
+        membership = state.get(('m.room.member', user))
+        members = {key for (kind, key), item in state.items() if kind == 'm.room.member' and item.content.get('membership') in ('join', 'invite')}
+        if user not in pair or not membership or membership.content.get('membership') != 'join' or not members <= pair:
+            raise SynapseError(403, 'Not a direct-chat participant')
+
+    async def event(self, room, event_id):
+        if not isinstance(event_id, str) or not event_id.startswith('$') or len(event_id) > 255:
+            raise SynapseError(400, 'Invalid event')
+        item = await self.policy.api._hs.get_datastores().main.get_event(event_id, allow_none=True)
+        if item is not None and item.room_id != room:
+            raise SynapseError(403, 'Event is not in this room')
+        return item
+
+    async def start(self, user, room, event_id, read_at=None):
+        await self.authorize(user, room)
+        original = await self.event(room, event_id)
+        if original is None or not original.content:
+            raise SynapseError(410, 'Message unavailable')
+        if original.sender == user:
+            raise SynapseError(403, 'Only the recipient starts the countdown')
+        try:
+            delay = read_after_duration(original.content)
+        except ValueError:
+            raise SynapseError(400, 'Not a read-after message')
+        handler = self.policy.api._hs.get_message_handler()
+        if not handler._ephemeral_events_enabled:
+            raise SynapseError(503, 'Message expiry is unavailable')
+        now = self.policy.api._hs.get_clock().time_msec()
+        if read_at is not None and type(read_at) is not int:
+            raise SynapseError(400, 'Invalid read time')
+        # Offline acknowledgement may shorten retention, but can never extend it.
+        read_at = min(now, max(original.origin_server_ts, now if read_at is None else read_at))
+        candidate = read_at + delay * 1000
+        store = self.policy.api._hs.get_datastores().main
+        def first_read(txn):
+            # Re-check persisted content atomically: a concurrent expiry must not restart it.
+            txn.execute('SELECT json FROM event_json WHERE event_id = ?', (event_id,))
+            row = txn.fetchone()
+            if row is None or 'dev.voicechat.read_after_seconds' not in json.loads(row[0]).get('content', {}):
+                return None
+            txn.execute('INSERT INTO event_expiry(event_id, expiry_ts) VALUES (?, ?) ON CONFLICT(event_id) DO NOTHING', (event_id, candidate))
+            txn.execute('SELECT expiry_ts FROM event_expiry WHERE event_id = ?', (event_id,))
+            return txn.fetchone()[0]
+        deadline = await store.db_pool.runInteraction('voicechat_read_after', first_read)
+        if deadline is None:
+            raise SynapseError(410, 'Message unavailable')
+        handler._schedule_expiry_for_event(event_id, deadline)
+        return {'expires_at': deadline, 'server_time_ms': now}
+
+    async def status(self, user, room, event_ids):
+        await self.authorize(user, room)
+        if not isinstance(event_ids, list) or len(event_ids) > 100:
+            raise SynapseError(400, 'Invalid event list')
+        store = self.policy.api._hs.get_datastores().main
+        deadlines, unavailable = {}, []
+        for event_id in dict.fromkeys(event_ids):
+            original = await self.event(room, event_id)
+            if original is None or not original.content:
+                unavailable.append(event_id)
+                continue
+            if 'dev.voicechat.read_after_seconds' not in original.content:
+                raise SynapseError(400, 'Not a read-after message')
+            row = await store.db_pool.simple_select_one('event_expiry', {'event_id': event_id}, ['expiry_ts'], allow_none=True)
+            if row is not None:
+                deadlines[event_id] = row[0]
+        return {'deadlines': deadlines, 'unavailable': unavailable, 'server_time_ms': self.policy.api._hs.get_clock().time_msec()}
+
+    async def _async_render_POST(self, request):
+        requester = await self.policy.api._hs.get_auth().get_user_by_req(request)
+        user = requester.user.to_string()
+        raw = request.content.read(32769)
+        if not 0 < len(raw) <= 32768:
+            raise SynapseError(400, 'Invalid request size')
+        try:
+            data = json.loads(raw)
+            if not isinstance(data, dict):
+                raise ValueError('Invalid object')
+            if set(data) == {'room_id', 'event_ids'}:
+                result = await self.status(user, data['room_id'], data['event_ids'])
+            elif {'room_id', 'event_id'} <= data.keys() and not data.keys() - {'room_id', 'event_id', 'read_at'}:
+                result = await self.start(user, data['room_id'], data['event_id'], data.get('read_at'))
+            else:
+                raise ValueError('Invalid fields')
+        except (ValueError, TypeError):
+            raise SynapseError(400, 'Invalid read-after request')
+        return 200, result

@@ -1,0 +1,41 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "real_caddy_git_environment_preflight": true,
+  "active_and_on_disk_caddy_configs_matched_plan": true,
+  "image_ports_networks_and_volume_identity_verified": true,
+  "environment_git_and_container_processes_unchanged": true,
+  "raw_credentials_absent_from_result": true,
+  "source_sha256": {
+    "infra/shared_ingress.py": "8a77b39f99904153df60fb9adc09a66d56a3524852d670f494d9ca8348e691d0",
+    "infra/role_bootstrap.py": "897ad02cd2009fb31e93dd852bd70dc1f59e5ba4acb072a91bdb82a00644b60c",
+    "prototype/check_shared_legacy_inspect.py": "1ec03f63248ac6bf1759aa81c89e384a7266a684f15dbeeebf1ada04273d369b",
+    "infra/shared_update.py": "2259f0baed940850fcd94d79412b39b36b08a828dfa7b2fff82cb60aecac7453",
+    "infra/shared_config.py": "20032071cb67c154cfa531cde88c4c1352fe16a1e2f625140aa00210d1f1785b"
+  },
+  "limits": [
+    "Synthetic Git/env/upstreams, public pinned images and internal certificates; no application schema migration, external ACME, shared port cutover or production migration.",
+    "Public immutable operator packages retained; fixture manager wrapper removed; no systemd unit activated.",
+    "Initial adoption used the actual historical operator; its previously proven fault drills were not repeated. Current certificate activation was not exercised."
+  ],
+  "real_directory_mount_adoption": true,
+  "authenticated_https_routes_after_all_recreations": true,
+  "neighboring_processes_and_data_volume_names_preserved": true,
+  "committed_retry_did_not_restart_caddy": true,
+  "historical_adoption_faults_not_repeated": true,
+  "actual_historical_operator_source_upgrade": true,
+  "previous_operator_sha256": "e9648a0be5de03eedd75dcd1e06d2b82d10d04f53f53927cf775ffb468f50696",
+  "upgraded_operator_sha256": "876ae8f4c7d2128c6ae56ae32e111706441ad2e6143dc8f59669ec25e485b833",
+  "manager_source_upgrade_preserved_all_container_processes": true,
+  "installed_immutable_manager_cli": true,
+  "workflow_only_deploy_preserved_all_processes": true,
+  "business_caddy_update_reloaded_without_process_restart": true,
+  "interrupted_git_checkout_resumed_by_installed_cli": true,
+  "business_git_clean_and_environment_bytes_preserved": true,
+  "lost_reload_response_restored_known_routes": true,
+  "installed_cli_retried_pending_reload": true,
+  "application_pull_and_service_recreate_preserved_other_processes": true,
+  "fixture_resources_removed": true,
+  "date": "2026-10-29",
+  "fixture_probe_sha256": "1ec03f63248ac6bf1759aa81c89e384a7266a684f15dbeeebf1ada04273d369b"
+}

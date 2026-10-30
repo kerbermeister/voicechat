@@ -1,0 +1,114 @@
+{
+  "recorded_at": "2026-10-28T17:03:35.507906+00:00",
+  "state": "Isolated VPS TLS publication/rotation/rollback proof; production rollout incomplete",
+  "production_changed": false,
+  "dns_changed": false,
+  "host_changes": "Private lab source/log directory and pinned fixture images only",
+  "project": "voicechat-sni-1c9eff7c06c0",
+  "host": "Ubuntu 24.04.5 amd64, Docker 29.8.1, Compose 5.5.1",
+  "checks": [
+    "105 host/infra Python tests passed",
+    "Actual tls_runtime publisher with Linux permissions",
+    "Web and TURN certificate rotation, verified new TLS handshakes",
+    "Certificate rollback through same publisher",
+    "Existing TURN allocation refresh after rotation and rollback",
+    "No service restart during certificate changes",
+    "Role bundle SNI, CORS, readiness and TURN authentication checks"
+  ],
+  "limits": [
+    "No public CA issuance or renewal",
+    "No real app call/E2EE or device acceptance",
+    "No production topology migration",
+    "Caddy reload does not preserve idle HTTP keepalive; active app WSS continuity unverified"
+  ],
+  "postflight": {
+    "production_commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+    "production_manifest": {
+      "commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+      "schema": 1,
+      "origin": "https://univc.duckdns.org",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:599629e7cae958ebbf470ca433ac4b403c949a93ac742ba11781967bb6613603",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:68739c97b37b5d04ba7d11a3c7c4126e7f86dbaa6b36a5ac35ce33a293f69f4f"
+    },
+    "running_services": [
+      {
+        "id": "8bd53713d681",
+        "name": "/voicechat-web-1",
+        "healthy": "healthy",
+        "started_before_lab": true
+      },
+      {
+        "id": "b7a7092cd9a1",
+        "name": "/voicechat-synapse-1",
+        "healthy": "healthy",
+        "started_before_lab": true
+      },
+      {
+        "id": "17db075e896b",
+        "name": "/voicechat-control-1",
+        "healthy": "healthy",
+        "started_before_lab": true
+      },
+      {
+        "id": "507b88b118ad",
+        "name": "/voicechat-turn-1",
+        "healthy": "running",
+        "started_before_lab": true
+      },
+      {
+        "id": "2e901809ce09",
+        "name": "/voicechat-postgres-1",
+        "healthy": "healthy",
+        "started_before_lab": true
+      },
+      {
+        "id": "923e088abb81",
+        "name": "/deploy-frontend-1",
+        "healthy": "running",
+        "started_before_lab": true
+      },
+      {
+        "id": "3fd937c2ef6d",
+        "name": "/deploy-backend-1",
+        "healthy": "running",
+        "started_before_lab": true
+      },
+      {
+        "id": "629c3ebeb59a",
+        "name": "/deploy-stt-1",
+        "healthy": "running",
+        "started_before_lab": true
+      },
+      {
+        "id": "fedb344ffe3a",
+        "name": "/deploy-caddy-1",
+        "healthy": "running",
+        "started_before_lab": true
+      },
+      {
+        "id": "23fe66be645c",
+        "name": "/deploy-postgres-1",
+        "healthy": "healthy",
+        "started_before_lab": true
+      }
+    ],
+    "fixture_cleanup": {
+      "network": true,
+      "volume": true,
+      "containers_absent": true,
+      "helpers_absent": true
+    },
+    "public_http": {
+      "/_matrix/client/versions": 200,
+      "/api/health": 200
+    }
+  },
+  "source_sha256": {
+    "infra/tls_runtime.py": "2fd3ae16fd8b176a0f3ffe0e93b555de4eabbaa087d6add5eadb9ee902b1b6aa",
+    "infra/tls_material.py": "3b8cc07325d4658c61e5b144b7497651473cf354556d6392f3e2cadcf2d58954",
+    "infra/render_roles.py": "6a72bb98cdae897dd18310cdf023cccc38963e387cf22de34e715e07120015b8",
+    "prototype/check_route_tls.py": "c31c0f8cab63075e7747b02e9b7ab885623ab54ca40c62b77f46cbd8957fb042",
+    "prototype/test_probe_process.py": "00e3b0c549342d2493a9085e41bf23607a331f48b6602552f15ba1f816f85ae2"
+  },
+  "log_sha256": "f8e8b54e9e98a20d107bca903972e07a504002b3ee0706db5106b7f4262f7bb6"
+}

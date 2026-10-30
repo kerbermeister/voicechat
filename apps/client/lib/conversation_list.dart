@@ -276,6 +276,7 @@ class ConversationList extends StatefulWidget {
 class _ConversationListState extends State<ConversationList> {
   bool get groups => widget.groups;
   String query = '';
+  String? menuRoom;
   final peopleScroll = ScrollController(), groupsScroll = ScrollController();
   @override
   void dispose() {
@@ -319,16 +320,22 @@ class _ConversationListState extends State<ConversationList> {
     final overlay =
         Overlay.of(context).context.findRenderObject()! as RenderBox;
     final local = overlay.globalToLocal(point);
-    final action = await showMenu<String>(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        local.dx,
-        local.dy,
-        overlay.size.width - local.dx,
-        overlay.size.height - local.dy,
-      ),
-      items: roomMenu(room),
-    );
+    setState(() => menuRoom = room.id);
+    String? action;
+    try {
+      action = await showMenu<String>(
+        context: context,
+        position: RelativeRect.fromLTRB(
+          local.dx,
+          local.dy,
+          overlay.size.width - local.dx,
+          overlay.size.height - local.dy,
+        ),
+        items: roomMenu(room),
+      );
+    } finally {
+      if (mounted) setState(() => menuRoom = null);
+    }
     if (action != null && mounted) widget.onChatMenu?.call(room, action);
   }
 
@@ -728,7 +735,9 @@ class _ConversationListState extends State<ConversationList> {
                                   child: AnimatedContainer(
                                     duration: motionDuration(context),
                                     decoration: BoxDecoration(
-                                      color: selected
+                                      color: menuRoom == room.id
+                                          ? colors.tertiaryContainer
+                                          : selected
                                           ? colors.primaryContainer.withValues(
                                               alpha: .6,
                                             )
@@ -757,11 +766,25 @@ class _ConversationListState extends State<ConversationList> {
                                                 popUpAnimationStyle:
                                                     appAnimationStyle(context),
                                                 tooltip: 'Действия с чатом',
-                                                onSelected: (action) =>
-                                                    widget.onChatMenu!(
-                                                      room,
-                                                      action,
-                                                    ),
+                                                onOpened: () => setState(
+                                                  () => menuRoom = room.id,
+                                                ),
+                                                onCanceled: () {
+                                                  if (mounted) {
+                                                    setState(
+                                                      () => menuRoom = null,
+                                                    );
+                                                  }
+                                                },
+                                                onSelected: (action) {
+                                                  setState(
+                                                    () => menuRoom = null,
+                                                  );
+                                                  widget.onChatMenu!(
+                                                    room,
+                                                    action,
+                                                  );
+                                                },
                                                 itemBuilder: (_) =>
                                                     roomMenu(room),
                                                 icon: const Icon(

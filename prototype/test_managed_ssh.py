@@ -1,0 +1,233 @@
+from contextlib import contextmanager
+import json
+import os
+from pathlib import Path
+from types import SimpleNamespace
+import sys
+import tempfile
+import unittest
+from unittest.mock import patch
+
+ROOT=Path(__file__).resolve().parents[1];sys.path.insert(0,str(ROOT/'infra'))
+import managed_control
+import managed_journal
+import managed_ssh
+import role_release
+import test_managed_journal
+
+
+class ManagedSshTests(unittest.TestCase):
+    def setUp(self):
+        self.fixture=test_managed_journal.ManagedJournalTests();self.fixture.setUp()
+        self.addCleanup(self.fixture.doCleanups);self.root=self.fixture.root
+        self.coordinator=self.enterContext(patch.object(managed_ssh,'_coordinator',side_effect=self.control))
+        self.peer=self.enterContext(patch.object(managed_ssh,'invoke',side_effect=self.proof))
+        self.fail_peer=False;self.uncertain=False;self.preflight_failure=False
+        self.receives=self.enterContext(patch('ssh_deploy.receive',return_value={
+            'schema':1,'path':str(self.root/'bundles'/('d'*64)),'archive_sha256':'d'*64}))
+        self.connected=[]
+
+    @contextmanager
+    def connect(self,peer,identity):
+        self.connected.append(peer['host']);yield ['ssh','pinned-'+peer['host']]
+
+    def control(self,ssh,root,source,action,**kw):
+        if action=='status':
+            if not (root/'rollout.json').exists():return {'attempt':None}
+            journal=managed_journal.read(root)
+            return {'attempt':journal['attempt'],'active_source':journal['request']['source'],'phase':journal['phase']}
+        if action=='prepare':
+            return managed_control.prepare(root,source,scope=kw['scope'],edges=kw['edges'],
+                position=kw['position'],expected_baseline=kw['baseline'])
+        if action=='begin':
+            managed_journal.begin(root,source,kw['baseline'],scope=kw['scope'],edges=kw['edges'],retry=kw['retry'])
+        elif action=='ack':managed_journal.acknowledge(root,kw['attempt'],kw['phase'],kw['position'],kw['proof'])
+        elif action=='commit':managed_journal.commit(root,kw['attempt'])
+        elif action=='rollback':managed_journal.start_rollback(root,kw['attempt'])
+        elif action=='finish':
+            journal=managed_journal.read(root,kw['attempt'])
+            self.assertIn(journal['phase'],('complete','rolled-back'))
+            return {'phase':journal['phase'],'maintenance_ready':True,
+                    'scope':journal['request']['scope'],'selected_edges':journal['request']['edges']}
+        return managed_control.next_operation(root,kw.get('attempt'))
+
+    def proof(self,ssh,root,source,entry,value):
+        self.assertEqual(entry,'managed_peer')
+        if value['operation']=='preflight':
+            if self.preflight_failure:raise managed_ssh.RemoteFailure('Unavailable preflight host')
+            return {'facts':{'manifest':value['before'],'data_identity':value['data_identity']},'fence':None}
+        journal=managed_journal.read(root)
+        if self.uncertain and journal['phase']=='applying':raise RuntimeError('Uncertain SSH outcome')
+        if self.fail_peer and journal['phase']=='applying' and value['target']['role']=='edge':
+            self.fail_peer=False;raise managed_ssh.RemoteFailure('Known edge apply failure')
+        self.fixture.journal=journal;self.fixture.attempt=journal['attempt']
+        step={key:value['target'][key] for key in ('role','edge_id')}
+        restoring=journal['phase'].startswith('rollback') or journal['phase']=='rolling-back'
+        before=journal['phase']=='fencing' or restoring
+        return self.fixture.proof(step,value['before'] if before else value['target'],restored=restoring,
+                                  released=journal['phase'] in ('releasing','rollback-releasing'))
+
+    def release(self,**kw):
+        return managed_ssh.release(['ssh','pinned-core'],self.root,self.fixture.candidate['commit'],
+            '/fixture/public-archive','/fixture/identity',connect=self.connect,**kw)
+
+    def test_preflight_stages_each_physical_host_before_begin_then_finishes_release(self):
+        result=self.release()
+        self.assertEqual(result['phase'],'complete')
+        self.assertEqual(self.receives.call_count,3)
+        self.assertEqual(managed_journal.read(self.root)['phase'],'complete')
+        self.assertTrue(result['maintenance_ready'])
+
+    def test_preflight_failure_does_not_begin_or_fence_any_role(self):
+        self.preflight_failure=True;before=(self.root/'current.json').read_bytes()
+        with self.assertRaises(managed_ssh.RemoteFailure):self.release()
+        self.assertFalse((self.root/'rollout.json').exists())
+        self.assertEqual((self.root/'current.json').read_bytes(),before)
+        self.assertFalse(any(call.args[3]=='begin' for call in self.coordinator.call_args_list))
+
+    def test_known_edge_failure_rolls_back_and_preserves_original_pointer(self):
+        self.fail_peer=True;before=(self.root/'current.json').read_bytes()
+        with self.assertRaisesRegex(managed_ssh.RemoteFailure,'rolled back'):self.release()
+        self.assertEqual(managed_journal.read(self.root)['phase'],'rolled-back')
+        self.assertEqual((self.root/'current.json').read_bytes(),before)
+
+    def test_uncertain_ssh_result_is_preserved_without_starting_rollback(self):
+        self.uncertain=True
+        with self.assertRaisesRegex(RuntimeError,'Uncertain SSH outcome'):self.release()
+        self.assertEqual(managed_journal.read(self.root)['phase'],'applying')
+        self.assertFalse(any(call.args[3]=='rollback' for call in self.coordinator.call_args_list))
+        self.uncertain=False
+        result=managed_ssh.drive(['ssh','pinned-core'],self.root,'d'*64,'/fixture/identity',connect=self.connect)
+        self.assertEqual(result['phase'],'complete')
+
+    def test_same_finished_artifact_does_not_create_another_attempt(self):
+        self.release();attempt=managed_journal.read(self.root)['attempt'];self.release()
+        self.assertEqual(managed_journal.read(self.root)['attempt'],attempt)
+
+    def test_new_source_does_not_refinish_completed_old_operator_before_preflight(self):
+        self.release()
+        old_source='d'*64;new_source='e'*64
+        self.receives.return_value={'schema':1,'path':str(self.root/'bundles'/new_source),'archive_sha256':new_source}
+        def coordinator(ssh,root,source,action,**kw):
+            if action=='status':return {'attempt':self.fixture.attempt,'active_source':old_source,'phase':'complete'}
+            if action=='prepare':raise ValueError('New source preflight still required')
+            self.fail('Completed old source must not be replayed: '+action)
+        self.coordinator.side_effect=coordinator
+        with self.assertRaisesRegex(ValueError,'New source preflight still required'):self.release()
+        self.assertFalse(any(call.args[3]=='finish' for call in self.coordinator.call_args_list[-2:]))
+
+    def test_new_source_still_requires_explicit_retry_after_completed_rollback(self):
+        self.receives.return_value={'schema':1,'path':str(self.root/'bundles'/('e'*64)),'archive_sha256':'e'*64}
+        self.coordinator.side_effect=None
+        self.coordinator.return_value={'attempt':'a'*64,'active_source':'d'*64,'phase':'rolled-back'}
+        with self.assertRaisesRegex(managed_ssh.RemoteFailure,'explicit retry'):self.release()
+        self.assertEqual([call.args[3] for call in self.coordinator.call_args_list],['status'])
+
+    def test_resume_only_drives_active_source_but_leaves_terminal_sources_alone(self):
+        config={'root':str(self.root),'public':self.fixture.baseline['public'],'inventory':self.fixture.baseline['inventory']}
+        environment={'SERVER_ROLE_CONFIG':json.dumps(config),'DEPLOY_ROOT':str(self.root),
+                     'PUBLIC_URL':config['public']['canonical_origin']}
+        identities=self.root/'fixture-identities.json'
+        identities.write_text(json.dumps({'core':'/fixture/core','edge-b':'/fixture/b','edge-c':'/fixture/c'}))
+        for phase in ('applying','committing','complete','rolled-back'):
+            with self.subTest(phase=phase),patch.dict(os.environ,environment), \
+                 patch.object(sys,'argv',['managed_ssh.py','--resume-only','--identity-map',str(identities)]), \
+                 patch.object(managed_ssh,'connection',side_effect=self.connect), \
+                 patch.object(managed_ssh,'read_hints',return_value={'origin':environment['PUBLIC_URL'],
+                     'pending':{'phase':phase,'source':'d'*64}}), \
+                 patch.object(managed_ssh,'drive',return_value={'phase':'complete'}) as drive, \
+                 patch('builtins.print'):
+                if phase=='rolled-back':
+                    with self.assertRaisesRegex(managed_ssh.RemoteFailure,'explicit retry'):managed_ssh.main()
+                else:managed_ssh.main()
+                if phase in ('applying','committing'):
+                    drive.assert_called_once();self.assertEqual(drive.call_args.args[2],'d'*64)
+                else:drive.assert_not_called()
+
+    def test_selected_web_scope_stages_only_core_and_selected_edge(self):
+        self.fixture.candidate['control']=self.fixture.baseline['core']['images']['control']
+        self.fixture.receipt['manifest']=self.fixture.candidate
+        result=self.release(scope='web',edges=['c'])
+        self.assertEqual(result['phase'],'complete');self.assertEqual(self.receives.call_count,2)
+        journal=managed_journal.read(self.root)
+        self.assertEqual(journal['steps'],[{'role':'edge','edge_id':'c'}])
+
+    def test_fencing_failure_preserves_attempt_for_same_source_resume(self):
+        self.fixture.begin();attempt=self.fixture.attempt
+        self.peer.side_effect=managed_ssh.RemoteFailure('Temporary backup overlaps claim')
+        with self.assertRaises(managed_ssh.RemoteFailure):
+            managed_ssh.drive(['ssh','core'],self.root,'d'*64,'/fixture/key',connect=self.connect)
+        self.assertEqual(managed_journal.read(self.root)['phase'],'fencing')
+        self.assertEqual(managed_journal.read(self.root)['attempt'],attempt)
+        self.assertFalse(any(call.args[3]=='rollback' for call in self.coordinator.call_args_list))
+
+
+class ManagedTransportTests(unittest.TestCase):
+    def test_busy_and_lost_connection_retry_without_exposing_private_progress(self):
+        outputs=[SimpleNamespace(returncode=75,stdout=b'',stderr=b'busy'),
+                 SimpleNamespace(returncode=255,stdout=b'',stderr=b'connection lost'),
+                 SimpleNamespace(returncode=0,stdout=b'private backup progress\n{"schema":1}\n',stderr=b'')]
+        with patch.object(managed_ssh.subprocess,'run',side_effect=outputs) as run, \
+             patch.object(managed_ssh.time,'sleep'):
+            result=managed_ssh.invoke(['ssh','pinned'],'/srv/managed','a'*64,'managed_entry',{'schema':1,'action':'status'})
+        self.assertEqual(result,{'schema':1});self.assertEqual(run.call_count,3)
+        self.assertEqual(json.loads(run.call_args.kwargs['input']),{'schema':1,'action':'status'})
+        self.assertIn('--source-sha '+ 'a'*64,run.call_args.args[0][-1])
+
+    def test_remote_failure_differs_from_uncertain_ssh_outcome(self):
+        with patch.object(managed_ssh.subprocess,'run',return_value=SimpleNamespace(returncode=1,stdout=b'',stderr=b'private failure')):
+            with self.assertRaises(managed_ssh.RemoteFailure):
+                managed_ssh.invoke(['ssh'],'/srv/managed','a'*64,'managed_entry',{'schema':1,'action':'status'})
+        with patch.object(managed_ssh.subprocess,'run',return_value=SimpleNamespace(returncode=255,stdout=b'',stderr=b'')), \
+             patch.object(managed_ssh.time,'sleep'):
+            with self.assertRaises(RuntimeError) as caught:
+                managed_ssh.invoke(['ssh'],'/srv/managed','a'*64,'managed_entry',{'schema':1,'action':'status'})
+        self.assertNotIsInstance(caught.exception,managed_ssh.RemoteFailure)
+
+    def test_connection_pins_host_and_removes_its_temporary_known_hosts(self):
+        from test_node_inventory import key
+        with tempfile.TemporaryDirectory() as folder:
+            identity=Path(folder)/'identity';identity.write_text('synthetic fixture identity');identity.chmod(0o600)
+            from test_node_inventory import fixture
+            inventory=fixture();inventory['ssh_port']=2222
+            peer={'node':'core','inventory':inventory,'host':'192.0.2.10','host_key':key(1),'user':'root','port':2222}
+            with managed_ssh.connection(peer,identity) as ssh:
+                name=next(item.split('=',1)[1] for item in ssh if item.startswith('UserKnownHostsFile='))
+                known=Path(name);self.assertEqual(known.read_text(),'[192.0.2.10]:2222 '+key(1)+'\n')
+                self.assertIn('StrictHostKeyChecking=yes',ssh);self.assertIn('ForwardAgent=no',ssh)
+                self.assertIn('/dev/null',ssh);self.assertEqual(known.stat().st_mode&0o777,0o600)
+            self.assertFalse(known.exists())
+
+    def test_node_identity_map_selects_only_its_own_key(self):
+        from test_node_inventory import key
+        with tempfile.TemporaryDirectory() as folder:
+            private=Path(folder)/'core';private.write_text('synthetic');private.chmod(0o600)
+            from test_node_inventory import fixture
+            peer={'node':'core','inventory':fixture(),'host':'192.0.2.10','host_key':key(1),'user':'root','port':22}
+            with managed_ssh.connection(peer,{'core':str(private)}) as ssh:
+                self.assertEqual(ssh[ssh.index('-i')+1],str(private))
+            with self.assertRaisesRegex(ValueError,'physical node SSH identity'):
+                with managed_ssh.connection(peer,{'edge-b':str(private)}):pass
+
+    def test_build_hint_reader_sends_only_public_script_and_rejects_bad_response(self):
+        value={'schema':1,'baseline':'a'*64,'backend':'b'*64,'origin':'https://chat.fixture.invalid',
+               'control':'ghcr.io/fixture/control@sha256:'+'c'*64,'web':{'a':'ghcr.io/fixture/web@sha256:'+'d'*64},'pending':None,'core_guard':None}
+        with patch.object(managed_ssh.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(value).encode())) as run:
+            self.assertEqual(managed_ssh.read_hints(['ssh','pinned'],'/srv/managed'),value)
+            self.assertIn('python3 -B - /srv/managed',run.call_args.args[0][-1])
+            self.assertIn(b'def hints(root)',run.call_args.kwargs['input'])
+            self.assertNotIn(b'PRIVATE KEY-----',run.call_args.kwargs['input'])
+        with patch.object(managed_ssh.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=b'{}')):
+            with self.assertRaises(ValueError):managed_ssh.read_hints(['ssh'],'/srv/managed')
+
+    def test_schema_two_build_hints_validate_recorded_core_guard(self):
+        value={'schema':1,'baseline':'a'*64,'backend':'b'*64,'origin':'https://chat.fixture.invalid',
+               'control':'ghcr.io/fixture/control@sha256:'+'c'*64,
+               'web':{'a':'ghcr.io/fixture/web@sha256:'+'d'*64},'pending':None,'core_guard':'e'*64}
+        for guard in ('e'*64,'invalid',True):
+            value['core_guard']=guard
+            with self.subTest(guard=guard),patch.object(managed_ssh.subprocess,'run',
+                    return_value=SimpleNamespace(returncode=0,stdout=json.dumps(value).encode())):
+                if guard=='e'*64:self.assertEqual(managed_ssh.read_hints(['ssh'],'/srv/managed'),value)
+                else:
+                    with self.assertRaises(ValueError):managed_ssh.read_hints(['ssh'],'/srv/managed')

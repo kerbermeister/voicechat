@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "loopback_listener_only": false,
+  "real_compose_interruption_resumed": true,
+  "repeat_preserved_process": true,
+  "owned_stopped_listener_recovered": true,
+  "owned_networks_verified": true,
+  "core_and_edge_not_started": true,
+  "trusted_web_and_turn_tls_through_warm_front": true,
+  "strict_proxy_web_readiness_checked": true,
+  "foreign_readiness_identity_rejected": true,
+  "limits": [
+    "Marked disposable VM ports 80/443 and synthetic business/API/TURN TLS backends.",
+    "No production migration, real core database, TURN allocation/media or reboot."
+  ],
+  "real_public_port_cutover": true,
+  "operator_sha256": "9ac35365807d24b939c6c0ea4ccccd21b260b2d41302b04adfc260785d75cc34",
+  "caddy_recreation_interruption_resumed": true,
+  "front_recreation_interruption_resumed": true,
+  "actual_failed_cutover_restored_legacy_https": true,
+  "unrelated_upstream_processes_preserved": true,
+  "committed_cutover_repeat_preserved_processes": true,
+  "business_manager_shared_mode_noop_verified": true,
+  "fixture_resources_removed": true,
+  "date": "2026-10-29",
+  "source_sha256": {
+    "infra/shared_cutover.py": "79b27ce583231f6ee80ef0e6439211f1d65388ff8282d6bc8b697db7c243ea7c",
+    "infra/shared_front.py": "fe7d7d16c2d6776d6958fe4e74c4b00add69e81e5de25a8e519c0c2e070b1ade",
+    "infra/edge_deploy.py": "2224383c9f22aa6ec2d6ac9bef1b5c8e8d3b76979431c3b33593ae6e3f6bcc02",
+    "prototype/check_shared_front_warm.py": "9fd4109d441ec83c13cc56525b1fef28aa788982e29dba5011b5869fa58335c3",
+    "prototype/check_shared_port_cutover.py": "f030abeaf308a6186213e5021a0868c0160e77163a87e1ac864eab850db5356f"
+  }
+}

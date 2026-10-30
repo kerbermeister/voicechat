@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "synthetic_upstreams": true,
+  "web_image": "ghcr.io/kerbermeister/voicechat/web@sha256:68739c97b37b5d04ba7d11a3c7c4126e7f86dbaa6b36a5ac35ce33a293f69f4f",
+  "initial_edge_deployment": true,
+  "web_only_preserves_ingress_turn_readiness_processes": true,
+  "same_commit_configuration_release": true,
+  "failed_public_health_rolls_back": true,
+  "interrupted_apply_resumed": true,
+  "fixture_containers_network_volumes_removed": true,
+  "temporary_registry_token_removed": true,
+  "controller_source_sha256": {
+    "edge_deploy.py": "f84af8b6a493e20cb264b530e608d8e855eaaf1de4e9946942971f4ee6e1f723",
+    "role_prepare.py": "8961970e51be68969118bb85f391c4f51f8208257c10289f1a7f1539e2d3ced0",
+    "role_release.py": "46f46ad49041414048fd6986a7d08e970591cbf4a3a808e6d360ca14fd4f3e1e",
+    "role_config.py": "1b51b8e4e6c1b693360206a0b033b54a80a8273b6c564f8922e3f06eccf3dcfb",
+    "network_runtime.py": "91d4673e50849124defaaa30ab465c2274076af6d7a9795da868826f7f3231f1",
+    "tls_runtime.py": "1c4489e6734add4b5e1883dd5500ab39d73aafe163fc36d0c0ccc210e63b360f",
+    "tls_activation.py": "b486c342ec0e2e83c7d072054710a7be90582592350239325eac7fb127bc5b14"
+  },
+  "date": "2026-10-28",
+  "environment": "Disposable Debian12 amd64 QEMU TCG VM, Docker29.8.1/Compose5.5.1",
+  "base_commit": "41c22c4",
+  "production_changed": false,
+  "limits": [
+    "Matrix/control upstreams are synthetic; no actual core deployment, DB migration or call acceptance.",
+    "Existing published web image is used to exercise Caddy runtime; this is not a new client release.",
+    "No ACME/DNS/provider outage or real device proof."
+  ]
+}

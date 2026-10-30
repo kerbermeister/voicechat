@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "postgres_transaction_proof": true,
+  "url_only_change": true,
+  "foreign_pushers_unchanged": true,
+  "commit_crash_resumed": true,
+  "rollback_conflict_atomic": true,
+  "deleted_subscription_not_recreated": true,
+  "repeat_idempotent": true,
+  "full_rollback_includes_new_subscriptions": true,
+  "full_rollback_preserves_current_metadata": true,
+  "reverse_commit_crash_resumed": true,
+  "limits": [
+    "Synthetic PostgreSQL pusher table matching inspected Synapse columns; not a full production migration.",
+    "Caller must enforce stopped writers, verified backup and Synapse restart; core orchestration not yet wired."
+  ],
+  "fixture_resources_removed": true,
+  "postgres_image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+  "source_sha256": "dbeb243b28f38a5ddb5dd93fc2945c7a075b5ea2d22f7cdd990cd84924588a06",
+  "probe_sha256": "c686318529908848103c0302ddd2956109c2e49a89967c68af48c5f26ba3368c",
+  "date": "2026-10-29"
+}

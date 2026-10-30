@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "production_changed": false,
+  "directory": "/srv/voicechat-edge-fixture/initial-network-isolation-cdrcx8ju",
+  "original_private_intent_archived_atomically_and_restored": true,
+  "original_network_active_after_restore": true,
+  "limits": [
+    "Disposable VM peerless network only; full core/edge migration is not exercised."
+  ],
+  "date": "2026-10-29",
+  "source_sha256": "90d734b93533028ebd609f2f6b1c2ab46e11c2271696a0464f99fc4e8cce6c59"
+}

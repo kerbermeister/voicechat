@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:matrix/matrix.dart';
 import 'temporary_message.dart';
+import 'hidden_messages.dart';
 import 'user_action_error.dart';
 
 const forwardedAuthorKey = 'dev.voicechat.forwarded_author';
@@ -14,6 +15,7 @@ String? forwardedAuthor(Event event) {
 
 bool canForwardMessage(Event event) =>
     !event.redacted &&
+    !messageHidden(event) &&
     !messageExpired(event) &&
     event.type == EventTypes.Message &&
     const {
@@ -52,6 +54,7 @@ Map<String, dynamic> forwardMessageContent(Event event) {
       'duration',
       'duration_ms',
       'video',
+      'dev.voicechat.read_after_seconds',
       'dev.voicechat.caption',
       'dev.voicechat.waveform',
     ])
@@ -70,7 +73,8 @@ Map<String, dynamic> forwardMessageContent(Event event) {
   if (event.messageType == 'dev.voicechat.call') {
     content['msgtype'] = 'dev.voicechat.call_summary';
   }
-  if (messageExpiry(event) != null) {
+  if (event.content['dev.voicechat.ttl_seconds'] != null ||
+      event.originalSource?.content['dev.voicechat.ttl_seconds'] != null) {
     // This is a new message: preserve the validated retention duration, not a
     // shortened value that the server's TTL policy would reject.
     content['dev.voicechat.ttl_seconds'] =

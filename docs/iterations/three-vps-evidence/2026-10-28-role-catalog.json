@@ -1,0 +1,143 @@
+{
+  "recorded_at": "2026-10-28T09:01:33.045994+00:00",
+  "state": "Local roles, catalog, file recovery and Android/macOS update routing iterations complete; full MVP incomplete",
+  "baseline_commit": "bca5b46f582cac1bee080736985950d039b46a0e",
+  "source": "Uncommitted working tree; prior unrelated changes preserved; production baseline not read",
+  "source_sha256": {
+    "infra/configure.py": "c59aee1e6c86cef676b674a1c60acb423ca6fe40f995979fbe050fb608561021",
+    "infra/compose.yaml": "b7b85c69bcd067a0cbd702708f3bb142e2accfac71e37ed5060979a15aa2cf02",
+    "infra/role_config.py": "7160545fa0842f1e1930fc15e756d80ec3b779fce0f6d16778d192144d4cf20b",
+    "infra/render_roles.py": "1016fb687e1e1c1ac81ab5233a280b6840d7a681071a0623c8cd375ca001473b",
+    "infra/edge_turn.py": "32ba6d941295cdf1a91fed24c72bd779ee13943757d1ffea86aabccf3bb06445",
+    "infra/edge_config.py": "0485f853c79b840bc2fc7e5855d37fe95993ae08e196240d663efa1a5869f349",
+    "infra/render_edge.py": "4e6b5e888e61bc12e52501a55256ea6b62a2761b3e20cc4456f27fa6b5d5d454",
+    "infra/node_inventory.py": "49f461db54aff2e5ec53f29a4e647bc1a2e75f78a8828d0cd6c18f5a5d396634",
+    "infra/topology.py": "a1c7449fba71f22389598deb2bdbe1524bf72b296cdead270b0bd643a6ca95d6",
+    "infra/client_config.py": "f89112846c08de986db0fb661972f6c894aa59019c20b65c2757aef1e77d5e60",
+    "infra/route_catalog.py": "8627900901d7c146e0be6fe038c462a95bae128571f1b9a84c3fd1922649ef1d",
+    "infra/publish_catalog.py": "2cf00bd4e97a646f951fb64780f32f4c186c9dec1a9d778e83ec7cbe3f71f2bc",
+    "prototype/test_route_catalog.py": "7d84e52c87a802bc2fa6a7090439f5b52bdac5903363da82ab624eb6ae9a7256",
+    "prototype/test_role_config.py": "28c6333d2d9337cd84a6b9818134a0387a4b0323f65ab369378328e5c56a96ce",
+    "prototype/check_role_config.py": "989c3c54bd387fb34d46248bb97851e65a17241cb3d0c3ec6bff495a61560fdc",
+    "prototype/check_route_tls.py": "39004daf504501efa536949be5dfe5da2a573cdf802954230330de1338574c7a",
+    "prototype/turn_tls_probe.py": "b903864adc0e9d882fe7f81807c91e65f1df6d904fd5b392c84dd2dd26993fcb",
+    "prototype/check_three_vps.py": "316b657bc90e286fa8dc2047696419afee8c7e3a2b18a02a9c75f8d27f9faa0c",
+    "apps/client/lib/media_routes.dart": "4f9542ffa7b1fed6936ac9bb4f55e709333e0b1c245eaf5d55499d479db62244",
+    "apps/client/lib/route_transport.dart": "663877392c52a251c1293cae69da3d483f9f811fe773b6cec1920e037d0e41b8",
+    "apps/client/lib/chunked_file.dart": "1b88e707083e5e0db82ade237fad553e2aefe6d85e3164c6b88ab79d6e71b402",
+    "apps/client/test/media_routes_test.dart": "ab20e4f930af8a713aa1ff657f8a52d4bc2fcf7c4e03e0f5ff4a7bf2bb8f32d5",
+    "apps/client/test/route_io_test.dart": "7b41369647d62b471316e1713fc5bdb64e5a020c224c14cf22d647edda8a1887",
+    "apps/client/integration_test/route_file_probe.dart": "7179ab07786881b82ae0367fdc6a457b5201020abcb5ee3fd54de48c1dfb966b",
+    "apps/client/integration_test/route_transport_test.dart": "1e192eb7cfbfba99809c0c264561fcdbc94d8354bcb94689de7469b453534bbf",
+    "apps/client/lib/app_update.dart": "c69a9fd4b82e5daa8d9ddf7100e9a776885eb8a8f8dc49586f601dbd2acfa407",
+    "apps/client/lib/app_update_dialog.dart": "ed66aa6deacfab9246bd72af5563ca7e68f81cdd14b9bd06e3c0b7cc7424a7b4",
+    "apps/client/lib/macos_update_dialog.dart": "9f49a35c695379bacd8a1f503d3e48527d5a28867175e84e8a134f820859dd30",
+    "apps/client/lib/main.dart": "e39556d3cc294a823de6f275f794a691b2dfff2a04c9e2e671c654987fdc80ab",
+    "apps/client/lib/update_platform_native.dart": "139a722b2e3dd23dd46da019c02fd5179e597ba257ff39e42debcb1c6c3db492",
+    "apps/client/macos/Runner.xcodeproj/project.pbxproj": "8a8fe08ba7f7aea815a1e34861b638c56e871fddb22aa2d5db548576dfb787f1",
+    "apps/client/macos/Runner/MacUpdateRoute.swift": "b1abc036fb823bd1807c6bfc05471176f052df7c9784b38cd80a86696d99d6af",
+    "apps/client/macos/Runner/MacUpdater.swift": "0cc7046b6991856ba1723ccc3596ceddca4d67eeec7901159443eef80c0ca74a",
+    "apps/client/test/app_update_test.dart": "5ba058b8aabc1cde85640c58aa8947f36431e36749ac0f330d06496bb78dc299",
+    "apps/client/test/macos_update_test.dart": "aa7caebbb015a68e27f9e58dd75b4a743a6fd4afbd19f241294941a8437e3427",
+    "prototype/test_macos_release.py": "528bb6b5e60cb5d45426ab5ae9ae9a4cb9fca747f6acaa0c1b1fd32c15e572cc",
+    "prototype/test_macos_update_route.py": "f50aa980a859cd730974e5663e97c2b58f7a12219e6e7b538dd491c0dc048cda"
+  },
+  "production_changed": false,
+  "dns_changed": false,
+  "committed_or_pushed": false,
+  "python_regression_tests_passed": 36,
+  "python_catalog_subset_after_utf8_validation_tests_passed": 5,
+  "flutter_analyze": "No issues found",
+  "role_config": {
+    "project": "voicechat-role-294c91301e73",
+    "result": "passed",
+    "checks": [
+      "Real Compose normalization of generated core/edge",
+      "Legacy core volume namespace and control/SFU lifecycle retained",
+      "Two configure runs preserve synthetic signing/media sentinels",
+      "No core secrets in normalized edge configuration"
+    ],
+    "excludes": "Full core boot, production data migration, WireGuard/host firewall"
+  },
+  "edge_tls_catalog_turn": {
+    "project": "voicechat-sni-f7a4346a441a",
+    "result": "passed",
+    "checks": [
+      "Generated edge with fixed bridge addresses and synthetic upstream",
+      "HTTPS CA/hostname, exact CORS, private routes, forwarded/PROXY trust",
+      "Signed catalog atomically updated through running proxy without restart",
+      "Catalog rollback rejected, installed bytes unchanged",
+      "TURN TLS authenticated allocation and private/metadata permission rejection",
+      "Old/new TURN secret overlap, old retirement and expired credential rejection",
+      "Readiness 200/503 on upstream loss, query token absent from proxy logs"
+    ],
+    "excludes": "TURN TLS audio, application call E2EE, public 443, real WireGuard, certificate renewal",
+    "system_trust_changed": false
+  },
+  "native_files_and_matrix": {
+    "project": "voicechat-routes-f908c90ffbbc",
+    "result": "passed",
+    "checks": [
+      "B/C bootstrap discovers D via signed catalog",
+      "Actual Synapse ciphertext events decrypted after B/C loss and profile reopen",
+      "Same account/device/token/fingerprint and exactly one device",
+      "Actual encrypted Synapse file downloaded and decrypted before/after B/C loss and reopen",
+      "Loopback truncated ciphertext and byte tampering rejected by ChunkedFile with real crypto",
+      "Invalid parts evicted; explicit retry through C returns original plaintext"
+    ],
+    "excludes": "Android/web, external networks, live app calls and 15 second recovery target",
+    "latest_repeated_project_after_macos_changes": "voicechat-routes-f8eaeaec9123"
+  },
+  "socket_tests": [
+    "Streaming upload remains on B while next operation uses C",
+    "Socket lost after accepted mutation causes no automatic replay"
+  ],
+  "catalog_tests": [
+    "Exact Ed25519 bytes, bounded UTF-8 JSON and base64 payload, duplicate fields rejected",
+    "Identity/lifetime/revision validation; add/remove/return entry",
+    "Flock serialization of competing writers, failed replace preserves previous file",
+    "Explicit new runtime initialization; corrupt or missing prior state fails closed"
+  ],
+  "cleanup": "Only pre-existing voicechat-prototype containers/network/volumes remained in read-only Docker inventory; disposable projects removed",
+  "log_sha256": {
+    "catalog-regression.log": "38730579609dc835b9daed0f98d25a48fd28eafe84edfd41361ac4df8ff87d5a",
+    "catalog-final-tests.log": "7a9d73ff65aebcbee476b7029df22d3c869dfad01af1c04f4a6dc2bc370af809",
+    "route-io-tests.log": "9ca2d2f6fe422375faf6130089d4e350967ed4d94dfa63d8a5a388422bc639b0",
+    "catalog-file-analyze.log": "2db91fc98301cb7d81c26cdfd656ab86088ab3adce84b1081d3937ca26f62397",
+    "edge-role-catalog-run.log": "ae5cfac6da02b927f403d7edd8b3885122ed6ea1a726dc69579cc5f0dea8d71b",
+    "catalog-file-native-run.log": "c661687bb19f2b96cc6736a91de162a7eabbf29444d3bdaecf8d6774ad1051c8",
+    "voicechat-routes-f908c90ffbbc.log": "f6d3f29a64f3091ba7904ccbd3e42923eb29e8dbdc3153a83d1a4e00abdb7b2e",
+    "role-config-run.log": "df055dc2fd9dea583315d865b38422a1cc0ea0e063ef35c45cccd833beb68ac9",
+    "updater-all-tests.log": "416b088cc25e720107a2d645acb3ed982cf1e77eb1d38ab0d98064375f1ab45d",
+    "updater-final-analyze.log": "bb041e19b84e55ddf0f9a55af878aea723d78307815c95e939535a0d8061ac9a",
+    "macos-updater-regression.log": "debf9687b9cef30b51e28022316e3481cca9e0c43d7296076bcc93a8c5d199a8",
+    "updater-native-build-run.log": "81568ef75e98367bde55794435514425c3debe5aea8d3fd762288f87fa3c4b8e",
+    "voicechat-routes-f8eaeaec9123.log": "c57b6c5043d8057e8071a2c454d6654ade9053492bbb4d7bca78ea0ea6f2cfcc"
+  },
+  "not_proven": [
+    "LiveKit in-place WSS/ICE refresh and application direct/group/screen recovery",
+    "All clients, external networks, real device media E2EE and 15-second target",
+    "Host bootstrap, unique tunnel peers/firewall and TLS issuance/renewal",
+    "Multi-host catalog publication with persistent high-water state across releases",
+    "Role manifests/deploy/rollback, real node replacement and core migration",
+    "External backup and recovery after loss of A",
+    "Full Android/macOS update installation with entry failure; push and P2P routing acceptance"
+  ],
+  "resume": "docs/iterations/19-three-vps-resume.md",
+  "flutter_file_route_tests_passed_before_updater": 21,
+  "flutter_updater_route_tests_passed": 31,
+  "macos_mapper_and_existing_release_tests_passed": 5,
+  "updater": {
+    "android": "Independent routed HTTP pool, metadata B/package C, existing hash/native verification guards retained, no automatic replay",
+    "macos": "Route snapshot at explicit check/download; native canonical feed/path mapper; Sparkle delegates rewrite transport origin only; embedded key and signed feed/package guards retained",
+    "checks": [
+      "Native Foundation mapper rejects foreign origins, downgrade, credentials, traversal, query and fragment",
+      "Flutter channel arguments reflect B at check and C at explicit download",
+      "Missing route prevents native check and allows explicit retry",
+      "Existing macOS release validation and real CryptoKit fixture signature tests pass",
+      "Updated macOS Runner compiles and native Matrix/file probe passes"
+    ],
+    "excludes": "Real Android APK installation and full Sparkle signed production feed/archive download/install/relaunch across external B/C"
+  },
+  "runner_locale": "en_US.UTF-8 on macOS; fixes cold CocoaPods install failure under ASCII C"
+}

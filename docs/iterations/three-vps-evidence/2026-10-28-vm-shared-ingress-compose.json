@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "compose_version": "5.5.1",
+  "legacy_and_shared_override_validated": true,
+  "business_service_definitions_unchanged": true,
+  "existing_caddy_volume_names_preserved": true,
+  "leaf_mount_removed": true,
+  "production_changed": false,
+  "services_started": false,
+  "fixture_resources_removed": true,
+  "base_compose_sha256": "392a0f9aa3decbbbde2da4e23d227a0f2e6f46907ef39a999e9591de4fda1db4",
+  "source_sha256": {
+    "infra/shared_ingress.py": "d973c53fd66bd52ceba4f3ccd22cab58842b9feb1b29a3dc640bf4241f2d3966",
+    "prototype/check_shared_ingress_compose.py": "c06a8470223ccaf769506aa7b8ade84c87a0d293575c466204bedd9a816bda93"
+  },
+  "limits": [
+    "Compose config validation only; no host adoption, reload, TLS issuance or port cutover."
+  ]
+}

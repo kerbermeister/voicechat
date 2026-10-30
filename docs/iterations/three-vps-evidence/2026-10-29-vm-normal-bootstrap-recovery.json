@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "owned_stale_failed_unit_reset": true,
+  "original_private_network_intent_and_key_preserved": true,
+  "original_network_service_ready": true,
+  "no_containers": true
+}

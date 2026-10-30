@@ -6,10 +6,27 @@ on:
         description: Deploy to VPS after publishing images
         type: boolean
         default: true
-      mode:
-        description: Full release or web only (requires an unchanged deployed backend)
+      rollout:
+        description: Ordinary managed release, legacy install, or one-time initial migration
         type: choice
-        options: [full, web]
+        options: [managed, legacy, initial]
+        default: managed
+      retry_initial:
+        description: Explicit new attempt after a completed initial rollback
+        type: boolean
+        default: false
+      retry_managed:
+        description: Explicit new attempt after a completed managed rollback
+        type: boolean
+        default: false
+      edges:
+        description: Optional space-separated edge IDs for web/edge scope
+        type: string
+        default: ''
+      mode:
+        description: Full, web, core, or edge (partial scopes require a compatible baseline)
+        type: choice
+        options: [full, web, core, edge]
         default: full
 permissions:
   contents: read
@@ -23,30 +40,103 @@ jobs:
     environment: production
     env:
       PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+      CLIENT_ROUTE_CONFIG: ${{ vars.CLIENT_ROUTE_CONFIG }}
+      CLIENT_ROUTE_CATALOG_KEY: ${{ vars.CLIENT_ROUTE_CATALOG_KEY }}
       DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
       DEPLOY_USER: ${{ vars.DEPLOY_USER }}
       DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT }}
       RELEASE_MODE: ${{ inputs.mode }}
+      ROLLOUT_KIND: ${{ inputs.rollout }}
+      SELECTED_EDGES: ${{ inputs.edges }}
+      RETRY_MANAGED: ${{ inputs.retry_managed }}
+      SERVER_ROLE_CONFIG: ${{ vars.SERVER_ROLE_CONFIG }}
+      SIGNED_ROUTE_CATALOG: ${{ vars.SIGNED_ROUTE_CATALOG }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
       - name: Validate public deployment configuration
         run: |
           test -n "$DEPLOY_HOST" && test -n "$DEPLOY_USER" && test -n "$DEPLOY_ROOT"
-          python3 infra/client_config.py "$PUBLIC_URL" /tmp/client.json
+          python3 infra/client_config.py --environment "$PUBLIC_URL" /tmp/client.json
           python3 -c 'import json; assert json.load(open("/tmp/client.json"))["MATRIX_URL"].startswith("https://")'
           python3 infra/release_source.py
+          python3 - <<'PY'
+          import os
+          mode,kind=os.environ['RELEASE_MODE'],os.environ['ROLLOUT_KIND']
+          if kind!='managed' and mode not in ('full','web'):
+              raise ValueError('Core/edge scopes require the managed rollout')
+          if os.environ['SELECTED_EDGES'].strip() and (kind!='managed' or mode not in ('web','edge')):
+              raise ValueError('Edge selection applies only to managed web/edge scope')
+          PY
+      - name: Validate initial rollout contract
+        if: ${{ inputs.rollout == 'initial' }}
+        run: |
+          test "$RELEASE_MODE" = full
+          if [ '${{ inputs.deploy }}' = true ]; then
+            python3 infra/initial_entry.py --check-environment
+          fi
+      - name: Reject routed client deployment through legacy single-host deploy
+        if: ${{ inputs.deploy && inputs.rollout == 'legacy' }}
+        run: python3 -c 'import json; assert "ROUTE_CONFIG" not in json.load(open("/tmp/client.json")), "Select initial for the first transition, or deploy=false for build-only"'
       - name: Set up pinned SSH identity
-        if: ${{ inputs.deploy || inputs.mode == 'web' }}
+        if: ${{ inputs.deploy || inputs.mode != 'full' }}
         env:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_NODE_SSH_KEYS: ${{ secrets.DEPLOY_NODE_SSH_KEYS }}
+          DEPLOY_NODE_SSH_CONNECTIONS: ${{ vars.DEPLOY_NODE_SSH_CONNECTIONS }}
         run: |
           umask 077
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-      - name: Verify deployed backend for web-only release
-        if: ${{ inputs.mode == 'web' }}
+          if [ "$ROLLOUT_KIND" = managed ]; then
+            python3 - <<'PY'
+          import json,os,sys
+          from pathlib import Path
+          sys.path.insert(0,'infra')
+          import topology,tunnel_config,host_connection
+          config=json.loads(os.environ['SERVER_ROLE_CONFIG'],object_pairs_hook=topology.unique_object)
+          nodes=tunnel_config.physical_nodes(config['inventory'])
+          raw=os.environ.get('DEPLOY_NODE_SSH_KEYS','') or '{}'
+          if len(raw.encode())>1024*1024:raise ValueError('SSH identity input exceeds its bound')
+          keys=json.loads(raw,object_pairs_hook=topology.unique_object)
+          if not isinstance(keys,dict) or set(keys)-set(nodes):raise ValueError('SSH keys must name known physical nodes')
+          keys={'core':os.environ['SSH_KEY'],**keys}
+          if set(keys)!=set(nodes) or any(not isinstance(value,str) or not value.strip() for value in keys.values()):
+              raise ValueError('Configure one private deploy key for every physical node')
+          if len({value.strip() for value in keys.values()})!=len(keys):raise ValueError('Use a distinct SSH key per physical host')
+          raw=os.environ.get('DEPLOY_NODE_SSH_CONNECTIONS','') or '{}'
+          if len(raw.encode())>65536:raise ValueError('SSH endpoint input exceeds its bound')
+          endpoints=json.loads(raw,object_pairs_hook=topology.unique_object)
+          if not isinstance(endpoints,dict) or set(endpoints)-set(nodes):raise ValueError('SSH endpoints must name known physical nodes')
+          for node,value in endpoints.items():
+              if not isinstance(value,dict) or set(value)-{'host','port','user'}:raise ValueError('Only SSH host, port and user overrides are allowed')
+              host_connection.parameters(config['inventory'],node,{'identity_file':'placeholder',**value})
+          directory=Path.home()/'.ssh/voicechat-nodes';directory.mkdir(mode=0o700)
+          identities={}
+          for node,value in keys.items():
+              path=directory/node
+              fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+              with os.fdopen(fd,'w') as output:output.write(value.rstrip()+'\n')
+              identities[node]=({'identity_file':str(path),**endpoints[node]} if node in endpoints else str(path))
+          fd=os.open('/tmp/voicechat-node-identities.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
+          with os.fdopen(fd,'w') as output:json.dump(identities,output)
+          PY
+          fi
+      - name: Resume the frozen managed release before preparing new artifacts
+        if: ${{ inputs.deploy && inputs.rollout == 'managed' }}
+        run: |
+          python3 - <<'PY'
+          import os,subprocess
+          command=['python3','infra/managed_ssh.py','--identity-map','/tmp/voicechat-node-identities.json','--resume-only']
+          if os.environ['RETRY_MANAGED']=='true':command.append('--retry')
+          subprocess.run(command,check=True)
+          PY
+      - name: Read managed artifact reuse baseline without changing VPS
+        if: ${{ inputs.rollout == 'managed' && inputs.mode != 'full' }}
+        run: python3 infra/managed_ssh.py --identity-map /tmp/voicechat-node-identities.json --scope "$RELEASE_MODE" --read-build-hints --output /tmp/current-managed.json
+      - name: Verify deployed backend for legacy web-only release
+        if: ${{ inputs.rollout == 'legacy' && inputs.mode == 'web' }}
         run: python3 infra/ssh_deploy.py read
       - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
@@ -65,6 +155,7 @@ jobs:
           flutter analyze
           flutter test
       - name: Restore generated crypto assets
+        if: ${{ inputs.mode != 'core' }}
         id: assets
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
         with:
@@ -75,14 +166,14 @@ jobs:
             apps/client/web/zxing.js
           key: crypto-assets-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('infra/crypto-tools.json', 'prototype/build_web_assets.py', 'prototype/build_qr_assets.py', 'apps/client/pubspec.yaml', 'apps/client/pubspec.lock', 'vendor/matrix/lib/**', 'vendor/matrix/pubspec.yaml', 'vendor/matrix/pubspec.lock') }}
       - name: Restore crypto build tools
-        if: steps.assets.outputs.cache-hit != 'true'
+        if: ${{ inputs.mode != 'core' && steps.assets.outputs.cache-hit != 'true' }}
         id: tools
         uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
         with:
           path: .prototype/crypto-tools
           key: crypto-tools-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('infra/crypto-tools.json') }}
       - name: Install pinned crypto build tools on cache miss
-        if: steps.assets.outputs.cache-hit != 'true'
+        if: ${{ inputs.mode != 'core' && steps.assets.outputs.cache-hit != 'true' }}
         env:
           TOOLS_CACHE_HIT: ${{ steps.tools.outputs.cache-hit }}
         run: |
@@ -100,9 +191,10 @@ jobs:
           with open(os.environ['GITHUB_PATH'],'a') as output: output.write(str(root/'bin')+'\n')
           PY
       - name: Build crypto assets on cache miss
-        if: steps.assets.outputs.cache-hit != 'true'
+        if: ${{ inputs.mode != 'core' && steps.assets.outputs.cache-hit != 'true' }}
         run: python3 prototype/build_web_assets.py
       - name: Validate generated assets
+        if: ${{ inputs.mode != 'core' }}
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -115,6 +207,7 @@ jobs:
               with path.open('rb') as source: assert source.read(4)==b'\0asm',path
           PY
       - name: Build ordinary web application
+        if: ${{ inputs.mode != 'core' }}
         run: |
           cd apps/client
           flutter build web --release --no-web-resources-cdn --target lib/main.dart --dart-define-from-file /tmp/client.json
@@ -130,37 +223,67 @@ jobs:
           REGISTRY_TOKEN: ${{ github.token }}
           REGISTRY_USER: ${{ github.actor }}
         run: printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
-      - name: Build control image for full release
-        if: ${{ inputs.mode != 'web' }}
+      - name: Build control image for full or core release
+        if: ${{ inputs.mode == 'full' || inputs.mode == 'core' }}
         env:
           REPOSITORY: ${{ github.repository }}
         run: |
           repository="ghcr.io/${REPOSITORY,,}"
           docker buildx build --platform linux/amd64,linux/arm64 --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" -f infra/control.Dockerfile -t "$repository/control:$GITHUB_SHA" --push --metadata-file /tmp/control-image.json .
-      - name: Build web image and release manifest
+      - name: Build web image
+        if: ${{ inputs.mode != 'core' }}
         env:
           REPOSITORY: ${{ github.repository }}
         run: |
           repository="ghcr.io/${REPOSITORY,,}"
           docker buildx build --platform linux/amd64,linux/arm64 --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" -f infra/web.Dockerfile -t "$repository/web:$GITHUB_SHA" --push --metadata-file /tmp/web-image.json .prototype/web-image
-          export IMAGE_REPOSITORY="$repository"
+      - name: Write immutable release manifest and public source package
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          export IMAGE_REPOSITORY="ghcr.io/${REPOSITORY,,}"
           python3 - <<'PY'
           import json,os
-          repository=os.environ['IMAGE_REPOSITORY']
-          control=(json.load(open('/tmp/current-release.json'))['manifest']['control'] if os.environ['RELEASE_MODE']=='web'
-                   else repository+'/control@'+json.load(open('/tmp/control-image.json'))['containerimage.digest'])
-          value={'commit':os.environ['GITHUB_SHA'],'schema':1,'origin':os.environ['PUBLIC_URL'],'control':control,
-                 'web':repository+'/web@'+json.load(open('/tmp/web-image.json'))['containerimage.digest']}
+          repository=os.environ['IMAGE_REPOSITORY'];mode=os.environ['RELEASE_MODE']
+          managed=os.environ['ROLLOUT_KIND']=='managed'
+          reused=json.load(open('/tmp/current-managed.json')) if managed and mode!='full' else None
+          if mode in ('web','edge'):
+              control=reused['control'] if managed else json.load(open('/tmp/current-release.json'))['manifest']['control']
+          else:control=repository+'/control@'+json.load(open('/tmp/control-image.json'))['containerimage.digest']
+          web=(reused['web'][sorted(reused['web'])[0]] if mode=='core' else
+               repository+'/web@'+json.load(open('/tmp/web-image.json'))['containerimage.digest'])
+          value={'commit':os.environ['GITHUB_SHA'],'schema':1,'origin':os.environ['PUBLIC_URL'],'control':control,'web':web}
           open('release.json','w').write(json.dumps(value))
           PY
-          tar --exclude=infra/runtime --exclude=infra/__pycache__ -czf /tmp/release.tar.gz infra prototype/voicechat_policy.py prototype/client_policy.py prototype/scheduled_messages.py prototype/client-policy.json backend.sha256 release.json
+          tar --exclude=infra/runtime --exclude=infra/__pycache__ -czf /tmp/release.tar.gz infra prototype/voicechat_policy.py prototype/client_policy.py prototype/scheduled_messages.py prototype/client-policy.json backend.sha256 core-scope.sha256 release.json
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: release-${{ github.sha }}
           path: /tmp/release.tar.gz
           retention-days: 30
-      - name: Deploy using pinned host identity
-        if: ${{ inputs.deploy }}
+      - name: Deploy the initial cohost transition using pinned host identity
+        if: ${{ inputs.deploy && inputs.rollout == 'initial' }}
+        env:
+          RETRY_INITIAL: ${{ inputs.retry_initial }}
+        run: |
+          if [ "$RETRY_INITIAL" = true ]; then
+            python3 infra/ssh_deploy.py initial --retry
+          else
+            python3 infra/ssh_deploy.py initial
+          fi
+      - name: Deploy the ordinary managed release using per-host pinned identities
+        if: ${{ inputs.deploy && inputs.rollout == 'managed' }}
+        run: |
+          python3 - <<'PY'
+          import os,subprocess
+          command=['python3','infra/managed_ssh.py','--identity-map','/tmp/voicechat-node-identities.json','--scope',os.environ['RELEASE_MODE']]
+          edges=os.environ['SELECTED_EDGES'].split()
+          if edges:command.extend(['--edges',*edges])
+          if os.environ['RETRY_MANAGED']=='true':command.append('--retry')
+          subprocess.run(command,check=True)
+          PY
+      - name: Deploy legacy installation using pinned host identity
+        if: ${{ inputs.deploy && inputs.rollout == 'legacy' }}
         run: |
           if [ "$RELEASE_MODE" = web ]; then
             python3 infra/ssh_deploy.py deploy --web-only

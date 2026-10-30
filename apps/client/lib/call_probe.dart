@@ -7,6 +7,8 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:matrix/matrix.dart' as mx;
 import 'matrix_probe.dart';
 import 'transport.dart';
+import 'route_transport.dart';
+import 'media_routes.dart';
 import 'voice_call.dart';
 import 'call_quality.dart';
 import 'user_action_error.dart';
@@ -35,6 +37,9 @@ class CallProbe implements VoiceCall {
   final String session;
   final String tokenUrl;
   final String livekitUrl;
+  late final http.Client _network = chat.client.httpClient is RouteTransport
+      ? (chat.client.httpClient as RouteTransport).fork()
+      : http.Client();
   final void Function(String) status;
   final void Function()? changed;
   final bool startedWithVideo;
@@ -144,10 +149,7 @@ class CallProbe implements VoiceCall {
         await _connectTransport(microphone: microphone, camera: camera);
         return;
       } catch (error, stack) {
-        if ((error is lk.ConnectException ||
-                error is lk.TimeoutException ||
-                error is http.ClientException ||
-                error is TimeoutException) &&
+        if (mediaNetworkFailure(error) &&
             budget.elapsed < const Duration(seconds: 45) &&
             !_closed) {
           connection = 'Обновляем защиту звонка';
@@ -197,12 +199,16 @@ class CallProbe implements VoiceCall {
         }),
       );
     });
-    media = lk.Room(
-      roomOptions: lk.RoomOptions(
+    final transportSerial = _transportSerial;
+    media = routedMediaRoom(
+      chat.client,
+      livekitUrl,
+      lk.RoomOptions(
         encryption: lk.E2EEOptions(keyProvider: _keys!),
         adaptiveStream: true,
         dynacast: true,
       ),
+      canRecover: () => !_closed && transportSerial == _transportSerial,
     );
     _events = media!.createListener();
     _events!.on<lk.LocalTrackPublishedEvent>((_) => changed?.call());
@@ -279,10 +285,14 @@ class CallProbe implements VoiceCall {
     connection = 'Подключаем медиа';
     status(connection);
     changed?.call();
+    final connectOptions = await routedMediaOptions(chat.client);
+    if (_closed) return;
     await media!.connect(
-      livekitUrl,
+      _network is RouteTransport
+          ? _network.websocketUrl(livekitUrl)
+          : livekitUrl,
       data['token'] as String,
-      connectOptions: const lk.ConnectOptions(autoSubscribe: false),
+      connectOptions: connectOptions,
     );
     if (media!.e2eeManager == null) {
       throw StateError('E2EE unavailable; refusing microphone');
@@ -314,7 +324,7 @@ class CallProbe implements VoiceCall {
       if (budget.elapsed >= const Duration(seconds: 25)) {
         throw TimeoutException('Call admission negotiation timed out');
       }
-      final response = await http
+      final response = await _network
           .post(
             Uri.parse('$tokenUrl/token'),
             headers: {
@@ -716,7 +726,7 @@ class CallProbe implements VoiceCall {
       _admission = null;
       if (lease != null) {
         try {
-          await http
+          await _network
               .post(
                 Uri.parse('$tokenUrl/call/leave'),
                 headers: {
@@ -730,6 +740,7 @@ class CallProbe implements VoiceCall {
           /* The server expires the lease even if release cannot be delivered. */
         }
       }
+      _network.close();
     }
   }
 

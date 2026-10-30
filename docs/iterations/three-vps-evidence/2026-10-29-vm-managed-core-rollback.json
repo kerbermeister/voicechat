@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "control_image": "ghcr.io/voicechat-fixture/control@sha256:abc8e6e2f226aec43a3e59e0229b18b72070f4046f79e5a63b99ea410fd7b9d4",
+  "production_changed": false,
+  "active_repository_reader_blocks_rollback_without_kill_or_writer_stop": true,
+  "lost_rollback_commit_reply_resumes_without_reconfigure": true,
+  "real_core_peer_claim_apply_policy_rollback_release": true,
+  "post_backup_matrix_and_control_sqlite_writes_preserved": true,
+  "original_account_device_database_and_signing_identity_preserved": true,
+  "original_private_policy_restored": true,
+  "fixture_resources_removed": true,
+  "original_network_and_key_intent_unchanged": true,
+  "controller_sha256": "6c996e3362217df8b08938456ccb6e6768b5cd2a000d86ace7f4aa97d480fd40",
+  "limits": [
+    "Marked disposable VM, synthetic accounts/policy/data; no production or physical media acceptance.",
+    "Real core/peer operations; distributed journal/SSH/CI integration remains separate.",
+    "Repository-reader fault uses an owned Python container, not a killed Restic process."
+  ],
+  "date": "2026-10-29",
+  "source_commit": "f5c1a26",
+  "fixture_source": "/srv/voicechat-edge-fixture/managed-core-rollback-source-4mn52206",
+  "vm": {
+    "vcpu": 4,
+    "memory_mib": 4096,
+    "acceleration": "qemu-tcg-multi"
+  },
+  "source_sha256": {
+    "infra/managed_core_rollback.py": "6c996e3362217df8b08938456ccb6e6768b5cd2a000d86ace7f4aa97d480fd40",
+    "infra/core_deploy.py": "481c68b58c5e4ad8a0787f14a0c1bce5581c70e8048d685594dde5baa22bac69",
+    "infra/managed_fence.py": "fdf1b3ae61466d61650e74ee8e76bda16199eca61f0f9d4806c08a83c56f04b8",
+    "prototype/check_managed_core_rollback.py": "e31dbaac5e331c30b242c155944b22405e74e967d507db2a3eebcbe07e776556"
+  }
+}

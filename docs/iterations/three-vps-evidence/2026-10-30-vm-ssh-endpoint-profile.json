@@ -1,0 +1,34 @@
+{
+  "unified_bootstrap_repeat_verified": true,
+  "network_repeat_equal": true,
+  "private_key_stays_node_local": true,
+  "owned_boot_files_exact": true,
+  "network_service_active_enabled": true,
+  "docker_not_restarted": true,
+  "wireguard_self_identity_verified": true,
+  "peerless_fixture_only": true,
+  "no_role_containers": true,
+  "ssh_identity_preserved": true,
+  "schema": 1,
+  "source_commit": "39296aada09174b5e39382b909ea509d3614e964",
+  "archive_sha256": "a849ebd3894f46ded908aab862fbefbfc7103685e39ecf8e397a027bb24e1d33",
+  "network_receipt": {
+    "schema": 1,
+    "node": "core",
+    "generation": 1,
+    "network_sha256": "b08c3c18c29716ed60d9a87c8d96024c005aafc68e8b48eeb3011bf8d56b384c",
+    "boot_source_sha256": "b3cc55335cc7e5166e9b4b15623fe197d0d528d48ebb8eb2e5d811b327082350"
+  },
+  "repeat_receipt_equal": true,
+  "tunnel_public_key_repeat_equal": true,
+  "transport": "Unmodified host_connection with explicit loopback management endpoint; inventory public role IP and pinned host key unchanged",
+  "scope": "Unified SSH dependency/key/network bootstrap repeat on the already prepared peerless VM; initial install/network/reboot proven separately; no role/TLS/DNS/catalog deployment or external peer traffic",
+  "image": {
+    "url": "https://cloud.debian.org/images/cloud/bookworm/20261026-2643/debian-12-genericcloud-amd64-20261026-2643.qcow2",
+    "sha512": "0464b5d4ae3aa4f658468d88da83af7857b71548b30d46dcb6282770955a747fb95a983476db90d25afd0653af607224c7ebd05122ab71faa106fd712aaad652",
+    "name": "debian-12-genericcloud-amd64-20261026-2643.qcow2"
+  },
+  "other_vm_records_unchanged": true,
+  "stock_connection_profile_verified": true,
+  "management_endpoint_differs_from_public_role_ip": true
+}

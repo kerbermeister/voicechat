@@ -1,0 +1,33 @@
+{
+  "image": "ghcr.io/voicechat-fixture/legacy-control@sha256:bc8327d779a99c7be95ae057a1d8f1a791c6bf52618fbf0317dfd08292376084",
+  "metadata_path": "/srv/voicechat-edge-fixture/legacy-control-build-3pbkhimt/build.json",
+  "schema": 1,
+  "date": "2026-10-29",
+  "production_changed": false,
+  "source_commit": "8bcbd91b578fa7bc4dfe58a1f740980248fac1c9",
+  "source_sha256": {
+    "infra/control.Dockerfile": "2749805ec8f0b143242bc31d6dcd5e354b9eceb754b56812d6ca71920fa7ac30",
+    "infra/push-requirements.txt": "b577c26d99b01e45321e7e00c07ab2802c56f2a8d5dd27085d6d421eec045393",
+    "prototype/token_server.py": "d3795970e3f17f020dc0977f6dcbd0f3fc6010b2ce3bebba09fbf54954ac7ef5",
+    "prototype/call_control.py": "49564c1edb570ce8815f4c07e4ec145eda8fdcf732b29c2ffc123f9c4782c3c4",
+    "prototype/scheduled_messages.py": "f45f69aac9ec96855c0e75d5ef9a15069b8ae359cda2099e9c4797c24b023bfd",
+    "prototype/contacts.py": "ed118620b80b5a85e08fa7c9dd88cb2cada2a8046659b7d8b8f302bf4d7410bd",
+    "prototype/link_preview.py": "36ff0b89c224889181e63e986ad13f2732988cdeb390c9e7a79af4769ff0ffcb",
+    "prototype/client_policy.py": "2485d44c6a6125cc7642e73125c4a2f341603321c99d36bac9545b3e95342796",
+    "prototype/client-policy.json": "8fd8fb62e25ba0be4f27d5310e79263752f83b839e8450f575ea76f73a7d53d5",
+    "prototype/screen_control.py": "1b2e141d1d79179a6117c2a0f218b08b5e779049de8355014142e08e8b11b9c8",
+    "prototype/screen_schema.sql": "886c3420a7a72753f1f7269b029d4e731d6e46b811f990f3d741f045ff51d09d",
+    "prototype/screen_schema_v2.sql": "7a174a3a53efdf95af23965a42c6391342c9c8b5ec77fffe1dfe9d4fc729de93",
+    "prototype/screen_protocol.py": "81c7b7593d68f1b65219e5ee24f237693586c6e1ff6f4de86097c245a49482d4",
+    "prototype/screen_access.py": "9d6081384b18a343f0d3ebcb81636b6dcb0effc6f1f8d87e3b3d8ccf02e303ca",
+    "prototype/screen_transitions.py": "6b640771223da44faf95a19206cafae6d0c68545c39a002af8f0656c3679c189",
+    "prototype/screen_http.py": "d55d8e2be21e485cb36867bfd1ccb27a005f34c6e3945cff1e37ab96a91473ec",
+    "prototype/screen_status.py": "ebe990199414ebe016fa8a1b22ba5abe4cbc30054ae8cabafd9852e31b52ff64",
+    "prototype/web_push.py": "46eb2445c62dec5a2dec0bb8dfef910ecd84249ea64a59d5fd4b3bdadb52c4e8",
+    "infra/supervise.py": "957815e8c5687ac0944d5a4eb6f4c674b2fa14d165b8766bce0366fde5a47d9c"
+  },
+  "limits": [
+    "Built in disposable VM from exact production Git source and pinned Dockerfile inputs.",
+    "New local fixture image digest; not a production image export or claim of bit-for-bit image reproducibility."
+  ]
+}

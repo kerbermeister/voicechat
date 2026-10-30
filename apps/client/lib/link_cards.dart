@@ -1,4 +1,7 @@
 import 'app_motion.dart';
+import 'emoji_style.dart';
+import 'message_format.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'link_platform.dart';
@@ -40,37 +43,71 @@ class _LinkedTextState extends State<LinkedText> {
   final taps = <Uri, TapGestureRecognizer>{};
   @override
   Widget build(BuildContext context) {
-    final spans = <InlineSpan>[];
-    var start = 0;
-    for (final url in messageLinks(widget.text)) {
-      final index = widget.text.indexOf(url.toString(), start);
-      if (index < start) continue;
-      spans.add(TextSpan(text: widget.text.substring(start, index)));
-      final tap = taps.putIfAbsent(
-        url,
-        () => TapGestureRecognizer()..onTap = () => followLink(context, url),
-      );
-      spans.add(
-        TextSpan(
-          text: url.toString(),
-          recognizer: tap,
-          style: const TextStyle(decoration: TextDecoration.underline),
-        ),
-      );
-      start = index + url.toString().length;
+    List<InlineSpan> plain(String text) {
+      final parts = text.split('❤️');
+      return [
+        for (var i = 0; i < parts.length; i++) ...[
+          if (i > 0) const TextSpan(text: '❤️', style: emojiStyle),
+          TextSpan(text: parts[i]),
+        ],
+      ];
     }
-    spans.add(TextSpan(text: widget.text.substring(start)));
+
+    List<InlineSpan> linked(String text, {bool struck = false}) {
+      final spans = <InlineSpan>[];
+      var start = 0;
+      for (final url in messageLinks(text)) {
+        final index = text.indexOf(url.toString(), start);
+        if (index < start) continue;
+        spans.addAll(plain(text.substring(start, index)));
+        final tap = taps.putIfAbsent(
+          url,
+          () => TapGestureRecognizer()..onTap = () => followLink(context, url),
+        );
+        spans.add(
+          TextSpan(
+            text: url.toString(),
+            recognizer: tap,
+            style: TextStyle(
+              decoration: TextDecoration.combine([
+                TextDecoration.underline,
+                if (struck) TextDecoration.lineThrough,
+              ]),
+            ),
+          ),
+        );
+        start = index + url.toString().length;
+      }
+      spans.addAll(plain(text.substring(start)));
+      return spans;
+    }
+
+    InlineSpan render(md.Node node, {bool struck = false}) => node is md.Element
+        ? TextSpan(
+            style: node.tag == 'del'
+                ? const TextStyle(decoration: TextDecoration.lineThrough)
+                : null,
+            children: node.children
+                ?.map(
+                  (child) => render(child, struck: struck || node.tag == 'del'),
+                )
+                .toList(),
+          )
+        : TextSpan(children: linked(node.textContent, struck: struck));
+    final nodes = parseMessageFormat(widget.text);
+    final spans = nodes.map((node) => render(node)).toList();
+    final spoken = nodes.map((node) => node.textContent).join();
     if (!widget.selectable) {
       return Text.rich(
         TextSpan(children: spans),
         style: widget.style,
-        semanticsLabel: widget.text,
+        semanticsLabel: spoken,
       );
     }
     return SelectableText.rich(
       TextSpan(children: spans),
       style: widget.style,
-      semanticsLabel: widget.text,
+      semanticsLabel: spoken,
     );
   }
 
