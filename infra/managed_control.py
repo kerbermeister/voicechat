@@ -9,6 +9,7 @@ import managed_journal
 import managed_peer
 import managed_release
 import managed_state
+import entry_journal
 import node_inventory
 import role_release
 
@@ -38,6 +39,7 @@ def instruction(baseline,target,step,attempt,scope,operation,identity,*,restorin
 def prepare(root,source,*,scope='full',edges=None,position=0,expected_baseline=None):
     root=managed_journal._root(root)
     with managed_state.locked(root):
+        entry_journal.require_idle(root / 'entry-lifecycle')
         if (root/'rollout.json').exists() or (root/'rollout.json').is_symlink():
             journal=managed_journal._load(root)[0]
             if journal['phase'] not in ('complete','rolled-back'):

@@ -13,6 +13,17 @@ split deployment остаётся исправным; в этой новой и�
 получил optional expected-intent guard под network lock. New11 entry tests PASS,
 network7 PASS. Это ещё НЕ полный executor и НЕ завершённый onboarding.
 
+Продолжение локальной реализации: добавлены entry_dns.py (журналируемый expected-IP
+DuckDNS cutover, no redirects/proxy, отказ при drift/IPv6, честное отсутствие
+provider atomic CAS), entry_role.py (forward-only reconfiguration/общий TURN epoch,
+backup до изменения core, identity checks, lost commit reply без повторного
+configure, передача fence только после завершения), entry_peer.py (source-bound
+pinned-host endpoint stage/material/start/observe/claim/network/configure/release/catalog).
+Каталог проверяется на точную target topology ДО записи. Обычные managed prepare
+и begin отказывают при active entry lifecycle; completed history не перерендеривается
+новым кодом. Entry26 tests PASS, managed journal18/control5 PASS, network7 PASS.
+Новых VM/production/DNS действий ещё не было. Полный цикл НЕ готов.
+
 Далее: связать источник/SSH executor и global lifecycle exclusion с обычным deploy;
 TLS issuance/transfer, новый role/bootstrap, обновление существующих config при add,
 DNS expected-value transition, verified SNI readiness, публикация signed catalog,

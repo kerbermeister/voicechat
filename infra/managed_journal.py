@@ -12,6 +12,7 @@ import secrets
 import core_deploy
 import managed_release
 import managed_state
+import entry_journal
 import release_delivery
 import role_release
 import topology
@@ -179,6 +180,7 @@ def begin(root, source, expected_baseline, *, scope='full', edges=None, retry=Fa
     root = _root(root)
     request = {'source': source, 'baseline': expected_baseline, 'scope': scope, 'edges': None if edges is None else list(edges)}
     with managed_state.locked(root):
+        entry_journal.require_idle(root / 'entry-lifecycle')
         receipt = _delivery(root, source)
         path = root / 'rollout.json'
         previous = None

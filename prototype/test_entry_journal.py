@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'infra'))
@@ -52,6 +53,16 @@ class EntryJournalTests(unittest.TestCase):
         managed_state.persist(self.directory / 'current.json', value)
         with self.assertRaisesRegex(ValueError, 'intent changed'):
             entry_journal.load(self.directory)
+
+    def test_normal_release_is_excluded_until_all_steps_acknowledged(self):
+        value = entry_journal.begin(self.directory, self.request)
+        with self.assertRaisesRegex(ValueError, 'active entry lifecycle'):
+            entry_journal.require_idle(self.directory)
+        while value['position'] < len(value['steps']):
+            value = entry_journal.acknowledge(self.directory, self.receipt(value))
+        # A later code release must not reinterpret historical completed steps.
+        with patch.object(entry_journal.entry_lifecycle, 'plan', side_effect=AssertionError('historical renderer')):
+            entry_journal.require_idle(self.directory)
 
     def test_every_step_required_and_completed_journal_archived_for_next_request(self):
         value = entry_journal.begin(self.directory, self.request)

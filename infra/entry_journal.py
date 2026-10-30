@@ -27,16 +27,23 @@ def load(directory):
     topology.fields(request, ('baseline', 'public', 'inventory', 'commit', 'web_image', 'source'))
     if not isinstance(request['source'], str) or not role_release.SHA.fullmatch(request['source']):
         raise ValueError('Frozen lifecycle source required')
-    baseline = managed_release.load_baseline(Path(directory), request['baseline'])
-    plan = entry_lifecycle.plan(baseline, *(request[name] for name in
-        ('public', 'inventory', 'commit', 'web_image')))
-    expected = entry_lifecycle.steps(plan)
-    if (value['steps'] != expected or type(value['position']) is not int or
-            not 0 <= value['position'] <= len(expected) or
+    expected = value['steps']
+    if (not isinstance(expected, list) or not 1 <= len(expected) <= 256 or
+            type(value['position']) is not int or not 0 <= value['position'] <= len(expected) or
             not isinstance(value['receipts'], list) or len(value['receipts']) != value['position']):
         raise ValueError('Entry lifecycle journal or sequence changed')
+    for step in expected:
+        topology.fields(step, ('action', 'node'))
+        if not isinstance(step['action'], str) or not isinstance(step['node'], str):
+            raise ValueError('Known lifecycle step required')
     for position, receipt in enumerate(value['receipts']):
         validate_receipt(receipt, value['attempt'], position, expected[position])
+    if value['position'] < len(expected):
+        baseline = managed_release.load_baseline(Path(directory), request['baseline'])
+        plan = entry_lifecycle.plan(baseline, *(request[name] for name in
+            ('public', 'inventory', 'commit', 'web_image')))
+        if expected != entry_lifecycle.steps(plan):
+            raise ValueError('Entry lifecycle sequence changed; use its frozen source')
     return value
 
 
@@ -94,3 +101,11 @@ def acknowledge(directory, receipt):
         value = {**value, 'position': position + 1, 'receipts': [*value['receipts'], receipt]}
         managed_state.persist(root / 'current.json', value)
         return value
+
+
+def require_idle(directory):
+    path = Path(directory) / 'current.json'
+    if path.exists() or path.is_symlink():
+        value = load(directory)
+        if value['position'] != len(value['steps']):
+            raise ValueError('Finish the active entry lifecycle before an ordinary release')

@@ -763,6 +763,15 @@ legacy Compose без потери account/device/PG/signing/coturn identity и 
 отдельно ручное время, установку и DNS. Production IP не менять в этом стендовом шаге.
 Выход: сценарий «новый VPS вместо потерянного C» выполнен на тестовой инфраструктуре.
 
+Локальное продолжение после закрытия production split deploy, 30.10:
+реализованы строгий single-entry plan, frozen/resumable journal с компактной
+baseline, fenced peer transition и expected network intent, guarded DuckDNS
+cutover, forward-only role/общий TURN-secret transition и source-bound peer endpoint.
+Проверки entry26, network7, normal managed journal18/control5 PASS. Это компоненты,
+не завершённый общий lifecycle: core coordinator/SSH driver, TLS/DNS/catalog
+интеграция и полный multi-VM add/replacement drill ещё в работе. VPS/DNS этой
+новой итерацией не менялись. Checkbox V3-21 пока не закрывать.
+
 ### V3-22 — Реализовать и проверить перенос доступного A
 
 Зависимости: V3-06, V3-19, V3-20.

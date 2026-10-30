@@ -13,10 +13,9 @@ import topology
 from tunnel_config import physical_nodes
 
 
-def plan(baseline, public, inventory, commit, web_image):
-    managed_release.validate_baseline(baseline)
+def change(previous_public, previous, public, inventory):
+    node_inventory.validate(previous, previous_public)
     node_inventory.validate(inventory, public)
-    previous = baseline['inventory']
     node_inventory.check_replacement(previous, inventory)
     if any(inventory[key] != previous[key] for key in
            ('schema', 'service_id', 'ssh_user', 'ssh_port', 'core')):
@@ -39,12 +38,12 @@ def plan(baseline, public, inventory, commit, web_image):
             raise ValueError('Moving a cohost entry needs its own migration')
         if after[node]['tunnel_ip'] != before[node]['tunnel_ip']:
             raise ValueError('Replacement must retain its private entry address')
-        if public != baseline['public']:
+        if public != previous_public:
             raise ValueError('Replacement must retain public names and catalog topology')
         if len(old_edges) < 2:
             raise ValueError('Replacement requires another healthy entry')
     else:
-        old_public = baseline['public']
+        old_public = previous_public
         if any(public[key] != old_public[key] for key in public if key not in ('edges', 'web_origins')):
             raise ValueError('Entry admission cannot change installation identity or policy')
         if (public['edges'] != [*old_public['edges'], next(edge for edge in public['edges'] if edge['id'] == identifier)] or
@@ -55,6 +54,15 @@ def plan(baseline, public, inventory, commit, web_image):
     # belonging to another active node. validate() enforces uniqueness in after.
     if after[node]['ssh_host_key'] in {value['ssh_host_key'] for value in before.values()}:
         raise ValueError('A clean entry needs a fresh verified SSH host key')
+    return {'node': node, 'edge_id': identifier, 'replacement': replacement}
+
+
+def plan(baseline, public, inventory, commit, web_image):
+    managed_release.validate_baseline(baseline)
+    transition = change(baseline['public'], baseline['inventory'], public, inventory)
+    node, identifier, replacement = (transition[key] for key in ('node', 'edge_id', 'replacement'))
+    old_edges = {edge['id']: edge for edge in baseline['inventory']['edges']}
+    after = physical_nodes(inventory)
     images = {value['images']['web'] for value in baseline['edges'].values()}
     if web_image not in images:
         raise ValueError('Admission must reuse an installed immutable web image')
@@ -88,7 +96,7 @@ def steps(value):
     sequence += [('claim', name) for name in value['network_nodes'] if name != node]
     sequence += [('network', name) for name in value['network_nodes'] if name != node]
     if value['rotate_turn_secret']:
-        sequence.append(('rotate-turn', 'core'))
+        sequence += [('rotate-turn', name) for name in value['network_nodes'] if name != node]
     sequence += [('configure', name) for name in value['reconfigure']]
     sequence += [('start', node), ('verify', node), ('dns', node), ('verify-dns', node),
                  ('catalog', 'core'), ('commit', 'core'), ('finish', 'core')]
