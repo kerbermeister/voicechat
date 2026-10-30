@@ -41,7 +41,47 @@ old host unavailable, stale key rejection, interrupted/repeated steps. VM/synthe
 Automation voicechat-core-edge остаётся PAUSED после прошлого блока; текущая
 работа выполняется в этом чате. Единственный user acceptance: docs/user-acceptance.md.
 
-## Текущий checkpoint: после controlled VM CPU uplift нужно resume core init
+## Текущий checkpoint: core и edge-a готовы; baseline B ещё разворачивается
+
+Core retry68672 завершён PASS со штатными healthchecks после CPU uplift. Synthetic
+PG systemID7702349032529215527, signingSHA327f56a2f18e5d23baaa33d7d0d1ec8d75b7bbd989ee53f721244ee0f8cc84c0.
+Реальные PG/Synapse/control на fixture A, configure exit0; application volumes
+сохранены после первого failed readiness, env/keys не заменялись.
+`.prototype/entry-fixture-account.py` выполнен PASS: synthetic user/device и
+account_data marker сохранены только на A, markerSHAd875b7df…; session/credentials
+на A `/srv/voicechat-entry-managed/fixture-api`, не копировать в публичные логи.
+
+Edge-a stock TLS/catalog/bootstrap/deploy PASS. АКТИВЕН baseline edges helper
+session66337 `.prototype/entry-initialize-edges.py`: после A выполняет B.
+Не запускать второй экземпляр. Logs записываются после завершения каждой роли.
+
+Fresh-role подготовка выявила отсутствовавший edges parent. Исправлены оба пути
+entry_peer.stage/material через owned directory check; symlink parent отвергается.
+Regression FS tests используют настоящий role_prepare (TLS/SSH системные границы
+mocked, это не VM material acceptance). Также entry_core/peer main теперь дают
+exit75 для BlockingIOError — тот же существующий managed CLI retry contract.
+Targeted entry56 PASS6.701s; full741 PASS/skipped3,80.946s после parent fix до busy
+CLI теста; новый busy контракт покрыт targeted56. Первый full736/errors2 был
+из-за глобального Python без cryptography; log сохранён. Создан изолированный
+`.prototype/python-test-env` с точными infra/push-requirements.txt, без изменения
+глобального Python или dependencies проекта.
+
+Frozen d86d275 source в VM НЕ редактировался. Новые source fixes ещё не доставлены.
+Нужно закончить old-source baseline B, затем `.prototype/entry-fixture-genesis.py`
+(подготовлен/compile, НЕ запущен): actual inspect core/A/B и инициализация genesis
+ТОЛЬКО пустого marked fixture root; отказ при существующих pointers. Это не legacy
+migration/adoption и не production baseline. После genesis выполнить штатный
+managed FULL к новому frozen source с теми же immutable synthetic app digests,
+backup и identity checks; не переписывать backend fingerprints в старом pointer.
+Затем exact-source CLI add C, interrupt/resume, replacement D, old C return.
+
+Dummy DuckDNS token исправлен в ДВУХ fixture файлах на синтетический UUID формата,
+принимаемого неизменённым entry_dns.update. Provider перезапущен до lifecycle.
+CA/catalog private keys по-прежнему только Mac-local. Production/main не менялись.
+Пользователь запустил своего второго агента для chat UI в отдельном worktree;
+никаких дочерних агентов от этого чата не создано. Не трогать его ветку/файлы.
+
+## Предыдущий checkpoint: после controlled VM CPU uplift нужно resume core init
 
 Core init session38352 завершилась ошибкой штатного compose --wait180, pending
 applying и все synthetic volumes сохранены. Private log

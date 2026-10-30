@@ -120,7 +120,10 @@ def main():
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--source-sha', required=True)
     args = parser.parse_args()
-    result = operate(request(sys.stdin.buffer.read(MAX_INPUT + 1)), args.root, args.source_sha)
+    try:
+        result = operate(request(sys.stdin.buffer.read(MAX_INPUT + 1)), args.root, args.source_sha)
+    except BlockingIOError:
+        parser.exit(75, 'Entry operation is busy; preserve and resume its journal\n')
     if len(json.dumps(result).encode()) > MAX_INPUT:
         raise ValueError('Entry coordinator response exceeds its bound')
     print(json.dumps(result))

@@ -126,6 +126,7 @@ def operate(value, root, source_sha):
             path, value['before_public'], value['previous_inventory'], public, inventory,
             before, target, attempt, turn_secret=extra['turn_secret'], **common)
     if action == 'stage':
+        role_prepare.directory(root / 'edges')
         role_prepare.prepare(path, public, inventory, target, value['subnet'])
         role_bootstrap.install(path, 'edge', target['edge_id'])
         return {'schema': 1, 'node': value['node'], 'manifest': target, 'prepared': True}
@@ -136,6 +137,7 @@ def operate(value, root, source_sha):
         if action == 'material':
             if not isinstance(extra['turn_secret'], str) or not re.fullmatch(r'[a-f0-9]{64}', extra['turn_secret']):
                 raise ValueError('One node-scoped TURN epoch required')
+            role_prepare.directory(root / 'edges')
             role_prepare.prepare(path, public, inventory, target, value['subnet'])
             secret = path / 'runtime/turn-secret'
             if secret.exists() or secret.is_symlink():
@@ -190,7 +192,10 @@ def main():
     parser.add_argument('--root', type=Path, required=True)
     parser.add_argument('--source-sha', required=True)
     args = parser.parse_args()
-    result = operate(request(sys.stdin.buffer.read(MAX_INPUT + 1)), args.root, args.source_sha)
+    try:
+        result = operate(request(sys.stdin.buffer.read(MAX_INPUT + 1)), args.root, args.source_sha)
+    except BlockingIOError:
+        parser.exit(75, 'Entry operation is busy; preserve and resume its journal\n')
     if len(json.dumps(result).encode()) > MAX_INPUT:
         raise ValueError('Entry peer response exceeds its bound')
     print(json.dumps(result))
