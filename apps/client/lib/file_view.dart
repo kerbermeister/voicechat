@@ -619,7 +619,7 @@ class _MessageVideoState extends State<MessageVideo> {
     );
     return widget.inline
         ? content
-        : Dialog(backgroundColor: Colors.black, child: content);
+        : Dialog(backgroundColor: Colors.transparent, child: content);
   }
 
   @override

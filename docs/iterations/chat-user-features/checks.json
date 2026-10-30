@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-30",
+  "branch": "codex/chat-user-features",
+  "base": "2f9fdfe79b88fc77fa546c01cd711ae4290fad27",
+  "client_tests": {
+    "command": "flutter test --concurrency=1",
+    "passed": 415,
+    "skipped": 4,
+    "failed": 0
+  },
+  "final_background_retry_regression": {
+    "passed": 4,
+    "failed": 0
+  },
+  "analyzer": "No issues found",
+  "macos_debug_build": "PASS, local only; not installed or published",
+  "python_policy_tests": {
+    "passed": 7,
+    "failed": 0
+  },
+  "real_synapse": {
+    "image": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+    "network": "none",
+    "result": "PASS",
+    "assertions": [
+      "unread retained",
+      "only recipient starts",
+      "repeated read cannot extend deadline",
+      "ciphertext erased",
+      "groups rejected",
+      "expiry survives restart"
+    ],
+    "ciphertext": "synthetic; no real-client decryption claim"
+  },
+  "visual_fixture": {
+    "widths": [
+      390,
+      1000
+    ],
+    "result": "PASS",
+    "data": "fictional in-memory chat; no real account/profile"
+  },
+  "release_gate": "Production and client releases wait for agreed branch integration",
+  "not_verified": [
+    "physical phones",
+    "native IME input",
+    "cross-device real-client E2EE read-after flow",
+    "audio pitch listening on real hardware",
+    "signed update installation"
+  ]
+}

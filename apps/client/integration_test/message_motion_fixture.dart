@@ -86,6 +86,7 @@ class MotionActions extends ChatActions {
     String? edit,
     bool preparing = false,
     int? ttlSeconds,
+    int? readAfterSeconds,
     DateTime? scheduledFor,
   }) async {
     final id = 'fixture-${++sequence}';

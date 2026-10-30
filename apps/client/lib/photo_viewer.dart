@@ -6,9 +6,12 @@ Future<void> showPhotos(
   BuildContext context,
   List<Future<Uint8List> Function()> photos,
   int initial,
-) => Navigator.of(context).push(
-  MaterialPageRoute(
-    builder: (_) => PhotoViewer(photos: photos, initial: initial),
+) => showAppDialog<void>(
+  context: context,
+  builder: (_) => Dialog(
+    backgroundColor: Colors.transparent,
+    insetPadding: EdgeInsets.zero,
+    child: PhotoViewer(photos: photos, initial: initial),
   ),
 );
 
@@ -109,7 +112,7 @@ class _PhotoViewerState extends State<PhotoViewer> {
     child: Focus(
       autofocus: true,
       child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        backgroundColor: Colors.transparent,
         body: SafeArea(
           child: Stack(
             children: [
