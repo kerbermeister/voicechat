@@ -112,6 +112,19 @@ class EntryRoleTests(unittest.TestCase):
         self.start.assert_called_once()
         self.backup.assert_called_once()
 
+    def test_bootstrap_quotes_and_crlf_preserve_all_unrelated_bytes(self):
+        for quote in (b"'", b'"'):
+            with self.subTest(quote=quote):
+                content = b"OTHER='leave this unchanged'\r\nTURN_SECRET=" + quote + b'3' * 64 + quote + b'\r\n'
+                self.assertEqual(entry_role.turn_epoch(content)['secret'], b'3' * 64)
+                self.assertEqual(entry_role.turn_environment(content, self.secret),
+                                 content.replace(b'3' * 64, self.secret.encode()))
+        for invalid in (b"TURN_SECRET='" + b'3' * 64 + b'"\n',
+                        self.environment + b'TURN_SECRET=${OTHER}\n',
+                        self.environment + b'export TURN_SECRET=' + b'4' * 64 + b'\n',
+                        self.environment + b' TURN_SECRET=' + b'4' * 64 + b'\n'):
+            with self.assertRaises(ValueError): entry_role.turn_environment(invalid, self.secret)
+
     def test_secret_edit_preserves_all_other_bytes_and_rejects_ambiguous_input(self):
         self.assertEqual(entry_role.turn_environment(self.environment, self.secret),
                          self.environment.replace(b'3' * 64, self.secret.encode()))

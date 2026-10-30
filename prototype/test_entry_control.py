@@ -39,7 +39,7 @@ class EntryControlTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(); self.addCleanup(self.temporary.cleanup)
         self.system = Path(self.temporary.name).resolve(); self.root = self.system / 'managed'; self.root.mkdir(mode=0o700)
         core = self.root / 'core'; (core / 'runtime').mkdir(parents=True, mode=0o700)
-        (core / 'runtime/stand.env').write_text('TURN_SECRET=' + '3' * 64 + '\nOTHER=untouched\n')
+        (core / 'runtime/stand.env').write_text("TURN_SECRET='" + '3' * 64 + "'\nOTHER=untouched\n")
         (core / 'runtime/stand.env').chmod(0o600)
         managed_state.persist(core / 'state.json', {'schema': 1, 'current': {
             'manifest': self.baseline['core'], 'address': self.inventory['core']['tunnel_ip'],
@@ -74,6 +74,23 @@ class EntryControlTests(unittest.TestCase):
     def begin(self):
         return entry_control.begin(self.root, 'd' * 64, role_release.json_digest(self.baseline),
                                     self.public, self.after, self.settings, system_root=self.system)
+
+    def test_addition_reads_the_quoted_epoch_without_rotating_it(self):
+        from test_node_inventory import key
+        self.after = deepcopy(self.inventory)
+        self.after['edges'].append({'id': 'd', 'generation': 1, 'public_ip': '192.0.2.24',
+                                   'tunnel_ip': '10.88.0.4', 'ssh_host_key': key(5)})
+        self.public = deepcopy(self.public)
+        self.public['edges'].append({'id': 'd', 'origin': 'https://entry-d.duckdns.org',
+                                     'turn_host': 'turn.entry-d.duckdns.org'})
+        self.public['web_origins'].append('https://entry-d.duckdns.org')
+        now = int(time.time())
+        self.settings.update(catalog=json.dumps(route_catalog.sign(self.public, self.key, 2, now, now + 86400)),
+                             dns_domain='entry-d.duckdns.org', dns_expected=[])
+        value = self.begin()
+        self.assertEqual(entry_control.read_secret(self.root, value['attempt'])['secret'], '3' * 64)
+        with self.assertRaisesRegex(ValueError, 'Only a replacement'):
+            entry_control.previous_turn_credential(self.root, value['attempt'])
 
     def test_lost_begin_resume_after_network_change_retains_exact_epoch(self):
         value = self.begin(); attempt = value['attempt']

@@ -41,7 +41,82 @@ old host unavailable, stale key rejection, interrupted/repeated steps. VM/synthe
 Automation voicechat-core-edge остаётся PAUSED после прошлого блока; текущая
 работа выполняется в этом чате. Единственный user acceptance: docs/user-acceptance.md.
 
-## Текущий checkpoint: core и edge-a готовы; baseline B ещё разворачивается
+## Текущий checkpoint: quoted production env compatibility исправлена; VM full31e завершается
+
+Read-only pinned SSH к рабочему A подтвердил: TURN_SECRET single-quoted,64 lowercase
+hex, один assignment. Это штатный bootstrap.py формат. Старый new admission parser
+принимал только bare literal. Исправлены ОБА extraction участка entry_control и
+entry_role rotation через общий turn_epoch: bare/single/double quotes, CRLF и все
+байты вне значения сохраняются. Любые дубликаты assignments, включая malformed/
+export/leading-space shadow, отвергаются. No interpolation/оценки shell expression.
+58 targeted PASS9.855s; полный suite744 PASS/skipped3,93.734s.
+
+`.prototype/entry-check-production-literal.py` PASS на настоящем current A env:
+parser epoch совпадает с existing edge-a epoch; simulated replacement ТОЛЬКО
+В ПАМЯТИ сохраняет все прочие bytes. Evidence
+`.prototype/entry-lifecycle/production-quoted-env-readonly.json`, только booleans.
+Секрет/новое содержимое env не возвращались; production FILES/SERVICES НЕ МЕНЯЛИСЬ.
+
+Текущий frozen31e не редактировался. Его active full session15875 прошёл apply
+core/A/B, verify всех3 и дошёл до releasing core на последнем чтении. После terminal
+result нужен read-only after-full check. Новую quoted compatibility надо отдельно
+заморозить в новый clean source и установить штатным managed full, прежде чем
+начинать source-bound CLI admission. Не подменять fingerprints/current.json и
+не пытаться исправлять source внутри уже активной frozen операции.
+
+Пользователь явно выбрал ТОЛЬКО внутренний браузер. Chrome не разрешён/не нужен.
+После cua reset/createBrowserTab('iab',...) внутренний браузер работает, GitHub
+session авторизован. Binding github, tab2 на CI run41018786883, known branch31e.
+Production workflow ещё НЕ запускался; может использоваться штатно после VM checks.
+Не использовать Chrome и не извлекать browser cookies/токены. Другой агент пользователя
+ведёт chat UI отдельно, его код/ветка не затрагивались.
+
+## Предыдущий checkpoint: actual A/B baseline принята; managed full upgrade активен
+
+Baseline edge helper66337 завершён PASS: stock TLS/catalog/bootstrap/deploy
+edge-a на core и edge-b на отдельной VM. Genesis helper37068 выполнен только
+после actual inspect core/A/B через pinned SSH. Empty marked fixture baseline
+`cfba6385ed337833e5bc8505d83f1f4d779d9be736028919b1a5571df860ccf5` записана
+stock store_baseline; production pointers не редактировались. Это synthetic
+first-install genesis, НЕ доказательство legacy migration. Evidence:
+`.prototype/entry-lifecycle/genesis-{inspections,receipt}.json`.
+
+Read-only account check before-full PASS через2 HTTPS origins: тот же synthetic
+user/device/account_data marker, PG/signing identity сохранены. Helper
+`.prototype/entry-fixture-check-account.py` только GET после initial setup;
+не использовать initial account.py (он делает PUT) как доказательство сохранности.
+
+Source fixes committed/pushed `31e3cda60214236d0b6c2dd792c2abe8b8d3e7f9` в
+codex/three-vps-rollout, main не менялся. Frozen clean worktree
+`.prototype/entry-operator-source-31e3cda`. Full VM candidate archive
+`.prototype/entry-lifecycle/source-v2.tar.gz`, sourceSHA
+`694f8564d2b2826b5cf14dbf5b4ac1665a0fd79a02cfbaa0a2b4463b56049d6c`.
+Target fingerprints вычислены из Git candidate, не переписаны в installed state.
+АКТИВЕН штатный `.prototype/entry-upgrade-fixture-full.py`, session15875;
+normal managed full preflight/fencing PASS, последнее: applying core. Live log
+`.prototype/entry-lifecycle/full-upgrade.log`. Не запускать competing full/fixture.
+Нужны его terminal result и read-only account check after-full до admission.
+
+CI push/PR для31e: runs41018793617 и41018786883, оба Prototype checks in_progress
+на последнем чтении. GitHub diagnostics connector и CUA browser.user недоступны,
+gh CLI нет, но public GitHub REST read работает без credentials. Не извлекать
+cookies/tokens из браузера. Production workflow НЕ запускался.
+
+Готов, НЕ запущен `.prototype/entry-add-with-lost-ack.py`: stock exact-source
+CLI с fault injection ТОЛЬКО после реального configure/observe core до ACK;
+configure ID/StartedAt/FinishedAt читает дополнительным read-only SSH и сохраняет
+`add-c-operation/injected-lost-configure-ack.json`, затем exit79. После этого
+resume штатным frozen CLI, без wrapper, тем же config/state/source. Ключ подписи
+только Mac. Config `.prototype/entry-lifecycle/add-c-config.json`, identities
+созданы genesis helper (full использует отдельную map только core/B).
+
+Replacement D starter `.prototype/start-entry-d-vm.py` подготовлен/compile,
+но D пока НЕ создан. Не создавать до controlled остановки old C; old C disk/key
+сохранить для return/revocation проверки. Чистый C всё ещё без dependency/app
+bootstrap. Добавлен owned VM-only hosts registry mapping на B. Provider dummy
+UUID исправлен/перезапущен. Вне marked VMs DNS/сервисы не менялись.
+
+## Предыдущий checkpoint: core и edge-a готовы; baseline B ещё разворачивается
 
 Core retry68672 завершён PASS со штатными healthchecks после CPU uplift. Synthetic
 PG systemID7702349032529215527, signingSHA327f56a2f18e5d23baaa33d7d0d1ec8d75b7bbd989ee53f721244ee0f8cc84c0.

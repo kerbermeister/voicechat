@@ -25,14 +25,20 @@ import tls_material
 import topology
 
 
+def turn_epoch(content):
+    # Reject a malformed duplicate that Compose could use instead of the valid literal.
+    assignments = re.findall(rb'(?m)^[ \t]*(?:export[ \t]+)?TURN_SECRET[ \t]*=', content)
+    matches = list(re.finditer(rb"""(?m)^TURN_SECRET=(?P<quote>['"]?)(?P<secret>[a-f0-9]{64})(?P=quote)\r?$""", content))
+    if len(assignments) != 1 or len(matches) != 1:
+        raise ValueError('Expected one literal hexadecimal TURN_SECRET in the managed environment')
+    return matches[0]
+
+
 def turn_environment(content, secret):
     if not re.fullmatch(r'[a-f0-9]{64}', secret):
         raise ValueError('A fresh 32-byte TURN secret is required')
-    matches = list(re.finditer(rb'(?m)^TURN_SECRET=([a-f0-9]{64})\r?$', content))
-    if len(matches) != 1:
-        raise ValueError('Expected one literal hexadecimal TURN_SECRET in the managed environment')
-    match = matches[0]
-    return content[:match.start(1)] + secret.encode() + content[match.end(1):]
+    match = turn_epoch(content)
+    return content[:match.start('secret')] + secret.encode() + content[match.end('secret'):]
 
 
 def replace_private(path, content):

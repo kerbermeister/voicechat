@@ -14,6 +14,7 @@ import core_deploy
 import entry_dns
 import entry_journal
 import entry_lifecycle
+import entry_role
 import entry_settings
 import host_registration
 import managed_journal
@@ -116,22 +117,20 @@ def begin(root, source, expected_baseline, public, inventory, settings, *, syste
         if core is None or core_deploy.runtime_digest(root / 'core') != core['runtime_sha256']:
             raise ValueError('Committed core environment required before admission')
         content = tls_material.read_material(root / 'core/runtime/stand.env', private=True)
-        matches = list(re.finditer(rb'(?m)^TURN_SECRET=([a-f0-9]{64})\r?$', content))
-        if len(matches) != 1:
-            raise ValueError('Expected one literal managed TURN credential epoch')
+        epoch = entry_role.turn_epoch(content)['secret']
         old_epoch = target / 'turn-previous-secret'
         if old_epoch.exists() or old_epoch.is_symlink():
-            if tls_material.read_material(old_epoch, private=True) != matches[0][1]:
+            if tls_material.read_material(old_epoch, private=True) != epoch:
                 raise ValueError('Original TURN epoch changed')
         else:
-            tls_material.write_private(old_epoch, matches[0][1])
+            tls_material.write_private(old_epoch, epoch)
         context = {'schema': 1, 'pointer': pointer, 'public_keys': network['public_keys'],
-            'catalog_key': key, 'turn_before_sha256': hashlib.sha256(matches[0][1]).hexdigest(),
+            'catalog_key': key, 'turn_before_sha256': hashlib.sha256(epoch).hexdigest(),
             'secret_sha256': None}
         managed_state.persist(context_path, context)
         private = target / 'turn-secret'
         if not private.exists() and not private.is_symlink():
-            secret = secrets.token_hex(32).encode() if transition['replacement'] else matches[0][1]
+            secret = secrets.token_hex(32).encode() if transition['replacement'] else epoch
             tls_material.write_private(private, secret)
     # A lost write/reply may leave the secret before its receipt. Reuse that file,
     # never regenerate a committed epoch when it disappears.
@@ -146,10 +145,10 @@ def begin(root, source, expected_baseline, public, inventory, settings, *, syste
             tls_material.write_private(private, secrets.token_hex(32).encode())
         else:
             content = tls_material.read_material(root / 'core/runtime/stand.env', private=True)
-            matches = list(re.finditer(rb'(?m)^TURN_SECRET=([a-f0-9]{64})\r?$', content))
-            if len(matches) != 1 or hashlib.sha256(matches[0][1]).hexdigest() != context['turn_before_sha256']:
+            epoch = entry_role.turn_epoch(content)['secret']
+            if hashlib.sha256(epoch).hexdigest() != context['turn_before_sha256']:
                 raise ValueError('Original core TURN epoch changed before admission')
-            tls_material.write_private(private, matches[0][1])
+            tls_material.write_private(private, epoch)
     secret = tls_material.read_material(private, private=True)
     digest = hashlib.sha256(secret).hexdigest()
     if not re.fullmatch(rb'[a-f0-9]{64}', secret) or context['secret_sha256'] not in (None, digest):
