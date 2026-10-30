@@ -1,0 +1,25 @@
+{
+  "account_device_marker_read_only_verified_through_three_origins": true,
+  "actual_add_completed": true,
+  "attempt": "94ee9b4aa1e25c2d5eab906dd9a25b318d133221e8ca09f35909ef12d66b453e",
+  "commit": "4b5516a226e3df1e32c72cf2d80a2d94f1d1165a",
+  "entry_facts": {
+    "edge_only_services_verified": true,
+    "no_core_data_volumes": true,
+    "no_persisted_ghcr_auth": true,
+    "schema": 1,
+    "services": [
+      "configure",
+      "ingress",
+      "route-health",
+      "turn",
+      "web"
+    ]
+  },
+  "limits": "Disposable Linux VMs and synthetic providers; not live external DNS/registry or real devices/media",
+  "lost_configure_ack_resumed_without_reconfigure": true,
+  "schema": 1,
+  "source": "721a50d4a769e5b00fac9e8034c57672cfa209e25bf97413187d9d8ead088673",
+  "synthetic_dns_cutover_verified": true,
+  "synthetic_registry_real_engine_pull": true
+}

@@ -4,6 +4,109 @@
 
 ### Последнее состояние текущего запуска
 
+**Сейчас replacement53046** (единственный driver). 59167 прошёл claims/network
+core/B и rotate-turn core; remote core configure вернул0, old4b CLI не разобрал
+Restic progress (тот же уже исправленный15f дефект). 53046 продолжает тот же
+attempt3c1da7..., новый secret НЕ генерировать, старый не возвращать. D59402 жив,
+old C21429 off/retained. Add proof уже COMPLETE и не replay. No production mutation.
+
+Mac UI baseline подготовлена без выхода/установки: native About подтвердил24,
+CUA `installedVoiceChat`, private memory `mac25BeforeUser`, `mac25BeforeDevice`,
+`mac25HistoryMarkers` (4 реальных прежних фрагмента). Содержимое не записывать в docs.
+Flutter AX первоначально пустой; native menu VoiceChat→About VoiceChat→close
+активировало semantics, после этого AX работают. Координатный click по-прежнему
+noWindowsAvailable; использовать только свежие AX indices. Сейчас старый24 открыт
+в личной комнате, профиль НЕ менялся/не удалялся. Backup25 ещё НЕ создан, кандидат25
+НЕ запускался, обновление НЕ опубликовано. Не reset CUA без сохранения сравнения.
+
+
+Replacement retry теперь **session59167**: core/B claims, network core/B PASS,
+сейчас rotate-turn core (consistent backup и новая общая epoch). Старый4b CLI
+при первом backup может снова получить уже исправленный в15f framing error;
+не править frozen source/state, продолжить тем же CLI после проверки phase.
+Доступ старого C ещё не проверен; D жив, old C off и сохранён.
+
+В общей feature-интеграции проверен diff policy: новая схема БД не вводится,
+таймер использует штатный Synapse event_expiry и потому сохраняется при restart.
+Наблюдение по совместимости:24 не вызывает новый read-after endpoint; это
+client25 режим. Требование обновить обе стороны добавлено в changelog и UA-32;
+mixed24/25 не выдавать за пройденный сценарий. Код клиента НЕ менялся. Перед
+публикацией25 перепаковать из того же проверенного AOT app с обновлёнными notes
+в НОВЫЙ candidate dir (v1 сохранить), после clean final commit; Mac rebuild ради
+notes не нужен. Compile inputs client/vendor/crypto должны совпасть с2d181e1.
+
+
+**REPLACE active:** old C штатно выключен (receipt old-c-powered-off.json), его
+диск/SSH/WG/TLS keys сохранены. Fresh D создан: entry-d-host-2944a2e291, PID59402,
+SSH58000, IP192.0.2.13,2vCPU/1536MiB/priority0; новый host/WG key и c-g2 TLS.
+Replacement logical edge-c generation2 attempt
+3c1da7d1a15f5507d2e5748eb0a360b91f2296294430a7242801451452a6ac47,
+source721a50... прежний4b. Session60568 прошла prepare/identity/register/network/TLS/
+stage(real Engine pull), затем core claim создал owned fence и final observe
+отказал «Core services are not healthy». Источники/state/ожидания не менялись.
+Запущен ТОТ ЖЕ `.prototype/entry-run-replace-proof.py` повторно; active session
+будет указана при следующем checkpoint. Не запускать add или конкурирующий driver.
+Ротация TURN, target startup, DNS/catalog, old-host-return proofs пока НЕ завершены.
+
+
+**ADD ЗАВЕРШЁН:** session44139 exit0; `add-proof.json` записан, stock phasecomplete.
+Actual prepare→WG/TLS→real Engine pull→claims/network→core/A/B configure→C start→
+trusted HTTPS/TURN→synthetic DNS→signed catalogs→global commit/release/finish PASS.
+Итоговые assertions: configure ID/StartedAt/FinishedAt и core PG/Synapse/control
+процессы НЕ изменились после намеренного lost ACK; account/device/marker/data
+identity read-only подтверждены через3 origins; на C только5 edge services,
+нет core volumes или persisted GHCR auth. Public evidence
+`three-vps-evidence/2026-10-30-entry-add-vm.json`. Не replay completed add!
+Замена теперь запущена `.prototype/entry-run-replace-proof.py`; сохранить old C
+полностью. Контролировать только её активную сессию (номер ниже после запуска).
+GitHub PR41030555967 тоже SUCCESS14m37s (job14m34s), debug Android artifact12966876005
+(не release/physical). Main/production/installed Mac24 НЕ менялись.
+
+
+**Теперь:** driver44139 успешно прошёл `configure core` после lost ACK, затем
+`configure edge-a` и `configure edge-b`; сейчас **start edge-c**. A и B не
+перезапускать, другой driver не запускать. Source/attempt прежние4b, marker сохранён.
+Финальные assertions ещё выполняются; add-proof.json пока НЕ существует.
+Readonly1705 подтвердил core и edges/a entry-role phase complete. RuntimeB/C nice19
+сохранён; resource GOMAXPROCS=1 для нового SSH уже применён (это не app config).
+Рабочий HEAD15f024e отправлен; GitHub push41030547594 SUCCESS13m45s, PR41030555967
+ещё требует отдельного final read. Mac25 package остаётся точным clean2d исходником,
+его client/vendor/crypto inputs не менялись; не пересобирать без изменений.
+
+
+**Точный текущий запуск:** active driver **44139**, frozen4b source/attempt прежние.
+Намеренный exit79 и lost-ACK marker уже действительно записаны (88438), затем
+stock resume отказал на health; 15311 прошёл completed configure, но observe снова
+получил unhealthy. Read-only snapshot49235 отдельно подтвердил `configure_unchanged`
+и `core_processes_unchanged` относительно исходного marker, без рестартов/исправления
+ожиданий. Контроль79218 показал healthy с прежним StartedAt. Parent before-account
+повтор после marker исключён: исходная pre-add проверка уже многократно PASS,
+финальные3-origin account и process/configure assertions НЕ менялись.
+
+Уточнение предыдущего сообщения о priority: BSD `renice -n0` ничего не меняет.
+Фактические значения `ps`: A0, B/C19. Absolute renice0 получил OS Permission denied,
+`sudo -n` потребовал пароль; никакие credentials не запрашивались и обхода не было.
+Restart argv B/C и ещё не созданного D готовы для priority0. Это НЕ результат
+успешной смены текущих B/C priorities. Host имеет8CPU/16GiB; health-пробы с budget3s
+в эмуляторе иногда занимают4–13s при metadata Docker/Compose процессах.
+
+На disposable A/B/C проверен marker, валидирован sshd и установлен ONLY session
+`SetEnv GOMAXPROCS=1` для снижения параллелизма операторского Go Docker CLI;
+app container env/config, services, signatures и health budget не менялись.
+Helper `.prototype/entry-limit-fixture-cli.py`, per-node private resource logs;
+sshd reload successful. Будущий D helper содержит ту же fixture-only настройку,
+2vCPU/1536MiB/priority0. Проверяется её эффект запуском44139, не объявлять причиной
+или успехом до фактического результата. D пока НЕ создан, replace proof НЕ начат.
+
+Локально подготовлен полный Git-verified infra archive15f (115 files,1187840bytes)
+`.prototype/production/network-source-15f024e.tar` + `network-source-15f024e.json`.
+Это audited source ONLY для штатного network_bootstrap.upgrade, НЕ application
+release manifest, на production НЕ применён. Перед финальным FULL нужно штатное
+network source upgrade с неизменным intent/shared-host и сравнение Docker/соседей;
+не оставлять долгую паузу до FULL: старые boot operators ожидают старый network
+fingerprint. Старый CI59 всё ещё не скачан, не называть его проверенным download.
+
+
 **Последнее уточнение:** driver65276 прошёл claims core/A/B и network core/B,
 затем remote core configure завершился, но старый CLI получил JSONDecodeError:
 Restic backup пишет progress перед финальным JSON. Это настоящая ошибка response

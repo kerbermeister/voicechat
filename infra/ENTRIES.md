@@ -1,8 +1,10 @@
 # Подключение и замена входного сервера
 
-Статус: реализация и unit-проверки готовы; сквозное VM-испытание ещё выполняется.
-Не считать этот документ свидетельством внешнего production onboarding.
-Обычный раздельный deploy уже принят отдельно: `docs/iterations/split-deployment-production.md`.
+Этот документ описывает операторский контракт подключения и замены. Актуальные
+результаты и ограничения проверок: [точка продолжения](../docs/iterations/19-three-vps-resume.md)
+и [единый реестр приёмки](../docs/user-acceptance.md). Документ сам по себе не
+является свидетельством внешнего production onboarding. Принятый раздельный
+deploy описан в [production evidence](../docs/iterations/split-deployment-production.md).
 
 ## Входные данные
 
