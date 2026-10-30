@@ -2,12 +2,43 @@
 
 ## Актуальная сводка: production core/edge включены
 
-**LOCAL NEXT: объединён host_prepare --public-keys network bootstrap.**
-43 host tests PASS; новый wrapper валидирует public request до SSH, сверяет
-фактический public key с registry, вызывает host_network из того же проверенного
-bundle/соединения и проверяет node/generation/boot source/network receipt.
-Нужен один real VM repeat на prepareVM (у неё уже peerless network a806),
-новой установки apt/нового reboot не требуется. Source runtime9 не менялся.
+**LATEST 30.10 03:40local: producer54/55 и postchecks PASS; core-only guard audit открыт.**
+[Web55 proof](three-vps-evidence/2026-10-30-ci-managed-web-build-only.json): SUCCESS11m,
+job10m55, artifact12949243943 ZIP SHA7cc2913c…, downloaded exactGit463eed4,
+sourcearchive179306ee…, backend7f5751…production, control ee3d5d reused.
+[Postcheck55 PASS](three-vps-evidence/2026-10-30-production-web-build-only-postcheck.json):
+все role processes равны full53 releasing proofs, neighbor6/data/pointers/timers/feed
+unchanged. VPS по-прежнему2dae758; ни54, ни55 не делали deploy.
+
+При проверке source guards найден пробел core scope: сравнение только generated
+edge bundle не ловит изменения operator scripts, не включённых в manifest.files.
+Новый regression `test_core_protected_source_change_requires_a_recorded_non_core_guard`
+в `test_managed_release.py` закономерно RED (19tests,1failure), log
+`.prototype/core-source-guard-regression.log`. В production core-only не выполнялся.
+Следующий приоритет — устранить пробел: отдельный non-core protected fingerprint,
+сохранив backend fingerprint без ослабления. Core-only с backend delta допустим
+лишь при совпадающем записанном guard; старой baseline без guard нужен full.
+План: generated core-scope.sha256 в verified artifact, baseline schema2 core_guard,
+backward read schema1, target helper в managed_release; propagate journal/control/
+read-only probe/SSH + CI tar/source verification + tests. Full сохраняет новыйguard,
+web/edge сохраняют его; missing guard не разрешает новый backend delta. Никаких
+ручных правок production baselines/digests. Перед новой live full нужны regression
+suite, immutable package checks и реальная VM проверка schema1→2/scopes.
+
+Mesh VM только исследована, НЕ запущена/изменена: QEMU official docs подтверждают
+loopback multicast L2 netdev socket mcast/localaddr. Mac16GiB. MainVM4GiB и prepareVM1.5GiB
+живы, packageVMoff; для будущего3VMстенда нужен тщательный memory budget и сохранение
+оригинальных WG keys/двухстарыхтомов. Не менять main network без saved/verified restore.
+
+**LATEST: unified SSH bootstrap repeat source3a8bf19 PASS.**
+HEAD/origin3a8bf192f5e134667f2311e2c57fe5b72ee5bb8c;43 host tests PASS.
+[Proof](three-vps-evidence/2026-10-30-vm-unified-host-bootstrap.json), exec83402 exit0:
+один pinned connection/frozen source на dependency→key→network, repeat receipts equal,
+private key stays local, owned boot exact, Docker not restarted, original VM records
+unchanged. Это repeat на уже подготовленном peerless узле, не новая initial install.
+Production остаётся2dae/full53; никакого live rollout сейчас нет. Webbuild-only55active.
+Next functional work: новый edge role/TLS readiness и coordinated live peer/catalog
+lifecycle, safe replacement без доступа к old host; затем доступный core transfer.
 
 **ACTIVE 30.10 03:19local: web build-only55, без деплоя.**
 https://github.com/kerbermeister/voicechat/actions/runs/40990964885,

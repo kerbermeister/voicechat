@@ -187,8 +187,9 @@ device не создан; чужой homeserver и redirect с bearer token от
 
 Локально выполнены public schema, отдельный physical inventory, проверка поколений
 и SSH host keys, offline edge renderer с тестами замены C / добавления D.
-Core/edge Compose и общий offline bundle generator добавлены следующей итерацией;
-реальные host preflight и release integration пока открыты.
+Core/edge Compose, общий bundle generator, host preflight, typed manifests и
+обычный managed release проверены локально/вVM и production full53. Реальные
+физические B/C, onboarding/replacement и media acceptance остаются открытыми.
 
 ### V3-05a — Добавлять входы через подписанный каталог без выпуска клиента
 
@@ -245,13 +246,13 @@ multi-host role deploy: общий orchestration state, HTTPS readback всех 
 
 Зависимости: V3-06.
 
-- [ ] Создать общий bootstrap entrypoint: роль, адрес, SSH user, credential reference
+- [x] Создать общий bootstrap entrypoint: роль, адрес, SSH user, credential reference
   и проверенный host key; остальное наследуется из topology.
 - [ ] Проверять ОС/архитектуру, ресурсы, время, порты и чужие службы до установки;
   устанавливать закреплённые зависимости, пользователя, каталоги и автозапуск.
-- [ ] Создавать уникальные ключи узла, применять только принадлежащие проекту
+- [x] Создавать уникальные ключи узла, применять только принадлежащие проекту
   сетевые правила; не сбрасывать весь firewall и не менять чужие deployment roots.
-- [ ] Поддержать безопасный повтор и восстановление после прерывания шагов;
+- [x] Поддержать безопасный повтор и восстановление после прерывания шагов;
   фиксировать фазу/ошибку без раскрытия секретов. Release integration — V3-20.
 
 Проверка: чистая VM, повтор запуска, обрыв посередине, недостаток места,
@@ -325,6 +326,14 @@ role/TLS/catalog activation остаются отдельными шагами.
 точные unit/code bytes, отсутствие рестарта Docker и восстановление сети до Docker.
 Это peerless core fixture; registration на действующем A, настоящий новый edge,
 TLS/catalog/DNS cutover и единый lifecycle controller ещё не завершены.
+
+Общий `host_prepare --public-keys` теперь последовательно выполняет dependency,
+node-local key и network bootstrap через одно pinned SSH соединение и один
+проверенный source bundle.43 host tests PASS. [Actual SSH repeat source3a8bf19](../iterations/three-vps-evidence/2026-10-30-vm-unified-host-bootstrap.json)
+сохранил key/network receipts, boot files и Docker process. Это локальная граница
+V3-07, не завершённое добавление D: role/TLS/catalog и изменение действующих peers
+остаются в V3-08/09/20/21. Используется уже доступный root SSH principal; новый
+непривилегированный operator user автоматически не создаётся.
 
 ### V3-08 — Настроить защищённые входы и сертификаты
 

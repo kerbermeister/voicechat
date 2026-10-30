@@ -186,7 +186,10 @@ python3 -B infra/host_prepare.py --inventory inventory.next.json --node edge-d \
 `--public-keys` подразумевает проверку/инициализацию ключа; его фактический public
 key должен уже совпадать с registry. При несовпадении сетевых команд не будет.
 Для нестандартного bridge subnet передать существующий `--edge-subnet`.
-Этот объединённый путь прошёл unit checks; VM wiring check ещё выполняется.
+Объединённый путь прошёл43 host unit checks и [настоящий SSH repeat](../docs/iterations/three-vps-evidence/2026-10-30-vm-unified-host-bootstrap.json)
+на уже подготовленной peerless VM: dependency/key/network receipt совпадают, ключ
+и точные boot files сохранены, Docker не перезапускался. Начальная установка и
+reboot приведены в отдельных evidence выше; role/TLS/catalog deployment ещё открыт.
 
 Первый вызов печатает профиль без изменений; второй требует root и сверяет
 фактический SSH host key с inventory. Конкретный physical node `edge-d` должен

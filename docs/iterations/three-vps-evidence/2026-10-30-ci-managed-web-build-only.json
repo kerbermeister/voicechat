@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "run_url": "https://github.com/kerbermeister/voicechat/actions/runs/40990964885",
+  "run": 55,
+  "job": 123853000739,
+  "status": "success",
+  "inputs": {
+    "rollout": "managed",
+    "mode": "web",
+    "deploy": false,
+    "retry_managed": false,
+    "retry_initial": false,
+    "edges": ""
+  },
+  "branch": "codex/three-vps-web-build-check",
+  "duration_seconds": 660,
+  "job_duration_seconds": 655,
+  "artifact_id": 12949243943,
+  "artifact_zip_sha256": "7cc2913cd21dd671ffecb5a87630eb4d91f32232a6168a7c6467421317194619",
+  "source_archive_sha256": "179306eeeb8709ff85128609644339f13749ffd141f644dfd8f92ab4e36cf49d",
+  "source_commit": "463eed4d9aff74d313880305cdbeea59ec8fcdbb",
+  "manifest": {
+    "commit": "463eed4d9aff74d313880305cdbeea59ec8fcdbb",
+    "schema": 1,
+    "origin": "https://univc.duckdns.org",
+    "control": "ghcr.io/kerbermeister/voicechat/control@sha256:ee3d5d33fc1f1dbed66904560ffd77e39351a96df6787e39515bfed820a7a9cb",
+    "web": "ghcr.io/kerbermeister/voicechat/web@sha256:bd2f5bb820e059c008850bf084ee65cb5052821784f01eec0b63ac1c047acbf7"
+  },
+  "backend_fingerprint": "7f5751bb6df936a45b95fe8e84f3b687e1a1f0773e2cfe3af62433655b0003e6",
+  "source_files": 101,
+  "exact_clean_git_source_verified": true,
+  "control_reused_from_production_run53": true,
+  "production_backend_guard_passed": true,
+  "candidate_diff": "One docs-only commit on production 2dae758; protected sources unchanged",
+  "limitations": [
+    "This validates the web-only build producer; deploy=false and no production web-only rollout is claimed."
+  ]
+}
