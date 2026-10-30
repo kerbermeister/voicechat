@@ -75,7 +75,7 @@ def main():
     write(marker,name,991)
     configure_policy()
     write('/media/livekit.json',json.dumps({'port':7880,'bind_addresses':['0.0.0.0'],
-        'rtc':{'tcp_port':7981,'port_range_start':50300,'port_range_end':50400,'use_external_ip':False,'node_ip':env['PUBLIC_IP']},
+        'rtc':{'tcp_port':7981,'port_range_start':50300,'port_range_end':50400,'use_external_ip':False,'node_ip':push_gateway_ip if routes is not None else env['PUBLIC_IP']},
         'keys':{'prototype':env['LIVEKIT_SECRET']},'room':{'auto_create':False,'max_participants':10}}),10001)
     if routes is not None:
         # Multi-host core issues credentials; only edge hosts run TURN.

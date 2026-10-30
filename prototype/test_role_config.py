@@ -152,6 +152,7 @@ class RoleConfigTests(unittest.TestCase):
             outputs = {args[0][0]:args[0][1] for args in write.call_args_list}
             synapse = json.loads(outputs['/matrix/homeserver.yaml'])
             self.assertEqual(synapse['ip_range_whitelist'], ['10.88.0.1/32'])
+            self.assertEqual(json.loads(outputs['/media/livekit.json'])['rtc']['node_ip'], '10.88.0.1')
             self.assertNotIn('ip_range_blacklist', synapse)
             self.assertEqual(synapse['turn_shared_secret'], 'test-only')
             self.assertEqual(synapse['signing_key_path'], '/data/voicechat.signing.key')
@@ -169,21 +170,26 @@ class RoleConfigTests(unittest.TestCase):
             write.assert_not_called()
 
     def test_turn_limits_and_private_peer_denials_and_secret_validation(self):
-        text = turn_configuration('a'*64, '192.0.2.11', '10.241.0.4', 'chat.example.com')
+        text = turn_configuration('a'*64, '192.0.2.11', '10.241.0.4', 'chat.example.com', '10.88.0.1')
         self.assertIn('external-ip=192.0.2.11/10.241.0.4', text)
         self.assertIn('tls-listening-port=5349', text)
         self.assertIn('denied-peer-ip=169.254.0.0-169.254.255.255', text)
         self.assertIn('user-quota=16', text)
+        self.assertEqual([line for line in text.splitlines() if line.startswith('allowed-peer-ip=')],
+                         ['allowed-peer-ip=10.88.0.1'])
+        for bad in ('127.0.0.1', '169.254.169.254', '192.0.2.10', '10.241.0.4'):
+            with self.assertRaises(ValueError):
+                turn_configuration('a'*64, '192.0.2.11', '10.241.0.4', 'chat.example.com', bad)
         self.assertNotIn('allow-loopback-peers', text)
         self.assertNotIn('no-tls', text)
         for line in text.splitlines():
             if line.startswith('denied-peer-ip='):
                 for address in line.split('=',1)[1].split('-'): ipaddress.ip_address(address)
-        rotating = turn_configuration('a'*64 + '\n' + 'b'*64, '192.0.2.11', '10.241.0.4', 'chat.example.com')
+        rotating = turn_configuration('a'*64 + '\n' + 'b'*64, '192.0.2.11', '10.241.0.4', 'chat.example.com', '10.88.0.1')
         self.assertEqual(rotating.count('static-auth-secret='), 2)
         for secret in ('', 'a'*63, 'a'*64+'\nno-auth', 'a'*64+'\n'+'a'*64,
                        '\n'.join(letter*64 for letter in ('a','b','c'))):
-            with self.assertRaises(ValueError): turn_configuration(secret, '192.0.2.11', '10.241.0.4', 'chat.example.com')
+            with self.assertRaises(ValueError): turn_configuration(secret, '192.0.2.11', '10.241.0.4', 'chat.example.com', '10.88.0.1')
 
     def test_bundles_are_self_contained_without_generated_credentials(self):
         for role in ('core', 'edge'):
@@ -192,8 +198,8 @@ class RoleConfigTests(unittest.TestCase):
                 self.assertTrue({'infra/' + name for name in NETWORK_FILES} <= files.keys())
                 if role == 'core':
                     self.assertNotIn('${BIND}', files['infra/compose.yaml'])
-                    self.assertIn('192.0.2.10:7981:7981/tcp', files['infra/compose.yaml'])
-                    self.assertIn('192.0.2.10:50300-50400:50300-50400/udp', files['infra/compose.yaml'])
+                    self.assertIn('10.88.0.1:7981:7981/tcp', files['infra/compose.yaml'])
+                    self.assertIn('10.88.0.1:50300-50400:50300-50400/udp', files['infra/compose.yaml'])
                     self.assertIn('${BIND}:7981', (ROOT / 'infra/compose.yaml').read_text())
                 root = Path(temporary) / role
                 write_bundle(root, files, runtime)

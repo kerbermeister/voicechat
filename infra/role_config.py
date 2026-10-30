@@ -102,7 +102,7 @@ def edge(public, inventory, edge_id, subnet='10.241.0.0/28'):
         'configure': {
             'image': pinned_image('configure'), 'entrypoint': ['python3', '/edge_turn.py'],
             'command': ['--public-ip', node['public_ip'], '--relay-ip', relay_ip,
-                        '--realm', public['matrix_server_name']],
+                        '--realm', public['matrix_server_name'], '--core-ip', core_ip],
             'read_only': True, 'tmpfs': ['/tmp:size=16m,mode=1777'], 'security_opt': ['no-new-privileges:true'],
             'volumes': [bind('./edge_turn.py', '/edge_turn.py'), bind('./configure.py', '/configure.py'),
                         bind('./node_inventory.py', '/node_inventory.py'), bind('./topology.py', '/topology.py'),

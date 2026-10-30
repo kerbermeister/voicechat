@@ -60,7 +60,7 @@ def main():
             control = config['services']['control']
             assert not control.get('entrypoint')  # Keep the image's linked SFU/controller supervisor.
             assert all(port.get('host_ip') == '10.88.0.1' for port in control['ports'] if port['target'] in (8090,7880))
-            assert all(port.get('host_ip') == inventory['core']['public_ip'] for port in control['ports']
+            assert all(port.get('host_ip') == inventory['core']['tunnel_ip'] for port in control['ports']
                        if port['target'] not in (8090,7880))
             # Override the project before any mutating command, and verify every volume name.
             command[2:2] = ['-p',project]

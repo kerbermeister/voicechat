@@ -46,7 +46,6 @@ def render(inventory, node, subnet='10.241.0.0/28', *, replace=False):
     if peers:
         incoming.append('ip saddr ' + addresses([item['public_ip'] for item in peers]) + ' udp dport 51820 return')
     incoming.append('udp dport 51820 drop')
-    incoming.append(f'ip daddr {private} ct direction reply ct state established,related return')
 
     if node == 'core':
         backend_bridge = node_inventory.core_bridge(inventory)
@@ -68,22 +67,33 @@ def render(inventory, node, subnet='10.241.0.0/28', *, replace=False):
             forwarded.append(api_forward + ' ' + allowed + ' return')
         incoming.append(f'ip daddr {public} tcp dport {API_PORTS} drop')
         forwarded.append(f'ct direction original ct original ip daddr {public} meta l4proto tcp ct original proto-dst {API_PORTS} drop')
-        # TURN reaches the public SFU address; clients are not required to reach A
-        # directly. A co-located TURN uses its fixed bridge address before SNAT.
+        # TURN reaches SFU on A's tunnel IP; only the owned relay bridge or
+        # authenticated edge tunnels may enter these ports. Keep the old public
+        # path scoped too during rolling upgrades and rollback.
         for protocol, port in (('tcp', '7981'), ('udp', '50300-50400')):
             media_input = f'ip daddr {public} {protocol} dport {port}'
             media_forward = f'ct direction original ct original ip daddr {public} meta l4proto {protocol} ct original proto-dst {port}'
+            private_input = f'ip daddr {private} {protocol} dport {port}'
+            private_forward = f'ct direction original ct original ip daddr {private} meta l4proto {protocol} ct original proto-dst {port}'
             media_reply = f'ct direction reply oifname "{backend_bridge}" iifname != "{backend_bridge}" {protocol} dport {port}'
             if peers:
+                private_allowed = 'iifname "wg-vc" ip saddr ' + addresses([item['tunnel_ip'] for item in peers])
+                incoming.append(private_input + ' ' + private_allowed + ' return')
+                forwarded.append(private_forward + ' ' + private_allowed + ' return')
+                forwarded.append(media_reply + ' ' + private_allowed + ' return')
                 allowed = 'ip saddr ' + addresses([item['public_ip'] for item in peers])
                 incoming.append(media_input + ' ' + allowed + ' return')
                 forwarded.append(media_forward + ' ' + allowed + ' return')
                 forwarded.append(media_reply + ' ' + allowed + ' return')
             if co_located:
                 allowed = f'iifname "{bridge}" ip saddr {network[4]}'
+                incoming.append(private_input + ' ' + allowed + ' return')
+                forwarded.append(private_forward + ' ' + allowed + ' return')
                 incoming.append(media_input + ' ' + allowed + ' return')
                 forwarded.append(media_forward + ' ' + allowed + ' return')
                 forwarded.append(media_reply + ' ' + allowed + ' return')
+            incoming.append(private_input + ' drop')
+            forwarded.append(private_forward + ' drop')
             incoming.append(media_input + ' drop')
             forwarded.append(media_forward + ' drop')
             # SFU-originated ICE traffic creates an outbound NAT mapping. Its
@@ -92,6 +102,7 @@ def render(inventory, node, subnet='10.241.0.0/28', *, replace=False):
         # Published-port filtering alone misses directly routed container IPs.
         # Preserve traffic within the trusted core bridge and its reply packets.
         forwarded.append(f'ct direction original oifname "{backend_bridge}" iifname != "{backend_bridge}" drop')
+    incoming.append(f'ip daddr {private} ct direction reply ct state established,related return')
     incoming.append(f'ip daddr {private} drop')
     incoming.append('iifname "wg-vc" drop')
     # Replies retain the connection's original destination, so restricting both

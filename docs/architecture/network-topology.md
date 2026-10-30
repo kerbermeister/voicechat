@@ -8,6 +8,11 @@ core и cohost edge-a, shared-front и сохранёнными данными/i
 [ТЗ](../three-vps-spec.md), [план](../tasks/19-three-vps.md),
 [проверки и ограничения](../iterations/19-three-vps.md).
 
+**Серверное исправление SFU подготовлено, но пока не выложено.** Диаграммы ниже
+показывают новый private-media путь. На WEB66/FULL64 остаётся public SFU с
+подтверждённым cohost-конфликтом coturn; групповой звонок ещё не принят.
+Ход проверки — [журнал24](../iterations/24-call-and-connection-diagnostics.md).
+
 ## Начало: один физический VPS
 
 ```mermaid
@@ -31,7 +36,8 @@ flowchart LR
         W -->|"Локальный путь к private IP"| P
         P -->|"8088 / 8090"| API
         P -->|"7880 · signaling"| SFU
-        T -->|"Медиа к SFU"| SFU
+        T -->|"Только приватные медиапорты A"| P
+        P -->|"7981 / 50300–50400"| SFU
     end
     U -->|"HTTPS / WSS / TURN TLS :443"| I
     U -->|"TURN UDP/TCP :3478"| T
@@ -82,6 +88,7 @@ flowchart LR
         DB[("Единственная серверная копия<br/>БД, identity, история, вложения")]
         WG --> API
         WG --> SIGNAL
+        WG -->|"7981 TCP / 50300–50400 UDP"| SFU
         API --> DB
         SIGNAL --> SFU
     end
@@ -91,9 +98,9 @@ flowchart LR
     B -->|"API/WSS внутри WireGuard · UDP :51820"| WG
     C -->|"Свой WireGuard peer"| WG
     D -->|"Свой WireGuard peer"| WG
-    B -->|"TURN → публичный медиапорт SFU"| SFU
-    C -->|"TURN → публичный медиапорт SFU"| SFU
-    D -->|"TURN → публичный медиапорт SFU"| SFU
+    B -->|"TURN media внутри WireGuard"| WG
+    C -->|"TURN media внутри WireGuard"| WG
+    D -->|"TURN media внутри WireGuard"| WG
     BACKUP[("Внешняя резервная копия<br/>целевой этап после MVP")]
     DB -.->|"Будущая согласованная выгрузка"| BACKUP
 ```
@@ -104,22 +111,23 @@ flowchart LR
 | --- | --- |
 | Вход, сообщения, файлы, управление звонком | Клиент → HTTPS edge → WireGuard → API A. Пользовательская авторизация выполняется на A. |
 | Сигнализация LiveKit | Клиент → WSS edge → WireGuard → LiveKit на A. |
-| Медиа через SFU | Клиент → TURN на доступном edge → публичный медиапорт SFU A. Firewall допускает входы из inventory, прямой доступ клиента к SFU закрыт. Внешний адрес A должен быть доступен самому edge. |
+| Медиа через SFU | Клиент → TURN на доступном edge → private SFU A через WireGuard. В cohost — локальный bridge→private bind. Разрешены лишь SFU TCP7981/UDP50300–50400; прямой доступ клиента закрыт. |
 | Личный WebRTC/P2P путь | ICE выбирает прямое соединение участников или TURN. Эти потоки не обязаны проходить через SFU A. |
 | Push callback (новые подписки) | Synapse на A → private IP A:8090 → control; затем HTTPS к push provider. Миграция старых URL включена в initial transition; доставка push требует отдельной приёмки. |
 | Выбор/обновление входов | HTTPS readiness и проверяемый подписанный каталог на известных edge; приватный ключ подписи хранится отдельно. |
 
-В текущем конфиге **TURN→SFU идёт к публичному медиапорту A, не через WireGuard**.
-Общий запрет private/metadata peers у coturn сохранён. Закрытый SFU через туннель
-потребовал бы отдельно согласованного узкого исключения и медиапроверки; на схеме
-такая возможность не выдаётся за реализованную. WireGuard защищает межсерверный
-API/WSS участок и не заменяет E2EE пользовательских данных и медиапотоков.
+В подготовленном исправлении TURN имеет одно точное private-peer исключение:
+tunnel IP A. Host firewall допускает relay только к SFU-портам; Matrix/control
+API, SSH, БД, metadata и другие private peers не открываются. Это устраняет
+переписывание общего public IP A в адрес самого TURN при cohost. API/WSS и SFU
+media между VPS защищены WireGuard; пользовательские E2EE ключи остаются в клиентах.
+Nonce-тест проверяет передачу пакетов; реальная расшифровка media проверяется отдельно.
 
 У входов нет рабочих БД и пользовательского media storage. Они имеют только
 необходимые своей роли TLS/TURN/tunnel credentials, публичные web/update assets,
 каталог и ограниченные служебные логи. B/C/D не зависят от связи друг с другом.
 У каждого физического узла свой WireGuard-ключ; `AllowedIPs` ограничены /32.
-Список peers не заменяет ACL: фильтр разрешает через туннель только API/signaling,
+Список peers не заменяет ACL: фильтр разрешает через туннель только API/signaling и SFU media,
 запрещает транзит в другие сети и учитывает исходный порт до Docker DNAT.
 В одноузловой схеме к API допускаются локальные web/health, к медиа — coturn.
 

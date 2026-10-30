@@ -61,6 +61,29 @@ class FirewallConfigTests(unittest.TestCase):
         self.assertNotIn('iifname "wg-vc" ip saddr', rules)
         self.assertNotIn('ip saddr { 192.0.2.10 }', rules)
 
+    def test_private_sfu_is_scoped_before_established_reply_and_private_fallback(self):
+        for colocated in (False, True):
+            inventory = fixture()
+            if colocated: inventory['edges'] = [{'id': 'a', 'host': 'core'}]
+            rules = firewall_config.render(inventory, 'core')
+            bridge = node_inventory.edge_bridge(inventory, 'a') if colocated else None
+            allowed = (f'iifname "{bridge}" ip saddr 10.241.0.4' if colocated else
+                       'iifname "wg-vc" ip saddr { 10.88.0.2, 10.88.0.3 }')
+            for protocol, port in (('tcp', '7981'), ('udp', '50300-50400')):
+                original = f'ct direction original ct original ip daddr 10.88.0.1 meta l4proto {protocol} ct original proto-dst {port}'
+                inbound = f'ip daddr 10.88.0.1 {protocol} dport {port}'
+                for prefix in (original, inbound):
+                    self.assertIn(prefix + ' ' + allowed + ' return', rules)
+                    self.assertLess(rules.index(prefix + ' ' + allowed + ' return'),
+                                    rules.index(prefix + ' drop'))
+                self.assertLess(rules.index(inbound + ' drop'), rules.index(
+                    'ip daddr 10.88.0.1 ct direction reply ct state established,related return'))
+            # The relay is never admitted to private HTTP APIs, PostgreSQL or SSH.
+            relay_rules = [line for line in rules.splitlines() if 'ip saddr 10.241.0.4 return' in line]
+            self.assertTrue(all('7981' in line or '50300-50400' in line for line in relay_rules))
+            self.assertNotIn('5432', rules)
+            self.assertNotIn('dport 22 ', rules)
+
     def test_edge_does_not_filter_unrelated_public_services(self):
         rules = firewall_config.render(fixture(), 'edge-c')
         self.assertIn('ip saddr { 192.0.2.10 } udp dport 51820 return', rules)

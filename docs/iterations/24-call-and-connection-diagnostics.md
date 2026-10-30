@@ -131,3 +131,53 @@ Full Flutter420 PASS/skipped4,4m31s — до последних own-hangup/UI и
 этих проверок не менялся. CI должен выполнить полный набор окончательного27.
 Далее нужен web release (backend/core fingerprints равны FULL64), signed Mac27,
 реальный повтор group SFU и multi-device decline на актуальных клиентах.
+
+
+## Выпуск28 и оставшийся cohost SFU — 30.10.2026
+
+WEB66 (3316a07) SUCCESS15m43s, только web заменён; независимая проверка
+core/остальных edge процессов, data identity, previous pointer и соседей PASS.
+[Evidence](three-vps-evidence/2026-10-30-web66.json). Mac28 после ответа владельца
+Keychain открыл прежние account/device и4 старых расшифрованных фрагмента, About
+1.14.1(28). Точный ZIP/DMG/feed опубликован, HTTPS/cache/hashes/signatures PASS;
+установленная26 предложила28, штатная кнопка завершила Sparkle replacement/restart.
+Installed28: exact285 + codesign + прежние account/device/4old decrypted fragments
+PASS; About28 и no compatible updates PASS. [Evidence28](three-vps-evidence/2026-10-30-macos28-published-installed.json).
+
+Native28 теперь передал SFU по3 relay candidates на publisher/subscriber, но ICE
+не установился. Одноразовая nonce-проверка локализовала причину: coturn декодирует
+свой public-IP peer как relay private IP и отправляет пакет на собственный lo,
+вместо другого сервиса SFU на том же VPS. Это подтверждено только IP/UDP заголовками
+в TURN namespace, без захвата media payload. Allocation и временный listener
+закрыты; правила production не менялись. Соответствующее преобразование находится
+в [coturn stun_attr_get_addr_str](https://github.com/coturn/coturn/blob/master/src/client/ns_turn_msg.c)
+и [map_addr_from_public_to_private](https://github.com/coturn/coturn/blob/master/src/client/ns_turn_ioaddr.c).
+
+Подготовлено исправление: SFU binds/candidates используют tunnel IP A; TURN имеет
+единственное точное private-peer исключение для A, host ACL разрешает relay лишь
+SFU TCP7981/UDP50300–50400. API/SSH/БД/metadata и остальные private peers остаются
+закрыты. Для удалённых edge медиа пройдёт через WireGuard; cohost использует
+локальный private bind. Старый public ACL остаётся ограниченным для rolling/rollback,
+новый core не публикует эти media ports на public IP. Legacy single-host без route
+config сохраняет прежнее поведение. Изменение ещё не выложено: идёт проверка
+в сохранённой local VM с actual pinned coturn + namespace firewall/DNAT/WireGuard.
+Это тест nonce, а не приёмка настоящего SFU E2EE/media или физических телефонов.
+
+
+Private SFU regression: full757 tests PASS/skipped3,95.617s; final namespace
+fixture с actual pinned coturn PASS: private SFU INPUT и DNAT nonce roundtrip,
+remote WireGuard/private media ACL, API/other private peers denial, старый public
+IP remapping reproduced, fixture containers/networks removed.
+[Evidence](three-vps-evidence/2026-10-30-private-sfu-vm.json). Первый fixture
+конфликтовал с subnet VM; второй не уложился в process startup timeout QEMU;
+третий выявил escaping error test-helper. Эти попытки не выдаются за PASS.
+Исправлены TEST-NET3/preflight overlap rejection, process startup budgets и
+compile generated helper before containers; положительные/отрицательные сетевые
+assertions сохранены. Production network/source guards не обходились.
+
+Два web28 одного fixture account подготовлены (distinct devices,6SAS matched
+both sides до trust). Но actual multi-device decline пока не выполнен: Mac28
+зависает до отправки invitation. Matrix whoami/members/keys/turnServer requests
+завершаются; native microphone permission проверено в System Settings — ON.
+Перезапуск Mac28 не устранил это. ОС/Keychain/profile не менялись, почта не
+открывалась. Это отдельный открытый дефект UA-04, не successful direct-call28.

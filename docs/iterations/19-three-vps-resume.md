@@ -1,3 +1,115 @@
+## Актуально: private SFU VM PASS, готовить серверный FULL — 30.10 16:56UTC
+
+Все предыдущие оперативные статусы ниже — история. Automation PAUSED.
+Mac28 PUBLIC+INSTALLED26→28 exact285/signature/account/device/4old texts/About28/
+no updates PASS. Web66 source3316 PASS, production core79ad/edge3316, feed28.
+Новое private SFU исправление готово в tracked diff, full757 PASS3skip95.617s,
+actual VM pinned coturn/WG/nft/INPUT/DNAT nonce +denials PASS. Evidence public
+2026-10-30-private-sfu-vm.json. Положительный kernel proof попытка4; попытки1–3
+были errors fixture subnet/QEMU budget/escaping, guards не ослаблялись.
+VM .prototype/vm/active.json SSH54926 единственная ON; core/edge units в ней
+ШТАТНО STOPPED для освобожденияCPU, shared-front/deploy-caddy работают. Все
+новые fixture containers/networks удалены. Disks/data/network archive retained.
+Другие3VM OFF. Нельзя запускать конкурирующий fixture.
+
+Далее commit/push всей проверенной serverdiff и docs/evidence; frozen network
+source archive из нового commit; FRESH before baseline production (web66/feed28),
+stock network_bootstrap.upgrade(shared_host=True)+role_bootstrap.install core/edge
+с точными source hashes и доказательством отсутствия process/data/journal changes;
+затем Build and deploy managed/full main, не web. Network source guards не обходить.
+Сценарий .prototype/entry-production-network-upgrade.py старый, НЕ запускать
+без адаптации frozen receipt/current baseline/new output files!
+
+Отдельный открытый дефект Mac28 direct: два исходящих не дошли ни до одного web.
+Matrix whoami/members/keys/turnServer completed; native microphone permission ON
+проверено READ-ONLY SystemSettings. 1s sample /private/tmp/voicechat28-call.sample
+показывает idle WebRTC threads и audio output, не доказал причину; никакиеOS
+permissions не менялись. Source ещё НЕ менялся из-за этого. Mac28 сейчас всёещё
+Вызываем на втором attempt, кнопкаEnd на первомочистилаroom, но starting остался
+true; restartнеустранил. Без нового факта не выдавать timeout за root fix.
+
+CUA updateApp installed28; macPrivacySettings28 на Microphone(VoiceChat ON),
+НЕ менять toggles, можно закрыть открытый агентом Settings. getApp однажды
+завис на4679s; в этот период новых production actions не было. Все новыеUI calls
+ставить timeout_ms10000. Не читать/контролироватьSecurityAgent, не трогатьпочту.
+Web prodWeb16 fixture28 FSRYGTBSBQ; secondTestWeb20 credentialless28 WJFNEDXCBL;
+обе samefixture,6SAS matchboth/confirmed/restored. Старый19 AURD закрыт.
+Tab20 НЕ reloadtop: потеряетephemeralprofile. Local harness81495 active62161.
+Web15 release66success, monitor17 oldnormal7. Need currentUIread before actions.
+## Текущая точка: WEB66 готов, Mac28 опубликован, SFU private fix проверяется
+
+Keychain ответ done обработан: exact28 прежние account/device/4old decrypted texts
+и About28 PASS; системный blocker снят. WEB66 SUCCESS15m43, independent
+.prototype/web66-postcheck-proof.json PASS only web changed; core79ad, edge3316a07.
+Mac28 штатно опубликован .prototype/publish-macos28.py; HTTPS+signatures PASS.
+Sparkle26→28 COMPLETE: installed285 exact+codesign+old account/device/4old decrypted
+fragments PASS. About28/no compatible updates PASS. UI proof .prototype/macos28-installed-ui-proof.json.
+Скрин /private/tmp/voicechat-macos28-installed.png; native updateApp installed28 открыт
+на About/no compatible updates; candidate закрыт. Mac release block DONE.
+
+Remaining group root FOUND actual nonce: coturn public/private mapping rewrites
+A public IP peer into TURN own relay private IP (lo внутри relay namespace).
+Native28 теперь relay3+3, но ICE fail. Production rules НЕ менялись.
+Подготовлен private SFU fix в configure/render_roles/edge_turn/role_config/firewall_config:
+media only A tunnel IP, точное core private-peer исключение; только SFU ports,
+API/SSH/DB/metadata запрещены. Новый unit6 PASS; full757 имел толькоошибку нового
+тестового edge-a lookup, исправленную потом (остальные756/skipped3).
+
+Один существующий clean-host VM RESUMED .prototype/vm/active.json SSH54926.
+Другие3 OFF. Не запускать другой fixture! exec2145 сейчас готовит толькоpublicsource
+в /srv/voicechat-sfu-private-probe и запускает расширенный existing
+prototype/check_firewall_config.py с actual pinned coturn. Лог после завершения
+.prototype/private-sfu-vm-check.log. VMoriginal network/data/archives не менять.
+Проверка реальная Linux/WG/nft/DNAT+nonce, не actual SFU/media/hardware.
+После success: docs topology и THREE_VPS обновить, commit/push, stock source network
+upgrade с новым frozen source и current baseline, затем FULL (infra protected).
+Не запускать FULL раньше проверки/upgrade; не обходитьsourceguards.
+
+Local harness exec81495 stillactive62161, tab16 fixture26 и tab19credentialless26.
+WEB28 deployed, receivers ещё требуют reload/login для actual decline28.
+Native updater может завершиться; не будить stale candidate handle.
+Automation paused, никаких новыхVPS/A relocation/email/agents.
+
+## LIVE WEB66 / Mac28 — точная текущая точка
+
+HEAD/main/origin rollout3316a07433a8b77d9a3264d2e0458760e86e4e17, metadata check1.14.1+28 PASS.
+WEB66 run41074743370/job124127814035 запущен web=true deploy managed main,
+backend/core fingerprints равны FULL64. CI tests passed; сейчас artifacts build.
+WEB65/e3ccac4 failed46s check-version BEFORE DEPLOY; protected guards не обходились.
+Независимый before .prototype/calls27-before-web.json PASS FULL64/feed26;
+postcheck .prototype/post-web66.py готов, запускать после success66 ДО publish28.
+
+Mac28 build/package PASS, clean3316a07. ZIP2fab3e7ebd587e062095d9ac86237c4dc7d81cf972544e2863de5326f865c2a5,
+DMG31f3349dd64a1ff5ea450822fb369af4196de4d2f7d16b76933ef97bda71de20;
+285 ZIP/DMG files/links match, обе codesign PASS. Mac27 rejected, не публиковать.
+Staging28 уже доставлен (.prototype/macos28-stage-proof.json), feed26 прежний.
+Publisher .prototype/publish-macos28.py gated on successful web66 proof;
+публикацию НЕ запускать до actual exact28 profile acceptance.
+
+PHYSICAL BLOCK:28 и затем installed26 остались на «Открываем сохранённый вход…»;
+SecurityAgent process присутствует. Не читать/не управлять SecurityAgent, не менять
+Keychain/profile. Owner26 закрыт, сейчас один exact candidate28 открыт и ждёт.
+Пользователю async вопрос про подтверждение системного Keychain после возвращения
+уже отправлен, ответа пока нет; он отошёл на несколько часов. Не задавать повторно.
+Сохраняется closed backup26 (253 profile files) перед27/28;27 не запускался.
+Дальше после ответа: actual old account/device/history28, затем release28 и
+Sparkle26→28 из установленной26. Не подменять это ручным копированием приложения.
+
+Пока Mac ждёт: продолжать web/VPS. Два отдельных web26 одного fixture account
+уже SAS-verified (6match both), direct baseline FAIL записан private
+/private/tmp/voicechat-two-device-direct-decline26-failed.json. Код fix28 committed.
+Tab16 primary fixture / tab19 credentialless same fixture (разные devices).
+Tab19 top reload уничтожит ephemeral store, не считать восстановление старой сессии.
+Для actual group SFU независимо от Mac создан НОВЫЙ nonadmin fixture без initialdevice:
+.prototype/single-vps/group28-second-account.json0600 (не прежний web-account.json!).
+Registration secret остался в owned Synapse; owner account не тронут. Новый fixture
+ещё НЕ входил в UI. После WEB66 создать новый credentialless tab к localhost62161,
+войти fixture2, подготовить контакт/SAS сfixture1 и group media/decline checks.
+Local server exec81495 still active, только iframe harness; TURN server14085 stopped.
+Cua handles: webRelease27 tab15 current66job; prodWeb16; secondTestWeb19;
+monitorNow17 normal7; candidate28App exact28. Kernel reset earlier, docs current.
+No active builds/tests except GitHub66, no other exec jobs pending. Automation paused.
+
 ## Исправление release metadata: кандидат28 вместо27
 
 WEB65 run41074138485 остановился46s ДО DEPLOY на check-version:

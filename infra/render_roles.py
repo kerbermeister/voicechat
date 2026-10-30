@@ -39,11 +39,11 @@ def bundle(public, inventory, role, edge_id=None, subnet='10.241.0.0/28'):
         raise ValueError('Unknown server role')
     files = {name: (role_config.ROOT / name).read_text() for name in sources}
     if role == 'core':
-        # The legacy BIND may be 0.0.0.0/:: or another interface. The core media
-        # ACL protects the inventory address; never publish a bypass on aliases.
+        # Media uses A's tunnel address through TURN. A shared public IP would
+        # be remapped to TURN itself by coturn's external-IP mapping.
         source = role_config.core_base(files['infra/compose.yaml'])
         if '${BIND}' not in source: raise ValueError('Core base bind contract changed')
-        files['infra/compose.yaml'] = source.replace('${BIND}', inventory['core']['public_ip'])
+        files['infra/compose.yaml'] = source.replace('${BIND}', inventory['core']['tunnel_ip'])
     files.update({'infra/' + name: content for name, content in generated.items()})
     files['infra/compose.' + role + '.json'] = json.dumps(compose, indent=2) + '\n'
     return files, runtime

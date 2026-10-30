@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "actual_linux_firewall_and_wireguard_passed": true,
+  "actual_pinned_coturn_private_sfu_nonce_input_and_dnat_passed": true,
+  "other_private_peers_and_api_denied": true,
+  "old_public_ip_loopback_reproduced": true,
+  "fixture_containers_removed": true,
+  "source_sha256": {
+    "infra/firewall_config.py": "4336eb5ac2de13f91018646576c8323054b5ed720a059338b0600038aceb05e4",
+    "infra/edge_turn.py": "efb2fb8df824f8faf1c0aa8c8e20d13a4a0acf3b478f40b11066574fcc9c8f8f",
+    "prototype/check_firewall_config.py": "96986b8ed313687d3dcbfce0fedcf991505e30fa22d969403ff34dfab22ad326"
+  },
+  "tools_image": "sha256:ee33bce5ab9d31af3c2bc4c6e41011cfb46c4c4d3061a2d240d426855b61845f",
+  "limits": "Local VM network/coturn nonce only; not real SFU E2EE/media, production deployment or physical device proof."
+}

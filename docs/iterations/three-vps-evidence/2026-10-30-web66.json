@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-30T15:03:36.058079+00:00",
+  "run": "https://github.com/kerbermeister/voicechat/actions/runs/41074743370",
+  "scope": "web",
+  "core_commit": "79ad872032c88925ccd0e51365de0cb080142ace",
+  "edge_commit": "3316a07433a8b77d9a3264d2e0458760e86e4e17",
+  "independent_postcheck_passed": true,
+  "only_web_process_replaced": true,
+  "core_and_other_edge_processes_unchanged": true,
+  "data_identity_preserved": true,
+  "neighbors_unchanged": true,
+  "network_intent_unchanged": true,
+  "previous_pointer_verified": true,
+  "macos26_feed_preserved_during_web_deploy": true
+}

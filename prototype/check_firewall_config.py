@@ -5,6 +5,7 @@ network containers, production data or host firewall modifications are used.
 """
 import argparse
 import json
+import ipaddress
 from pathlib import Path
 import re
 import subprocess
@@ -16,6 +17,9 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'infra'))
 import firewall_config
+import edge_turn
+import role_config
+import secrets
 import node_inventory
 import tunnel_config
 from test_node_inventory import fixture
@@ -30,7 +34,19 @@ def main():
     project = 'voicechat-firewall-' + uuid.uuid4().hex[:12]
     with tempfile.TemporaryDirectory(prefix=project) as directory:
         root = Path(directory)
+        root.chmod(0o755)  # Synthetic fixture only; the unprivileged TURN reads its config.
         inventory = fixture()
+        for node in [inventory['core'], *inventory['edges']]:
+            node['public_ip'] = node['public_ip'].replace('192.0.2.', '203.0.113.')
+        # Never let a test bridge steal the VM's SSH/default-gateway route.
+        host_links = json.loads(subprocess.check_output(['ip','-j','-4','address','show']))
+        subnets = [ipaddress.ip_network(value) for value in
+                   ('203.0.113.0/28','10.245.0.0/28','10.242.0.0/28')]
+        for link in host_links:
+            for address in link.get('addr_info', []):
+                network = ipaddress.ip_interface(f"{address['local']}/{address['prefixlen']}").network
+                if any(network.overlaps(subnet) for subnet in subnets):
+                    raise ValueError('Fixture subnet overlaps the host network; no containers created')
         registry = {'schema': 1, 'service_id': inventory['service_id'], 'nodes': {}}
         for name in tunnel_config.physical_nodes(inventory):
             registry['nodes'][name] = {'generation': 1, 'public_key': tunnel_config.ensure_key(root / (name + '.key'))}
@@ -44,9 +60,12 @@ def main():
 def serve_http(port):
     http.server.ThreadingHTTPServer(('10.88.0.1',port),functools.partial(http.server.SimpleHTTPRequestHandler,directory='/empty')).serve_forever()
 for port in (8090,8091): threading.Thread(target=serve_http,args=(port,),daemon=True).start()
-sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);sock.bind(('192.0.2.10',50301))
-while True:
-    value,address=sock.recvfrom(1024);sock.sendto(value,address)
+def echo(host):
+    sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);sock.bind((host,50301))
+    while True:
+        value,address=sock.recvfrom(1024);sock.sendto(value,address)
+threading.Thread(target=echo,args=('203.0.113.10',),daemon=True).start()
+echo('10.88.0.1')
 ''')
         (root / 'backend.py').write_text('''import functools, http.server, socket, threading
 threading.Thread(target=lambda:http.server.ThreadingHTTPServer(('0.0.0.0',8008),functools.partial(http.server.SimpleHTTPRequestHandler,directory='/empty')).serve_forever(),daemon=True).start()
@@ -62,9 +81,9 @@ while True:
         (root / 'nat.nft').write_text('''table ip fixture_nat {
  chain prerouting {
   type nat hook prerouting priority dstnat; policy accept;
-  ip daddr { 192.0.2.10, 10.88.0.1 } tcp dport { 8088, 7981 } dnat to 10.245.0.3:8008
-  ip daddr 192.0.2.10 tcp dport 9002 dnat to 10.242.0.6:8008
-  ip daddr 192.0.2.10 udp dport 50300 dnat to 10.245.0.3:8009
+  ip daddr { 203.0.113.10, 10.88.0.1 } tcp dport { 8088, 7981 } dnat to 10.245.0.3:8008
+  ip daddr 203.0.113.10 tcp dport 9002 dnat to 10.242.0.6:8008
+  ip daddr { 203.0.113.10, 10.88.0.1 } udp dport 50300 dnat to 10.245.0.3:8009
  }
  chain postrouting {
   type nat hook postrouting priority srcnat; policy accept;
@@ -88,7 +107,7 @@ if name=='core':
     for attempt in range(100):
         links=json.loads(subprocess.check_output(['ip','-j','-4','address','show']))
         present={a.get('local') for item in links for a in item.get('addr_info',[])}
-        if {'192.0.2.10','10.245.0.2','10.242.0.1'} <= present: break
+        if {'203.0.113.10','10.245.0.2','10.242.0.1'} <= present: break
         time.sleep(0.1)
     else: raise RuntimeError('Fixture networks did not attach: '+str(present))
     for address,bridge in [('10.242.0.1',sys.argv[2]),('10.245.0.2',sys.argv[3])]:
@@ -101,25 +120,25 @@ if name=='core':
     run('nft','-f','/input/nat.nft')
     os.execvp('python3',['python3','/input/core-http.py'])
 elif name=='backend':
-    for address in ('192.0.2.0/28','10.242.0.0/28','10.88.0.1/32'): run('ip','route','add',address,'via','10.245.0.2')
+    for address in ('203.0.113.0/28','10.242.0.0/28','10.88.0.1/32'): run('ip','route','add',address,'via','10.245.0.2')
     os.execvp('python3',['python3','/input/backend.py'])
 elif name=='outsider':
-    for address in ('10.88.0.1/32','10.245.0.3/32'): run('ip','route','add',address,'via','192.0.2.10')
+    for address in ('10.88.0.1/32','10.245.0.3/32'): run('ip','route','add',address,'via','203.0.113.10')
 elif name!='edge-b':
-    for address in ('10.88.0.1/32','192.0.2.10/32'): run('ip','route','add',address,'via','10.242.0.1')
+    for address in ('10.88.0.1/32','203.0.113.10/32'): run('ip','route','add',address,'via','10.242.0.1')
 if name=='other': os.execvp('python3',['python3','/input/backend.py'])
 if name in ('outsider','edge-b','relay'): os.execvp('python3',['python3','/input/echo.py'])
 os.execvp('sleep',['sleep','infinity'])
 ''')
         assignments = {
-            'core': {'public': '192.0.2.10', 'backend': '10.245.0.2', 'local': '10.242.0.1'},
-            'edge-b': {'public': '192.0.2.11'}, 'outsider': {'public': '192.0.2.14'},
+            'core': {'public': '203.0.113.10', 'backend': '10.245.0.2', 'local': '10.242.0.1'},
+            'edge-b': {'public': '203.0.113.11'}, 'outsider': {'public': '203.0.113.14'},
             'backend': {'backend': '10.245.0.3'},
             'web': {'local': '10.242.0.3'}, 'relay': {'local': '10.242.0.4'},
             'health': {'local': '10.242.0.5'}, 'other': {'local': '10.242.0.6'},
         }
         services = {name: {'image': args.tools_image, 'cap_add': ['NET_ADMIN'],
-            'mem_limit': '128m', 'cpus': .25, 'pids_limit': 64,
+            'mem_limit': '128m', 'cpus': 1, 'pids_limit': 64,
             'sysctls': {'net.ipv4.ip_forward': '1' if name == 'core' else '0'},
             'entrypoint': ['python3', '/input/start.py', name, bridge, core_bridge],
             'environment': {'PYTHONDONTWRITEBYTECODE': '1'},
@@ -127,6 +146,55 @@ os.execvp('sleep',['sleep','infinity'])
             'volumes': [str(root) + ':/input:ro', str(ROOT / 'infra') + ':/source:ro'],
             'networks': {net: {'ipv4_address': address} for net, address in networks.items()}}
             for name, networks in assignments.items()}
+        # Actual pinned coturn shares only the relay namespace. No host ports,
+        # production credentials or changes to the VM host firewall are needed.
+        turn_secret = secrets.token_hex(32)
+        (root / 'turn.conf').write_text(edge_turn.configuration(
+            turn_secret, '203.0.113.10', '10.242.0.4', 'fixture.example.com', '10.88.0.1')
+            + 'no-tls\nno-dtls\n')
+        services['turn'] = {
+            'image': role_config.pinned_image('turn'), 'user': '10001:10001',
+            'network_mode': 'service:relay', 'depends_on': ['relay'],
+            'command': ['-c', '/input/turn.conf'], 'cap_drop': ['ALL'],
+            'cap_add': ['NET_BIND_SERVICE'], 'read_only': True,
+            'tmpfs': ['/tmp:mode=1777'], 'volumes': [str(root) + ':/input:ro'],
+        }
+        # Plain TCP is entirely inside the disposable namespace; production
+        # TURN/TLS allocation and certificates have separate HTTPS/TLS checks.
+        (root / 'turn-data.py').write_text('''import hashlib,ipaddress,json,secrets,socket,struct,sys
+sys.path.insert(0,'/source');import entry_turn as t
+secret,host,port,expected=sys.argv[1:];port=int(port);expected=expected=='yes'
+cred=t.credential(secret);udp=t.attribute(0x19,bytes([17,0,0,0]))
+with socket.create_connection(('127.0.0.1',3478),timeout=3) as stream:
+    kind,ch,_=t.exchange(stream,3,[udp]);assert kind==0x113 and t.error_code(ch)==401
+    realm,nonce=ch[0x14],ch[0x15]
+    key=hashlib.md5(cred['username'].encode()+b':'+realm+b':'+cred['credential'].encode()).digest()
+    auth=[t.attribute(6,cred['username'].encode()),t.attribute(0x14,realm),t.attribute(0x15,nonce)]
+    k,a,v=t.exchange(stream,3,[udp,t.attribute(0xd,struct.pack('!I',60)),*auth],key);assert k==0x103 and v
+    try:
+        peer=bytes([0,1])+struct.pack('!H',port^(t.COOKIE>>16))+struct.pack('!I',int(ipaddress.IPv4Address(host))^t.COOKIE)
+        k,a,v=t.exchange(stream,8,[t.attribute(0x12,peer),*auth],key)
+        if host=='10.88.0.2':
+            assert k==0x118 and t.error_code(a)==403
+        else:
+            assert k==0x108 and v
+            data=secrets.token_bytes(32);body=t.attribute(0x12,peer)+t.attribute(0x13,data)
+            stream.sendall(struct.pack('!HHI',0x16,len(body),t.COOKIE)+secrets.token_bytes(12)+body)
+            stream.settimeout(1);returned=False
+            try:
+                header=b''
+                while len(header)<20:header+=stream.recv(20-len(header))
+                kind,length,cookie=struct.unpack('!HHI',header[:8]);assert cookie==t.COOKIE and length<=8192
+                payload=b''
+                while len(payload)<length:payload+=stream.recv(length-len(payload))
+                returned=kind==0x17 and data in payload
+            except TimeoutError:pass
+            assert returned==expected,(host,port,expected,returned)
+    finally:
+        k,a,v=t.exchange(stream,4,[t.attribute(0xd,bytes(4)),*auth],key);assert k==0x104 and v
+print('PASS: actual TURN data path',host,port,expected)
+''')
+        compile((root / 'turn-data.py').read_text(), '/input/turn-data.py', 'exec')
         compose = root / 'compose.json'
         compose.write_text(json.dumps({'name': project, 'services': services, 'networks': {
             # Docker's internal bridge drops routed destinations before they
@@ -135,33 +203,33 @@ os.execvp('sleep',['sleep','infinity'])
             name: {'internal': False,
                    'driver_opts': {'com.docker.network.bridge.enable_ip_masquerade': 'false'},
                    'ipam': {'config': [{'subnet': subnet, 'gateway': gateway}]}}
-            for name, subnet, gateway in (('public','192.0.2.0/28','192.0.2.1'),
+            for name, subnet, gateway in (('public','203.0.113.0/28','203.0.113.1'),
                                          ('backend','10.245.0.0/28','10.245.0.1'),
                                          ('local','10.242.0.0/28','10.242.0.14'))}}))
         command = ['docker', 'compose', '-f', str(compose)]
 
         def run(name, *parts):
             result = subprocess.run([*command, 'exec', '-T', name, *parts],
-                                    text=True, capture_output=True, timeout=15)
+                                    text=True, capture_output=True, timeout=30)
             if result.returncode:
-                raise RuntimeError(f'{name} {parts[:3]} failed: {result.stderr}')
+                raise RuntimeError(f'{name} {parts[:2]} failed: {result.stderr}')
             return result.stdout.strip()
 
         def http(name, host, port, succeeds=True):
             code = f'import urllib.request; assert urllib.request.urlopen("http://{host}:{port}",timeout=1).status==200'
-            deadline = time.monotonic() + 12
+            deadline = time.monotonic() + 45
             while True:
                 result = subprocess.run([*command,'exec','-T',name,'python3','-c',code],
-                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
                 if not succeeds or result.returncode == 0 or time.monotonic() >= deadline: break
                 time.sleep(0.2)
             assert (result.returncode == 0) == succeeds, (name, host, port, succeeds, result.stderr.decode())
 
-        def udp(name, port, succeeds=True):
+        def udp(name, port, succeeds=True, host="203.0.113.10"):
             code = (f'import socket; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.settimeout(1); '
-                    f's.sendto(b"probe",("192.0.2.10",{port})); assert s.recv(32)==b"probe"')
+                    f's.sendto(b"probe",("{host}",{port})); assert s.recv(32)==b"probe"')
             result = subprocess.run([*command,'exec','-T',name,'python3','-c',code],
-                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
             assert (result.returncode == 0) == succeeds, (name, port, succeeds)
 
         def media_reply(host, succeeds=True):
@@ -170,7 +238,7 @@ os.execvp('sleep',['sleep','infinity'])
             code = (f'import socket; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.settimeout(1); '
                     f's.bind(("10.245.0.3",50302)); s.sendto(b"reply",("{host}",50305)); assert s.recv(32)==b"reply"')
             result = subprocess.run([*command,'exec','-T','backend','python3','-c',code],
-                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5)
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=15)
             assert (result.returncode == 0) == succeeds, ('SFU-originated reply', host, succeeds)
 
         def apply(name, value, node):
@@ -194,7 +262,7 @@ os.execvp('sleep',['sleep','infinity'])
             http('edge-b', '10.88.0.1', 8090)
             http('outsider', '10.88.0.1', 8088)  # Private binding alone is not an ACL.
             http('outsider', '10.245.0.3', 8008)  # Direct container routing bypasses published-port matching.
-            media_reply('192.0.2.14')
+            media_reply('203.0.113.14')
             # A malicious peer can change its own AllowedIPs. Authentication of
             # its /32 source must not grant transit to the backend network.
             run('edge-b', 'wg', 'set', 'wg-vc', 'peer', registry['nodes']['core']['public_key'],
@@ -212,17 +280,21 @@ os.execvp('sleep',['sleep','infinity'])
             http('backend','10.88.0.1',8090)
             http('edge-b', '10.245.0.3', 8008, False)
             http('outsider', '10.245.0.3', 8008, False)
-            media_reply('192.0.2.14', False); media_reply('192.0.2.11')
+            media_reply('203.0.113.14', False); media_reply('203.0.113.11')
             for port in (8090,8088):
                 http('edge-b','10.88.0.1',port)
                 http('outsider','10.88.0.1',port,False)
             http('edge-b','10.88.0.1',8091,False)
-            http('edge-b','192.0.2.10',8088,False)
-            http('edge-b','192.0.2.10',7981)
-            http('outsider','192.0.2.10',7981,False)
+            http('edge-b','203.0.113.10',8088,False)
+            http('edge-b','10.88.0.1',7981)
+            http('outsider','10.88.0.1',7981,False)
+            for port in (50300,50301):
+                udp('edge-b',port,host='10.88.0.1'); udp('outsider',port,False,host='10.88.0.1')
+            http('edge-b','203.0.113.10',7981)
+            http('outsider','203.0.113.10',7981,False)
             for port in (50300,50301):
                 udp('edge-b',port); udp('outsider',port,False)
-            http('outsider','192.0.2.10',9002)
+            http('outsider','203.0.113.10',9002)
             apply('core', inventory, 'core')
             table, _ = firewall_config.identity(inventory, 'edge-b')
             run('edge-b', 'nft', 'delete', 'table', 'inet', table)
@@ -236,12 +308,21 @@ os.execvp('sleep',['sleep','infinity'])
                 http(name,'10.88.0.1',8090); http(name,'10.88.0.1',8088)
             for name in ('relay','other'):
                 http(name,'10.88.0.1',8090,False); http(name,'10.88.0.1',8088,False)
-            http('relay','192.0.2.10',7981); udp('relay',50300); udp('relay',50301)
-            media_reply('10.242.0.4'); media_reply('192.0.2.11', False)
-            http('web','192.0.2.10',7981,False)
+            http('relay','10.88.0.1',7981)
+            http('web','10.88.0.1',7981,False); http('other','10.88.0.1',7981,False)
+            for port in (50300,50301):
+                udp('relay',port,host='10.88.0.1'); udp('web',port,False,host='10.88.0.1')
+                run('relay','python3','/input/turn-data.py',turn_secret,'10.88.0.1',str(port),'yes')
+            run('relay','python3','/input/turn-data.py',turn_secret,'10.88.0.2','50301','no')
+            # Reproduce the old cohost conflict without changing the firewall:
+            # coturn maps its own public IP to the relay namespace, not SFU.
+            run('relay','python3','/input/turn-data.py',turn_secret,'203.0.113.10','50301','no')
+            http('relay','203.0.113.10',7981); udp('relay',50300); udp('relay',50301)
+            media_reply('10.242.0.4'); media_reply('203.0.113.11', False)
+            http('web','203.0.113.10',7981,False)
             http('edge-b','10.88.0.1',8088,False)
-            http('outsider','192.0.2.10',9002)
-            print('PASS: scoped INPUT/FORWARD, real WireGuard replies, DNAT original ports, media source ACL, private core callback INPUT/DNAT, co-located roles, unrelated tables retained', flush=True)
+            http('outsider','203.0.113.10',9002)
+            print('PASS: scoped INPUT/FORWARD, real WireGuard replies, DNAT original ports, media source ACL, private core callback INPUT/DNAT, co-located roles, actual pinned TURN private SFU nonce INPUT/DNAT, old public-IP loopback reproduced, other private peers denied, unrelated tables retained', flush=True)
         except Exception:
             subprocess.run([*command, 'logs', '--tail', '12'], check=False)
             subprocess.run([*command, 'ps', '-a'], check=False)

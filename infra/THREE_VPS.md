@@ -265,7 +265,11 @@ preflight отклоняет уже занятое имя. Owner-only state/lock
 
 Правила INPUT и FORWARD разрешают private API/signaling только через `wg-vc` от
 известных peer /32. Для совмещённой роли разрешены local web/health IP на её bridge,
-но не coturn. Публичный SFU принимает media от edge public IP или локального coturn.
+но не coturn. Подготовленное исправление SFU использует tunnel IP A: edge /32
+через wg-vc или локальный coturn. У TURN единственное точное private-peer
+исключение для A, host ACL ограничивает relay SFU TCP7981/UDP50300–50400.
+Deployment исправления пока проверяется (журнал24); public ACL остаётся
+ограниченным для прежних releases/rollback.
 WireGuard UDP 51820 ограничен peer IP; произвольный транзит из туннеля запрещён,
 даже если peer самостоятельно расширил AllowedIPs. FORWARD проверяет исходные
 адрес/порт conntrack до DNAT и отличает reply direction. Другие host policy могут
@@ -285,7 +289,7 @@ WireGuard probe тоже прошёл. Повторный TLS/SNI/role probe п�
 
 Это ещё не production boot/rollout. Требуются host packages/systemd, согласование
 с существующим firewall/Docker, provider ACL и внешняя приёмка. Core bundle
-закрепляет media binds за конкретным inventory IPv4, независимо от legacy BIND;
+закрепляет media binds за tunnel IPv4 из inventory, независимо от legacy BIND;
 IPv6/вторичные адреса через эти публикации не открываются. Стабильный core bridge
 дополнительно закрывает прямую маршрутизацию к контейнерам, сохраняя внутренние
 соединения core. SFU-инициированные UDP потоки проверяются и в reply direction:
@@ -700,9 +704,11 @@ TLS TCP 443) и точный `VOICECHAT_ORIGINS`; canonical origin остаёт�
 Core API ports 8088 (Matrix), 8090 (control) и 7880 (WSS) привязаны к tunnel IP.
 Сохраняются прежние loopback Matrix port и media ports control 7981/TCP,
 50300–50400/UDP. Tunnel binding сам по себе не заменяет firewall/peer ACL.
-TURN relay направляется к публичным media candidates A: private peer destinations
-запрещены. WireGuard здесь нужен для API, схема закрытого SFU ещё требует отдельной
-проверки сетевой политики.
+Подготовленное исправление направляет TURN к private SFU candidate A через
+WireGuard (локальный bridge при cohost). Разрешены точный tunnel IP A и только
+SFU-порты; другие private/metadata peers и core API для coturn запрещены. Это
+устраняет coturn public-IP remapping в собственный relay namespace. До следующего
+FULL production остаётся на прежней схеме; состояние проверки — журнал24/UA-04.
 
 Edge публикует 443/TCP (SNI HTTPS/TURN TLS), 3478/TCP+UDP и 49300–49400/UDP.
 Web и TURN требуют разных hostname/certificates. Upstream адреса взяты из inventory;
