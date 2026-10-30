@@ -4,6 +4,57 @@
 
 ### Последнее состояние текущего запуска
 
+**Текущий согласованный блок entry onboarding/replacement + общий выпуск завершён
+в доступной среде.** FULL61 SUCCESS16m33s, source14bddc4ab38404ff36d710d01d4f1f698b390edf:
+https://github.com/kerbermeister/voicechat/actions/runs/41045935212 . Независимый
+postcheck подтвердил exact Git source/backend/core guard/images, data identity,
+previous pointer, health/HTTPS/timers, network intent и6neighbor processes.
+Evidence `three-vps-evidence/2026-10-30-entry-production-full61.json`.
+
+**macOS1.13.0(25) опубликован и установлен штатной кнопкой24→25.** Exact r2 ZIP
+SHA126c24366359bd22a0c0eb38d0fde7baf32515311c6ebada5761abf2b3ca7dcf;
+все285 файлов/ссылок совпадают, codesign PASS. Actual UI сохранил прежние account/
+device и4 старых расшифрованных фрагмента; About25 и «совместимых обновлений нет»
+проверены. ZIP/DMG/feed HTTPS200+hash/cache verified. Backup24/profile сохранён,
+Keychain не трогать. Evidence `three-vps-evidence/2026-10-30-macos25-published-installed.json`.
+Не откатывать профиль: за время проверки появились новые пользовательские записи.
+Не replay publisher/candidate/install; текущий /Applications/VoiceChat.app уже25.
+
+**Весь функциональный код merged в main**: PR#5, merge6d02368b8976936b3863223ca0b2aaf990c0d1d7;
+его дерево совпадает с deployed14bddc4. Post-release evidence/docs — отдельная
+фиксация, не новый backend/client release. Source branch также содержит373ae2f.
+
+VM add/replacement/live GHCR proof COMPLETE; все4 fixture VM штатно OFF, диски,
+keys, restart argv и исходные archives retained. Не запускать конкурирующий fixture
+или повтор completed drivers. Production A84.200.80.13 остаётся data+edge-a,
+root /srv/voicechat-managed; channel edges/a/runtime/macos-updates. Applied network
+source0fc4733988eaf9085b56fb87ac72a262af363d3ccc3fe3f9c2cf08fa96c0eca4,
+intent не менялся. Прежний FULL60 отказал ДО сборки/выкладки; terminal resume defect
+исправлен в14bddc4 и реально пройден FULL61. Никакие guards не обходились.
+
+**Глобальный остаток:** V3-22 перенос доступного A; чистый внешний entry с real
+DNS/TLS и клиентским stale-DNS; настоящие многосерверные calls/screen/media/failover
+и физические телефоны. UA70–79 доступны в web/Mac25, их индивидуальная приёмка ещё
+не принята. Windows, внешний backup и собственная DNS-зона — будущие/целевые задачи.
+Не объявлять глобальный MVP100%. Единый реестр docs/user-acceptance.md обновлён.
+Автоматизация voicechat-core-edge остаётся PAUSED; новых агентов/чатов нет.
+Последнее узкое поручение было только entry lifecycle с согласованным общим выпуском;
+не начинать перенос production A или покупать новые VPS скрытым smoke test.
+
+### История оперативных состояний (не текущие команды)
+
+**CURRENT ACTIVE FULL61:** https://github.com/kerbermeister/voicechat/actions/runs/41045935212
+revision **14bddc4ab38404ff36d710d01d4f1f698b390edf**, job124029916099,
+modefull/rolloutmanaged/deploytrue/retryfalse. Не запускать другой deploy.
+FULL60 terminal prebuild failure сохранён; исправление134+16 tests committed/pushed.
+IAB tab2 `github` открыт job61. Следующий шаг — проверить результат61 и затем
+`python3 -B .prototype/full61-postcheck.py` (готов, ещё НЕ запускался).
+Postcheck сверяет current/previous, exact14bddc4 Git source/backend/coreguard,
+оба новых image refs, dataidentity,6neighbor processes, network intent и feed24.
+Затем `python3 -B .prototype/publish-macos25-r2.py` (gated by successful postcheck),
+и настоящий Sparkle24→25. Helpers сохранены в .prototype, не только /tmp. Main ещё НЕ merged.
+Automation остаётся PAUSED;4fixtures OFF/retained. Private baseline в CUA не reset.
+
 **LATEST:** FULL60 FAILED до сборки/выкладки (24s), step7 resume-only повторно
 вызвал finish закрытого старого web release. После штатного boot source upgrade
 старый finisher отказывает на source-bound boot ready. Сервисы/данные/production
@@ -81,7 +132,7 @@ source upgrade и общий FULL server/web после CI; exact r2 publication
 установка24→25. Глобально V3-22 перенос доступного A и physical multi-entry/media
 приёмка остаются открытыми. Автоматизация PAUSED; новых агентов не запускать.
 
-### История оперативных состояний (не текущие команды)
+
 
 **Сейчас replacement53046** (единственный driver). 59167 прошёл claims/network
 core/B и rotate-turn core; remote core configure вернул0, old4b CLI не разобрал

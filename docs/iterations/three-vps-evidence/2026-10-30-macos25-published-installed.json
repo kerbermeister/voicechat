@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "published": {
+    "schema": 1,
+    "published_exact_r2": true,
+    "channel": "/srv/voicechat-managed/edges/a/runtime/macos-updates",
+    "build": "25",
+    "files": {
+      "VoiceChat.zip": "126c24366359bd22a0c0eb38d0fde7baf32515311c6ebada5761abf2b3ca7dcf",
+      "VoiceChat.dmg": "3a4f0528b15576ac0d0eef97f2aabe07bd02de3bde3630e924918fba400ce189",
+      "appcast.xml": "b25b62a4479ff88c0bfda2eb976542c54893e475472f3c064558b5fe7fc7dcd2"
+    },
+    "private_signing_keys_never_transferred": true,
+    "public_https_verified": {
+      "VoiceChat.dmg": {
+        "https_status": 200,
+        "sha256": "3a4f0528b15576ac0d0eef97f2aabe07bd02de3bde3630e924918fba400ce189",
+        "cache_control": "public, max-age=31536000, immutable"
+      },
+      "VoiceChat.zip": {
+        "https_status": 200,
+        "sha256": "126c24366359bd22a0c0eb38d0fde7baf32515311c6ebada5761abf2b3ca7dcf",
+        "cache_control": "public, max-age=31536000, immutable"
+      },
+      "appcast.xml": {
+        "https_status": 200,
+        "sha256": "b25b62a4479ff88c0bfda2eb976542c54893e475472f3c064558b5fe7fc7dcd2",
+        "cache_control": "no-cache"
+      }
+    },
+    "sparkle24to25_install_verified": true
+  },
+  "installation": {
+    "schema": 1,
+    "from_build": "24",
+    "installed_version": "1.13.0",
+    "installed_build": "25",
+    "exact_zip_payload_matches": true,
+    "entries_checked": 285,
+    "codesign_verified": true,
+    "accepted_zip_sha256": "126c24366359bd22a0c0eb38d0fde7baf32515311c6ebada5761abf2b3ca7dcf",
+    "backup24_retained": true,
+    "account_device_history_ui_pending": false
+  },
+  "physical_ui": {
+    "schema": 1,
+    "checked_at": "2026-10-30T11:31:06.794Z",
+    "physical_macos_ui": true,
+    "actual_sparkle24to25_button_install": true,
+    "installed_about_reports25": true,
+    "no_compatible_updates_after25": true,
+    "same_account": true,
+    "same_device": true,
+    "old_decrypted_history_fragments": 4,
+    "expected_history_fragments": 4,
+    "profile_or_keychain_not_cleared": true,
+    "accepted_zip_sha256": "126c24366359bd22a0c0eb38d0fde7baf32515311c6ebada5761abf2b3ca7dcf"
+  },
+  "macos_version": "15.3.1",
+  "limits": "Owner Mac acceptance only; real multi-entry call/media/failover and physical phones remain open"
+}

@@ -4,14 +4,18 @@
 Ветка `codex/chat-user-features`, отдельный worktree `chat-user-features`.
 [Требования:14 задач](../tasks/21-chat-user-features.md).
 [Единственный реестр пользовательской приёмки](../user-acceptance.md): UA-70–79,
-дополнения UA-30/32/40. Production и клиентские выпуски отложены по прямому
-указанию владельца до согласованной интеграции. `three-vps-rollout` не изменялся.
+дополнения UA-30/32/40. Исходная работа не изменяла `three-vps-rollout`; затем владелец согласовал общий выпуск.
+30.10 FULL61/source14bddc4 и macOS1.13.0(25) опубликованы, PR#5 merged в main.
+Реальный Sparkle24→25, exact285 файлов/ссылок, account/device/4 старых текстов PASS.
+[Production evidence](three-vps-evidence/2026-10-30-entry-production-full61.json),
+[macOS evidence](three-vps-evidence/2026-10-30-macos25-published-installed.json).
+Индивидуальные функции/телефоны/E2EE read-after остаются в едином реестре.
 
 ## Согласованная интеграция 30.10.2026
 
 Владелец поручил единый выпуск с текущей инфраструктурной работой. Коммит373ae2f
 объединён в `codex/three-vps-rollout` merge-коммитом2af8aad без конфликтов; исходная
-ветка не изменена. Подготовлен общий кандидат1.13.0(25), ещё не опубликован.
+ветка не изменена. Общий выпуск1.13.0(25) опубликован; результаты подготовки ниже исторические.
 Объединённый analyzer PASS12.4s; полный Flutter suite415 PASS/4 skip (3m43s), Python745 PASS/3 skip (88.778s), check_read_after в настоящем pinned Synapse с network=none PASS. Это merged checkout с кандидатной версией1.13.0(25); release и VM entry lifecycle продолжаются в
 [единой точке продолжения](19-three-vps-resume.md). Результаты415 тестов ниже
 относятся к исходному коммиту373ae2f; совместные результаты выше записаны отдельно и не означают
