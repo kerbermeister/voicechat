@@ -10,13 +10,21 @@ Infra/ от merge не изменился; добавлены Flutter/vendor Mat
 main ещё НЕ менялся. До готовности не сливать/не выпускать старый4b отдельно.
 
 Общий кандидат поднят до **1.13.0+25** (pubspec, app_version.dart, changelog), пока
-не собран/не подписан/не опубликован. Version/changelog будут committed до packaging. Analyzer merged version PASS12.4s,
+собран и подписан, НЕ опубликован. Clean source2d181e1, private key остался на Mac.
+Пакет `.prototype/macos-candidate-25-signed/release.json`: ZIP SHA256
+0c31cd57e5b2cdeece836b3da955db97ef79f4cbd59d3a9b1612bfb93d3d3b0e, DMG
+fb6d14c73ecd341d06cb9fc4fa9550351084c568a8bee7c7258596b1dbed3cc7; previous feed
+c15668627f72afa8ea8d5154da12f4299cfa3fd55323550b9cc892a83bd07392. Упаковщик
+проверил arm64/minOS/ad-hoc/AOT и Sparkle подписи archive/feed. Installed24 не менялся. Analyzer merged version PASS12.4s,
 pub get --enforce-lockfile PASS. Полный Flutter test session64974 завершён:415 PASS/4 skip,3m43s,
 log `.prototype/integrated-client-tests.log`; pinned Flutter3.47.7 и Rust1.99.1.
 Merged Python session62482 завершён:745 PASS/3 skip,88.778s, `.prototype/integrated-python-tests.log`.
 Настоящий pinned Synapse isolated/network-none read-after session64254 PASS, opaque
 ciphertext, не клиентская E2EE расшифровка. Log integrated-read-after-synapse.log.
-Нужен один финальный FULL server/web revision, затем personal/Sparkle macOS25
+Настоящий pinned Synapse + PostgreSQL17 isolated/network-none read-after PASS:3
+фиктивных пользователя действительно в PG, assertions/policy не менялись.
+Log `.prototype/integrated-read-after-postgres.log`; не client E2EE proof.
+Push2d181e1 в origin rollout завершён. Нужен один финальный FULL server/web revision, затем personal/Sparkle macOS25
 по infra/MACOS.md, exact ZIP/подписи/HTTPS/feed/штатный24→25 и account/device/history.
 Не оставлять клиент только локальной сборкой. Private signing key только на Mac.
 
@@ -33,10 +41,24 @@ attempt e88fb33ccaf8e3ab9c3cdec492fc15123a1980ce31f82b35e590632494a56b02.
 Apply/verify/release core/A/B PASS, current commit4b5516a, данные прежние. Log `full-upgrade-v3.log`, root/данные прежние.
 Прежде следующего шага опросить его; не запускать competing fixture.
 
-СЕЙЧАС АКТИВЕН `.prototype/entry-run-add-proof.py`, **session42684**,
-после COMPLETE full4b. Before-add GET marker/account/device/identity через A/B PASS;
-последний шаг actual CLI prepare edge-c (dependency installation на clean C).
-Не запускать второй driver. Он последовательно read-only account check → real CLI add clean C →
+Текущий add attempt94ee9b4aa1e25c2d5eab906dd9a25b318d133221e8ca09f35909ef12d66b453e
+сохранён: actual prepare/identity/register/network/TLS/catalog/Engine image pull C
+прошли. Session42684 завершилась1 на claim core: intact health guard отказал
+«Core services are not healthy» во время Mac release build/PG check. После их
+завершения core docker health healthy. Exact same driver повторён session18147,
+завершился1 ЕЩЁ ДО возобновления CLI: read-only account GET получил TLS handshake
+30s timeout. Private traceback account-check-before-add-c.log сохранён. Ни ACK fault,
+ни configure ещё не достигнуты, source/state/fences НЕ редактировать; не начинать
+другой attempt. Диагностируются actual A/B trusted HTTPS отдельно. Все source
+imports -B, никаких обходов health/source guards. Активного driver теперь НЕТ.
+Диагностика: A trusted TLS /health/route200 (2.19s), B TLS8s timeout и pinned SSH
+banner timeout даже45s. Только B emulator SIGTERM после точной проверки PID/disk;
+диск/ключи/журналы сохранены. Это НЕ graceful guest shutdown и НЕ lost-ACK proof.
+Receipt `.prototype/entry-lifecycle/b-fixture-recovery.json`, new PID52408,
+B теперь2vCPU/2GiB. SSH после boot снова отвечает, Docker ещё restoring containers;
+не менять source, current/fences или Docker storage, дождаться ready/inspect.
+GitHub combined2d Prototype push41025641351 и PR41025649363 оба SUCCESS;
+PR job12m9s, Android debug artifact12964381222 (не release/physical acceptance). Он последовательно read-only account check → real CLI add clean C →
 exit79 после реального core configure/observe ДО ACK → stock exact-source resume →
 проверка configure ID/StartedAt/FinishedAt и PG/Synapse/control procs → GET marker
 через3 HTTPS origins → actual C services/volumes/no GHCR auth + real Engine pull
