@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run_url": "https://github.com/kerbermeister/voicechat/actions/runs/40989121027",
+  "run": 54,
+  "job": 123846993734,
+  "status": "success",
+  "inputs": {
+    "rollout": "managed",
+    "mode": "core",
+    "deploy": false,
+    "retry_managed": false,
+    "retry_initial": false,
+    "edges": ""
+  },
+  "duration_seconds": 452,
+  "job_duration_seconds": 447,
+  "artifact_id": 12948069554,
+  "artifact_zip_sha256": "0f834740e541e43cd7601dd815b82d1442a4f2d4b92671620e6bf6644cf95061",
+  "source_archive_sha256": "32effdaf74d31bd2608366846dc8b337ee1865fd49fe1fc5869f2ed8e62865dd",
+  "source_commit": "fea4b0624994693d9bd91fcebf9c7efcdf7070a1",
+  "manifest": {
+    "commit": "fea4b0624994693d9bd91fcebf9c7efcdf7070a1",
+    "schema": 1,
+    "origin": "https://univc.duckdns.org",
+    "control": "ghcr.io/kerbermeister/voicechat/control@sha256:1d5ac0bd818ffd320148869978ba10c0992620917dc593f2bb73979c481a7ef2",
+    "web": "ghcr.io/kerbermeister/voicechat/web@sha256:6dcb6c33c7f61b002c246fba81a2054f7225a1ed9fe8040d89ac6f3b3230d2ac"
+  },
+  "backend_fingerprint": "9747e0759e0eeafc9df2c3d3ceb3b81e8ef51ca2a584674a4b7c59f0417f757e",
+  "source_files": 103,
+  "exact_clean_git_source_verified": true,
+  "web_reused_from_production_run53": true,
+  "web_crypto_and_web_image_build_skipped_in_ui": true,
+  "all_deploy_steps_skipped_in_ui": true,
+  "limitations": [
+    "This is core build-only producer validation; it does not claim a production core-only rollout or new-host onboarding."
+  ]
+}

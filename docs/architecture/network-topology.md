@@ -1,8 +1,9 @@
 # Сетевая топология VoiceChat: от одного VPS к нескольким входам
 
-29 октября 2026. Production работает по первой схеме: один VPS A с отдельными
+30 октября 2026. Production работает по первой схеме: один VPS A с отдельными
 core и cohost edge-a, shared-front и сохранёнными данными/identity. Переход выполнен
-[run51](../iterations/three-vps-evidence/2026-10-29-production-initial-postcheck.json).
+[run51](../iterations/three-vps-evidence/2026-10-29-production-initial-postcheck.json),
+обычный managed/full релиз [run53](../iterations/three-vps-evidence/2026-10-30-production-managed-full.json) также проверен.
 Схема расширения B/C/D/E ниже — целевая, дополнительные VPS ещё не подключены. Основание:
 [ТЗ](../three-vps-spec.md), [план](../tasks/19-three-vps.md),
 [проверки и ограничения](../iterations/19-three-vps.md).

@@ -2,6 +2,25 @@
 
 ## Актуальная сводка: production core/edge включены
 
+**LATEST 30.10 03:14local: core build-only54 и new-host network component PASS.**
+HEAD/origin a8060f416177732387f5df1d1a0dbc4a1530005a; production всё ещё2dae758.
+[CI54](three-vps-evidence/2026-10-30-ci-managed-core-build-only.json) SUCCESS7m32,
+job7m27; actual downloaded ZIP SHA0f834740…/artifact12948069554 проверен,
+source archive32effdaf… exact clean-Git fea4b06, web6dcb6 reused from53. Web/crypto
+build и все deploy steps skipped. [Production read-only postcheck PASS](three-vps-evidence/2026-10-30-production-core-build-only-postcheck.json):
+все core/edge IDs/StartedAt/RestartCount равны releasing proofs full53; neighbor6,
+data identity, pointers, timers и Mac24 feed unchanged. Никакого deploy54 не было.
+
+New host network wrapper a8060f4: actual pinned SSH VM20841 exit0; VM reboot49274
+exit0. [Proof](three-vps-evidence/2026-10-30-vm-host-network-bootstrap.json): peerless WG/firewall,
+boot exact, repeat без Docker restart; после reboot network ready BEFORE Docker,
+private key bytes/identity receipt preserved. VM prepare-host-6c9b07e8b0 сейчас
+включена, уже имеет managed peerless network. Не считать её чистой VM.0containers.
+Original main VM и off package VM не тронуты.Все41 host tests PASS; полный646
+был до12 новых registration/network tests. Новая CI наa806 включает новый набор;
+получить её итог. Source wrappers passive, клиент/native не менялся; Mac24актуален.
+Далее: новый edge onboarding и coordinated topology/network/catalog lifecycle.
+
 **LATEST 30.10: новый SSH host preparation / identity component проверен.**
 HEAD/origin `fea4b0624994693d9bd91fcebf9c7efcdf7070a1`; production остаётся2dae758.
 Host prepare доставляет clean-Git bundle, устанавливает зависимости и опционально

@@ -170,8 +170,9 @@ bundle на destination передать по stdin JSON с `schema=1`, `invento
 существующий `network_runtime`, затем ставит штатный `network_bootstrap` boot gate.
 Повтор допустим до установки ролей; исходный intent/key сохраняются при сбое.
 Это не peer update на действующем A: для него нужен coordinated lifecycle.
-На30.10 этот новый wrapper прошёл unit/fault checks; отдельная VM integration
-именно этого wrapper ещё не завершена.
+На30.10 новый wrapper прошёл unit/fault checks и [настоящую VM проверку](../docs/iterations/three-vps-evidence/2026-10-30-vm-host-network-bootstrap.json):
+apply/repeat без рестарта Docker, точные boot files, peerless WG identity; после
+reboot сеть готова до Docker, ключ/receipt сохранены. Это не проверка внешних peers.
 
 Первый вызов печатает профиль без изменений; второй требует root и сверяет
 фактический SSH host key с inventory. Конкретный physical node `edge-d` должен

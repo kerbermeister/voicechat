@@ -90,9 +90,9 @@ infra или документации; общий Flutter-код не счита
 
 Зависимости: V3-00. Внешняя часть требует доступов U-01–U-04 из раздела 4.
 
-- [ ] Прочитать фактический current release A, digests, конфигурацию, mounts,
+- [x] Прочитать фактический current release A, digests, конфигурацию, mounts,
   свободные ресурсы, порты, DNS, сертификаты и совместно размещённые приложения.
-- [ ] Записать Matrix identity, состав постоянных томов и наличие локальных backup
+- [x] Записать Matrix identity, состав постоянных томов и наличие локальных backup
   без вывода секретов; не считать старую документацию фактическим состоянием VPS.
 - [ ] Определить назначения A/B/C, независимость сетей, IPv4/IPv6, доступность
   TCP 443/UDP, лимиты трафика и разрешённую ОС. Проверить права DNS API/DNS-01.
@@ -173,12 +173,12 @@ device не создан; чужой homeserver и redirect с bearer token от
 
 Зависимости: V3-03, V3-04. Черновые fixtures допускаются после V3-00.
 
-- [ ] Описать versioned schemas: service ID, Matrix server_name, постоянные роли,
+- [x] Описать versioned schemas: service ID, Matrix server_name, постоянные роли,
   канонический web-origin, B/C origins, TURN names, host assignments и порты.
-- [ ] Разделить логические ID, DNS-имена, физические IP/поколения машин и secrets.
-- [ ] Из одного источника генерировать согласованные client/core/edge настройки;
+- [x] Разделить логические ID, DNS-имена, физические IP/поколения машин и secrets.
+- [x] Из одного источника генерировать согласованные client/core/edge настройки;
   добавить пример без секретов и локальную конфигурацию loopback.
-- [ ] Валидировать неизвестные поля, дубли, схемы URL, credentials в URL,
+- [x] Валидировать неизвестные поля, дубли, схемы URL, credentials в URL,
   неоднозначные origins, неверные роли и несовместимую версию формата.
 
 Проверка: одинаковая identity на всех ролях; смена IP C не меняет клиентский
@@ -319,6 +319,12 @@ node-local key и repeat без apt/рестарта; публичное evidenc
 entry с проверкой identity, сохранением core/остальных keys и отказом stale/reused keys;
 это пока подготовка зависимостей/ключа, не полное onboarding: peer registration,
 role/TLS/catalog activation остаются отдельными шагами.
+
+`host_network.py` добавляет начальную сеть/boot gate только application-free
+подготовленному узлу. Все41 host tests PASS; [VM apply/repeat/reboot](../iterations/three-vps-evidence/2026-10-30-vm-host-network-bootstrap.json) подтвердили private key locality,
+точные unit/code bytes, отсутствие рестарта Docker и восстановление сети до Docker.
+Это peerless core fixture; registration на действующем A, настоящий новый edge,
+TLS/catalog/DNS cutover и единый lifecycle controller ещё не завершены.
 
 ### V3-08 — Настроить защищённые входы и сертификаты
 
@@ -565,11 +571,11 @@ Linux проверку. Перенос существующих pusher URL, ре
 
 Зависимости: V3-05, V3-06.
 
-- [ ] Ввести versioned role manifests: immutable digests, topology/service ID,
+- [x] Ввести versioned role manifests: immutable digests, topology/service ID,
   API/config/data schema compatibility, commit и отдельные current/previous A/B/C.
-- [ ] Определять затронутые области от установленного release каждой роли;
+- [x] Определять затронутые области от установленного release каждой роли;
   проверять reuse артефактов и mixed-version совместимость.
-- [ ] Расширить source/config guards без исключения защищённых путей ради ускорения;
+- [x] Расширить source/config guards без исключения защищённых путей ради ускорения;
   описать переход старой single-host baseline в новую.
 - [ ] Разделить сборку core/edge/web и клиентских бинарников; сохранить необходимые
   tests/analyze, lockfiles/toolchain/cache keys и холодный путь сборки.
@@ -595,7 +601,7 @@ coturn seed-тома; [отдельная guarded recovery PASS](../iterations/t
 Fixture теперь сохраняет проверенный ID TURN-тома до обычных SSH-релизов;39
 initial regression tests PASS. Полный часовой scope прогон после fixture-only
 исправления не повторялся; runtime не менялся. CI95/96 и build-only52 PASS.
-Production normal full — следующий шаг; bootstrap/replacement ещё отдельные задачи.
+Production managed/full53 SUCCESS; [независимый postcheck](../iterations/three-vps-evidence/2026-10-30-production-managed-full.json) подтвердил source/digests, identity, previous pointer, fences, timers и соседние процессы. Core build-only54 также PASS; скачанный артефакт сверён с clean Git и production web digest, а postcheck подтвердил неизменность всех core/edge процессов. Bootstrap/replacement остаются отдельными задачами.
 
 
 29.10: добавлен кандидат общего первоначального `initial_cohost.py`: frozen artifact,
@@ -613,15 +619,15 @@ account/device/account data и PG/signing identity сохранены, source le
 
 Зависимости: V3-07, V3-08, V3-09, V3-10, V3-19.
 
-- [ ] Реализовать явные области `web`, `edge`, `core`, `full`, выбор узлов и
+- [x] Реализовать явные области `web`, `edge`, `core`, `full`, выбор узлов и
   `deploy=false`, включая документированные read-only baseline checks.
-- [ ] Сохранить SSH host verification, предзагрузку образов, локальный backup A,
+- [x] Сохранить SSH host verification, предзагрузку образов, локальный backup A,
   healthchecks, атомарные pointers и защиту от удаления используемых bind mounts.
 - [ ] Ввести общий orchestration lock и локальные locks для deploy/replacement/
   backup; частичный результат фиксируется по узлам, а не общим success.
 - [ ] Обновлять B/C по одному с повторной проверкой первого перед вторым.
   При ошибке откатывать только изменённый вход; не перезапускать A для edge/web.
-- [ ] Для core/full определить порядок совместимого перехода и ошибку миграции;
+- [x] Для core/full определить порядок совместимого перехода и ошибку миграции;
   rollback кода не восстанавливает старую БД поверх новых записей.
 
 Проверка: все области, build-only, crash между фазами, ошибка backup/health/pull,
