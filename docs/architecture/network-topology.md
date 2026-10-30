@@ -163,8 +163,9 @@ IP в конфиге не устанавливает ПО, не выпускае
   INPUT/FORWARD, DNAT, отказ постороннему клиенту/транзиту, совмещённые роли.
 - Initial migration уже выполнена на production (run51), cohost TLS/daily backup
   timers включены. Два genuine VM core rollback сохранили post-backup данные.
-- Ordinary scoped SSH/CI controller реализован; его сквозная VM/production проверка
-  ещё идёт. Автоматизация нового physical host/replacement и физические B/C остаются
+- Ordinary scoped SSH/CI controller проверен в VM: full, web, core, lost reply
+  и failed-full rollback. Production managed/full run53 завершён; независимая
+  проверка baselines, данных, timers и неизменности соседних процессов прошла. Автоматизация нового physical host/replacement и физические B/C остаются
   отдельными незавершёнными этапами.
 
 Без внешней копии потеря A означает потерю единственной серверной копии данных.

@@ -303,6 +303,16 @@ systemd-analyze, missing-state и cycle fixtures. Реальный installer/reb
 transport проверен отдельным OpenSSH fixture с настоящей заменой host key.
 Установка пакетов, общий SSH bootstrap/rollout и source upgrade остаются открытыми.
 
+
+30.10 — добавлен `infra/host_prepare.py`: локальный plan без SSH; execute доставляет
+полный проверенный clean-Git source bundle на выбранный inventory node через
+существующий pinned SSH, затем запускает host-local package installer с inventory
+через bounded stdin. Проверяется полный receipt (node/generation/profile и типы),
+повтор использует прежний package journal. Это пока подготовка зависимостей, не
+полное onboarding: ключи/peer registration/role/TLS/catalog остаются отдельными
+шагами. 22 host tests и 5 source transport tests PASS; новый SSH-путь ещё требует
+целевой VM integration проверки.
+
 ### V3-08 — Настроить защищённые входы и сертификаты
 
 Зависимости: V3-07. Production значения берутся из V3-01, стенд — из V3-02.

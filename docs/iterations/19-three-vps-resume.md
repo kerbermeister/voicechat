@@ -2,6 +2,30 @@
 
 ## Актуальная сводка: production core/edge включены
 
+**PRODUCTION FULL53 SUCCESS, 30.10 02:19 local.**
+[Run53](https://github.com/kerbermeister/voicechat/actions/runs/40983391788),
+source `2dae7580c6b229dcd8c804a4efac21055230a6cc`, managed/full/deploy=true.
+Длительность 14m33s; сам deploy 2m57s. Независимый read-only postcheck PASS:
+[свидетельство](three-vps-evidence/2026-10-30-production-managed-full.json).
+Core/edge baselines, immutable digests и source receipts совпадают с кандидатом;
+PG/signing identity сохранены, previous указывает на initial24. Блокировки сняты,
+released audit receipt сохранён штатно. Шесть общих/соседних процессов не меняли
+ID/StartedAt/RestartCount; backup/TLS timers active/enabled, HTTPS checks PASS,
+macOS24 feed неизменен. Первый запуск проверяющего скрипта ошибочно ожидал удаления
+released audit receipt; исправлен только checker, повтор PASS, сервер не менялся.
+Backend fingerprint `7f5751bb6df936a45b95fe8e84f3b687e1a1f0773e2cfe3af62433655b0003e6`.
+CI97 push и CI98 PR того же source SUCCESS. Production jobs сейчас завершены.
+
+Физический VPS по-прежнему один: core + edge-a. Полная автоматизация подключения
+нового хоста, replacement/core transfer и реальные аппаратные/media проверки ещё
+не завершены. Host-local package preparation уже прошла чистую Debian VM и reboot;
+следующий шаг — доставлять её штатно через pinned SSH и проверенный source bundle.
+Mac rebuild не нужен: клиент/native/vendor относительно опубликованного24 не менялись.
+Основная fixture VM: 0 контейнеров, два старых тома и исходный WG key сохранены;
+package VM выключена, disk/keys/restart argv сохранены. Старые блоки ниже — история,
+не команды повторить уже завершённые jobs.
+
+
 **LATEST 30.10,01:58local: NORMAL FUNCTIONAL SCOPES COMPLETE, CLEANUP RECOVERED.**
 Driver60962 exit0: full/lostreply, web/core process isolation, bad full/outerrollback
 PASS. Parent80589 exit1 на line18 volume-set assertion; network-byte equalityline17
