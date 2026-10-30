@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:voicechat_probe/chat_actions.dart';
+import 'package:voicechat_probe/user_action_error.dart';
 import 'package:voicechat_probe/pending_message.dart';
 import 'package:voicechat_probe/chat_pane.dart';
 import 'package:voicechat_probe/conversation_list.dart';
@@ -18,9 +19,13 @@ class DeliveryActions extends ForwardActions {
   int uploads = 0;
   bool acknowledged = false;
   int retries = 0;
+  bool retryUnavailable = false;
   final retryGate = Completer<void>();
   @override
   Future<void> retryPending(String id) async {
+    if (retryUnavailable) {
+      throw UserActionError('Дождитесь завершения текущей попытки отправки.');
+    }
     unawaited(flush());
   }
 
@@ -291,6 +296,22 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.byType(PendingMessageContent), findsOneWidget);
       expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      actions.retryUnavailable = true;
+      await tester.tap(find.byTooltip('Действия с очередью'));
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+      await tester.tap(find.text('Повторить отправку'));
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+      expect(errors.last, 'Дождитесь завершения текущей попытки отправки.');
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.widget<TextField>(find.byType(TextField).last).readOnly,
+        false,
+      );
+      actions.retryUnavailable = false;
       await tester.tap(find.byTooltip('Ошибка отправки: подробности'));
       for (var i = 0; i < 6; i++) {
         await tester.pump(const Duration(milliseconds: 80));

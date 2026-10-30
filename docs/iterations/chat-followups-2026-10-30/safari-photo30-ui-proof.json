@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "source_commit": "0b0e1b8552811d42aadcfccc2c7fd464dda40d5a",
+  "browser": "Safari18.3",
+  "os": "macOS15.3.1",
+  "normal_client": "1.15.0(30)",
+  "private_browser_session": true,
+  "only_synthetic_self_room": true,
+  "heic_selected_via_real_picker": true,
+  "jpeg_48mp_selected_via_real_picker": true,
+  "draft_two_photos": true,
+  "server_encrypted_album_count": 1,
+  "server_has_plaintext_photo_metadata": false,
+  "both_decrypted_photos_visually_verified": true,
+  "viewer_next_verified": true,
+  "escape_returned_to_chat_with_composer_focus": true,
+  "physical_iPhone": false,
+  "result": "PASS"
+}

@@ -1,0 +1,12 @@
+{
+  "browser": "Safari18.3",
+  "os": "macOS15.3.1",
+  "result": "PASS",
+  "bytes": 68157440,
+  "read_max": 4194304,
+  "sha256": "4f6db23e77dd66ba054c204602997f34097cb65c7c22e1c896b9faec71a0c323",
+  "downloaded_bytes_verified": true,
+  "preview_opened": false,
+  "app_page_still_visible": true,
+  "physical_iPhone": false
+}

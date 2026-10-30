@@ -2057,8 +2057,8 @@ class _ChatPaneState extends State<ChatPane>
                           if (action == 'schedule') {
                             await chooseSchedule(pendingId: p['id'] as String);
                           } else if (action == 'retry') {
-                            unawaited(
-                              widget.actions.retryPending(p['id'] as String),
+                            await widget.actions.retryPending(
+                              p['id'] as String,
                             );
                           } else {
                             await widget.actions.cancel(p['id'] as String);

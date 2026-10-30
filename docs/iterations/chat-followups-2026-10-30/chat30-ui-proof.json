@@ -1,0 +1,13 @@
+{
+  "source_commit": "0b0e1b8552811d42aadcfccc2c7fd464dda40d5a",
+  "harness_sha256": "7f76cc6f2eb5ddc356f0c141ec54693959343a03eb4d87a35a9a98b35384a403",
+  "physical_phone": false,
+  "visible_before_network_confirmation": true,
+  "minute_deadline_visible": true,
+  "reload_did_not_send": true,
+  "manual_retry_decrypted_on_peer": true,
+  "peer_decrypted": true,
+  "single_encrypted_event": true,
+  "dm_peer_shared_pin": true,
+  "result": "PASS"
+}

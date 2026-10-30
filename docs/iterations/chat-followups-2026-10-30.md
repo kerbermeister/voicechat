@@ -109,3 +109,41 @@ worker. Поэтому повышение ресурcного лимита дл�
   следующий подготовленный номер30. Это ещё не публикация/установка30.
 - Нет физического iPhone/Android; native Mac camera и screen проверены отдельно
   выше. Остаток и условия — в едином реестре приёмки.
+
+## Финальный кандидат31 (31 октября)
+
+Непубличный30 не устанавливался в `/Applications` и не публиковался. При финальном
+просмотре найден забытый `unawaited(retryPending)` в меню очереди: отказ активной
+попытки/диска уходил мимо `perform` и мог стать unhandled Future. Этот вызов теперь
+ожидает только локальное сохранение; сетевой flush по-прежнему запускается в фоне,
+поэтому ввод не блокируется. Существующий voice/receipt widget-тест расширен
+реальным нажатием меню при отказе, проверкой report и доступности композера.
+Новая сборка получает31, номер подписанного кандидата30 не переиспользуется.
+
+На30 проверены normal-client real minute→reload→manual E2EE retry (один encrypted
+event), отдельный UI shared DM pin участником0 и native Safari HEIC/48MP через
+настоящий picker→encrypted album→два резких изображения→next/Esc→composer focus.
+Это покрытие сохранено для неизменённых частей31; обработка popup retry проверяется
+повторно отдельно и общим клиентским прогоном.
+
+30 ZIP/DMG подписаны, все payload entries совпали, About30 и штатный Sparkle check
+PASS. Primary29 не заменён. Восстановление профиля остановилось на
+`SecItemCopyMatching`; SecurityAgent недоступен инструменту по системным правилам.
+Дешифрование сохранённой истории и установка29→31 **не подтверждены**. Все прежние
+зашифрованные `.secure.db` побайтно совпали с закрытой резервной копией; Keychain
+не удалялся/не менялся. Перед31 требуется новая закрытая копия текущего профиля.
+
+### Сохранённые результаты normal-client и CI
+
+- [Полный реальный minute/reload/retry и shared DM pin](chat-followups-2026-10-30/chat30-ui-proof.json).
+- [CI исходников0b0, включая Android preview](chat-followups-2026-10-30/ci30-proof.json).
+- [Native Safari: picker→HEIC/48MP→encrypted album→viewer](chat-followups-2026-10-30/safari-photo30-ui-proof.json).
+- [Native Safari: настоящий65МиБ download](chat-followups-2026-10-30/native-safari-save30.json).
+
+Повторяемый локальный прогон: `NODE_PATH=<existing Playwright modules> node
+prototype/check_chat_followup_ui.cjs`; normal web на localhost7358, Synapse8008,
+control8090, свежие disposable пользователи, сетевой gate только своих сообщений.
+`PIN_ONLY=1` ограничивает прогон shared pin. Доступ к production запрещён в самом
+fixture проверкой localhost origin. Доказательства относятся к реальной версии30;
+в31 изменены только ожидание локального retry и номер сборки, эти сценарии
+повторно проверяются адресно.

@@ -1,0 +1,86 @@
+{
+  "run": "https://github.com/kerbermeister/voicechat/actions/runs/41136431961",
+  "commit": "0b0e1b8552811d42aadcfccc2c7fd464dda40d5a",
+  "status": "completed",
+  "conclusion": "success",
+  "jobs": [
+    {
+      "name": "checks",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run python3 prototype/setup.py",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run python3 infra/android_release.py check-version",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run python3 -m pip install -r infra/push-requirements.txt",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run python3 -m unittest discover -s prototype -p 'test_*.py'",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run node --test prototype/test_mobile_web.cjs",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run flutter pub get --enforce-lockfile",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run flutter analyze",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run flutter test",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build ordinary Android preview",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ]
+}
