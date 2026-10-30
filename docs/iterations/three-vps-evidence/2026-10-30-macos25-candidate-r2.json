@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "package_source_commit": "34981f0e59e21dc5dd82b7abd9be81d19329fe3a",
+  "compiled_source_commit": "2d181e1b791efcd647929b54c0acebc24675aa51",
+  "unchanged_client_vendor_crypto_inputs_verified": true,
+  "version": "1.13.0",
+  "build": "25",
+  "signing_mode": "personal-adhoc",
+  "source_dirty": false,
+  "os_version": "15.3.1",
+  "candidate_same_account": true,
+  "candidate_same_device": true,
+  "previous_history_fragments_verified": 4,
+  "native_ui_version_verified": true,
+  "candidate_update_channel_check_passed": true,
+  "backup_app_entries_verified": 285,
+  "backup_profile_entries_verified": 235,
+  "keychain_contents_not_copied_or_deleted": true,
+  "installed24_app_unchanged": true,
+  "private_signing_key_remained_on_Mac": true,
+  "archive_and_feed_signatures_verified": true,
+  "previous_feed_sha256": "c15668627f72afa8ea8d5154da12f4299cfa3fd55323550b9cc892a83bd07392",
+  "files": {
+    "VoiceChat.dmg": "3a4f0528b15576ac0d0eef97f2aabe07bd02de3bde3630e924918fba400ce189",
+    "VoiceChat.zip": "126c24366359bd22a0c0eb38d0fde7baf32515311c6ebada5761abf2b3ca7dcf",
+    "appcast.xml": "b25b62a4479ff88c0bfda2eb976542c54893e475472f3c064558b5fe7fc7dcd2"
+  },
+  "dmg_payload_matches_exact_zip": true,
+  "payload_files_and_links": 285,
+  "published": false,
+  "sparkle24_to25_verified": false
+}

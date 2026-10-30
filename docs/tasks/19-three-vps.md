@@ -772,6 +772,18 @@ cutover, forward-only role/общий TURN-secret transition и source-bound pee
 интеграция и полный multi-VM add/replacement drill ещё в работе. VPS/DNS этой
 новой итерацией не менялись. Checkbox V3-21 пока не закрывать.
 
+Актуализация 30.10 после полного drill: CLI add и replacement завершены на
+одноразовых Linux VM через настоящие SSH/Docker/WireGuard. Старый C выключен до
+создания чистого D, после возврата его private API/WG/TURN полномочия отвергнуты;
+account/device/marker сохранены через три текущих входа. Lost-ACK resume add не
+повторил configure и не перезапустил core. Evidence:
+[add](../iterations/three-vps-evidence/2026-10-30-entry-add-vm.json),
+[replacement](../iterations/three-vps-evidence/2026-10-30-entry-replace-vm.json).
+Предыдущий статус «lifecycle ещё в работе» исторический. Checklist целиком не
+закрывается: DNS/registry в drill синтетические, stale-DNS сценарий реального
+клиента, физические B/C и media ещё не приняты. Production публикация новой
+реализации и синхронизация CI inventory остаются отдельными шагами.
+
 ### V3-22 — Реализовать и проверить перенос доступного A
 
 Зависимости: V3-06, V3-19, V3-20.

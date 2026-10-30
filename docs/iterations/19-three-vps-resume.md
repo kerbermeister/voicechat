@@ -4,6 +4,36 @@
 
 ### Последнее состояние текущего запуска
 
+**Актуальная точка продолжения (заменяет оперативные статусы ниже):** оба VM
+lifecycle завершены: add44139 exit0 и replacement20490 exit0. Не запускать их
+повторно. Replacement attempt3c1da7... сохранил account/device/marker через три
+текущих входа; возвращённый старый C не имеет private API/WG и его прежние TURN
+credentials отвергаются всеми тремя входами. Public evidence:
+`three-vps-evidence/2026-10-30-entry-replace-vm.json`. DNS/registry в этом drill
+синтетические; это не physical/media acceptance.
+
+Единственный текущий probe — session41862, `/tmp/voicechat-live-web-reader-probe.py`:
+разрешённый производный web-only pull bearer с A передаётся только в stdin
+retired C для настоящего GHCR Engine pull. Исходные credentials остаются на A;
+не печатать captured stdout/token. Probe временно снимает только owned fake GHCR
+hosts line на C и восстанавливает её finally. Проверить результат и cleanup до
+выключения fixture. Production admin changes пока отсутствуют.
+
+Точный кандидат macOS25 r2 проверен на настоящем Mac: прежние account/device и
+четыре расшифрованных фрагмента истории, версия25, подписи и все285 файлов/ссылок
+DMG совпадают с ZIP. ZIP SHA126c24366359bd22a0c0eb38d0fde7baf32515311c6ebada5761abf2b3ca7dcf.
+Backup приложения24/профиля создан без копирования/очистки Keychain. Кандидат
+закрыт, установленный24 снова запущен. НЕ опубликован, Sparkle24→25 ещё НЕ принят.
+Публиковать только `.prototype/macos-candidate-25-signed-r2`, не v1.
+
+HEAD34981f0 pushed; main прежний2cca4d3, общий FULL и merge ещё впереди.
+Далее: закончить live GHCR probe, сохранить evidence; штатный guarded network
+source upgrade и общий FULL server/web после CI; exact r2 publication и реальная
+установка24→25. Глобально V3-22 перенос доступного A и physical multi-entry/media
+приёмка остаются открытыми. Автоматизация PAUSED; новых агентов не запускать.
+
+### История оперативных состояний (не текущие команды)
+
 **Сейчас replacement53046** (единственный driver). 59167 прошёл claims/network
 core/B и rotate-turn core; remote core configure вернул0, old4b CLI не разобрал
 Restic progress (тот же уже исправленный15f дефект). 53046 продолжает тот же

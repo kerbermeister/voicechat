@@ -1,0 +1,22 @@
+{
+  "account_device_marker_preserved_through_current_entries": true,
+  "actual_replacement_completed": true,
+  "attempt": "3c1da7d1a15f5507d2e5748eb0a360b91f2296294430a7242801451452a6ac47",
+  "core_revocation_verified": {
+    "kernel_peers_match_admitted_registry": true,
+    "old_turn_rejected_on_all_current_entries": true,
+    "retired_kernel_peer_absent_after_return": true,
+    "schema": 1,
+    "turn_entries_checked": 3
+  },
+  "limits": "Disposable Linux VMs/synthetic DNS/registry; not physical clients, live provider accounts or real media",
+  "old_host_not_needed_for_replacement": true,
+  "old_host_return_verified": {
+    "private_core_api_blocked": true,
+    "retired_public_key": "3fZcAByEVyUFVIcjsHDdI/9z2XiDp4mW0c9Uo5pXQnc=",
+    "retired_underlay_and_trusted_public_tls_live": true,
+    "schema": 1
+  },
+  "schema": 1,
+  "source": "721a50d4a769e5b00fac9e8034c57672cfa209e25bf97413187d9d8ead088673"
+}
