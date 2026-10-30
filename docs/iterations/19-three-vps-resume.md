@@ -2,6 +2,26 @@
 
 ## Актуальная сводка: production core/edge включены
 
+**LATEST 30.10: новый SSH host preparation / identity component проверен.**
+HEAD/origin `fea4b0624994693d9bd91fcebf9c7efcdf7070a1`; production остаётся2dae758.
+Host prepare доставляет clean-Git bundle, устанавливает зависимости и опционально
+создаёт generation-bound WG key на узле. Fresh VM `prepare-host-6c9b07e8b0`,
+SSH53689/PID16693: install56615 exit0 (sourcea4e564), key init10372 exit0 и actual
+host_connection flags/NAT14393 exit0 (sourcefea4b06); reboot40148 тоже завершил
+assertions PASS; exec completion получить при следующем poll. [Proof](three-vps-evidence/2026-10-30-vm-host-prepare-identity.json).
+VM record `.prototype/vm/prepare-active.json`, wrapper `.prototype/prepare-vm-exec.py`;
+узел пока включён, без containers/network intent, ключ только наVM. Старые main/package
+VM records неизменны. Логи `.prototype/prepare-{ssh-vm,identity-ssh-vm,pinned-ssh-vm}.log`
+и `.prototype/prepare-identity-reboot.log`. Общий suite646 PASS/skipped3,76.76s;
+добавленный затем public registry validator:6 focused PASS, все35 host tests PASS.
+Uncommitted `host_registration.py`/tests и docs — завершить review/commit.
+Build and deploy54 core/build-only (`deploy=false`, managed, retryfalse, edgesempty)
+https://github.com/kerbermeister/voicechat/actions/runs/40989121027,
+job123846993734, sourcefea4b06, начат03:00local, ACTIVE. Managed hints read PASS;
+выполняются обычные server/client tests, core image build и source artifact ещё впереди. VPS mutations в новом run запрещены
+выбранным deploy=false. Он проверяет actual managed hints и reuse web digest.
+Продолжить onboarding/network registration/activation; полный lifecycle ещё открыт.
+
 **PRODUCTION FULL53 SUCCESS, 30.10 02:19 local.**
 [Run53](https://github.com/kerbermeister/voicechat/actions/runs/40983391788),
 source `2dae7580c6b229dcd8c804a4efac21055230a6cc`, managed/full/deploy=true.

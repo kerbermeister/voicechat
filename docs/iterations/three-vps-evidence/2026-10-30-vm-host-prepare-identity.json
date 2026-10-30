@@ -1,0 +1,43 @@
+{
+  "package_receipt_sha256": "bcbb075a290c4697dc1c190dcb03d2b046414b4c71620ad07376290790c87e43",
+  "no_role_containers": true,
+  "no_wireguard_interfaces": true,
+  "no_network_intent": true,
+  "node_local_identity_committed": true,
+  "private_key_owner_only": true,
+  "ssh_identity_preserved": true,
+  "docker": "Docker version 29.8.1, build 4a63305",
+  "compose": "5.5.1",
+  "schema": 1,
+  "source_commit": "fea4b0624994693d9bd91fcebf9c7efcdf7070a1",
+  "archive_sha256": "9c5744d6cd474ef377542d08e88bced585dbfb4e1241200412f03786c99fa706",
+  "repeat_receipt_equal": true,
+  "tunnel_public_key_repeat_equal": true,
+  "transport": "Actual host_connection identity/known_hosts/options; test-only loopback NAT destination and exact HostKeyAlias",
+  "scope": "Prepared host repeat plus node-local key initialization and repeated immutable source delivery; no role/network/TLS/catalog deployment",
+  "image": {
+    "url": "https://cloud.debian.org/images/cloud/bookworm/20261026-2643/debian-12-genericcloud-amd64-20261026-2643.qcow2",
+    "sha512": "0464b5d4ae3aa4f658468d88da83af7857b71548b30d46dcb6282770955a747fb95a983476db90d25afd0653af607224c7ebd05122ab71faa106fd712aaad652",
+    "name": "debian-12-genericcloud-amd64-20261026-2643.qcow2"
+  },
+  "other_vm_records_unchanged": true,
+  "prepared_host_reboot_pass": true,
+  "private_key_bytes_preserved_after_reboot": true,
+  "identity_receipt_unchanged_after_reboot": true,
+  "repeat_without_apt_or_docker_restart": true,
+  "no_roles_or_network_after_reboot": true,
+  "checked_at_utc": "2026-10-30T02:00:29.890263+00:00",
+  "fresh_install": {
+    "source_commit": "a4e564d129ddfb04381f54fc853c212764abacc6",
+    "archive_sha256": "f65aa6c7334815b45de1605227a457030ab9c3d44519386759eb533169ae173a",
+    "package_receipt_sha256": "bcbb075a290c4697dc1c190dcb03d2b046414b4c71620ad07376290790c87e43",
+    "repeat_receipt_equal": true,
+    "no_role_containers": true,
+    "no_network_intent": true
+  },
+  "limitations": [
+    "Fresh installation used a loopback-only pinned VM SSH adapter; later source/key repeats used actual host_connection options with NAT destination and exact HostKeyAlias.",
+    "Immutable image references in the source fixture were metadata only; no application image was built, pulled or deployed by this drill.",
+    "No live WireGuard registration, role installation, TLS, DNS, catalog publication or physical VPS replacement is claimed."
+  ]
+}

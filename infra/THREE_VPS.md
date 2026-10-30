@@ -129,6 +129,50 @@ python3 -B infra/host_packages.py --inventory inventory.json --node edge-d
 python3 -B infra/host_packages.py --inventory inventory.json --node edge-d --execute
 ```
 
+С рабочего компьютера тот же шаг доступен через проверенный SSH transport:
+
+```sh
+python3 -B infra/host_prepare.py --inventory inventory.next.json --node edge-d
+python3 -B infra/host_prepare.py --inventory inventory.next.json --node edge-d \
+  --identity "$SSH_IDENTITY" --commit "$SOURCE_COMMIT" --archive release.tar.gz \
+  --execute --initialize-key
+```
+
+`release.tar.gz` — полный immutable source bundle из сборки согласованного commit;
+локальный Git checkout должен быть чистым и соответствовать этому commit. Plan не
+открывает SSH. Execute требует root SSH, точного pinned Ed25519 host key и owner-only
+identity file. Исходники доставляются в `/var/lib/voicechat-host-source`; подготовка
+не выбирает production release. При неопределённом результате SSH повторить тот же
+вызов: package journal и tunnel identity сохраняются на новом узле.
+
+Опциональный `--initialize-key` создаёт `/var/lib/voicechat-host/network.key` только
+на новом узле. В ответе `tunnel_identity` содержатся service/node/generation и
+публичный ключ; приватный ключ не передаётся. Утерянный committed private key не
+регенерируется автоматически. Fresh apt + source delivery/repeat, создание ключа,
+штатные SSH options через fixture NAT и сохранение ключа после reboot прошли
+[VM проверку](../docs/iterations/three-vps-evidence/2026-10-30-vm-host-prepare-identity.json).
+Это **не полное подключение входа**: peer/egress registration, role/TLS readiness,
+DNS/catalog cutover и приёмка остаются следующими шагами.
+
+`host_registration.registry(previous_inventory, inventory, previous_keys, identity)`
+готовит новый публичный WG registry из `tunnel_identity`: один новый/заменённый
+physical entry за операцию, core и остальные assignments/keys сохраняются.
+Замена требует нового SSH host key, большего generation и нового tunnel key;
+старый сервер для подготовки реестра не нужен. CLI `host_registration.py` принимает
+bare identity JSON через `--node-identity`, оба inventory и прежний `--public-keys`;
+`--output` создаётся только как новый файл. Реестр не применяется автоматически.
+
+Начальная сеть нового узла оформлена отдельным `host_network.py`. Из проверенного
+bundle на destination передать по stdin JSON с `schema=1`, `inventory`, `public_keys`,
+`node`, `edge_subnet`. Модуль требует готовые dependency/identity receipts, читает
+приватный ключ только локально, проверяет registry и отказывается менять другой
+существующий intent либо хост с любыми контейнерами (включая stopped). Он применяет
+существующий `network_runtime`, затем ставит штатный `network_bootstrap` boot gate.
+Повтор допустим до установки ролей; исходный intent/key сохраняются при сбое.
+Это не peer update на действующем A: для него нужен coordinated lifecycle.
+На30.10 этот новый wrapper прошёл unit/fault checks; отдельная VM integration
+именно этого wrapper ещё не завершена.
+
 Первый вызов печатает профиль без изменений; второй требует root и сверяет
 фактический SSH host key с inventory. Конкретный physical node `edge-d` должен
 существовать в inventory; cohost использует `core`. Зависимости закреплены в коде:

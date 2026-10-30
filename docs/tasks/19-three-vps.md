@@ -312,7 +312,11 @@ transport проверен отдельным OpenSSH fixture с настоящ�
 создаёт node-local WireGuard identity: приватный ключ остаётся на сервере,
 публичный ответ проверяется по service/node/generation. Потеря committed private
 key не приводит к его тихой регенерации; незавершённый commit сохраняет тот же ключ.
-29 host tests и 5 source transport tests PASS. Fresh SSH/VM integration запущена;
+35 host tests и 5 source transport tests PASS. Общий Python набор до registration:
+646 PASS/skipped3. Fresh SSH/VM integration и reboot PASS: зависимости, receipt,
+node-local key и repeat без apt/рестарта; публичное evidence сохранено. Добавлен
+`host_registration.py`: офлайн подготовка WG registry для одного нового/заменённого
+entry с проверкой identity, сохранением core/остальных keys и отказом stale/reused keys;
 это пока подготовка зависимостей/ключа, не полное onboarding: peer registration,
 role/TLS/catalog activation остаются отдельными шагами.
 
