@@ -1,9 +1,11 @@
+from contextlib import nullcontext
+from types import SimpleNamespace
 from copy import deepcopy
 from pathlib import Path
 import sys
 import unittest
 import tempfile
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'infra'))
@@ -19,6 +21,22 @@ class EntrySshTests(unittest.TestCase):
     def setUp(self):
         fixture = test_entry_lifecycle.EntryLifecycleTests(); fixture.setUp()
         self.baseline = fixture.baseline
+
+    def test_backup_progress_does_not_hide_the_final_ssh_response(self):
+        fixture = test_entry_lifecycle.EntryLifecycleTests(); fixture.setUp()
+        with tempfile.TemporaryDirectory() as temporary:
+            record = {'baseline': fixture.baseline, 'public': fixture.public, 'inventory': fixture.after,
+                'settings': {'catalog': 'public-test-artifact'}, 'attempt': None,
+                'delivery': {'source': 'd' * 64, 'commit': '2' * 40, 'manifest': {'web': fixture.image}}}
+            driver = entry_ssh.Driver('/srv/managed', record, {'core': 'test-key'}, Path(temporary))
+            response = SimpleNamespace(returncode=0, stderr=b'', stdout=b'backup completed\n{"phase":"complete"}\n')
+            with patch.object(entry_ssh.host_connection, 'connection', return_value=nullcontext(['ssh'])), patch.object(entry_ssh.subprocess, 'run', return_value=response):
+                self.assertEqual(driver.core('snapshot'), {'phase': 'complete'})
+                for raw in (b'{"phase":"wrong","phase":"complete"}\n', b'backup completed\nnot JSON\n'):
+                    response.stdout = raw
+                    with self.assertRaises(ValueError): driver.core('snapshot')
+                response.stdout = b'x' * (entry_ssh.entry_core.MAX_INPUT + 1)
+                with self.assertRaisesRegex(ValueError, 'Oversized'): driver.core('snapshot')
 
     def test_add_chooses_free_private_address_and_retains_existing_assignments(self):
         public, inventory = entry_ssh.target(self.baseline, {'id': 'd', 'public_ip': '192.0.2.20',

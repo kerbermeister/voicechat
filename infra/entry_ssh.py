@@ -99,7 +99,7 @@ class Driver:
                 if response.returncode == 0:
                     if len(response.stdout) > entry_core.MAX_INPUT:
                         raise ValueError('Oversized entry SSH response')
-                    return json.loads(response.stdout, object_pairs_hook=topology.unique_object)
+                    return json.loads(response.stdout.rstrip(b'\n').rsplit(b'\n', 1)[-1], object_pairs_hook=topology.unique_object)
                 if response.returncode not in (75, 255) or retry == 2:
                     # Preserve diagnostic text privately, never the JSON request
                     # (which may carry TLS material or an ephemeral read token).

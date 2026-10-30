@@ -2,6 +2,61 @@
 
 ## Актуальное поручение: entry lifecycle и один общий выпуск с доработками чата
 
+### Последнее состояние текущего запуска
+
+**Последнее уточнение:** driver65276 прошёл claims core/A/B и network core/B,
+затем remote core configure завершился, но старый CLI получил JSONDecodeError:
+Restic backup пишет progress перед финальным JSON. Это настоящая ошибка response
+framing, отдельно от задержек эмулятора. В рабочем checkout `entry_ssh.invoke`
+теперь читает последнюю JSON-строку по уже существующему managed_ssh соглашению;
+общий byte limit, duplicate-key check и отказ на malformed response сохранены.
+Новый boundary test + все59 entry tests PASS7.382s (`entry-response-tests.log`).
+Frozen4b исходники/архив/journal НЕ редактировались. Тот же old driver повторён
+**session88438**, account/device/marker/identity через A/B снова PASS, сейчас
+повторяет configure core: completed phase должен вернуть JSON без backup/reconfigure,
+после чего намеренный lost-ACK wrapper и stock resume проверят неизменность configure.
+Не повторять тесты клиента или Mac build: client/vendor inputs после2d не менялись.
+Новые source fingerprints требуют общего финального FULL.
+
+Read-only precheck рабочего VPS session91091 PASS: core/edge/routes здоровы,
+прежние PG/signing identity и Mac24 feed, observed6 соседей и13 running containers.
+Evidence `.prototype/production/entry-network-before-upgrade.json`. Production
+FILES/SERVICES/DNS в этой итерации НЕ менялись. Download старого CI59 артефакта
+через IAB waitForEvent20s снова не дал файл; скачивание НЕ считать выполненным.
+`infra/ENTRIES.md` теперь явно описывает синхронизацию CI public inventory/SSH keys
+после add/replace; private keys в GitHub автоматически не экспортируются.
+
+
+Session2364 завершилась1; активный add driver теперь **session65276**. Перед ним session47460
+подтвердила read-only account/device/marker через A/B, затем вновь отказала
+на claim core из-за настоящего Docker health timeout3s. Логи показывают задержки
+4–13s в эмуляторе; readiness/source guards НЕ изменялись. B после восстановления
+штатно завершил voicechat-edge-b boot, все4 сервиса работают; данные только A.
+Трём QEMU возвращён обычный CPU priority0 (`renice` успешно), restart argv сохранены;
+у A он и раньше был обычным, поэтому эту настройку не считать доказанной единственной
+причиной. Core monitor сам восстановил control, фактический health healthy.
+Session2364 повторно подтвердила прежние account/device/marker/identity через A/B,
+claim core прошёл первую проверку и поставил owned core fence, но final observe
+вновь получил unhealthy (health3s timeout). Configure/lost-ACK ещё НЕ достигнуты.
+Теперь нельзя считать, что claims отсутствуют. **Session88159** выполняет ТОЛЬКО
+штатный `role_boot.start(core, rollout_attempt=тот же attempt)` для восстановления
+committed core под held fence. Source проверяется по ПОЛНОМУ receipt из локального
+исходного архива, state/owner/before==active==target проверены; configure НЕ
+повторяется. Helper `.prototype/entry-recover-held-core.py`, private log
+held-core-recovery.log. Первый вызов82312 остановился TypeError неверной сигнатуры
+verify ДО запуска/изменений, исправлена только local diagnostic orchestration.
+88159 PASS: owned committed core recovered, configure не повторён, state неизменён.
+Затем запущен тот же driver65276: account/device/marker/identity через A/B PASS,
+claim core (обе cohost роли) и claim edge-b PASS, network core PASS, сейчас
+network edge-b. Единственный active driver65276. Не менять attempt или
+frozen4b source. D ещё не создан; его стартовый helper теперь2vCPU/priority0.
+
+Общий clean candidate2d181e1 подписан штатным packager. Публичные хеши и точная
+граница результата: `three-vps-evidence/2026-10-30-macos25-candidate.json`.
+Main/production/macOS installed24 не менялись. Commit0150598 checkpoint отправлен
+в origin. Следующие результаты пока не выпускать отдельно от согласованного FULL.
+
+
 30.10.2026 владелец явно поручил самому объединить chat-user-features и выложить
 ОДНИМ согласованным scope. Выполнен merge373ae2fbb019306bec422b82a8efeeb6083e8a0d
 в codex/three-vps-rollout: **2af8aad0b32830d015770e949f51d72e6fa2a5d3**, без
