@@ -1,3 +1,16 @@
+## Исправление release metadata: кандидат28 вместо27
+
+WEB65 run41074138485 остановился46s ДО DEPLOY на check-version:
+app_version.dart остался26 при pubspec27. Никакие VPS службы не изменены.
+Mac27 собран/подписан/проверен как файл, но НЕ открывался/НЕ опубликован;
+отмечен rejected в private package proof, не использовать publisher27.
+Согласно правилам версий новый пакет получает BUILD28 (version1.14.1).
+Pubspec/app_version/changelog синхронизированы, check-version должен быть PASS.
+Нужно commit/push metadata fix, WEB66 main + пересборка/подпись exact Mac28.
+Резервная копия26 с253profile entries уже закрыта и проверена;27 никогда не запускался,
+поэтому её можно использовать перед28 без восстановления/повторного копирования.
+Mac26 сейчас закрыт. .prototype/production/client-28.json == accepted26 config.
+
 ## Кандидат27 готов к commit/release — актуальнее записей ниже
 
 Code27 окончательный: routeTransportOf unwrap Matrix timeout; own verified-device
