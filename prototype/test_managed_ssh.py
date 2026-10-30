@@ -170,7 +170,7 @@ class ManagedTransportTests(unittest.TestCase):
 
     def test_build_hint_reader_sends_only_public_script_and_rejects_bad_response(self):
         value={'schema':1,'baseline':'a'*64,'backend':'b'*64,'origin':'https://chat.fixture.invalid',
-               'control':'ghcr.io/fixture/control@sha256:'+'c'*64,'web':{'a':'ghcr.io/fixture/web@sha256:'+'d'*64},'pending':None}
+               'control':'ghcr.io/fixture/control@sha256:'+'c'*64,'web':{'a':'ghcr.io/fixture/web@sha256:'+'d'*64},'pending':None,'core_guard':None}
         with patch.object(managed_ssh.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=json.dumps(value).encode())) as run:
             self.assertEqual(managed_ssh.read_hints(['ssh','pinned'],'/srv/managed'),value)
             self.assertIn('python3 -B - /srv/managed',run.call_args.args[0][-1])

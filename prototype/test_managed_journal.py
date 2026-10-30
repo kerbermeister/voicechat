@@ -76,6 +76,31 @@ class ManagedJournalTests(unittest.TestCase):
             self.acknowledge()
         self.fail('Journal failed to reach '+phase)
 
+    def test_full_upgrades_guard_then_core_resume_keeps_it_in_every_phase(self):
+        self.receipt['core_guard'] = '7' * 64
+        self.begin();self.through('committing')
+        self.journal = managed_journal.commit(self.root, self.attempt)
+        self.through('complete')
+        _, baseline, _ = managed_journal.current(self.root)
+        self.assertEqual(baseline['schema'], 2)
+        self.assertEqual(baseline['core_guard'], '7' * 64)
+        self.baseline = baseline
+        self.receipt['backend'] = 'e' * 64
+        self.receipt['manifest'] = {**self.candidate, 'commit': 'c' * 40}
+        self.begin(scope='core');self.through('committing')
+        self.journal = managed_journal.commit(self.root, self.attempt)
+        self.through('complete')
+        _, current, _ = managed_journal.current(self.root)
+        self.assertEqual(current['core_guard'], '7' * 64)
+        self.assertEqual(current['edges'], baseline['edges'])
+        self.assertEqual(current['backend'], 'e' * 64)
+        self.receipt['core_guard'] = '8' * 64
+        self.receipt['backend'] = 'a' * 64
+        self.receipt['manifest'] = {**self.candidate, 'commit': 'd' * 40}
+        with self.assertRaisesRegex(ValueError, 'full'):
+            managed_journal.begin(self.root, 'f' * 64, role_release.json_digest(current), scope='core')
+        self.assertEqual(managed_journal.current(self.root)[1], current)
+
     def test_maximum_edge_count_fits_each_managed_document_and_first_proof(self):
         self.baseline = baseline_tests.baseline_32(self.baseline)
         self.before['baseline'] = managed_release.store_baseline(self.root,self.baseline)

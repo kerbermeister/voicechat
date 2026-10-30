@@ -2,8 +2,8 @@
 
 Текущий production — один физический A с отдельными core/edge-a после
 [release51](../docs/iterations/three-vps-evidence/2026-10-29-production-initial-postcheck.json).
-Ordinary managed workflow реализован; сквозная VM/CI-проверка следующего production
-выпуска ещё идёт. Наличие команд ниже не означает выполненную физическую приёмку.
+Ordinary managed/full53 выполнен и проверен. Build-only core54/web55 также
+проверены по скачанным source artifacts и read-only postchecks production. Наличие команд ниже не означает выполненную физическую приёмку.
 Текущая [точка продолжения](../docs/iterations/19-three-vps-resume.md) и единый
 [реестр пользовательской приёмки](../docs/user-acceptance.md) имеют приоритет над
 историческими отметками этапов ниже. Старый `deploy.py` не получает role bundles.
@@ -28,6 +28,18 @@ legacy используется отдельный `rollout=initial`, а не or
 `deploy=false` публикует артефакты и **не продолжает** pending release на VPS.
 Server/client tests сохраняются во всех режимах. Core пропускает сборку web/crypto;
 независимый Prototype checks по push/PR по-прежнему может собирать Android.
+
+**Кандидат усиленного core guard (ещё не production):** общий `backend.sha256`
+сохраняет прежний полный охват. Дополнительный `core-scope.sha256` исключает только
+явно перечисленные core application files и Python test files. Shared/edge operator,
+workflow, vendor и неизвестные пути остаются защищены. SHA проверяется с clean Git
+до SSH и с exact metadata bytes на узле. Full сохраняет guard в baseline schema2;
+историческая schema1 читается, но новый backend delta через core без guard отвергается.
+При core-only backend delta guard должен совпасть с записанным; иначе нужен full.
+Web/edge прежний backend guard не ослабляют. Совпадение generated edge bundle само
+по себе недостаточно: operator scripts могут не входить в этот bundle.
+Unit/source/journal checks прошли; перед новой production baseline нужна реальная
+VM проверка full schema1→2, core delta, отказа shared operator delta и rollback.
 
 Перед новым build/deploy возобновляется имеющийся journal из **его исходного
 immutable source**, затем сверяются actual role state, host pins, boot receipts,

@@ -40,13 +40,15 @@ def verify_checkout(files, record, root):
         mode,kind,checksum=header.decode().split()
         if mode not in ('100644','100755') or kind!='blob':raise ValueError('Only tracked regular deployment sources allowed')
         source[name]=checksum
-    if set(files)-{'release.json','backend.sha256'} != source.keys():
+    if set(files)-{'release.json','backend.sha256','core-scope.sha256'} != source.keys():
         raise ValueError('Source archive differs from the complete tracked deployment file set')
     for name in source:
         expected=subprocess.check_output([*git,'show',commit+':'+name])
         if files[name]!=expected:raise ValueError('Source archive bytes differ from the checked-out Git tree')
     if record['backend']!=release_source.backend_fingerprint(root):
         raise ValueError('Source archive backend fingerprint differs from the Git tree')
+    if record.get('core_guard') is not None and record['core_guard']!=release_source.core_scope_fingerprint(root):
+        raise ValueError('Core source guard differs from the Git tree')
 
 
 def receive(ssh, managed_root, commit, archive, *, checkout=None):

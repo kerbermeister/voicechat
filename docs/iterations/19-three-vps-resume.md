@@ -2,6 +2,24 @@
 
 ## Актуальная сводка: production core/edge включены
 
+**LATEST: core-only source guard candidate implemented, НЕ production.**
+БылоREDregression, теперь129managed+9release/source+6transport PASS; all668
+PASS/skipped3,77.252s (`.prototype/all-python-tests-core-source-guard.log`).
+`release_source.core_scope_fingerprint`: прежний backend hash побайтносовместим
+(проверенoldGit463eed4→7f5751…). Новыйcore-scope.sha256 исключаеттолькоcoreapp
+allowlist+prototype/test_*.py; unknown/shared/edge/workflow/vendor защищены.
+Artifact unpack/verify/cleanGit связываютguard сметаданными; full→baseline schema2,
+core backend delta requires matching guard; schema1history readable, missingguard
+requiresfull. Journal/control next_baseline helper, probe/SSH/CI propagation done.
+Нужны commit clean source, public package checks, новая real normal VM проверка:
+full1→2/lostreply, web/core scopes, core-only protected testfile backenddelta сsameguard,
+отказ core приcommentchangeedge_deploy.py БЕЗ fences/processchanges, badfull rollback.
+Parent/driver можно адаптировать из `/tmp/voicechat-managed-normal-{vm,driver}.py`
+под managed-guard names, сохранив старыеlogs/records. Source core-scope metadata
+добавить в каждую fixture archive; frozen initial backend остаётся base, core testfile
+меняет backend только в private Git clone, не runtime. Не менять mainVM WGprivatekey/
+двастарыхтома. HostprepareVM network/key готовы; всёVPSreadonlyпослеfull53.
+
 **LATEST 30.10 03:40local: producer54/55 и postchecks PASS; core-only guard audit открыт.**
 [Web55 proof](three-vps-evidence/2026-10-30-ci-managed-web-build-only.json): SUCCESS11m,
 job10m55, artifact12949243943 ZIP SHA7cc2913c…, downloaded exactGit463eed4,

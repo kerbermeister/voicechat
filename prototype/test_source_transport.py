@@ -71,6 +71,17 @@ class SourceTransportTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'Commit reviewed'):self.receive()
         self.assertEqual(self.calls,[])
 
+    def test_core_guard_is_verified_against_exact_git_tree_before_ssh(self):
+        self.case.files['core-scope.sha256'] = release_source.core_scope_fingerprint(self.repo).encode()
+        self.prepare()
+        self.assertEqual(self.receive(), self.expected)
+        self.calls.clear()
+        self.case.files['core-scope.sha256'] = b'0' * 64
+        self.prepare()
+        with self.assertRaisesRegex(ValueError, 'Core source guard differs'):
+            self.receive()
+        self.assertEqual(self.calls, [])
+
     def test_unknown_source_bytes_and_wrong_backend_fingerprint_never_leave_runner(self):
         original=dict(self.case.files)
         for name,raw,error in (('infra/private.pem',b'synthetic fixture','file set'),

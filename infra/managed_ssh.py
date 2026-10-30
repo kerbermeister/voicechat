@@ -75,9 +75,11 @@ def read_hints(ssh,root):
     if result.returncode:raise RemoteFailure('Managed build hint read failed; inspect the pinned data host')
     if len(result.stdout)>65536:raise ValueError('Oversized build hints')
     value=json.loads(result.stdout,object_pairs_hook=managed_probe.unique)
-    topology.fields(value,('schema','baseline','backend','origin','control','web','pending'))
+    topology.fields(value,('schema','baseline','backend','origin','control','web','pending','core_guard'))
     if type(value['schema']) is not int or value['schema']!=1:
         raise ValueError('Known managed build hints required')
+    if value['core_guard'] is not None and (not isinstance(value['core_guard'],str) or not role_release.SHA.fullmatch(value['core_guard'])):
+        raise ValueError('Known core source guard required')
     return value
 
 
@@ -191,6 +193,10 @@ def main():
                     raise ValueError('Resume the pending release before selecting build digests')
                 if args.scope in ('web','edge') and hints['backend']!=release_source.backend_fingerprint(Path(__file__).resolve().parents[1]):
                     raise ValueError('Protected backend sources changed; use full release')
+                if args.scope=='core' and hints['backend']!=release_source.backend_fingerprint(Path(__file__).resolve().parents[1]):
+                    guard=release_source.core_scope_fingerprint(Path(__file__).resolve().parents[1])
+                    if hints['core_guard'] is None or hints['core_guard']!=guard:
+                        raise ValueError('Non-core protected sources changed or guard missing; use full release')
                 result=hints
         else:
             result=release(ssh,root,os.environ['GITHUB_SHA'],args.archive,identity,

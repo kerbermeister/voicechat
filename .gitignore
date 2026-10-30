@@ -23,3 +23,5 @@ __pycache__/
 infra/runtime/
 
 /backend.sha256
+
+/core-scope.sha256

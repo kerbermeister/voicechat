@@ -79,6 +79,44 @@ class ManagedReleaseTests(unittest.TestCase):
         self.assertEqual(value['core']['images']['control'],self.image('5'))
         self.assertEqual(value['steps'],[{'role':'core','edge_id':None}])
 
+    def test_core_protected_source_change_requires_a_recorded_non_core_guard(self):
+        with self.assertRaisesRegex(ValueError, 'full'):
+            managed_release.plan(self.baseline, self.candidate, 'e' * 64, scope='core')
+
+    def test_full_records_guard_before_allowing_core_app_only_changes(self):
+        guard = '7' * 64
+        value = managed_release.plan(self.baseline, self.candidate, 'e' * 64,
+                                     scope='full', core_guard=guard)
+        baseline = managed_release.next_baseline(self.baseline, value)
+        self.assertEqual(baseline['schema'], 2)
+        self.assertEqual(baseline['core_guard'], guard)
+        core = managed_release.plan(baseline, self.candidate, 'd' * 64,
+                                    scope='core', core_guard=guard)
+        self.assertEqual(core['edges'], baseline['edges'])
+        self.assertEqual(managed_release.next_baseline(baseline, core)['core_guard'], guard)
+        for missing_or_changed in (None, '8' * 64):
+            with self.subTest(guard=missing_or_changed), self.assertRaisesRegex(ValueError, 'full'):
+                managed_release.plan(baseline, self.candidate, 'd' * 64,
+                                     scope='core', core_guard=missing_or_changed)
+        with self.assertRaisesRegex(ValueError, 'full'):
+            managed_release.plan(self.baseline, self.candidate, 'd' * 64,
+                                 scope='core', core_guard=guard)
+        with self.assertRaisesRegex(ValueError, 'retain'):
+            managed_release.plan(baseline, self.candidate, 'd' * 64, scope='full')
+
+    def test_partial_releases_preserve_guard_and_same_tree_cannot_change_it(self):
+        self.baseline.update(schema=2, core_guard='7' * 64)
+        for scope in ('web', 'edge', 'core'):
+            value = self.plan(scope)
+            self.assertEqual(managed_release.next_baseline(self.baseline, value)['core_guard'], '7' * 64)
+            with self.assertRaisesRegex(ValueError, 'conflicts'):
+                managed_release.plan(self.baseline, self.candidate, self.baseline['backend'],
+                                     scope=scope, core_guard='8' * 64)
+        for malformed in (True, '', 'x' * 64):
+            with self.assertRaises(ValueError):
+                managed_release.plan(self.baseline, self.candidate, 'd' * 64,
+                                     scope='core', core_guard=malformed)
+
     def test_full_updates_core_then_all_edges_in_declared_order(self):
         self.candidate['control']=self.image('5')
         value=self.plan()

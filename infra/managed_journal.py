@@ -143,8 +143,9 @@ def _load(root, attempt=None):
         # journals retain their original validated intent: do not re-render them
         # using the next release's changed configuration generator.
         plan = managed_release.plan(baseline, receipt['manifest'], receipt['backend'],
-                                    scope=value['request']['scope'], edges=value['request']['edges'])
-        expected = {**baseline, 'backend': plan['backend'], 'core': plan['core'], 'edges': plan['edges']}
+                                    scope=value['request']['scope'], edges=value['request']['edges'],
+                                    core_guard=receipt.get('core_guard'))
+        expected = managed_release.next_baseline(baseline, plan)
         participants = [{'role': 'core', 'edge_id': None}]
         participants += [step for step in plan['steps'] if step['role'] == 'edge']
         if target != expected or value['steps'] != plan['steps'] or value['participants'] != participants:
@@ -195,8 +196,8 @@ def begin(root, source, expected_baseline, *, scope='full', edges=None, retry=Fa
         pointer, baseline, shared = current(root)
         if role_release.json_digest(baseline) != expected_baseline:
             raise ValueError('Production baseline changed since release preparation')
-        plan = managed_release.plan(baseline, receipt['manifest'], receipt['backend'], scope=scope, edges=request['edges'])
-        target = {**baseline, 'backend': plan['backend'], 'core': plan['core'], 'edges': plan['edges']}
+        plan = managed_release.plan(baseline, receipt['manifest'], receipt['backend'], scope=scope, edges=request['edges'], core_guard=receipt.get('core_guard'))
+        target = managed_release.next_baseline(baseline, plan)
         baseline_ref = managed_release.store_baseline(root, baseline)
         target_ref = managed_release.store_baseline(root, target)
         attempt = secrets.token_hex(32)

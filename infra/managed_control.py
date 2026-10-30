@@ -47,8 +47,8 @@ def prepare(root,source,*,scope='full',edges=None,position=0,expected_baseline=N
         digest=role_release.json_digest(baseline)
         if expected_baseline is not None and expected_baseline!=digest:
             raise ValueError('Production baseline changed during preflight')
-        plan=managed_release.plan(baseline,receipt['manifest'],receipt['backend'],scope=scope,edges=edges)
-        target={**baseline,'backend':plan['backend'],'core':plan['core'],'edges':plan['edges']}
+        plan=managed_release.plan(baseline,receipt['manifest'],receipt['backend'],scope=scope,edges=edges,core_guard=receipt.get('core_guard'))
+        target=managed_release.next_baseline(baseline,plan)
         participants=[{'role':'core','edge_id':None}]+[step for step in plan['steps'] if step['role']=='edge']
         if type(position) is not int or not 0<=position<len(participants):
             raise ValueError('Known preflight role position required')

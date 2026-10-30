@@ -60,8 +60,13 @@ def hints(root):
             if digest(value)!=checksum:raise ValueError('Baseline object changed')
             return value
         index=object_(current['baseline'])
-        if set(index)!= {'schema','backend','public','inventory','subnet','core','edges'} or type(index['schema']) is not int or index['schema']!=1:
+        version=index.get('schema')
+        fields={'schema','backend','public','inventory','subnet','core','edges'}
+        if version==2:fields.add('core_guard')
+        if set(index)!=fields or type(version) is not int or version not in (1,2):
             raise ValueError('Known baseline index required')
+        if version==2 and (not isinstance(index['core_guard'],str) or not SHA.fullmatch(index['core_guard'])):
+            raise ValueError('Recorded core source guard required')
         if not isinstance(index['edges'],dict) or not 1<=len(index['edges'])<=32:raise ValueError('Bounded edge baseline required')
         baseline={**index,**{key:object_(index[key]) for key in ('public','inventory','core')},
                   'edges':{key:object_(value) for key,value in index['edges'].items()}}
@@ -83,7 +88,7 @@ def hints(root):
             raise ValueError('Known release resume hint required')
     if read(root/'current.json')[0]!=before:raise ValueError('Managed pointer changed during build hint read')
     result={'schema':1,'baseline':digest(baseline),'backend':backend,'origin':baseline['public']['canonical_origin'],
-            'control':control,'web':web,'pending':pending}
+            'control':control,'web':web,'pending':pending,'core_guard':baseline.get('core_guard')}
     if len(json.dumps(result).encode())>65536:raise ValueError('Build hint response exceeds its bound')
     return result
 

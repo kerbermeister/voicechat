@@ -24,10 +24,25 @@ import role_release
 import topology
 
 
-def validate_baseline(value):
-    topology.fields(value, ('schema', 'backend', 'public', 'inventory', 'subnet', 'core', 'edges'))
-    if type(value['schema']) is not int or value['schema'] != 1:
+def baseline_fields(value):
+    version = value.get('schema') if isinstance(value, dict) else None
+    if type(version) is not int or version not in (1, 2):
         raise ValueError('Typed managed baseline required')
+    topology.fields(value, ('schema', 'backend', 'public', 'inventory', 'subnet', 'core', 'edges',
+                            *(('core_guard',) if version == 2 else ())))
+    if version == 2 and (not isinstance(value['core_guard'], str) or not role_release.SHA.fullmatch(value['core_guard'])):
+        raise ValueError('Recorded core source guard required')
+
+
+def next_baseline(baseline, plan):
+    value = {**baseline, 'backend': plan['backend'], 'core': plan['core'], 'edges': plan['edges']}
+    if plan['core_guard'] is not None:
+        value.update(schema=2, core_guard=plan['core_guard'])
+    return validate_baseline(value)
+
+
+def validate_baseline(value):
+    baseline_fields(value)
     if not isinstance(value['backend'], str) or not role_release.SHA.fullmatch(value['backend']):
         raise ValueError('Recorded backend fingerprint required')
     topology.validate(value['public']); node_inventory.validate(value['inventory'], value['public'])
@@ -99,7 +114,8 @@ def store_baseline(root, baseline):
             else:
                 managed_state.persist(path, value)
             return checksum
-        index = {key: baseline[key] for key in ('schema', 'backend', 'subnet')}
+        index = {key: baseline[key] for key in ('schema', 'backend', 'subnet',
+                    *(('core_guard',) if baseline['schema'] == 2 else ()))}
         index.update({key: store(baseline[key]) for key in ('public', 'inventory', 'core')})
         index['edges'] = {identifier: store(manifest) for identifier, manifest in baseline['edges'].items()}
         return store(index)
@@ -114,7 +130,7 @@ def load_baseline(root, checksum):
         raise ValueError('Existing immutable baseline storage required')
     with managed_state.locked(directory):
         value = _baseline_object(directory, checksum)
-        topology.fields(value, ('schema', 'backend', 'public', 'inventory', 'subnet', 'core', 'edges'))
+        baseline_fields(value)
         if not isinstance(value['edges'], dict) or not 1 <= len(value['edges']) <= 32:
             raise ValueError('Complete bounded edge baseline index required')
         return validate_baseline({**value,
@@ -122,7 +138,7 @@ def load_baseline(root, checksum):
             'edges': {identifier: _baseline_object(directory, item) for identifier, item in value['edges'].items()}})
 
 
-def plan(baseline, candidate, backend, *, scope='full', edges=None):
+def plan(baseline, candidate, backend, *, scope='full', edges=None, core_guard=None):
     """Select immutable targets, preserving unselected/mixed-version roles.
 
     A core build reuses every installed web image. Edge/web never rebuild a core
@@ -140,6 +156,16 @@ def plan(baseline, candidate, backend, *, scope='full', edges=None):
     if scope not in ('web', 'edge', 'core', 'full'): raise ValueError('Unknown managed release scope')
     if not isinstance(backend,str) or not role_release.SHA.fullmatch(backend):
         raise ValueError('Build-generated backend fingerprint required')
+    if core_guard is not None and (not isinstance(core_guard, str) or not role_release.SHA.fullmatch(core_guard)):
+        raise ValueError('Build-generated core source guard required')
+    recorded_guard = baseline.get('core_guard')
+    if scope == 'core' and backend != baseline['backend'] and (recorded_guard is None or core_guard != recorded_guard):
+        raise ValueError('Non-core protected sources changed or guard missing; use full release')
+    if backend == baseline['backend'] and recorded_guard is not None and core_guard not in (None, recorded_guard):
+        raise ValueError('Core guard conflicts with the unchanged protected tree')
+    if scope == 'full' and recorded_guard is not None and core_guard is None:
+        raise ValueError('Full release must retain the core source guard')
+    selected_guard = core_guard if scope == 'full' else recorded_guard
     ids = [edge['id'] for edge in baseline['public']['edges']]
     selected = ids if edges is None else list(edges)
     if (not selected or len(set(selected)) != len(selected) or any(item not in ids for item in selected)):
@@ -178,7 +204,7 @@ def plan(baseline, candidate, backend, *, scope='full', edges=None):
     steps = ([{'role':'core','edge_id':None}] if scope in ('core','full') else [])
     if scope != 'core': steps += [{'role':'edge','edge_id':identifier} for identifier in selected]
     return {'schema':1, 'scope':scope, 'baseline':role_release.json_digest(baseline),
-            'backend':backend, 'core':core, 'edges':targets, 'steps':steps}
+            'backend':backend, 'core_guard':selected_guard, 'core':core, 'edges':targets, 'steps':steps}
 
 
 def process_snapshot(root, record, *, execute=role_deploy.run):

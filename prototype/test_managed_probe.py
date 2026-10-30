@@ -27,6 +27,18 @@ class ManagedProbeTests(unittest.TestCase):
         self.assertIsNone(value['pending'])
         self.assertEqual({p:p.read_bytes() for p in self.root.rglob('*') if p.is_file()},before)
 
+    def test_schema_two_guard_roundtrip_and_hints_do_not_change_runtime(self):
+        baseline = {**self.fixture.baseline, 'schema': 2, 'core_guard': '7' * 64}
+        pointer = {**self.fixture.before, 'baseline': managed_release.store_baseline(self.root, baseline)}
+        managed_state.persist(self.root/'current.json', pointer)
+        self.assertEqual(managed_release.load_baseline(self.root, pointer['baseline']), baseline)
+        hints = managed_probe.hints(self.root)
+        self.assertEqual(hints['core_guard'], '7' * 64)
+        self.assertEqual(hints['baseline'], role_release.json_digest(baseline))
+        for bad in (None, True, 'invalid'):
+            with self.assertRaises(ValueError):
+                managed_release.validate_baseline({**baseline, 'core_guard': bad})
+
     def test_initial_pointer_is_read_only_after_completed_adoption(self):
         baseline=self.fixture.baseline;identifier=next(iter(baseline['edges']))
         target={'root':str(self.root),'backend_sha256':baseline['backend'],'public':baseline['public'],

@@ -38,6 +38,20 @@ class ImmutableSourceDeliveryTests(unittest.TestCase):
 
     def install(self,raw,sha):return delivery.install(raw,self.root,sha,self.commit)
 
+    def test_optional_guard_is_bound_to_metadata_bytes_and_cannot_be_relabelled(self):
+        self.files['core-scope.sha256'] = b'7' * 64 + b'\n'
+        raw, sha = self.archive();target = self.install(raw, sha)
+        record = json.loads((target/'delivery.json').read_text())
+        self.assertEqual(record['core_guard'], '7' * 64)
+        changed = {**record, 'core_guard': '8' * 64}
+        (target/'delivery.json').write_text(json.dumps(changed))
+        with self.assertRaisesRegex(ValueError, 'verified files'):
+            delivery.verify(target, changed)
+        self.files['core-scope.sha256'] = b'not-a-hash'
+        raw, sha = self.archive()
+        with self.assertRaisesRegex(ValueError, 'source guard'):
+            delivery.unpack(raw, sha, self.commit)
+
     def test_repeat_verifies_exact_existing_source_without_overwrite(self):
         raw,sha=self.archive();target=self.install(raw,sha)
         self.assertEqual(target,self.root/'bundles'/sha)

@@ -58,7 +58,7 @@ def unpack(raw, expected_sha, commit):
                 continue
             if not item.isfile() or item.issparse() or not 0<=item.size<=MAX_FILE:
                 raise ValueError('Only bounded regular source files are allowed')
-            allowed=(name in ('release.json','backend.sha256') or
+            allowed=(name in ('release.json','backend.sha256','core-scope.sha256') or
                 (len(path.parts)==2 and path.parts[0]=='infra' and
                  re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}',path.name) and
                  path.name not in ('runtime','__pycache__')) or
@@ -85,6 +85,10 @@ def unpack(raw, expected_sha, commit):
     if not SHA.fullmatch(backend):raise ValueError('Build-generated backend fingerprint required')
     record={'schema':1,'archive_sha256':expected_sha,'manifest':manifest,'backend':backend,
             'files':{name:hashlib.sha256(content).hexdigest() for name,content in files.items()}}
+    if 'core-scope.sha256' in files:
+        guard=files['core-scope.sha256'].decode('ascii').strip()
+        if not SHA.fullmatch(guard):raise ValueError('Build-generated core source guard required')
+        record['core_guard']=guard
     if len(json.dumps(record).encode())>65536:raise ValueError('Source receipt is too large')
     return files,record
 
@@ -130,6 +134,12 @@ def verify(path, record):
     for name,checksum in record['files'].items():
         if hashlib.sha256(read(path/name)).hexdigest()!=checksum:
             raise ValueError('Immutable source file changed')
+    if (record['backend'] != read(path/'backend.sha256').decode('ascii').strip() or
+            record['manifest'] != decode(read(path/'release.json'))):
+        raise ValueError('Source receipt metadata differs from the verified files')
+    guard = read(path/'core-scope.sha256').decode('ascii').strip() if 'core-scope.sha256' in record['files'] else None
+    if record.get('core_guard') != guard or (guard is None and 'core_guard' in record):
+        raise ValueError('Core source guard differs from the verified files')
 
 
 def install(raw, root, expected_sha, commit):

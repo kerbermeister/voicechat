@@ -599,6 +599,15 @@ Linux проверку. Перенос существующих pusher URL, ре
 подмена/удаление/symlink файлов, несовместимость и staged topology. Это не заменяет
 current/previous per node, происхождение build artifacts, CI и deploy integration.
 
+30.10, source guard audit: найден и регрессионным тестом воспроизведён пропуск
+shared operator изменений при core-only. Кандидат исправления добавляет отдельный
+Git fingerprint и baseline schema2, сохраняя прежний backend guard без исключений.
+Full устанавливает guard; core backend delta без совпадающего guard требует full.
+JSON metadata связана с bytes артефакта; prepare/begin/resume/probe используют один
+контракт.129 focused managed,9 release/source и6 transport checks PASS; полный
+набор668 PASS/skipped3. Production пока schema1/source2dae; реальная VM проверка
+нового guard и публикация исправления ещё не выполнены.
+
 ### V3-20 — Реализовать раздельный deploy и последовательный rollback
 
 30.10: [настоящие SSH full/web/core/rollback сценарии PASS](../iterations/three-vps-evidence/2026-10-30-vm-managed-scopes.json).
