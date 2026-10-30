@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "runtime_source_commit": "d0cf5336e724fcb701af2dce7be1ba85ff0e927f",
+  "status": "functional_scopes_pass_with_documented_fixture_cleanup_recovery",
+  "driver": {
+    "schema": 1,
+    "production_changed": false,
+    "full_commit": "d0cf5336e724fcb701af2dce7be1ba85ff0e927f",
+    "web_fixture_commit": "1a2980c8ff085e17be165f6d2d8952c8596d9261",
+    "sources": {
+      "full": "7aab5dbdeff4cd0145271a855a526d52fbad92f0b72cab1fe2064515332ccaf4",
+      "web": "ebd42f48040658a4ca477a5f62e2941b3ad5a0480992a80a1912d4e459cebdc4",
+      "rollback": "a4d0d46d0f24e2311b5efee911b72f2705a5a5ed7d0a38cdfdf13345027fcc57"
+    },
+    "full_with_lost_apply_reply": {
+      "schema": 1,
+      "attempt": "d7268b58b3393e3d4060c67205e865df68033ed526a941dc7badcc2f4edcc909",
+      "phase": "complete",
+      "maintenance_ready": true,
+      "core_commit": "d0cf5336e724fcb701af2dce7be1ba85ff0e927f",
+      "scope": "full",
+      "selected_edges": null,
+      "edges": {
+        "a": "d0cf5336e724fcb701af2dce7be1ba85ff0e927f"
+      }
+    },
+    "web_core_processes_unchanged": {
+      "schema": 1,
+      "attempt": "ffe7902e3d8bf37dbd852fbaecb6746add960771d76acfa1ea80e8da0d8d9d56",
+      "phase": "complete",
+      "maintenance_ready": true,
+      "core_commit": "d0cf5336e724fcb701af2dce7be1ba85ff0e927f",
+      "scope": "web",
+      "selected_edges": null,
+      "edges": {
+        "a": "1a2980c8ff085e17be165f6d2d8952c8596d9261"
+      }
+    },
+    "actual_core_only_edge_processes_unchanged": {
+      "schema": 1,
+      "attempt": "d4bd37ad5655d41f5f9ec9ba7c576c5d7eb1ba0d17aa89ae383178efb2ec7cf7",
+      "phase": "complete",
+      "maintenance_ready": true,
+      "core_commit": "1a2980c8ff085e17be165f6d2d8952c8596d9261",
+      "scope": "core",
+      "selected_edges": null,
+      "edges": {
+        "a": "1a2980c8ff085e17be165f6d2d8952c8596d9261"
+      }
+    },
+    "bad_fixture_commit": "79e92b1266fc3903306d1fb8664aa4a25504264e",
+    "failed_edge_rollout_restored_exact_global_pointer": true,
+    "post_backup_matrix_write_in_each_full_attempt": true,
+    "limits": [
+      "Existing marked disposable VM, one cohost A, synthetic account/CA/catalog and cached fixture images.",
+      "Actual pinned SSH with explicit loopback port mapping for the owned VM, not physical B/C or production.",
+      "Lost result injected after real core apply returned; not an actual network outage or real media acceptance."
+    ]
+  },
+  "independent_fixture_assertions": {
+    "actual_pinned_ssh_full_web_and_rollback": true,
+    "lost_apply_reply_resumed_without_reconfigure": true,
+    "synthetic_account_device_post_backup_data_and_identity_preserved": true,
+    "neighbor_processes_unchanged": true,
+    "all_role_fences_released": true
+  },
+  "initial_migration_and_actual_baseline_reader_passed": true,
+  "cleanup_recovery": "2026-10-30-vm-managed-cleanup-recovery.json",
+  "production_changed": false,
+  "limits": [
+    "One marked disposable cohost VM, synthetic account/CA/catalog and cached images; no physical B/C or actual media acceptance.",
+    "Original parent exited1 only on detached coturn seed volume after functional assertions; separate guarded cleanup/rechecks passed, retained image seed archive stays on VM.",
+    "The fixture capture hook was fixed and39 initial regression tests passed; the hour-long SSH scopes were not rerun after this fixture-only change.",
+    "Normal scopes prove post-backup Matrix writes; separate core rollback proof covers changed private policy and SQLite writes."
+  ]
+}

@@ -569,6 +569,18 @@ current/previous per node, происхождение build artifacts, CI и dep
 
 ### V3-20 — Реализовать раздельный deploy и последовательный rollback
 
+30.10: [настоящие SSH full/web/core/rollback сценарии PASS](../iterations/three-vps-evidence/2026-10-30-vm-managed-scopes.json).
+Потерянный apply reply возобновлён без configure, web не перезапустил core,
+core не изменил edge-процессы, bad full вернул exact global pointer и сохранил
+post-backup Matrix запись. Parent первоначально exit1 из-за одного отсоединённого
+coturn seed-тома; [отдельная guarded recovery PASS](../iterations/three-vps-evidence/2026-10-30-vm-managed-cleanup-recovery.json)
+сохранила его обратимую копию, оба старых тома и исходную private network/key.
+Fixture теперь сохраняет проверенный ID TURN-тома до обычных SSH-релизов;39
+initial regression tests PASS. Полный часовой scope прогон после fixture-only
+исправления не повторялся; runtime не менялся. CI95/96 и build-only52 PASS.
+Production normal full — следующий шаг; bootstrap/replacement ещё отдельные задачи.
+
+
 29.10: добавлен кандидат общего первоначального `initial_cohost.py`: frozen artifact,
 общий nonce/fence, stopped-writer backup, URL-only push migration, boot recovery,
 peerless network, core/edge warm-up, публичный commit и восстановление legacy

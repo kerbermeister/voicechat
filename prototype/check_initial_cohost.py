@@ -133,16 +133,32 @@ def check_configure_snapshots(snapshots, *, run):
             raise AssertionError('Committed full recovery re-executed configure')
 
 
+def retain_turn_volumes(edge, retained, *, run):
+    # Compose can detach an image-declared anonymous volume when the first
+    # ordinary release recreates the adopted TURN container. Capture ownership
+    # while its exact role model/container is still available, before SSH drills.
+    record=edge_deploy.read_state(edge,'a')['current']
+    if record is None:raise ValueError('A committed fixture edge is required')
+    release=role_deploy.release_path(edge,record)
+    model=json.loads(edge_deploy.compose(edge,record,'config','--format','json',execute=run))
+    owned=initial_cohost.namespace('voicechat-edge-a',
+        [((release/'infra/compose.edge.json',),model)],execute=run)['turn']
+    for item in owned['mounts']:
+        if item['Destination']!='/var/lib/coturn':continue
+        name=item.get('Name')
+        if not isinstance(name,str) or not role_release.SHA.fullmatch(name):
+            raise ValueError('Unknown fixture TURN image volume must be preserved')
+        if name not in retained:retained.append(name)
+    (ROOT/'.prototype').mkdir(mode=0o700,exist_ok=True)
+    managed_state.persist(ROOT/'.prototype/initial-cohost-implicit-volumes.json',
+                          {'schema':1,'volumes':retained})
+
+
 def fault_sequence(root,core,edge,shared,deploy,api,path,account_data,retained_volumes,*,run):
     # Write new account data after the stopped-writer snapshot. A rollback that
     # restored that snapshot would lose it, even if account login still worked.
     def before_public(*args,**kwargs):
-        record=edge_deploy.read_state(edge,'a')['current']
-        release=role_deploy.release_path(edge,record)
-        model=json.loads(edge_deploy.compose(edge,record,'config','--format','json',execute=run))
-        owned=initial_cohost.namespace('voicechat-edge-a',
-            [((release/'infra/compose.edge.json',),model)],execute=run)['turn']
-        retained_volumes.extend(item['Name'] for item in owned['mounts'] if item['Destination']=='/var/lib/coturn')
+        retain_turn_volumes(edge,retained_volumes,run=run)
         account_data['nonce']=secrets.token_hex(16)
         api('http://10.88.0.1:8088',path,'PUT',account_data)
         raise ValueError('Injected failure before public commit')
@@ -294,6 +310,7 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
                     'limits':['Synthetic accounts, CA, catalog key and candidate fingerprint on the marked VM.',
                               'No real device/media acceptance, production transition or actual machine reboot.'],
                     'pre_public_rollback_and_committed_core_public_recovery_drills':fault_drills}
+                retain_turn_volumes(edge,retained_volumes,run=execute)
                 if managed_backend is not None:
                     from managed_rollout_fixture import wait
                     result['managed_ssh']=wait(root,public,inventory,session,path,baseline['data_identity'],run=run)

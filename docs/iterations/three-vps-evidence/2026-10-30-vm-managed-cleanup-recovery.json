@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "original_parent_exit": 1,
+  "failure": "Final volume set included one detached coturn image seed volume.",
+  "functional_child_and_ssh_drills_passed": true,
+  "original_network_byte_equality_assertion_passed_before_volume_check": true,
+  "residual_exactly_matched_unstarted_pinned_coturn_image_seed": true,
+  "private_recovery_copy_retained_on_same_vm": true,
+  "only_exact_unreferenced_fixture_created_residual_removed": true,
+  "two_pre_fixture_anonymous_volumes_preserved_with_identical_metadata": true,
+  "original_private_network_and_key_restored_and_unchanged_during_recovery": true,
+  "original_network_fingerprint": "b8ceb4732b5fa3d56d6a9c35541350086a1edd3789a7d3b62882089bf6ab9171",
+  "no_fixture_containers_left": true,
+  "systemd_running_and_original_network_ready": true,
+  "production_changed": false,
+  "limits": [
+    "Cleanup recovery was checked separately; the original parent remains recorded as exit1.",
+    "Pre-fixture volume IDs were reconstructed from the two surviving pre-fixture creation records; no global volume prune.",
+    "No complete SSH scope rerun after the fixture-only capture hook fix; runtime/scopes already passed with their unchanged source."
+  ]
+}

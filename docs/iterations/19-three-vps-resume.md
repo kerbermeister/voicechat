@@ -2,6 +2,66 @@
 
 ## Актуальная сводка: production core/edge включены
 
+**LATEST 30.10,01:58local: NORMAL FUNCTIONAL SCOPES COMPLETE, CLEANUP RECOVERED.**
+Driver60962 exit0: full/lostreply, web/core process isolation, bad full/outerrollback
+PASS. Parent80589 exit1 на line18 volume-set assertion; network-byte equalityline17
+уже PASS, child independently verified account/device/data/identity/fences/neighbors.
+Был1 orphan coturn volume b87c4bcc… (created23:29:39UTC внутри fixture): его69KiB
+SQLite побайтно равен unstarted pinned image seed. Probe79581 exit0; private tar
+сохранён `/srv/voicechat-edge-fixture/retained-seed-volume-b87`. Recovery58278 exit0:
+только этот unreferenced exactseed том удалён; old2 metadata unchanged, original
+network fingerprintb8ceb4… restored/key unchanged,0containers,systemd running.
+[Combined scopes proof](three-vps-evidence/2026-10-30-vm-managed-scopes.json),
+[cleanup recovery](three-vps-evidence/2026-10-30-vm-managed-cleanup-recovery.json).
+Нельзя переписать исходный parent как exit0: он остаётся явно записанным exit1.
+Fixture-only fix: capture verified TURN mount ID до managedwait + private receipt,
+shared with existing fault capture;4 focused/39 initial tests PASS. Runtime unchanged.
+Все VM test jobs завершены; основной QEMU жив, исходная peerless network активна.
+
+CI95/96 87a4a9e SUCCESS; full source package87 verified cleanGit (101files/10KBreceipt).
+Следующий commit включает только fixture fix и docs/evidence поверх87; ordinary
+runtime всё ещё идентиченD0, package module exactVM tested87. План: commit/push,
+сразу штатный GitHub managed/full/deploy=true; его server/client checks перед deploy
+проверят новый candidate. Ненужный отдельный Android artifact job не меняет scope full.
+VPS строго read-only snapshot подтвердил24c42bf, no rollout.json,32GiB free, backupidle;
+[before normal](three-vps-evidence/2026-10-30-production-before-normal.json) сохраняет
+sharedfront+Caddy+neighbor4 IDs. Postcheck script принимает exactcommit argv и
+сверяет все6 процессов, PG/signing identity, previousinitial24, release digests иMac24feed.
+Не запускать initial, не трогать старые2VMтома, archivecoturnseed не экспортировать.
+
+
+**LATEST 30.10,01:18 local:** HEAD/origin `87a4a9eb73099fcfc745c37c4e57db3034b264a1`,
+новый общий кандидат; before this edit git clean. Backend fingerprint
+`820b8e178621c86e40f506ff3af3aa0052cd8962d5081a59c6fe57700e0c66cd`.
+CI95 push https://github.com/kerbermeister/voicechat/actions/runs/40978202914
+(job123811375572), CI96 PR https://github.com/kerbermeister/voicechat/actions/runs/40978207688
+ещё running. CI93+94 D0 PASS; release build-only52 D0 SUCCESS, deploy=false.
+PR5 draft attached; main unchanged; production STILL24c42bf initial51.
+Никаких live VPS mutations в этой итерации не было.
+
+Normal VM parent80589/driver60962 ACTIVE, sources/roots прежние awmnrf_u/ghyq2y5a.
+Уже actual full+lost-reply, web-only(core ID/StartedAt/RestartCount unchanged),
+core-only(edge processes unchanged) PASS. Последний bad full: core applied,
+edge intentionally failing; outer rollback/data assertions и parent cleanup ещё нужны.
+Не запускать production full пока BOTH driver+parent не PASS. Ready timeout7200s
+примерно с00:34local; parent timeout9000 с00:14. Не стартовать дубликат.
+
+Package VM2 test16157/reboot50488/stop92779 all exit0. VM2 powered off, disk/key
+retained; restart_argv в package-active.json. Proof committed87a4a9e. 632 unit tests
+PASS/skipped3 +7 release-source focused PASS. Exact host_packages/harness hashes
+совпали с realVM proof. Source archive validation87 PASS:101 files,243813 bytes,
+receipt10130 bytes; synthetic image digests (только source test, не Docker build).
+Runtime/workflow diff87 vsD0 отсутствует, кроме нового passive host_packages.py
+и runbook; executable ordinary release файлы идентичны проверяемомуD0.
+
+После VM/CI: выполнить GitHub Build and deploy `rollout=managed,mode=full,deploy=true`
+на87a4a9e (или docs-only successor с тем же runtime), retry flagsfalse, edges empty.
+Не повторять initial51 и не двигать codex/three-vps-initial24. Postcheck готов:
+`python3 /tmp/voicechat-production-normal-postcheck.py <exact-40-char-commit>`;
+он ещё не запускался и ожидает previous initial24, исходные PG/signing identity,
+neighbor4 unchanged, Mac24 feed unchanged. Нового macOS build не требуется.
+
+
 **НОВЫЙ КАНДИДАТ ДЛЯ ПЕРВОГО normal production full:** проверенный host_packages
 компонент включается в следующий общий commit до production. Ordinary runtime/
 workflow файлы относительноd0cf533 не меняются; normal VM всё ещё проверяет именно
