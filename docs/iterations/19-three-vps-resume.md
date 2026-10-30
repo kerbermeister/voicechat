@@ -41,7 +41,84 @@ old host unavailable, stale key rejection, interrupted/repeated steps. VM/synthe
 Automation voicechat-core-edge остаётся PAUSED после прошлого блока; текущая
 работа выполняется в этом чате. Единственный user acceptance: docs/user-acceptance.md.
 
-## Текущий checkpoint: OCI provider fixture готов, SSH lifecycle drill ещё НЕ пройден
+## Текущий checkpoint: после controlled VM CPU uplift нужно resume core init
+
+Core init session38352 завершилась ошибкой штатного compose --wait180, pending
+applying и все synthetic volumes сохранены. Private log
+`.prototype/entry-lifecycle/core-initialize.log`; startup logs рядом synapse/control.
+Docker health records показали timeout3s при запуске Python probes, core QEMU
+на одном vCPU100%. Configure exited0, PostgreSQL healthy, Synapse/control running,
+но readiness НЕ принята. Таймауты/healthchecks/guards не ослаблены.
+
+Выполнен controlled resource transition через `.prototype/entry-adjust-vm-cpu.py`:
+C→B→core systemctl poweroff, дождались exit, те же qcow2/SSH/WG keys сохранены,
+core→B→C restart. Только core smp увеличен1→4, RAM прежняя3GiB.
+Backupargv/исходные записи `.prototype/vm/entry-before-cpu-adjustment.json`.
+Новые PID core21423/B21426/C21429 записаны в active.json, порты прежние.
+Данные/архив исходной сети/production не тронуты. Приватные ключи остаются прежними.
+
+Pinned SSH после reboot готов; provider-start повторно PASS, isolated provider active.
+АКТИВЕН новый core init session68672: тот же source/env/volumes, pending applying;
+прежде нового запуска опросить его/fixture-core-ready.json, не конкурировать.
+
+Исходный порядок восстановления (provider уже выполнен): дождаться pinned SSH boot; `.prototype/entry-provider-start.py` восстановит
+VM-only .14/owned nft table/provider service после reboot (первая попытка слишком
+рано получила connection reset ДО исполнения). Затем повторить
+`.prototype/entry-initialize-core.py` с тем же source/state, без удаления volumes.
+Он сохраняет env15 lines/identity и штатно продолжает pending applying.
+После actual core ready выполнить уже подготовленный
+`.prototype/entry-initialize-edges.py` (compile PASS, ещё НЕ запускался).
+Этот helper сначала требует fixture-core-ready.json, потом stock TLS/catalog/
+bootstrap/deploy Acohost и B; secret только SSH stdin/fixture-private request.
+
+На clean C до reboot был PASS trusted registry HTTPS и repo:pull token по actual
+LAN. Это synthetic token/provider; Docker pull на новом C ещё НЕ проверен.
+53 tests PASS, full CLI add/replace, ordinary CI/full и production release текущего
+оператора ещё НЕ выполнены. main2cca4d3 неизменён. Code frozen d86d275; текущий
+worktree после него меняет только docs. Не редактировать frozen worktree.
+
+## Предыдущий checkpoint: frozen source доставлен, source upgrade PASS, core init активен
+
+Frozen clean worktree `.prototype/entry-operator-source-d86d275`, HEAD
+`d86d2750c757495ad7d4d49ac1773b615528b1c4`; не редактировать во время SSH drill.
+Source archive `.prototype/entry-lifecycle/source.tar.gz`, SHA
+`2f9e43e3b6f067ca4590ea52d389cb3f9f80a082c6487529edd6d9bd04b61872`.
+Stock ssh_deploy.receive доставил его на core/B в
+`/srv/voicechat-entry-managed/bundles/<SHA>` с exact clean checkout guard.
+Stock network_bootstrap.upgrade ФАКТИЧЕСКИ прошёл на обоих узлах: DockerPID
+core477/B467 неизменны, desired network SHA неизменны, новый source53804835…;
+VM receipts `/srv/voicechat-entry-managed/fixture-network-upgrade.json`.
+Production upgrade этим НЕ объявляется пройденным: здесь только synthetic VM.
+
+Provider active на core: voicechat-entry-fixture-providers.service, root
+`/srv/voicechat-entry-fixture-providers`, отдельная owned nft table; HTTPS/token
+scope проверены со штатным VM trust, bearer не печатался. Это synthetic provider.
+Actual export refs совпали с прежними OCI index digests. CA/catalog private keys
+остаются Mac-local; A получил только synthetic leaf pairs/public signature и
+фиктивный DNS token в `/srv/voicechat-entry-managed/fixture-inputs`.
+
+Создана ОДНА clean C VM: `.prototype/vm/entry-c-active.json`, directory
+entry-c-host-245a2174c4, PID19735, SSH49609, LAN192.0.2.12, stream55201.
+Cloud-init завершён, SSH pin и LAN/NAT адреса проверены. Dependencies/WG/app на C
+ещё НЕ устанавливались. `.prototype/entry-c-vm-exec.py` — pinned wrapper.
+Не запускать вторую C; D/replacement ещё НЕ создана.
+
+АКТИВНА initial core fixture команда `.prototype/entry-initialize-core.py`
+(unified exec session38352; проверить её прежде повторного запуска).
+Stock prepare/bootstrap/deploy, synthetic secrets сгенерированы только на A.
+Последнее наблюдение: env15 lines, pending.phase=prepared, containers=[];
+выполняется compose pull pinned PG/Synapse/config images. stdout/stderr сохранятся
+в `.prototype/entry-lifecycle/core-initialize.log` после завершения; там никаких
+пользовательских данных/production credentials нет. Первый запуск не исполнялся
+из-за syntax error в fixture substitution, исправлено и compile выполнен до SSH.
+Не создавать competing fixture/не удалять pending, volumes или baseline.
+
+Далее дождаться actual core init, stock edge a/B TLS/catalog/deploy; только после
+actual inspect роли создать initial empty-fixture managed baseline/key pin.
+Затем настоящий CLI add C → interrupt/resume → fresh D replacement → old C return
+и rejection WG/TURN. Реальные production/DNS и main в этом этапе НЕ менялись.
+
+## Предыдущий checkpoint: OCI provider fixture готов, SSH lifecycle drill ещё НЕ пройден
 
 После bd5748e исправлен CLI cancel для lost begin reply: совпавшая completed
 операция не объявляется local-only cancellation; другая active operation не
