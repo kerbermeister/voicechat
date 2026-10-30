@@ -1,55 +1,51 @@
-<!-- Current narrow acceptance: core revision, following full58 PASS. -->
 # Точка продолжения: три и более VPS
 
-## ПРИОРИТЕТ ПОЛЬЗОВАТЕЛЯ: завершить ТОЛЬКО split deploy на production
+## Текущий результат: раздельный production deploy ЗАВЕРШЁН, 30.10.2026
 
-Остальные onboarding/replacement/core-transfer/media задачи отложены явно.
-Automation voicechat-core-edge обновлена на этот узкий scope, ACTIVE; после
-доказанного production full/core/edge/web её приостановить, не продолжать другие задачи.
+Пользователь сузил задачу до полного завершения и проверки full/core/edge/web
+на рабочем VPS. Блок закрыт, остальные задачи не продолжать самостоятельно.
+Автоматизацию voicechat-core-edge после сохранения результата приостановить.
 
-Production full58 SUCCESS, независимый postcheck PASS schema2/coreguard (deploy=true, managed/full):
-https://github.com/kerbermeister/voicechat/actions/runs/41005474251
-job123899278935, frozen source2eaee99516c942c2d9026290477777e69b3c6379.
-Не запускать второй full. До него VPS healthy2dae758/full53/schema1;
-точные снимки `.prototype/split-production-before.json` (04:54:15UTC).
-All685 PASS/skipped3,77.574s: `.prototype/split-deploy-final-tests.log`.
+- Full58 SUCCESS: https://github.com/kerbermeister/voicechat/actions/runs/41005474251
+  source2eaee99516c942c2d9026290477777e69b3c6379, новая baseline schema2/core guard.
+- Реальные штатные SSH coordinator releases core42706c5 → edgef51b928 → web73c15c4
+  COMPLETE/maintenance_ready, каждый с новой docs-only acceptance revision,
+  чистым Git-bound source archive и exact immutable images CI58.
+- Независимые process checks PASS: core сохраняет edge; edge сохраняет core;
+  web сохраняет core и configure/TURN/route-health. Шесть общих/соседних процессов,
+  исходная PG/signing identity, macOS24 feed сохранены на каждом шаге.
+- Прежний synthetic account/device/session/живой Matrix marker сохранены после
+  каждого partial scope; в конце logout и удаление только временного credential
+  file. Credentials оставались A-only; основной профиль/история не читались.
+- Все current/previous lineage, guards, здоровье HTTPS/routes, backup/TLS timers
+  PASS. С Mac HTTPS200/no-cache PASS. Deployed planner отклонил несовместимые
+  partial sources и drop full guard без начала deploy/fence.
+- Local685 PASS/skipped3; CI58 server/client/build/deploy SUCCESS. Приложение и
+  Compose не менялись; новая macOS-сборка не нужна.
 
-Дальнейшие partial production проверки: переиспользовать exact CI full58 images
-через STOCK managed_ssh coordinator (не ручной Compose), source package связан
-с clean Git. Для каждой core→edge→web новой docs-only acceptance revision
-`.prototype/split_prod_release.py` проверяет неизменность всех application/operator
-inputs от full commit и обоих fingerprints, создаёт canonical archive и вызывает
-managed_ssh.release. Так не пересобирать неизменённые образы для каждого smoke.
-`.prototype/split_prod_probe.py before|full|core|edge|web` сохраняет ID/StartedAt/
-RestartCount и asserts untouched edge дляcore, untouched core дляedge/web,
-untouched protected entry services дляweb; проверяет neighbors6, data identity,
-HTTPS/route readiness/feed/timers/pointers. Не перезаписывать снимки open(x).
-После full PASS запустить `.prototype/split_api_fixture.py init` — synthetic
-production account/session/live Matrix account_data marker, credentials ONLY A
-в `/var/lib/voicechat-deploy-acceptance/split-scope-session.json`600. Проверки
-core/edge/web после соответствующегоscope; logout в конце отзывает token и убирает
-только этот временный credential file. Не читать основной профиль/историю.
+Итог, scopes/runbook, exact digests и ссылки на evidence:
+[split-deployment-production.md](split-deployment-production.md).
+Единственная пользовательская приёмка: [../user-acceptance.md](../user-acceptance.md).
+Локальные `.prototype/split-production-*.json`, scripts `split_prod_release.py`,
+`split_prod_probe.py`, `split_api_fixture.py`, `split_prod_guards.py` сохранены.
+Не повторять acceptance deployments: они уже реально выполнены.
+Один параллельный read-only postcheck получил nonblocking baseline lock;
+последовательный повтор PASS, исходный лог сохранён, deploy не повторялся.
 
-VM guard3 оказалась ОСТАНОВЛЕНА вместе с потерей /tmp driver/checkout; старыеACTIVE
-записи ниже неактуальны. Существующий диск сохранён и поднят без новогоfixture:
-main VM PID3790, SSH54926, restart_argv записан в `.prototype/vm/active.json`.
-Global journal COMPLETE/schema2, stock finish/maintenance_ready PASS.
-VM gracefully powered off; диск/архив исходной сети и старые тома сохранены. `.prototype/resume_split_vm.py`, logs
-split-vm-resume{,2,3}.log. Explicit boot helper выполняется только если реальный
-owned fence ещё существует; released peer оставляется штатному activate/release.
-Последний driver91058 завершился ошибкой на finish; idempotent remote finish
-session24609 ещё возвращает результат, private log на VM
-`managed-test/final-finish-error.log`. Не менять immutable bundle и не обходить
-source guards. Parent/driver original погибших процессов больше нет; прежний
-полный parent/guard matrix не объявлять PASS. Исходная private network находится
-в архиве interruptedfixture, её не удалять; старые2тома также сохранить.
+Прерванный guard3 VM full успешно доведён stock resume до COMPLETE и maintenance
+ready без повторного configure. `.prototype/split-vm-resume-evidence.json` и
+публичная копия сохранены; это НЕ завершение всего прежнего parent matrix.
+VM отправлена в graceful poweroff, диск/архив исходной private network и старые
+тома сохранены. Их не удалять и не объявлять cleanup/full matrix пройденными.
 
-Browser: новая IAB tab1, JS deployTab, browser2, current full58 job page;
-proofFs binding fs/promises. При reset reacquire tab1, не открыватьдубликаты.
-Screenshot `split-production-full58-started.png` сохранён и показан пользователю.
+Отложено явно: физические B/C, полный SSH onboarding/replacement, перенос A,
+медиа/E2EE/15s и реальные Android/Windows устройства. Более широкий PR5 draft
+остаётся открытым. По ним прогресс этой итерации не приписывать.
 
+Ниже сохранена история до этого результата. Она не является актуальным заданием
+и не означает, что перечисленные старые процессы продолжают работать.
 
-## LATEST ACTIVE: guard3 реальные SSH drills + mesh network PASS
+## Исторический checkpoint до текущего завершения (ACTIVE ниже устарели)
 
 Guard3 parent93973/driver70055 ACTIVE3832455. Начальная миграция прошла до ready:
 `/srv/voicechat-edge-fixture/cohost-fixture-p4b4s0fi/managed`; driver уже печатает

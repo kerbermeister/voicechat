@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "rollback_pointer_lineage_verified": {
+    "full": true,
+    "core": true,
+    "edge": true,
+    "web": true
+  },
+  "baseline_schema2_and_exact_guard_all_stages": true,
+  "external_operator_mac_https_root": 200,
+  "web_cache_control": "no-cache",
+  "limits": "Scope isolation on one physical production VPS; reused CI full58 immutable application images for docs-only partial acceptance revisions; no B/C hardware or media/E2EE acceptance"
+}

@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "stage": "web",
+  "same_test_account_device_session_and_live_matrix_marker": true,
+  "through_public_verified_https": true,
+  "credentials_exported": false,
+  "test_session_revoked": false,
+  "scope": "Synthetic production acceptance account only; no existing user profile/history read or modified; not encrypted chat/media acceptance"
+}
