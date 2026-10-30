@@ -15,6 +15,11 @@ import 'package:flutter/gestures.dart' show kSecondaryMouseButton;
 import 'forward_picker.dart';
 import 'message_metadata.dart';
 import 'app_motion.dart';
+import 'animated_emoji.dart';
+import 'pinned_message.dart';
+import 'composer_focus.dart';
+import 'read_after.dart';
+import 'pending_message.dart';
 import 'theme.dart';
 import 'conversation_list.dart'
     show roomDisplayName, roomPresence, PersonAvatar, roomAvatar;
@@ -103,7 +108,9 @@ class _ChatPaneState extends State<ChatPane>
   Future<void>? voiceOpening;
   late final Future<void> Function() voiceCancellation = cancelVoiceCapture;
   mx.Event? reply;
-  int? temporarySeconds;
+  int? temporarySeconds, readAfterDelay;
+  late final readAfter = ReadAfterState.of(widget.room.client);
+  Timer? readAfterPoll;
   DateTime? scheduledFor;
   mx.Event? edit;
   bool working = false;
@@ -144,12 +151,8 @@ class _ChatPaneState extends State<ChatPane>
   final voicePreview = AudioPlayer();
   bool previewPlaying = false;
   bool voiceSending = false;
-  String? voiceTransaction, voiceFlightEvent;
+  String? voiceTransaction;
   final voicePreviewKey = GlobalKey();
-  late final voiceFlight = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 420),
-  );
   final textPreviewKey = GlobalKey(),
       filesPreviewKey = GlobalKey(),
       photosPreviewKey = GlobalKey();
@@ -160,6 +163,9 @@ class _ChatPaneState extends State<ChatPane>
   MessageSnapshot? sendingSnapshot;
   bool sendingOther = false;
   String? menuEvent;
+  bool selecting = false;
+  final selectedMessages = <String>{};
+  Timer? selectionTimer;
   final recordingClock = Stopwatch();
   Timer? recordingMeter;
   PcmLevelMeter liveMeter = PcmLevelMeter();
@@ -181,8 +187,32 @@ class _ChatPaneState extends State<ChatPane>
       draftIsVideoNote = draft.videoNote;
       draftVideoDuration = draft.videoDuration;
       temporarySeconds = draft.temporarySeconds;
+      readAfterDelay = draft.readAfterSeconds;
       scheduledFor = draft.scheduledFor;
     }
+    unawaited(
+      widget.actions.reactionUsage
+          .load()
+          .then((_) {
+            if (mounted) setState(() {});
+          })
+          .catchError((Object _) {}),
+    );
+    input.selection = TextSelection.collapsed(offset: input.text.length);
+    readAfter.addListener(refresh);
+    readAfterPoll = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        unawaited(
+          readAfter
+              .syncRoom(
+                widget.room,
+                widget.timeline.events,
+                read: shouldMarkRead,
+              )
+              .catchError((Object _) {}),
+        );
+      }
+    });
     input.addListener(saveDraft);
     updateGuards.add(prepareUpdate);
     focusedEvent = widget.initialEventId;
@@ -224,7 +254,8 @@ class _ChatPaneState extends State<ChatPane>
         reply != null ||
         edit != null ||
         scheduledFor != null ||
-        temporarySeconds != null) {
+        temporarySeconds != null ||
+        readAfterDelay != null) {
       return 'Сначала отправьте или отмените вложение, запись, ответ или редактирование сообщения.';
     }
     await widget.actions.saveDraft(widget.room.id, input.text);
@@ -385,7 +416,22 @@ class _ChatPaneState extends State<ChatPane>
     }
   }
 
+  bool get shouldMarkRead =>
+      mounted &&
+      (ModalRoute.of(context)?.isCurrent ?? true) &&
+      focusedEvent == null &&
+      search.text.isEmpty &&
+      (!scroll.hasClients || scroll.offset <= 48) &&
+      WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+
   void markRead() {
+    if (shouldMarkRead) {
+      unawaited(
+        readAfter
+            .syncRoom(widget.room, widget.timeline.events, read: true)
+            .catchError((Object _) {}),
+      );
+    }
     if (!mounted ||
         focusedEvent != null ||
         search.text.isNotEmpty ||
@@ -578,6 +624,7 @@ class _ChatPaneState extends State<ChatPane>
         List.of(draftPhotos),
         caption,
         ttlSeconds: temporarySeconds,
+        readAfterSeconds: readAfterDelay,
         scheduledFor: scheduledFor,
         reply: reply,
       );
@@ -600,6 +647,7 @@ class _ChatPaneState extends State<ChatPane>
             caption,
             reply: reply,
             ttlSeconds: temporarySeconds,
+            readAfterSeconds: readAfterDelay,
             scheduledFor: scheduledFor,
             videoNote: draftIsVideoNote,
             duration: draftVideoDuration,
@@ -626,6 +674,7 @@ class _ChatPaneState extends State<ChatPane>
         List.of(draftPhotos),
         text,
         ttlSeconds: temporarySeconds,
+        readAfterSeconds: readAfterDelay,
         scheduledFor: scheduledFor,
         reply: reply,
       );
@@ -638,6 +687,7 @@ class _ChatPaneState extends State<ChatPane>
         edit: edit?.eventId,
         previews: linkPreviews.values.toList(),
         scheduledFor: scheduledFor,
+        readAfterSeconds: readAfterDelay,
         ttlSeconds: edit == null
             ? temporarySeconds
             : edit!.content['dev.voicechat.ttl_seconds'] as int?,
@@ -647,6 +697,7 @@ class _ChatPaneState extends State<ChatPane>
       input.clear();
       linkPreviews.clear();
       temporarySeconds = null;
+      readAfterDelay = null;
       scheduledFor = null;
     }
     typing(input.text);
@@ -668,7 +719,63 @@ class _ChatPaneState extends State<ChatPane>
     if (pendingId != null) {
       await widget.actions.reschedulePending(pendingId, chosen);
     } else {
-      setState(() => scheduledFor = chosen);
+      setState(() {
+        scheduledFor = chosen;
+        readAfterDelay = null;
+      });
+    }
+  }
+
+  Future<void> chooseReadAfter() async {
+    var delay = readAfterDelay ?? 5;
+    final result = await showAppDialog<int>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setDialog) => AlertDialog(
+          title: const AppDialogTitle(child: Text('Исчезнуть после прочтения')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Только для личного чата. По умолчанию — 5 секунд после прочтения получателем.',
+              ),
+              DropdownButton<int>(
+                value: delay,
+                items: [
+                  for (final seconds in [1, 3, 5, 10, 15, 30, 60])
+                    DropdownMenuItem(value: seconds, child: Text('$seconds с')),
+                ],
+                onChanged: (value) {
+                  if (value != null) setDialog(() => delay = value);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 0),
+              child: const Text('Отключить'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, delay),
+              child: const Text('Применить'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        readAfterDelay = result == 0 ? null : result;
+        if (readAfterDelay != null) {
+          temporarySeconds = null;
+          scheduledFor = null;
+        }
+      });
     }
   }
 
@@ -730,7 +837,10 @@ class _ChatPaneState extends State<ChatPane>
       ),
     );
     if (mounted && chosen != null) {
-      setState(() => temporarySeconds = chosen == 0 ? null : chosen);
+      setState(() {
+        temporarySeconds = chosen == 0 ? null : chosen;
+        if (chosen != 0) readAfterDelay = null;
+      });
     }
   }
 
@@ -1043,28 +1153,10 @@ class _ChatPaneState extends State<ChatPane>
         reply: voiceReply,
         waveform: unsentWave,
         ttlSeconds: temporarySeconds,
+        readAfterSeconds: readAfterDelay,
         scheduledFor: scheduledFor,
         caption: input.text,
       );
-      final transaction = voiceTransaction!;
-      final pending = widget.actions.pending
-          .where((item) => item['id'] == transaction)
-          .firstOrNull;
-      if (pending?['error'] != null) await widget.actions.flush();
-      await widget.actions.waitForDelivery(transaction);
-      final event = widget.actions.deliveredEvent(transaction);
-      if (event == null) {
-        throw UserActionError(
-          'Отправка отменена. Запись сохранена в предпросмотре.',
-        );
-      }
-      if (!mounted) return;
-      if (scheduledFor == null) {
-        messageKeys.putIfAbsent(event, GlobalKey.new);
-        setState(() => voiceFlightEvent = event);
-        await WidgetsBinding.instance.endOfFrame;
-        if (mounted) await flyVoicePreview(event);
-      }
       if (!mounted) return;
       setState(() {
         previewPlaying = false;
@@ -1072,37 +1164,59 @@ class _ChatPaneState extends State<ChatPane>
         unsentWave = null;
         voiceReply = null;
         voiceTransaction = null;
-        voiceFlightEvent = null;
       });
     } finally {
       if (mounted) setState(() => voiceSending = false);
     }
   }
 
-  Future<void> flyVoicePreview(String event) async {
-    if (MediaQuery.disableAnimationsOf(context)) return;
-    final delivered = widget.timeline.events
-        .where((item) => item.eventId == event)
-        .firstOrNull;
-    if (temporarySeconds != null &&
-        (delivered == null || messageExpired(delivered))) {
-      return;
-    }
-    final snapshot = await MessageSnapshot.capture(voicePreviewKey);
-    if (snapshot == null) return;
-    snapshot.expiresAt = delivered == null ? null : messageExpiry(delivered);
-    try {
-      if (!mounted) return;
-      setState(() => unsentVoice = null);
-      await snapshot.animate(
-        context,
-        voiceFlight,
-        destination: messageKeys[event],
-      );
-    } finally {
-      snapshot.dispose();
-      if (mounted) setState(() => voiceFlightEvent = null);
-    }
+  Future<void> showSendFailure(Map<String, dynamic> item) async {
+    final failure = item['failure'] as Map?;
+    final retry = await showAppDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(
+          'Сообщение не отправлено',
+          style: TextStyle(
+            fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                failure?['reason'] as String? ??
+                    item['error'] as String? ??
+                    'Нет подтверждения отправки.',
+              ),
+              const SizedBox(height: 16),
+              Text(
+                failure?['recommendation'] as String? ??
+                    'Проверьте соединение и права на отправку, затем повторите. Сообщение сохранено в очереди.',
+              ),
+              if (failure?['code'] is String) ...[
+                const SizedBox(height: 12),
+                SelectableText('Код: ${failure!['code']}'),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Закрыть'),
+          ),
+          if (item['schedule_rejected'] != true)
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Повторить сейчас'),
+            ),
+        ],
+      ),
+    );
+    if (retry == true && mounted) unawaited(widget.actions.flush());
   }
 
   Future<void> react(mx.Event event, String emoji) async {
@@ -1135,7 +1249,163 @@ class _ChatPaneState extends State<ChatPane>
     }, type: mx.EventTypes.Reaction);
   }
 
+  List<mx.Event> get selectedItems =>
+      widget.timeline.events
+          .where(
+            (event) =>
+                selectedMessages.contains(event.eventId) &&
+                !messageExpired(event) &&
+                !event.redacted &&
+                !messageHidden(event),
+          )
+          .toList()
+        ..sort((a, b) => a.originServerTs.compareTo(b.originServerTs));
+
+  void selectMessage(mx.Event event) {
+    if (!selecting) {
+      composerFocus.unfocus();
+      selectionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        final available = selectedItems.map((event) => event.eventId).toSet();
+        if (available.length != selectedMessages.length) {
+          setState(() => selectedMessages.retainAll(available));
+        }
+      });
+    }
+    setState(() {
+      selecting = true;
+      if (!selectedMessages.add(event.eventId)) {
+        selectedMessages.remove(event.eventId);
+      }
+    });
+  }
+
+  void endSelection() {
+    selectionTimer?.cancel();
+    setState(() {
+      selecting = false;
+      selectedMessages.clear();
+    });
+  }
+
+  Future<void> deleteSelection() async {
+    final events = selectedItems;
+    if (events.isEmpty) return;
+    final allowAll = events.every((event) => event.canRedact);
+    final choice = await showAppDialog<String>(
+      context: context,
+      builder: (_) =>
+          DeleteMessageDialog(allowAll: allowAll, count: events.length),
+    );
+    if (choice != 'mine' && !(choice == 'all' && allowAll)) return;
+    for (final event in events) {
+      if (messageExpired(event) || event.redacted || messageHidden(event)) {
+        continue;
+      }
+      if (choice == 'all') {
+        if (!event.canRedact) {
+          throw UserActionError('Права на удаление изменились.');
+        }
+        await event.redactEvent(redactAllEdits: true);
+      } else {
+        await widget.actions.hideMessage(event);
+      }
+      MessageMediaCache.of(
+        event.room.client,
+      ).removeFrame('${event.room.id}/${event.eventId}');
+      if (!mounted) return;
+      setState(() => selectedMessages.remove(event.eventId));
+    }
+    widget.actions.onDeleted?.call();
+    if (mounted) endSelection();
+  }
+
+  Future<void> forwardSelection() async {
+    final events = selectedItems;
+    if (events.isEmpty || events.any((event) => !canForwardMessage(event))) {
+      return;
+    }
+    final target = await showAppDialog<mx.Room>(
+      context: context,
+      builder: (_) => ForwardPicker(currentRoom: widget.room),
+    );
+    if (target == null) return;
+    if (!target.canSendDefaultMessages) {
+      throw UserActionError('Отправка в этот чат недоступна.');
+    }
+    for (final event in events) {
+      final content = forwardMessageContent(
+        event.getDisplayEvent(widget.timeline),
+      );
+      final key = '${event.eventId}/${target.id}';
+      final transaction = forwarded[key] ??= await widget.actions.enqueue(
+        target,
+        content,
+      );
+      await widget.actions.waitForDelivery(transaction);
+      if (!mounted) return;
+      setState(() => selectedMessages.remove(event.eventId));
+    }
+    endSelection();
+    if (target.id != widget.room.id && widget.onForward != null) {
+      await widget.actions.saveDraft(widget.room.id, input.text);
+      await widget.onForward!(target);
+    }
+  }
+
+  Widget selectionToolbar() => SafeArea(
+    top: false,
+    child: Material(
+      color: Theme.of(context).colorScheme.surfaceContainerHigh,
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: 'Удалить выбранные сообщения',
+            icon: const Icon(Icons.delete_outline),
+            onPressed: working || selectedItems.isEmpty
+                ? null
+                : () => perform(deleteSelection),
+          ),
+          Expanded(
+            child: Text(
+              'Выбрано: ${selectedItems.length}',
+              textAlign: TextAlign.center,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Отменить выбор',
+            icon: const Icon(Icons.close),
+            onPressed: working ? null : endSelection,
+          ),
+          IconButton(
+            tooltip: 'Переслать выбранные сообщения',
+            icon: const Icon(Icons.forward),
+            onPressed:
+                working ||
+                    selectedItems.isEmpty ||
+                    selectedItems.any((event) => !canForwardMessage(event))
+                ? null
+                : () => perform(forwardSelection),
+          ),
+        ],
+      ),
+    ),
+  );
+
   Future<void> eventAction(mx.Event event, String action) async {
+    if (action == 'pin') {
+      await togglePinnedMessage(event);
+      setState(() {});
+      return;
+    }
+    if (action == 'select') {
+      selectMessage(event);
+      return;
+    }
+    if (action.startsWith('react:')) {
+      await react(event, action.substring(6));
+      return;
+    }
     if (action == 'forward') {
       final target = await showAppDialog<mx.Room>(
         context: context,
@@ -1169,6 +1439,7 @@ class _ChatPaneState extends State<ChatPane>
           videoNote: draftIsVideoNote,
           videoDuration: draftVideoDuration,
           temporarySeconds: temporarySeconds,
+          readAfterSeconds: readAfterDelay,
           scheduledFor: scheduledFor,
         );
         preserveDraft = true;
@@ -1324,7 +1595,46 @@ class _ChatPaneState extends State<ChatPane>
             ],
           ),
         );
+    final frequent = widget.actions.reactionUsage.frequent;
+    final quickReactions = frequent.isEmpty
+        ? ['👍', '❤️', '😂', '🎉', '😮', '🙏']
+        : frequent;
     final menuItems = <PopupMenuEntry<String>>[
+      PopupMenuItem<String>(
+        enabled: false,
+        padding: EdgeInsets.zero,
+        child: EmojiMotion(
+          child: SizedBox(
+            width: 264,
+            height: 52,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final emoji in quickReactions)
+                  SizedBox(
+                    width: 44,
+                    child: IconButton(
+                      padding: const EdgeInsets.all(4),
+                      tooltip: 'Реакция $emoji',
+                      onPressed: () => Navigator.pop(context, 'react:$emoji'),
+                      icon: AnimatedEmoji(emoji),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      if (!recording && !working)
+        menuItem('select', 'Выбрать', Icons.check_circle_outline),
+      if (canPinMessages(widget.room))
+        menuItem(
+          'pin',
+          widget.room.pinnedEventIds.contains(event.eventId)
+              ? 'Открепить'
+              : 'Закрепить',
+          Icons.push_pin_outlined,
+        ),
       menuItem('reply', 'Ответить', Icons.reply),
       if (shown.messageType == 'dev.voicechat.file' ||
           shown.messageType == mx.MessageTypes.Audio)
@@ -1333,7 +1643,9 @@ class _ChatPaneState extends State<ChatPane>
         menuItem('copy', 'Скопировать', Icons.copy_outlined),
       if (canForwardMessage(shown))
         menuItem('forward', 'Переслать', Icons.forward),
-      if (own && shown.messageType == mx.MessageTypes.Text)
+      if (own &&
+          shown.messageType == mx.MessageTypes.Text &&
+          shown.content[readAfterKey] == null)
         menuItem('edit', 'Редактировать', Icons.edit_outlined),
       menuItem('delete', 'Удалить', Icons.delete_outline),
       menuItem('react', 'Реакция…', Icons.add_reaction_outlined),
@@ -1523,10 +1835,14 @@ class _ChatPaneState extends State<ChatPane>
                                         const SizedBox(height: 3),
                                         Text(
                                           snapshot.data != null &&
-                                                  messageExpiry(
-                                                        snapshot.data!,
-                                                      ) !=
-                                                      null
+                                                  (messageExpiry(
+                                                            snapshot.data!,
+                                                          ) !=
+                                                          null ||
+                                                      snapshot
+                                                              .data!
+                                                              .content[readAfterKey] !=
+                                                          null)
                                               ? 'Временное сообщение'
                                               : snapshot.data != null &&
                                                     messageHidden(
@@ -1539,7 +1855,9 @@ class _ChatPaneState extends State<ChatPane>
                                                         ?.getDisplayEvent(
                                                           widget.timeline,
                                                         )
-                                                        .body ??
+                                                        .calcUnlocalizedBody(
+                                                          hideReply: true,
+                                                        ) ??
                                                     'Загрузка исходного сообщения…',
                                           maxLines: 2,
                                           overflow: TextOverflow.ellipsis,
@@ -1654,7 +1972,7 @@ class _ChatPaneState extends State<ChatPane>
         ),
       ),
     );
-    return Align(
+    final message = Align(
       alignment: own ? Alignment.centerRight : Alignment.centerLeft,
       child: FractionallySizedBox(
         widthFactor: .9,
@@ -1682,7 +2000,11 @@ class _ChatPaneState extends State<ChatPane>
                     child: CopyFeedback(
                       color: own ? colors.onPrimary : colors.primary,
                       pulse: copyPulses[event.eventId] ?? 0,
-                      child: messageExpiry(event) == null
+                      child:
+                          messageExpiry(event) == null &&
+                              shown.content[readAfterKey] == null &&
+                              event.originalSource?.content[readAfterKey] ==
+                                  null
                           ? content
                           : ConstrainedBox(
                               constraints: const BoxConstraints(maxWidth: 526),
@@ -1699,6 +2021,26 @@ class _ChatPaneState extends State<ChatPane>
           ),
         ),
       ),
+    );
+    if (!selecting) return message;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Semantics(
+          label: 'Выбрать сообщение',
+          child: Checkbox(
+            shape: const CircleBorder(),
+            value: selectedMessages.contains(event.eventId),
+            onChanged: working ? null : (_) => selectMessage(event),
+          ),
+        ),
+        Expanded(
+          child: InkWell(
+            onTap: working ? null : () => selectMessage(event),
+            child: IgnorePointer(child: message),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1719,15 +2061,8 @@ class _ChatPaneState extends State<ChatPane>
     final focusedIndex = events.indexWhere(
       (event) => event.eventId == focusedEvent,
     );
-    final pending = widget.actions.pending
-        .where(
-          (p) =>
-              p['room'] == widget.room.id &&
-              p['id'] != voiceTransaction &&
-              (p['error'] != null ||
-                  p['type'] != mx.EventTypes.Reaction && p['edit'] == null),
-        )
-        .toList()
+    final pending = widget.actions
+        .outgoing(widget.room, widget.timeline)
         .reversed
         .toList();
     int? childIndex(Key key) {
@@ -1748,41 +2083,70 @@ class _ChatPaneState extends State<ChatPane>
           key: ValueKey('pending:${p['id']}'),
           alignment: Alignment.centerRight,
           child: AnimatedMessageBorder(
-            active: p['error'] == null && p['scheduled_at'] == null,
+            active:
+                p['confirmed'] != true &&
+                p['error'] == null &&
+                p['scheduled_at'] == null,
             child: Card(
               child: ListTile(
-                title: Text(
-                  c.containsKey('bytes')
-                      ? c['body'] as String
-                      : c['body'] as String? ?? 'Реакция',
-                ),
-                subtitle: Text(widget.actions.pendingStatus(p)),
-                trailing: PopupMenuButton<String>(
-                  popUpAnimationStyle: appAnimationStyle(context),
-                  tooltip: 'Действия с очередью',
-                  onSelected: (action) => perform(
-                    () => action == 'schedule'
-                        ? chooseSchedule(pendingId: p['id'] as String)
-                        : action == 'retry'
-                        ? widget.actions.flush()
-                        : widget.actions.cancel(p['id'] as String),
-                  ),
-                  itemBuilder: (_) => [
-                    if (p['schedule_rejected'] == true)
-                      const PopupMenuItem(
-                        value: 'schedule',
-                        child: Text('Выбрать новое время'),
+                leading: p['confirmed'] == true
+                    ? const Icon(Icons.done)
+                    : p['error'] == null
+                    ? SizedBox.square(
+                        dimension: 22,
+                        child: CircularProgressIndicator(
+                          key: ValueKey('sending:${p['id']}'),
+                          strokeWidth: 2,
+                          semanticsLabel: 'Сообщение отправляется',
+                        ),
+                      )
+                    : IconButton(
+                        tooltip: 'Ошибка отправки: подробности',
+                        icon: Icon(
+                          Icons.error_outline,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                        onPressed: () => perform(() => showSendFailure(p)),
                       ),
-                    const PopupMenuItem(
-                      value: 'retry',
-                      child: Text('Повторить отправку'),
-                    ),
-                    PopupMenuItem(
-                      value: 'cancel',
-                      child: Text('Отменить отправку'),
-                    ),
-                  ],
+                title: PendingMessageContent(
+                  key: ValueKey('pending-content:${p['id']}'),
+                  content: c,
                 ),
+                subtitle: Text(
+                  p['confirmed'] == true
+                      ? 'Отправлено'
+                      : widget.actions.pendingStatus(p),
+                ),
+                trailing: p['confirmed'] == true
+                    ? null
+                    : PopupMenuButton<String>(
+                        popUpAnimationStyle: appAnimationStyle(context),
+                        tooltip: 'Действия с очередью',
+                        onSelected: (action) => perform(() async {
+                          if (action == 'schedule') {
+                            await chooseSchedule(pendingId: p['id'] as String);
+                          } else if (action == 'retry') {
+                            unawaited(widget.actions.flush());
+                          } else {
+                            await widget.actions.cancel(p['id'] as String);
+                          }
+                        }),
+                        itemBuilder: (_) => [
+                          if (p['schedule_rejected'] == true)
+                            const PopupMenuItem(
+                              value: 'schedule',
+                              child: Text('Выбрать новое время'),
+                            ),
+                          const PopupMenuItem(
+                            value: 'retry',
+                            child: Text('Повторить отправку'),
+                          ),
+                          PopupMenuItem(
+                            value: 'cancel',
+                            child: Text('Отменить отправку'),
+                          ),
+                        ],
+                      ),
               ),
             ),
           ),
@@ -1818,26 +2182,9 @@ class _ChatPaneState extends State<ChatPane>
             tween: Tween(begin: 0, end: 1),
             builder: (_, opacity, child) =>
                 Opacity(opacity: opacity, child: child),
-            child: AnimatedBuilder(
-              animation: voiceFlight,
-              builder: (_, child) => Opacity(
-                opacity: voiceFlightEvent == event.eventId
-                    ? (2 * voiceFlight.value - 1).clamp(0.0, 1.0)
-                    : voiceTransaction != null &&
-                          (event.unsigned?['transaction_id'] ==
-                                  voiceTransaction ||
-                              widget.actions.deliveredEvent(
-                                    voiceTransaction!,
-                                  ) ==
-                                  event.eventId)
-                    ? 0
-                    : 1,
-                child: child,
-              ),
-              child: ChatScaled(
-                percent: ChatScaleScope.of(context)?.messages ?? 80,
-                child: bubble(event),
-              ),
+            child: ChatScaled(
+              percent: ChatScaleScope.of(context)?.messages ?? 80,
+              child: bubble(event),
             ),
           ),
         ],
@@ -1850,6 +2197,23 @@ class _ChatPaneState extends State<ChatPane>
     final shownPhotos = List<mx.MatrixImageFile>.of(draftPhotos);
     final body = Column(
       children: [
+        if (readAfter.failedRooms.contains(widget.room.id))
+          Material(
+            color: Theme.of(context).colorScheme.errorContainer,
+            child: const ListTile(
+              leading: Icon(Icons.cloud_off),
+              dense: true,
+              title: Text(
+                'Удаление после прочтения ожидает соединения с сервером',
+              ),
+            ),
+          ),
+        PinnedMessageBar(
+          room: widget.room,
+          timeline: widget.timeline,
+          onJump: (id) => perform(() => jumpToQuote(id)),
+          onError: widget.report,
+        ),
         if (!keyboardOpen || searchFocus.hasFocus)
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
@@ -1994,698 +2358,727 @@ class _ChatPaneState extends State<ChatPane>
                   ),
                 ),
         ),
-        AnimatedPanel(
-          child: scheduledFor != null
-              ? Align(
-                  alignment: Alignment.centerRight,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: InputChip(
-                      avatar: const Icon(Icons.schedule, size: 18),
-                      label: Text('Отправить ${scheduledTime(scheduledFor!)}'),
-                      onPressed: () => perform(chooseSchedule),
-                      onDeleted: () => setState(() => scheduledFor = null),
+        if (selecting)
+          selectionToolbar()
+        else ...[
+          AnimatedPanel(
+            child: scheduledFor != null
+                ? Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: InputChip(
+                        avatar: const Icon(Icons.schedule, size: 18),
+                        label: Text(
+                          'Отправить ${scheduledTime(scheduledFor!)}',
+                        ),
+                        onPressed: () => perform(chooseSchedule),
+                        onDeleted: () => setState(() => scheduledFor = null),
+                      ),
                     ),
-                  ),
-                )
-              : null,
-        ),
-        if (draftFiles.isEmpty &&
-            draftPhotos.isEmpty &&
-            unsentVoice == null &&
-            widget.actions.policyUrl != null &&
-            messageLinks(input.text).isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Wrap(
-              spacing: 8,
-              children: [
-                for (final url in messageLinks(input.text))
-                  TextButton.icon(
-                    onPressed: loadingPreview
-                        ? null
-                        : () => perform(() async {
-                            setState(() => loadingPreview = true);
-                            try {
-                              final preview = await LinkPreview.fetch(
-                                widget.room.client,
-                                widget.actions.policyUrl!,
-                                url,
-                              );
-                              if (mounted) {
-                                setState(() => linkPreviews[url] = preview);
-                              }
-                            } finally {
-                              if (mounted) {
-                                setState(() => loadingPreview = false);
-                              }
-                            }
-                          }),
-                    icon: Icon(
-                      linkPreviews.containsKey(url)
-                          ? Icons.check_circle_outline
-                          : Icons.link,
-                      size: 18,
-                    ),
-                    label: Text(
-                      linkPreviews.containsKey(url)
-                          ? 'Превью добавлено · ${url.host}'
-                          : 'Добавить превью · ${url.host}',
-                    ),
-                  ),
-                const Text(
-                  'Сервис превью получит ссылку. Карточка будет зашифрована вместе с сообщением.',
-                  style: TextStyle(fontSize: 11),
-                ),
-              ],
-            ),
+                  )
+                : null,
           ),
-        AnimatedPanel(
-          child: draftFiles.isNotEmpty
-              ? RepaintBoundary(
-                  key: filesPreviewKey,
-                  child: AnimatedMessageBorder(
-                    active: sendingOther,
-                    padding: 0,
-                    child: SizedBox(
-                      height: keyboardOpen ? 64 : 76,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: shownFiles.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 6),
-                        itemBuilder: (_, i) => SizedBox(
-                          width: 260,
-                          child: Material(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHigh,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: BorderSide(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.outlineVariant,
-                              ),
-                            ),
-                            clipBehavior: Clip.antiAlias,
-                            child: ListTile(
-                              dense: true,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                              ),
-                              titleTextStyle: TextStyle(
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              subtitleTextStyle: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                                fontSize: 12,
-                              ),
-                              iconColor: Theme.of(
+          if (draftFiles.isEmpty &&
+              draftPhotos.isEmpty &&
+              unsentVoice == null &&
+              widget.actions.policyUrl != null &&
+              messageLinks(input.text).isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  for (final url in messageLinks(input.text))
+                    TextButton.icon(
+                      onPressed: loadingPreview
+                          ? null
+                          : () => perform(() async {
+                              setState(() => loadingPreview = true);
+                              try {
+                                final preview = await LinkPreview.fetch(
+                                  widget.room.client,
+                                  widget.actions.policyUrl!,
+                                  url,
+                                );
+                                if (mounted) {
+                                  setState(() => linkPreviews[url] = preview);
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() => loadingPreview = false);
+                                }
+                              }
+                            }),
+                      icon: Icon(
+                        linkPreviews.containsKey(url)
+                            ? Icons.check_circle_outline
+                            : Icons.link,
+                        size: 18,
+                      ),
+                      label: Text(
+                        linkPreviews.containsKey(url)
+                            ? 'Превью добавлено · ${url.host}'
+                            : 'Добавить превью · ${url.host}',
+                      ),
+                    ),
+                  const Text(
+                    'Сервис превью получит ссылку. Карточка будет зашифрована вместе с сообщением.',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          AnimatedPanel(
+            child: draftFiles.isNotEmpty
+                ? RepaintBoundary(
+                    key: filesPreviewKey,
+                    child: AnimatedMessageBorder(
+                      active: sendingOther,
+                      padding: 0,
+                      child: SizedBox(
+                        height: keyboardOpen ? 64 : 76,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: shownFiles.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 6),
+                          itemBuilder: (_, i) => SizedBox(
+                            width: 260,
+                            child: Material(
+                              color: Theme.of(
                                 context,
-                              ).colorScheme.onSurface,
-                              onTap: shownFiles[i].mime.startsWith('video/')
-                                  ? () => showAppDialog<void>(
-                                      context: context,
-                                      animationStyle: appAnimationStyle(
-                                        context,
-                                      ),
-                                      builder: (_) => MessageVideo.draft(
+                              ).colorScheme.surfaceContainerHigh,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.outlineVariant,
+                                ),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: ListTile(
+                                dense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                                titleTextStyle: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                subtitleTextStyle: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                  fontSize: 12,
+                                ),
+                                iconColor: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface,
+                                onTap: shownFiles[i].mime.startsWith('video/')
+                                    ? () => showAppDialog<void>(
+                                        context: context,
+                                        animationStyle: appAnimationStyle(
+                                          context,
+                                        ),
+                                        builder: (_) => MessageVideo.draft(
+                                          file: shownFiles[i],
+                                          videoNote: draftIsVideoNote,
+                                          thumbnail: false,
+                                        ),
+                                      )
+                                    : null,
+                                leading: shownFiles[i].mime.startsWith('video/')
+                                    ? MessageVideo.draft(
+                                        key: ObjectKey(shownFiles[i]),
                                         file: shownFiles[i],
                                         videoNote: draftIsVideoNote,
-                                        thumbnail: false,
+                                      )
+                                    : Icon(
+                                        draftIsVideoNote
+                                            ? Icons.video_camera_front
+                                            : Icons.attach_file,
                                       ),
-                                    )
-                                  : null,
-                              leading: shownFiles[i].mime.startsWith('video/')
-                                  ? MessageVideo.draft(
-                                      key: ObjectKey(shownFiles[i]),
-                                      file: shownFiles[i],
-                                      videoNote: draftIsVideoNote,
-                                    )
-                                  : Icon(
-                                      draftIsVideoNote
-                                          ? Icons.video_camera_front
-                                          : Icons.attach_file,
-                                    ),
-                              title: Text(
-                                shownFiles[i].name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              subtitle: fileProgress != null && i == 0
-                                  ? LinearProgressIndicator(value: fileProgress)
-                                  : Text(
-                                      '${(shownFiles[i].size / 1048576).toStringAsFixed(1)} МБ · ${i + 1}/${widget.actions.policy.fileMaxCount}',
-                                    ),
-                              trailing: IconButton(
-                                tooltip: 'Убрать файл ${i + 1}',
-                                icon: const Icon(Icons.close),
-                                onPressed: () async {
-                                  if (fileProgress != null) {
-                                    setState(() => cancelFile = true);
-                                    return;
-                                  }
-                                  final source = draftFiles.removeAt(i);
-                                  await source.release();
-                                  if (mounted) setState(() {});
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              : null,
-        ),
-        AnimatedPanel(
-          child: draftPhotos.isNotEmpty
-              ? RepaintBoundary(
-                  key: photosPreviewKey,
-                  child: AnimatedMessageBorder(
-                    active: sendingOther,
-                    padding: 0,
-                    child: Container(
-                      margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Прикреплено фото: ${draftPhotos.length} / ${widget.actions.policy.photoMaxCount}',
-                            style: Theme.of(context).textTheme.labelMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            height: keyboardOpen ? 48 : 84,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: shownPhotos.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(width: 8),
-                              itemBuilder: (_, i) => Stack(
-                                children: [
-                                  InkWell(
-                                    onTap: () => showPhotos(context, [
-                                      for (final p in draftPhotos)
-                                        () async => p.bytes,
-                                    ], i),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.memory(
-                                        shownPhotos[i].bytes,
-                                        width: 84,
-                                        height: keyboardOpen ? 48 : 84,
-                                        fit: BoxFit.cover,
-                                        cacheWidth: 170,
-                                        semanticLabel:
-                                            'Прикреплённое фото ${i + 1}',
+                                title: Text(
+                                  shownFiles[i].name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: fileProgress != null && i == 0
+                                    ? LinearProgressIndicator(
+                                        value: fileProgress,
+                                      )
+                                    : Text(
+                                        '${(shownFiles[i].size / 1048576).toStringAsFixed(1)} МБ · ${i + 1}/${widget.actions.policy.fileMaxCount}',
                                       ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: IconButton.filled(
-                                      tooltip: 'Убрать фото ${i + 1}',
-                                      visualDensity: VisualDensity.compact,
-                                      onPressed: () => setState(
-                                        () => draftPhotos.removeAt(i),
-                                      ),
-                                      icon: const Icon(Icons.close, size: 16),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              : null,
-        ),
-        AnimatedPanel(
-          child: reply != null || edit != null
-              ? Material(
-                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  ),
-                  child: ListTile(
-                    textColor: Theme.of(context).colorScheme.onSurface,
-                    iconColor: Theme.of(context).colorScheme.primary,
-                    dense: true,
-                    leading: Icon(edit == null ? Icons.reply : Icons.edit),
-                    title: Text(edit == null ? 'Ответ' : 'Редактирование'),
-                    subtitle: Text(
-                      messageExpiry((reply ?? edit)!) != null
-                          ? 'Временное сообщение'
-                          : (reply ?? edit)!
-                                .getDisplayEvent(widget.timeline)
-                                .body,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: IconButton(
-                      tooltip: 'Отменить',
-                      onPressed: () => setState(() {
-                        reply = null;
-                        edit = null;
-                        input.clear();
-                      }),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ),
-                )
-              : null,
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 2, 22, 2),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TypingIndicator(
-                    room: widget.room,
-                    ownDraft: input.text.isNotEmpty,
-                    compact: true,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  '${input.text.length} / ${widget.actions.policy.textMaxLength}',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color:
-                        input.text.length > widget.actions.policy.textMaxLength
-                        ? Theme.of(context).colorScheme.error
-                        : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        AnimatedPanel(
-          child: unsentVoice != null && !recording
-              ? RepaintBoundary(
-                  key: voicePreviewKey,
-                  child: AnimatedMessageBorder(
-                    active: voiceSending,
-                    padding: 6,
-                    child: ListTile(
-                      leading: IconButton(
-                        tooltip: previewPlaying
-                            ? 'Остановить предпросмотр'
-                            : 'Прослушать запись',
-                        icon: Icon(
-                          previewPlaying ? Icons.stop : Icons.play_arrow,
-                        ),
-                        onPressed: working
-                            ? null
-                            : () => perform(() async {
-                                if (previewPlaying) {
-                                  await messagePlayback.pause(voicePreview);
-                                } else {
-                                  final request = messagePlayback.request(
-                                    voicePreview,
-                                  );
-                                  await messagePlayback.start(
-                                    voicePreview,
-                                    request,
-                                    () async {
-                                      await voicePreview.setVolume(
-                                        widget.actions.mediaVolume(
-                                          widget.room.id,
-                                        ),
-                                      );
-                                      await voicePreview.play(
-                                        BytesSource(
-                                          unsentVoice!.bytes,
-                                          mimeType: 'audio/wav',
-                                        ),
-                                      );
-                                      if (mounted) {
-                                        setState(() => previewPlaying = true);
-                                      }
-                                    },
-                                    () async {
-                                      await voicePreview.pause();
-                                      if (mounted) {
-                                        setState(() => previewPlaying = false);
-                                      }
-                                    },
-                                  );
-                                }
-                              }),
-                      ),
-                      title: Text(
-                        'Голосовое · ${mediaTime(Duration(milliseconds: unsentVoice!.duration ?? 0))}',
-                      ),
-                      subtitle: keyboardOpen
-                          ? null
-                          : WaveformView(levels: unsentWave ?? [0]),
-                      trailing: Wrap(
-                        children: [
-                          IconButton(
-                            tooltip: 'Удалить готовую запись',
-                            onPressed: working
-                                ? null
-                                : () => perform(() async {
-                                    if (voiceTransaction != null) {
-                                      await widget.actions.cancel(
-                                        voiceTransaction!,
-                                      );
+                                trailing: IconButton(
+                                  tooltip: 'Убрать файл ${i + 1}',
+                                  icon: const Icon(Icons.close),
+                                  onPressed: () async {
+                                    if (fileProgress != null) {
+                                      setState(() => cancelFile = true);
+                                      return;
                                     }
-                                    await messagePlayback.pause(voicePreview);
-                                    await voicePreview.stop();
-                                    if (!mounted) return;
-                                    setState(() {
-                                      voiceTransaction = null;
-                                      previewPlaying = false;
-                                      unsentVoice = null;
-                                      unsentWave = null;
-                                      voiceReply = null;
-                                    });
-                                  }),
-                            icon: const Icon(Icons.delete_outline),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                )
-              : null,
-        ),
-        AnimatedPanel(
-          child: KeyedSubtree(
-            key: ValueKey(recording),
-            child: recording
-                ? RecordingWaveformPanel(
-                    levels: List.of(liveMeter.levels),
-                    label:
-                        'Запись ${mediaTime(recordingClock.elapsed)} · осталось ${mediaTime(Duration(seconds: (widget.actions.policy.voiceMaxSeconds - recordingClock.elapsed.inSeconds).clamp(0, widget.actions.policy.voiceMaxSeconds)))}',
-                    onCancel: () => finishRecording(send: false),
-                    onStop: () => finishRecording(),
-                  )
-                : Container(
-                    margin: const EdgeInsets.fromLTRB(8, 8, 8, 12),
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(26),
-                    ),
-                    child: LayoutBuilder(
-                      builder: (_, box) {
-                        final mobilePhoto =
-                            defaultTargetPlatform == TargetPlatform.iOS ||
-                            defaultTargetPlatform == TargetPlatform.android;
-                        final emojiButton = IconButton(
-                          tooltip: 'Эмодзи',
-                          onPressed: working ? null : emoji,
-                          icon: const Icon(
-                            Icons.sentiment_satisfied_alt_outlined,
-                          ),
-                        );
-                        final field = Expanded(
-                          child: RepaintBoundary(
-                            key: textPreviewKey,
-                            child: AnimatedMessageBorder(
-                              active: sendingOther,
-                              padding: 0,
-                              child: TextField(
-                                readOnly:
-                                    voiceTransaction != null || sendingOther,
-                                controller: input,
-                                focusNode: composerFocus,
-                                onChanged: (value) {
-                                  typing(value);
-                                  final urls = messageLinks(value);
-                                  linkPreviews.removeWhere(
-                                    (url, _) => !urls.contains(url),
-                                  );
-                                  setState(() {});
-                                },
-                                minLines: 1,
-                                maxLines: keyboardOpen ? 2 : 4,
-                                decoration: const InputDecoration(
-                                  hintText: 'Написать сообщение…',
-                                  hintMaxLines: 1,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 12,
-                                  ),
+                                    final source = draftFiles.removeAt(i);
+                                    await source.release();
+                                    if (mounted) setState(() {});
+                                  },
                                 ),
                               ),
                             ),
                           ),
-                        );
-                        final voice = CallbackShortcuts(
-                          bindings: {
-                            const SingleActivator(
-                              LogicalKeyboardKey.enter,
-                              control: true,
-                            ): () {
-                              if (!working) {
-                                perform(
-                                  videoRecordMode
-                                      ? () => attachFile('note')
-                                      : startRecording,
-                                );
-                              }
-                            },
-                          },
-                          child: GestureDetector(
-                            excludeFromSemantics: true,
-                            onTap: working
-                                ? null
-                                : () => setState(
-                                    () => videoRecordMode = !videoRecordMode,
-                                  ),
-                            onLongPressStart: working
-                                ? null
-                                : (_) {
-                                    if (videoRecordMode) {
-                                      cancelledVideo.value = false;
-                                      heldVideo.value = true;
-                                      unawaited(
-                                        perform(
-                                          () => attachFile('note', hold: true),
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          AnimatedPanel(
+            child: draftPhotos.isNotEmpty
+                ? RepaintBoundary(
+                    key: photosPreviewKey,
+                    child: AnimatedMessageBorder(
+                      active: sendingOther,
+                      padding: 0,
+                      child: Container(
+                        margin: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Прикреплено фото: ${draftPhotos.length} / ${widget.actions.policy.photoMaxCount}',
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: keyboardOpen ? 48 : 84,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: shownPhotos.length,
+                                separatorBuilder: (_, _) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (_, i) => Stack(
+                                  children: [
+                                    InkWell(
+                                      onTap: () => showPhotos(context, [
+                                        for (final p in draftPhotos)
+                                          () async => p.bytes,
+                                      ], i),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.memory(
+                                          shownPhotos[i].bytes,
+                                          width: 84,
+                                          height: keyboardOpen ? 48 : 84,
+                                          fit: BoxFit.cover,
+                                          cacheWidth: 170,
+                                          semanticLabel:
+                                              'Прикреплённое фото ${i + 1}',
                                         ),
-                                      );
-                                    } else {
-                                      unawaited(perform(startRecording));
-                                    }
+                                      ),
+                                    ),
+                                    Positioned(
+                                      right: 0,
+                                      top: 0,
+                                      child: IconButton.filled(
+                                        tooltip: 'Убрать фото ${i + 1}',
+                                        visualDensity: VisualDensity.compact,
+                                        onPressed: () => setState(
+                                          () => draftPhotos.removeAt(i),
+                                        ),
+                                        icon: const Icon(Icons.close, size: 16),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          AnimatedPanel(
+            child: reply != null || edit != null
+                ? Material(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
+                    child: ListTile(
+                      textColor: Theme.of(context).colorScheme.onSurface,
+                      iconColor: Theme.of(context).colorScheme.primary,
+                      dense: true,
+                      leading: Icon(edit == null ? Icons.reply : Icons.edit),
+                      title: Text(edit == null ? 'Ответ' : 'Редактирование'),
+                      subtitle: Text(
+                        (messageExpiry((reply ?? edit)!) != null ||
+                                (reply ?? edit)!.content[readAfterKey] != null)
+                            ? 'Временное сообщение'
+                            : (reply ?? edit)!
+                                  .getDisplayEvent(widget.timeline)
+                                  .calcUnlocalizedBody(hideReply: true),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: IconButton(
+                        tooltip: 'Отменить',
+                        onPressed: () => setState(() {
+                          reply = null;
+                          edit = null;
+                          input.clear();
+                        }),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 2, 22, 2),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TypingIndicator(
+                      room: widget.room,
+                      ownDraft: input.text.isNotEmpty,
+                      compact: true,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    '${input.text.length} / ${widget.actions.policy.textMaxLength}',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color:
+                          input.text.length >
+                              widget.actions.policy.textMaxLength
+                          ? Theme.of(context).colorScheme.error
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedPanel(
+            child: unsentVoice != null && !recording
+                ? RepaintBoundary(
+                    key: voicePreviewKey,
+                    child: AnimatedMessageBorder(
+                      active: voiceSending,
+                      padding: 6,
+                      child: ListTile(
+                        leading: IconButton(
+                          tooltip: previewPlaying
+                              ? 'Остановить предпросмотр'
+                              : 'Прослушать запись',
+                          icon: Icon(
+                            previewPlaying ? Icons.stop : Icons.play_arrow,
+                          ),
+                          onPressed: working
+                              ? null
+                              : () => perform(() async {
+                                  if (previewPlaying) {
+                                    await messagePlayback.pause(voicePreview);
+                                  } else {
+                                    final request = messagePlayback.request(
+                                      voicePreview,
+                                    );
+                                    await messagePlayback.start(
+                                      voicePreview,
+                                      request,
+                                      () async {
+                                        await voicePreview.setVolume(
+                                          widget.actions.mediaVolume(
+                                            widget.room.id,
+                                          ),
+                                        );
+                                        await voicePreview.play(
+                                          BytesSource(
+                                            unsentVoice!.bytes,
+                                            mimeType: 'audio/wav',
+                                          ),
+                                        );
+                                        if (mounted) {
+                                          setState(() => previewPlaying = true);
+                                        }
+                                      },
+                                      () async {
+                                        await voicePreview.pause();
+                                        if (mounted) {
+                                          setState(
+                                            () => previewPlaying = false,
+                                          );
+                                        }
+                                      },
+                                    );
+                                  }
+                                }),
+                        ),
+                        title: Text(
+                          'Голосовое · ${mediaTime(Duration(milliseconds: unsentVoice!.duration ?? 0))}',
+                        ),
+                        subtitle: keyboardOpen
+                            ? null
+                            : WaveformView(levels: unsentWave ?? [0]),
+                        trailing: Wrap(
+                          children: [
+                            IconButton(
+                              tooltip: 'Удалить готовую запись',
+                              onPressed: working
+                                  ? null
+                                  : () => perform(() async {
+                                      if (voiceTransaction != null) {
+                                        await widget.actions.cancel(
+                                          voiceTransaction!,
+                                        );
+                                      }
+                                      await messagePlayback.pause(voicePreview);
+                                      await voicePreview.stop();
+                                      if (!mounted) return;
+                                      setState(() {
+                                        voiceTransaction = null;
+                                        previewPlaying = false;
+                                        unsentVoice = null;
+                                        unsentWave = null;
+                                        voiceReply = null;
+                                      });
+                                    }),
+                              icon: const Icon(Icons.delete_outline),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          AnimatedPanel(
+            child: KeyedSubtree(
+              key: ValueKey(recording),
+              child: recording
+                  ? RecordingWaveformPanel(
+                      levels: List.of(liveMeter.levels),
+                      label:
+                          'Запись ${mediaTime(recordingClock.elapsed)} · осталось ${mediaTime(Duration(seconds: (widget.actions.policy.voiceMaxSeconds - recordingClock.elapsed.inSeconds).clamp(0, widget.actions.policy.voiceMaxSeconds)))}',
+                      onCancel: () => finishRecording(send: false),
+                      onStop: () => finishRecording(),
+                    )
+                  : Container(
+                      margin: const EdgeInsets.fromLTRB(8, 8, 8, 12),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(26),
+                      ),
+                      child: LayoutBuilder(
+                        builder: (_, box) {
+                          final mobilePhoto =
+                              defaultTargetPlatform == TargetPlatform.iOS ||
+                              defaultTargetPlatform == TargetPlatform.android;
+                          final emojiButton = IconButton(
+                            tooltip: 'Эмодзи',
+                            onPressed: working ? null : emoji,
+                            icon: const Icon(
+                              Icons.sentiment_satisfied_alt_outlined,
+                            ),
+                          );
+                          final field = Expanded(
+                            child: RepaintBoundary(
+                              key: textPreviewKey,
+                              child: AnimatedMessageBorder(
+                                active: sendingOther,
+                                padding: 0,
+                                child: TextField(
+                                  readOnly:
+                                      voiceTransaction != null || sendingOther,
+                                  controller: input,
+                                  focusNode: composerFocus,
+                                  onChanged: (value) {
+                                    typing(value);
+                                    final urls = messageLinks(value);
+                                    linkPreviews.removeWhere(
+                                      (url, _) => !urls.contains(url),
+                                    );
+                                    setState(() {});
                                   },
-                            onLongPressEnd: (_) => heldVideo.value = false,
-                            onLongPressMoveUpdate: (details) {
-                              if (details.offsetFromOrigin.dx < -80) {
-                                cancelledVideo.value = true;
-                                heldVideo.value = false;
-                              }
+                                  minLines: 1,
+                                  maxLines: keyboardOpen ? 2 : 4,
+                                  decoration: const InputDecoration(
+                                    hintText: 'Написать сообщение…',
+                                    hintMaxLines: 1,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                          final voice = CallbackShortcuts(
+                            bindings: {
+                              const SingleActivator(
+                                LogicalKeyboardKey.enter,
+                                control: true,
+                              ): () {
+                                if (!working) {
+                                  perform(
+                                    videoRecordMode
+                                        ? () => attachFile('note')
+                                        : startRecording,
+                                  );
+                                }
+                              },
                             },
-                            onLongPressCancel: () {
-                              cancelledVideo.value = true;
-                              heldVideo.value = false;
-                            },
-                            child: Semantics(
-                              button: true,
-                              enabled: !working,
-                              label: videoRecordMode
-                                  ? 'Видеокружок'
-                                  : 'Голосовое сообщение',
+                            child: GestureDetector(
+                              excludeFromSemantics: true,
                               onTap: working
                                   ? null
                                   : () => setState(
                                       () => videoRecordMode = !videoRecordMode,
                                     ),
-                              hint: 'Ctrl+Enter начинает запись',
-                              onLongPress: working
+                              onLongPressStart: working
                                   ? null
-                                  : () => perform(
-                                      videoRecordMode
-                                          ? () => attachFile('note')
-                                          : startRecording,
-                                    ),
-                              child: Tooltip(
-                                triggerMode: TooltipTriggerMode.manual,
-                                message: videoRecordMode
-                                    ? 'Видеокружок · нажмите для аудио, удерживайте для записи'
-                                    : 'Голосовое · нажмите для видео, удерживайте для записи',
-                                child: IgnorePointer(
-                                  child: IconButton.filledTonal(
-                                    onPressed: working
-                                        ? null
-                                        : () => setState(
-                                            () => videoRecordMode =
-                                                !videoRecordMode,
+                                  : (_) {
+                                      if (videoRecordMode) {
+                                        cancelledVideo.value = false;
+                                        heldVideo.value = true;
+                                        unawaited(
+                                          perform(
+                                            () =>
+                                                attachFile('note', hold: true),
                                           ),
-                                    icon: Icon(
-                                      videoRecordMode
-                                          ? Icons.videocam_outlined
-                                          : Icons.mic_none,
+                                        );
+                                      } else {
+                                        unawaited(perform(startRecording));
+                                      }
+                                    },
+                              onLongPressEnd: (_) => heldVideo.value = false,
+                              onLongPressMoveUpdate: (details) {
+                                if (details.offsetFromOrigin.dx < -80) {
+                                  cancelledVideo.value = true;
+                                  heldVideo.value = false;
+                                }
+                              },
+                              onLongPressCancel: () {
+                                cancelledVideo.value = true;
+                                heldVideo.value = false;
+                              },
+                              child: Semantics(
+                                button: true,
+                                enabled: !working,
+                                label: videoRecordMode
+                                    ? 'Видеокружок'
+                                    : 'Голосовое сообщение',
+                                onTap: working
+                                    ? null
+                                    : () => setState(
+                                        () =>
+                                            videoRecordMode = !videoRecordMode,
+                                      ),
+                                hint: 'Ctrl+Enter начинает запись',
+                                onLongPress: working
+                                    ? null
+                                    : () => perform(
+                                        videoRecordMode
+                                            ? () => attachFile('note')
+                                            : startRecording,
+                                      ),
+                                child: Tooltip(
+                                  triggerMode: TooltipTriggerMode.manual,
+                                  message: videoRecordMode
+                                      ? 'Видеокружок · нажмите для аудио, удерживайте для записи'
+                                      : 'Голосовое · нажмите для видео, удерживайте для записи',
+                                  child: IgnorePointer(
+                                    child: IconButton.filledTonal(
+                                      onPressed: working
+                                          ? null
+                                          : () => setState(
+                                              () => videoRecordMode =
+                                                  !videoRecordMode,
+                                            ),
+                                      icon: Icon(
+                                        videoRecordMode
+                                            ? Icons.videocam_outlined
+                                            : Icons.mic_none,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                        final sendButton = IconButton.filled(
-                          tooltip: scheduledFor == null
-                              ? 'Отправить'
-                              : 'Запланировать',
-                          onPressed: working ? null : () => perform(send),
-                          style: IconButton.styleFrom(
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.onSurface,
-                            foregroundColor: Theme.of(
-                              context,
-                            ).colorScheme.surface,
-                          ),
-                          icon: const Icon(Icons.arrow_upward),
-                        );
-                        PopupMenuItem<String> action(
-                          String value,
-                          String label,
-                          IconData icon, {
-                          bool enabled = true,
-                        }) => PopupMenuItem(
-                          value: value,
-                          enabled: enabled,
-                          child: Row(
-                            children: [
-                              Icon(icon, size: 20),
-                              const SizedBox(width: 12),
-                              Flexible(child: Text(label)),
-                            ],
-                          ),
-                        );
-                        final attachments = PopupMenuButton<String>(
-                          popUpAnimationStyle: appAnimationStyle(context),
-                          tooltip: 'Вложения и отправка',
-                          enabled: !working,
-                          icon: Icon(
-                            Icons.attach_file,
-                            color:
-                                temporarySeconds != null || scheduledFor != null
-                                ? Theme.of(context).colorScheme.primary
-                                : null,
-                          ),
-                          onSelected: (value) => perform(() async {
-                            switch (value) {
-                              case 'image':
-                                await image();
-                              case 'camera':
-                                await image(camera: true);
-                              case 'file':
-                              case 'video':
-                                await attachFile(value);
-                              case 'temporary':
-                                await chooseTemporaryDuration();
-                              case 'schedule':
-                                await chooseSchedule();
-                              case 'scheduled':
-                                await showAppDialog<void>(
-                                  context: context,
-                                  animationStyle: appAnimationStyle(context),
-                                  builder: (_) => ScheduledView(
-                                    service: ScheduledMessages(
-                                      widget.room.client,
-                                      widget.actions.policyUrl!,
+                          );
+                          final sendButton = IconButton.filled(
+                            tooltip: scheduledFor == null
+                                ? 'Отправить'
+                                : 'Запланировать',
+                            onPressed: working ? null : () => perform(send),
+                            style: IconButton.styleFrom(
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.onSurface,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.surface,
+                            ),
+                            icon: const Icon(Icons.arrow_upward),
+                          );
+                          PopupMenuItem<String> action(
+                            String value,
+                            String label,
+                            IconData icon, {
+                            bool enabled = true,
+                          }) => PopupMenuItem(
+                            value: value,
+                            enabled: enabled,
+                            child: Row(
+                              children: [
+                                Icon(icon, size: 20),
+                                const SizedBox(width: 12),
+                                Flexible(child: Text(label)),
+                              ],
+                            ),
+                          );
+                          final attachments = PopupMenuButton<String>(
+                            popUpAnimationStyle: appAnimationStyle(context),
+                            tooltip: 'Вложения и отправка',
+                            enabled: !working,
+                            icon: Icon(
+                              Icons.attach_file,
+                              color:
+                                  temporarySeconds != null ||
+                                      scheduledFor != null
+                                  ? Theme.of(context).colorScheme.primary
+                                  : null,
+                            ),
+                            onSelected: (value) => perform(() async {
+                              switch (value) {
+                                case 'image':
+                                  await image();
+                                case 'camera':
+                                  await image(camera: true);
+                                case 'file':
+                                case 'video':
+                                  await attachFile(value);
+                                case 'read-after':
+                                  await chooseReadAfter();
+                                case 'temporary':
+                                  await chooseTemporaryDuration();
+                                case 'schedule':
+                                  await chooseSchedule();
+                                case 'scheduled':
+                                  await showAppDialog<void>(
+                                    context: context,
+                                    animationStyle: appAnimationStyle(context),
+                                    builder: (_) => ScheduledView(
+                                      service: ScheduledMessages(
+                                        widget.room.client,
+                                        widget.actions.policyUrl!,
+                                      ),
+                                      roomId: widget.room.id,
                                     ),
-                                    roomId: widget.room.id,
-                                  ),
-                                );
-                            }
-                          }),
-                          itemBuilder: (_) => [
-                            action(
-                              'image',
-                              mobilePhoto
-                                  ? 'Изображение из библиотеки'
-                                  : 'Отправить изображение',
-                              Icons.photo_library_outlined,
-                            ),
-                            if (mobilePhoto)
+                                  );
+                              }
+                            }),
+                            itemBuilder: (_) => [
                               action(
-                                'camera',
-                                'Сделать фото',
-                                Icons.photo_camera_outlined,
+                                'image',
+                                mobilePhoto
+                                    ? 'Изображение из библиотеки'
+                                    : 'Отправить изображение',
+                                Icons.photo_library_outlined,
                               ),
-                            action(
-                              'file',
-                              'Прикрепить файл',
-                              Icons.insert_drive_file_outlined,
-                            ),
-                            action(
-                              'video',
-                              'Прикрепить видео',
-                              Icons.video_file_outlined,
-                            ),
-                            const PopupMenuDivider(),
-                            action(
-                              'temporary',
-                              temporarySeconds == null
-                                  ? 'Временное сообщение'
-                                  : 'Временное сообщение · $temporarySeconds с',
-                              Icons.timer_outlined,
-                              enabled: edit == null,
-                            ),
-                            action(
-                              'schedule',
-                              scheduledFor == null
-                                  ? 'Отложить отправку'
-                                  : 'Изменить время отправки',
-                              Icons.schedule,
-                              enabled:
-                                  edit == null &&
-                                  widget.actions.policyUrl != null,
-                            ),
-                            action(
-                              'scheduled',
-                              'Запланированные сообщения',
-                              Icons.event_note_outlined,
-                              enabled: widget.actions.policyUrl != null,
-                            ),
-                          ],
-                        );
-                        return Row(
-                          children: [
-                            attachments,
-                            emojiButton,
-                            field,
-                            voice,
-                            sendButton,
-                          ],
-                        );
-                      },
+                              if (mobilePhoto)
+                                action(
+                                  'camera',
+                                  'Сделать фото',
+                                  Icons.photo_camera_outlined,
+                                ),
+                              action(
+                                'file',
+                                'Прикрепить файл',
+                                Icons.insert_drive_file_outlined,
+                              ),
+                              action(
+                                'video',
+                                'Прикрепить видео',
+                                Icons.video_file_outlined,
+                              ),
+                              const PopupMenuDivider(),
+                              if (widget.room.isDirectChat &&
+                                  !isPersonalRoom(widget.room))
+                                action(
+                                  'read-after',
+                                  readAfterDelay == null
+                                      ? 'Исчезнуть после прочтения'
+                                      : 'После прочтения · $readAfterDelay с',
+                                  Icons.visibility_off_outlined,
+                                  enabled: edit == null,
+                                ),
+                              action(
+                                'temporary',
+                                temporarySeconds == null
+                                    ? 'Временное сообщение'
+                                    : 'Временное сообщение · $temporarySeconds с',
+                                Icons.timer_outlined,
+                                enabled: edit == null,
+                              ),
+                              action(
+                                'schedule',
+                                scheduledFor == null
+                                    ? 'Отложить отправку'
+                                    : 'Изменить время отправки',
+                                Icons.schedule,
+                                enabled:
+                                    edit == null &&
+                                    widget.actions.policyUrl != null,
+                              ),
+                              action(
+                                'scheduled',
+                                'Запланированные сообщения',
+                                Icons.event_note_outlined,
+                                enabled: widget.actions.policyUrl != null,
+                              ),
+                            ],
+                          );
+                          return Row(
+                            children: [
+                              attachments,
+                              emojiButton,
+                              field,
+                              voice,
+                              sendButton,
+                            ],
+                          );
+                        },
+                      ),
                     ),
-                  ),
+            ),
           ),
-        ),
+        ],
       ],
     );
     final colors = Theme.of(context).colorScheme;
-    return FileDrop(
+    final chat = FileDrop(
       enabled: !working && widget.room.canSendDefaultMessages,
       onDrop: (files) => unawaited(perform(() => dropFiles(files))),
       child: LayoutBuilder(
@@ -2923,10 +3316,19 @@ class _ChatPaneState extends State<ChatPane>
         },
       ),
     );
+    return ComposerFocusRegion(
+      focus: composerFocus,
+      controller: input,
+      enabled: !selecting && !recording && !working,
+      child: chat,
+    );
   }
 
   @override
   void dispose() {
+    selectionTimer?.cancel();
+    readAfterPoll?.cancel();
+    readAfter.removeListener(refresh);
     for (final controller in motionControllers) {
       controller.dispose();
     }
@@ -2935,7 +3337,6 @@ class _ChatPaneState extends State<ChatPane>
       snapshot.dispose();
     }
     sendSnapshots.clear();
-    voiceFlight.dispose();
     updateGuards.remove(prepareUpdate);
     input.removeListener(saveDraft);
     releaseCapture(voiceCancellation);
@@ -2987,6 +3388,7 @@ class _AttachmentViewState extends State<AttachmentView> {
   Future<mx.MatrixFile>? download;
   Uint8List? playbackBytes;
   bool playing = false, loading = false;
+  double playbackRate = 1;
   Duration position = Duration.zero;
   StreamSubscription<Duration>? positionUpdates;
   Duration get duration {
@@ -3076,6 +3478,7 @@ class _AttachmentViewState extends State<AttachmentView> {
             position: at,
           );
         }
+        await player.setPlaybackRate(playbackRate);
         if (mounted) setState(() => playing = !pauseAfter);
       }, pause);
     } catch (_) {
@@ -3091,6 +3494,21 @@ class _AttachmentViewState extends State<AttachmentView> {
       }
     } finally {
       if (mounted) setState(() => loading = false);
+    }
+  }
+
+  Future<void> changeRate(double rate) async {
+    try {
+      await player.setPlaybackRate(rate);
+      if (mounted) setState(() => playbackRate = rate);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Не удалось изменить скорость воспроизведения.'),
+          ),
+        );
+      }
     }
   }
 
@@ -3193,6 +3611,30 @@ class _AttachmentViewState extends State<AttachmentView> {
                         ).textTheme.labelSmall?.copyWith(color: foreground),
                       ),
                     ],
+                  ),
+                ),
+                PopupMenuButton<double>(
+                  tooltip: 'Скорость воспроизведения',
+                  initialValue: playbackRate,
+                  onSelected: changeRate,
+                  itemBuilder: (_) => [
+                    for (final rate in [1.0, 1.25, 1.5, 1.75, 2.0])
+                      PopupMenuItem(
+                        value: rate,
+                        child: Text(
+                          '${rate.toString().replaceFirst(RegExp(r"\.0$"), "")}×',
+                        ),
+                      ),
+                  ],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 12,
+                    ),
+                    child: Text(
+                      '${playbackRate.toString().replaceFirst(RegExp(r"\.0$"), "")}×',
+                      style: TextStyle(color: foreground),
+                    ),
                   ),
                 ),
               ],

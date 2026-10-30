@@ -51,3 +51,13 @@ def expiry_content(content, policy, now_ms, original_deadline=None):
             raise ValueError('Original message expired')
         deadline = min(deadline, original_deadline)
     return {**content, 'org.matrix.self_destruct_after': deadline}
+
+
+def read_after_duration(content):
+    """Retention starts on an authenticated recipient read, never on delivery."""
+    delay = content.get('dev.voicechat.read_after_seconds')
+    if type(delay) is not int or not 1 <= delay <= 86400:
+        raise ValueError('Invalid read-after duration')
+    if any(key in content for key in ('dev.voicechat.ttl_seconds', 'org.matrix.self_destruct_after')):
+        raise ValueError('Read-after and send-time expiry are mutually exclusive')
+    return delay

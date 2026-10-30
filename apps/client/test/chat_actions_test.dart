@@ -349,7 +349,7 @@ void main() {
       await actions.flush();
       expect(
         actions.pending.single['error'],
-        startsWith('Сервер отклонил временное сообщение.'),
+        startsWith('Сервер запретил отправку сообщения с таймером.'),
       );
       room.failure = null;
       await actions.flush();

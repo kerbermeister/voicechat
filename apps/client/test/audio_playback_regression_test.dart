@@ -92,6 +92,11 @@ void main() {
       for (var frame = 0; frame < 12; frame++) {
         await tester.pump(const Duration(milliseconds: 20));
       }
+      expect(
+        calls.where((c) => c.$2 == 'resume'),
+        isNotEmpty,
+        reason: calls.toString(),
+      );
       final id = calls.firstWhere((c) => c.$2 == 'resume').$1;
       await event(id, 'audio.onComplete');
       for (var frame = 0; frame < 12; frame++) {
@@ -132,6 +137,36 @@ void main() {
       }
       expect(positions[id], closeTo(750, 20));
       expect(find.byIcon(Icons.pause), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.pause));
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      final sources = calls.where((c) => c.$2 == 'setSourceBytes').length;
+      final resumes = calls.where((c) => c.$2 == 'resume').length;
+      for (final rate in ['1.25×', '1.5×', '1.75×', '2×', '1×']) {
+        await tester.tap(
+          find.descendant(
+            of: find.byKey(const ValueKey('first')),
+            matching: find.byTooltip('Скорость воспроизведения'),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('1.25×'), findsWidgets);
+        expect(find.text('1.5×'), findsWidgets);
+        expect(find.text('1.75×'), findsWidgets);
+        expect(find.text('2×'), findsWidgets);
+        await tester.tap(find.text(rate).last);
+        await tester.pumpAndSettle();
+        expect(find.byIcon(Icons.pause), findsNothing);
+        expect(positions[id], closeTo(750, 20));
+      }
+      expect(
+        calls.where((c) => c.$2 == 'setPlaybackRate').length,
+        greaterThanOrEqualTo(6),
+      );
+      expect(calls.where((c) => c.$2 == 'setSourceBytes').length, sources);
+      expect(calls.where((c) => c.$2 == 'resume').length, resumes);
+
       await render(firstVisible: false);
       for (var frame = 0; frame < 12; frame++) {
         await tester.pump(const Duration(milliseconds: 20));

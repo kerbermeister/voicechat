@@ -5,9 +5,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:voicechat_probe/chat_actions.dart';
+import 'package:voicechat_probe/pending_message.dart';
 import 'package:voicechat_probe/chat_pane.dart';
 import 'package:voicechat_probe/conversation_list.dart';
-import 'package:voicechat_probe/animated_message_border.dart';
 import 'package:voicechat_probe/personal_room.dart';
 import 'halo_capture_test.dart' show CaptureClient, CaptureTimeline;
 import 'message_actions_test.dart' show ForwardActions, ForwardRoom;
@@ -17,6 +17,14 @@ class DeliveryActions extends ForwardActions {
   var delivered = Completer<void>();
   int uploads = 0;
   bool acknowledged = false;
+  int retries = 0;
+  final retryGate = Completer<void>();
+  @override
+  Future<void> flush() async {
+    retries++;
+    await retryGate.future;
+  }
+
   @override
   Future<String> attachment(
     mx.Room room,
@@ -25,9 +33,21 @@ class DeliveryActions extends ForwardActions {
     List<int>? waveform,
     String caption = '',
     int? ttlSeconds,
+    int? readAfterSeconds,
     DateTime? scheduledFor,
   }) async {
     uploads++;
+    pending.add({
+      'id': 'voice-transaction',
+      'room': room.id,
+      'type': mx.EventTypes.Message,
+      'content': {
+        'msgtype': mx.MessageTypes.Audio,
+        'body': file.name,
+        'dev.voicechat.waveform': waveform ?? <int>[],
+      },
+    });
+    notifyListeners();
     return 'voice-transaction';
   }
 
@@ -204,7 +224,7 @@ void main() {
     },
   );
   testWidgets(
-    'Voice preview reflects real acknowledgement and retries without duplicate upload',
+    'Voice moves into history after local acceptance and waits there for acknowledgement',
     (tester) async {
       final client = CaptureClient();
       final room = ForwardRoom(client, '!voice:local');
@@ -249,41 +269,50 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       expect(actions.uploads, 1, reason: 'reported errors: $errors');
-      expect(find.textContaining('Голосовое ·'), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.textContaining('Голосовое ·'), findsNothing);
+      expect(find.byType(PendingMessageContent), findsOneWidget);
       expect(
-        tester
-            .widget<AnimatedMessageBorder>(
-              find
-                  .ancestor(
-                    of: find.textContaining('Голосовое ·'),
-                    matching: find.byType(AnimatedMessageBorder),
-                  )
-                  .first,
-            )
-            .active,
-        true,
+        find.byKey(const ValueKey('sending:voice-transaction')),
+        findsOneWidget,
       );
-      actions.delivered.completeError(StateError('offline'));
-      await tester.pumpAndSettle();
-      expect(errors, isNotEmpty);
-      expect(find.textContaining('Голосовое ·'), findsOneWidget);
+      expect(actions.acknowledged, false);
       expect(
-        tester
-            .widget<AnimatedMessageBorder>(
-              find
-                  .ancestor(
-                    of: find.textContaining('Голосовое ·'),
-                    matching: find.byType(AnimatedMessageBorder),
-                  )
-                  .first,
-            )
-            .active,
+        tester.widget<TextField>(find.byType(TextField).last).readOnly,
         false,
       );
-      actions.delivered = Completer<void>();
-      await tester.tap(find.byTooltip('Отправить'));
-      await tester.pump();
-      expect(actions.uploads, 1, reason: 'reported errors: $errors');
+      actions.pending.single['error'] = 'offline';
+      actions.notifyListeners();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(PendingMessageContent), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      await tester.tap(find.byTooltip('Ошибка отправки: подробности'));
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+      expect(find.text('Сообщение не отправлено'), findsOneWidget);
+      expect(find.text('offline'), findsWidgets);
+      expect(
+        find.textContaining('Проверьте соединение и права'),
+        findsOneWidget,
+      );
+      expect(find.text('Повторить сейчас'), findsOneWidget);
+      await tester.tap(find.text('Повторить сейчас'));
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
+
+      expect(actions.retries, 1);
+      expect(actions.retryGate.isCompleted, false);
+      expect(
+        tester.widget<TextField>(find.byType(TextField).last).readOnly,
+        false,
+      );
+      actions.retryGate.complete();
+      actions.pending.single.remove('error');
+      actions.notifyListeners();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(actions.uploads, 1);
       final event = mx.Event.fromJson({
         'event_id': r'$voice',
         'sender': client.userID,
@@ -298,6 +327,7 @@ void main() {
       }, room);
       timeline.events.add(event);
       actions.acknowledged = true;
+      actions.pending.clear();
       actions.delivered.complete();
       actions.notifyListeners();
       await tester.pump();
@@ -311,7 +341,9 @@ void main() {
       expect(find.textContaining('Голосовое ·'), findsNothing);
       expect(find.text('Голосовое сообщение'), findsOneWidget);
       await tester.tap(find.byTooltip('Действия с сообщением'));
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 80));
+      }
       await tester.tap(find.text('Информация'));
       await tester.pumpAndSettle();
       expect(find.textContaining('audio/wav'), findsOneWidget);
