@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "commit": "d0cf5336e724fcb701af2dce7be1ba85ff0e927f",
+  "workflow": "Build and deploy",
+  "run": 40974631683,
+  "url": "https://github.com/kerbermeister/voicechat/actions/runs/40974631683",
+  "status": "success",
+  "duration_seconds": 531,
+  "inputs": {
+    "rollout": "managed",
+    "mode": "full",
+    "deploy": false,
+    "retry_initial": false,
+    "retry_managed": false,
+    "edges": ""
+  },
+  "artifact_id": 12942511756,
+  "github_artifact_zip_sha256": "5c55dbe80c53efeb279bd6c87e83da0968bc7f3fc15c250850847399de604756",
+  "production_changed": false,
+  "limits": [
+    "Build-only; no production SSH/apply or health claim.",
+    "GitHub artifact ZIP digest is not the inner release.tar.gz checksum."
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "commit": "d0cf5336e724fcb701af2dce7be1ba85ff0e927f",
+  "workflow": "Prototype checks",
+  "run": 40972369775,
+  "url": "https://github.com/kerbermeister/voicechat/actions/runs/40972369775",
+  "status": "success",
+  "duration_seconds": 715,
+  "checks": [
+    "Python unittest discovery",
+    "mobile web Node tests",
+    "Flutter analyze",
+    "Flutter tests",
+    "Android debug preview build"
+  ],
+  "production_changed": false,
+  "limits": [
+    "CI is not a clean-host deployment, physical Android acceptance, or media failover proof."
+  ]
+}

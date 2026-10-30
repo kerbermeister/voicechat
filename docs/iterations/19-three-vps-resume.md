@@ -2,6 +2,71 @@
 
 ## Актуальная сводка: production core/edge включены
 
+**НОВЫЙ КАНДИДАТ ДЛЯ ПЕРВОГО normal production full:** проверенный host_packages
+компонент включается в следующий общий commit до production. Ordinary runtime/
+workflow файлы относительноd0cf533 не меняются; normal VM всё ещё проверяет именно
+их в clean cloneD0. Новый package-модуль отдельно прошёл real clean VM/reboot и632
+unit suite. Не делать сначала отдельный D0 production full: планируется один
+full из нового проверенного commit после normal bad-full rollback PASS и CI.
+Postcheck `/tmp/voicechat-production-normal-postcheck.py` обновляется на exact commit
+аргументом. Source branch codex/three-vps-initial24 остаётся нетронутой.
+Package VM2 штатно выключена, диск/ключи сохранены; package-active.json содержит
+powered_off=true и restart_argv. [Package/reboot proof](three-vps-evidence/2026-10-30-vm-host-packages.json).
+Normal full/lost-reply, web-only (core unchanged), core-only (edge unchanged) уже PASS;
+остался bad full + outer rollback + parent cleanup.
+
+**Новый локальный regression PASS:**632 tests/skipped3,103.617s, включая8
+host_packages checks (17 host tests суммарно). Bootstrap-код ещё untracked/не опубликован.
+VM2 real test session16157, launcher `/tmp/voicechat-package-vm-test.py`, log
+`.prototype/package-vm-test.log`, marked root `/srv/voicechat-package-fixture-35bb6bc4fe`.
+Источник/harness staged из локальных public .py; VM2 уже прошла настоящий base apt,
+внедрён lost reply, возобновила intent и выполняет Docker apt (pending phase=docker,
+4 planned packages). Не прерывать dpkg. Evidence `.prototype/package-vm-evidence.json`
+появится только после всех assertions и адресной очистки probe nft table.
+Normal driver: full+lost-reply PASS; web-only releasing, core/bad-full ещё впереди.
+
+**ПАРАЛЛЕЛЬНО, package bootstrap кандидат (ещё НЕ опубликован):** untracked
+`infra/host_packages.py` + `prototype/test_host_packages.py`;16 host tests PASS,
+в том числе7 новых package tests. Pinned Debian12 amd64 dependencies взяты из
+проверенной VM, official Docker key SHA1500c1f…a570. Журнал apt closure, запрет
+чужого Docker/runtime/repository/unfinished dpkg/container data, identity/profile
+binding; completed repeat/lost commit reply не запускает apt. Active nftables
+unit сохраняется через отказ, не stop/restart: exact1.0.6-2+deb12u2 postinst наVM
+новую службу не стартует, при upgrade делает try-restart. Настоящий package install
+ещё не выполнен. Чистый VM2 запущен: package-host-35bb6bc4fe, SSH57373, PID11153,
+1CPU/1536MiB/nice19; **отдельный** `.prototype/vm/package-active.json` и wrapper
+`.prototype/package-vm-exec.py`. Original active.json и vm-exec.py не менять.
+Launcher `.prototype/start-package-vm.py`; base image SHA512 проверен до запуска.
+Историческое ограничение D0 production superseded сводкой выше: публикуем проверенный
+package-компонент тем же первым normal full. Run52/normal fixture остаются замороженыD0.
+
+**Build and deploy52 SUCCESS**,8m51s ([proof](three-vps-evidence/2026-10-30-managed-build-only52.json)), artifact12942511756; deploy=false, production unchanged.
+
+История запуска: **30.10 00:39 local: Build and deploy52 ЗАПУЩЕН**, run40974631683,
+job123799520717, d0cf533, rollout=managed/mode=full/**deploy=false**,
+retry flags=false, edges empty. Проверка новой build pipeline без SSH/deploy;
+не путать общий GitHub environment label с фактическим обновлением A.
+Production всё ещё24c42bf. Не запускать production пока normal VM proof не завершён.
+VM initial завершён: ready `/srv/voicechat-edge-fixture/cohost-fixture-ghyq2y5a/managed`;
+driver60962 уже прошёл fencing core/edge-a и выполняет apply core.
+Подготовлен read-only postrelease checker `/tmp/voicechat-production-normal-postcheck.py`
+(ещё не выполнялся; ожидает exact d0cf533 full commit и unchanged Mac24 feed/neighbor).
+
+Draft PR создан и прикреплён к чату: https://github.com/kerbermeister/voicechat/pull/5.
+Merge не выполнялся; описание явно сохраняет открытые bootstrap/replacement/core-transfer/media проверки.
+
+**АКТУАЛЬНО, 30.10, commit d0cf533:** один активный parent session80589
+`/tmp/voicechat-managed-normal-vm.py` и один driver session60962
+`/tmp/voicechat-managed-normal-driver.py`. VM source
+`/srv/voicechat-edge-fixture/managed-normal-source-awmnrf_u`, local logs
+`.prototype/vm-managed-normal.log` и `.prototype/managed-normal-driver.log`.
+Новый fixture использует sibling nonnested roots; старые попытки ниже — история.
+Не запускать дубликаты и не использовать старый ready. Clean clone/commit/backend
+в `.prototype/managed-normal-run.json`. Обычный production deploy ещё не запускался.
+Ветка d0cf533 отправлена в GitHub; Prototype checks93 run40972369775 запущен,
+[результат SUCCESS](three-vps-evidence/2026-10-30-managed-ci93.json),11m55s. Production остаётся24c42bf (initial51), Mac24 опубликован.
+
+
 **ПЕРЕД СЛЕДУЮЩИМ RETRY, 30.10 local:** parent19475 завершён, driver29758 упал на
 первом coordinator status **до begin/fences**. Причина — старый fixture создавал
 managed/shared внутри legacy root, тогда как normal journal и initial SSH entry

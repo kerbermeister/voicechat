@@ -107,20 +107,56 @@ TURN/SFU ranges, remote tunnel /32 и edge bridge приводят к отказ
 полные container inspect/env не выводятся. При отдельном Docker data-root передать
 `--disk-path` на соответствующем filesystem.
 
-Начальный профиль проверки — Debian 12 amd64; это выбор для дальнейшего clean-host
-bootstrap, не заявление о пройденной установке/перезагрузке VM. Другие ОС/архитектуры
+Профиль подготовки чистого хоста — Debian12 amd64. Host-local установка и reboot
+проверены отдельно ниже; общий onboarding ещё открыт. Другие ОС/архитектуры
 и текущий A требуют отдельной адаптации без переустановки. Порог свободного места
 2 GiB совпадает с действующим deploy guard; рекомендации 4/2 GiB RAM и 20/10 GiB
 свободного диска для core/edge выдаются предупреждениями. Они не оценивают размер
 рабочих данных, snapshot и фактическую нагрузку. Отсутствующие Docker/WireGuard
 отмечаются как зависимости для последующей установки, а не устанавливаются.
 
+**Установка зависимостей, проверено 30.10:** `host_packages.py` выполняет host-local
+шаг для чистого Debian12 amd64. Проверенный [VM proof](../docs/iterations/three-vps-evidence/2026-10-30-vm-host-packages.json)
+включает настоящий apt, lost base/commit replies, repeat без apt/рестарта Docker,
+reboot/autostart, сохранение SSH identity и посторонней nft-таблицы после base-фазы.
+Это отдельный компонент; единый SSH onboarding/replacement ещё не завершён.
+
+На выбранном новом хосте из проверенного source package, через SSH с заранее
+проверенным host key:
+
+```sh
+python3 -B infra/host_packages.py --inventory inventory.json --node edge-d
+python3 -B infra/host_packages.py --inventory inventory.json --node edge-d --execute
+```
+
+Первый вызов печатает профиль без изменений; второй требует root и сверяет
+фактический SSH host key с inventory. Конкретный physical node `edge-d` должен
+существовать в inventory; cohost использует `core`. Зависимости закреплены в коде:
+Docker29.8.1, Compose5.5.1, containerd2.4.2, Debian версии OpenSSL/WireGuard/nftables.
+Используется [официальный Docker apt repository](https://docs.docker.com/engine/install/debian/)
+с отдельными `voicechat-docker.sources`/`voicechat-docker.asc` и проверкой SHA256 ключа.
+Пакеты не устанавливаются convenience script. Buildx на хосте не нужен: роли получают
+готовые immutable образы.
+
+Private journal находится в `/var/lib/voicechat-host`; повтор должен использовать
+тот же inventory, node и профиль. Установщик не принимает чужой Docker/containerd,
+Docker repository, незавершённый dpkg или появившиеся container data. Активную
+`nftables.service` он сохраняет через отказ: её нужно адаптировать отдельно, без
+автоматического stop/restart/flush. Возобновление dpkg ограничено записанным apt
+closure. При изменении установленного профиля требуется отдельный проверенный
+upgrade. Глобальные apt/dpkg locks не удаляются. Завершённый повтор сверяет версии
+и rootful Docker, сохраняя запущенные службы. Этот шаг не создаёт WireGuard keys,
+role data, registry credentials, DNS или TLS; далее нужны соответствующие этапы
+bootstrap. Существующий production A через этот clean-host installer не обновляется.
+
+
 Проверка намеренно предназначена для **чистого** хоста: занятый собственным старым
 релизом порт также блокируется. Она не останавливает службы и не является режимом
 миграции или повторного deploy. Provider firewall, доступность снаружи, DNS/TLS и
 поддержка WireGuard ядром требуют отдельных проверок. Шесть unit-тестов прошли;
 настоящий isolated Linux collector обнаружил UDP socket и route, а отсутствие
-systemd/NTP/SSH host identity оставил ошибками. Это не clean VM acceptance.
+systemd/NTP/SSH host identity оставил ошибками. Сам collector не заменяет полный
+bootstrap/role acceptance; package VM proof выше имеет отдельный ограниченный охват.
 
 ## Scoped firewall и сохранённое состояние
 
@@ -235,7 +271,7 @@ Debian VM, см. `docs/iterations/three-vps-evidence/2026-10-28-vm-network-boot.
 Обновление source через reload, повтор и reboot также проверены:
 `docs/iterations/three-vps-evidence/2026-10-28-vm-network-upgrade.json`.
 Это не разрешает без миграции добавлять зависимость чужому или текущему production
-Docker host. Установка пакетов и общий SSH bootstrap пока не завершены.
+Docker host. Host-local установка пакетов проверена выше; общий SSH bootstrap ещё не завершён.
 
 `check_network_service.py` использует настоящий Debian systemd 252 parser в
 read-only контейнере без сети/capabilities: позитивная проверка units, отказ при

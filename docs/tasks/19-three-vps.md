@@ -258,6 +258,18 @@ multi-host role deploy: общий orchestration state, HTTPS readback всех 
 неизвестный SSH host key и занятый порт. Никакого автоматического принятия host key.
 Выход: воспроизводимый bootstrap и инструкция минимального ввода.
 
+30.10, текущий локальный шаг: `host_packages.py` подготавливает только зависимости
+чистого Debian12 amd64: точные версии Docker/Compose/containerd/WireGuard/nftables,
+проверенный ключ official Docker apt repository, SSH host/profile binding и журнал
+apt closure. Повтор completed и потерянный commit reply не запускают apt/службы;
+чужой runtime/repository, незавершённый dpkg, container data и активный nftables
+блокируют установку без удаления/остановки. Все связанные host tests17 PASS (8 новых); полный серверный набор
+632 PASS/skipped3,103.617s.
+[Реальная чистая VM установка/повтор/lost-reply/reboot PASS](../iterations/three-vps-evidence/2026-10-30-vm-host-packages.json).
+Docker autostart, отсутствие apt/restart при повторе, SSH identity и чужая probe
+nft table после base-фазы сохранены; probe адресно удалена. Это не общий SSH bootstrap, добавление/замена узла или
+проверка role/network/DNS/TLS install. Production пока не меняется этим кодом.
+
 Локально готов `tunnel_config.py`: node-local X25519 key, повтор без замены identity,
 public registry с host generations, /32 WireGuard star и одноузловая схема без peers.
 Linux fixture проверил реальные handshakes/private API, смену ключа B, отказ старому

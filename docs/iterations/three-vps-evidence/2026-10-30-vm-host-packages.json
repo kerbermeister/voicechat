@@ -1,0 +1,51 @@
+{
+  "actual_clean_host_install": true,
+  "base": {
+    "ca-certificates": "20250419~deb12u2",
+    "iproute2": "6.1.0-3",
+    "nftables": "1.0.6-2+deb12u2",
+    "openssl": "3.0.22-1~deb12u2",
+    "wireguard-tools": "1.0.20210914-1+b1"
+  },
+  "docker": {
+    "containerd.io": "2.4.2-3~debian.12~bookworm",
+    "docker-ce": "5:29.8.1-1~debian.12~bookworm",
+    "docker-ce-cli": "5:29.8.1-1~debian.12~bookworm",
+    "docker-compose-plugin": "5.5.1-1~debian.12~bookworm"
+  },
+  "foreign_nft_table_preserved": true,
+  "limits": [
+    "Disposable Debian12 amd64 VM; dependency preparation only.",
+    "Faults injected after successful apt/base and durable commit, not SIGKILL during dpkg.",
+    "No role deployment, DNS/TLS, host replacement or physical VPS acceptance.",
+    "The probe nft table was created after base apt and survived Docker installation/repeats; pre-base kernel rules were not directly measured."
+  ],
+  "lost_base_reply_resumed": true,
+  "lost_commit_reply_resumed": true,
+  "no_application_containers_or_private_tunnel_created": true,
+  "probe_nft_table_removed": true,
+  "production_changed": false,
+  "profile_sha256": "f613612ffe8e16d27cccf32b5011a56456df0012bc09f86219a72a77977dca9a",
+  "repeat_without_apt_or_service_restart": true,
+  "schema": 1,
+  "ssh_host_key_preserved": true,
+  "original_vm_transport_config_unchanged": true,
+  "fixture_root": "/srv/voicechat-package-fixture-35bb6bc4fe",
+  "sources": {
+    "infra/host_packages.py": "240a90b92fcad7bfd760adec509d954cff2187cc38818ea31b742ad99c7061cc",
+    "prototype/check_host_packages.py": "cbdfe81ff789892c4f316b6412c6947732693e94082d484bc9b75907e497a0ef"
+  },
+  "reboot_and_docker_autostart": true,
+  "completed_repeat_after_reboot_without_apt_or_restart": true,
+  "nftables_service_inactive_after_reboot": true,
+  "no_application_containers_after_reboot": true,
+  "only_fixture_vm_rebooted": true,
+  "fixture_vm_powered_off_disk_and_keys_retained": true,
+  "date": "2026-10-30",
+  "local_regression": {
+    "tests": 632,
+    "skipped": 3,
+    "duration_seconds": 103.617,
+    "status": "pass"
+  }
+}
