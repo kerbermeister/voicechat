@@ -26,3 +26,12 @@ Changes relative to upstream:
 No changes to Olm, Megolm, signatures, SAS calculations or wire protocols. QR input validation is corrected as described above. Codec implementation and Web Crypto are in the application. Record keys and store names remain visible; values are encrypted.
 
 Before updating the dependency, compare these files against the pinned upstream, reapply only required changes, then run the browser vault tests, Android storage test and full Android/web E2EE scenario. Prefer removing this patch when upstream offers an equivalent supported codec interface.
+
+### Durable media publication guard (30 October 2026)
+
+`Room.sendFileEvent` accepts an optional `beforeSend` asynchronous guard after
+uploads and before `sendEvent`. VoiceChat checks its persisted one-minute outbox
+window and current recipients there, so a slow completed upload cannot publish
+an already-paused transaction or its file keys. Existing callers omit the guard
+and retain their behavior. A request already sent to the homeserver cannot be
+recalled by this hook. Covered by `apps/client/test/media_publication_guard_test.dart`.

@@ -55,7 +55,7 @@ external JSPromise<JSString> _stream(
   JSFunction read,
 );
 @JS('voicechatFiles.download')
-external JSPromise<JSAny?> _download(
+external JSPromise<JSString> _download(
   JSString name,
   JSString mime,
   JSNumber size,
@@ -99,7 +99,7 @@ Future<FileSaveResult> saveStreamFile(
 ) async {
   if (cancelled()) return FileSaveResult.cancelled;
   if (!_supportsSavePicker().toDart) {
-    await _download(
+    final result = await _download(
       name.toJS,
       mime.toJS,
       size.toJS,
@@ -113,7 +113,11 @@ Future<FileSaveResult> saveStreamFile(
         return builder.takeBytes().toJS;
       })().toJS).toJS,
     ).toDart;
-    return FileSaveResult.downloadStarted;
+    return switch (result.toDart) {
+      'shared' => FileSaveResult.shared,
+      'cancelled' => FileSaveResult.cancelled,
+      _ => FileSaveResult.downloadStarted,
+    };
   }
   final id = (await _beginSave(name.toJS).toDart)?.toDart;
   if (id == null) return FileSaveResult.cancelled;

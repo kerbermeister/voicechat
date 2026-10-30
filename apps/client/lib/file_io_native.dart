@@ -94,7 +94,9 @@ Future<FileSaveResult> saveStreamFile(
       written += bytes.length;
       progress(size == 0 ? 1 : written / size);
     }
-    if (cancelled() || written != size) throw StateError('Incomplete or cancelled save');
+    if (cancelled() || written != size) {
+      throw StateError('Incomplete or cancelled save');
+    }
     success = true;
   } finally {
     await _channel.invokeMethod<void>('finish', {'id': id, 'success': success});

@@ -1,10 +1,9 @@
 import 'dart:async';
 import 'dart:js_interop';
-import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart';
 import 'package:web/web.dart' as web;
 import 'media_policy.dart';
-import 'photo_processing.dart';
+import 'photo_processor.dart';
 import 'user_action_error.dart';
 
 Future<List<MatrixImageFile>> chooseImages(
@@ -44,18 +43,13 @@ Future<List<MatrixImageFile>> chooseImages(
           final photos = <MatrixImageFile>[];
           for (var i = 0; i < files.length; i++) {
             final file = files.item(i)!;
-            if (file.size <= 0 || file.size > policy.photoMaxBytes) {
+            if (file.size <= 0 || file.size > 64 * 1024 * 1024) {
               throw UserActionError('Фотография превышает допустимый размер.');
             }
             final bytes = (await file.arrayBuffer().toDart).toDart
                 .asUint8List();
             await Future<void>.delayed(const Duration(milliseconds: 16));
-            photos.add(
-              await compute(
-                (_) => compressPhoto(bytes, file.name, policy),
-                null,
-              ),
-            );
+            photos.add(await processPhoto(bytes, file.name, policy));
           }
           done.complete(photos);
         } catch (error, stack) {

@@ -83,7 +83,7 @@ test('loader and engine failures expose retry instead of leaving a blank screen'
 test('shell precedes scripts and helper downloads do not block HTML parsing', () => {
   assert.ok(html.indexOf('id="startup"') < html.indexOf('<script'));
   const scripts = [...html.matchAll(/<script src="([^"]+)"([^>]*)>/g)];
-  assert.equal(scripts.length, 5);
+  assert.deepEqual(scripts.map(s => s[1]), ['vault.js', 'files.js', 'photos.js', 'media_audio.js', 'push_client.js', 'flutter_bootstrap.js']);
   for (const script of scripts) assert.match(script[2], /defer/);
   assert.equal(scripts.at(-1)[1], 'flutter_bootstrap.js');
   assert.match(html, /rel="preload" href="main.dart.js" as="script"/);

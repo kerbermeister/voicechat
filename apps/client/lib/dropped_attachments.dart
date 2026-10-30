@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart';
 import 'media_policy.dart';
-import 'photo_processing.dart';
+import 'photo_processor.dart';
 import 'picked_file.dart';
 import 'user_action_error.dart';
 
@@ -14,6 +14,8 @@ prepareDroppedFiles(
   required int fileCount,
 }) async {
   bool photo(PickedFile file) => const [
+    'image/heic',
+    'image/heif',
     'image/jpeg',
     'image/png',
     'image/webp',
@@ -29,7 +31,7 @@ prepareDroppedFiles(
   }
   for (final file in sources) {
     final limit = photo(file)
-        ? policy.photoMaxBytes
+        ? (kIsWeb ? 64 * 1024 * 1024 : policy.photoMaxBytes)
         : file.mime.startsWith('video/')
         ? policy.videoMaxBytes
         : policy.fileMaxBytes;
@@ -43,9 +45,7 @@ prepareDroppedFiles(
     if (bytes.length != image.size) {
       throw const FormatException('Incomplete image read');
     }
-    photos.add(
-      await compute((_) => compressPhoto(bytes, image.name, policy), null),
-    );
+    photos.add(await processPhoto(bytes, image.name, policy));
   }
   return (photos: photos, files: files);
 }

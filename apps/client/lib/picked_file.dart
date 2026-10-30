@@ -7,6 +7,8 @@ String attachmentMime(String name, String supplied) {
     return supplied;
   }
   return switch (name.contains('.') ? name.split('.').last.toLowerCase() : '') {
+    'heic' => 'image/heic',
+    'heif' => 'image/heif',
     'jpg' || 'jpeg' => 'image/jpeg',
     'png' => 'image/png',
     'webp' => 'image/webp',

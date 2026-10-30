@@ -12,6 +12,65 @@ import 'package:voicechat_probe/p2p/protocol.dart';
 
 void main() {
   testWidgets(
+    'Completed transfers show dates and expand into individual and batch saving',
+    (tester) async {
+      tester.view.physicalSize = const Size(320, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final client = P2pClient();
+      final service = P2pService(
+        client,
+        Friends(client),
+        'https://local.invalid',
+      );
+      final transfer = P2pTransfer(
+        id: 'a' * 32,
+        roomId: '!room:local',
+        peer: '@bob:local',
+        outgoing: false,
+        files: [
+          const P2pFile('one.txt', 'text/plain', 1, ''),
+          const P2pFile('two.txt', 'text/plain', 1, ''),
+        ],
+        expires: 0,
+      );
+      transfer.state = P2pState.connecting;
+      final started = transfer.startedAt;
+      transfer.state = P2pState.received;
+      final finished = transfer.finishedAt;
+      transfer.state = P2pState.failed;
+      expect(transfer.finishedAt, finished);
+      transfer.state = P2pState.received;
+      expect(transfer.startedAt, started);
+      transfer.verified.fillRange(0, 2, true);
+      service.transfers.add(transfer);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(1.4)),
+            child: P2pPanel(service: service),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.byType(ExpansionTile), 300);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Начало:'), findsOneWidget);
+      expect(find.textContaining('Конец:'), findsOneWidget);
+      expect(find.text('Сохранить все в ZIP'), findsNothing);
+      await tester.ensureVisible(find.byType(ExpansionTile));
+      await tester.tap(find.byType(ExpansionTile));
+      await tester.pumpAndSettle();
+      expect(find.text('Сохранить все в ZIP'), findsOneWidget);
+      expect(find.text('Сохранить файл'), findsNWidgets(2));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      await service.close();
+    },
+  );
+
+  testWidgets(
     'flow becomes static with reduced motion and settles when traffic stops',
     (tester) async {
       await tester.pumpWidget(

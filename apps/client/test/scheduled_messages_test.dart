@@ -220,7 +220,7 @@ void main() {
         'id': id,
         'room': '!test:local',
         'type': EventTypes.Message,
-        'created': 0,
+        'created': DateTime.now().millisecondsSinceEpoch,
         'scheduled_at': DateTime.now().millisecondsSinceEpoch + 60000,
         'content': {'body': 'private', 'msgtype': MessageTypes.Text},
         'sealed': {'ciphertext': 'opaque'},

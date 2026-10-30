@@ -847,6 +847,10 @@ class Room {
     String? threadRootEventId,
     String? threadLastEventId,
 
+    /// Revalidate an application's durable transaction after potentially slow
+    /// uploads, before publishing the event or its decryption keys.
+    Future<void> Function()? beforeSend,
+
     /// Displays an event in the timeline with the transaction ID as the event
     /// ID and a status of SENDING, SENT or ERROR until it gets replaced by
     /// the sync event. Using this can display a different sort order of events
@@ -1170,6 +1174,7 @@ class Room {
       },
       ...?extraContent,
     };
+    if (beforeSend != null) await beforeSend();
     final eventId = await sendEvent(
       content,
       txid: txid,

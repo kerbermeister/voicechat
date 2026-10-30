@@ -167,6 +167,9 @@ class IndependentQueueClient extends Client {
 class SendingQueueClient extends TestClient {
   @override
   final database = OutboxDatabase();
+  int _outboxTransaction = 0;
+  @override
+  String generateUniqueTransactionId() => 'new-${_outboxTransaction++}';
   final roomsById = <String, SendingQueueRoom>{};
   @override
   Room? getRoomById(String id) => roomsById[id];
@@ -177,6 +180,7 @@ class SendingQueueRoom extends OutboxRoom {
   final Completer<String?>? gate;
   final sent = <String>[];
   Object? failure;
+  Future<void> Function()? publicationGuard;
   SendingQueueRoom(super.client, this.roomId, {this.gate});
   @override
   String get id => roomId;
@@ -187,6 +191,10 @@ class SendingQueueRoom extends OutboxRoom {
     }
     if (invocation.memberName == #sendEvent ||
         invocation.memberName == #sendFileEvent) {
+      if (invocation.memberName == #sendFileEvent) {
+        publicationGuard =
+            invocation.namedArguments[#beforeSend] as Future<void> Function()?;
+      }
       sent.add(invocation.namedArguments[#txid] as String);
       if (failure != null) return Future<String?>.error(failure!);
       return sent.length == 1 && gate != null
@@ -286,6 +294,113 @@ void main() {
     );
   });
   test(
+    'Restored old outbox is paused, retained, and only retries explicitly',
+    () async {
+      final client = SendingQueueClient();
+      final room = SendingQueueRoom(client, '!old:local');
+      client.roomsById[room.id] = room;
+      final db = client.database as OutboxDatabase;
+      db.values['dev.voicechat.local.outbox'] = {
+        'items': [
+          {
+            'id': 'same-transaction',
+            'room': room.id,
+            'type': EventTypes.Message,
+            'created': 1,
+            'content': {'msgtype': MessageTypes.Text, 'body': 'yesterday'},
+          },
+        ],
+      };
+      final actions = ChatActions(client);
+      await actions.open();
+      await actions.flush();
+      expect(room.sent, isEmpty);
+      expect(actions.pending.single['retry_paused'], true);
+      expect(actions.pending.single['failure']['code'], 'LOCAL_SEND_TIMEOUT');
+      await actions.enqueue(room, {
+        'msgtype': MessageTypes.Text,
+        'body': 'today',
+      });
+      await actions.flush();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(room.sent.length, 1, reason: actions.pending.toString());
+      expect(actions.pending.single['id'], 'same-transaction');
+      await actions.retryPending('same-transaction');
+      await actions.flush();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(room.sent.last, 'same-transaction');
+      expect(actions.pending, isEmpty);
+      await actions.close();
+    },
+  );
+
+  test(
+    'Media upload is cancellable and its SDK publication guard rejects the cancelled transaction',
+    () async {
+      final client = SendingQueueClient();
+      final gate = Completer<String?>();
+      final room = SendingQueueRoom(client, '!media:local', gate: gate);
+      client.roomsById[room.id] = room;
+      final actions = ChatActions(client);
+      actions.pending.add({
+        'id': 'media',
+        'room': room.id,
+        'type': EventTypes.Message,
+        'created': DateTime.now().millisecondsSinceEpoch,
+        'content': {
+          'msgtype': MessageTypes.Audio,
+          'body': 'voice.wav',
+          'mime': 'audio/wav',
+          'bytes': base64Encode(Uint8List(16)),
+        },
+      });
+      final sending = actions.flush();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(room.publicationGuard, isNotNull);
+      await actions.cancel('media');
+      await expectLater(room.publicationGuard!(), throwsStateError);
+      gate.complete(null);
+      await sending;
+      expect(actions.pending, isEmpty);
+      await actions.close();
+    },
+  );
+
+  testWidgets(
+    'Minute deadline appears even while confirmation is pending; late acknowledgement reconciles',
+    (tester) async {
+      final client = SendingQueueClient();
+      final gate = Completer<String?>();
+      final room = SendingQueueRoom(client, '!slow:local', gate: gate);
+      client.roomsById[room.id] = room;
+      final actions = ChatActions(client);
+      final item = <String, dynamic>{
+        'id': 'in-flight',
+        'room': room.id,
+        'type': EventTypes.Message,
+        'created': DateTime.now().millisecondsSinceEpoch,
+        'content': {'msgtype': MessageTypes.Text, 'body': 'retained'},
+      };
+      actions.pending.add(item);
+      final sending = actions.flush();
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(room.sent, ['in-flight'], reason: item.toString());
+      await tester.pump(const Duration(seconds: 61));
+      expect(item['retry_paused'], true);
+      expect(item['error'], contains('минуту'));
+      await actions.flush();
+      expect(room.sent, ['in-flight']);
+      gate.complete(r'$late-confirmed');
+      await sending;
+      expect(actions.pending, isEmpty);
+      expect(actions.deliveredEvent('in-flight'), r'$late-confirmed');
+      await actions.close();
+    },
+  );
+
+  test(
     'Temporary API outage keeps ordered transactions and recovers without new IDs',
     () async {
       final client = PolicyQueueClient();
@@ -297,7 +412,7 @@ void main() {
           'id': id,
           'room': room.id,
           'type': EventTypes.Message,
-          'created': 0,
+          'created': DateTime.now().millisecondsSinceEpoch,
           'content': {
             'msgtype': MessageTypes.Text,
             'body': id,
@@ -350,7 +465,7 @@ void main() {
         'id': 'retained-id',
         'room': room.id,
         'type': EventTypes.Message,
-        'created': 0,
+        'created': DateTime.now().millisecondsSinceEpoch,
         'content': {
           'msgtype': MessageTypes.Text,
           'body': 'temporary',
@@ -381,7 +496,7 @@ void main() {
             'id': id,
             'room': room,
             'type': EventTypes.Message,
-            'created': 0,
+            'created': DateTime.now().millisecondsSinceEpoch,
             'content': audio
                 ? {
                     'msgtype': MessageTypes.Audio,
@@ -435,6 +550,7 @@ void main() {
         actions.pending.add({
           'id': id,
           'room': room,
+          'created': DateTime.now().millisecondsSinceEpoch,
           'content': {'body': id},
         });
       }

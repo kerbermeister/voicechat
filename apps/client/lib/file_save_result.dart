@@ -1,1 +1,1 @@
-enum FileSaveResult { saved, downloadStarted, cancelled }
+enum FileSaveResult { saved, downloadStarted, shared, cancelled }

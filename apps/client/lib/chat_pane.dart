@@ -1142,7 +1142,9 @@ class _ChatPaneState extends State<ChatPane>
         ],
       ),
     );
-    if (retry == true && mounted) unawaited(widget.actions.flush());
+    if (retry == true && mounted) {
+      await widget.actions.retryPending(item['id'] as String);
+    }
   }
 
   Future<void> react(mx.Event event, String emoji) async {
@@ -2055,7 +2057,9 @@ class _ChatPaneState extends State<ChatPane>
                           if (action == 'schedule') {
                             await chooseSchedule(pendingId: p['id'] as String);
                           } else if (action == 'retry') {
-                            unawaited(widget.actions.flush());
+                            unawaited(
+                              widget.actions.retryPending(p['id'] as String),
+                            );
                           } else {
                             await widget.actions.cancel(p['id'] as String);
                           }

@@ -113,7 +113,7 @@ class TestKeys implements KeyManager {
       return Future<void>.value();
     }
     if (i.memberName == #clearOrUseOutboundGroupSession) {
-      expect(i.namedArguments[#wipe], true);
+      expectSync(i.namedArguments[#wipe], true);
       return Future.value(true);
     }
     return super.noSuchMethod(i);

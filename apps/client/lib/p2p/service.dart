@@ -14,6 +14,7 @@ import 'capacity.dart';
 import 'protocol.dart';
 import 'temp_store.dart';
 import 'wire.dart';
+import 'archive.dart';
 
 enum P2pState {
   offered,
@@ -32,7 +33,25 @@ class P2pTransfer {
   final int expires;
   final List<PickedFile>? sources;
   String? device;
-  P2pState state = P2pState.offered;
+  final DateTime createdAt = DateTime.now();
+  DateTime? startedAt, finishedAt;
+  P2pState _state = P2pState.offered;
+  P2pState get state => _state;
+  set state(P2pState value) {
+    if (value == _state) return;
+    if (value == P2pState.connecting || value == P2pState.transferring) {
+      startedAt ??= DateTime.now();
+    }
+    if (![
+      P2pState.offered,
+      P2pState.connecting,
+      P2pState.transferring,
+    ].contains(value)) {
+      finishedAt ??= DateTime.now();
+    }
+    _state = value;
+  }
+
   P2pRoute route = P2pRoute.unknown;
   String? error;
   late final List<int> bytes = List.filled(files.length, 0);
@@ -550,6 +569,7 @@ class P2pService extends ChangeNotifier {
         () => _closed || t.state != P2pState.received,
       );
       t.saved[file] = switch (result) {
+        FileSaveResult.shared => 'Передано в меню сохранения',
         FileSaveResult.saved => 'Сохранено',
         FileSaveResult.downloadStarted => 'Скачивание начато',
         FileSaveResult.cancelled => 'Сохранение отменено',
@@ -559,6 +579,60 @@ class P2pService extends ChangeNotifier {
       _changed();
     }
   }
+
+  Future<void> saveAll(P2pTransfer t) => _track(() async {
+    if (t.outgoing ||
+        t.exporting ||
+        t.state != P2pState.received ||
+        !t.verified.every((value) => value)) {
+      return;
+    }
+    // Keep the existing worker's aggregate export limit, including ZIP headers.
+    if (t.files.fold<int>(0, (sum, file) => sum + file.size) + 200000 >
+        100000000000) {
+      throw UserActionError(
+        'Общий размер ZIP превышает 100 ГБ. Сохраните файлы по отдельности.',
+      );
+    }
+    t.exporting = true;
+    _changed();
+    bool cancelled() => _closed || t.state != P2pState.received;
+    try {
+      final zip = await P2pArchive.create([
+        for (var i = 0; i < t.files.length; i++)
+          (
+            name: t.files[i].saveName,
+            size: t.files[i].size,
+            read: (int from, int to) =>
+                storage.range(t.id, i, t.files[i].size, from, to),
+          ),
+      ], cancelled);
+      if (zip.size > 100000000000) {
+        throw UserActionError(
+          'Общий размер ZIP превышает 100 ГБ. Сохраните файлы по отдельности.',
+        );
+      }
+      final result = await io.saveStreamFile(
+        'VoiceChat-${t.id.substring(0, 8)}.zip',
+        'application/zip',
+        zip.size,
+        zip.range,
+        (_) {},
+        cancelled,
+      );
+      for (var i = 0; i < t.saved.length; i++) {
+        t.saved[i] = switch (result) {
+          FileSaveResult.shared => 'ZIP передан в меню сохранения',
+          FileSaveResult.saved => 'Сохранено в ZIP',
+          FileSaveResult.downloadStarted => 'Скачивание ZIP начато',
+          FileSaveResult.cancelled => 'Сохранение отменено',
+        };
+      }
+    } finally {
+      t.exporting = false;
+      _changed();
+    }
+  });
 
   Future<void> _check() async {
     if (_closed || _checking) return;

@@ -32,6 +32,7 @@ class ChatActions extends ChangeNotifier {
   final List<Map<String, dynamic>> pending = [];
   StreamSubscription<dynamic>? _sync;
   Timer? _retry;
+  final _deadlines = <String, Timer>{};
   final _sending = <String, bool>{};
   final _delivered = <String, String>{};
   final _confirmed = <Map<String, dynamic>>[];
@@ -244,11 +245,74 @@ class ChatActions extends ChangeNotifier {
         (v) => Map<String, dynamic>.from(v as Map),
       ),
     );
+    for (final item in pending) {
+      _watchDeadline(item);
+    }
     _sync = client.onSync.stream.listen((_) => unawaited(flush()));
     _retry = Timer.periodic(const Duration(seconds: 5), (_) {
       unawaited(flush());
       unawaited(refreshPolicy());
     });
+    unawaited(flush());
+  }
+
+  // Persist the deadline: reopening the app must not send yesterday's queue.
+  void _watchDeadline(Map<String, dynamic> item) {
+    final id = item['id'] as String;
+    if (_closed || item['retry_paused'] == true || _deadlines.containsKey(id)) {
+      return;
+    }
+    final until =
+        item['automatic_until'] ?? ((item['created'] as int? ?? 0) + 60000);
+    final remaining = until is int
+        ? until - DateTime.now().millisecondsSinceEpoch
+        : 0;
+    if (remaining <= 0 || remaining > 60000) {
+      _pauseRetry(item);
+      return;
+    }
+    _deadlines[id] = Timer(Duration(milliseconds: remaining), () {
+      _deadlines.remove(id);
+      if (!_closed && pending.contains(item)) _pauseRetry(item);
+    });
+  }
+
+  void _pauseRetry(Map<String, dynamic> item) {
+    if (item['retry_paused'] == true) return;
+    item['retry_paused'] = true;
+    item['error'] = 'Отправка не подтверждена за минуту.';
+    item['failure'] = {
+      'reason': item['error'],
+      'recommendation':
+          'Сообщение сохранено на этом устройстве. Проверьте соединение и нажмите «Повторить сейчас». Автоматические повторы остановлены. Если сервер уже принял сообщение, его подтверждение ещё может поступить; повтор использует тот же идентификатор.',
+      'code': 'LOCAL_SEND_TIMEOUT',
+    };
+    unawaited(_save().catchError((Object _) {}));
+    if (!_closed) notifyListeners();
+  }
+
+  Future<void> retryPending(String id) async {
+    final item = pending.where((item) => item['id'] == id).firstOrNull;
+    if (item == null) return;
+    if (_activeItems.containsValue(id)) {
+      throw UserActionError('Дождитесь завершения текущей попытки отправки.');
+    }
+    final previous = Map<String, dynamic>.from(item);
+    item['automatic_until'] = DateTime.now().millisecondsSinceEpoch + 60000;
+    item.remove('retry_paused');
+    item.remove('error');
+    item.remove('failure');
+    try {
+      await _save();
+    } catch (_) {
+      item
+        ..clear()
+        ..addAll(previous);
+      rethrow;
+    }
+    _deadlines.remove(id)?.cancel();
+    _watchDeadline(item);
+    if (!_closed) notifyListeners();
     unawaited(flush());
   }
 
@@ -334,6 +398,7 @@ class ChatActions extends ChangeNotifier {
       if (preparing) 'preparing': true,
     };
     pending.add(item);
+    _watchDeadline(item);
     _savingItems.add(item['id'] as String);
     notifyListeners();
     try {
@@ -663,7 +728,10 @@ class ChatActions extends ChangeNotifier {
     if (item['error'] is String) return item['error'] as String;
     final head = pending
         .where(
-          (p) => p['room'] == item['room'] && p['schedule_rejected'] != true,
+          (p) =>
+              p['room'] == item['room'] &&
+              p['schedule_rejected'] != true &&
+              p['retry_paused'] != true,
         )
         .firstOrNull;
     if (head != null && head['id'] != item['id']) {
@@ -697,7 +765,11 @@ class ChatActions extends ChangeNotifier {
     while (!_closed) {
       final heads = <String, Map<String, dynamic>>{};
       for (final item in pending) {
-        if (item['schedule_rejected'] == true) continue;
+        if (item['schedule_rejected'] == true || item['retry_paused'] == true) {
+          continue;
+        }
+        _watchDeadline(item);
+        if (item['retry_paused'] == true) continue;
         heads.putIfAbsent(item['room'] as String, () => item);
       }
       final jobs = <Future<void>>[];
@@ -742,7 +814,9 @@ class ChatActions extends ChangeNotifier {
         final item = pending
             .where(
               (item) =>
-                  item['room'] == roomId && item['schedule_rejected'] != true,
+                  item['room'] == roomId &&
+                  item['schedule_rejected'] != true &&
+                  item['retry_paused'] != true,
             )
             .firstOrNull;
         if (item == null || _savingItems.contains(item['id'])) break;
@@ -829,10 +903,13 @@ class ChatActions extends ChangeNotifier {
               throw StateError('Reply unavailable');
             }
             if (item['cancelled'] == true) throw StateError('Cancelled');
+            if (item['retry_paused'] == true) break;
             _publishing[roomId] = item['id'] as String;
             if (item['scheduled_at'] != null) {
               id = await _schedule(room, item, content);
             } else if (content.containsKey('bytes')) {
+              // Uploads can still be cancelled; only the guarded publication is final.
+              _publishing.remove(roomId);
               final bytes = base64Decode(content['bytes'] as String);
               final file = content['msgtype'] == MessageTypes.Audio
                   ? MatrixAudioFile(
@@ -850,6 +927,22 @@ class ChatActions extends ChangeNotifier {
                 file,
                 txid: item['id'] as String,
                 inReplyTo: reply,
+                beforeSend: () async {
+                  void check() {
+                    if (_closed ||
+                        item['retry_paused'] == true ||
+                        item['cancelled'] == true) {
+                      throw StateError('Outbox publication stopped');
+                    }
+                  }
+
+                  check();
+                  await authorizedDevices(
+                    room,
+                  ).timeout(const Duration(seconds: 8));
+                  check();
+                  _publishing[roomId] = item['id'] as String;
+                },
                 extraContent: {
                   if (content.containsKey(readAfterKey))
                     readAfterKey: content[readAfterKey],
@@ -911,6 +1004,7 @@ class ChatActions extends ChangeNotifier {
             if (_confirmed.length > 128) _confirmed.removeAt(0);
           }
           pending.remove(item);
+          _deadlines.remove(item['id'])?.cancel();
           await _save();
           if ((item['created'] as int) >= _opened &&
               item['type'] == EventTypes.Message &&
@@ -927,6 +1021,7 @@ class ChatActions extends ChangeNotifier {
             await _deleteParts(item);
             continue;
           }
+          if (item['retry_paused'] == true) break;
           if (error is ScheduleRejected) item['schedule_rejected'] = true;
           final failure = describeSendFailure(
             error,
@@ -1020,6 +1115,9 @@ class ChatActions extends ChangeNotifier {
       item['audience'] = audience;
       await _save();
     }
+    if (item['retry_paused'] == true) {
+      throw UserActionError('Автоматическая отправка остановлена.');
+    }
     final job = await service.create(item);
     return job['id'] as String;
   }
@@ -1035,9 +1133,7 @@ class ChatActions extends ChangeNotifier {
     item.remove('audience');
     item.remove('error');
     item.remove('schedule_rejected');
-    await _save();
-    notifyListeners();
-    unawaited(flush());
+    await retryPending(id);
   }
 
   Future<void> cancel(String id) async {
@@ -1066,6 +1162,17 @@ class ChatActions extends ChangeNotifier {
     }
     notifyListeners();
     await _deleteParts(item);
+  }
+
+  @override
+  void dispose() {
+    _closed = true;
+    _retry?.cancel();
+    for (final timer in _deadlines.values) {
+      timer.cancel();
+    }
+    _deadlines.clear();
+    super.dispose();
   }
 
   Future<void> close() async {

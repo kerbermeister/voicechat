@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8"><title>VoiceChat — local photo codec verification</title><h1>Проверка фотографий VoiceChat</h1><pre id="result">Выполняется…</pre><script src="photos.js"></script><script>
+(async()=>{
+ const results={browser:navigator.userAgent,network_upload:false,checks:[]};
+ try {
+  for(const [name,w,h] of [['source.heic',64,48],['48mp.jpg',4000,3000]]) {
+   const bytes=new Uint8Array(await (await fetch(name)).arrayBuffer());
+   const output=await voicechatPhotos.normalize(bytes,name.endsWith('heic')?'image/heic':'image/jpeg',24000000,.5,85,10485760);
+   if(output.width!==w||output.height!==h||output.bytes[0]!==255||output.bytes[1]!==216||output.bytes.length>10485760)throw Error('Output contract '+name);
+   results.checks.push({file:name,width:output.width,height:output.height,bytes:output.bytes.length,jpeg:true});
+  }
+  let rejected=false;try{await voicechatPhotos.normalize(new Uint8Array([1,2,3]),'image/heic',24000000,.5,85,10485760);}catch(_){rejected=true;}
+  if(!rejected)throw Error('Corrupt input accepted');
+  results.corrupt_rejected=true;results.result='PASS';
+ }catch(error){results.result='FAIL';results.error=String(error);}
+ document.querySelector('#result').textContent=JSON.stringify(results,null,2);
+ await fetch('/result',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(results)});
+})();
+</script>

@@ -1,0 +1,1 @@
+{"browser":"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.3 Safari/605.1.15","network_upload":false,"checks":[{"file":"source.heic","width":64,"height":48,"bytes":863,"jpeg":true},{"file":"48mp.jpg","width":4000,"height":3000,"bytes":208129,"jpeg":true}],"corrupt_rejected":true,"result":"PASS"}

@@ -34,6 +34,7 @@ class _RecoveryKeyDialogState extends State<RecoveryKeyDialog> {
           widget.recoveryKey,
         );
         feedback = switch (result) {
+          FileSaveResult.shared => 'Передано в меню сохранения.',
           FileSaveResult.saved => 'Файл сохранён.',
           FileSaveResult.downloadStarted =>
             'Файл передан браузеру. Проверьте загрузки.',

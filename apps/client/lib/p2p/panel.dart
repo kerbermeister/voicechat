@@ -434,95 +434,131 @@ class _P2pPanelState extends State<P2pPanel> {
     );
   }
 
+  String date(DateTime value) {
+    final local = value.toLocal();
+    final locale = MaterialLocalizations.of(context);
+    return '${locale.formatShortDate(local)} ${locale.formatTimeOfDay(TimeOfDay.fromDateTime(local), alwaysUse24HourFormat: true)}';
+  }
+
   Widget _transfer(P2pTransfer t) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            t.outgoing ? 'Кому' : 'От кого',
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-          const SizedBox(height: 8),
-          PersonIdentity(client: service.client, userId: t.peer),
-          Text(t.label),
-          P2pFlow(
-            outgoing: t.outgoing,
-            complete: t.state == P2pState.received,
-            moving:
-                t.state == P2pState.transferring &&
-                t.speed.perSecond(DateTime.now().millisecondsSinceEpoch) > 0,
-          ),
-          if (t.error != null) Text(t.error!),
-          if (t.route == P2pRoute.relay ||
-              t.state == P2pState.connecting ||
-              t.state == P2pState.transferring ||
-              t.state == P2pState.received) ...[
-            const SizedBox(height: 8),
-            P2pRouteWarning(route: t.route, outgoing: t.outgoing),
-            Text(
-              'Скорость: ${p2pSize(t.active ? t.speed.perSecond(DateTime.now().millisecondsSinceEpoch) : 0)}/с',
-            ),
-          ],
-          const SizedBox(height: 12),
-          for (var i = 0; i < t.files.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                children: [
-                  P2pFileProgress(
-                    file: t.files[i],
-                    bytes: t.bytes[i],
-                    verified: t.verified[i],
-                  ),
-                  if (!t.outgoing && t.state == P2pState.received)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: t.exporting || acting
-                            ? null
-                            : () => action(() => service.save(t, i)),
-                        icon: const Icon(Icons.save_alt),
-                        label: Text(t.saved[i] ?? 'Сохранить файл'),
+    child: ExpansionTile(
+      key: PageStorageKey('p2p-transfer:${t.id}'),
+      initiallyExpanded: t.active,
+      title: PersonIdentity(client: service.client, userId: t.peer),
+      subtitle: Text(
+        '${t.outgoing ? 'Отправка' : 'Получение'} · ${t.files.length} файл(ов) · ${t.label}\n'
+        '${t.startedAt == null ? 'Создано' : 'Начало'}: ${date(t.startedAt ?? t.createdAt)}'
+        '${t.finishedAt == null ? '' : '\nКонец: ${date(t.finishedAt!)}'}',
+      ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                t.outgoing ? 'Кому' : 'От кого',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const SizedBox(height: 8),
+              PersonIdentity(client: service.client, userId: t.peer),
+              Text(t.label),
+              P2pFlow(
+                outgoing: t.outgoing,
+                complete: t.state == P2pState.received,
+                moving:
+                    t.state == P2pState.transferring &&
+                    t.speed.perSecond(DateTime.now().millisecondsSinceEpoch) >
+                        0,
+              ),
+              if (t.error != null) Text(t.error!),
+              if (t.route == P2pRoute.relay ||
+                  t.state == P2pState.connecting ||
+                  t.state == P2pState.transferring ||
+                  t.state == P2pState.received) ...[
+                const SizedBox(height: 8),
+                P2pRouteWarning(route: t.route, outgoing: t.outgoing),
+                Text(
+                  'Скорость: ${p2pSize(t.active ? t.speed.perSecond(DateTime.now().millisecondsSinceEpoch) : 0)}/с',
+                ),
+              ],
+              const SizedBox(height: 12),
+              for (var i = 0; i < t.files.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    children: [
+                      P2pFileProgress(
+                        file: t.files[i],
+                        bytes: t.bytes[i],
+                        verified: t.verified[i],
                       ),
+                      if (!t.outgoing && t.state == P2pState.received)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: t.exporting || acting
+                                ? null
+                                : () => action(() => service.save(t, i)),
+                            icon: const Icon(Icons.save_alt),
+                            label: Text(t.saved[i] ?? 'Сохранить файл'),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              if (!t.outgoing &&
+                  t.state == P2pState.received &&
+                  t.files.length > 1) ...[
+                FilledButton.icon(
+                  onPressed: t.exporting || acting
+                      ? null
+                      : () => action(() => service.saveAll(t)),
+                  icon: const Icon(Icons.folder_zip_outlined),
+                  label: Text(
+                    t.exporting
+                        ? 'Подготовка сохранения…'
+                        : 'Сохранить все в ZIP',
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (!t.outgoing && t.state == P2pState.offered) ...[
+                    FilledButton(
+                      onPressed: acting
+                          ? null
+                          : () => action(() => service.accept(t)),
+                      child: const Text('Принять'),
+                    ),
+                    TextButton(
+                      onPressed: acting
+                          ? null
+                          : () =>
+                                action(() => service.cancel(t, decline: true)),
+                      child: const Text('Отклонить'),
+                    ),
+                  ] else if (t.active)
+                    TextButton(
+                      onPressed: () => action(() => service.cancel(t)),
+                      child: const Text('Отменить передачу'),
+                    ),
+                  if (!t.active)
+                    TextButton(
+                      onPressed: t.exporting || acting
+                          ? null
+                          : () => action(() => service.remove(t)),
+                      child: const Text('Удалить временные данные и карточку'),
                     ),
                 ],
               ),
-            ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (!t.outgoing && t.state == P2pState.offered) ...[
-                FilledButton(
-                  onPressed: acting
-                      ? null
-                      : () => action(() => service.accept(t)),
-                  child: const Text('Принять'),
-                ),
-                TextButton(
-                  onPressed: acting
-                      ? null
-                      : () => action(() => service.cancel(t, decline: true)),
-                  child: const Text('Отклонить'),
-                ),
-              ] else if (t.active)
-                TextButton(
-                  onPressed: () => action(() => service.cancel(t)),
-                  child: const Text('Отменить передачу'),
-                ),
-              if (!t.active)
-                TextButton(
-                  onPressed: t.exporting || acting
-                      ? null
-                      : () => action(() => service.remove(t)),
-                  child: const Text('Удалить временные данные и карточку'),
-                ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
   @override

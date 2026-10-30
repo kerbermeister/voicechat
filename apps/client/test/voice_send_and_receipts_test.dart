@@ -20,6 +20,11 @@ class DeliveryActions extends ForwardActions {
   int retries = 0;
   final retryGate = Completer<void>();
   @override
+  Future<void> retryPending(String id) async {
+    unawaited(flush());
+  }
+
+  @override
   Future<void> flush() async {
     retries++;
     await retryGate.future;

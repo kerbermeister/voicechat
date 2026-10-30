@@ -40,3 +40,72 @@ P2P, HEIC/размер фото iPhone и команду сохранения в
 Разрешена последующая полная интеграция, локальное обновление, production и
 необходимые клиентские выпуски; прежняя отсрочка публикации отменена.
 Результаты последующих проверок и выпуска дополняются после выполнения.
+
+## Вторая часть: очередь, P2P и фото iPhone
+
+Версия1.15.0(30), исходный main48ac62c + checkpoint3e8f417.
+Все13 follow-up изменений реализованы. Публикация ещё не выполнена.
+
+- Outbox: deadline хранится в encrypted local store и отсчитывается Timer во время
+  сеанса; legacy created используется после reopen. Просроченное остаётся на месте
+  сLOCAL_SEND_TIMEOUT, автоматические попытки не возобновляются на следующий день.
+  Явный повтор сохраняет Matrix txid; поздний ack снимает pending. Новые сообщения
+  обходят приостановленные старые. Уже принятый сервером запрос отозвать таймаутом
+  невозможно; это явно написано в детализации. Подготовка/загрузка не означает
+  разрешение публиковать ключи после остановки.
+- P2P: даты стабильны при изменении статуса, ExpansionTile скрывает детали.
+  ZIP64 со stored entries, CRC32 из уже подключённого archive4.5.2; файлы не
+  собираются целиком в RAM и не пишутся в plaintext temp. Локальный checksum-pass
+  обеспечивает seekable диапазоны, затем экспорт читает encrypted source блоками.
+  Регистрация streaming worker остаётся до100ГБ; лимит не повышался.
+- iPhone save: до64МиБ native Web Share с понятным ready-dialog и свежим gesture,
+  результатshared не выдаётся за доказанную запись на диск. Отмена/ошибка возвращают
+  управление. Крупные файлы идут attachment/octet-stream через прежний worker.
+  Recovery-key export по-прежнему не проходит через worker.
+- HEIC/JPEG web: Blob→native browser decoder→canvas JPEG; metadata не копируется,
+  source64МиБ/64Мп и финальная политика соблюдаются. Нет серверного конвертера.
+  [WebKit оHEIC вSafari17](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
+
+Проверки второй части:
+- `prototype/check_chat_followup_web.cjs`: настоящий Chrome, отдельный context,
+  native-share API заменён stub; ready/cancel/возврат, безопасное имя и настоящий
+ 65МиБ download с4МиБ reads, cleanup PASS. Это не физический iPhone.
+- ZIP64 тест: декодирование с CRC, Unicode/повторы/пустой файл, диапазоны по7байт,
+  central directory, отмена/обрезанный source PASS.
+- Native Safari18.3/macOS15.3.1: собственный synthetic HEIC и48MP JPEG успешно
+  стали64×48 и4000×3000 JPEG, corrupted input rejected; media upload отсутствует.
+  Результат сохранён рядом с этим журналом, без аккаунтов/пользовательских фото.
+- Общий клиентский прогон, анализатор и итоговые сборки фиксируются ниже после
+  завершения. Аппаратные ограничения и пользовательский остаток — только
+  [единый реестр](../user-acceptance.md).
+
+GitHub release пока ждёт входа: CLI HTTPS credential отсутствует, доступный Safari
+не авторизован, инструмент не получил доступ к Chrome. SSH production read-only
+доступен. Штатный FULL workflow не заменялся ручным compose.
+
+Дополнительно закрыта граница SDK: `sendFileEvent` принимает необязательный
+`beforeSend` после upload и перед публикацией. Outbox повторно проверяет deadline,
+отмену и получателей; до этой границы upload можно отменить. Два теста проходят
+через настоящий код SDK (slow upload→guard denied/allowed); отдельный outbox-тест
+проверяет callback и отмену. Старые SDK-вызовы без guard совместимы.
+
+Закрытый Mac29 и профиль сохранены и сверены до подготовки30; Keychain не менялся.
+Существующие локальные PostgreSQL/Synapse volumes также сохранены в закрытой
+резервной копии; runtime настроек/SQLite скопирован без повторного seed.
+Публичный routing key взят из опубликованного main.dart.js и подтверждён настоящей
+Ed25519-подписью текущего HTTPS route catalog; новый ключ не создавался.
+
+Production `/api/config` проверен read-only:10файлов по5ГБ,4получателя. Весь
+разрешённый набор (до50ГБ) помещается в один ZIP с существующим100ГБ пределом
+worker. Поэтому повышение ресурcного лимита для запрошенного save-all не нужно.
+
+## Итоговая проверка исходников30
+
+- Полный Flutter-прогон: **439PASS,4opt-in skips**, concurrency1.
+- `flutter analyze`: **No issues found**; `pub get --enforce-lockfile` PASS.
+- Backend policy:7PASS. macOS packaging/publication tests:9PASS.
+- Повтор итогового браузерного save-прогона65МиБ: PASS.
+- `android_release.py check-version`: PASS; текущий HTTPS macOS feed содержит29,
+  следующий подготовленный номер30. Это ещё не публикация/установка30.
+- Нет физического iPhone/Android; native Mac camera и screen проверены отдельно
+  выше. Остаток и условия — в едином реестре приёмки.
