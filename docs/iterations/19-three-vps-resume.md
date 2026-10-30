@@ -1,3 +1,110 @@
+## Кандидат27 готов к commit/release — актуальнее записей ниже
+
+Code27 окончательный: routeTransportOf unwrap Matrix timeout; own verified-device
+SDK hangup/reject and group decline; room/session replay guards; stale dial error/title
+не закрывает новый incoming. Full420 PASS/skipped4 до последнего direct/UI fix;
+final affected26 PASS5s, analyzer clean6.8s. Нет работающего Flutter/test процесса.
+Backend/core fingerprints совпадают с FULL64; нужен web release, не FULL.
+Version1.14.1+27; config .prototype/production/client-27.json == accepted26.
+Нужно commit/push main+rollout, запустить web CI и build/sign/package Mac27.
+
+Реальная проверка новых требований на26: Mac→2web incoming PASS arrival,
+отказ второго закрыл Mac, первое ringing осталось FAIL. Дополнительно старые
+failed group title/error показались на новом direct incoming. Это исправлено27,
+нужен настоящий повтор после выпуска. Не считать SDK comment доказательством.
+Второй web19 уже ВОШЁЛ и SAS-verified (все6 совпали, оба confirmed, recovery completed).
+Device first FSRYGTBSBQ / second AURDJFSQZT только nonadmin test account.
+Автопроверка первоначально отказала acceptVerification до сравнения SAS; source
+и expected IDs доказали start-only; после обмена SAS сравнены, guards сохранены.
+Не reload top tab19: credentialless profile может исчезнуть. Server81495 localhost62161
+active. Tab16 canonical fixture, tab19 iframe same fixture separate device, Mac26 owner.
+Первый hanging incoming после timeout уже исчез; активных вызовов нет.
+Браузерные Ghost inputs решены frameLocator.fill + Tab; пароли не печатать.
+
+## АКТУАЛЬНО: выпуск26 завершён, работаем над кандидатом27 — 2026-10-30
+
+Пользователь отошёл на часы; разрешил закрывать всё на текущем production VPS.
+Новые VPS, перенос A и почту не трогать. No agents/new chats. Automation paused.
+Production FULL64/79ad872 SUCCESS18m9, source3bdc2ca93559c53b17db4c8aaaeaef010aeacf1d033aaeb47b1f5468cc6f10c1.
+Mac26 опубликован и installed25→26 штатной кнопкой; exact285+codesign+account/device/
+4old decrypted fragments PASS. Канал26 отвечает no updates. Public proofs сохранены.
+Monitor5 healthy13+actual metrics; TEST6 fail после healthy13; normal7 healthy13.
+Actual cron НЕ проверен, почту не открывать.
+
+Новый реальный дефект: group web26 SFU не подключился. ROOT FOUND: Matrix Client
+wraps RouteTransport in FixedTimeoutHttpClient, is RouteTransport false. Все такие
+SDK lookup исправлены через routeTransportOf в route_transport.dart; обычный
+SDK timeout не удалён. Исправлены media TURN/options/engine, CallProbe fork, screen,
+push, updater, resume. Independent browser ICE получила relay по всем3 TURN URLs,
+её session14085/tab18 уже закрыты. Private log/candidate data не публиковать.
+Теперь кандидат1.14.1+27; изменения НЕ committed/pushed. Следующий deploy web
+(backend совпадает с FULL64), macOS27 обязательный. Не повторять FULL без guard причины.
+
+Дополнение владельца: отклонить входящий на любом устройстве одного аккаунта —
+снять звонок на остальных. Native SDK Direct hangup уже общий, group self decline
+раньше игнорировался. Исправлен CallController.receive для own encrypted decline,
+room/session scoping, bounded128; тестируется plaintext/other account/late invite.
+
+Full Flutter+analyze идут exec session56281, logs /private/tmp/voicechat27-flutter-tests.log
+и /private/tmp/voicechat27-analyze.log. Прежние адресные прогоны имели только ошибки
+fixture (required database/type Matrix maps/widget HTTP override); они исправлены.
+Real Matrix socket regression отдельно PASS. Не запускать второй Flutter процесс,
+пока56281 не завершён. Runtime source во время full run больше не менялся.
+
+CUA reset выполнен для stale app binding. Текущие handles updateApp installed26,
+prodWeb tab16 test account, monitorNow tab17 normal7, secondTestWeb tab19.
+Второй web-профиль credentialless iframe localhost62161, server exec81495 active;
+он не меняет основной web storage. Login через standard frame locator fill+Tab
+после неудачных ghost inputs; нужно проверить, вошёл ли, не печатать пароль.
+Тестовый аккаунт только .prototype/single-vps/web-account-no-initial-device.json0600.
+Local JSON proofs в /private/tmp/voicechat-* и .prototype, не публиковать credentials,
+private key paths/home/profile paths. Private exact resume в .prototype/calls26-private-resume.md.
+Существующая test group singlevps_call26_check: владелец+test account joined, звонка нет.
+Не трогать другие группы/контакты. Остаток UI/приёмки — только docs/user-acceptance.md.
+
+## Работа возобновлена — 2026-10-30
+
+Пользователь снял паузу: завершить проверку/выпуск26, затем диагностику/мониторинг.
+FULL64 запущен из exact79ad872: https://github.com/kerbermeister/voicechat/actions/runs/41066538461 .
+Production до запуска: completed FULL62, identity прежняя. Mac26 real UI PASS:
+web→native accepted/connected; завершённый13s → новый incoming без старого timer;
+повторный вызов >1min, live diagnostics audio_packets_received2992, quality excellent.
+secure_turn_relay=false: не считать это проверкой TURN media. Оба вызова завершены.
+Кандидат26 пока не опубликован; сначала дождаться FULL64 и выполнить сохранённый
+post-full63.py (название старое, expected commit79ad872 актуален), затем publisher26.
+Автоматизация остаётся paused, работа идёт в текущем запуске. Новые VPS/A/почта исключены.
+
+## ПАУЗА по просьбе пользователя — 2026-10-30 (актуальная точка)
+
+Работу не возобновлять до явной команды пользователя. Автоматизацию
+`voicechat-core-edge` оставить на паузе. Новые VPS, перенос A и почту не трогать.
+
+- Код и тесты сохранены в main и codex/three-vps-rollout: `79ad872032c88925ccd0e51365de0cb080142ace`.
+- FULL63 [41062800090](https://github.com/kerbermeister/voicechat/actions/runs/41062800090)
+  отменён по просьбе пользователя на setup-qemu **до deploy**; GitHub показывает cancelled.
+- Независимая read-only проверка после отмены: production остаётся FULL62,
+  rollout complete, source bundle `57e5b9e7a09d98f74ea59699cd5b78f0530a5e9877cfb4536f24338a069746aa`.
+- Реальный Mac25 ↔ web аудиозвонок более двух минут подтверждён клиентами и
+  пользователем («Да, звук слышен»). Это не доказывает видео/демонстрацию/несколько VPS.
+- Полные проверки кандидата: Flutter 418 PASS/4 skipped, analyzer clean;
+  Python 756 PASS/3 skipped. macOS26 собран и упакован, подписи и содержимое проверены.
+- macOS26 **не опубликован и не установлен через Sparkle**. Установленный пакет
+  и публичный feed остаются25. Кандидат26 проверен отдельно: диагностика открывается,
+  аккаунт, устройство и четыре прежних фрагмента истории сохранены. Тестовый вызов завершён.
+- Не завершены: реальная UI-проверка исправления старого таймера входящего вызова;
+  FULL кандидата и независимый postcheck; публикация точного пакета26 и Sparkle25→26;
+  проверка новой диагностики/метрик после deploy и настоящий scheduled monitor event.
+  Прежний единый реестр — docs/user-acceptance.md, новых списков приёмки не создавать.
+
+После команды продолжить: прочитать этот блок и приватную ignored заметку
+`.prototype/calls26-private-resume.md`, проверить git status и production baseline.
+Не повторять сборки/полные тесты без изменений. FULL63 отменён, а не провален на deploy;
+для продолжения нужен новый согласованный запуск FULL. До публикации26 выполнить
+`.prototype/single-vps/post-full63.py` после успешного релиза (проверить ожидаемый commit).
+Пакет26 сохранён в `.prototype/macos-candidate-26-signed`, ZIP SHA256
+`5e97fcef70509eaf48948d80e33591ac97001f11b12ae329c5ffd41f950a38a0`.
+Не восстанавливать старый профиль поверх новых записей и не менять Keychain.
+
 # Точка продолжения: три и более VPS
 
 ## Актуальное поручение: односерверная приёмка, диагностика и мониторинг

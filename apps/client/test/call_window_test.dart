@@ -16,7 +16,11 @@ class WindowDatabase extends OutboxDatabase {
 }
 
 class CallRoom extends Room {
-  CallRoom(Client client) : super(id: '!call:local', client: client);
+  final String? displayName;
+  CallRoom(Client client, {this.displayName, super.id = '!call:local'})
+    : super(client: client);
+  @override
+  String get name => displayName ?? super.name;
   @override
   Future<List<User>> requestParticipants([
     List<Membership> membershipFilter = const [
@@ -86,7 +90,12 @@ void main() {
     'New incoming and remote calls never inherit the finished call timer',
     (tester) async {
       final client = Client('new-call-timer', database: WindowDatabase());
-      final room = CallRoom(client);
+      final room = CallRoom(client, displayName: 'Incoming room');
+      final failedRoom = CallRoom(
+        client,
+        displayName: 'Failed room',
+        id: '!failed:local',
+      );
       final calls = CallController(
         client,
         'http://localhost:8090',
@@ -106,6 +115,8 @@ void main() {
       await render();
       expect(find.text('0:42'), findsOneWidget);
       for (final kind in ['direct', 'group', 'remote', 'dialing']) {
+        calls.dialError = 'Previous call failed';
+        calls.dialingRoom = failedRoom;
         if (kind == 'direct') calls.directInvitations.add(direct);
         if (kind == 'group') {
           calls.invitations['next'] = CallInvitation(
@@ -128,6 +139,12 @@ void main() {
         }
         await render();
         expect(find.text('0:42'), findsNothing, reason: kind);
+        expect(find.text('Previous call failed'), findsNothing, reason: kind);
+        expect(find.text('Failed room'), findsNothing, reason: kind);
+        expect(find.text('Incoming room'), findsOneWidget, reason: kind);
+        if (kind == 'direct' || kind == 'group') {
+          expect(find.text('Входящий звонок'), findsOneWidget);
+        }
         expect(
           find.bySemanticsLabel('Время разговора'),
           findsNothing,
@@ -138,6 +155,7 @@ void main() {
         calls.devices.remote.clear();
         calls.starting = false;
         calls.dialingRoom = null;
+        calls.dialError = null;
       }
       await render();
       expect(find.text('0:42'), findsOneWidget);

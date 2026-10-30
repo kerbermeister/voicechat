@@ -59,8 +59,8 @@ class RoutedVoIP extends mx.VoIP {
 
   @override
   Future<List<Map<String, dynamic>>> getIceServers() async {
-    final network = client.httpClient;
-    if (network is! RouteTransport || network.coordinator == null) {
+    final network = routeTransportOf(client.httpClient);
+    if (network == null || network.coordinator == null) {
       return super.getIceServers();
     }
     return mediaIceServers(client);
@@ -68,8 +68,8 @@ class RoutedVoIP extends mx.VoIP {
 }
 
 Future<List<Map<String, dynamic>>> mediaIceServers(mx.Client client) async {
-  final network = client.httpClient;
-  if (network is! RouteTransport || network.coordinator == null) {
+  final network = routeTransportOf(client.httpClient);
+  if (network == null || network.coordinator == null) {
     final credentials = await client.getTurnServer();
     return [
       {
@@ -98,8 +98,8 @@ lk.Room routedMediaRoom(
   lk.RoomOptions options, {
   required bool Function() canRecover,
 }) {
-  final network = client.httpClient;
-  if (network is! RouteTransport || network.coordinator == null) {
+  final network = routeTransportOf(client.httpClient);
+  if (network == null || network.coordinator == null) {
     return lk.Room(roomOptions: options);
   }
   return lk.Room(
@@ -115,8 +115,8 @@ lk.Room routedMediaRoom(
 }
 
 Future<lk.ConnectOptions> routedMediaOptions(mx.Client client) async {
-  final network = client.httpClient;
-  if (network is! RouteTransport || network.coordinator == null) {
+  final network = routeTransportOf(client.httpClient);
+  if (network == null || network.coordinator == null) {
     return const lk.ConnectOptions(autoSubscribe: false);
   }
   final servers = await mediaIceServers(client);

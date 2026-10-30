@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "from_build": 25,
+  "build": 26,
+  "account_preserved": true,
+  "device_preserved": true,
+  "old_decrypted_fragments_preserved": 4,
+  "sparkle_button_update": true,
+  "profile_or_keychain_cleared": false,
+  "version": "1.14.0",
+  "date": "2026-10-30",
+  "commit": "79ad872032c88925ccd0e51365de0cb080142ace",
+  "zip_sha256": "5e97fcef70509eaf48948d80e33591ac97001f11b12ae329c5ffd41f950a38a0",
+  "dmg_sha256": "9d2d5f96d0eebf0cb05e5fde7a53ed7b45d821e99dd49548510029d4791e28e3",
+  "exact_payload_entries_checked": 285,
+  "codesign_verified": true,
+  "public_https_verified": {
+    "VoiceChat.dmg": {
+      "https_status": 200,
+      "sha256": "9d2d5f96d0eebf0cb05e5fde7a53ed7b45d821e99dd49548510029d4791e28e3",
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    "VoiceChat.zip": {
+      "https_status": 200,
+      "sha256": "5e97fcef70509eaf48948d80e33591ac97001f11b12ae329c5ffd41f950a38a0",
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    "appcast.xml": {
+      "https_status": 200,
+      "sha256": "62594435c1a7ba22fd4b87337a81f52dd536e7fe5d806691e622febe3156055e",
+      "cache_control": "no-cache"
+    }
+  },
+  "published_feed_and_archive_signatures_verified": true,
+  "private_signing_key_stayed_local": true,
+  "closed_backup_retained": true
+}

@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-30T14:08:36.082784+00:00",
+  "commit": "79ad872032c88925ccd0e51365de0cb080142ace",
+  "edge_commit": "79ad872032c88925ccd0e51365de0cb080142ace",
+  "source_bundle": "3bdc2ca93559c53b17db4c8aaaeaef010aeacf1d033aaeb47b1f5468cc6f10c1",
+  "backend": "1cacdd34060ccdeef0db56866aaced8a9d6adc033dd894337f30d39a73d224cc",
+  "core_guard": "3f529498c40eda6544ff685edbe0041613340704003bba648bd9564f12966301",
+  "scope": "full",
+  "https": {
+    "univc.duckdns.org/": 200,
+    "univc.duckdns.org/health/route": 200,
+    "univc.duckdns.org/updates/macos/appcast.xml": 200,
+    "listing-helper.flashhub.net/": 200
+  },
+  "maintenance_timers_active_enabled": true,
+  "previous_pointer_verified": true,
+  "network_intent_unchanged": true,
+  "macos25_feed_unchanged": true,
+  "github_run": "https://github.com/kerbermeister/voicechat/actions/runs/41066538461",
+  "release_job_duration_seconds": 1089,
+  "role_images_match_immutable_manifests": true,
+  "data_identity_preserved": true,
+  "six_neighbor_processes_unchanged": true,
+  "all_previous_non_voicechat_containers_running": true,
+  "verified_before_macos26_publication": true
+}

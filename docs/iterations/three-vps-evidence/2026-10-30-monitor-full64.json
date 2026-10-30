@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "run": "https://github.com/kerbermeister/voicechat/actions/runs/41069278082",
+  "event": "workflow_dispatch",
+  "status": "healthy",
+  "checks": 13,
+  "metrics": {
+    "host": {
+      "cpu_count": 3,
+      "load_15m": 0.41357421875,
+      "load_1m": 0.52587890625,
+      "load_5m": 0.58935546875
+    },
+    "turn": {
+      "a": {
+        "rx_bytes": 42690,
+        "tx_bytes": 80845
+      }
+    }
+  },
+  "scheduled_event_verified": false,
+  "email_delivery_checked": false,
+  "post_release_series": [
+    {
+      "run": "41069278082",
+      "status": "healthy"
+    },
+    {
+      "run": "41070183789",
+      "status": "intentional_TEST_failure_after_healthy_checks"
+    },
+    {
+      "run": "41070340160",
+      "status": "healthy"
+    }
+  ]
+}

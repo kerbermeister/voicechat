@@ -1,7 +1,17 @@
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:matrix/matrix.dart' show TimeoutHttpClient;
 import 'route_coordinator.dart';
 import 'transport.dart';
+
+/// Matrix wraps injected clients in its timeout adapter. Keep that adapter for
+/// ordinary requests; unwrap only to find the shared routing coordinator.
+RouteTransport? routeTransportOf(http.Client? client) {
+  while (client is TimeoutHttpClient) {
+    client = client.inner;
+  }
+  return client is RouteTransport ? client : null;
+}
 
 /// Changes the network destination without changing Matrix's homeserver identity.
 /// Selection belongs to the connection coordinator; this transport never retries

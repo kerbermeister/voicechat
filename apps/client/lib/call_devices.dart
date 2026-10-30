@@ -23,6 +23,17 @@ class CallDevices {
   bool answered(String room, String session) =>
       handled.containsKey(key(room, session));
 
+  DeviceKeys? verifiedOwnDevice(String curve) {
+    final device = client.getUserDeviceKeysByCurve25519Key(curve);
+    return device != null &&
+            !device.blocked &&
+            device.encryptToDevice &&
+            device.userId == client.userID &&
+            device.deviceId != client.deviceID
+        ? device
+        : null;
+  }
+
   void receive(ToDeviceEvent event) {
     if (_closed ||
         event.type != 'dev.voicechat.call_device' ||
@@ -33,13 +44,8 @@ class CallDevices {
     final data = event.content;
     final curve = event.encryptedContent!['sender_key'];
     if (curve is! String) return;
-    final device = client.getUserDeviceKeysByCurve25519Key(curve);
-    if (device == null ||
-        device.blocked ||
-        !device.encryptToDevice ||
-        device.userId != client.userID ||
-        device.deviceId == client.deviceID ||
-        device.deviceId != data['device']) {
+    final device = verifiedOwnDevice(curve);
+    if (device == null || device.deviceId != data['device']) {
       return;
     }
     final roomId = data['room_id'],

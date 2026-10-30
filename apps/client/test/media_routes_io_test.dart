@@ -3,23 +3,12 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart';
+import 'call_window_test.dart' show WindowDatabase;
 import 'package:voicechat_probe/media_routes.dart';
 import 'package:voicechat_probe/route_config.dart';
 import 'package:voicechat_probe/route_coordinator.dart';
 import 'package:voicechat_probe/route_transport.dart';
 import 'route_io_test.dart' show serve, endpoint;
-
-class MediaClient implements Client {
-  @override
-  final RouteTransport httpClient;
-  MediaClient(this.httpClient);
-  @override
-  Uri get homeserver => httpClient.origin;
-  @override
-  String get accessToken => 'synthetic-token';
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
 
 void main() {
   test(
@@ -87,8 +76,27 @@ void main() {
         coordinator: coordinator,
       );
       addTearDown(transport.close);
-      final client = MediaClient(transport);
-      for (final number in [1, 2]) {
+      final client =
+          Client(
+              'routed-media-regression',
+              database: WindowDatabase(),
+              httpClient: transport,
+            )
+            ..homeserver = config.canonicalOrigin
+            ..accessToken = 'synthetic-token';
+      addTearDown(() => client.dispose(closeDatabase: false));
+      expect(client.httpClient, isA<FixedTimeoutHttpClient>());
+      expect(routeTransportOf(client.httpClient), same(transport));
+      final options = await routedMediaOptions(client);
+      expect(options.rtcConfiguration.iceServers!.single.username, 'user-1');
+      expect(options.rtcConfiguration.toMap()['iceServers'], [
+        {
+          'urls': ['turn:turn-a.localhost:3478'],
+          'username': 'user-1',
+          'credential': 'temporary',
+        },
+      ]);
+      for (final number in [2, 3]) {
         final servers = await mediaIceServers(client);
         expect(servers.single['username'], 'user-$number');
         expect(servers.single['urls'], ['turn:turn-a.localhost:3478']);

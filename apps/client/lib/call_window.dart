@@ -66,12 +66,11 @@ class _CallWindowState extends State<CallWindow> {
     final remote = calls.devices.remote.values.firstOrNull;
     final nextRoom =
         current?.chat ??
-        (calls.starting || calls.dialError != null
-            ? calls.dialingRoom
-            : null) ??
+        (calls.starting ? calls.dialingRoom : null) ??
         direct?.chat ??
         group?.room ??
         remote?.room ??
+        (calls.dialError != null ? calls.dialingRoom : null) ??
         active?.chat;
     if (room != nextRoom) {
       room = nextRoom;
@@ -85,16 +84,14 @@ class _CallWindowState extends State<CallWindow> {
       connected.removeWhere((p) => p != calls.client.userID);
     }
     final duration = current?.duration ?? active?.duration ?? Duration.zero;
-    final status =
-        calls.dialError ??
-        (calls.starting && current == null
-            ? 'Вызываем…'
-            : current?.connection ??
-                  (direct != null || group != null
-                      ? 'Входящий звонок'
-                      : remote != null
-                      ? 'Идёт звонок с ${roomDisplayName(remote.room)} на другом устройстве'
-                      : 'Звонок завершён'));
+    final status = (calls.starting && current == null
+        ? 'Вызываем…'
+        : current?.connection ??
+              (direct != null || group != null
+                  ? 'Входящий звонок'
+                  : remote != null
+                  ? 'Идёт звонок с ${roomDisplayName(remote.room)} на другом устройстве'
+                  : calls.dialError ?? 'Звонок завершён'));
     final colors = Theme.of(context).colorScheme;
     final video = current?.video ?? direct?.video ?? group?.video ?? false;
     final qualityMenu = video && current != null

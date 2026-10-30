@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:matrix/matrix_api_lite.dart';
+import 'package:matrix/matrix.dart' show FixedTimeoutHttpClient;
 import 'package:voicechat_probe/route_transport.dart';
 
 final origin = Uri.parse('https://chat.example.org');
@@ -25,6 +26,24 @@ class StreamingClient extends http.BaseClient {
 }
 
 void main() {
+  test('finds routed transport through Matrix timeout adapters only', () {
+    final inner = MockClient((_) async => http.Response('{}', 200));
+    final routed = transport(inner);
+    addTearDown(routed.close);
+    expect(routeTransportOf(null), isNull);
+    expect(routeTransportOf(inner), isNull);
+    expect(routeTransportOf(routed), same(routed));
+    expect(
+      routeTransportOf(
+        FixedTimeoutHttpClient(
+          FixedTimeoutHttpClient(routed, const Duration(seconds: 5)),
+          const Duration(seconds: 10),
+        ),
+      ),
+      same(routed),
+    );
+  });
+
   test(
     'Matrix identity and transaction stay canonical when the route changes',
     () async {

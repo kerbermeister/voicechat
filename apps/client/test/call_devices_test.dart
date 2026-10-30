@@ -3,7 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart';
 import 'package:voicechat_probe/call_devices.dart';
 import 'package:voicechat_probe/call_controller.dart';
-import 'call_window_test.dart' show WindowDatabase;
+import 'call_window_test.dart' show WindowDatabase, IncomingSession;
+import 'package:voicechat_probe/direct_call.dart';
 import 'message_test.dart' show TestDevice;
 
 class DeviceClient extends Client {
@@ -19,10 +20,34 @@ class DeviceClient extends Client {
 }
 
 class DeviceRoom extends Room {
-  DeviceRoom(Client client)
-    : super(client: client, id: '!room:local', membership: Membership.join);
+  DeviceRoom(Client client, {super.id = '!room:local'})
+    : super(client: client, membership: Membership.join);
   @override
   bool get encrypted => true;
+}
+
+class DirectDeviceRoom extends DeviceRoom {
+  DirectDeviceRoom(super.client, {super.id});
+  @override
+  bool get isDirectChat => true;
+}
+
+class PendingOwnSession extends IncomingSession {
+  PendingOwnSession(super.room);
+  bool ended = false;
+  int terminations = 0;
+  @override
+  CallState get state => ended ? CallState.kEnded : CallState.kRinging;
+  @override
+  Future<void> terminate(
+    CallParty party,
+    CallErrorCode reason,
+    bool shouldEmit,
+  ) async {
+    expect(party, CallParty.kRemote);
+    terminations++;
+    ended = true;
+  }
 }
 
 void main() {
@@ -144,6 +169,179 @@ void main() {
       );
       await calls.close();
       await client.dispose();
+    },
+  );
+  test(
+    'own encrypted group decline dismisses ringing and late invitations only in its room',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('FlutterWebRTC.Event'),
+            (_) async => null,
+          );
+      final client = DeviceClient();
+      final room = DeviceRoom(client);
+      final otherRoom = Room(
+        client: client,
+        id: '!other:local',
+        membership: Membership.join,
+      );
+      client.rooms.add(room);
+      final calls = CallController(
+        client,
+        'https://example.invalid',
+        'wss://example.invalid',
+        (_) {},
+      );
+      addTearDown(() async {
+        await calls.close();
+        await client.dispose();
+      });
+      final now = DateTime.now().millisecondsSinceEpoch;
+      Map<String, dynamic> message(
+        String action,
+        String sender, {
+        bool encrypted = false,
+      }) => {
+        'type': EventTypes.Message,
+        'event_id': r'$' + action + sender,
+        'sender': sender,
+        'origin_server_ts': now,
+        'content': {
+          'msgtype': 'dev.voicechat.call',
+          'action': action,
+          'session': 'b' * 32,
+        },
+        if (encrypted)
+          'original_source': {
+            'type': EventTypes.Encrypted,
+            'event_id': r'$encrypted-' + action,
+            'origin_server_ts': now,
+            'sender': sender,
+            'content': <String, Object?>{'sender_key': 'trusted'},
+          },
+      };
+      final invite = message('invite', '@peer:local');
+      calls.receive(Event.fromJson(invite, room));
+      expect(calls.invitations.length, 1);
+      calls.receive(
+        Event.fromJson(
+          message('decline', '@other:local', encrypted: true),
+          room,
+        ),
+      );
+      calls.receive(Event.fromJson(message('decline', client.userID), room));
+      expect(
+        calls.invitations.length,
+        1,
+        reason: 'another account and plaintext cannot dismiss this account',
+      );
+      // A decline with a reused session in another room must not suppress this one.
+      calls.declined.add((room: otherRoom.id, session: 'b' * 32));
+      calls.invitations.clear();
+      calls.receive(Event.fromJson(invite, room));
+      expect(calls.invitations.length, 1);
+      calls.receive(
+        Event.fromJson(
+          message('decline', client.userID, encrypted: true),
+          room,
+        ),
+      );
+      expect(calls.invitations, isEmpty);
+      calls.receive(Event.fromJson(invite, room));
+      expect(
+        calls.invitations,
+        isEmpty,
+        reason: 'late decryption must not restart a declined incoming call',
+      );
+      calls.receive(
+        Event.fromJson({
+          ...invite,
+          'content': <String, dynamic>{
+            ...invite['content'] as Map,
+            'session': 'c' * 32,
+          },
+        }, room),
+      );
+      expect(calls.invitations.length, 1, reason: 'a new call still rings');
+    },
+  );
+  test(
+    'verified own-device encrypted hangup ends the matching incoming SDK session without echo',
+    () async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('FlutterWebRTC.Event'),
+            (_) async => null,
+          );
+      final client = DeviceClient();
+      final room = DirectDeviceRoom(client);
+      final other = DirectDeviceRoom(client, id: '!other:local');
+      client.rooms.addAll([room, other]);
+      final calls = CallController(
+        client,
+        'https://example.invalid',
+        'wss://example.invalid',
+        (_) {},
+      );
+      final session = PendingOwnSession(room);
+      final incoming = DirectCall(session, () {}, (_) {});
+      calls.directInvitations.add(incoming);
+      addTearDown(() async {
+        await incoming.close();
+        await calls.close();
+        await client.dispose();
+      });
+      final now = DateTime.now().millisecondsSinceEpoch;
+      Event hangup({
+        String curve = 'trusted',
+        bool encrypted = true,
+        String sender = '@user:local',
+        Room? inRoom,
+        int? timestamp,
+      }) => Event.fromJson({
+        'type': EventTypes.CallHangup,
+        'event_id': r'$own-hangup',
+        'sender': sender,
+        'origin_server_ts': timestamp ?? now,
+        'content': {
+          'call_id': session.callId,
+          'party_id': 'own-other-party',
+          'version': '1',
+          'reason': 'user_hangup',
+        },
+        if (encrypted)
+          'original_source': {
+            'type': EventTypes.Encrypted,
+            'event_id': r'$own-hangup',
+            'sender': sender,
+            'origin_server_ts': timestamp ?? now,
+            'content': {'sender_key': curve},
+          },
+      }, inRoom ?? room);
+      calls.receive(hangup(encrypted: false));
+      calls.receive(hangup(curve: 'unknown'));
+      calls.receive(hangup(sender: '@other:local'));
+      calls.receive(hangup(inRoom: other));
+      calls.receive(hangup(timestamp: now - 600001));
+      expect(calls.directInvitations, [incoming]);
+      expect(session.terminations, 0);
+      client.onCallEvents.add([hangup()]);
+      await Future<void>.delayed(Duration.zero);
+      expect(calls.directInvitations, isEmpty);
+      expect(session.terminations, 1);
+      expect(incoming.isClosed, true);
+      client.onCallEvents.add([hangup()]);
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        session.terminations,
+        1,
+        reason: 'duplicate SDK/timeline delivery is idempotent',
+      );
+      expect(
+        calls.declined,
+        contains((room: room.id, session: session.callId)),
+      );
     },
   );
 }

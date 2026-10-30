@@ -250,8 +250,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
   );
 
   http.Client _pushClient() {
-    final network = probe!.client.httpClient;
-    return network is RouteTransport ? network.fork() : http.Client();
+    final network = routeTransportOf(probe!.client.httpClient);
+    return network != null ? network.fork() : http.Client();
   }
 
   @override
@@ -1818,9 +1818,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
       animationStyle: appAnimationStyle(context),
       builder: (_) => AppUpdateDialog(
         updateRoute: () {
-          final network = probe?.client.httpClient;
-          if (network is! RouteTransport ||
-              network.origin != Uri.tryParse(updateOrigin)) {
+          final network = routeTransportOf(probe?.client.httpClient);
+          if (network == null || network.origin != Uri.tryParse(updateOrigin)) {
             return null;
           }
           final selected = network.coordinator == null
@@ -1837,9 +1836,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
           };
         },
         createClient: () {
-          final network = probe?.client.httpClient;
-          if (network is RouteTransport &&
-              network.origin == Uri.tryParse(updateOrigin)) {
+          final network = routeTransportOf(probe?.client.httpClient);
+          if (network != null && network.origin == Uri.tryParse(updateOrigin)) {
             return network.fork();
           }
           return http.Client();

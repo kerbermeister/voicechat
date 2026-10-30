@@ -37,9 +37,8 @@ class CallProbe implements VoiceCall {
   final String session;
   final String tokenUrl;
   final String livekitUrl;
-  late final http.Client _network = chat.client.httpClient is RouteTransport
-      ? (chat.client.httpClient as RouteTransport).fork()
-      : http.Client();
+  late final http.Client _network =
+      routeTransportOf(chat.client.httpClient)?.fork() ?? http.Client();
   final void Function(String) status;
   final void Function()? changed;
   final bool startedWithVideo;

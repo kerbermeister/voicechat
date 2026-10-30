@@ -1,0 +1,34 @@
+{
+  "build": 26,
+  "real_native_incoming_after_completed_call": true,
+  "previous_call_duration_seconds": 13,
+  "incoming_has_no_old_timer": true,
+  "reverse_web_to_mac_connected": true,
+  "date": "2026-10-30",
+  "live_diagnostics": {
+    "schema": 1,
+    "routing": {
+      "state": "connected",
+      "routes": {
+        "matrix": "a",
+        "control": "a",
+        "signaling": "a"
+      },
+      "initial_selection_ms": 639,
+      "last_recovery_ms": null,
+      "recovery_attempts": 0,
+      "last_failed_service": null
+    },
+    "call": {
+      "state": "active",
+      "kind": "direct",
+      "quality": "excellent",
+      "duration_ms": 59553,
+      "microphone_muted": false,
+      "camera_enabled": false,
+      "audio_packets_received": 2992,
+      "secure_turn_relay": false
+    }
+  },
+  "publication_verified": false
+}

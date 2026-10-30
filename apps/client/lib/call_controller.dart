@@ -44,7 +44,7 @@ class CallController extends ChangeNotifier
   final String mediaUrl;
   final void Function(String) report;
   final invitations = <String, CallInvitation>{};
-  final declined = <String>{};
+  final declined = <({String room, String session})>{};
   final _endedInvitations =
       <({String room, String sender, String session}), DateTime>{};
   late final CallDevices devices;
@@ -55,7 +55,7 @@ class CallController extends ChangeNotifier
   bool _screenChecking = false;
   DateTime? _screenRetryAt;
   final _screenParties = ScreenCallParties();
-  StreamSubscription<List<BasicEventWithSender>>? _screenSignals;
+  StreamSubscription<List<BasicEventWithSender>>? _callSignals;
   Room? dialingRoom;
   String? dialError;
   bool starting = false;
@@ -92,7 +92,12 @@ class CallController extends ChangeNotifier
         }
       });
     }
-    _screenSignals = client.onCallEvents.stream.listen(_screenParties.observe);
+    _callSignals = client.onCallEvents.stream.listen((events) {
+      _screenParties.observe(events);
+      for (final event in events.whereType<Event>()) {
+        receive(event);
+      }
+    });
     voip = RoutedVoIP(client, this);
     _events = client.onTimelineEvent.stream.listen(receive);
     // Matrix 14.2 does not emit late-decrypted messages on onTimelineEvent.
@@ -114,9 +119,7 @@ class CallController extends ChangeNotifier
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_closed) return;
     if (state == AppLifecycleState.resumed) {
-      if (client.httpClient is RouteTransport) {
-        unawaited((client.httpClient as RouteTransport).coordinator?.refresh());
-      }
+      unawaited(routeTransportOf(client.httpClient)?.coordinator?.refresh());
       unawaited(screen?.poll());
       _refresh();
     }
@@ -219,9 +222,7 @@ class CallController extends ChangeNotifier
     final api = ScreenApi(
       tokenUrl,
       () => client.accessToken ?? '',
-      client: client.httpClient is RouteTransport
-          ? (client.httpClient as RouteTransport).fork()
-          : null,
+      client: routeTransportOf(client.httpClient)?.fork(),
     );
     ScreenShareController? next;
     try {
@@ -260,21 +261,64 @@ class CallController extends ChangeNotifier
     }
   }
 
+  bool _ownDeviceEvent(Event event) {
+    final source = event.originalSource;
+    final curve = source?.content['sender_key'];
+    return event.senderId == client.userID &&
+        source?.senderId == client.userID &&
+        source?.type == EventTypes.Encrypted &&
+        curve is String &&
+        devices.verifiedOwnDevice(curve) != null;
+  }
+
+  Future<void> _endOwnIncoming(DirectCall call) async {
+    // The SDK's remote-party guard ignores hangup from our other devices.
+    // Terminate locally without echoing a new hangup back into the room.
+    await call.call.terminate(
+      CallParty.kRemote,
+      CallErrorCode.userHangup,
+      true,
+    );
+    await call.close();
+    _refresh();
+  }
+
   void receive(Event event) {
+    if (_closed || !event.room.encrypted || event.redacted) return;
     final content = event.content;
-    if (!event.room.encrypted ||
-        event.redacted ||
-        content['msgtype'] != 'dev.voicechat.call') {
-      return;
-    }
-    final id = content['session'];
-    if (id is! String || !RegExp(r'^[a-z0-9]{32}$').hasMatch(id)) return;
+    // Homeserver timestamps may lead the local clock slightly.
     final age = DateTime.now().difference(event.originServerTs);
-    // Matrix timestamps come from the homeserver, whose clock may lead the client.
     if (age < const Duration(minutes: -1) ||
         age >= const Duration(minutes: 10)) {
       return;
     }
+    if (event.room.isDirectChat &&
+        {EventTypes.CallHangup, EventTypes.CallReject}.contains(event.type) &&
+        _ownDeviceEvent(event)) {
+      final session = content['call_id'];
+      if (session is! String || session.isEmpty || session.length > 128) return;
+      _dismissInvitation(event.room.id, session);
+      final pending = directInvitations
+          .where(
+            (call) => call.chat.id == event.room.id && call.session == session,
+          )
+          .toList();
+      directInvitations.removeWhere(pending.contains);
+      for (final call in pending) {
+        unawaited(
+          _endOwnIncoming(call).catchError((Object _) {
+            report(
+              'Не удалось завершить входящий вызов после отказа на другом устройстве.',
+            );
+          }),
+        );
+      }
+      _refresh();
+      return;
+    }
+    if (content['msgtype'] != 'dev.voicechat.call') return;
+    final id = content['session'];
+    if (id is! String || !RegExp(r'^[a-z0-9]{32}$').hasMatch(id)) return;
     _endedInvitations.removeWhere(
       (_, time) =>
           DateTime.now().difference(time) >= const Duration(minutes: 10),
@@ -287,7 +331,7 @@ class CallController extends ChangeNotifier
     if (content['action'] == 'invite' &&
         !_endedInvitations.containsKey(invitationKey) &&
         event.senderId != client.userID &&
-        !declined.contains(id) &&
+        !declined.contains((room: event.room.id, session: id)) &&
         !devices.answered(event.room.id, id)) {
       invitations[id] = CallInvitation(
         event.room,
@@ -296,6 +340,8 @@ class CallController extends ChangeNotifier
         event.originServerTs,
         video: content['video'] == true,
       );
+    } else if (content['action'] == 'decline' && _ownDeviceEvent(event)) {
+      _dismissInvitation(event.room.id, id);
     } else if (content['action'] == 'decline' &&
         active?.session == id &&
         active?.chat.id == event.room.id &&
@@ -467,9 +513,14 @@ class CallController extends ChangeNotifier
     }
   }
 
+  void _dismissInvitation(String room, String session) {
+    declined.add((room: room, session: session));
+    if (declined.length > 128) declined.remove(declined.first);
+    if (invitations[session]?.room.id == room) invitations.remove(session);
+  }
+
   Future<void> decline(CallInvitation invitation) async {
-    declined.add(invitation.session);
-    invitations.remove(invitation.session);
+    _dismissInvitation(invitation.room.id, invitation.session);
     _refresh();
     await _signal(
       invitation.room,
@@ -543,7 +594,7 @@ class CallController extends ChangeNotifier
         null; // Release the SDK callback retaining this client after lock/logout.
     await _events?.cancel();
     await _lateEvents?.cancel();
-    await _screenSignals?.cancel();
+    await _callSignals?.cancel();
     final screenClose = screen?.close();
     await active?.close();
     await screenClose;
@@ -576,6 +627,7 @@ class CallController extends ChangeNotifier
   }
 
   Future<void> declineDirect(DirectCall call) async {
+    _dismissInvitation(call.chat.id, call.session);
     await call.close();
     directInvitations.remove(call);
     _refresh();
@@ -628,6 +680,7 @@ class CallController extends ChangeNotifier
     final call = _directCalls[session.callId]!;
     if (_closed ||
         (!canHandleNewCall && active != call) ||
+        declined.contains((room: session.room.id, session: session.callId)) ||
         !session.room.encrypted ||
         !session.room.isDirectChat) {
       await call.close();
