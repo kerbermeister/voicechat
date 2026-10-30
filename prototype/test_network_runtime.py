@@ -44,6 +44,17 @@ class NetworkRuntimeTests(unittest.TestCase):
     def apply(self, value):
         network_runtime.reconcile(self.root, value, run=self.command)
 
+    def test_conditional_transition_rejects_stale_owner_without_commands_or_state_changes(self):
+        self.apply(self.value)
+        self.calls.clear()
+        saved = (self.root / 'desired.json').read_bytes()
+        stale = deepcopy(self.value); stale['edge_subnet'] = '10.242.0.0/28'
+        with self.assertRaisesRegex(ValueError, 'intent changed'):
+            network_runtime.reconcile(self.root, self.value, run=self.command, expected=(stale,))
+        self.assertEqual(self.calls, [])
+        self.assertEqual((self.root / 'desired.json').read_bytes(), saved)
+        network_runtime.reconcile(self.root, self.value, run=self.command, expected=(self.value,))
+
     def test_interruption_resumes_shared_revocation_instead_of_old_tunnel_snapshot(self):
         self.apply(self.value)
         changed = deepcopy(self.value)

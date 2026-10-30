@@ -1,5 +1,35 @@
 # Точка продолжения: три и более VPS
 
+## Новый активный scope: полный SSH onboarding/replacement входа
+
+После закрытия split deploy пользователь разрешил довести ТОЛЬКО автоматическое
+подключение/замену входного VPS до конца. Не выполнять перенос A, клиентские/media
+задачи или отдельный rollout физических B/C под видом этой работы. Production
+split deployment остаётся исправным; в этой новой итерации VPS/DNS пока не менялись.
+
+Начаты entry_lifecycle.py (строгий add/replace plan), entry_journal.py (frozen intent,
+компактная baseline и точные step receipts), entry_network.py (смена peer на live
+узле только под owned fences всех локальных ролей). network_runtime.reconcile
+получил optional expected-intent guard под network lock. New11 entry tests PASS,
+network7 PASS. Это ещё НЕ полный executor и НЕ завершённый onboarding.
+
+Далее: связать источник/SSH executor и global lifecycle exclusion с обычным deploy;
+TLS issuance/transfer, новый role/bootstrap, обновление существующих config при add,
+DNS expected-value transition, verified SNI readiness, публикация signed catalog,
+managed baseline commit/release, safe resume. При replace обязателен отзыв старого
+WG peer и ротация общего TURN_SECRET на core/всех surviving entries: одной WG
+revocation недостаточно. Signing private key остаётся operator-local; registry
+credentials и данные A в fixtures не переносить.
+
+Подготовлены прежние два mesh VM диска (core prepare и entry-b) и их restart_argv,
+образы synthetic mesh-core/web сохранены. Фактические процессы не запускались
+в этой итерации; не доверять старым PID. Main guard VM/disk/network archive и два
+старых тома НЕ удалять. Нужен отдельный controlled lifecycle fixture add→replace,
+old host unavailable, stale key rejection, interrupted/repeated steps. VM/synthetic
+страница не означают настоящие физические B/C или media acceptance.
+Automation voicechat-core-edge остаётся PAUSED после прошлого блока; текущая
+работа выполняется в этом чате. Единственный user acceptance: docs/user-acceptance.md.
+
 ## Текущий результат: раздельный production deploy ЗАВЕРШЁН, 30.10.2026
 
 Пользователь сузил задачу до полного завершения и проверки full/core/edge/web

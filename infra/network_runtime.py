@@ -39,10 +39,12 @@ def components(value):
     return firewall, tunnel
 
 
-def reconcile(directory, value=None, *, run=tunnel_runtime.command):
+def reconcile(directory, value=None, *, run=tunnel_runtime.command, expected=None):
     with managed_state.locked(directory) as directory:
         path = directory / 'desired.json'
         previous = managed_state.read(path) if path.exists() or path.is_symlink() else None
+        if expected is not None and previous not in expected:
+            raise ValueError('Network intent changed before the coordinated transition')
         desired = value if value is not None else previous
         if desired is None: raise ValueError('No saved network state to resume')
         firewall, tunnel = components(desired)
