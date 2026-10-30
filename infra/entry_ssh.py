@@ -205,14 +205,18 @@ class Driver:
         if self.attempt is None:
             snapshot = self.core('snapshot')
             pending = snapshot['pending']
-            if pending is not None and pending['position'] < len(pending['steps']):
+            if pending is not None:
                 target_ref = managed_release.store_baseline(self.state_dir, self.plan['target'])
-                if (pending['request']['source'] != self.source or pending['request']['target'] != target_ref or
-                        pending['request']['settings'] != role_release.json_digest(self.settings)):
+                same = (pending['request']['source'] == self.source and pending['request']['target'] == target_ref and
+                        pending['request']['settings'] == role_release.json_digest(self.settings))
+                if pending['position'] == len(pending['steps']):
+                    if same: raise ValueError('This entry operation already completed; inspect it with --execute')
+                elif not same:
                     raise ValueError('A different entry operation is active; preserve its state')
-                self.attempt = pending['attempt']; self.record['attempt'] = self.attempt
-                managed_state.persist(self.state_dir / 'operation.json', self.record)
-            else:
+                else:
+                    self.attempt = pending['attempt']; self.record['attempt'] = self.attempt
+                    managed_state.persist(self.state_dir / 'operation.json', self.record)
+            if self.attempt is None:
                 return {'schema': 1, 'attempt': None, 'phase': 'cancelled', 'local_only': True,
                         'live_hosts_unchanged': True}
         return self.core('cancel', attempt=self.attempt)

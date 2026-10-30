@@ -41,7 +41,33 @@ old host unavailable, stale key rejection, interrupted/repeated steps. VM/synthe
 Automation voicechat-core-edge остаётся PAUSED после прошлого блока; текущая
 работа выполняется в этом чате. Единственный user acceptance: docs/user-acceptance.md.
 
-## Последний рабочий checkpoint: operator add/replace собран, VM drill ещё НЕ пройден
+## Текущий checkpoint: OCI provider fixture готов, SSH lifecycle drill ещё НЕ пройден
+
+После bd5748e исправлен CLI cancel для lost begin reply: совпавшая completed
+операция не объявляется local-only cancellation; другая active operation не
+отменяется. Entry53 PASS (6.463s), включая два теста проверки saved OCI graph.
+Проверен origin/main: по-прежнему2cca4d3; новые lifecycle изменения ещё не merged.
+Пользователю рекомендованы отдельные branch/worktree для chat UI; общий worktree
+и независимый production deploy/client release использовать одновременно нельзя.
+
+На существующей disposable core VM выполнен verified export двух synthetic image
+OCI graphs через prototype/entry_fixture_providers.py. Фактический Docker29 с
+containerd выдаёт OCI index digest в .Id, НЕ config digest: прежнее предположение
+ниже ошибочно. Cached refs37aba/aa7d являются настоящими OCI index digests;
+fixture сохраняет их с проверкой всех descriptor sizes/SHA и blob bytes. Это всё
+ещё synthetic registry, не проверка внешнего GHCR. Private provider leaf pairs
+и public CA переданы только disposable core; CA/catalog private keys остались Mac.
+Local setup `.prototype/entry-provider-setup.py`, export evidence
+`.prototype/entry-lifecycle/provider-images.json`, failed log перед исправлением
+показывал неверное предположение о config digest. Production/DNS не менялись.
+Provider service start/check следующий; network fixture owns только table
+ip vc_entry_fixture_providers. CA trust только VM. Полный add→replace ещё не запускался.
+
+Далее: frozen clean operator checkout после commit; поднять provider service,
+проверить HTTPS/token/Engine pull, подготовить actual core/cohosta/b baseline и
+clean C/D VM. Не выдавать экспорт OCI за успешный запуск/приёмку всего lifecycle.
+
+## Предыдущий checkpoint: operator add/replace собран, VM drill ещё НЕ пройден
 
 Новые модули: entry_control/core (A coordinator), entry_peer (pinned source host),
 entry_ssh (одна operator команда), entry_package (complete clean-Git archive),
