@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "recovery": {
+    "source": "7c4d9e68e7ecc085d4ca73394f629f84acae44135e44509a7a78cca1d8ceac53",
+    "committed_configuration_not_replayed": true,
+    "phase": "complete"
+  },
+  "result": {
+    "schema": 1,
+    "attempt": "c666ec8042e2563e868daeec69e275dcf9c0895796be5ea8900303c6b7c1cb1e",
+    "phase": "complete",
+    "maintenance_ready": true,
+    "core_commit": "3832455b6e555ffaf1122ecfecf050587853f341",
+    "scope": "full",
+    "selected_edges": null,
+    "edges": {
+      "a": "3832455b6e555ffaf1122ecfecf050587853f341"
+    }
+  },
+  "scope": "Existing interrupted full VM release resumed under its exact owned fence; not a complete parent fixture cleanup or all-scope proof"
+}

@@ -1,4 +1,53 @@
+<!-- Current narrow acceptance: core revision, following full58 PASS. -->
 # Точка продолжения: три и более VPS
+
+## ПРИОРИТЕТ ПОЛЬЗОВАТЕЛЯ: завершить ТОЛЬКО split deploy на production
+
+Остальные onboarding/replacement/core-transfer/media задачи отложены явно.
+Automation voicechat-core-edge обновлена на этот узкий scope, ACTIVE; после
+доказанного production full/core/edge/web её приостановить, не продолжать другие задачи.
+
+Production full58 SUCCESS, независимый postcheck PASS schema2/coreguard (deploy=true, managed/full):
+https://github.com/kerbermeister/voicechat/actions/runs/41005474251
+job123899278935, frozen source2eaee99516c942c2d9026290477777e69b3c6379.
+Не запускать второй full. До него VPS healthy2dae758/full53/schema1;
+точные снимки `.prototype/split-production-before.json` (04:54:15UTC).
+All685 PASS/skipped3,77.574s: `.prototype/split-deploy-final-tests.log`.
+
+Дальнейшие partial production проверки: переиспользовать exact CI full58 images
+через STOCK managed_ssh coordinator (не ручной Compose), source package связан
+с clean Git. Для каждой core→edge→web новой docs-only acceptance revision
+`.prototype/split_prod_release.py` проверяет неизменность всех application/operator
+inputs от full commit и обоих fingerprints, создаёт canonical archive и вызывает
+managed_ssh.release. Так не пересобирать неизменённые образы для каждого smoke.
+`.prototype/split_prod_probe.py before|full|core|edge|web` сохраняет ID/StartedAt/
+RestartCount и asserts untouched edge дляcore, untouched core дляedge/web,
+untouched protected entry services дляweb; проверяет neighbors6, data identity,
+HTTPS/route readiness/feed/timers/pointers. Не перезаписывать снимки open(x).
+После full PASS запустить `.prototype/split_api_fixture.py init` — synthetic
+production account/session/live Matrix account_data marker, credentials ONLY A
+в `/var/lib/voicechat-deploy-acceptance/split-scope-session.json`600. Проверки
+core/edge/web после соответствующегоscope; logout в конце отзывает token и убирает
+только этот временный credential file. Не читать основной профиль/историю.
+
+VM guard3 оказалась ОСТАНОВЛЕНА вместе с потерей /tmp driver/checkout; старыеACTIVE
+записи ниже неактуальны. Существующий диск сохранён и поднят без новогоfixture:
+main VM PID3790, SSH54926, restart_argv записан в `.prototype/vm/active.json`.
+Global journal COMPLETE/schema2, stock finish/maintenance_ready PASS.
+VM gracefully powered off; диск/архив исходной сети и старые тома сохранены. `.prototype/resume_split_vm.py`, logs
+split-vm-resume{,2,3}.log. Explicit boot helper выполняется только если реальный
+owned fence ещё существует; released peer оставляется штатному activate/release.
+Последний driver91058 завершился ошибкой на finish; idempotent remote finish
+session24609 ещё возвращает результат, private log на VM
+`managed-test/final-finish-error.log`. Не менять immutable bundle и не обходить
+source guards. Parent/driver original погибших процессов больше нет; прежний
+полный parent/guard matrix не объявлять PASS. Исходная private network находится
+в архиве interruptedfixture, её не удалять; старые2тома также сохранить.
+
+Browser: новая IAB tab1, JS deployTab, browser2, current full58 job page;
+proofFs binding fs/promises. При reset reacquire tab1, не открыватьдубликаты.
+Screenshot `split-production-full58-started.png` сохранён и показан пользователю.
+
 
 ## LATEST ACTIVE: guard3 реальные SSH drills + mesh network PASS
 
