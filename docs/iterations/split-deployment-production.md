@@ -52,7 +52,8 @@ Core/full и согласованный backup могут кратко оста�
 - Local candidate: 685 Python tests PASS, три условных skip; приложение и Compose
   относительно production2dae758 не изменены.
 - Full production run58: SUCCESS; независимый VPS postcheck PASS, baseline schema2 и core guard записаны; source `2eaee99516c942c2d9026290477777e69b3c6379`.
-- Core/edge/web production: последовательно проверяются после успешного full.
+- Core production: PASS, revision `42706c5`; реальные core processes обновлены, все edge и соседние процессы неизменны. Прежние synthetic account/device/session/Matrix marker сохранены.
+- Edge/web production: следующие отдельные проверки.
 - Deployed planner отклонил несовместимые partial scopes и удаление full guard без начала операции; synthetic Matrix session/marker подготовлены через production HTTPS.
 
 Для последовательных acceptance releases используются неизменённые образы CI
