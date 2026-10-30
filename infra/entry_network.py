@@ -7,6 +7,7 @@ from contextlib import ExitStack
 from pathlib import Path
 
 import host_registration
+import entry_lifecycle
 import managed_fence
 import managed_state
 import network_bootstrap
@@ -19,10 +20,8 @@ from tunnel_runtime import command
 
 
 def local_roles(root, inventory, node):
-    if node == 'core':
-        return [root / 'core', *(root / 'edges' / edge['id'] for edge in inventory['edges']
-                               if edge.get('host') == 'core')]
-    return [root / 'edges' / node.removeprefix('edge-')]
+    return [root / 'core' if name == 'core' else root / 'edges' / name.removeprefix('edge-')
+            for name in entry_lifecycle.role_ids(inventory, node)]
 
 
 def transition(root, previous_inventory, inventory, previous_keys, identity, node, attempt, *,
@@ -62,7 +61,14 @@ def transition(root, previous_inventory, inventory, previous_keys, identity, nod
         network_runtime.components(target)
         network_runtime.reconcile(network, target, run=run, expected=(before, target))
         network_bootstrap.upgrade(system_root, run=run)
+        peers = set(run('wg', 'show', 'wg-vc', 'peers').split())
+        expected_peers = {value['public_key'] for name, value in keys['nodes'].items()
+                          if name != node and (node == 'core' or name == 'core')}
+        if peers != expected_peers:
+            raise ValueError('Live WireGuard peers differ from the admitted registry')
     return {'schema': 1, 'node': node, 'attempt': attempt,
             'network_sha256': network_runtime.fingerprint(target),
-            'retired_peer_removed': identity['node'] in previous_keys['nodes'],
+            'peers_verified': True,
+            'retired_peer_removed': node == 'core' and identity['node'] in previous_keys['nodes'] and
+                previous_keys['nodes'][identity['node']]['public_key'] not in peers,
             'private_key_exported': False}

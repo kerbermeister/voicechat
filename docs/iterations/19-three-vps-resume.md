@@ -41,6 +41,78 @@ old host unavailable, stale key rejection, interrupted/repeated steps. VM/synthe
 Automation voicechat-core-edge остаётся PAUSED после прошлого блока; текущая
 работа выполняется в этом чате. Единственный user acceptance: docs/user-acceptance.md.
 
+## Последний рабочий checkpoint: operator add/replace собран, VM drill ещё НЕ пройден
+
+Новые модули: entry_control/core (A coordinator), entry_peer (pinned source host),
+entry_ssh (одна operator команда), entry_package (complete clean-Git archive),
+entry_settings (отдельный signed catalog + bounded config), entry_turn (настоящие
+TURN/TLS Allocate/Refresh с проверкой response integrity/relay bounds), entry_image
+(производный repo:pull bearer на A → local Engine RegistryToken без login/config
+на входе), entry_probe (независимые trusted-SNI readiness/catalog checks с A).
+Source/SSH/catalog/role fences не отключаются. Обычный deploy исключён активным
+entry lifecycle. Ранний cancel архивирует journal только до live claims и возможной
+передачи credentials; A отмечает delivery intent до выдачи secret. Локальный state
+сохраняет source/attempt, resume — тем же checkout/config/state. См. infra/ENTRIES.md.
+
+Unit entry49 PASS, в том числе32 входа/крупный каталог, lost replies, source/baseline
+mismatch, rollback-to-old-secret не выполняется, SHA-backed receipts не принимают
+planned manifests за readiness. Общий suite732 PASS/skipped3,79.012s до последнего
+entry_settings и CLI cancel дополнения; после них адресные49 PASS. Первый общий
+прогон695/errors4 был из-за отсутствовавшего local .prototype/secrets.json; выполнен
+штатный prototype/setup.py, только synthetic local secrets, исходный failed log
+сохранён. Production credentials не использовались.
+
+VM ФАКТИЧЕСКИ запущены: prepare/core PID12944, SSH53689, entry-b PID13494, SSH52217.
+Существующие диски сохранены; приложений ещё нет. На core исходный mesh network
+inventory содержит core+cohosta+b. На core добавлен ТОЛЬКО дополнительный stream
+listener55202/hub-d до приложений (для returning-old-host drill); прежние55200(B),
+55201(C) сохранены. `.prototype/vm/prepare-before-entry-listener.json` — backupargv.
+Main guard VM/его private network archive и прежние тома НЕ трогать/не удалять.
+
+Synthetic PKI готова на Mac `.prototype/entry-lifecycle/pki`: rootCA и catalog.key
+остаются Mac-local, leaf pairs a/b и c-g1/c-g2 + fake registry/DuckDNS; свежие ключи,
+45days, SAN/strict validation PASS. Это НЕ production key/cert. B/C physical нет.
+Новые clean C generation1 / replacement generation2 VM ещё не созданы.
+
+Далее обязательно: изолировать clean operator checkout после commit; не менять
+его во время SSH fixture (verify_checkout требует exact clean HEAD). Собрать полный
+действительный VM baseline через stock core/edge prepare/bootstrap/deploy, реальные
+Synapse/PG/control и synthetic web; synthetic API account/token/marker держать A-only.
+Baseline fixture допустимо инициализировать только в пустом root после actual role
+inspection, не переписывать существующий pointer/fingerprint для обхода guards.
+Нужно actual operator add C → остановить C → заменить новой машиной с fresh host/WG
+keys → вернуть old C и проверить отказ старому WG/TURN. Interrupt/retry через
+настоящие SSH операции; не выдавать protocol mocks за реальные внешние сервисы.
+
+Для provider fixture: unmodified CLI на настоящих Linux VMs, synthetic trusted CA
+только внутри VM; fake HTTPS GHCR + DuckDNS, не реальные accounts. Core существующий
+web443 не мешает fixture provider: own isolated nft OUTPUT/PREROUTING DNAT127.0.0.2:443
+→9443 (DuckDNS), service192.0.2.14:443→9444(GHCR), hosts overrides только VM.
+Registry можно отдать из Docker save existing synthetic images через OCI manifests
+с настоящими digest/hash blobs, чтобы entry_image.pull использовал реальный Engine
+API/RegistryToken. Старые local fixture refs37aba/aa7d — config IDs, НЕ registry
+manifest digests; не объявлять их доказательством настоящего GHCR pull. Source images
+на core имеют tags mesh-control:fixture и mesh-web:fixture. Перед export проверить
+их ID, Docker save/OCI convert делать только этих synthetic application images.
+
+Потенциально полезно дополнительно проверить actual GHCR read bearer/pull в VM:
+владелец уже явно разрешил только repo-read token для VM; исходные registry secrets
+остаются production A. Этот probe ещё НЕ выполнялся в текущей итерации.
+
+ВАЖНО для дальнейшего production full: network_runtime.py получил expected-intent
+параметр, значит его source fingerprint изменился. Новый ordinary preflight не
+пройдёт со старым network applied hash. Сначала испытать и выполнить ШТАТНЫЙ
+network_bootstrap.upgrade из verified delivered source с прежним неизменным intent,
+подтвердить unchanged Docker PID/StartedAt и данные, затем normal CI full; не править
+applied.json вручную и не ослаблять fingerprint. Проверка live peer-transition
+также читает kernel wg peers, а не возвращает намерение как факт.
+
+Пользователь спросил о параллельном агенте для chat UI: remote main проверен fetch,
+остаётся2cca4d3, работа НЕ merged. Посоветован отдельный worktree/ветка от стабильного
+2f9fdfe79b88fc77fa546c01cd711ae4290fad27 (origin/codex/three-vps-rollout до новых
+push), не текущий dirty worktree. UI разработку можно параллельно; release/main merge
+согласовать после интеграции. Сам новых агентов/чатов НЕ создавал, automation PAUSED.
+
 ## Текущий результат: раздельный production deploy ЗАВЕРШЁН, 30.10.2026
 
 Пользователь сузил задачу до полного завершения и проверки full/core/edge/web

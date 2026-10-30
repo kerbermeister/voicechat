@@ -98,6 +98,19 @@ def steps(value):
     if value['rotate_turn_secret']:
         sequence += [('rotate-turn', name) for name in value['network_nodes'] if name != node]
     sequence += [('configure', name) for name in value['reconfigure']]
-    sequence += [('start', node), ('verify', node), ('dns', node), ('verify-dns', node),
-                 ('catalog', 'core'), ('commit', 'core'), ('finish', 'core')]
+    sequence += [('start', node), ('verify', node)]
+    sequence += [('verify-turn', 'edge-' + edge['id']) for edge in value['target']['public']['edges']
+                 if value['rotate_turn_secret'] or edge['id'] == value['edge_id']]
+    sequence += [('dns', node), ('verify-dns', node),
+                 ('catalog', 'core'), ('commit', 'core')]
+    sequence += [('release', name) for name in value['network_nodes'] if name != node]
+    sequence.append(('finish', 'core'))
     return [{'action': action, 'node': name} for action, name in sequence]
+
+
+def role_ids(inventory, node):
+    if node not in physical_nodes(inventory):
+        raise ValueError('Known physical node required')
+    if node == 'core':
+        return ['core', *('edge-' + edge['id'] for edge in inventory['edges'] if edge.get('host') == 'core')]
+    return [node]

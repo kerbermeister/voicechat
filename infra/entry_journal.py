@@ -24,8 +24,8 @@ def load(directory):
     if intent != {key: value[key] for key in ('schema', 'attempt', 'request', 'steps')}:
         raise ValueError('Frozen entry lifecycle intent changed')
     request = value['request']
-    topology.fields(request, ('baseline', 'public', 'inventory', 'commit', 'web_image', 'source'))
-    if not isinstance(request['source'], str) or not role_release.SHA.fullmatch(request['source']):
+    topology.fields(request, ('baseline', 'target', 'commit', 'web_image', 'source', 'settings'))
+    if any(not isinstance(request[name], str) or not role_release.SHA.fullmatch(request[name]) for name in ('source', 'settings')):
         raise ValueError('Frozen lifecycle source required')
     expected = value['steps']
     if (not isinstance(expected, list) or not 1 <= len(expected) <= 256 or
@@ -36,13 +36,18 @@ def load(directory):
         topology.fields(step, ('action', 'node'))
         if not isinstance(step['action'], str) or not isinstance(step['node'], str):
             raise ValueError('Known lifecycle step required')
-    for position, receipt in enumerate(value['receipts']):
+    for position, checksum in enumerate(value['receipts']):
+        if not isinstance(checksum, str) or not role_release.SHA.fullmatch(checksum):
+            raise ValueError('Known lifecycle receipt reference required')
+        receipt = managed_state.read(Path(directory) / ('receipt-' + value['attempt'] + '-' + str(position) + '.json'))
+        if role_release.json_digest(receipt) != checksum:
+            raise ValueError('Frozen lifecycle receipt changed')
         validate_receipt(receipt, value['attempt'], position, expected[position])
     if value['position'] < len(expected):
         baseline = managed_release.load_baseline(Path(directory), request['baseline'])
-        plan = entry_lifecycle.plan(baseline, *(request[name] for name in
-            ('public', 'inventory', 'commit', 'web_image')))
-        if expected != entry_lifecycle.steps(plan):
+        target = managed_release.load_baseline(Path(directory), request['target'])
+        plan = entry_lifecycle.plan(baseline, target['public'], target['inventory'], request['commit'], request['web_image'])
+        if plan['target'] != target or expected != entry_lifecycle.steps(plan):
             raise ValueError('Entry lifecycle sequence changed; use its frozen source')
     return value
 
@@ -59,13 +64,15 @@ def validate_receipt(receipt, attempt, position, step):
 
 def begin(directory, request):
     # Validate everything before creating even an empty journal directory.
-    topology.fields(request, ('baseline', 'public', 'inventory', 'commit', 'web_image', 'source'))
+    topology.fields(request, ('baseline', 'public', 'inventory', 'commit', 'web_image', 'source', 'settings'))
     plan = entry_lifecycle.plan(*(request[name] for name in
         ('baseline', 'public', 'inventory', 'commit', 'web_image')))
-    if not isinstance(request['source'], str) or not role_release.SHA.fullmatch(request['source']):
+    if any(not isinstance(request[name], str) or not role_release.SHA.fullmatch(request[name]) for name in ('source', 'settings')):
         raise ValueError('Frozen lifecycle source required')
     with managed_state.locked(directory) as root:
-        request = {**request, 'baseline': managed_release.store_baseline(root, request['baseline'])}
+        request = {**{key: request[key] for key in ('commit', 'web_image', 'source', 'settings')},
+                   'baseline': managed_release.store_baseline(root, request['baseline']),
+                   'target': managed_release.store_baseline(root, plan['target'])}
         path = root / 'current.json'
         if path.exists() or path.is_symlink():
             existing = load(root)
@@ -93,12 +100,18 @@ def acknowledge(directory, receipt):
             raise ValueError('Known lifecycle step position required')
         validate_receipt(receipt, value['attempt'], position, value['steps'][position])
         if position < value['position']:
-            if value['receipts'][position] != receipt:
+            if value['receipts'][position] != role_release.json_digest(receipt):
                 raise ValueError('Conflicting acknowledgement of a completed step')
             return value
         if position != value['position']:
             raise ValueError('Cannot skip a lifecycle step')
-        value = {**value, 'position': position + 1, 'receipts': [*value['receipts'], receipt]}
+        record = root / ('receipt-' + value['attempt'] + '-' + str(position) + '.json')
+        if record.exists() or record.is_symlink():
+            if managed_state.read(record) != receipt:
+                raise ValueError('Conflicting saved lifecycle receipt')
+        else:
+            managed_state.persist(record, receipt)
+        value = {**value, 'position': position + 1, 'receipts': [*value['receipts'], role_release.json_digest(receipt)]}
         managed_state.persist(root / 'current.json', value)
         return value
 

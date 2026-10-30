@@ -11,6 +11,8 @@ import core_deploy
 import entry_role
 import managed_state
 import role_deploy
+import role_release
+import managed_fence
 import test_entry_network
 
 
@@ -73,6 +75,41 @@ class EntryRoleTests(unittest.TestCase):
         self.assertTrue(role_deploy.in_maintenance(self.role))
         self.start.side_effect = None
         self.assertEqual(self.apply()['phase'], 'complete')
+        self.backup.assert_called_once()
+
+    def test_admission_fence_rebind_recovers_interruption_without_replaying_configuration(self):
+        from test_node_inventory import key
+        inventory = deepcopy(self.before['inventory'])
+        inventory['edges'].append({'id': 'd', 'generation': 1, 'public_ip': '192.0.2.20',
+                                  'tunnel_ip': '10.88.0.4', 'ssh_host_key': key(4)})
+        public = deepcopy(self.public)
+        public['edges'].append({'id': 'd', 'origin': 'https://d.example.com', 'turn_host': 'turn-d.example.com'})
+        public['web_origins'].append('https://d.example.com')
+        target = role_release.make(public, inventory, 'core', '2' * 40, self.manifest['images']['control'])
+        entry_role.apply(self.role, self.public, self.before['inventory'], public, inventory,
+                         self.manifest, target, self.attempt, execute=self.execute)
+        persist, real_release = managed_state.persist, managed_fence.release
+        def release(*args, **kwargs):
+            return real_release(*args, **kwargs, activate=Mock())
+        def interrupted(path, value):
+            if path == self.role / 'runtime/full-rollout.json':
+                raise InterruptedError('lost marker rebind write')
+            return persist(path, value)
+        def invoke():
+            return entry_role.release(self.role, self.public, self.before['inventory'], public, inventory,
+                self.manifest, target, self.attempt, system_root=self.system, execute=self.execute, run=lambda *a: '0')
+        with patch.object(entry_role.role_bootstrap, 'install'), \
+             patch.object(managed_fence, '_facts', return_value={'manifest': target}), \
+             patch.object(managed_fence, 'release', side_effect=release):
+            with patch.object(managed_state, 'persist', side_effect=interrupted):
+                with self.assertRaises(InterruptedError): invoke()
+            self.assertEqual(role_deploy.managed_operation(self.role)['active'], target)
+            result = invoke()
+            self.assertIsNone(result['fence'])
+            self.assertEqual(invoke(), result)
+        self.assertEqual(role_deploy.managed_operation(self.role)['phase'], 'released')
+        self.assertIsNone(role_deploy.pending_rollout(self.role))
+        self.start.assert_called_once()
         self.backup.assert_called_once()
 
     def test_secret_edit_preserves_all_other_bytes_and_rejects_ambiguous_input(self):

@@ -10,6 +10,8 @@ import tempfile
 
 import edge_deploy
 import entry_lifecycle
+import entry_image
+import entry_turn
 import entry_network
 import entry_role
 import managed_fence
@@ -27,7 +29,7 @@ import tls_material
 import tls_runtime
 import topology
 
-ACTIONS = ('stage', 'material', 'start', 'observe', 'claim', 'network', 'configure', 'release', 'catalog')
+ACTIONS = ('turn', 'image', 'stage', 'material', 'start', 'observe', 'claim', 'network', 'configure', 'release', 'catalog')
 MAX_INPUT = 262144
 
 
@@ -52,7 +54,11 @@ def request(raw):
             raise ValueError('Role operation belongs to another physical node')
     if value['before'] is not None:
         role_release.verify_configuration(value['before'], value['before_public'], value['previous_inventory'])
-    if value['action'] == 'network':
+    if value['action'] == 'turn':
+        topology.fields(value['extra'], ('previous',))
+    elif value['action'] == 'image':
+        topology.fields(value['extra'], ('token',))
+    elif value['action'] == 'network':
         topology.fields(value['extra'], ('public_keys', 'identity'))
     elif value['action'] == 'material':
         topology.fields(value['extra'], ('turn_secret', 'web_chain', 'web_key', 'turn_chain', 'turn_key', 'catalog', 'catalog_key'))
@@ -62,7 +68,7 @@ def request(raw):
         topology.fields(value['extra'], ('turn_secret',))
     else:
         topology.fields(value['extra'], ())
-    if value['action'] in ('stage', 'material', 'start') and value['node'] != change['node']:
+    if value['action'] in ('image', 'stage', 'material', 'start') and value['node'] != change['node']:
         raise ValueError('Prepare only the selected new physical entry')
     if value['action'] in ('claim', 'configure', 'release') and value['before'] is None:
         raise ValueError('Surviving role operation needs its committed baseline')
@@ -78,6 +84,12 @@ def operate(value, root, source_sha):
         raise ValueError('Canonical managed root required')
     if platform.system() != 'Linux' or os.geteuid() != 0:
         raise ValueError('Entry operations require the selected Linux host as root')
+    sockets = ('unix:///var/run/docker.sock', 'unix:///run/docker.sock')
+    if os.environ.get('DOCKER_HOST') not in (None, '', *sockets):
+        raise ValueError('Local rootful Docker required')
+    endpoint = role_deploy.run(['docker', 'context', 'inspect', '--format', '{{(index .Endpoints \"docker\").Host}}']).decode().strip()
+    if endpoint not in sockets:
+        raise ValueError('Local rootful Docker required')
     receipt = managed_journal._delivery(root, source_sha)
     source = root / 'bundles' / source_sha
     if source.resolve() != Path(__file__).resolve().parents[1]:
@@ -97,6 +109,11 @@ def operate(value, root, source_sha):
     path = None if target is None else root / 'core' if target['role'] == 'core' else root / 'edges' / target['edge_id']
     common = {'subnet': value['subnet']}
     action, extra = value['action'], value['extra']
+    if action == 'turn':
+        secret = tls_material.read_material(path / 'runtime/turn-secret', private=True).decode()
+        return entry_turn.verify(public, inventory, target['edge_id'], secret, extra['previous'])
+    if action == 'image':
+        return entry_image.pull(target['images']['web'], extra['token'])
     if action == 'network':
         return entry_network.transition(root, value['previous_inventory'], inventory, extra['public_keys'],
             extra['identity'], value['node'], attempt, **common)
@@ -139,12 +156,34 @@ def operate(value, root, source_sha):
             raise ValueError('Signed catalog differs from admitted topology')
         return {'schema': 1, 'manifest': target, 'catalog_revision': verified.revision, 'material_ready': True}
     if action == 'observe' and before is not None:
-        return entry_role.observe(path, value['before_public'], value['previous_inventory'], public, inventory,
+        facts = entry_role.observe(path, value['before_public'], value['previous_inventory'], public, inventory,
             before, target, attempt, **common)
+        verify_images(path, target)
+        facts['images_verified'] = True
+        return facts
     if action == 'start':
         edge_deploy.deploy(path, public, inventory, target, value['core'], **common)
-    return managed_release.inspect_role(path, public, inventory, target, **common)
+    facts = managed_release.inspect_role(path, public, inventory, target, **common)
+    verify_images(path, target)
+    facts['images_verified'] = True
+    return facts
 
+
+
+def verify_images(path, manifest):
+    import core_deploy
+    module = core_deploy if manifest['role'] == 'core' else edge_deploy
+    state = core_deploy.read_state(path) if manifest['role'] == 'core' else edge_deploy.read_state(path, manifest['edge_id'])
+    record = state['current']
+    if record is None or record['manifest'] != manifest or state['pending'] is not None:
+        raise ValueError('Committed role required for immutable image verification')
+    for service, expected in manifest['images'].items():
+        ids = module.compose(path, record, 'ps', '-a', '-q', service).decode().split()
+        if len(ids) != 1:
+            raise ValueError('Missing or duplicate role service container')
+        actual = role_deploy.run(['docker', 'inspect', '--format', '{{.Config.Image}}', ids[0]]).decode().strip()
+        if actual != expected:
+            raise ValueError('Running role image differs from its immutable manifest')
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

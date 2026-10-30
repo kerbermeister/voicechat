@@ -58,6 +58,7 @@ class EntryNetworkTests(unittest.TestCase):
 
     def run_command(self, *args):
         self.calls.append(args)
+        if args == ('wg', 'show', 'wg-vc', 'peers'): return '\n'.join(self.tunnel.peers)
         return self.firewall.run(*args) if args[0] == 'nft' else self.tunnel.run(*args)
 
     def transition(self, **changes):
