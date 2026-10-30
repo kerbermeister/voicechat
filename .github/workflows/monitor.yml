@@ -1,0 +1,43 @@
+name: VoiceChat health monitor
+run-name: "${{ inputs.test_notification && 'TEST notification — VoiceChat monitor' || 'VoiceChat health monitor' }}"
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+    inputs:
+      test_notification:
+        description: Send a clearly labelled test failure notification after successful real checks
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: voicechat-health-monitor
+  cancel-in-progress: false
+jobs:
+  health:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment:
+      name: production
+      deployment: false
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Verify public routes TLS DNS and read-only core diagnostics
+        env:
+          SERVER_ROLE_CONFIG: ${{ vars.SERVER_ROLE_CONFIG }}
+          DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          directory=$(mktemp -d)
+          trap 'rm -rf "$directory"' EXIT
+          printf '%s\n' "$SSH_KEY" > "$directory/key"
+          python3 -B infra/service_monitor.py --identity "$directory/key"
+      - name: Explicit test notification without a production outage
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.test_notification }}
+        run: |
+          echo '::error::TEST ONLY — requested notification delivery test; production health checks above passed.'
+          exit 1

@@ -1,0 +1,26 @@
+{
+  "checked_at": 1793361191,
+  "checks": {
+    "a_dns": "passed",
+    "a_route": "passed",
+    "a_turn_tls": "passed",
+    "a_web_tls": "passed",
+    "core_control": "passed",
+    "core_core_processes": "passed",
+    "core_disk": "passed",
+    "core_edge_a_processes": "passed",
+    "core_edge_a_turn_tls": "passed",
+    "core_edge_a_web_tls": "passed",
+    "core_matrix": "passed",
+    "core_network": "passed",
+    "core_ssh": "passed"
+  },
+  "maintenance": false,
+  "not_checked": [
+    "authenticated_chat_and_wss",
+    "decrypted_media",
+    "physical_clients"
+  ],
+  "schema": 1,
+  "status": "healthy"
+}

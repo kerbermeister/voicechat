@@ -4,6 +4,60 @@
 
 ### Последнее состояние текущего запуска
 
+**LIVE UPDATE:** Python752 tests PASS/3 skipped89.515s. Monitor code готов к
+публикации, live13 checks healthy; workflow normal/test/normal/email и следующий
+FULL ещё нужны. Технический журнал docs/iterations/23-single-vps-readiness.md.
+Owner подтвердил, что работал в VoiceChat («привет»), затем явно освободил приложение:
+можно продолжать native UI; key/profile/старую историю не трогать. Actual web→Mac
+получил nonce1793361729175; actual native ASCII nonce1793361802370 появился наweb.
+Не путать AX ghost draft с фактическим вводом: сверять canvas/counter и2й клиент.
+TextEdit создан НОВЫЙ временный untitled fixture doc, существующие файлы не открыты;
+использован только testtext clipboard. Не публиковать native screenshot с чужими
+контактами. Temporary audit50050: проверить completion и ciphertext-proof.json;
+новая ограниченная test session отзывается finally, существующие owner creds не экспортируются.
+
+
+**ACTIVE NEW SCOPE30.10:** владелец поручил закрыть всё доступное на одном VPS:
+реальные web/macOS checks, healthy diagnostics и external notifications.
+Перенос A/новые VPS не трогать. Работа продолжается, старый entry/release block
+ниже завершён, но эта клиентская/monitor итерация ещё НЕ завершена.
+
+Рабочие новые файлы (пока не опубликованы): infra/service_monitor.py,
+infra/MONITORING.md, .github/workflows/monitor.yml, prototype/test_service_monitor.py.
+3 содержательных tests PASS; live `.prototype/single-vps/monitor-first-run.json`
+healthy: actual DNS/HTTPS/TLS + pinned readonly core diagnostics. Исходный
+node_diagnostics на здоровом production тоже PASS8 checks; TLS83/88days,32.8GB free.
+Monitor GitHub schedule07/22/37/52UTC, production environment deployment:false,
+существующий SSH key/host pin; email failed-workflow notifications уже включены
+у владельца (проверено в UI, адрес НЕ писать в docs). Test notification только
+manual dispatch true AFTER healthy real checks. Ещё нужны публикация workflow,
+реальные normal/test/normal runs и проверка письма. Из-за новых protected infra/
+workflow files потребуется один FULL после финальных правок; Mac25 не пересобирать
+без изменений client/vendor/crypto. Новый monitoring ещё НЕ в main/VPS release.
+
+Единственный текущий full Python test process session26277, log
+`.prototype/single-vps/python-tests.log`. Не запускать competing fixture/VM;
+все4 старые VM OFF/retained. Физических ADB devices/emulators0.
+
+CUA: IAB tab4 `acceptanceWeb` https://univc.duckdns.org, новый disposable nonadmin
+account из `.prototype/single-vps/web-account-no-initial-device.json` (0600),
+штатный first login/recovery создан UI. Новый test key сохранён ТОЛЬКО локально
+`.prototype/single-vps/test-recovery-key.txt`0600, clipboard очищен. НЕ выводить
+credentials/key; реальные owner keys не трогать. Первый fixture admin-register
+создал ghost initial device; account web-account.json НЕ использовать для новых
+прогонов. Новый создан inhibit_login=true с проверкой отсутствия token/device.
+Никакие device guards не обходились. Сейчас web Find person ищет exact owner
+mac25BeforeUser, результат loading; создавать только отдельный test conversation,
+не использовать реальные старые сообщения как fixtures. Native installed25,
+active call отсутствует. CUA private baseline mac25BeforeUser/Device сохраняется.
+
+Old CUA browser handle github STALE: browser.user unavailable. Не reset kernel.
+Свежий `monitorGithub` tab5 работает, сейчас repo home; подтверждено Public и
+existing Actions Email/Failed only. Не использовать Chrome или иные браузеры.
+Новые tab handles создавать на том же IAB, не переключать browser provider.
+Automation остаётся PAUSED, новые агенты/чаты не создавать.
+
+
 **Последнее уточнение владельца30.10:** перенос A отложен и вынесен в
 `docs/tasks/22-core-relocation.md` (прежний ID V3-22/HA-19). Не выполнять его
 в текущем этапе и не считать блокером A+edge-a/подключения входов. В плане и ТЗ
