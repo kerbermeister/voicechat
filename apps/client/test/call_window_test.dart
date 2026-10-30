@@ -87,10 +87,15 @@ void main() {
         (_) async => null,
       );
   testWidgets(
-    'New incoming and remote calls never inherit the finished call timer',
+    'Dismissed new calls never restore a previous call timer, room or error',
     (tester) async {
       final client = Client('new-call-timer', database: WindowDatabase());
       final room = CallRoom(client, displayName: 'Incoming room');
+      final previousRoom = CallRoom(
+        client,
+        displayName: 'Previous room',
+        id: '!previous:local',
+      );
       final failedRoom = CallRoom(
         client,
         displayName: 'Failed room',
@@ -101,7 +106,7 @@ void main() {
         'http://localhost:8090',
         'ws://localhost:7880',
         (_) {},
-      )..active = (WindowCall(room, video: false)..isClosed = true);
+      )..active = (WindowCall(previousRoom, video: false)..isClosed = true);
       final direct = DirectCall(IncomingSession(room), () {}, (_) {});
       Future<void> render() async {
         await tester.pumpWidget(
@@ -115,6 +120,7 @@ void main() {
       await render();
       expect(find.text('0:42'), findsOneWidget);
       for (final kind in ['direct', 'group', 'remote', 'dialing']) {
+        calls.active = WindowCall(previousRoom, video: false)..isClosed = true;
         calls.dialError = 'Previous call failed';
         calls.dialingRoom = failedRoom;
         if (kind == 'direct') calls.directInvitations.add(direct);
@@ -137,7 +143,15 @@ void main() {
           calls.starting = true;
           calls.dialingRoom = room;
         }
+        calls.devices.changed();
         await render();
+        expect(calls.active, isNull, reason: kind);
+        if (kind == 'group') {
+          calls.dialError = 'Current failure';
+          calls.devices.changed();
+          expect(calls.dialError, 'Current failure');
+          calls.dialError = null;
+        }
         expect(find.text('0:42'), findsNothing, reason: kind);
         expect(find.text('Previous call failed'), findsNothing, reason: kind);
         expect(find.text('Failed room'), findsNothing, reason: kind);
@@ -156,9 +170,20 @@ void main() {
         calls.starting = false;
         calls.dialingRoom = null;
         calls.dialError = null;
+        calls.devices.changed();
+        await render();
+        expect(find.text('0:42'), findsNothing, reason: kind);
+        expect(find.text('Previous call failed'), findsNothing, reason: kind);
+        expect(find.text('Previous room'), findsNothing, reason: kind);
+        expect(find.text('Incoming room'), findsOneWidget, reason: kind);
+        expect(
+          find.bySemanticsLabel('Время разговора'),
+          findsNothing,
+          reason: kind,
+        );
       }
       await render();
-      expect(find.text('0:42'), findsOneWidget);
+      expect(find.text('0:42'), findsNothing);
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.runAsync(direct.close);
       calls.active = null;

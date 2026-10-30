@@ -225,3 +225,34 @@ Supervisor теперь ждёт SFU readiness перед запуском contr
 source files совпадают с установленнымc3f, новый source upgrade не требуется.
 [Evidence](three-vps-evidence/2026-10-30-sfu-startup-recovery.json). Исправленный
 образ ещё не опубликован; следующий шаг — managed/full с explicit retry.
+
+Исправление5685b05 atomically pushed main/rollout; FULL69 run41100604292
+queued, job124217088933. Пока очередь ждёт, отдельный regression на настоящем
+LiveKit с synthetic persisted SQLite: old supervisor воспроизвёл ConnectionRefused
+и exit1, fixed supervisor дождался SFU, выполнил recovery/retired cleanup, удалил
+старые leases, сохранил call и поднял healthy API, exit0. Два контейнера запускались
+последовательно с network none, без host ports, production volumes или credentials;
+после проверки удалены. Это не media/E2EE/device acceptance.
+[Evidence](three-vps-evidence/2026-10-30-sfu-startup-real-livekit.json).
+
+Дополнительная полная регрессия fixed5685:760 tests PASS/skipped3,79.379s.
+FULL69 ждёт GitHub serialized run; API jobs предыдущего68 отдавал Server Error,
+затем UI68 обновился до Failure. Это не новый отказ приложения; кандидат69 ещё
+не применён. CI concurrency и release guards не обходились.
+
+FULL69 managed journal COMPLETE +independent postcheck PASS: core/edge5685,
+точный supervisor payload, private SFU node/binds, TURN exactexception, прежние
+identity/pointers/neighbors/feed28/timers. [Postcheck](three-vps-evidence/2026-10-30-full69.json).
+Настоящий groupMac28↔web28: remote-only E2EE kOk на обоих, excellent>2min,
+mute/unmuteweb отраженынаMac, штатныеend2:51/2:53; group audibility пользователь
+отдельнонеподтверждал. Account-widegroupdeclinePASSнадвухweb. Найден staletimer/title
+послеотказаunacceptedgroup; кандидат29 исправляет забываниеoldclosedcall metadata
+и сохранениеимени новогоincoming. 10affectedPASS, fullFlutter/analyze идёт.
+Web+Mac29 ещёневыпущены, Mac28closed/profilebackup260+app285 exact PASS.
+
+Финальный кандидат1.14.2+29: targeted10 PASS, fullFlutter421 PASS/skipped4,
+3m20s; analyzer clean7.8s; check-version PASS. Metadata очищаются только при
+замене предыдущего closedcall новым pendingcall после prune; новые ошибки
+сохраняются, подписи/room/session guards не менялись. Mac28closed backup проверен:
+285 app entries и260 profile entries, exact+codesign PASS; Keychain не копировался.
+Нужны WEB70 и обязательный personal Mac29 exactpackage/profile/update acceptance.

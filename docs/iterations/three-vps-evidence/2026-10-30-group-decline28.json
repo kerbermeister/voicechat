@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "server_commit": "5685b05817a7abacde932a3579d3083f1aae2cdd",
+  "clients": 28,
+  "same_account_web_devices": 2,
+  "both_incoming_observed_ms": 10715,
+  "decline_clicked_ms": 15110,
+  "secondary_ended_observed_ms": 15780,
+  "primary_ended_observed_ms": 22223,
+  "account_wide_group_incoming_dismissal": true,
+  "caller_ended_by_decline_not_asserted": true,
+  "caller_sfu_connected_excellent_before_decline": true,
+  "remote_e2ee_audio_not_tested": true,
+  "defect": "Unaccepted ended group invitation reused the previous direct call title/duration (3:24).",
+  "test_date": "2026-10-30",
+  "server_run": "https://github.com/kerbermeister/voicechat/actions/runs/41100604292"
+}

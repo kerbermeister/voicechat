@@ -158,6 +158,19 @@ class CallController extends ChangeNotifier
     directInvitations.removeWhere(
       (call) => devices.answered(call.chat.id, call.session),
     );
+    final pending =
+        starting ||
+        directInvitations.isNotEmpty ||
+        invitations.isNotEmpty ||
+        devices.remote.isNotEmpty;
+    // A new call must not restore the previous call's timer/error on dismissal.
+    if (pending && active?.isClosed == true) {
+      active = null;
+      if (!starting) {
+        dialError = null;
+        dialingRoom = null;
+      }
+    }
     if (!_closed) unawaited(_prepareScreen());
     if (_android) {
       final call = active;

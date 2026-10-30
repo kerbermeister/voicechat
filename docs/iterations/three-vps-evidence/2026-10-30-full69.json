@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-30T17:55:19.972364+00:00",
+  "run": "https://github.com/kerbermeister/voicechat/actions/runs/41100604292",
+  "core_commit": "5685b05817a7abacde932a3579d3083f1aae2cdd",
+  "edge_commit": "5685b05817a7abacde932a3579d3083f1aae2cdd",
+  "scope": "full",
+  "managed_phase": "complete",
+  "independent_postcheck": "PASS",
+  "immutable_images_and_fixed_supervisor_verified": true,
+  "data_identity_preserved": true,
+  "previous_pointer_verified": true,
+  "neighbors_unchanged": true,
+  "private_sfu_node_and_binds_verified": true,
+  "exact_turn_private_peer_exception_verified": true,
+  "macos28_feed_preserved": true,
+  "maintenance_timers_active_enabled": true,
+  "limits": "Application rollout, CI and independent postcheck passed. No physical multi-VPS failover claim.",
+  "github_status": "success",
+  "github_job_duration_seconds": 939
+}

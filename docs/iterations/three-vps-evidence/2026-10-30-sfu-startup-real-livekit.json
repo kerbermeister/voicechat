@@ -1,0 +1,38 @@
+{
+  "image": "ghcr.io/kerbermeister/voicechat/control@sha256:62e7800fbb98d2fdf37603a720afbc970c712b045fb5c327dfa6757ad9736de5",
+  "results": [
+    {
+      "fixed": false,
+      "result": 1,
+      "recovered": false,
+      "real_livekit": true,
+      "synthetic_database": true
+    },
+    {
+      "fixed": true,
+      "result": 0,
+      "recovered": true,
+      "real_livekit": true,
+      "synthetic_database": true
+    }
+  ],
+  "network": "none",
+  "production_volumes_mounted": false,
+  "host_ports_published": false,
+  "schema": 1,
+  "fixed_source_commit": "5685b05817a7abacde932a3579d3083f1aae2cdd",
+  "fixed_supervisor_sha256": "1c9c454d32fd821892285ea33a8407881b4f69e63fef60e5530547b2cfff3744",
+  "assertions": [
+    "Old supervisor reproduced failed recovery before delayed SFU readiness.",
+    "Fixed supervisor waited for real LiveKit HTTP, recovered the synthetic persistent call, retired old generation and removed old leases, then exposed healthy API.",
+    "All child processes terminated and disposable containers removed."
+  ],
+  "limits": "Isolated startup/recovery regression with real SFU binary and synthetic SQLite. No production application rollout, real media, encryption or physical-device acceptance is claimed.",
+  "full_server_regression": {
+    "tests": 760,
+    "skipped": 3,
+    "seconds": 79.379,
+    "result": "PASS",
+    "source_commit": "5685b05817a7abacde932a3579d3083f1aae2cdd"
+  }
+}

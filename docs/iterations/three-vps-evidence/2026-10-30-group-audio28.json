@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "server_commit": "5685b05817a7abacde932a3579d3083f1aae2cdd",
+  "client_build": 28,
+  "mac_remote_e2ee_ok": true,
+  "web_remote_e2ee_ok": true,
+  "mac_quality_excellent": true,
+  "web_quality_excellent": true,
+  "duration_observed_seconds": 130,
+  "web_mute_and_unmute_reflected_on_mac": true,
+  "same_account_second_web_displayed_call_on_other_device": true,
+  "mac_microphone_later_muted_without_agent_action": true,
+  "audibility_user_confirmation_for_group": false,
+  "limitations": "Remote-only TrackE2EEStateEvent.kOk confirmed on both clients; no claim of physical-phone, camera, screen, recovery or forced TCP443 coverage.",
+  "test_date": "2026-10-30",
+  "server_run": "https://github.com/kerbermeister/voicechat/actions/runs/41100604292",
+  "web_completed_duration_seconds": 171,
+  "mac_completed_duration_seconds": 173,
+  "ended_normally_on_both_clients": true
+}

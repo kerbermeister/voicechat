@@ -71,7 +71,8 @@ class _CallWindowState extends State<CallWindow> {
         group?.room ??
         remote?.room ??
         (calls.dialError != null ? calls.dialingRoom : null) ??
-        active?.chat;
+        active?.chat ??
+        room;
     if (room != nextRoom) {
       room = nextRoom;
       members = room?.requestParticipants();

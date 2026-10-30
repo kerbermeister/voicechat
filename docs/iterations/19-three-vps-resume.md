@@ -1,3 +1,142 @@
+## Дополнение18:14UTC: CI69 SUCCESS, before70 PASS, commit29 далее
+
+GitHub69 обновлён: SUCCESS, releasejob15m39, скрин /private/tmp/voicechat-full69-success.png.
+Publicfull69 proof updatedsuccess. .prototype/timer29-before-web.json freshPASS,
+beforecapture28913 completed, no tests/build sessionsactive. FullFlutter421/skipped4
+PASS3m20/analyzer7.8. Mainfetched5685, code29готовкcommit/pushapps+docs only.
+Следующийwebscope reusecontrol5685, currentcore/otheredgeпроцессыдолжнысохраниться.
+Mac28CLOSED, backup285/260PASS, новогоcandidate.appещёнет. Build29cleancommitthen
+personal signing/package+exactpayload/profile beforepublish. AutomationPAUSED.
+
+## Дополнение: Flutter29 готов к commit/web70 и Macbuild
+
+exec67534 DONE:421 PASS/skipped4,3m20; analyze clean7.8s. НикакихдругихFlutter
+процессов/build сейчаснет. BeforeWeb70 capture exec28913 надо проверитьдоcommit;
+script .prototype/before-web70.py сохраняет .prototype/timer29-before-web.json
+(свежий full69 postcheck; feeds28/core5685). Postweb70 ещёнеадаптирован: использовать
+post-web66.py, новыйcommitпослеcommit, beforetimer29, private-sfu networkbefore/
+appliedc3f, feed28SHA756cc265...; coreиotheredgeprocesses должныНЕизмениться.
+Всеизмененияapps/docs — послеcommit backend/core_guard должныравнятьсяbaseline69.
+Полныйreleaseнепонадобится, infra docsНЕредактировались (ониprotected).
+Mac28закрытнадежночерезnativeMenuQuit; послеQuit неgetAX, можетreopen.
+.prototype/macos28-backup-before29.json PASS285/260 exact+codesign. Private source
+memo .prototype/calls26-private-resume.md содержитpublicxcconfig/profilepaths.
+Build29ещёНЕбыл. ConstantSparkle keyлокально, --personal, priorfeed28.
+Передbuild чистыйcommit. Нужен fresh client-29.json=acceptedclient-28.json.
+
+## АКТУАЛЬНО: FULL69 готов, group E2EE PASS; кандидат29 timer fix — 30.10 ~18:10UTC
+
+HEAD/main/rollout5685b05817a7abacde932a3579d3083f1aae2cdd. Production managed/full69
+COMPLETE; .prototype/full69-postcheck-proof.json PASS: exactcore+edge5685, supervisor
+payloadSHA1c9c454d32fd821892285ea33a8407881b4f69e63fef60e5530547b2cfff3744,
+privateSFU binds/node10.88.0.1 +exactTURNexception, identity/pointers/neighbors/timers/
+HTTPS/feed28. GitHub69 run41100604292/job124217088933 UI laststillInProgress (lag),
+но приложение/managedjournal COMPLETE. Не делать blindretry/full. Capture69STOPPED,
+rootprivate logsretained, no activeVMfixtures. История67/68race/rollback ниже.
+
+РЕАЛЬНО после69: Mac28→two web28 group incoming, decline20 снялincoming16 за22.223s
+отstart (нажатие15.110s, до45s timeout). Caller group room продолжаетждать доtimeout,
+не считать его completion следствиемdecline. Второй group acceptedweb16: ОБАUI
+Защищённое аудио от remote-only TrackE2EEStateEvent.kOk +excellent >2min, webmute/
+unmute reflectedMac, otherweb20 «звонок на другом устройстве». Завершены штатно
+web2:51, Mac2:53; всеcaptureclosed. Пользовательheard относитсяdirect28, НЕgroup.
+Macmic позже оказалсяmuted без agentaction; не выдавать group audibility заheard.
+Public evidence full69.json/group-audio28.json/group-decline28.json; topologyupdated.
+
+НОВЫЙ найденный UIдефект: decline unacceptedgroup наweb16 вернулoldDirect title/
+3:24timer. ИсправлениеВDIFF: CallController._refresh послеprune забывает oldclosed
+active приnewpendingcall (direct/group/remote/outgoing); старыйerror/room очищает
+однократно вместеoldclosed, новуюошибкунеподавляет. CallWindow сохраняет последнее
+названиепослеunacceptedend. 10focused PASS; metadata1.14.2+29 pubspec/app_version/
+changelog synchronized, python infra/android_release.py check-version PASS.
+NewbuildNOTYETcompiled/committed/published. Всеизмененияapps/client+docs ONLY,
+backend/network/bootstrap unchanged: следующийрелиз modeWEB, неFULL.
+
+FULL FLUTTER+ANALYZE сейчас exec67534: test --concurrency=1, затемanalyze,
+логи /private/tmp/voicechat29-flutter-tests.log и voicechat29-analyze.log. Последнее
++379~4 на3:05, не запускатьдругойFlutter/buildпоканезакончен. Sourceпослестарта
+fullsuiteНЕменялся; docs-only release notesheadfixне влияетнаruntime. Перваяtarget
+командаошибласьcwd, исправленаперед10PASS; metadata29check требовал###Что нового,
+исправлено ДОкакойлибосборки, 29непереиспользован.
+
+Mac28 ШТАТНО QUIT черезnative menuVoiceChat→Quit (CmdQ+getAX могreopen, не делать
+getApp/getAX послеQuit передbackup). .prototype/macos28-backup-before29.json PASS:
+closed app285/profile260 entries exact+codesign, Keychain НЕcopied, backupsretained.
+Privatepaths тольковэтомignoredproof/.prototype/calls26-private-resume.md. Mac28 сейчас
+CLOSED, native28handle stale. Приложение/профиль НЕзаменялись. Пока29неbuilt, неaskgrant.
+Нужны cleancommit/push, WEB70 main +freshbefore FULL69, build/sign/package29 личным
+--personal неизменнымSparklekey. Прочитанinfra/MACOS.md, секретныйkeyтольколокально.
+ДоMacpublish exactZIP/DMG/profileacceptance, затемSparkle28→29button+oldidentity/history.
+Не пропускать системныйKeychainaction если29его запросит, не читатьSecurityAgent.
+
+CUA latest bindings webRelease69 tab15 summary69, release68Api tab6 summary68Failure,
+prodWeb28 tab16 (normalfixture28 FSRYGTBSBQ) endedgroupdialogCLOSED/main,
+secondWeb28 tab20 credentialless28 WJFNEDXCBL (можетещёother-device endedmodal),
+native28 closed, localEvidence69 fs. Cua kernel reset былораньше, handlescurrent.
+Tab20 TOP НЕreload. Harness81495/62161active. Futuretest29normal16 canreloadonlyafterWEB.
+Mac28 UI cachedwhenbackground: Window→BringAlltoFront обновляетживоеAX; не путатьс
+реальнымmute/endдефектом. Наактивномtestcallпослеwebendосталсяownergroup, nativeEnd
+успешен, actualclosed проверенчерезBringFront. Не оставленыактивныезвонки.
+
+Остатокпослеclient29: actual UI regressionoldcompleted→newincoming→decline, выпуск
+Mac29иupdatepreservation, finalhealthy externalmonitor/diagnostics. Actualcron не
+наблюдался, email исключёнвладельцем. Phones/camera/screen/recovery/TCP443-only
+НЕприняты; extraVPS/Arelocation/externalbackup/customDNS/Windows deferred.
+Noagents/newchats/mail. AutomationPAUSED, неresume.
+
+## Дополнение17:49UTC: full760 PASS; FULL69 waiting GitHub concurrency
+
+Полный новый server suite:760 PASS/skipped3,79.379s, log
+/private/tmp/voicechat-sfu-startup-full-tests.log. CodeHEAD5685 unchanged, dirtydocs only.
+FULL68 наконец UI Failure. FULL69 same5685 shows Waiting, image explicitly
+«waiting for another serialized run to finish»; job124217088933 has no logs yet.
+Public API68 status earlier in_progress, jobs_url returned Server Error. Нельзя
+обходить concurrency/SSH/source guards, создавать duplicate retry или утверждать,
+что69 применён. Official GitHubstatus says operational, не приписывать всему
+GitHub объявленный outage; наблюдаем конкретную очередь/APIошибку.
+CUA kernel reset после10s вызова чтения API+navigation. Текущие bindings только
+webRelease69 tab15 summary69 и release68Api tab6 (снова summary68Failure),
+evidenceFiles69 fs. Native/profile tabs не закрыты; reacquire16/20 безreload.
+Native Bring All to Front решило staleUI, Mac28 group prepared. No hardwareblocker.
+Скриншоты /private/tmp/voicechat-full69-queued.png и github-jobs-server-error.png.
+Capture69 root PID1392613 active/25min expires≈18:04UTC, автоматически завершается.
+Проверять newsource5685/actual rootphase before post-full69.py; текущаяbaseline
+WEB66 core79ad/edge3316 healthy, dataidentity/feed28 unchanged. Automationpaused.
+
+## Дополнение17:44UTC: real LiveKit recovery regression PASS
+
+.prototype/sfu-startup-real-livekit-proof.json PASS. Публичное evidence
+2026-10-30-sfu-startup-real-livekit.json. Actual pinned c3f control image62e7800f...
++ exact5685 supervisor source: старый запуск failed recovery exit1, новый waited
+forSFU→actualDeleteRoom/retiredcleanup/leasesclear→healthyAPI→cleanexit0.
+Два последовательных network-none контейнера, noports/noProductionVolumes/secrets,
+syntheticSQLite/tmpfs, removed. Не media/E2EE/hardware proof.
+CUA native window найден скрытым: menu Window→Bring All to Front восстановило
+актуальныйAX. No lockedMac blocker! Не задавать владельцу вопрос оразблокировке.
+Mac28 сейчас на existing singlevps_call26_check (2members), prodWeb16 наэтойже группе;
+secondTestWeb20 endedcallmodal закрыт, профиль сохранён. NativeAX buttons доBring
+Front казались noop из-за hidden-window stale state. Mail/SecurityAgent не трогались.
+FULL69 всёещёqueued поAX+DOM, rootrolledbackold66 healthy. No retry/cancelloops.
+Capture69 PID1392613 root-only bounded25minactive. АвтоматизацияPAUSED.
+
+## Актуально: FULL69 queued, fix5685b05 уже в main — 30.10 17:40UTC
+
+HEAD/main/rollout 5685b05817a7abacde932a3579d3083f1aae2cdd, atomic push PASS.
+FULL69 run41100604292/job124217088933: managed/full/deploytrue, retry_managed=true.
+GitHub UI68 показывает stale InProgress, хотя root journal rolledback, no active
+managed remote process и независимый rollback proof PASS. Единственная попытка
+Cancel68 вернула «Cannot cancel a workflow run that is not in progress» — реальной
+отмены не было. Не повторять cancellation и не обходить concurrency/guards.
+69 job assigned queued; ждать обязательные CI checks/build/apply.
+
+Готов .prototype/post-full69.py с exact5685 и source fingerprints; network before/
+applied proof остаётсяc3f, поскольку все32 boot/network source файла unchanged.
+Before/pointers/dataidentity/feed28 baseline остаётсяWEB66, core79ad/edge3316.
+Не запускать postcheck какPASS до реального success69; при UI lag сначала
+read-only rootjournal/status, не blindretry. Capture68 stopped/done, private logs
+retained. Capture69 сейчас запускается root-only bounded25min для диагностики.
+См. ниже actual rootcause, tests39PASS, ограничения и CUAfixture details.
+
 ## Актуально: startup race исправлен, готовить FULL69 — 30.10 17:37UTC
 
 FULL68 run41098317389/job124209762234 failed→rolled-back COMPLETE. Независимый

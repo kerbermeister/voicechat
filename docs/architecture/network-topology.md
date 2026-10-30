@@ -8,10 +8,13 @@ core и cohost edge-a, shared-front и сохранёнными данными/i
 [ТЗ](../three-vps-spec.md), [план](../tasks/19-three-vps.md),
 [проверки и ограничения](../iterations/19-three-vps.md).
 
-**Серверное исправление SFU подготовлено, но пока не выложено.** Диаграммы ниже
-показывают новый private-media путь. На WEB66/FULL64 остаётся public SFU с
-подтверждённым cohost-конфликтом coturn; групповой звонок ещё не принят.
-Ход проверки — [журнал24](../iterations/24-call-and-connection-diagnostics.md).
+**Private SFU выложен на существующий VPS:** core/edge-a source5685b05,
+[независимый postcheck FULL69](../iterations/three-vps-evidence/2026-10-30-full69.json)
+прошёл. Диаграмма первого VPS отражает работающие binds/ACL. Настоящие Mac28
+и web28 расшифровали удалённое групповое аудио в обе стороны, соединение держалось
+более2 минут; это не приёмка дополнительных VPS, телефона или TCP443-only сети.
+[Групповое аудио](../iterations/three-vps-evidence/2026-10-30-group-audio28.json),
+[журнал24](../iterations/24-call-and-connection-diagnostics.md).
 
 ## Начало: один физический VPS
 
