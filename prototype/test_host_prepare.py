@@ -148,6 +148,12 @@ class HostPrepareTests(unittest.TestCase):
         self.assertFalse(self.connected)
         self.run.assert_not_called()
 
+    def test_bootstrap_requires_root_at_effective_ssh_endpoint(self):
+        profile = {'identity_file': '/fixture/identity', 'host': 'ssh.example.com', 'user': 'operator'}
+        with self.assertRaisesRegex(ValueError, 'root SSH'):
+            host_prepare.prepare(self.inventory, self.node, profile, 'a' * 40, Path('/fixture/archive'))
+        self.assertFalse(self.connected)
+
     def test_plan_does_not_connect_or_require_delivery_credentials(self):
         with patch.object(host_prepare.node_inventory, 'load', return_value=self.inventory), \
              patch.object(sys, 'argv', ['host_prepare.py', '--inventory', 'fixture.json', '--node', self.node]), \

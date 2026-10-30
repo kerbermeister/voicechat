@@ -14,6 +14,7 @@ import managed_entry
 import managed_peer
 import managed_probe
 import release_source
+import role_release
 import node_inventory
 import release_delivery
 import ssh_deploy
@@ -174,8 +175,10 @@ def main():
     identity=args.identity
     if args.identity_map is not None:
         _,identity=managed_probe.read(args.identity_map)
-        if not isinstance(identity,dict) or not identity or any(not isinstance(value,str) for value in identity.values()):
-            raise ValueError('Physical node to private key path map required')
+        if not isinstance(identity,dict) or not identity:
+            raise ValueError('Physical node to SSH identity/profile map required')
+        for name, value in identity.items():
+            host_connection.parameters(inventory, name, value)
     elif any(edge.get('host')!='core' for edge in inventory['edges']):
         raise ValueError('Configure separate SSH identities for physical nodes using --identity-map')
     with connection(peer,identity) as ssh:

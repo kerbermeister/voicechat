@@ -4,7 +4,28 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from check_initial_cohost import remove_units, retain_turn_volumes
+from check_initial_cohost import remove_units, retain_turn_volumes, inspect_committed_role
+
+
+class CommittedRoleInspectionTests(unittest.TestCase):
+    def test_transient_lock_contention_retries_without_replaying_migration(self):
+        with patch('check_initial_cohost.managed_release.inspect_role',
+                   side_effect=[BlockingIOError(), {'committed': True}]) as inspect, \
+                patch('check_initial_cohost.time.sleep') as sleep:
+            self.assertEqual(inspect_committed_role('root', execute='runner'), {'committed': True})
+            self.assertEqual(inspect.call_count, 2)
+            inspect.assert_called_with('root', execute='runner')
+            sleep.assert_called_once_with(.5)
+
+    def test_validation_failure_and_expired_lock_are_preserved(self):
+        with patch('check_initial_cohost.managed_release.inspect_role', side_effect=ValueError('invalid')):
+            with self.assertRaisesRegex(ValueError, 'invalid'):
+                inspect_committed_role('root')
+        with patch('check_initial_cohost.managed_release.inspect_role', side_effect=BlockingIOError()), \
+                patch('check_initial_cohost.time.monotonic', side_effect=[0, 301]), \
+                patch('check_initial_cohost.time.sleep') as sleep:
+            with self.assertRaises(BlockingIOError): inspect_committed_role('root')
+            sleep.assert_not_called()
 
 
 class MigrationFixtureCleanupTests(unittest.TestCase):

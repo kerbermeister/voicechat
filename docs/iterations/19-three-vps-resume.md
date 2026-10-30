@@ -2,6 +2,50 @@
 
 ## Актуальная сводка: production core/edge включены
 
+**LATEST: SSH profiles + fixture retry + schema2 hints fix, all676 PASS/skipped3.**
+Log `.prototype/all-python-tests-ssh-profiles.log`, 78.602s. Host46/workflow7,
+fixture6 и managedSSH13 также отдельно PASS. Исправлен missing role_release import
+в non-null core_guard build hint reader, добавлен отдельный schema2 regression.
+Следующие harness готовые, но ЕЩЁ НЕ ЗАПУЩЕНЫ: `/tmp/voicechat-prepare-profile-ssh-vm.py`
+(stock host_connection, profile loopback endpoint, no adapter) и новая пара
+`/tmp/voicechat-managed-guard2-{vm,driver}.py`. Старые guard logs не перезаписывать.
+CI56 artifact12952018024 verified103 Gitfiles, guardfb25; proof
+`three-vps-evidence/2026-10-30-ci-managed-full-build-only.json`.
+Независимый postcleanup failed VM: network b8ceb473…, только2старыхтома,
+0containers, network service active. Production full53 unchanged.
+
+**HISTORY: c0834b7 CI56 SUCCESS; VM guard run failed before normal releases.**
+Parent37825/driver99488 завершены: initial migration прошла до baseline inspection,
+но inspect_role получил BlockingIOError от фонового владельца role lock. Cleanup
+сработал: контейнеров нет, managed timers удалены. Нужен независимый postcleanup
+network/volume check и повтор после bounded fixture-only retry. Production unchanged.
+CI56 https://github.com/kerbermeister/voicechat/actions/runs/40996801376 SUCCESS
+10m54, job10m50. Артефакт ещё не скачан/не проверен. Это full deploy=false.
+Новая SSH profile реализация: host46+workflow7 PASS, uncommitted; профиль задаёт
+identity_file/host/port/user при неизменном inventory host pin; CI overrides public only.
+
+**HISTORY (superseded, не запускать старые parent/driver повторно):**
+HEAD/origin c0834b7e230e051c36595b6a3d26f46caf8e3aaf, git clean передэтойзаписью.
+Backendfec88471fe83387da15511922f94f498c53f92d894259a22670f956d072de852,
+core_guardfb25b90dc58cbc118635646ebd7351ed2536852ed947cfe3c8fa2206e1dc071c.
+Parent37825 ACTIVE `/tmp/voicechat-managed-guard-vm.py`; driver99488 ACTIVE
+`/tmp/voicechat-managed-guard-driver.py`. Record `.prototype/managed-guard-run.json`;
+sourcefolder `/srv/voicechat-edge-fixture/managed-guard-source-l7dv3abx`,
+logs `.prototype/managed-guard-parent.log`, `.prototype/vm-managed-guard.log`,
+`.prototype/managed-guard-driver.log`. Нужен guarded parent completion, не толькоdriver.
+Driver ждёт ready; черезнастоящийSSH проверит full1→2/lostreply/web/core,
+новый protected TESTFILE backenddelta(sameguard,безизмененияapp runtime),
+реальный отказ core приcommentdeltaedge_deploy.py доfences/processchanges,
+затемfailedfull/data-preservingrollback. PrivatefixtureGitcommits НЕpush.
+Old mainVM исходнаяnetwork/key и2старыхтома должныостатьсяпобайтно; volumesнеprune.
+Последниеdeployappinputs+role_bootstrap.SOURCES сравненысproduction2dae — разницы нет.
+
+Новый Build and deploy full/build-only отправленUI наc0834b7: managed/full,
+deploy=false, retriesfalse,edgesempty. Получитьномерrun/итог; VPSнебудетменяться.
+Только послеVM+CI+artifact checks рассматривать следующий full дляschema2guard.
+Productionсейчас2dae758/schema1/full53, 54/55толькосборки, postchecks обоихPASS.
+Не запускатьinitial/дубликатыVM/drivers, не возобновлятьстарыйmanaged-normal run.
+
 **LATEST: core-only source guard candidate implemented, НЕ production.**
 БылоREDregression, теперь129managed+9release/source+6transport PASS; all668
 PASS/skipped3,77.252s (`.prototype/all-python-tests-core-source-guard.log`).

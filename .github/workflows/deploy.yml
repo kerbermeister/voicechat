@@ -83,6 +83,7 @@ jobs:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
           DEPLOY_NODE_SSH_KEYS: ${{ secrets.DEPLOY_NODE_SSH_KEYS }}
+          DEPLOY_NODE_SSH_CONNECTIONS: ${{ vars.DEPLOY_NODE_SSH_CONNECTIONS }}
         run: |
           umask 077
           mkdir -p ~/.ssh
@@ -93,7 +94,7 @@ jobs:
           import json,os,sys
           from pathlib import Path
           sys.path.insert(0,'infra')
-          import topology,tunnel_config
+          import topology,tunnel_config,host_connection
           config=json.loads(os.environ['SERVER_ROLE_CONFIG'],object_pairs_hook=topology.unique_object)
           nodes=tunnel_config.physical_nodes(config['inventory'])
           raw=os.environ.get('DEPLOY_NODE_SSH_KEYS','') or '{}'
@@ -104,13 +105,20 @@ jobs:
           if set(keys)!=set(nodes) or any(not isinstance(value,str) or not value.strip() for value in keys.values()):
               raise ValueError('Configure one private deploy key for every physical node')
           if len({value.strip() for value in keys.values()})!=len(keys):raise ValueError('Use a distinct SSH key per physical host')
+          raw=os.environ.get('DEPLOY_NODE_SSH_CONNECTIONS','') or '{}'
+          if len(raw.encode())>65536:raise ValueError('SSH endpoint input exceeds its bound')
+          endpoints=json.loads(raw,object_pairs_hook=topology.unique_object)
+          if not isinstance(endpoints,dict) or set(endpoints)-set(nodes):raise ValueError('SSH endpoints must name known physical nodes')
+          for node,value in endpoints.items():
+              if not isinstance(value,dict) or set(value)-{'host','port','user'}:raise ValueError('Only SSH host, port and user overrides are allowed')
+              host_connection.parameters(config['inventory'],node,{'identity_file':'placeholder',**value})
           directory=Path.home()/'.ssh/voicechat-nodes';directory.mkdir(mode=0o700)
           identities={}
           for node,value in keys.items():
               path=directory/node
               fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
               with os.fdopen(fd,'w') as output:output.write(value.rstrip()+'\n')
-              identities[node]=str(path)
+              identities[node]=({'identity_file':str(path),**endpoints[node]} if node in endpoints else str(path))
           fd=os.open('/tmp/voicechat-node-identities.json',os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
           with os.fdopen(fd,'w') as output:json.dump(identities,output)
           PY

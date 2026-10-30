@@ -37,6 +37,19 @@ import shared_cutover
 from initial_cohost_business import business
 
 
+def inspect_committed_role(*args, **kwargs):
+    # Boot/backup units can briefly own the role lock after the initial fence
+    # is released. Retry only lock contention, never a failed baseline check.
+    deadline = time.monotonic() + 300
+    while True:
+        try:
+            return managed_release.inspect_role(*args, **kwargs)
+        except BlockingIOError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(.5)
+
+
 def remove_units(expected, timers, *, run):
     units=Path('/etc/systemd/system')
     present={}
@@ -294,8 +307,8 @@ def exercise(old_root,baseline,neighbor,session,*,control_image,web_image,run,fa
                 planned=managed_release.plan(typed,candidate,typed['backend'],scope='web')
                 assert planned['core']==typed['core']
                 assert planned['steps']==[{'role':'edge','edge_id':'a'}]
-                actual_core=managed_release.inspect_role(core,public,inventory,typed['core'],execute=execute)
-                actual_edge=managed_release.inspect_role(edge,public,inventory,typed['edges']['a'],execute=execute)
+                actual_core=inspect_committed_role(core,public,inventory,typed['core'],execute=execute)
+                actual_edge=inspect_committed_role(edge,public,inventory,typed['edges']['a'],execute=execute)
                 assert actual_core['data_identity']==baseline['data_identity']
                 assert len(actual_core['processes'])==3 and len(actual_edge['processes'])==3
                 for role_root in (core,edge):assert not (role_root/'runtime/full-rollout.json').exists()

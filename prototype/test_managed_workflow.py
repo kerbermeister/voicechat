@@ -62,7 +62,7 @@ class ManagedWorkflowTests(unittest.TestCase):
             self.assertIn(required,checks)
         self.assertNotIn('if:',checks)
 
-    def install_keys(self,keys,*,core='synthetic-core-key'):
+    def install_keys(self,keys,*,core='synthetic-core-key',endpoints=None):
         temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup)
         home=Path(temporary.name);(home/'.ssh').mkdir(mode=0o700)
         source=python_source('Set up pinned SSH identity')
@@ -70,7 +70,8 @@ class ManagedWorkflowTests(unittest.TestCase):
         def opened(path,*args,**kwargs):
             return actual_open(home/'identities.json' if str(path)=='/tmp/voicechat-node-identities.json' else path,*args,**kwargs)
         env={'SERVER_ROLE_CONFIG':json.dumps({'inventory':fixture()}),'SSH_KEY':core,
-             'DEPLOY_NODE_SSH_KEYS':json.dumps(keys)}
+             'DEPLOY_NODE_SSH_KEYS':json.dumps(keys),
+             'DEPLOY_NODE_SSH_CONNECTIONS':json.dumps(endpoints or {})}
         with patch.dict(os.environ,env),patch('pathlib.Path.home',return_value=home),patch.object(os,'open',side_effect=opened):
             exec(compile(source,'workflow-identities','exec'),{})
         return home,json.loads((home/'identities.json').read_text())
@@ -84,6 +85,20 @@ class ManagedWorkflowTests(unittest.TestCase):
             self.assertTrue(path.read_text().endswith('\n'))
             self.assertIn(home,path.parents)
         self.assertEqual((home/'identities.json').stat().st_mode&0o777,0o600)
+
+    def test_public_endpoint_overrides_keep_generated_identity_and_pinned_trust(self):
+        home,identities=self.install_keys({'edge-b':'key-b','edge-c':'key-c'},
+            endpoints={'edge-b':{'host':'ssh.example.com','port':2207,'user':'root'}})
+        self.assertEqual(identities['edge-b'],{'identity_file':str(home/'.ssh/voicechat-nodes/edge-b'),
+            'host':'ssh.example.com','port':2207,'user':'root'})
+        self.assertIsInstance(identities['core'],str)
+
+    def test_endpoint_configuration_cannot_inject_key_paths_or_ssh_options(self):
+        for endpoints in ({'missing':{}},{'core':{'identity_file':'/other'}},
+                          {'core':{'ProxyCommand':'unsafe'}},{'core':{'port':True}},
+                          {'core':{'host':'-oUnsafe'}}):
+            with self.subTest(endpoints=endpoints),self.assertRaises(ValueError):
+                self.install_keys({'edge-b':'key-b','edge-c':'key-c'},endpoints=endpoints)
 
     def test_missing_unknown_and_duplicate_node_credentials_fail_before_deploy(self):
         for keys in ({},{'unknown':'synthetic-key'},

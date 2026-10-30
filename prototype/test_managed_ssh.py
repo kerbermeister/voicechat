@@ -178,3 +178,15 @@ class ManagedTransportTests(unittest.TestCase):
             self.assertNotIn(b'PRIVATE KEY-----',run.call_args.kwargs['input'])
         with patch.object(managed_ssh.subprocess,'run',return_value=SimpleNamespace(returncode=0,stdout=b'{}')):
             with self.assertRaises(ValueError):managed_ssh.read_hints(['ssh'],'/srv/managed')
+
+    def test_schema_two_build_hints_validate_recorded_core_guard(self):
+        value={'schema':1,'baseline':'a'*64,'backend':'b'*64,'origin':'https://chat.fixture.invalid',
+               'control':'ghcr.io/fixture/control@sha256:'+'c'*64,
+               'web':{'a':'ghcr.io/fixture/web@sha256:'+'d'*64},'pending':None,'core_guard':'e'*64}
+        for guard in ('e'*64,'invalid',True):
+            value['core_guard']=guard
+            with self.subTest(guard=guard),patch.object(managed_ssh.subprocess,'run',
+                    return_value=SimpleNamespace(returncode=0,stdout=json.dumps(value).encode())):
+                if guard=='e'*64:self.assertEqual(managed_ssh.read_hints(['ssh'],'/srv/managed'),value)
+                else:
+                    with self.assertRaises(ValueError):managed_ssh.read_hints(['ssh'],'/srv/managed')

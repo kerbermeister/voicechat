@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "source_commit": "c0834b7e230e051c36595b6a3d26f46caf8e3aaf",
+  "workflow_run": "https://github.com/kerbermeister/voicechat/actions/runs/40996801376",
+  "mode": "full",
+  "deploy": false,
+  "status": "success",
+  "artifact_id": 12952018024,
+  "zip_sha256": "7a2d46098c6ecf976d86549935710e31d0bd37e08ec8238871d2bdb9de4497be",
+  "source_archive_sha256": "12d628c676de91e6e53e4c109d8a760862a4f2f7016184755f4521e552797de9",
+  "source_file_count": 103,
+  "clean_git_source_verified": true,
+  "backend": "fec88471fe83387da15511922f94f498c53f92d894259a22670f956d072de852",
+  "core_guard": "fb25b90dc58cbc118635646ebd7351ed2536852ed947cfe3c8fa2206e1dc071c",
+  "manifest": {
+    "commit": "c0834b7e230e051c36595b6a3d26f46caf8e3aaf",
+    "schema": 1,
+    "origin": "https://univc.duckdns.org",
+    "control": "ghcr.io/kerbermeister/voicechat/control@sha256:e0e31ef2d759c36427233f043f68c03a02e8213f99cc8e836b4d9229259cf666",
+    "web": "ghcr.io/kerbermeister/voicechat/web@sha256:afad9ed71d1fbbed71fe988d689611a33638fcee5705555d015d1474bafd1417"
+  },
+  "production_changed": false
+}

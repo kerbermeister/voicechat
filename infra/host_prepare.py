@@ -28,7 +28,7 @@ def prepare(inventory, node, identity, commit, archive, *, checkout=None, initia
     network_request = None if public_keys is None else host_network.request(json.dumps({
         'schema': 1, 'inventory': inventory, 'public_keys': public_keys,
         'node': node, 'edge_subnet': subnet}).encode())
-    if inventory['ssh_user'] != 'root':
+    if host_connection.parameters(inventory, node, identity)['user'] != 'root':
         raise ValueError('Clean-host package preparation requires root SSH')
     # Separate from an existing deployment root: source delivery does not select
     # a release and package preparation refuses an unclaimed container runtime.
@@ -87,7 +87,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inventory', type=Path, required=True)
     parser.add_argument('--node', required=True)
-    parser.add_argument('--identity', type=Path)
+    connection = parser.add_mutually_exclusive_group()
+    connection.add_argument('--identity', type=Path)
+    connection.add_argument('--connection', type=Path, help='SSH profile with identity_file and optional host/port/user')
     parser.add_argument('--commit')
     parser.add_argument('--archive', type=Path)
     parser.add_argument('--execute', action='store_true')
@@ -103,9 +105,10 @@ def main():
         host_network.request(json.dumps({'schema': 1, 'inventory': inventory, 'public_keys': keys,
             'node': args.node, 'edge_subnet': args.edge_subnet}).encode())
     if args.execute:
-        if args.identity is None or args.commit is None or args.archive is None:
-            parser.error('--execute requires --identity, --commit and --archive')
-        value = prepare(inventory, args.node, args.identity, args.commit, args.archive,
+        identity = topology.read_json(args.connection) if args.connection is not None else args.identity
+        if identity is None or args.commit is None or args.archive is None:
+            parser.error('--execute requires --identity or --connection, plus --commit and --archive')
+        value = prepare(inventory, args.node, identity, args.commit, args.archive,
                         initialize_key=args.initialize_key, public_keys=keys, subnet=args.edge_subnet)
     else:
         value = {'target': target, 'installed': False,

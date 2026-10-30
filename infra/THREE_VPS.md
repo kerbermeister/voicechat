@@ -1546,3 +1546,22 @@ can archive the original journal verbatim. The tool verifies the original source
 receipt, unchanged healthy legacy baseline, legacy-certs ingress and an empty
 attempt directory. It refuses prepared/fenced/public state. The corrected artifact
 then starts a fresh attempt; never edit pending target/source/pointers manually.
+
+### Отдельный SSH endpoint
+
+Публичный адрес роли и адрес управления SSH могут отличаться. Для локального
+`host_prepare.py` вместо `--identity` используется `--connection ssh.json`:
+
+```json
+{"identity_file":"/private/keys/edge-d","host":"ssh.example.com","port":2207,"user":"root"}
+```
+
+Ключ сервера по-прежнему берётся только из inventory; TOFU и произвольные SSH
+options запрещены. Bootstrap требует root. Приватный ключ хранится в отдельном
+файле с правами 0600, профиль содержит только ссылку на него.
+
+В Actions необязательная environment variable `DEPLOY_NODE_SSH_CONNECTIONS`
+содержит JSON object вида `{"edge-d":{"host":"ssh.example.com","port":2207}}`.
+Допустимы только `host`, `port`, `user`; имена узлов должны присутствовать в
+inventory. Пути ключей формирует workflow из прежних secrets, подменить их этой
+переменной нельзя. Без overrides сохраняется подключение по inventory.

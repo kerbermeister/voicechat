@@ -335,6 +335,13 @@ V3-07, не завершённое добавление D: role/TLS/catalog и �
 остаются в V3-08/09/20/21. Используется уже доступный root SSH principal; новый
 непривилегированный operator user автоматически не создаётся.
 
+30.10, продолжение: SSH endpoint profile отделён от публичного role IP без
+изменения inventory trust pin. `host_prepare --connection` и необязательный
+Actions `DEPLOY_NODE_SSH_CONNECTIONS` принимают только адрес/порт/user; приватный
+ключ задаётся прежней отдельной ссылкой/secret. Host46 и workflow7 PASS;
+actual unmodified SSH repeat на подготовленной VM ещё проверяется. Guard VM
+повторяется после fixture-only bounded lock retry; это не завершённый lifecycle.
+
 ### V3-08 — Настроить защищённые входы и сертификаты
 
 Зависимости: V3-07. Production значения берутся из V3-01, стенд — из V3-02.

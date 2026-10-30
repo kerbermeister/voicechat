@@ -43,6 +43,30 @@ class HostConnectionTests(unittest.TestCase):
         self.assertEqual(result.stdout, b'ok')
         self.assertFalse(captured[0].exists())
 
+    def test_separate_endpoint_pins_same_inventory_key_without_forwarding_or_tofu(self):
+        profile = {'identity_file': str(self.key), 'host': 'ssh.example.com', 'port': 2207, 'user': 'operator'}
+        with host_connection.connection(self.inventory, 'edge-b', profile) as command:
+            self.assertEqual(command[command.index('-p') + 1], '2207')
+            self.assertEqual(command[-1], 'operator@ssh.example.com')
+            trust = Path(next(value.split('=', 1)[1] for value in command if value.startswith('UserKnownHostsFile=')))
+            self.assertEqual(trust.read_text(), '[ssh.example.com]:2207 ' + self.inventory['edges'][0]['ssh_host_key'] + '\n')
+            for guard in ('StrictHostKeyChecking=yes', 'HostKeyAlgorithms=ssh-ed25519', 'ForwardAgent=no', 'ControlPath=none'):
+                self.assertIn(guard, command)
+        self.assertFalse(trust.exists())
+        self.assertEqual(self.inventory['edges'][0]['public_ip'], '192.0.2.11')
+
+    def test_malformed_endpoint_profile_cannot_add_options_or_open_a_connection(self):
+        for change in ({'host': '-oProxyCommand=unsafe'}, {'host': 'https://host.example'},
+                       {'port': True}, {'port': 65536}, {'user': 'root@other'},
+                       {'ProxyCommand': 'unsafe'}, {'identity_file': None}):
+            profile = {'identity_file': str(self.key), **change}
+            with self.subTest(change=change), patch.object(host_connection.subprocess, 'run') as run:
+                with self.assertRaises(ValueError):
+                    host_connection.execute(self.inventory, 'core', profile, ['true'])
+                run.assert_not_called()
+        with self.assertRaises(ValueError):
+            host_connection.parameters(self.inventory, 'core', {'host': 'host.example'})
+
     def test_unsafe_identity_or_node_and_malformed_command_never_connect(self):
         with patch.object(host_connection.subprocess, 'run') as run:
             self.key.chmod(0o644)
