@@ -15,9 +15,10 @@ import host_packages
 import node_inventory
 import ssh_deploy
 import topology
+import tunnel_config
 
 
-def prepare(inventory, node, identity, commit, archive, *, checkout=None):
+def prepare(inventory, node, identity, commit, archive, *, checkout=None, initialize_key=False):
     target = host_packages.binding(inventory, node)
     if inventory['ssh_user'] != 'root':
         raise ValueError('Clean-host package preparation requires root SSH')
@@ -28,17 +29,33 @@ def prepare(inventory, node, identity, commit, archive, *, checkout=None):
         delivery = ssh_deploy.receive(ssh, root, commit, archive, checkout=checkout)
         command = ['python3', '-B', delivery['path'] + '/infra/host_packages.py',
                    '--inventory', '-', '--node', node, '--execute']
-        response = subprocess.run([*ssh, shlex.join(command)],
-            input=json.dumps(inventory, separators=(',', ':')).encode(),
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=3600, check=True)
+        value = invoke(ssh, command, inventory)
+        expected = {'target': target, 'base': host_packages.BASE, 'docker': host_packages.DOCKER,
+                    'installed': True, 'scope': 'Dependencies only; no role/network/DNS deployment'}
+        if json.dumps(value, sort_keys=True) != json.dumps(expected, sort_keys=True):
+            raise ValueError('Unexpected host preparation receipt; inspect the node journal')
+        if initialize_key:
+            command = ['python3', '-B', delivery['path'] + '/infra/host_identity.py',
+                       '--inventory', '-', '--node', node]
+            public = invoke(ssh, command, inventory)
+            topology.fields(public, ('schema', 'service_id', 'node', 'generation', 'public_key'))
+            expected_identity = {'schema': 1, 'service_id': inventory['service_id'], 'node': node,
+                                 'generation': target['assignment']['generation']}
+            if any(type(public[name]) is not type(item) or public[name] != item
+                   for name, item in expected_identity.items()):
+                raise ValueError('Tunnel public key belongs to another host generation')
+            tunnel_config.key_bytes(public['public_key'])
+            value = {**value, 'tunnel_identity': public}
+    return value
+
+
+def invoke(ssh, command, inventory):
+    response = subprocess.run([*ssh, shlex.join(command)],
+        input=json.dumps(inventory, separators=(',', ':')).encode(),
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=3600, check=True)
     if len(response.stdout) > 65536:
         raise ValueError('Host preparation response exceeds its bound; inspect the node journal')
-    value = json.loads(response.stdout, object_pairs_hook=topology.unique_object)
-    expected = {'target': target, 'base': host_packages.BASE, 'docker': host_packages.DOCKER,
-                'installed': True, 'scope': 'Dependencies only; no role/network/DNS deployment'}
-    if json.dumps(value, sort_keys=True) != json.dumps(expected, sort_keys=True):
-        raise ValueError('Unexpected host preparation receipt; inspect the node journal')
-    return value
+    return json.loads(response.stdout, object_pairs_hook=topology.unique_object)
 
 
 def main():
@@ -49,13 +66,16 @@ def main():
     parser.add_argument('--commit')
     parser.add_argument('--archive', type=Path)
     parser.add_argument('--execute', action='store_true')
+    parser.add_argument('--initialize-key', action='store_true',
+                        help='Also create the generation-bound node-local WireGuard key')
     args = parser.parse_args()
     inventory = node_inventory.load(args.inventory)
     target = host_packages.binding(inventory, args.node)
     if args.execute:
         if args.identity is None or args.commit is None or args.archive is None:
             parser.error('--execute requires --identity, --commit and --archive')
-        value = prepare(inventory, args.node, args.identity, args.commit, args.archive)
+        value = prepare(inventory, args.node, args.identity, args.commit, args.archive,
+                        initialize_key=args.initialize_key)
     else:
         value = {'target': target, 'installed': False,
                  'scope': 'Plan only; no SSH or host changes'}

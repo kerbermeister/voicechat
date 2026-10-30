@@ -308,10 +308,13 @@ transport проверен отдельным OpenSSH fixture с настоящ�
 полный проверенный clean-Git source bundle на выбранный inventory node через
 существующий pinned SSH, затем запускает host-local package installer с inventory
 через bounded stdin. Проверяется полный receipt (node/generation/profile и типы),
-повтор использует прежний package journal. Это пока подготовка зависимостей, не
-полное onboarding: ключи/peer registration/role/TLS/catalog остаются отдельными
-шагами. 22 host tests и 5 source transport tests PASS; новый SSH-путь ещё требует
-целевой VM integration проверки.
+повтор использует прежний package journal. Опция `--initialize-key` дополнительно
+создаёт node-local WireGuard identity: приватный ключ остаётся на сервере,
+публичный ответ проверяется по service/node/generation. Потеря committed private
+key не приводит к его тихой регенерации; незавершённый commit сохраняет тот же ключ.
+29 host tests и 5 source transport tests PASS. Fresh SSH/VM integration запущена;
+это пока подготовка зависимостей/ключа, не полное onboarding: peer registration,
+role/TLS/catalog activation остаются отдельными шагами.
 
 ### V3-08 — Настроить защищённые входы и сертификаты
 

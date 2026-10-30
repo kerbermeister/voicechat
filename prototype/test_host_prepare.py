@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import io
+import base64
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -72,6 +73,34 @@ class HostPrepareTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'bound'): self.prepare()
         self.run.return_value.stdout = b'{"installed":true,"installed":false}'
         with self.assertRaises(ValueError): self.prepare()
+
+    def test_optional_tunnel_key_is_requested_only_after_packages_and_never_contains_private_data(self):
+        public = {'schema': 1, 'service_id': self.inventory['service_id'], 'node': self.node,
+                  'generation': self.target['assignment']['generation'], 'public_key': base64.b64encode(bytes([7]) * 32).decode()}
+        self.run.side_effect = [SimpleNamespace(stdout=json.dumps(item).encode())
+                                for item in (self.receipt, public)]
+        value = host_prepare.prepare(self.inventory, self.node, Path('/fixture/identity'),
+            'a' * 40, Path('/fixture/archive'), initialize_key=True)
+        self.assertEqual(value['tunnel_identity'], public)
+        self.assertIn('/infra/host_identity.py --inventory - --node edge-b',
+                      self.run.call_args.args[0][-1])
+        self.assertEqual(len(self.connected), 1)
+        self.run.reset_mock();self.run.side_effect = None
+        self.run.return_value.stdout = b'{}'
+        with self.assertRaises(ValueError):
+            host_prepare.prepare(self.inventory, self.node, Path('/fixture/identity'),
+                'a' * 40, Path('/fixture/archive'), initialize_key=True)
+        self.assertEqual(self.run.call_count, 1)
+
+    def test_foreign_tunnel_identity_is_rejected_without_retry_or_key_rotation(self):
+        for generation, public_key in [(True, base64.b64encode(bytes([7]) * 32).decode()), (2, base64.b64encode(bytes([7]) * 32).decode()), (1, 'invalid')]:
+            public = {'schema': 1, 'service_id': self.inventory['service_id'], 'node': self.node,
+                      'generation': generation, 'public_key': public_key}
+            self.run.side_effect = [SimpleNamespace(stdout=json.dumps(item).encode())
+                                    for item in (self.receipt, public)]
+            with self.assertRaises(ValueError):
+                host_prepare.prepare(self.inventory, self.node, Path('/fixture/identity'),
+                    'a' * 40, Path('/fixture/archive'), initialize_key=True)
 
     def test_plan_does_not_connect_or_require_delivery_credentials(self):
         with patch.object(host_prepare.node_inventory, 'load', return_value=self.inventory), \

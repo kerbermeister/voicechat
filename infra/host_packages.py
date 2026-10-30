@@ -266,6 +266,15 @@ def install(directory, inventory, node, *, system_root=Path('/'), run=command,
         return expected
 
 
+def load_inventory(path):
+    if str(path) != '-':
+        return node_inventory.load(path)
+    raw = sys.stdin.buffer.read(65537)
+    if len(raw) > 65536:
+        raise ValueError('Host inventory exceeds its bound')
+    return node_inventory.validate(json.loads(raw, object_pairs_hook=topology.unique_object))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--inventory', type=Path, required=True)
@@ -273,14 +282,7 @@ def main():
     parser.add_argument('--directory', type=Path, default=Path('/var/lib/voicechat-host'))
     parser.add_argument('--execute', action='store_true')
     args = parser.parse_args()
-    if str(args.inventory) == '-':
-        raw = sys.stdin.buffer.read(65537)
-        if len(raw) > 65536:
-            raise ValueError('Host inventory exceeds its bound')
-        inventory = json.loads(raw, object_pairs_hook=topology.unique_object)
-        node_inventory.validate(inventory)
-    else:
-        inventory = node_inventory.load(args.inventory)
+    inventory = load_inventory(args.inventory)
     target = binding(inventory, args.node)
     if args.execute:
         if os.geteuid() != 0:
