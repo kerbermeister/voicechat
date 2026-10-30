@@ -2,7 +2,6 @@
   "schema": 1,
   "checked_at": "2026-10-30T12:49:34.761405+00:00",
   "github_run": "https://github.com/kerbermeister/voicechat/actions/runs/41056084087",
-  "duration_seconds": 987,
   "commit": "a35b61b5762ff2cdad91fb25ad5ab56bd30fe6d7",
   "edge_commit": "a35b61b5762ff2cdad91fb25ad5ab56bd30fe6d7",
   "source_bundle": "57e5b9e7a09d98f74ea59699cd5b78f0530a5e9877cfb4536f24338a069746aa",
@@ -49,5 +48,7 @@
     "distinct_encrypted_senders": 2,
     "existing_account_credentials_or_keys_exported": false,
     "temporary_audit_session_revoked": true
-  }
+  },
+  "release_job_duration_seconds": 987,
+  "workflow_total_duration_seconds": 990
 }

@@ -14,6 +14,8 @@ Monitor normal1→labelled test2→normal3 и postFULL monitor4 PASS13:
 41054775252/41054884183/41054981020/41058284730. Cron enabled, actual schedule run
 пока НЕ наблюдался. ПОЧТУ НЕ ТРОГАТЬ и не запрашивать доступ к другой почте.
 Email delivery неподтверждена по ограничению владельца.
+Результаты опубликованы docs9b06e40 в main и rollout. После этого только
+уточняются ограничения проверки; runtime остаётся exact a35b61b/FULL62.
 
 Real web↔native25 text PASS+ciphertext audit; image rendered onMac; file97bytes
 Save exact SHA PASS; web reload/reopen preserved session/decrypted history.
@@ -47,6 +49,8 @@ CUA: только IAB. Текущие tabs6 FULL62/summary и8 monitor4, tab10 p
 Web9 закрыт после неподтверждённого capture, native25 без активного вызова.
 Осмотр Codex для поиска media permission автоматически отклонён из-за возможных
 чужих приватных чатов; не обходить это через shell/другой UI механизм.
+Scoped System Settings microphone read также недоступен: Computer Use not approved.
+Не повторять через обходы; причина media pending не установлена.
 Не использовать Thunderbird и другие почтовые приложения. Нет subagents.
 Python session26277 завершён PASS;4 VM OFF/retained, физических ADB устройств0.
 

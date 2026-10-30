@@ -116,3 +116,12 @@ SUCCESS13s, healthy13 checks. Обновлённый web восстановил 
 audit нового post-release сообщения: PASS,10 encrypted events/2 senders,
 контрольного plaintext в server event content нет. Обе temporary Matrix sessions
 отозваны; существующие account credentials/keys не экспортировались.
+
+Ограничение среды: scoped попытка открыть System Settings для чтения microphone
+permissions также недоступна (Computer Use not approved). Поэтому нельзя
+определить capture permissions этим инструментом; не обходить через shell
+или чужие окна. Это не доказательство причины медиасбоя. Почта исключена.
+После публикации docs9b06e40 actual scheduled run по-прежнему не наблюдается;
+workflow enabled и manual13 checks после FULL62 подтверждены. Не выдавать
+успешный dispatch за проверку cron. Следующий шаг по UA-80 — дождаться
+события schedule в GitHub и проверить его healthy, не выключая production.
