@@ -853,6 +853,16 @@ Matrix/control, процессы core/своих edges, trusted SNI TLS web/TURN
 к профилям, environment, базе или контейнерным логам. Actual Linux negative report на entry B PASS (нет приложений/сети,
 нет side effects); healthy-service report ещё не проверен; WSS/TURN media/decrypt и внешний alert явно не проверены этим отчётом.
 
+30.10 actual A+edge-a: healthy node report8 checks и внешний GitHub runner13
+checks PASS. Внешний monitor опубликован в main/a35b61b, workflow enabled;
+normal/test/normal приняты по журналу23. Тестовая ошибка идёт только после
+успешных реальных проверок, VoiceChat не останавливается. Email delivery
+исключена владельцем из проверки. Полный checkbox внешнего канала не означает
+подтверждённое получение письма. Нагрузка/relay traffic и физический WSS/media
+не доказаны этими probes; не закрывать весь V3-23 по одному healthy отчёту.
+Runbooks: infra/ENTRIES.md, infra/THREE_VPS.md и infra/MONITORING.md; перенос A
+остаётся V3-22. Подробности текущих ограничений только в общем реестре.
+
 ### V3-24 — Выполнить полную автоматическую отказную и security матрицу
 
 Зависимости: V3-14, V3-15, V3-16, V3-17, V3-18, V3-20, V3-21, V3-23. V3-22 отложен отдельно.

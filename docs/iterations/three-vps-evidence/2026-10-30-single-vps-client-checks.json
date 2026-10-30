@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "date": "2026-10-30",
+  "production_baseline": "FULL61",
+  "macos": "1.13.0(25)",
+  "real_native_mac": true,
+  "web_internal_browser": true,
+  "new_test_conversation": true,
+  "bidirectional_plaintext_received": true,
+  "server_ciphertext_audit": {
+    "schema": 1,
+    "room_encryption_is_megolm": true,
+    "encrypted_timeline_events": 3,
+    "plain_test_messages_absent_from_server_event_content": true,
+    "distinct_encrypted_senders": 2,
+    "existing_account_credentials_or_keys_exported": false,
+    "temporary_audit_session_revoked": true
+  },
+  "image_opened_on_mac": true,
+  "file_downloaded_on_mac_exact_sha256": "ce70679b1480f912bf4ca49deb98921d680a2d04ee68ce3e8c48e8eec1d23f11",
+  "web_reload_preserved_decrypted_history": true,
+  "turn_allocation": {
+    "schema": 1,
+    "trusted_public_turn_tls": true,
+    "fresh_authenticated_client_credentials": true,
+    "authenticated_udp_relay_allocation": true,
+    "allocation_released": true,
+    "temporary_matrix_session_revoked": true,
+    "real_audio_or_video_verified": false
+  },
+  "real_media_verified": false,
+  "phones_verified": false,
+  "email_access_excluded_by_owner": true
+}

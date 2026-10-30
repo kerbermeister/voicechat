@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "checked_at": "2026-10-30T12:49:34.761405+00:00",
+  "github_run": "https://github.com/kerbermeister/voicechat/actions/runs/41056084087",
+  "duration_seconds": 987,
+  "commit": "a35b61b5762ff2cdad91fb25ad5ab56bd30fe6d7",
+  "edge_commit": "a35b61b5762ff2cdad91fb25ad5ab56bd30fe6d7",
+  "source_bundle": "57e5b9e7a09d98f74ea59699cd5b78f0530a5e9877cfb4536f24338a069746aa",
+  "backend": "f4c3163b0152555f9a5127eea510831b7a515d34327fcca8a6e54b8072b5757f",
+  "core_guard": "4f39a902cd6f90c045db21752ec13c04c820a311401369a41b0d6bfde3fd9022",
+  "scope": "full",
+  "role_images_match_immutable_manifests": true,
+  "data_identity_preserved": true,
+  "previous_pointer_verified": true,
+  "network_intent_unchanged": true,
+  "six_neighbor_processes_id_started_restart_unchanged": true,
+  "all_previous_non_voicechat_container_ids_still_running": true,
+  "maintenance_timers_active_enabled": true,
+  "https": {
+    "univc.duckdns.org/": 200,
+    "univc.duckdns.org/health/route": 200,
+    "univc.duckdns.org/updates/macos/appcast.xml": 200,
+    "listing-helper.flashhub.net/": 200
+  },
+  "web_cache_control": "no-cache",
+  "macos25_feed_unchanged": true,
+  "new_web_message_decrypted_on_installed_mac25": true,
+  "post_release_external_monitor": {
+    "run": "https://github.com/kerbermeister/voicechat/actions/runs/41058284730",
+    "status": "healthy",
+    "checks": 13
+  },
+  "media_verified": false,
+  "email_access_excluded_by_owner": true,
+  "post_release_turn_allocation": {
+    "schema": 1,
+    "trusted_public_turn_tls": true,
+    "fresh_authenticated_client_credentials": true,
+    "authenticated_udp_relay_allocation": true,
+    "allocation_released": true,
+    "temporary_matrix_session_revoked": true,
+    "real_audio_or_video_verified": false
+  },
+  "post_release_ciphertext_audit": {
+    "schema": 1,
+    "room_encryption_is_megolm": true,
+    "encrypted_timeline_events": 10,
+    "plain_test_messages_absent_from_server_event_content": true,
+    "distinct_encrypted_senders": 2,
+    "existing_account_credentials_or_keys_exported": false,
+    "temporary_audit_session_revoked": true
+  }
+}

@@ -1,62 +1,54 @@
 # Точка продолжения: три и более VPS
 
-## Актуальное поручение: entry lifecycle и один общий выпуск с доработками чата
+## Актуальное поручение: односерверная приёмка, диагностика и мониторинг
 
 ### Последнее состояние текущего запуска
 
-**LIVE UPDATE:** Python752 tests PASS/3 skipped89.515s. Monitor code готов к
-публикации, live13 checks healthy; workflow normal/test/normal/email и следующий
-FULL ещё нужны. Технический журнал docs/iterations/23-single-vps-readiness.md.
-Owner подтвердил, что работал в VoiceChat («привет»), затем явно освободил приложение:
-можно продолжать native UI; key/profile/старую историю не трогать. Actual web→Mac
-получил nonce1793361729175; actual native ASCII nonce1793361802370 появился наweb.
-Не путать AX ghost draft с фактическим вводом: сверять canvas/counter и2й клиент.
-TextEdit создан НОВЫЙ временный untitled fixture doc, существующие файлы не открыты;
-использован только testtext clipboard. Не публиковать native screenshot с чужими
-контактами. Temporary audit50050: проверить completion и ciphertext-proof.json;
-новая ограниченная test session отзывается finally, существующие owner creds не экспортируются.
+**LIVE30.10 завершён server block:** main/source a35b61b; FULL62 SUCCESS16m27s:
+https://github.com/kerbermeister/voicechat/actions/runs/41056084087
+Независимый after `.prototype/single-vps/post-full62-proof.json` PASS: exact source
+57e5b9e7a09d98f74ea59699cd5b78f0530a5e9877cfb4536f24338a069746aa,
+role images/backend/core guard/data identity/previous pointer/network/timers/HTTPS,
+6 соседних процессов неизменны, все прежние non-VoiceChat IDs running, feed25/no-cache.
+Monitor normal1→labelled test2→normal3 и postFULL monitor4 PASS13:
+41054775252/41054884183/41054981020/41058284730. Cron enabled, actual schedule run
+пока НЕ наблюдался. ПОЧТУ НЕ ТРОГАТЬ и не запрашивать доступ к другой почте.
+Email delivery неподтверждена по ограничению владельца.
 
+Real web↔native25 text PASS+ciphertext audit; image rendered onMac; file97bytes
+Save exact SHA PASS; web reload/reopen preserved session/decrypted history.
+PostFULL новое test message decrypted на native25, read receipt вweb; повторные
+TURN allocation/release и ciphertext audit10 events/2 senders PASS, temp sessions revoked.
+Public proofs и журнал23 обновлены; UA-04/UA-80 содержат точный остаток.
+Media НЕ PASS: native invite reached web but accept0:00 pending; reverse web stuck
+calling, включая видимый IAB. Root cause IAB/client undetermined; native ended,
+test browser capture tabs закрыты, current post-release tab10 без capture.
+No phone/extraVPS/relocation checks. Python752 PASS/3skip; client source unchanged.
+No agents; automation PAUSED; preserve profiles/keys/VM disks/original network.
 
 **ACTIVE NEW SCOPE30.10:** владелец поручил закрыть всё доступное на одном VPS:
 реальные web/macOS checks, healthy diagnostics и external notifications.
-Перенос A/новые VPS не трогать. Работа продолжается, старый entry/release block
-ниже завершён, но эта клиентская/monitor итерация ещё НЕ завершена.
+Перенос A/новые VPS не трогать. Entry/release block
+ниже завершён. Доступные server/text/file проверки закрыты; media и actual cron
+ограничения зафиксированы выше, их нельзя считать пройденными.
 
-Рабочие новые файлы (пока не опубликованы): infra/service_monitor.py,
-infra/MONITORING.md, .github/workflows/monitor.yml, prototype/test_service_monitor.py.
-3 содержательных tests PASS; live `.prototype/single-vps/monitor-first-run.json`
-healthy: actual DNS/HTTPS/TLS + pinned readonly core diagnostics. Исходный
-node_diagnostics на здоровом production тоже PASS8 checks; TLS83/88days,32.8GB free.
-Monitor GitHub schedule07/22/37/52UTC, production environment deployment:false,
-существующий SSH key/host pin; email failed-workflow notifications уже включены
-у владельца (проверено в UI, адрес НЕ писать в docs). Test notification только
-manual dispatch true AFTER healthy real checks. Ещё нужны публикация workflow,
-реальные normal/test/normal runs и проверка письма. Из-за новых protected infra/
-workflow files потребуется один FULL после финальных правок; Mac25 не пересобирать
-без изменений client/vendor/crypto. Новый monitoring ещё НЕ в main/VPS release.
+Monitor code опубликован a35b61b; deployment:false не создаёт фиктивных
+production deployment records. Schedule best effort07/22/37/52UTC, workflow enabled.
+Приёмка normal/test/normal — журнал23; ПОЧТУ НЕ ОТКРЫВАТЬ.
 
-Единственный текущий full Python test process session26277, log
-`.prototype/single-vps/python-tests.log`. Не запускать competing fixture/VM;
-все4 старые VM OFF/retained. Физических ADB devices/emulators0.
+Fixtures `.prototype/single-vps`: действующий nonadmin account
+web-account-no-initial-device.json; recovery key только локально0600. Первый
+web-account.json создал ненужный initial device — НЕ использовать его. Owner
+Keychain/profile/старую историю не очищать. CUA AX value иногда ghost: проверять
+canvas/counter и получение вторым клиентом. Реальный file Save exact SHA PASS.
+TURN TLS/authenticated UDP allocation/release PASS с Mac; это НЕ аудиодоказательство.
 
-CUA: IAB tab4 `acceptanceWeb` https://univc.duckdns.org, новый disposable nonadmin
-account из `.prototype/single-vps/web-account-no-initial-device.json` (0600),
-штатный first login/recovery создан UI. Новый test key сохранён ТОЛЬКО локально
-`.prototype/single-vps/test-recovery-key.txt`0600, clipboard очищен. НЕ выводить
-credentials/key; реальные owner keys не трогать. Первый fixture admin-register
-создал ghost initial device; account web-account.json НЕ использовать для новых
-прогонов. Новый создан inhibit_login=true с проверкой отсутствия token/device.
-Никакие device guards не обходились. Сейчас web Find person ищет exact owner
-mac25BeforeUser, результат loading; создавать только отдельный test conversation,
-не использовать реальные старые сообщения как fixtures. Native installed25,
-active call отсутствует. CUA private baseline mac25BeforeUser/Device сохраняется.
-
-Old CUA browser handle github STALE: browser.user unavailable. Не reset kernel.
-Свежий `monitorGithub` tab5 работает, сейчас repo home; подтверждено Public и
-existing Actions Email/Failed only. Не использовать Chrome или иные браузеры.
-Новые tab handles создавать на том же IAB, не переключать browser provider.
-Automation остаётся PAUSED, новые агенты/чаты не создавать.
-
+CUA: только IAB. Текущие tabs6 FULL62/summary и8 monitor4, tab10 post-release test client.
+Web9 закрыт после неподтверждённого capture, native25 без активного вызова.
+Осмотр Codex для поиска media permission автоматически отклонён из-за возможных
+чужих приватных чатов; не обходить это через shell/другой UI механизм.
+Не использовать Thunderbird и другие почтовые приложения. Нет subagents.
+Python session26277 завершён PASS;4 VM OFF/retained, физических ADB устройств0.
 
 **Последнее уточнение владельца30.10:** перенос A отложен и вынесен в
 `docs/tasks/22-core-relocation.md` (прежний ID V3-22/HA-19). Не выполнять его
