@@ -174,6 +174,20 @@ bundle на destination передать по stdin JSON с `schema=1`, `invento
 apply/repeat без рестарта Docker, точные boot files, peerless WG identity; после
 reboot сеть готова до Docker, ключ/receipt сохранены. Это не проверка внешних peers.
 
+После получения публичного ключа нового узла и подготовки полного registry можно
+выполнить единый SSH bootstrap (зависимости → прежний node-local key → initial network):
+
+```sh
+python3 -B infra/host_prepare.py --inventory inventory.next.json --node edge-d \
+  --identity "$SSH_IDENTITY" --commit "$SOURCE_COMMIT" --archive release.tar.gz \
+  --execute --public-keys tunnel-public-keys.next.json
+```
+
+`--public-keys` подразумевает проверку/инициализацию ключа; его фактический public
+key должен уже совпадать с registry. При несовпадении сетевых команд не будет.
+Для нестандартного bridge subnet передать существующий `--edge-subnet`.
+Этот объединённый путь прошёл unit checks; VM wiring check ещё выполняется.
+
 Первый вызов печатает профиль без изменений; второй требует root и сверяет
 фактический SSH host key с inventory. Конкретный physical node `edge-d` должен
 существовать в inventory; cohost использует `core`. Зависимости закреплены в коде:

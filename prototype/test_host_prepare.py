@@ -102,6 +102,52 @@ class HostPrepareTests(unittest.TestCase):
                 host_prepare.prepare(self.inventory, self.node, Path('/fixture/identity'),
                     'a' * 40, Path('/fixture/archive'), initialize_key=True)
 
+    def test_network_bootstrap_reuses_same_verified_source_and_pinned_connection(self):
+        from test_host_registration import public
+        keys = {'schema': 1, 'service_id': self.inventory['service_id'], 'nodes': {
+            'core': {'generation': 1, 'public_key': public(1)},
+            'edge-b': {'generation': 1, 'public_key': public(2)},
+            'edge-c': {'generation': 1, 'public_key': public(3)}}}
+        identity = {'schema': 1, 'service_id': self.inventory['service_id'], 'node': self.node,
+                    'generation': 1, 'public_key': public(2)}
+        request = {'schema': 1, 'inventory': self.inventory, 'public_keys': keys,
+                   'node': self.node, 'edge_subnet': '10.241.0.0/28'}
+        boot, _, _ = host_prepare.network_bootstrap.source_plan(request)
+        receipt = {'schema': 1, 'node': self.node, 'generation': 1,
+                   'network_sha256': 'e' * 64, 'boot_source_sha256': boot['source_sha256']}
+        self.run.side_effect = [SimpleNamespace(stdout=json.dumps(item).encode())
+                                for item in (self.receipt, identity, receipt)]
+        result = host_prepare.prepare(self.inventory, self.node, Path('/fixture/identity'),
+            'a' * 40, Path('/fixture/archive'), public_keys=keys)
+        self.assertEqual(result['network'], receipt)
+        self.assertEqual(len(self.connected), 1)
+        self.assertEqual(json.loads(self.run.call_args.kwargs['input']), request)
+        self.assertIn('/infra/host_network.py', self.run.call_args.args[0][-1])
+        # A stale registry must not cause a key rotation or a network write.
+        self.run.reset_mock()
+        identity['public_key'] = public(4)
+        self.run.side_effect = [SimpleNamespace(stdout=json.dumps(item).encode())
+                                for item in (self.receipt, identity)]
+        with self.assertRaisesRegex(ValueError, 'actual prepared'):
+            host_prepare.prepare(self.inventory, self.node, Path('/fixture/identity'),
+                'a' * 40, Path('/fixture/archive'), public_keys=keys)
+        self.assertEqual(self.run.call_count, 2)
+        identity['public_key'] = public(2)
+        for change in ({'generation': True}, {'network_sha256': 'invalid'},
+                       {'boot_source_sha256': 'f' * 64}):
+            self.run.side_effect = [SimpleNamespace(stdout=json.dumps(item).encode())
+                                    for item in (self.receipt, identity, {**receipt, **change})]
+            with self.subTest(change=change), self.assertRaisesRegex(ValueError, 'network bootstrap receipt'):
+                host_prepare.prepare(self.inventory, self.node, Path('/fixture/identity'),
+                    'a' * 40, Path('/fixture/archive'), public_keys=keys)
+
+    def test_invalid_network_request_fails_before_ssh_or_package_install(self):
+        with self.assertRaises(ValueError):
+            host_prepare.prepare(self.inventory, self.node, Path('/fixture/identity'),
+                'a' * 40, Path('/fixture/archive'), public_keys={})
+        self.assertFalse(self.connected)
+        self.run.assert_not_called()
+
     def test_plan_does_not_connect_or_require_delivery_credentials(self):
         with patch.object(host_prepare.node_inventory, 'load', return_value=self.inventory), \
              patch.object(sys, 'argv', ['host_prepare.py', '--inventory', 'fixture.json', '--node', self.node]), \

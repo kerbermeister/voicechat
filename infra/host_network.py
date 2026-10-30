@@ -10,6 +10,7 @@ from pathlib import Path
 import sys
 
 import host_packages
+import firewall_runtime
 import managed_state
 import network_bootstrap
 import network_runtime
@@ -28,6 +29,8 @@ def request(raw):
         raise ValueError('Known host network request required')
     host_packages.binding(value['inventory'], value['node'])
     tunnel_config.validate_keys(value['public_keys'], value['inventory'])
+    firewall_runtime.validate({name: value[name] for name in
+                              ('schema', 'inventory', 'node', 'edge_subnet')})
     return value
 
 

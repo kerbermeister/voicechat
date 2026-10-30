@@ -2,6 +2,26 @@
 
 ## Актуальная сводка: production core/edge включены
 
+**LOCAL NEXT: объединён host_prepare --public-keys network bootstrap.**
+43 host tests PASS; новый wrapper валидирует public request до SSH, сверяет
+фактический public key с registry, вызывает host_network из того же проверенного
+bundle/соединения и проверяет node/generation/boot source/network receipt.
+Нужен один real VM repeat на prepareVM (у неё уже peerless network a806),
+новой установки apt/нового reboot не требуется. Source runtime9 не менялся.
+
+**ACTIVE 30.10 03:19local: web build-only55, без деплоя.**
+https://github.com/kerbermeister/voicechat/actions/runs/40990964885,
+job123853000739. Отдельная ветка `codex/three-vps-web-build-check`,
+source463eed4d9aff74d313880305cdbeea59ec8fcdbb (ровно docs-only commit поверхproduction2dae).
+Protected fingerprint7f5751… равенproduction; control должен reuseee3d5d… .
+Inputs managed/web/deploy=false, retryfalse, edgesempty — провереныUIдоRun.
+Не запускать deploy на этой проверочной ветке. Получить SUCCESS, скачатьсвойartifact
+черезUIи сверить ZIP SHA, source receipt с clean Git, reusedcontrol. Потом один
+read-only production postcheck (как54), без повторного запуска сервисов.
+Local checkout/metadata `.prototype/web-producer-check.json` (tmpvoicechat-web-producer-a4sas727).
+Основная ветка локально c532074 (docs/proofs), origin a8060f4; ничего не терять/reset.
+Реальныеhostnetwork20841 иreboot49274 exit0; всеjobsVMзавершены, prepareVMвключена.
+
 **LATEST 30.10 03:14local: core build-only54 и new-host network component PASS.**
 HEAD/origin a8060f416177732387f5df1d1a0dbc4a1530005a; production всё ещё2dae758.
 [CI54](three-vps-evidence/2026-10-30-ci-managed-core-build-only.json) SUCCESS7m32,
