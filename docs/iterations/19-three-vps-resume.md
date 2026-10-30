@@ -1,6 +1,76 @@
 # Точка продолжения: три и более VPS
 
-## Новый активный scope: полный SSH onboarding/replacement входа
+## Актуальное поручение: entry lifecycle и один общий выпуск с доработками чата
+
+30.10.2026 владелец явно поручил самому объединить chat-user-features и выложить
+ОДНИМ согласованным scope. Выполнен merge373ae2fbb019306bec422b82a8efeeb6083e8a0d
+в codex/three-vps-rollout: **2af8aad0b32830d015770e949f51d72e6fa2a5d3**, без
+конфликтов, единый user-acceptance сохранён. Другая branch/worktree не изменялась.
+Infra/ от merge не изменился; добавлены Flutter/vendor Matrix и Synapse policy.
+main ещё НЕ менялся. До готовности не сливать/не выпускать старый4b отдельно.
+
+Общий кандидат поднят до **1.13.0+25** (pubspec, app_version.dart, changelog), пока
+не собран/не подписан/не опубликован. Version/changelog будут committed до packaging. Analyzer merged version PASS12.4s,
+pub get --enforce-lockfile PASS. Полный Flutter test session64974 завершён:415 PASS/4 skip,3m43s,
+log `.prototype/integrated-client-tests.log`; pinned Flutter3.47.7 и Rust1.99.1.
+Merged Python session62482 завершён:745 PASS/3 skip,88.778s, `.prototype/integrated-python-tests.log`.
+Настоящий pinned Synapse isolated/network-none read-after session64254 PASS, opaque
+ciphertext, не клиентская E2EE расшифровка. Log integrated-read-after-synapse.log.
+Нужен один финальный FULL server/web revision, затем personal/Sparkle macOS25
+по infra/MACOS.md, exact ZIP/подписи/HTTPS/feed/штатный24→25 и account/device/history.
+Не оставлять клиент только локальной сборкой. Private signing key только на Mac.
+
+Текущий инфраструктурный VM прогон НЕ прерван: он из frozen4b worktree, который
+после merge не редактировался. Full source-v3 SHA721a50d4a769e5b00fac9e8034c57672cfa209e25bf97413187d9d8ead088673.
+Первый full4b session3608 отказал ДО begin из-за __pycache__, созданного моей
+диагностикой без -B в historical694f source. По исходному Git-bound архиву verified
+ВСЕ source bytes + каждый CPython header/code object; ТОЛЬКО12 pyc перенесены в
+`/srv/voicechat-entry-managed/fixture-forensics/reader-bytecode-31e`, guard PASS.
+Evidence `.prototype/entry-lifecycle/reader-cache-quarantine.log`. Не отключать
+source guard, не удалять cache/unknown files слепо. Все дальнейшие bundle imports -B.
+Тот же full4b повторно запущен **session47229**, завершён COMPLETE с maintenance_ready=true,
+attempt e88fb33ccaf8e3ab9c3cdec492fc15123a1980ce31f82b35e590632494a56b02.
+Apply/verify/release core/A/B PASS, current commit4b5516a, данные прежние. Log `full-upgrade-v3.log`, root/данные прежние.
+Прежде следующего шага опросить его; не запускать competing fixture.
+
+СЕЙЧАС АКТИВЕН `.prototype/entry-run-add-proof.py`, **session42684**,
+после COMPLETE full4b. Before-add GET marker/account/device/identity через A/B PASS;
+последний шаг actual CLI prepare edge-c (dependency installation на clean C).
+Не запускать второй driver. Он последовательно read-only account check → real CLI add clean C →
+exit79 после реального core configure/observe ДО ACK → stock exact-source resume →
+проверка configure ID/StartedAt/FinishedAt и PG/Synapse/control procs → GET marker
+через3 HTTPS origins → actual C services/volumes/no GHCR auth + real Engine pull
+against synthetic registry. Ни один readiness proof не подменяется.
+Затем `.prototype/entry-run-replace-proof.py` (готов/compile, НЕ запускался):
+controlled old C poweroff с receipt → fresh D VM55202 → CLI replace C gen2 → GET
+marker → вернуть старый C → trusted public underlay жив, private API denied,
+actual kernel old WG key absent, свежие old TURN creds rejected на A/B/D.
+Сохранять старые диски/ключи/архив сети; никаких real media/device claims.
+
+Build-only GitHub59 **SUCCESS**: https://github.com/kerbermeister/voicechat/actions/runs/41020458221,
+source4b5516a, modefull/managed, deploy=false подтверждён в IAB форме.
+Artifact12961807653 SHA075c7b4d9e6e811d6ab04672b0aa26c96ff682736a7c30a35064c3bda688cadb.
+Это НЕ финальный общий кандидат после merge; НЕ DEPLOY его. Source download через
+IAB downloadMedia timed out/reset CUA; скачанный artifact не объявлять проверенным.
+CI warning — существующие pinned docker/setup-* Node20 forced24, job SUCCESS.
+Production кроме READ-ONLY проверки quoted epoch не менялся; никаких DNS write.
+
+Только внутренний браузер — явное пожелание владельца. IAB tab2 на GitHub59,
+после downloadMedia timeout JS binding сброшен; при следующем UI получить актуальный
+tab/doc, не использовать Chrome и не извлекать cookies/tokens. Source CI job/upload
+артефакт видны через авторизованный IAB; prod workflow ещё не запускать до VM proofs.
+
+Пути инструментов: pinned Flutter `/Users/anton/IdeaProjects/VoiceChat/.prototype/tools/flutter/bin/flutter`,
+CARGO_HOME/RUSTUP_HOME в том же original root .prototype, RUSTUP_TOOLCHAIN=stable
+(фактически1.99.1). Sparkle SDK bin из Xcode DerivedData указан ниже в истории;
+существующий key `~/Library/Application Support/VoiceChatRelease/sparkle-private.key`,
+public-only `personal.xcconfig` рядом. Ничего из private keys не вывозить VPS.
+Automation voicechat-core-edge PAUSED, новых агентов/чатов/automations не создавалось.
+Единственный user acceptance docs/user-acceptance.md, реальные телефоны/E2EE/media
+условны, не закрывать их по synthetic VM или чужой локальной сборке.
+
+
+## Исходный scope до согласованного объединения (история)
 
 После закрытия split deploy пользователь разрешил довести ТОЛЬКО автоматическое
 подключение/замену входного VPS до конца. Не выполнять перенос A, клиентские/media
