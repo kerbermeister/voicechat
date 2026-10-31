@@ -1,0 +1,14 @@
+{
+  "build": 34,
+  "version": "1.15.2",
+  "commit": "231438896da12bd19c85c9e1eac95c1d3cd917dd",
+  "entries_checked": 285,
+  "exact_zip_matches_release_app": true,
+  "codesign_verified": true,
+  "files": {
+    "VoiceChat.dmg": "8a1fd59058901b00c8fbcc846a33c3bfbd59788f720c75368f113e3985273049",
+    "VoiceChat.zip": "844c0d82f9a7d8cc925442b2130b21944ef82ace0274baff285b9ee9a983a5ed",
+    "appcast.xml": "eadc256daa3c0cca8b3af8956d3e996685b43cd7bffb202b64b870292311e3a9"
+  },
+  "published": false
+}

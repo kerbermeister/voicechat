@@ -1,0 +1,36 @@
+{
+  "build": 34,
+  "source": "2314388",
+  "flutter_tests": {
+    "passed": 450,
+    "platform_skips": 4
+  },
+  "analyze": "PASS",
+  "native_ringback": {
+    "passed": true,
+    "repeated_cancel_cycles": 3,
+    "backend": "macOS audioplayers",
+    "state_after_each_cancel": "stopped",
+    "end_to_end_phone_call": false
+  },
+  "native_screen": {
+    "capture_success": false,
+    "preflight_returned_true": true,
+    "failure": "screenNoFrames",
+    "failed_before_publication": true,
+    "timeout_seconds": 8
+  },
+  "installed33_diagnosis": {
+    "screen_capture_kit_error": -3801,
+    "permission_toggle_visible_on": true,
+    "ad_hoc_cdhash_requirement": true
+  },
+  "github_actions_browser_access": "denied",
+  "published": false,
+  "screen_permission_repair": "requires owner Touch ID/password; pending dialog cancelled without changing toggle",
+  "macos_release_build": "PASS",
+  "macos_signed_package": "PASS",
+  "candidate_startup": "blocked waiting for SecItemCopyMatching; owner Keychain confirmation required",
+  "installed_version": 33,
+  "public_channels_version": 33
+}
