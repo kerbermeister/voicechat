@@ -60,6 +60,7 @@ class CallController extends ChangeNotifier
   Room? dialingRoom;
   String? dialError;
   bool starting = false;
+  bool _dialPending = false;
   int _dialGeneration = 0;
   final _recordedEnds = <String>{};
   late final VoIP voip;
@@ -157,7 +158,7 @@ class CallController extends ChangeNotifier
       (id, invitation) => devices.answered(invitation.room.id, id),
     );
     directInvitations.removeWhere(
-      (call) => devices.answered(call.chat.id, call.session),
+      (call) => call.isClosed || devices.answered(call.chat.id, call.session),
     );
     final pending =
         starting ||
@@ -426,10 +427,15 @@ class CallController extends ChangeNotifier
       throw UserActionError('В личной комнате звонки недоступны.');
     }
     video = invitation?.video ?? video;
-    if (starting) throw UserActionError('Вызов уже запускается.');
+    if (_dialPending || starting) {
+      throw UserActionError(
+        'Предыдущий запуск звонка ещё завершается. Повторите через несколько секунд.',
+      );
+    }
     if (active != null && !active!.isClosed) {
       throw UserActionError('Сначала завершите текущий звонок.');
     }
+    _dialPending = true;
     starting = true;
     dialingRoom = room;
     dialError = null;
@@ -453,16 +459,21 @@ class CallController extends ChangeNotifier
           video ? CallType.kVideo : CallType.kVoice,
           userId: users.single,
         );
-        active = _directCalls[session.callId]!;
+        final call = _directCalls[session.callId]!;
         if (generation != _dialGeneration || _closed) {
-          await active!.close();
+          await call.close();
           return;
         }
-        await (active! as DirectCall).authorize();
-        (active! as DirectCall).monitor();
-        if (video) await active!.setVideoQuality(active!.videoQuality);
+        active = call;
+        await call.authorize();
+        if (generation != _dialGeneration || _closed || call.isClosed) {
+          await call.close();
+          return;
+        }
+        call.monitor();
+        if (video) await call.setVideoQuality(call.videoQuality);
+        if (generation != _dialGeneration || _closed || call.isClosed) return;
         _ringTimeout?.cancel();
-        final call = active!;
         _ringTimeout = Timer(const Duration(seconds: 45), () {
           if (active == call &&
               !call.isClosed &&
@@ -500,6 +511,7 @@ class CallController extends ChangeNotifier
         }
         if (invitation == null) {
           await _signal(room, id, 'invite', video: video);
+          if (generation != _dialGeneration || _closed || call.isClosed) return;
           _ringTimeout?.cancel();
           _ringTimeout = Timer(const Duration(seconds: 45), () {
             if (active == call &&
@@ -520,12 +532,14 @@ class CallController extends ChangeNotifier
         _refresh();
       }
     } catch (error) {
-      if (generation == _dialGeneration) await active?.close();
+      if (generation != _dialGeneration || _closed) return;
+      await active?.close();
       dialError = error is UserActionError
           ? error.message
           : 'Не удалось начать звонок. Проверьте сеть, микрофон и проверку устройств.';
       rethrow;
     } finally {
+      _dialPending = false;
       starting = false;
       _refresh();
     }
@@ -551,18 +565,24 @@ class CallController extends ChangeNotifier
 
   Future<void> end() async {
     _dialGeneration++;
+    starting = false;
+    _ringTimeout?.cancel();
     dialingRoom = null;
     dialError = null;
     final call = active;
+    final initiator = _activeInitiator;
     if (call == null) {
       _refresh();
       return;
     }
-    _ringTimeout?.cancel();
     final screenClose = screen?.close();
-    await call.close(); // Release microphone even if signalling is offline.
-    await screenClose;
-    _refresh();
+    final callClose = call.close(); // Marks closed before asynchronous cleanup.
+    _refresh(); // Stop ringback without waiting for network or media disposal.
+    try {
+      await Future.wait([callClose, if (screenClose != null) screenClose]);
+    } finally {
+      _refresh();
+    }
     if (call is DirectCall) {
       await _recordDirectEnd(call);
       return;
@@ -572,7 +592,7 @@ class CallController extends ChangeNotifier
         call.chat,
         call.session,
         'end',
-        initiator: _activeInitiator,
+        initiator: initiator,
         duration: call.duration,
         video: call.video,
       );
@@ -636,6 +656,8 @@ class CallController extends ChangeNotifier
       throw UserActionError('Сначала завершите текущий звонок.');
     }
     active = call;
+    directInvitations.remove(call);
+    _refresh();
     try {
       await call.answer();
       devices.accept(call);
@@ -700,6 +722,7 @@ class CallController extends ChangeNotifier
   Future<void> handleNewCall(CallSession session) async {
     final call = _directCalls[session.callId]!;
     if (_closed ||
+        (session.direction == CallDirection.kOutgoing && !starting) ||
         (!canHandleNewCall && active != call) ||
         declined.contains((room: session.room.id, session: session.callId)) ||
         !session.room.encrypted ||
@@ -719,6 +742,7 @@ class CallController extends ChangeNotifier
   @override
   Future<void> handleCallEnded(CallSession session) async {
     directInvitations.removeWhere((c) => c.session == session.callId);
+    _refresh();
     await _directCalls[session.callId]?.close();
     final call = _directCalls[session.callId];
     if (call != null) await _recordDirectEnd(call);

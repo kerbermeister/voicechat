@@ -109,7 +109,7 @@ class VideoSession implements CallSession {
 
 class BackgroundStream implements WrappedMediaStream {
   @override
-  final stream = BackgroundMediaStream();
+  final BackgroundMediaStream stream = BackgroundMediaStream();
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -713,6 +713,8 @@ void main() {
         'ws://localhost:7880',
         (_) {},
       );
+      calls.starting =
+          true; // The SDK callback belongs to an active dial operation.
       final session = BackgroundSession(BackgroundRoom(client));
       await calls.registerListeners(session);
       await calls.handleNewCall(session);
@@ -729,6 +731,31 @@ void main() {
       expect(updates, [true, false]);
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, null);
+    },
+  );
+  test(
+    'Late outgoing SDK callback after cancel cannot restore call or microphone',
+    () async {
+      final calls = CallController(
+        client,
+        'http://localhost:8090',
+        'ws://localhost:7880',
+        (_) {},
+      );
+      calls.starting = true;
+      final session = BackgroundSession(BackgroundRoom(client))
+        ..localUserMediaStream = BackgroundStream();
+      await calls.registerListeners(session);
+      await calls.end();
+      await calls.handleNewCall(session);
+      expect(calls.starting, false);
+      expect(calls.active, isNull);
+      expect(session.rejected, true);
+      expect(
+        (session.localUserMediaStream as BackgroundStream).stream.track.stopped,
+        true,
+      );
+      await calls.close();
     },
   );
   test(

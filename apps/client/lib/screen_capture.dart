@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'screen_capture_support.dart';
 import 'package:flutter/foundation.dart';
@@ -5,6 +6,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 
 String screenCaptureNotice(Object error) {
+  if (error is PlatformException &&
+      {'screenPermissionDenied', 'screenNoFrames'}.contains(error.code)) {
+    return error.code == 'screenPermissionDenied'
+        ? 'macOS не разрешила запись экрана этой версии VoiceChat. В «Системные настройки → Конфиденциальность и безопасность → Запись экрана» выключите и снова включите VoiceChat, затем полностью закройте и откройте приложение. После обновления старая галочка может сохраняться.'
+        : 'macOS не передала кадры экрана. Показ не начат. Проверьте разрешение на запись экрана для VoiceChat и полностью перезапустите приложение.';
+  }
   if (error is UnsupportedError) {
     return 'Эта версия браузера или ОС не поддерживает захват экрана.';
   }
@@ -44,6 +51,10 @@ class ScreenCapture {
 
   static Future<ScreenCapture> start() async {
     if (!supported) throw UnsupportedError('Screen capture unavailable');
+    final macOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+    if (macOS && !await rtc.Helper.requestCapturePermission()) {
+      throw PlatformException(code: 'screenPermissionDenied');
+    }
     if (_android) {
       // Android 14: consent → foreground service → SDK getMediaProjection.
       if (!await rtc.Helper.requestCapturePermission()) {
@@ -85,6 +96,14 @@ class ScreenCapture {
         await track.dispose();
         throw StateError('Unexpected screen audio');
       }
+      if (macOS) {
+        try {
+          await _waitForFrames(track);
+        } catch (_) {
+          await track.dispose();
+          rethrow;
+        }
+      }
       final capture = ScreenCapture(track);
       if (_android) {
         _native.setMethodCallHandler((call) async {
@@ -98,6 +117,25 @@ class ScreenCapture {
     } catch (_) {
       if (_android) await _native.invokeMethod<void>('stop');
       rethrow;
+    }
+  }
+
+  // The native SDK returns a live track even when ScreenCaptureKit fails.
+  // Do not publish or claim the screen until the capturer delivers a frame.
+  static Future<void> _waitForFrames(lk.LocalVideoTrack track) async {
+    final renderer = rtc.RTCVideoRenderer();
+    final frame = Completer<void>();
+    try {
+      await renderer.initialize();
+      renderer.onFirstFrameRendered = () {
+        if (!frame.isCompleted) frame.complete();
+      };
+      await renderer.setSrcObject(stream: track.mediaStream);
+      await frame.future.timeout(const Duration(seconds: 8));
+    } catch (_) {
+      throw PlatformException(code: 'screenNoFrames');
+    } finally {
+      await renderer.dispose();
     }
   }
 

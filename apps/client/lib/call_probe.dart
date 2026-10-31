@@ -743,6 +743,7 @@ class CallProbe implements VoiceCall {
 
   Future<void> _close() async {
     _closed = true;
+    changed?.call();
     _clock.stop();
     cameraEnabled = false;
     _resend?.cancel();

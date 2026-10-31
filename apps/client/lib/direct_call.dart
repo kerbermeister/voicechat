@@ -508,6 +508,7 @@ class DirectCall implements VoiceCall {
     _videoAtClose = video || _cameraTracks.isNotEmpty;
     _closed = true;
     _clock.stop();
+    changed(); // UI and ringback must stop before media/signalling awaits.
     // The SDK may already be ending and miss a camera attached during dialling.
     // Keep explicit ownership and release tracks even when hangup/metadata cannot run.
     final tracks = {

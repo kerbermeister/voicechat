@@ -5,6 +5,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'call_controller.dart';
+import 'direct_call.dart';
 import 'voice_call.dart';
 
 class AppSounds {
@@ -18,6 +19,7 @@ class AppSounds {
   bool blocked = false;
   bool _closed = false;
   String? _ring;
+  int _ringRevision = 0;
   VoiceCall? _observedCall;
   Future<void> _ringWrites = Future.value();
   final Future<void> Function(String room, String event)? onReceived;
@@ -95,13 +97,16 @@ class AppSounds {
     }
     if (calls.active?.isClosed == false) _observedCall = calls.active;
     final incoming =
-        calls.directInvitations.isNotEmpty || calls.invitations.isNotEmpty;
+        calls.directInvitations.any((call) => !call.isClosed) ||
+        calls.invitations.isNotEmpty;
     final active = calls.active;
     final outgoing =
         !incoming &&
-        (calls.starting ||
+        ((calls.starting && (active == null || !active.isClosed)) ||
             active != null &&
                 !active.isClosed &&
+                (active is! DirectCall ||
+                    active.call.direction == mx.CallDirection.kOutgoing) &&
                 active.duration == Duration.zero &&
                 !calls.devices.isAccepted(active));
     final next = !enabled
@@ -111,13 +116,30 @@ class AppSounds {
         : outgoing
         ? 'ringback'
         : null;
+    _setRing(next);
+  }
+
+  Future<void> _stopRing() async {
+    if (kIsWeb) stopBrowserSound('ring');
+    try {
+      await ringing.stop();
+    } catch (_) {
+      blocked = true;
+    }
+  }
+
+  void _setRing(String? next) {
     if (_ring == next) return;
     _ring = next;
+    final revision = ++_ringRevision;
+    // Cancels AudioPlayer.desiredState even while an earlier play prepares.
+    if (next == null) unawaited(_stopRing());
     _ringWrites = _ringWrites.catchError((Object _) {}).then((_) async {
-      if (_closed) return;
-      await ringing.stop();
-      if (kIsWeb) stopBrowserSound('ring');
-      if (_ring != null) await _play(ringing, _ring!);
+      if (_closed || revision != _ringRevision) return;
+      await _stopRing();
+      if (_closed || revision != _ringRevision || next == null) return;
+      await _play(ringing, next);
+      if (_closed || revision != _ringRevision) await _stopRing();
     });
   }
 
@@ -128,9 +150,9 @@ class AppSounds {
     );
     enabled = value;
     if (!value) {
-      _ring = null;
+      _setRing(null);
       await effect.stop();
-      await ringing.stop();
+      await _stopRing();
       if (kIsWeb) closeBrowserAudio();
     }
   }
@@ -138,6 +160,9 @@ class AppSounds {
   Future<void> close() async {
     if (_closed) return;
     _closed = true;
+    _ring = null;
+    _ringRevision++;
+    await _stopRing();
     if (kIsWeb) closeBrowserAudio();
     await events?.cancel();
     await _ringWrites;
