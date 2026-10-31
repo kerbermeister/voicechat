@@ -19,7 +19,16 @@
   "installed_version": 29,
   "about31_verified": true,
   "sparkle_check": "no compatible update; current public feed29",
-  "profile_opened": false,
-  "keychain_wait_confirmed_by_sample": true,
-  "signed_upgrade_verified": false
+  "profile_opened": true,
+  "keychain_wait_confirmed_by_sample": "resolved after owner confirmation",
+  "signed_upgrade_verified": false,
+  "keychain_confirmed_by_owner": true,
+  "old_decrypted_fragments_visible": 4,
+  "saved_account_matches_closed29_backup": true,
+  "device_identity_captured_for_installed_comparison": true,
+  "account_preserved_in_candidate": true,
+  "device_preserved_in_candidate": true,
+  "old_decrypted_fragments_preserved_in_candidate": 4,
+  "compared_with_installed29_ui": true,
+  "physical_acceptance_pending": false
 }

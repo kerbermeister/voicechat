@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "date": "2026-10-31",
+  "build": 31,
+  "from_build": 29,
+  "candidate_opened_from_exact_zip": true,
+  "account_preserved": true,
+  "device_preserved": true,
+  "old_decrypted_fragments_preserved": 4,
+  "about31_verified": true,
+  "sparkle_check_verified": true,
+  "profile_and_keychain_cleared": false,
+  "owner_confirmed_keychain": true,
+  "installed29_baseline_compared": true,
+  "stock_sparkle29to31_upgrade_verified": false,
+  "production_backend_full_pending": true
+}
