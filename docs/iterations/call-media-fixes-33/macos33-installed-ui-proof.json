@@ -1,0 +1,19 @@
+{
+  "build": 33,
+  "version": "1.15.1",
+  "from_build": 31,
+  "stock_sparkle_download_observed": true,
+  "installed_application_relaunched": true,
+  "manual_app_replacement": false,
+  "exact_zip_payload_matches": true,
+  "entries_checked": 285,
+  "codesign_verified": true,
+  "profile_or_keychain_cleared": false,
+  "account_preserved": true,
+  "device_preserved": true,
+  "old_decrypted_fragments_preserved": 4,
+  "about33_verified": true,
+  "closed_backup_verified": true,
+  "owner_confirmed_keychain": true,
+  "stock_sparkle31to33_upgrade_verified": true
+}

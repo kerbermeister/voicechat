@@ -1,0 +1,24 @@
+{
+  "/_matrix/client/versions": {
+    "status": 200,
+    "cache_control": "public, max-age=600, s-maxage=3600, stale-while-revalidate=600"
+  },
+  "/api/health": {
+    "status": 200,
+    "cache_control": "no-store"
+  },
+  "/version.json": {
+    "status": 200,
+    "cache_control": "no-cache",
+    "version": {
+      "app_name": "voicechat_probe",
+      "version": "1.15.1",
+      "build_number": "33",
+      "package_name": "voicechat_probe"
+    }
+  },
+  "/": {
+    "status": 200,
+    "cache_control": "no-cache"
+  }
+}

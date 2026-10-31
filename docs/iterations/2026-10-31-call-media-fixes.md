@@ -30,3 +30,37 @@ Android-канала; нужен managed/full с backup/healthcheck/rollback.
 Проверки чистого checkout: flutter analyze — без замечаний; flutter test —
 444 PASS, 4 platform-specific skip; Chrome — 2 PASS; Node mobile web — 9 PASS;
 Python token/call/screen admission — 31 PASS; git diff --check — PASS.
+
+## Выпуск и установленный Mac
+
+Исходная ревизия `5b3f08ceff117cb400e5e9cba2c8c239a689109c` перенесена
+fast-forward в main по явному разрешению владельца.
+[Build and deploy #72](https://github.com/kerbermeister/voicechat/actions/runs/41213935874)
+завершился SUCCESS: `mode=full`, `rollout=managed`, `deploy=true`.
+[Независимая проверка](call-media-fixes-33/production33-verified.json) подтвердила
+exact commit/digests, здоровые службы, нулевые restart counts, прежнюю Matrix/data
+identity и previous pointer на исходный baseline. [Публичные endpoints](call-media-fixes-33/production33-public-health.json)
+отвечают200, клиент33, HTML/version.json — no-cache.
+
+Подписанный постоянным Sparkle-ключом пакет33 опубликован штатным издателем в
+canonical edge-a канале. Полные [HTTPS hashes ZIP/DMG/feed](call-media-fixes-33/macos33-published-https-proof.json)
+проверены. После разрешения владельца приложение31 закрыто, app/профиль сохранены
+в проверенной резервной копии. Кандидат33 открыл прежний профиль после ручного
+подтверждения Keychain владельцем. Установленная31 предложила и скачала33 через
+Sparkle; затем наблюдался перезапуск установленной33 без ручной замены app.
+Все285 файлов/ссылок совпали с точным ZIP, codesign PASS, прежние account/device
+и4 старых расшифрованных фрагмента сохранены; About33 подтверждён.
+[Проверка установленного приложения](call-media-fixes-33/macos33-installed-ui-proof.json).
+Это проверка обновления и профиля; она не доказывает исправление медиапотока
+в реальном звонке с телефоном. FCM не настроен и не включён.
+
+## Android
+
+[Android release #4](https://github.com/kerbermeister/voicechat/actions/runs/41214159123)
+завершился SUCCESS. Загруженный через встроенный браузер ZIP совпал с GitHub
+digest; точный APK1.15.1(33) повторно проверен локальным apksigner/package:
+прежний сертификат, versionCode, ABIs, manifest/hash и идентичная Mac/production
+конфигурация. [Подтверждение](call-media-fixes-33/android33-verified.json).
+SHA-256 APK: `882500aa3586d4c2aaaa0ecf70447e4560b25c234cd45fafb590e1b31a967004`.
+Канал пока32; кандидат33 ожидает физической приёмки либо явного разрешения
+владельца на публичную тестовую публикацию. Acceptance build/hash не выставлялись.

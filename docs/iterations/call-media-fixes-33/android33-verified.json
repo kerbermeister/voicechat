@@ -1,0 +1,12 @@
+{
+  "commit": "5b3f08ceff117cb400e5e9cba2c8c239a689109c",
+  "build": 33,
+  "sha256": "882500aa3586d4c2aaaa0ecf70447e4560b25c234cd45fafb590e1b31a967004",
+  "certificateSha256": "37d98de9eaf7151d8df38fe326711107d4ba4ac30bb03c6870269af84ac79ce4",
+  "clean_ci_source": true,
+  "signatures_abis_manifest_config_verified": true,
+  "physical_acceptance": false,
+  "published": false,
+  "artifact_zip_sha256": "d5835e260f728f3c3f6dca313649d353b98c5298e4c874edc6a625f1e44930bb",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41214159123"
+}

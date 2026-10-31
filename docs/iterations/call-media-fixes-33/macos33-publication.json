@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "build": 33,
+  "published": true,
+  "stock_publisher_used": true,
+  "exact_candidate_zip_sha256": "c48e03cc44960bd131496ede7c44d7a7b22d59663b48c71f6239dc53f7ab7da5",
+  "production_full_run": "https://github.com/kerbermeister/voicechat/actions/runs/41213935874",
+  "accepted_on_real_mac": true,
+  "private_key_transferred": false
+}

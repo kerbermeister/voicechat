@@ -1,0 +1,65 @@
+{
+  "commit": "5b3f08ceff117cb400e5e9cba2c8c239a689109c",
+  "current_pointer": {
+    "baseline": "b306c0d91c5e6864dd4799aa7168a2326072064a0141f188490d01358b4c5cd3",
+    "kind": "managed",
+    "legacy_root": "/srv/voicechat",
+    "schema": 1,
+    "shared_root": "/var/lib/voicechat-shared-ingress"
+  },
+  "previous_pointer": {
+    "baseline": "7fd90669c30faa5084136e7a9fed1d450e2382f7a3c5e5729de9b61f10d36044",
+    "kind": "managed",
+    "legacy_root": "/srv/voicechat",
+    "schema": 1,
+    "shared_root": "/var/lib/voicechat-shared-ingress"
+  },
+  "core_commit": "5b3f08ceff117cb400e5e9cba2c8c239a689109c",
+  "edge_commits": {
+    "a": "5b3f08ceff117cb400e5e9cba2c8c239a689109c"
+  },
+  "real_metadata_identity_verified": true,
+  "private_core_health_verified": true,
+  "services": {
+    "core/postgres": {
+      "image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "core/synapse": {
+      "image": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "core/control": {
+      "image": "ghcr.io/kerbermeister/voicechat/control@sha256:8ed4f5f36c89f93349a0372aa91631f1988832363d850a080c7e244220cb420f",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "edges/a/route-health": {
+      "image": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+      "status": "running",
+      "health": null,
+      "restart_count": 0
+    },
+    "edges/a/turn": {
+      "image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+      "status": "running",
+      "health": null,
+      "restart_count": 0
+    },
+    "edges/a/web": {
+      "image": "ghcr.io/kerbermeister/voicechat/web@sha256:95ac40fd35c44b9f9a56499a502e48ba96af2c238cea8869b0426e7a93e6492b",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    }
+  },
+  "journal_phase": "complete",
+  "attempt": "4b8ceae31ab5537b0d2e429268097790e85969aba953c88d9d1eec18e0f33d8f",
+  "rollback_pointer_matches_before": true,
+  "cluster_and_matrix_identity_preserved": true
+}

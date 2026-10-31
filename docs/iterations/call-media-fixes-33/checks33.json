@@ -1,0 +1,25 @@
+{
+  "commit": "5b3f08ceff117cb400e5e9cba2c8c239a689109c",
+  "version": "1.15.1",
+  "build": 33,
+  "flutter_analyze": "PASS",
+  "flutter_tests": {
+    "passed": 444,
+    "platform_skipped": 4
+  },
+  "browser_tests": {
+    "passed": 2,
+    "capture": "stubbed browser API; no physical camera claims"
+  },
+  "node_mobile_web": {
+    "passed": 9
+  },
+  "python_token_call_screen": {
+    "passed": 31
+  },
+  "macos_build": "PASS",
+  "macos_package": "PASS",
+  "fcm": "deferred by owner",
+  "physical_phone_qa": false,
+  "macos_install": "PASS: stock Sparkle31to33, exact payload, account/device/history preserved"
+}
