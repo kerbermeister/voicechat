@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "build": 31,
+  "published_exact_candidate": true,
+  "public_https_verified": {
+    "appcast.xml": {
+      "https_status": 200,
+      "sha256": "e07ab7595418a64bbcd2ca07511f8a2c131a1a1b3b59574456673dbe247c1e96",
+      "cache_control": "no-cache"
+    },
+    "VoiceChat.zip": {
+      "https_status": 200,
+      "sha256": "9c1357ef3821a07450c8726afdaa956e93560c33bfd14c6e4184d0055a3b074f",
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    "VoiceChat.dmg": {
+      "https_status": 200,
+      "sha256": "ec6e23e600b464e52aa02e6236cf3c21accd1a48454cf96a8914647b211f8f33",
+      "cache_control": "public, max-age=31536000, immutable"
+    }
+  },
+  "private_signing_keys_never_transferred": true,
+  "archive_public_key_signature_verified": true,
+  "feed_signature_verified": true,
+  "previous_release_retained": true
+}

@@ -26,45 +26,32 @@ Worktree: `/Users/anton/.codex/worktrees/calls-release/VoiceChat`.
 Технический журнал: [chat-followups-2026-10-30](../iterations/chat-followups-2026-10-30.md).
 Пользовательские остатки — только в [едином реестре](../user-acceptance.md).
 
-## Готовность выпуска31
+## Выпуск завершён31 октября2026
 
-Все13 изменений реализованы. Это не отметка о production-публикации или о
-физической проверке iPhone. Финальная версия1.15.0(31); непубличный30 заменён; единый остаток пользовательской
-приёмки ведётся только в [реестре](../user-acceptance.md).
+Все13 изменений реализованы и интегрированы в `main`. Штатный
+[managed FULL #71](https://github.com/kerbermeister/voicechat/actions/runs/41175186114)
+обновил server/web на c33894a. Реальные immutable images и health сверены,
+PostgreSQL/Matrix identity сохранены, previous pointer соответствует baseline до
+релиза. Новая DM-pin точка требует авторизации и доступна на production.
 
-P2P: история остаётся историей текущего сеанса, как раньше; даты не восстанавливают
-закрытые передачи. Все файлы выгружаются одним ZIP без plaintext-кеша; суммарно
-до100ГБ с учётом заголовков. Текущая production-политика допускает10×5ГБ, поэтому весь допустимый набор помещается в один ZIP. Более крупный набор сохраняется по одному файлу.
-На iPhone до64МБ используется системное меню с отдельной кнопкой готовности
-(она нужна для user activation после чтения зашифрованных блоков); крупные файлы
-сохраняются прежним потоком с MIME attachment. Отмена не выдаётся за сохранение.
+macOS1.15.0(31): exact ZIP/DMG/feed подписаны постоянным ключом и опубликованы
+штатным publisher. HTTPS/cache/hash/signatures PASS. Настоящий Sparkle29→31
+завершён кнопкой;285 entries совпали с exact ZIP, codesign PASS, прежние
+account/device и4 старых расшифрованных фрагмента сохранены. About31 и повторный
+check PASS. Закрытая backup29/профиля сохранена; Keychain не очищался. Локальный
+стенд localhost7358 также обновлён до31 без замены прежних volumes.
 
-HEIC: локальный декодер Safari17+ и canvas, исходник до64МБ/64Мп; итоговый JPEG
-по-прежнему ограничен серверной политикой. Фото и геометки не отправляются
-конвертеру. Нативный HEIC на Android/macOS в эту задачу iPhone Safari не включён.
+Проверки:439 Flutter PASS/4opt-in skips, analyze без замечаний, source/release CI
+PASS. Normal web31: реальный минутный deadline→reload без автосенд→manual E2EE
+retry (ровно один encrypted event) и shared DM pin двумя участниками PASS.
 
-Релиз требует штатного managed FULL, поскольку меняется модуль Synapse.
-На30.10 доступ по SSH есть, но GitHub workflow dispatch пока ждёт авторизованную
-сессию: доступный Safari вышел из GitHub, CLI credential отсутствует, доступ
-инструмента к Chrome не разрешён. Не заменять это ручным production compose.
+P2P: история передач текущего сеанса, даты начала/окончания, save-one/save-all ZIP64
+до100ГБ. Весь production-набор10×5ГБ помещается. iPhone до64МБ — отдельная кнопка
+готовности для native share; крупнее — streaming attachment. HEIC/Safari17+:
+локальное преобразование source64МБ/64Мп в допустимый JPEG; фото конвертеру не
+отправляется. Native Safari desktop picker→HEIC/48MP→encrypted album→viewer
+и65МиБ download без preview проверены.
 
-31.10: все сценарии доставки и shared DM pin прошли через normal web30 и
-настоящий локальный Synapse; полные доказательства в техническом журнале.
-Safari desktop подтвердил реальный picker HEIC/48MP→encrypted album→viewer
-и65МиБ download без preview. В31 исправлен перехват отказа ручного retry в
-меню очереди. Production и штатная установка клиента пока не объявлены готовыми:
-GitHub требует входа владельца, macOS — подтверждения системного Keychain.
-
-Финальный31:439PASS/4opt-in skips, analyze без замечаний; normal web31 локального
-стенда прошёл полный minute/reload/manual E2EE retry и shared pin. ZIP/DMG31
-подписаны прежним ключом, payload285 entries совпал; About31 и Sparkle check PASS.
-Точный публичный пакет31 размещён только в staging VPS. Production feed29 и
-установленная29 не менялись. Восстановление профиля ждёт системного Keychain;
-workflow FULL — входа в GitHub. Эти ограничения не означают готовый выпуск.
-
-31.10, после ответа владельца: Keychain подтверждён, прежний профиль31 открыт;
-account/device и4 расшифрованных контрольных фрагмента совпали с установленной29.
-CI780ae8f завершился success. Остаётся только вход в доступном Safari: после
-перезагрузки workflow по-прежнему Sign in, затем открыта точная форма входа.
-Уточняющий запрос владельцу отправлен; production FULL не запущен и канал31
-не опубликован до серверной интеграции. Mac29 оставлен на штатной кнопке updater.
+Физические iPhone/Android и межустройственные звонки не подменяются desktop/
+mock-проверками. Актуальный остаток — только в [едином реестре](../user-acceptance.md);
+[подробные свидетельства](../iterations/chat-followups-2026-10-30.md).

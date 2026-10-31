@@ -198,3 +198,47 @@ rollback проверки, публикацию exact31 и настоящий Sp
 но показывает Sign in, без Run workflow. Уточнён именно вход в Safari, параллельно
 завершена аппаратная приёмка31. Нельзя считать авторизацию выполненной только
 по ответу, если фактическая UI-сессия всё ещё не авторизована.
+
+## Production и установленный macOS31 — завершено31 октября
+
+Владелец завершил вход именно в Safari. Штатная UI-форма GitHub запустила
+[Build and deploy #71](https://github.com/kerbermeister/voicechat/actions/runs/41175186114):
+main c33894a, deploy=true, rollout=managed, mode=full, оба retry=false, edges пустой.
+[Все этапы workflow success](chat-followups-2026-10-30/production31-workflow-progress.json).
+
+[Независимые реальные проверки](chat-followups-2026-10-30/production31-verified.json):
+core/edge-a commit c33894a, работающие container image digests совпали с manifest,
+службы running/healthy (без healthcheck — running), RestartCount0. Приватные
+core readiness и actual read-only PostgreSQL/Matrix metadata probes PASS;
+идентичность данных совпала с baseline до выпуска. Previous pointer точно равен
+предыдущему current, managed journal complete без pending role operations.
+Helper загружен из frozen operator bundle, runtime releases содержат только
+конфигурацию роли. Приватные данные/ключи в evidence не перенесены.
+
+[Публичная готовность](chat-followups-2026-10-30/production31-public-health.json):
+Matrix versions/control health200, version.json1.15.0(31), root/version no-cache.
+DM-pin endpoint до выпуска404 M_UNRECOGNIZED, после —401 M_MISSING_TOKEN без
+токена: новая authenticated resource доступна; чужие пользовательские комнаты
+для проверки не менялись.
+
+После успешного FULL и аппаратной приёмки exact кандидата31 штатный publisher
+опубликовал его в canonical edge-a update root. [Публикация](chat-followups-2026-10-30/macos31-publication.json),
+[точные публичные HTTPS ZIP/DMG/feed, cache/hash и подписи](chat-followups-2026-10-30/macos31-published-https-proof.json).
+Приватный постоянный Sparkle-ключ оставался на Mac. Старый29 сохранён в feed;
+заменённый непубличный30 не публиковался.
+
+Установленная29 показала31 и35.8МБ; нажата «Скачать и установить». Приложение
+само перезапустилось в31, ручной замены не было. Все285 entries установленной app
+равны exact подписанному ZIP, codesign PASS. UI подтвердил прежние account/device
+и4 контрольных расшифрованных фрагмента; About1.15.0(31), последующий updater
+«Совместимых обновлений нет». [Результат настоящего29→31](chat-followups-2026-10-30/macos31-installed-ui-proof.json).
+Перед установкой сделана свежая закрытая backup29 и текущего профиля, побайтно
+сверена. Keychain не очищался. Успешное подтверждение владельцем устранило
+ранние блокировки; они выше сохранены как история, а не текущий остаток.
+
+Клиентский payload31 заморожен на780ae8f; production revision c33894a отличается
+только документацией. Последующий итоговый documentation commit также не требует
+пересборки или изменения опубликованного31. Локальный стенд7358/8090 оставлен
+работающим на web31 с прежними PostgreSQL/Synapse volumes. Физические телефоны,
+их системный share sheet/фотобиблиотека и межустройственные звонки остаются
+условными в едином реестре, не объявлены аппаратно проверенными.

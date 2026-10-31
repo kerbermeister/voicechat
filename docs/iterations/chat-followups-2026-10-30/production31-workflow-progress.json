@@ -1,0 +1,188 @@
+{
+  "run": "https://github.com/kerbermeister/voicechat/actions/runs/41175186114",
+  "run_id": 41175186114,
+  "checked_at": "2026-10-31T06:22:46.778096+00:00",
+  "jobs": [
+    {
+      "id": 124461158636,
+      "name": "release",
+      "status": "completed",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate public deployment configuration",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate initial rollout contract",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Reject routed client deployment through legacy single-host deploy",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Set up pinned SSH identity",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Resume the frozen managed release before preparing new artifacts",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Read managed artifact reuse baseline without changing VPS",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Verify deployed backend for legacy web-only release",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Run subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Test server and client",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Restore generated crypto assets",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Restore crypto build tools",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install pinned crypto build tools on cache miss",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build crypto assets on cache miss",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Validate generated assets",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build ordinary web application",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Login to GHCR",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build control image for full or core release",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build web image",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Write immutable release manifest and public source package",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Deploy the initial cohost transition using pinned host identity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Deploy the ordinary managed release using per-host pinned identities",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Deploy legacy installation using pinned host identity",
+          "status": "completed",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Post Run docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Restore crypto build tools",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Restore generated crypto assets",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  ],
+  "head_sha": "c33894a432d2fec4001c89733dfb39f49fa34f61",
+  "conclusion": "success",
+  "status": "completed"
+}

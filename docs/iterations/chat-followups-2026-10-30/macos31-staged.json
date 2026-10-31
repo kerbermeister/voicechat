@@ -6,8 +6,8 @@
   "checksums_match": true,
   "only_public_candidate_and_publisher_uploaded": true,
   "private_key_transferred": false,
-  "published": false,
+  "published": true,
   "physical_acceptance_pending": false,
-  "stock_signed_upgrade_pending": true,
-  "backend_full_pending": true
+  "stock_signed_upgrade_pending": false,
+  "backend_full_pending": false
 }

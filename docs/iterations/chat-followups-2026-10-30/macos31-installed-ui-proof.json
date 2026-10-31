@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "build": 31,
+  "from_build": 29,
+  "version": "1.15.0",
+  "stock_sparkle_button_install": true,
+  "exact_zip_payload_matches": true,
+  "entries_checked": 285,
+  "codesign_verified": true,
+  "manual_app_replacement": false,
+  "profile_or_keychain_cleared": false,
+  "date": "2026-10-31",
+  "account_preserved": true,
+  "device_preserved": true,
+  "old_decrypted_fragments_preserved": 4,
+  "about31_verified": true,
+  "no_compatible_updates_verified": true,
+  "closed_app_and_profile_backup_verified": true,
+  "keychain_reset": false,
+  "stock_sparkle29to31_upgrade_verified": true
+}
