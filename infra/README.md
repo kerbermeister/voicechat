@@ -109,7 +109,7 @@ python3 infra/bootstrap.py --url https://chat.example.com --ip 203.0.113.10 --se
 - Secrets: `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS` с независимо проверенным ключом SSH-хоста. Host verification не отключается.
 - VPS должен иметь право pull этих образов GHCR; для private registry настройте отдельный read-only credential на VPS. GitHub token из job туда не копируется.
 
-`prototype.yml` запускает серверные/Flutter-проверки и выпускает **debug APK** обычного приложения. Публичные URL берутся из `PUBLIC_URL`; без него APK предназначен для локального Docker-стенда :7360 (на эмуляторе нужны adb reverse). Это не подписанный production-релиз Android: стабильный release-keystore и отдельная release-подпись ещё не настроены.
+`prototype.yml` запускает серверные/Flutter-проверки и выпускает **debug APK** обычного приложения. Публичные URL берутся из `PUBLIC_URL`; без него APK предназначен для локального Docker-стенда :7360 (на эмуляторе нужны adb reverse). Это debug-артефакт. Для подписанного кандидата с постоянным ключом используется отдельный **Android release**, описанный ниже.
 
 `deploy.yml` запускается вручную. Параметр `deploy=false` выполняет проверки, публикует образы и release artifact без подключения к VPS; это позволяет подготовить GHCR до настройки SMTP. Образы связаны с репозиторием OCI label `org.opencontainers.image.source`. Полный запуск с `deploy=true` включает выкладку: проверки, локальные crypto/QR assets без CDN, обычный web, multiarch amd64/arm64 Docker-образы. Все внешние Actions и базовые образы закреплены SHA/digest. Release manifest содержит commit, публичный origin, версию совместимости схемы и **image digests**, не плавающие tags. Артефакт release не содержит runtime/секретов. SSH доставляет его в отдельный `releases/<commit>`; старый каталог не перезаписывается. Сборка/deploy на GitHub и реальный VPS в этой среде пока не запускались. Репозиторий: `kerbermeister/voicechat`; домен и IP указаны в VPS.md, SSH и SMTP ещё требуют настройки.
 
@@ -310,6 +310,11 @@ GitHub environment `production`:
   `PUBLIC_URL`, `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_ROOT`.
 - `ANDROID_ACCEPTED_BUILD` и `ANDROID_ACCEPTED_SHA256` — номер и точный hash APK,
   для которого записана приёмка физического Android. Без них публикация заблокирована.
+
+31.10.2026 существующий release-keystore/пароли и публичный signing fingerprint
+настроены в production с разрешения владельца. CI-кандидат32 прошёл build/package;
+[результат и точные байты](../docs/iterations/android-update-channel-2026-10-31.md).
+Acceptance-переменные оставлены пустыми до физической приёмки.
 
 Ключ подписи и пароль резервировать **вне этого компьютера и VPS**, в защищённом
 хранилище. Не хранить их в Git, артефактах или кеше CI. При утрате ключа обычное

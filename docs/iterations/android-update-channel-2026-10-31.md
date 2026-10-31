@@ -37,10 +37,9 @@ Production сервисы не пересобирались и не переза
 ## GitHub
 
 Во встроенном браузере подтверждены production SSH/root/origin и repository
-CLIENT_ROUTE_CONFIG/CLIENT_ROUTE_CATALOG_KEY. Android signing secrets отсутствуют
-как на уровне environment, так и repository. Локальная подпись постоянным ключом
-работает; его перенос в GitHub требует отдельного разрешения на передачу ключа и
-паролей CI. Значения acceptance не выставляются без телефона.
+CLIENT_ROUTE_CONFIG/CLIENT_ROUTE_CATALOG_KEY. На первоначальном осмотре Android signing secrets отсутствовали
+на обоих уровнях. Затем владелец разрешил перенос существующего ключа: production
+secrets настроены, успешная CI-подпись подтверждена ниже. Значения acceptance не выставляются без телефона.
 
 Команды, повтор при частичном успехе и отзыв:
 [infra/README.md](../../infra/README.md#ручные-android-обновления).
@@ -57,13 +56,13 @@ CLIENT_ROUTE_CONFIG/CLIENT_ROUTE_CATALOG_KEY. Android signing secrets отсут
 **SUCCESS**, job channel31s, Android job SKIPPED. Выбраны `check_channel=true`,
 `publish=false`, main. Проверка прошла через существующий production SSH без APK,
 release-keystore и Android signing secrets. Во встроенном браузере проверены
-зелёный итог и список шагов. Отдельный автоматический Prototype checks164 запущен
-push-событием; его итог этим отчётом пока не подтверждён.
+зелёный итог и список шагов. Отдельный автоматический [Prototype checks164](https://github.com/kerbermeister/voicechat/actions/runs/41203758710)
+также завершился SUCCESS за15m46s.
 
 Готовы оба пути: локальный принятый APK → штатный издатель и CI preflight без
-подписи. Для автоматической сборки/подписи CI ещё требуется разрешённый перенос
-постоянного keystore/паролей в GitHub production secrets. Запрос владельцу отправлен;
-до ответа ключи не передаются и acceptance-переменные не выставляются.
+подписи. После отдельного разрешения владельца постоянный keystore/пароли добавлены в
+GitHub production secrets; проверочная CI-сборка завершена успешно. Acceptance
+переменные остаются невыставленными до физической приёмки.
 
 ## Подпись GitHub Actions
 
@@ -74,3 +73,37 @@ production secrets. Сохранены `ANDROID_KEYSTORE_BASE64`, `ANDROID_STORE
 не выводились в журнал, Git или отчёт; новый ключ не создавался.
 Acceptance build/hash не задавались. Проверочный CI-кандидат получает32 по правилам
 неповторяемых BUILD, версия1.15.0, функциональный код31 без изменений.
+
+## Успешный подписанный CI-кандидат32
+
+[Android release #3](https://github.com/kerbermeister/voicechat/actions/runs/41206010642)
+**SUCCESS**: android job14m38s, весь run14m43s. Публикация выключена;
+[машиночитаемое подтверждение](android-signing-ci32-proof.json).
+Ревизия `c38b27a540b39c9288eafa548e1cfa2364888767`, чистый checkout,
+версия1.15.0(32), minSdk24, armeabi-v7a/arm64-v8a/x86_64.
+Прежний сертификат37d98de9…; приватный ключ не пересоздавался.
+
+Точный размер нового CI APK: **158772182 байт**.
+SHA-256: `9dbf914e5661009745bb94f23be4c15d1ed8c54983c12e3011a95e78ea5729de`.
+Локальная копия:
+`/Users/anton/IdeaProjects/VoiceChat/.prototype/android-ci32/candidate/voicechat.apk`.
+ZIP скачан по выданному GitHub artifact URL; сверены digest ZIP с GitHub,
+APK/hash/metadata, sourceDirty=false, production public config, затем локально
+повторены apksigner и ZIP integrity. В артефакте ровно5 публичных файлов кандидата;
+keystore, паролей и SSH credentials нет. Физическая приёмка не заявляется.
+
+Первый build run#2 прошёл тесты и остановился до создания APK: sdkmanager не был
+в PATH runner. В обоих местах release/reuse workflow теперь вызывается
+`$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager`; для Cargo переиспользован
+принятый в Prototype checks лимит2. Затем run#3 прошёл полный штатный путь.
+Номер32 не переиспользован для другого APK, run#2 APK не создавал.
+
+Точный source сохранён в `codex/android-candidate-32`. После физической приёмки
+этого APK для публикации выбрать эту ветку и `source_run=41206010642`, `publish=true`.
+Сначала выставить реальные acceptance build/hash; сейчас они не задавались.
+CI-артефакт хранится30 дней; локальная копия сохранена для доставки штатным
+издателем без пересборки и после истечения хранения GitHub. Latest.json по HTTPS
+после сборки остаётся404, серверные службы и указатели релизов не менялись.
+
+Diff клиента/vendor относительно production31 содержит только номер сборки в
+app_version.dart и pubspec.yaml; функциональные исходники совпадают.

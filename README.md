@@ -7,7 +7,7 @@
 - [Единый реестр пользовательской приёмки — что ещё проверить](docs/user-acceptance.md)
 - [Статус реализации и незавершённые работы](docs/implementation-status.md)
 - [Windows 10/11: отдельная задача и требования](docs/windows-spec.md), [технический TODO WIN-00–WIN-15](docs/tasks/16-windows.md) — запланировано, включая установщик и встроенные обновления; реализация не начата.
-- [Ручное обновление Android через APK](docs/android-apk-update-spec.md) и [план реализации](docs/tasks/13-android-apk-update.md) — локальный кандидат 1.1.0+2, [результаты проверки](docs/iterations/13-android-apk-update.md); [правила версий](docs/app-versioning.md), [история изменений](docs/app-changelog.md).
+- [Ручное обновление Android через APK](docs/android-apk-update-spec.md) и [план реализации](docs/tasks/13-android-apk-update.md) — подписанный CI-кандидат 1.15.0+32, [канал edge/core и результаты проверки](docs/iterations/android-update-channel-2026-10-31.md); [правила версий](docs/app-versioning.md), [история изменений](docs/app-changelog.md).
 - [ТЗ демонстрации экрана](docs/screen-sharing-spec.md) и [пошаговые задачи SS-00–SS-17](docs/tasks/08-screen-sharing.md) — Android/веб, один ведущий с перехватом. Реализация экспериментальная, default off; [результаты](docs/iterations/08-screen-sharing.md), [приёмка](docs/screen-sharing-acceptance.md), [как пользоваться](docs/screen-sharing.md).
 - [Итерация 4: веб-вход и Lavender Soft](docs/iterations/04-web-session-and-lavender.md) — восстановление вкладки без паролей, отдельные люди/группы и настройки.
 - [Итерация 3: основной мессенджер](docs/iterations/03-core-messenger.md) — аккаунты, контакты, переписка, медиа, очередь и звонки.

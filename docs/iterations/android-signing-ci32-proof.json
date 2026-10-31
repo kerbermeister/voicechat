@@ -1,0 +1,31 @@
+{
+  "workflow_run": 41206010642,
+  "workflow_success": true,
+  "version": "1.15.0",
+  "build": 32,
+  "sizeBytes": 158772182,
+  "minSdk": 24,
+  "sha256": "9dbf914e5661009745bb94f23be4c15d1ed8c54983c12e3011a95e78ea5729de",
+  "source": "c38b27a540b39c9288eafa548e1cfa2364888767",
+  "sourceDirty": false,
+  "certificateSha256": "37d98de9eaf7151d8df38fe326711107d4ba4ac30bb03c6870269af84ac79ce4",
+  "abis": [
+    "arm64-v8a",
+    "armeabi-v7a",
+    "x86_64"
+  ],
+  "artifact_contains_only_public_candidate_files": true,
+  "local_signature_and_zip_integrity": "PASS",
+  "published": false,
+  "physical_android_checked": false,
+  "artifactZipSha256": "7663787a962d05ff6ef25234afcc8bafe80a134d0d97c29547235b05c9753ede",
+  "artifactId": 13043634715,
+  "frozenRef": "codex/android-candidate-32",
+  "publish_requested": false,
+  "public_manifest_status": 404,
+  "client_diff_from_production31": [
+    "apps/client/lib/app_version.dart",
+    "apps/client/pubspec.yaml"
+  ],
+  "functional_client_sources_unchanged": true
+}
