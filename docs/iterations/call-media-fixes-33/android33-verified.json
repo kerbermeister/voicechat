@@ -6,7 +6,8 @@
   "clean_ci_source": true,
   "signatures_abis_manifest_config_verified": true,
   "physical_acceptance": false,
-  "published": false,
+  "published": true,
   "artifact_zip_sha256": "d5835e260f728f3c3f6dca313649d353b98c5298e4c874edc6a625f1e44930bb",
-  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41214159123"
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41214159123",
+  "publication_proof": "android33-publication-proof.json"
 }

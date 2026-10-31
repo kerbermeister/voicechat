@@ -1,0 +1,16 @@
+{
+  "manifest": {
+    "status": 200,
+    "build": 33,
+    "cache_control": "no-cache"
+  },
+  "apk": {
+    "status": 200,
+    "size": 158788566,
+    "sha256": "882500aa3586d4c2aaaa0ecf70447e4560b25c234cd45fafb590e1b31a967004",
+    "cache_control": "public, max-age=31536000, immutable",
+    "full_https_sha256_verified_by_publisher": true
+  },
+  "/api/health": 200,
+  "/_matrix/client/versions": 200
+}

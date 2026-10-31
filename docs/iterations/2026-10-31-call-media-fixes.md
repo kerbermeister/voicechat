@@ -62,5 +62,16 @@ digest; точный APK1.15.1(33) повторно проверен локал�
 прежний сертификат, versionCode, ABIs, manifest/hash и идентичная Mac/production
 конфигурация. [Подтверждение](call-media-fixes-33/android33-verified.json).
 SHA-256 APK: `882500aa3586d4c2aaaa0ecf70447e4560b25c234cd45fafb590e1b31a967004`.
-Канал пока32; кандидат33 ожидает физической приёмки либо явного разрешения
-владельца на публичную тестовую публикацию. Acceptance build/hash не выставлялись.
+По отдельному явному разрешению владельца опубликован точный APK33 в общем
+канале для проверки на телефоне до физической приёмки. Acceptance build/hash
+не выставлялись, штатный workflow gate не изменён. Публикация выполнена прежним
+низкоуровневым atomic publisher под managed/channel lock: полный SHA-256 через
+HTTPS проверен до переключения latest, предыдущий manifest32 сохранён.
+Службы (ID/StartedAt/RestartCount) и managed release pointer не менялись.
+[Подтверждение публикации](call-media-fixes-33/android33-publication-proof.json).
+[Внешняя проверка HTTPS](call-media-fixes-33/android33-public-https-proof.json).
+
+В приложении: «О приложении → Проверить обновления». [Прямой APK33](https://univc.duckdns.org/updates/android/33/voicechat.apk).
+Исходная ревизия пакета закреплена тегом `app-v1.15.1+33`.
+Физический переход31/32→33, профиль, звонки и фон остаются открытыми в UA-37/18;
+FCM по указанию владельца не трогали.
