@@ -6,6 +6,10 @@ on:
         description: Publish accepted APK to the configured VPS
         type: boolean
         default: false
+      check_channel:
+        description: Verify current managed edge channels without publishing
+        type: boolean
+        default: false
       source_run:
         description: Existing candidate workflow run ID (required when publishing)
         type: string
@@ -17,7 +21,32 @@ concurrency:
   group: voicechat-android-release
   cancel-in-progress: false
 jobs:
+  channel:
+    if: ${{ inputs.check_channel && !inputs.publish }}
+    runs-on: ubuntu-24.04
+    environment: production
+    env:
+      PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+      CLIENT_ROUTE_CONFIG: ${{ vars.CLIENT_ROUTE_CONFIG }}
+      CLIENT_ROUTE_CATALOG_KEY: ${{ vars.CLIENT_ROUTE_CATALOG_KEY }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Check managed channels without an APK or signing key
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_ROOT: ${{ vars.DEPLOY_ROOT }}
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          python3 infra/client_config.py --environment "$PUBLIC_URL" /tmp/client.json
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          python3 infra/publish_android_ssh.py --check --config /tmp/client.json
   android:
+    if: ${{ !inputs.check_channel || inputs.publish }}
     runs-on: ubuntu-24.04
     environment: production
     env:
@@ -103,7 +132,7 @@ jobs:
           name: android-${{ github.sha }}
           path: /tmp/android-candidate
           retention-days: 30
-      - name: Publish accepted candidate
+      - name: Publish accepted candidate on current edges
         if: ${{ inputs.publish }}
         env:
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
@@ -115,8 +144,6 @@ jobs:
           SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
-          # shortcut: remove only when publishing is connected to verified role deployment.
-          python3 -c 'import json; assert "ROUTE_CONFIG" not in json.load(open("/tmp/android-candidate/client-config.json")), "Routed APK candidates are build-only until role rollout is implemented"'
           umask 077
           test -n "$SOURCE_RUN"
           mkdir -p ~/.ssh

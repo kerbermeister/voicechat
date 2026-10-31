@@ -57,12 +57,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--role-bundle', action='store_true', help='Run the generated edge role, including TURN initialization/readiness')
     parser.add_argument('--single-entry', action='store_true', help='Validate one edge assigned explicitly to the core host')
+    parser.add_argument('--android-updates', action='store_true', help='Verify APK publication and withdrawal through the real edge TLS proxy')
     parser.add_argument('--activation', action='store_true', help='Exercise the full host TLS activation controller (Linux root only)')
     parser.add_argument('--cpus', type=float, default=.25, help='Per-service fixture CPU quota; use 1 on a disposable emulated VM')
     args = parser.parse_args()
     if not 0 < args.cpus <= 2: parser.error('--cpus must be greater than zero and at most 2')
     if args.activation and (not args.role_bundle or sys.platform != 'linux' or os.geteuid() != 0):
         parser.error('--activation requires --role-bundle on an isolated Linux root fixture')
+    if args.android_updates and not args.role_bundle:
+        parser.error('--android-updates requires --role-bundle')
     if args.single_entry and not args.role_bundle:
         parser.error('--single-entry requires --role-bundle')
     edge_id = 'probe-' + uuid.uuid4().hex[:12]
@@ -266,6 +269,55 @@ log-file=stdout
                     result = b''
                     while part := stream.recv(4096): result += part
                     return result
+            if args.android_updates:
+                import hashlib
+                from unittest.mock import patch
+                import android_release
+                update_root = config_root / 'runtime/android-updates'
+                candidate = root / 'android-candidate'; candidate.mkdir()
+                def prepare_apk(build):
+                    content = ('fixture-only-not-an-installable-apk-' + str(build)).encode()
+                    data = dict(schema=1, applicationId=android_release.PACKAGE,
+                        versionName='1.0.' + str(build), versionCode=build, minSdk=24,
+                        apkPath='/updates/android/' + str(build) + '/voicechat.apk',
+                        sizeBytes=len(content), sha256=hashlib.sha256(content).hexdigest(), notes='Fixture')
+                    (candidate / 'voicechat.apk').write_bytes(content)
+                    (candidate / 'latest.json').write_text(json.dumps(data))
+                    return data, content
+                def verify_apk(origin, data):
+                    response = request(data['apkPath'], 'https://web.routes.test')
+                    header, body = response.split(b'\r\n\r\n', 1)
+                    assert b'200 OK' in header and b'application/vnd.android.package-archive' in header
+                    assert b'immutable' in header and hashlib.sha256(body).hexdigest() == data['sha256']
+                def pointer():
+                    response = request('/updates/android/latest.json', 'https://web.routes.test')
+                    header, body = response.split(b'\r\n\r\n', 1)
+                    assert b'200 OK' in header and b'no-cache' in header
+                    return json.loads(body)
+                def processes():
+                    ids = subprocess.check_output([*command, 'ps', '-q'], text=True).split()
+                    return {v['Id']:v['State']['StartedAt'] for v in json.loads(
+                        subprocess.check_output(['docker','inspect',*ids]))}
+                before_updates = processes()
+                first, _ = prepare_apk(2)
+                android_release.publish(candidate, update_root, 'https://web.routes.test', verify=verify_apk)
+                assert pointer() == first
+                android_release.withdraw(update_root, 'https://web.routes.test')
+                assert b'404 Not Found' in request('/updates/android/latest.json', 'https://web.routes.test')
+                verify_apk('https://web.routes.test', first)
+                android_release.publish(candidate, update_root, 'https://web.routes.test', verify=verify_apk)
+                second, _ = prepare_apk(3)
+                android_release.publish(candidate, update_root, 'https://web.routes.test', verify=verify_apk)
+                assert pointer() == second
+                android_release.publish(candidate, update_root, 'https://web.routes.test', verify=verify_apk)
+                assert android_release.load_manifest(update_root / 'previous.json') == first
+                with patch.object(android_release, 'verify_public', side_effect=verify_apk):
+                    android_release.withdraw(update_root, 'https://web.routes.test')
+                assert pointer() == first
+                for private in ('previous.json', 'withdrawn.json', '.publish.lock', '2/manifest.json'):
+                    assert b'404 Not Found' in request('/updates/android/' + private, 'https://web.routes.test')
+                assert processes() == before_updates
+                print('PASS: edge TLS APK publish/retry/withdraw/cache/private-files; service IDs/StartedAt unchanged', flush=True)
             response = request('/api/echo','https://backup.routes.test')
             assert b'200 OK' in response
             assert b'Access-Control-Allow-Origin: https://backup.routes.test' in response

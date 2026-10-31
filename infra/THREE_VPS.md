@@ -495,9 +495,10 @@ python3 infra/client_config.py --environment "$PUBLIC_URL" /tmp/client.json
 
 Web build-only, Android preview/release candidate и macOS candidate подготовлены
 к такому вводу. Реальные GitHub variables здесь не менялись и Actions не запускались.
-Пока role rollout не подключён, workflow запрещает routed web deploy через legacy
-`deploy.py` и публикацию routed APK. Это временный явный gate, а не готовый новый
-режим развёртывания. Старые single-host сборки и проверки остаются доступны.
+Legacy `deploy.py` не используется для routed web deploy. APK-издатель подключён
+к managed baseline и действующим edge runtime: [команды и ограничения](README.md#ручные-android-обновления).
+Общий build-only gate для routed APK снят; приёмка точных байтов на физическом
+Android остаётся обязательной. Старые single-host сборки и проверки доступны.
 
 Android candidate сохраняет public `client-config.json`. Повторное использование
 APK проверяет точное совпадение с его записанной конфигурацией до repackaging;

@@ -281,9 +281,26 @@ terminal call_session после restore повторно не допускае�
 [версии](../docs/app-versioning.md), [история изменений](../docs/app-changelog.md).
 
 Первое подключение раздачи требует **full**-релиза: меняются Compose и workflow.
-`deploy.py` создаёт постоянный `runtime/android-updates`; Caddy получает read-only
-mount. APK не входят в web-образ, последующий web-only deploy сохраняет этот каталог.
-Прежде чем публиковать manifest, проверить route Caddy и наличие mount на VPS.
+Legacy `deploy.py` использует `runtime/android-updates`. После managed cutover
+`DEPLOY_ROOT=/srv/voicechat-managed` указывает на координатор; действующие каналы
+находятся в `edges/<id>/runtime/android-updates` **на хостах соответствующих edge**.
+Издатель получает список из проверенной production baseline, сверяет публичный
+подписанный каталог и проверяет actual read-only Docker mount каждого edge.
+В coordinator `/runtime` или в старый legacy-каталог routed APK не публикуются.
+Канал уже монтируется текущей edge-ролью: отдельный deploy/перезапуск для публикации
+не нужен. Изменение самого Compose/mount по-прежнему требует штатного релиза.
+
+Проверка без APK, release-ключа и физического телефона:
+
+```sh
+python3 infra/client_config.py --environment "$PUBLIC_URL" /tmp/client.json
+python3 infra/publish_android_ssh.py --check --config /tmp/client.json
+```
+
+Нужны существующие `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_ROOT`, `PUBLIC_URL`,
+`CLIENT_ROUTE_CONFIG`, `CLIENT_ROUTE_CATALOG_KEY` и pinned SSH. В Actions выбрать
+**Android release**, `check_channel=true`, `publish=false`: отдельный Python-job
+проверяет канал, Android не собирается и теги/manifest не меняются.
 
 GitHub environment `production`:
 
@@ -308,6 +325,19 @@ APK, `latest.json`, `release.json`, отчёт `apksigner`. После приё�
 Он получает **тот же APK** через [gh run download](https://cli.github.com/manual/gh_run_download),
 повторно проверяет подпись и metadata, публикует его и тег `app-v<version>+<build>`.
 Для публикации повторная компиляция запрещена: приёмка относится к точным байтам.
+Для уже проверенного локального clean-кандидата допустим прямой запуск
+`python3 infra/publish_android_ssh.py /path/to/candidate` с теми же production
+SSH-параметрами и точными `ANDROID_ACCEPTED_BUILD` / `ANDROID_ACCEPTED_SHA256`.
+Публикуются прежние байты: каталог включает `client-config.json`, `release.json`,
+`latest.json`, `voicechat.apk`; acceptance gate действует до SSH и повторно на edge.
+
+Все действующие edge проверяются до первой публикации. У каждого собственный
+`.publish.lock`, immutable APK, `previous.json` и атомарный `latest.json`.
+Глобальной атомарности между разными VPS нет: при сетевой ошибке после частичного
+успеха повторить тот же кандидат, уже опубликованные байты переписаны не будут.
+После добавления нового edge повторно доставить действующий принятый кандидат
+на все входы до объявления его канала готовым; admission пока не копирует APK.
+
 Номер опубликованного APK неизменяем; другой файл требует следующего BUILD и
 соответствующей записи истории. `source_run` должен принадлежать тому же commit.
 
@@ -343,10 +373,12 @@ python3 infra/android_release.py package \
 оставляет старый канал. Для отзыва на VPS:
 
 ```sh
-python3 /srv/voicechat/releases/REVISION/infra/android_release.py withdraw \
-  --root /srv/voicechat/runtime/android-updates --origin https://YOUR-PUBLIC-HOST
+python3 /srv/voicechat-managed/bundles/SOURCE_SHA/infra/android_release.py withdraw \
+  --root /srv/voicechat-managed/edges/EDGE/runtime/android-updates --origin https://EDGE-PUBLIC-HOST
 ```
 
+Отзывать на каждом действующем edge, используя его публичный origin; координаторный
+и legacy runtime не менять. APK и manifest сначала проверить через этот же вход.
 При первом выпуске без предыдущего manifest канал отключается (404), иначе
 выбирается предыдущий. Отзыв не понижает версию на телефоне. Исправляющий APK
 получает больший versionCode; хранившиеся APK и номера не удаляются и не используются
