@@ -49,3 +49,18 @@ CLIENT_ROUTE_CONFIG/CLIENT_ROUTE_CATALOG_KEY. Android signing secrets отсут
 Изменены protected infra/workflow источники. Следующий production source release
 должен пройти штатный full guard; backend fingerprint/current.json вручную не менялись.
 Текущая доставка APK и её --check не являются backend deploy.
+
+## Подтверждение GitHub Actions
+
+Изменение опубликовано в main `e77c0c61c3ebbd4d81553f220001c4a3b0d15fe2`.
+[Android release #1](https://github.com/kerbermeister/voicechat/actions/runs/41203809086):
+**SUCCESS**, job channel31s, Android job SKIPPED. Выбраны `check_channel=true`,
+`publish=false`, main. Проверка прошла через существующий production SSH без APK,
+release-keystore и Android signing secrets. Во встроенном браузере проверены
+зелёный итог и список шагов. Отдельный автоматический Prototype checks164 запущен
+push-событием; его итог этим отчётом пока не подтверждён.
+
+Готовы оба пути: локальный принятый APK → штатный издатель и CI preflight без
+подписи. Для автоматической сборки/подписи CI ещё требуется разрешённый перенос
+постоянного keystore/паролей в GitHub production secrets. Запрос владельцу отправлен;
+до ответа ключи не передаются и acceptance-переменные не выставляются.
