@@ -130,6 +130,20 @@ void main() {
           'video': true,
         },
       };
+      calls.receive(
+        Event.fromJson({
+          ...event,
+          'origin_server_ts': DateTime.now()
+              .subtract(const Duration(seconds: 46))
+              .millisecondsSinceEpoch,
+        }, room),
+      );
+      expect(
+        calls.invitations,
+        isEmpty,
+        reason:
+            'reopening must not ring an old group invite; discovery supplies rejoin',
+      );
       // ignore: deprecated_member_use
       client.onEvent.add(
         // ignore: deprecated_member_use

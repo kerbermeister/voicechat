@@ -6,11 +6,18 @@ import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 
 String screenCaptureNotice(Object error) {
+  if (error is PlatformException) {
+    if (error.code == 'screenCancelled') return 'Выбор экрана отменён.';
+    if (error.code == 'screenCaptureFailed' ||
+        error.code == 'screenCaptureStopped') {
+      return error.message ?? 'macOS остановила показ. Выберите экран снова.';
+    }
+  }
   if (error is PlatformException &&
       {'screenPermissionDenied', 'screenNoFrames'}.contains(error.code)) {
     return error.code == 'screenPermissionDenied'
-        ? 'macOS не разрешила запись экрана этой версии VoiceChat. В «Системные настройки → Конфиденциальность и безопасность → Запись экрана» выключите и снова включите VoiceChat, затем полностью закройте и откройте приложение. После обновления старая галочка может сохраняться.'
-        : 'macOS не передала кадры экрана. Показ не начат. Проверьте разрешение на запись экрана для VoiceChat и полностью перезапустите приложение.';
+        ? 'Разрешите VoiceChat запись экрана в системных настройках macOS, затем полностью перезапустите приложение.'
+        : 'macOS не передала кадры экрана. Показ не начат. Повторите выбор окна или дисплея.';
   }
   if (error is UnsupportedError) {
     return 'Эта версия браузера или ОС не поддерживает захват экрана.';
@@ -45,6 +52,9 @@ class ScreenCapture {
   final lk.LocalVideoTrack source;
   bool _closed = false;
   static const _native = MethodChannel('voicechat/screen');
+  static String? _pendingMacStream;
+  static bool _pickingMac = false;
+  static int _macSelection = 0;
   static bool get _android =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
   ScreenCapture(this.source);
@@ -52,7 +62,16 @@ class ScreenCapture {
   static Future<ScreenCapture> start() async {
     if (!supported) throw UnsupportedError('Screen capture unavailable');
     final macOS = !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
-    if (macOS && !await rtc.Helper.requestCapturePermission()) {
+    final selection = _macSelection;
+    var picker = false;
+    if (macOS) {
+      try {
+        picker = await _native.invokeMethod<bool>('pickerSupported') ?? false;
+      } on MissingPluginException {
+        // macOS 12/13 use the SDK capturer and its system-wide permission.
+      }
+    }
+    if (macOS && !picker && !await rtc.Helper.requestCapturePermission()) {
       throw PlatformException(code: 'screenPermissionDenied');
     }
     if (_android) {
@@ -68,13 +87,15 @@ class ScreenCapture {
         maxFrameRate: 15,
       );
       final lk.LocalVideoTrack track;
-      if (kIsWeb) {
+      if (kIsWeb || picker) {
         // shortcut: LiveKit 2.13 rejects every mobile browser before API detection.
         // Use the same track factory until its mobile restriction is removed.
-        final stream = await rtc.navigator.mediaDevices.getDisplayMedia({
-          'audio': false,
-          'video': {'frameRate': 15},
-        });
+        final stream = picker
+            ? await _pickMacScreen(selection)
+            : await rtc.navigator.mediaDevices.getDisplayMedia({
+                'audio': false,
+                'video': {'frameRate': 15},
+              });
         if (stream.getVideoTracks().isEmpty) {
           for (final item in stream.getTracks()) {
             await item.stop();
@@ -105,9 +126,10 @@ class ScreenCapture {
         }
       }
       final capture = ScreenCapture(track);
-      if (_android) {
+      if (_android || picker) {
         _native.setMethodCallHandler((call) async {
-          if (call.method == 'stop') {
+          if (call.method == 'stop' &&
+              (!picker || call.arguments == track.mediaStream.id)) {
             track.mediaStreamTrack.onEnded?.call();
             await capture.close();
           }
@@ -118,6 +140,44 @@ class ScreenCapture {
       if (_android) await _native.invokeMethod<void>('stop');
       rethrow;
     }
+  }
+
+  static Future<rtc.MediaStream> _pickMacScreen(int selection) async {
+    if (_pickingMac) throw PlatformException(code: 'screenBusy');
+    _pickingMac = true;
+    rtc.MediaStream? stream;
+    try {
+      if (selection != _macSelection) {
+        throw PlatformException(code: 'screenCancelled');
+      }
+      stream = await rtc.createLocalMediaStream('screen');
+      _pendingMacStream = stream.id;
+      if (selection != _macSelection) {
+        throw PlatformException(code: 'screenCancelled');
+      }
+      await _native.invokeMethod<void>('start', {'streamId': stream.id});
+      // SDK has no replacement for refreshing tracks attached by native code.
+      // ignore: deprecated_member_use
+      await stream.getMediaTracks();
+      return stream;
+    } catch (_) {
+      // ignore: deprecated_member_use
+      await stream?.getMediaTracks();
+      for (final track in stream?.getTracks() ?? <rtc.MediaStreamTrack>[]) {
+        await track.stop();
+      }
+      await stream?.dispose();
+      rethrow;
+    } finally {
+      if (_pendingMacStream == stream?.id) _pendingMacStream = null;
+      _pickingMac = false;
+    }
+  }
+
+  static Future<void> cancelPendingSelection() async {
+    _macSelection++;
+    final id = _pendingMacStream;
+    if (id != null) await _native.invokeMethod<void>('cancelSelection', id);
   }
 
   // The native SDK returns a live track even when ScreenCaptureKit fails.
@@ -172,9 +232,10 @@ class ScreenCapture {
     try {
       await source.dispose();
     } finally {
-      if (_android) {
+      if (_android ||
+          (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS)) {
         _native.setMethodCallHandler(null);
-        await _native.invokeMethod<void>('stop');
+        if (_android) await _native.invokeMethod<void>('stop');
       }
     }
   }

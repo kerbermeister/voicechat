@@ -46,6 +46,7 @@ class AdmissionTests(unittest.TestCase):
             self.assertEqual(self.request({'room_id': '!room:local', 'session': ''})[0], 400)
             for mode in ('true', 1, None, {}):
                 self.assertEqual(self.request({'room_id': '!room:local', 'session': 'test', 'video': mode})[0], 400)
+                self.assertEqual(self.request({'room_id': '!room:local', 'session': 'test', 'join_existing': mode})[0], 400)
 
     def test_personal_room_cannot_obtain_media_token(self):
         def matrix(handler, path):
@@ -61,6 +62,29 @@ class AdmissionTests(unittest.TestCase):
             store.assert_not_called()
             for invalid in ('true', 1, None, {}):
                 self.assertEqual(self.request({'room_id': '!private:local', 'session': 'x', 'camera_capable': invalid})[0], 400)
+
+    def test_call_discovery_requires_current_membership_and_encryption(self):
+        for joined, algorithm, personal, expected in [(True, 'm.megolm.v1.aes-sha2', False, 200),
+                (False, 'm.megolm.v1.aes-sha2', False, 403), (True, 'other', False, 403),
+                (True, 'm.megolm.v1.aes-sha2', True, 403)]:
+            def matrix(handler, path):
+                if handler.headers.get('Authorization') != 'Bearer test': raise ContactError('unauthorized')
+                if path == 'account/whoami': return {'user_id': '@owner:local', 'device_id': 'D'}
+                if path.endswith('joined_members'): return {'joined': {'@owner:local': {}} if joined else {}}
+                if path.endswith('m.room.encryption/'): return {'algorithm': algorithm}
+                if path.endswith('m.room.create/'): return {'type': 'dev.voicechat.personal' if personal else ''}
+                raise AssertionError(path)
+            with patch.object(token_server.Handler, 'matrix', matrix), patch.object(token_server, 'call_store') as store:
+                store.return_value.active.return_value = [{'session': 'a'*32, 'video': False, 'participants': 2}]
+                status, response = self.request({'room_id': '!group:local'}, path='/call/active')
+                self.assertEqual(status, expected)
+                if expected == 200:
+                    self.assertEqual(response['calls'][0]['participants'], 2)
+                    store.return_value.admission.assert_not_called()
+                else: store.assert_not_called()
+                self.assertEqual(self.request({'room_id': '!group:local'}, auth='', path='/call/active')[0], 401)
+                self.assertEqual(self.request({'room_id': {}}, path='/call/active')[0], 400)
+                self.assertEqual(self.request({'room_id': '!group:local', 'extra': True}, path='/call/active')[0], 400)
 
     def test_presence_is_limited_to_authenticated_accepted_contacts(self):
         with tempfile.TemporaryDirectory() as directory:

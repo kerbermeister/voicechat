@@ -249,6 +249,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        if (isFinishing && !isChangingConfigurations) CallService.endCall()
         AppNotifications.detach(this)
         imageResult?.success(null); imageResult = null
         cameraPhoto?.delete(); cameraPhoto = null; cameraUri = null

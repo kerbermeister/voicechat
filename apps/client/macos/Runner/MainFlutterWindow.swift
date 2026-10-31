@@ -5,6 +5,8 @@ class MainFlutterWindow: NSWindow, NSDraggingDestination {
   private(set) var updater: MacUpdater?
   private var notifications: DesktopNotifications?
   private var noteCamera: NoteCamera?
+  private var screenCapture: AnyObject?
+  private var calls: FlutterMethodChannel?
   private var platformFiles: PlatformFiles?
   private var fileDropChannel: FlutterMethodChannel?
   private var dropTarget: NSRect?
@@ -16,6 +18,11 @@ class MainFlutterWindow: NSWindow, NSDraggingDestination {
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    calls = FlutterMethodChannel(name: "voicechat/calls",
+      binaryMessenger: flutterViewController.engine.binaryMessenger)
+    if #available(macOS 14.0, *) {
+      screenCapture = ScreenCapture(messenger: flutterViewController.engine.binaryMessenger)
+    }
 
     platformFiles = PlatformFiles(messenger: flutterViewController.engine.binaryMessenger)
     let dropChannel = FlutterMethodChannel(name: "voicechat/file-drop",
@@ -44,6 +51,13 @@ class MainFlutterWindow: NSWindow, NSDraggingDestination {
     for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
       standardWindowButton(button)?.isHidden = false
     }
+  }
+
+  override func close() {
+    // Closing the window ends its call; the app remains available for notifications.
+    // Minimizing the window does not invoke this path.
+    calls?.invokeMethod("end", arguments: nil)
+    super.close()
   }
 
   static func dropRect(_ arguments: Any?) -> NSRect? {

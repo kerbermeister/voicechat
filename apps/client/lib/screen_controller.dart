@@ -243,6 +243,7 @@ class ScreenShareController extends ChangeNotifier {
         const Duration(seconds: 60),
         onTimeout: () {
           abandoned = true;
+          unawaited(ScreenCapture.cancelPendingSelection());
           throw TimeoutException('Screen selection');
         },
       );
@@ -325,6 +326,7 @@ class ScreenShareController extends ChangeNotifier {
 
   Future<void> stop() async {
     if (_closed) return;
+    if (_preparingCapture) await ScreenCapture.cancelPendingSelection();
     _preparation?.cancel();
     final capture = _capture;
     _capture = null;
@@ -847,6 +849,7 @@ class ScreenShareController extends ChangeNotifier {
     final capture = _capture;
     _capture = null;
     try {
+      if (_preparingCapture) await ScreenCapture.cancelPendingSelection();
       await capture?.close();
     } finally {
       try {

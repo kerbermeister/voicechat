@@ -2,6 +2,7 @@ import 'call_audio.dart';
 import 'personal_room.dart';
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' show AppExitResponse;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -19,6 +20,8 @@ import 'screen_controller.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'matrix_probe.dart';
 import 'user_action_error.dart';
+import 'group_calls.dart';
+import 'call_page_exit.dart';
 
 class CallInvitation {
   final Room room;
@@ -48,6 +51,7 @@ class CallController extends ChangeNotifier
   final _endedInvitations =
       <({String room, String sender, String session}), DateTime>{};
   late final CallDevices devices;
+  late final GroupCalls groups;
   VoiceCall? active;
   String? _activeInitiator;
   final audio = CallAudio();
@@ -71,6 +75,7 @@ class CallController extends ChangeNotifier
   Timer? _expiry;
   Timer? _ringTimeout;
   bool _closed = false;
+  late final void Function() _stopPageExit;
   String? _resumeCamera;
   Future<void> _cameraLifecycle = Future.value();
   static const _nativeCalls = MethodChannel('voicechat/calls');
@@ -78,13 +83,23 @@ class CallController extends ChangeNotifier
   bool _backgroundActive = false;
   bool get _android =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+  bool get _nativeCallActions =>
+      !kIsWeb &&
+      const {
+        TargetPlatform.android,
+        TargetPlatform.macOS,
+      }.contains(defaultTargetPlatform);
   CallController(this.client, this.tokenUrl, this.mediaUrl, this.report) {
     devices = CallDevices(client, _refresh);
+    groups = GroupCalls(client, tokenUrl, _refresh);
+    _stopPageExit = listenCallPageExit(() {
+      unawaited(_leaveView().catchError((Object _) {}));
+    });
     WidgetsBinding.instance.addObserver(this);
-    if (_android) {
+    if (_nativeCallActions) {
       _nativeCalls.setMethodCallHandler((call) async {
         if (call.method == 'end') {
-          await end();
+          await _leaveView();
         } else if (call.method == 'backgroundUnavailable') {
           report(
             'Фоновый режим звонка недоступен. Оставьте приложение открытым.',
@@ -111,16 +126,32 @@ class CallController extends ChangeNotifier
       if (room != null) receive(Event.fromJson(update.content, room));
     });
     _expiry = Timer.periodic(const Duration(seconds: 5), (_) {
+      unawaited(groups.refresh());
       invitations.removeWhere(
-        (_, call) => DateTime.now().difference(call.created).inMinutes >= 10,
+        (_, call) =>
+            DateTime.now().difference(call.created) >=
+            const Duration(seconds: 45),
       );
       _refresh();
     });
   }
   @override
+  Future<AppExitResponse> didRequestAppExit() async {
+    // Keep Matrix and the engine alive long enough to deliver hangup on Cmd-Q.
+    // A network outage must not prevent the operating system from quitting.
+    try {
+      await close().timeout(const Duration(seconds: 5));
+    } catch (_) {
+      debugPrint('Call teardown did not finish before application exit');
+    }
+    return AppExitResponse.exit;
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_closed) return;
     if (state == AppLifecycleState.resumed) {
+      unawaited(groups.refresh());
       unawaited(routeTransportOf(client.httpClient)?.coordinator?.refresh());
       unawaited(screen?.poll());
       _refresh();
@@ -344,6 +375,7 @@ class CallController extends ChangeNotifier
       session: id,
     );
     if (content['action'] == 'invite' &&
+        age < const Duration(seconds: 45) &&
         !_endedInvitations.containsKey(invitationKey) &&
         event.senderId != client.userID &&
         !declined.contains((room: event.room.id, session: id)) &&
@@ -405,6 +437,8 @@ class CallController extends ChangeNotifier
                 : 'Голосовой звонок'
           : action == 'decline'
           ? 'Вызов отклонён'
+          : action == 'leave'
+          ? 'Участник вышел из звонка'
           : video
           ? 'Видеозвонок завершён'
           : 'Звонок завершён',
@@ -440,8 +474,19 @@ class CallController extends ChangeNotifier
     dialingRoom = room;
     dialError = null;
     final generation = ++_dialGeneration;
+    String? existingSession;
+    var rejoining = invitation != null;
     _refresh();
     try {
+      if (!room.isDirectChat && invitation == null) {
+        final ongoing = await groups.find(room);
+        if (generation != _dialGeneration || _closed) return;
+        if (ongoing != null) {
+          existingSession = ongoing.session;
+          video = ongoing.video;
+          rejoining = true;
+        }
+      }
       if (room.isDirectChat && invitation == null) {
         final devices = await authorizedDevices(room);
         final users = devices
@@ -487,6 +532,7 @@ class CallController extends ChangeNotifier
       }
       final id =
           invitation?.session ??
+          existingSession ??
           List.generate(
             32,
             (_) => Random.secure().nextInt(16).toRadixString(16),
@@ -496,12 +542,14 @@ class CallController extends ChangeNotifier
         session: id,
         tokenUrl: tokenUrl,
         livekitUrl: mediaUrl,
+        joinExisting: existingSession != null,
         status: report,
         changed: _refresh,
         video: video,
       );
       active = call;
-      _activeInitiator = invitation?.sender ?? client.userID;
+      _activeInitiator =
+          invitation?.sender ?? (rejoining ? null : client.userID);
       _refresh();
       try {
         await call.connect();
@@ -509,7 +557,7 @@ class CallController extends ChangeNotifier
           await call.close();
           return;
         }
-        if (invitation == null) {
+        if (!rejoining) {
           await _signal(room, id, 'invite', video: video);
           if (generation != _dialGeneration || _closed || call.isClosed) return;
           _ringTimeout?.cancel();
@@ -523,7 +571,7 @@ class CallController extends ChangeNotifier
             }
           });
         }
-        if (invitation != null) devices.accept(call);
+        if (rejoining) devices.accept(call);
         invitations.remove(id);
       } catch (_) {
         await call.close();
@@ -571,15 +619,34 @@ class CallController extends ChangeNotifier
     dialError = null;
     final call = active;
     final initiator = _activeInitiator;
-    if (call == null) {
+    final othersRemain = call is CallProbe && call.participants.length > 1;
+    if (call == null || call.isClosed) {
       _refresh();
       return;
     }
     final screenClose = screen?.close();
     final callClose = call.close(); // Marks closed before asynchronous cleanup.
+    final groupSignal = call is DirectCall
+        ? null
+        : _signal(
+            call.chat,
+            call.session,
+            othersRemain ? 'leave' : 'end',
+            initiator: initiator,
+            duration: call.duration,
+            video: call.video,
+          ).catchError((Object _) {
+            report(
+              'Вы вышли из звонка. Сеть недоступна для уведомления участников.',
+            );
+          });
     _refresh(); // Stop ringback without waiting for network or media disposal.
     try {
-      await Future.wait([callClose, if (screenClose != null) screenClose]);
+      await Future.wait([
+        callClose,
+        if (screenClose != null) screenClose,
+        if (groupSignal != null) groupSignal,
+      ]);
     } finally {
       _refresh();
     }
@@ -587,18 +654,16 @@ class CallController extends ChangeNotifier
       await _recordDirectEnd(call);
       return;
     }
-    try {
-      await _signal(
-        call.chat,
-        call.session,
-        'end',
-        initiator: initiator,
-        duration: call.duration,
-        video: call.video,
-      );
-    } catch (_) {
-      report('Вы вышли из звонка. Сеть недоступна для уведомления участников.');
-    }
+    unawaited(groups.refresh());
+  }
+
+  Future<void> _leaveView() async {
+    await Future.wait([
+      end(),
+      for (final call in directInvitations.toList()) call.close(),
+      for (final invitation in invitations.values.toList())
+        decline(invitation).catchError((Object _) {}),
+    ]);
   }
 
   Future<void> _recordDirectEnd(DirectCall call) async {
@@ -625,30 +690,43 @@ class CallController extends ChangeNotifier
     }
   }
 
-  Future<void> close() async {
-    if (_closed) return;
+  Future<void> close() => _closing ??= _close();
+
+  Future<void>? _closing;
+  Future<void> _close() async {
     _closed = true;
+    _stopPageExit();
+    _dialGeneration++;
+    starting = false;
     WidgetsBinding.instance.removeObserver(this);
     _expiry?.cancel();
     _ringTimeout?.cancel();
+    groups.close();
     mediaDevices.ondevicechange =
         null; // Release the SDK callback retaining this client after lock/logout.
-    await _events?.cancel();
-    await _lateEvents?.cancel();
-    await _callSignals?.cancel();
-    final screenClose = screen?.close();
-    await active?.close();
-    await screenClose;
-    await devices.close();
-    audio.reset(null);
-    screen?.dispose();
-    for (final call in _directCalls.values) {
-      await call.close();
+    final mediaClosing = [
+      _leaveView(),
+      if (screen != null) screen!.close(),
+      for (final call in {if (active != null) active!, ..._directCalls.values})
+        call.close(),
+    ];
+    notifyListeners(); // Stop call audio before waiting for shutdown work.
+    try {
+      await Future.wait([
+        ...mediaClosing,
+        if (_events != null) _events!.cancel(),
+        if (_lateEvents != null) _lateEvents!.cancel(),
+        if (_callSignals != null) _callSignals!.cancel(),
+        devices.close(),
+      ]);
+    } finally {
+      audio.reset(null);
+      screen?.dispose();
+      _refresh();
+      if (_backgroundUpdate != null) await _backgroundUpdate;
+      if (_nativeCallActions) _nativeCalls.setMethodCallHandler(null);
+      dispose();
     }
-    _refresh();
-    if (_backgroundUpdate != null) await _backgroundUpdate;
-    if (_android) _nativeCalls.setMethodCallHandler(null);
-    dispose();
   }
 
   Future<void> acceptDirect(DirectCall call) async {
@@ -660,7 +738,7 @@ class CallController extends ChangeNotifier
     _refresh();
     try {
       await call.answer();
-      devices.accept(call);
+      if (!call.isClosed) devices.accept(call);
     } catch (_) {
       await call.close();
       rethrow;
@@ -743,9 +821,13 @@ class CallController extends ChangeNotifier
   Future<void> handleCallEnded(CallSession session) async {
     directInvitations.removeWhere((c) => c.session == session.callId);
     _refresh();
-    await _directCalls[session.callId]?.close();
     final call = _directCalls[session.callId];
-    if (call != null) await _recordDirectEnd(call);
+    if (call != null) {
+      // The SDK awaits this delegate while terminating. Neither media cleanup
+      // nor a history write may hold up its hangup signalling.
+      unawaited(call.close().catchError((Object _) {}));
+      unawaited(_recordDirectEnd(call));
+    }
     _refresh();
   }
 

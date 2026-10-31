@@ -83,13 +83,27 @@ class CallStore:
         with self.db() as db:
             return [dict(row) for row in db.execute('SELECT l.* FROM leases l JOIN calls c ON c.id=l.call_id WHERE c.room=? AND c.session=?', (room, session))]
 
-    def admission(self, room, session, video, who, curve, ed, lease=None, reconnect=None, valid=None, checked=None, camera_capable=False):
+    def active(self, room):
+        """Discover live sessions after reopening; never renew a participant lease."""
+        with self.lock:
+            self.sweep()
+            with self.db() as db:
+                rows = db.execute('''SELECT c.session,c.video,COUNT(*) AS participants
+                  FROM calls c JOIN leases l ON l.call_id=c.id
+                  WHERE c.room=? AND l.expires>? GROUP BY c.id
+                  ORDER BY participants DESC,c.id LIMIT 10''', (room, self.clock()))
+                return [dict(row, video=bool(row['video'])) for row in rows]
+
+    def admission(self, room, session, video, who, curve, ed, lease=None, reconnect=None, valid=None, checked=None, camera_capable=False, join_existing=False):
         identity = who['user_id'] + '/' + who['device_id']
         with self.lock:
             self.sweep()
             with self.db() as db:
                 db.execute('BEGIN IMMEDIATE')
                 call = db.execute('SELECT * FROM calls WHERE room=? AND session=?', (room, session)).fetchone()
+                if join_existing and not lease and (call is None or not db.execute(
+                        'SELECT 1 FROM leases WHERE call_id=? LIMIT 1', (call['id'],)).fetchone()):
+                    raise CallError('call_ended', 409)
                 if call is None:
                     if lease: raise CallError('lease_expired', 410)
                     db.execute('INSERT INTO calls(room,session,video,generation,ready_at) VALUES(?,?,?,?,?)',

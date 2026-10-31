@@ -9,11 +9,31 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.Handler
+import android.os.Looper
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
 
 class CallService : Service() {
-    companion object { var running = false; private set }
+    companion object {
+        var running = false; private set
+        fun endCall(done: () -> Unit = {}) {
+            val engine = FlutterEngineCache.getInstance().get(MainActivity.ENGINE_ID)
+            if (engine == null) { done(); return }
+            val handler = Handler(Looper.getMainLooper())
+            var finished = false
+            val finish = Runnable { if (!finished) { finished = true; done() } }
+            // Give encrypted hangup a bounded opportunity even if Dart or the network stalls.
+            handler.postDelayed(finish, 5000)
+            MethodChannel(engine.dartExecutor.binaryMessenger, "voicechat/calls").invokeMethod("end", null,
+                object : MethodChannel.Result {
+                    private fun complete() { handler.removeCallbacks(finish); finish.run() }
+                    override fun success(result: Any?) { complete() }
+                    override fun error(code: String, message: String?, details: Any?) { complete() }
+                    override fun notImplemented() { complete() }
+                })
+        }
+    }
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onCreate() {
         super.onCreate()
@@ -45,17 +65,13 @@ class CallService : Service() {
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "end") {
-            val engine = FlutterEngineCache.getInstance().get(MainActivity.ENGINE_ID)
-            if (engine == null) stopSelf() else {
-                MethodChannel(engine.dartExecutor.binaryMessenger, "voicechat/calls").invokeMethod("end", null,
-                    object : MethodChannel.Result {
-                        override fun success(result: Any?) { stopSelf() }
-                        override fun error(code: String, message: String?, details: Any?) { stopSelf() }
-                        override fun notImplemented() { stopSelf() }
-                    })
-            }
+            endCall { stopSelf() }
         }
         return START_NOT_STICKY
+    }
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        endCall { stopSelf() }
+        super.onTaskRemoved(rootIntent)
     }
     override fun onDestroy() {
         running = false

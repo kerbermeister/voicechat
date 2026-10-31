@@ -4,6 +4,7 @@
 
 import 'dart:async';
 import 'dart:core';
+import 'dart:io' show Platform;
 import 'dart:math';
 
 import 'package:collection/collection.dart';
@@ -48,7 +49,8 @@ class CallSession {
   AssertedIdentity? get remoteAssertedIdentity => _remoteAssertedIdentity;
   AssertedIdentity? _remoteAssertedIdentity;
 
-  bool get callHasEnded => state == CallState.kEnded;
+  bool get callHasEnded =>
+      state == CallState.kEnded || state == CallState.kEnding;
 
   bool _iceGatheringFinished = false;
 
@@ -189,6 +191,15 @@ class CallSession {
 
   Timer? _inviteTimer;
   Timer? _ringingTimer;
+  Timer? _connectionTimer;
+  bool _answering = false;
+
+  void _waitForConnection(Duration timeout) {
+    _connectionTimer ??= Timer(timeout, () {
+      _connectionTimer = null;
+      if (!callHasEnded) unawaited(hangup(reason: CallErrorCode.iceTimeout));
+    });
+  }
 
   // outgoing call
   Future<void> initOutboundCall(CallType type) async {
@@ -366,6 +377,7 @@ class CallSession {
     RTCSessionDescription answer,
     SDPStreamMetadata? metadata,
   ) async {
+    if (callHasEnded) return;
     if (metadata != null) {
       _updateRemoteSDPStreamMetadata(metadata);
     }
@@ -373,9 +385,11 @@ class CallSession {
     if (direction == CallDirection.kOutgoing) {
       setCallState(CallState.kConnecting);
       await pc!.setRemoteDescription(answer);
-      for (final candidate in _remoteCandidates) {
+      if (callHasEnded) return;
+      for (final candidate in _remoteCandidates.toList()) {
         await pc!.addCandidate(candidate);
       }
+      _remoteCandidates.clear();
     }
     if (remotePartyId != null) {
       /// Send select_answer event.
@@ -508,7 +522,10 @@ class CallSession {
         continue;
       }
 
-      if (pc != null && _inviteOrAnswerSent) {
+      if (callHasEnded) return;
+      // Candidates arriving while answer() awaits capture/signalling are usable
+      // as soon as the remote offer exists; do not leave them queued forever.
+      if (pc != null && await pc!.getRemoteDescription() != null) {
         try {
           await pc!.addCandidate(candidate);
         } catch (e, s) {
@@ -623,8 +640,11 @@ class CallSession {
 
     if (purpose == SDPStreamMetadataPurpose.Usermedia) {
       _speakerOn = type == CallType.kVideo;
-      if (!voip.delegate.isWeb && stream.getAudioTracks().isNotEmpty) {
+      if (!voip.delegate.isWeb &&
+          (Platform.isAndroid || Platform.isIOS) &&
+          stream.getAudioTracks().isNotEmpty) {
         final audioTrack = stream.getAudioTracks()[0];
+        // Phone-speaker routing is unavailable on desktop WebRTC plugins.
         audioTrack.enableSpeakerphone(_speakerOn);
       }
     }
@@ -725,6 +745,16 @@ class CallSession {
   }
 
   void setCallState(CallState newState) {
+    // Delayed SDP/ICE callbacks cannot resurrect a cancelled call.
+    if (callHasEnded && newState != CallState.kEnded) return;
+    if (newState == CallState.kConnecting) {
+      _waitForConnection(const Duration(seconds: 30));
+    } else if (newState == CallState.kConnected ||
+        newState == CallState.kEnded ||
+        newState == CallState.kEnding) {
+      _connectionTimer?.cancel();
+      _connectionTimer = null;
+    }
     _state = newState;
     onCallStateChanged.add(newState);
     fireCallEvent(CallStateChange.kState);
@@ -848,64 +878,81 @@ class CallSession {
   }
 
   Future<void> answer({String? txid}) async {
-    if (_inviteOrAnswerSent) {
+    if (_inviteOrAnswerSent || _answering || callHasEnded) {
       return;
     }
-    // stop play ringtone
-    await voip.delegate.stopRingtone();
+    _answering = true;
+    try {
+      // stop play ringtone
+      await voip.delegate.stopRingtone();
+      if (callHasEnded) return;
 
-    if (direction == CallDirection.kIncoming) {
-      if (!isGroupCall && localUserMediaStream == null) {
-        final stream = await _getUserMedia(type);
-        if (stream == null || callHasEnded) return;
-        await addLocalStream(stream, SDPStreamMetadataPurpose.Usermedia);
+      if (direction == CallDirection.kIncoming) {
+        if (!isGroupCall && localUserMediaStream == null) {
+          final stream = await _getUserMedia(type);
+          if (stream == null || callHasEnded) return;
+          await addLocalStream(stream, SDPStreamMetadataPurpose.Usermedia);
+        }
+        if (callHasEnded) return;
+        setCallState(CallState.kCreateAnswer);
+
+        final answer = await pc!.createAnswer({});
+        if (callHasEnded) return;
+        for (final candidate in _remoteCandidates.toList()) {
+          await pc!.addCandidate(candidate);
+          if (callHasEnded) return;
+        }
+        _remoteCandidates.clear();
+
+        final callCapabilities = CallCapabilities()
+          ..dtmf = false
+          ..transferee = false;
+
+        final metadata = SDPStreamMetadata({
+          if (localUserMediaStream != null)
+            localUserMediaStream!.stream!.id: SDPStreamPurpose(
+              purpose: SDPStreamMetadataPurpose.Usermedia,
+              audio_muted: localUserMediaStream!.audioMuted,
+              video_muted: localUserMediaStream!.videoMuted,
+            ),
+          if (localScreenSharingStream != null)
+            localScreenSharingStream!.stream!.id: SDPStreamPurpose(
+              purpose: SDPStreamMetadataPurpose.Screenshare,
+              audio_muted: localScreenSharingStream!.audioMuted,
+              video_muted: localScreenSharingStream!.videoMuted,
+            ),
+        });
+
+        setCallState(CallState.kConnecting);
+        await pc!.setLocalDescription(answer);
+        if (callHasEnded) return;
+
+        // Allow a short time for initial candidates to be gathered
+        await Future.delayed(Duration(milliseconds: 200));
+        if (callHasEnded) return;
+
+        final res = await sendAnswerCall(
+          room,
+          callId,
+          answer.sdp!,
+          localPartyId,
+          type: answer.type!,
+          capabilities: callCapabilities,
+          metadata: metadata,
+          txid: txid,
+        );
+        Logs().v('[VOIP] answer res => $res');
+
+        _inviteOrAnswerSent = true;
+        if (callHasEnded) {
+          await _sendHangup(CallErrorCode.userHangup);
+          return;
+        }
+        unawaited(_sendCandidateQueue());
+        _answeredByUs = true;
       }
-      setCallState(CallState.kCreateAnswer);
-
-      final answer = await pc!.createAnswer({});
-      for (final candidate in _remoteCandidates) {
-        await pc!.addCandidate(candidate);
-      }
-
-      final callCapabilities = CallCapabilities()
-        ..dtmf = false
-        ..transferee = false;
-
-      final metadata = SDPStreamMetadata({
-        if (localUserMediaStream != null)
-          localUserMediaStream!.stream!.id: SDPStreamPurpose(
-            purpose: SDPStreamMetadataPurpose.Usermedia,
-            audio_muted: localUserMediaStream!.audioMuted,
-            video_muted: localUserMediaStream!.videoMuted,
-          ),
-        if (localScreenSharingStream != null)
-          localScreenSharingStream!.stream!.id: SDPStreamPurpose(
-            purpose: SDPStreamMetadataPurpose.Screenshare,
-            audio_muted: localScreenSharingStream!.audioMuted,
-            video_muted: localScreenSharingStream!.videoMuted,
-          ),
-      });
-
-      await pc!.setLocalDescription(answer);
-      setCallState(CallState.kConnecting);
-
-      // Allow a short time for initial candidates to be gathered
-      await Future.delayed(Duration(milliseconds: 200));
-
-      final res = await sendAnswerCall(
-        room,
-        callId,
-        answer.sdp!,
-        localPartyId,
-        type: answer.type!,
-        capabilities: callCapabilities,
-        metadata: metadata,
-        txid: txid,
-      );
-      Logs().v('[VOIP] answer res => $res');
-
-      _inviteOrAnswerSent = true;
-      _answeredByUs = true;
+    } finally {
+      _answering = false;
     }
   }
 
@@ -932,14 +979,23 @@ class CallSession {
     required CallErrorCode reason,
     bool shouldEmit = true,
   }) async {
+    if (callHasEnded) return;
     setCallState(CallState.kEnding);
-    await terminate(CallParty.kLocal, reason, shouldEmit);
+    // Send immediately, while cleanup and UI/history delegates run separately.
+    // Quitting the app must not wait for native media disposal to notify peers.
+    await Future.wait([
+      terminate(CallParty.kLocal, reason, shouldEmit),
+      _sendHangup(reason),
+    ]);
+  }
+
+  Future<void> _sendHangup(CallErrorCode reason) async {
     try {
       final res = await sendHangupCall(
         room,
         callId,
         localPartyId,
-        'userHangup',
+        reason.reason,
       );
       Logs().v('[VOIP] hangup res => $res');
     } catch (e) {
@@ -1080,11 +1136,12 @@ class CallSession {
       );
       // just incase we ended the call but already sent the invite
       // raraley happens during glares
-      if (state == CallState.kEnded) {
-        await hangup(reason: CallErrorCode.replaced);
+      if (callHasEnded) {
+        await _sendHangup(CallErrorCode.replaced);
         return;
       }
       _inviteOrAnswerSent = true;
+      unawaited(_sendCandidateQueue());
 
       if (!isGroupCall) {
         Logs().d('[glare] set callid because new invite sent');
@@ -1175,7 +1232,9 @@ class CallSession {
       };
       pc!.onIceConnectionState = (RTCIceConnectionState state) async {
         Logs().v('[VOIP] RTCIceConnectionState => $state');
-        if (state == RTCIceConnectionState.RTCIceConnectionStateConnected) {
+        if (callHasEnded) return;
+        if (state == RTCIceConnectionState.RTCIceConnectionStateConnected ||
+            state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
           _localCandidates.clear();
           _remoteCandidates.clear();
           iceRestartedCount = 0;
@@ -1187,6 +1246,7 @@ class CallSession {
           RTCIceConnectionState.RTCIceConnectionStateFailed,
           RTCIceConnectionState.RTCIceConnectionStateDisconnected,
         }.contains(state)) {
+          _waitForConnection(const Duration(seconds: 15));
           if (iceRestartedCount < 3) {
             await restartIce();
             iceRestartedCount++;
@@ -1206,6 +1266,8 @@ class CallSession {
   }
 
   Future<void> cleanUp() async {
+    _connectionTimer?.cancel();
+    _connectionTimer = null;
     try {
       for (final stream in _streams) {
         await stream.dispose();
@@ -1302,7 +1364,17 @@ class CallSession {
           : false,
     };
     try {
-      return await voip.delegate.mediaDevices.getUserMedia(mediaConstraints);
+      final stream = await voip.delegate.mediaDevices.getUserMedia(
+        mediaConstraints,
+      );
+      if (callHasEnded) {
+        for (final track in stream.getTracks()) {
+          await track.stop();
+        }
+        await stream.dispose();
+        return null;
+      }
+      return stream;
     } catch (e) {
       await _getUserMediaFailed(e);
       rethrow;
@@ -1380,13 +1452,13 @@ class CallSession {
   }
 
   Future<void> _sendCandidateQueue() async {
-    if (callHasEnded) return;
+    if (callHasEnded || !_inviteOrAnswerSent) return;
     /*
     Currently, trickle-ice is not supported, so it will take a
     long time to wait to collect all the canidates, set the
     timeout for collection canidates to speed up the connection.
     */
-    final candidatesQueue = _localCandidates;
+    final candidatesQueue = _localCandidates.toList();
     try {
       if (candidatesQueue.isNotEmpty) {
         final candidates = <Map<String, dynamic>>[];
@@ -1400,13 +1472,13 @@ class CallSession {
           localPartyId,
           candidates,
         );
+        _candidateSendTries = 0;
         Logs().v('[VOIP] sendCallCandidates res => $res');
       }
     } catch (e) {
       Logs().v('[VOIP] sendCallCandidates e => $e');
       _candidateSendTries++;
-      _localCandidates.clear();
-      _localCandidates.addAll(candidatesQueue);
+      _localCandidates.insertAll(0, candidatesQueue);
 
       if (_candidateSendTries > 5) {
         Logs().d(
@@ -1416,8 +1488,8 @@ class CallSession {
         return;
       }
 
-      final delay = 500 * pow(2, _candidateSendTries);
-      Timer(Duration(milliseconds: delay as int), () {
+      final delay = (500 * pow(2, _candidateSendTries)).toInt();
+      Timer(Duration(milliseconds: delay), () {
         unawaited(_sendCandidateQueue());
       });
     }
@@ -1511,9 +1583,12 @@ class CallSession {
       'version': version,
       'lifetime': lifetime,
       'offer': {'sdp': sdp, 'type': type},
-      'invitee': ?remoteUserId, // TODO: rename this to invitee_user_id? breaks spec though
+      'invitee':
+          ?remoteUserId, // TODO: rename this to invitee_user_id? breaks spec though
       'invitee_device_id': ?remoteDeviceId,
-      if (remoteDeviceId != null) 'device_id': client.deviceID!, // Having a remoteDeviceId means you are doing to-device events, so you want to send your deviceId too
+      if (remoteDeviceId != null)
+        'device_id': client
+            .deviceID!, // Having a remoteDeviceId means you are doing to-device events, so you want to send your deviceId too
       if (capabilities != null) 'capabilities': capabilities.toJson(),
       if (metadata != null) sdpStreamMetadataKey: metadata.toJson(),
     };

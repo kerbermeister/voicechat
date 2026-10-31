@@ -29,6 +29,20 @@ class CallControlTests(unittest.TestCase):
         self.now += 1
         return self.admit(peer)
 
+    def test_discovery_survives_one_departure_and_rejoins_the_same_session(self):
+        grants = [self.join(peer) for peer in range(3)]
+        self.store.leave({'user_id': '@u0:local', 'device_id': 'D'}, grants[0]['lease_id'])
+        expires = [row['expires'] for row in self.store.roster('!room:local', 'call')]
+        reopened = CallStore(self.store.path, self.media, lambda: self.now)
+        self.assertEqual(reopened.active('!room:local'), [{'session': 'call', 'video': True, 'participants': 2}])
+        self.assertEqual(reopened.active('!other:local'), [])
+        self.assertEqual([row['expires'] for row in reopened.roster('!room:local', 'call')], expires)
+        joined = self.join(0)
+        self.assertNotEqual(joined['lease_id'], grants[0]['lease_id'])
+        self.assertEqual(self.store.active('!room:local')[0]['participants'], 3)
+        self.now += 31
+        self.assertEqual(self.store.active('!room:local'), [])
+
     def test_cap_expiry_released_slot_and_old_generation(self):
         admissions = [self.join(peer) for peer in range(10)]
         old = admissions[-1]['generation']
@@ -46,6 +60,21 @@ class CallControlTests(unittest.TestCase):
         self.assertNotIn(replacement['generation'], self.rooms)
         with self.assertRaisesRegex(CallError, 'lease_expired'):
             self.admit(10, lease=replacement['lease_id'])
+
+    def test_last_departure_between_discovery_and_join_cannot_restart_a_call(self):
+        with self.assertRaisesRegex(CallError, 'call_ended'):
+            self.admit(1, join_existing=True)
+        owner = self.join(0)
+        self.assertTrue(self.store.active('!room:local'))
+        with self.assertRaisesRegex(CallError, 'generation_settling'):
+            self.admit(1, join_existing=True)
+        self.now += 1
+        peer = self.admit(1, join_existing=True)
+        for number, grant in [(0, owner), (1, peer)]:
+            self.store.leave({'user_id': '@u'+str(number)+':local', 'device_id': 'D'}, grant['lease_id'])
+        with self.assertRaisesRegex(CallError, 'call_ended'):
+            self.admit(2, join_existing=True)
+        self.assertEqual(self.store.active('!room:local'), [])
 
     def test_crash_recovery_and_failed_deletion_never_issue_admission(self):
         first = self.join(0)

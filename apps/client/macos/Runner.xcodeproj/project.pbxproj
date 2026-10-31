@@ -21,6 +21,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		AABBCC001122334455660031 /* ScreenCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCC001122334455660030 /* ScreenCapture.swift */; };
 		AABBCC001122334455660021 /* MacUpdateRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCC001122334455660020 /* MacUpdateRoute.swift */; };
         AABBCC001122334455660010 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = AABBCC001122334455660012 /* Sparkle */; };
 		AABBCC001122334455660008 /* MacUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCC001122334455660007 /* MacUpdater.swift */; };
@@ -68,6 +69,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		AABBCC001122334455660030 /* ScreenCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenCapture.swift; sourceTree = "<group>"; };
 		AABBCC001122334455660020 /* MacUpdateRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUpdateRoute.swift; sourceTree = "<group>"; };
 		AABBCC001122334455660007 /* MacUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacUpdater.swift; sourceTree = "<group>"; };
 		AABBCC001122334455660005 /* DesktopNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesktopNotifications.swift; sourceTree = "<group>"; };
@@ -193,6 +195,7 @@
 				AABBCC001122334455660020 /* MacUpdateRoute.swift */,
 				AABBCC001122334455660005 /* DesktopNotifications.swift */,
 				AABBCC001122334455660003 /* NoteCamera.swift */,
+				AABBCC001122334455660030 /* ScreenCapture.swift */,
 				AABBCC001122334455660001 /* PlatformFiles.swift */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
@@ -461,6 +464,7 @@
 				AABBCC001122334455660021 /* MacUpdateRoute.swift in Sources */,
 				AABBCC001122334455660006 /* DesktopNotifications.swift in Sources */,
 				AABBCC001122334455660004 /* NoteCamera.swift in Sources */,
+				AABBCC001122334455660031 /* ScreenCapture.swift in Sources */,
 				AABBCC001122334455660002 /* PlatformFiles.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,

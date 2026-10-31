@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "version": "1.15.3",
+  "build": 35,
+  "flutter_analyze": "PASS",
+  "full_flutter_before_final_routing_fix": {
+    "pass": 461,
+    "skip": 4
+  },
+  "final_affected_flutter_tests": {
+    "pass": 40
+  },
+  "macos_packaging_tests": {
+    "pass": 9
+  },
+  "hardware_mac_camera": {
+    "passed": [
+      "camera-off-with-signalling-error",
+      "timeout",
+      "late-sender"
+    ]
+  },
+  "hardware_mac_ringback": {
+    "pass": true,
+    "cycles": 3
+  },
+  "hardware_native_webrtc": {
+    "pass": true,
+    "cycles": [
+      "accept_audio_dtls_remote_end",
+      "cancel_before_answer_remote_end",
+      "repeat_accept_audio_dtls_remote_end"
+    ],
+    "signalling": "in memory",
+    "physical_devices": 1
+  },
+  "screen_capture": {
+    "pass": false,
+    "result": "system picker could not be operated: Control Center access denied; timed out awaiting selection"
+  },
+  "matrix_phone_turn_e2ee_screen_verified": false,
+  "source_logs_sha256": {
+    "tests35-final.log": "988415a3780a68ce2807ebefa8102e15d8cfc0e25a84272d8057c5860bfdde2a",
+    "call35-regressions-final.log": "62d951d9063f1d0ee3903613b6f4555d6fd9b98499efdb49bcaaf78416f29c22",
+    "analyze35-final.log": "62186c30a0a03da0efbcff06890293d826b68167aba28cd92764af1e113621a7",
+    "macos35-python-tests.log": "9b58067be32f03afbf042d64e86b7015b743d4381f559179be16f7a03ec064db",
+    "hardware35-direct_camera_cleanup_test.log": "81ae4721d6642f10a9cb305c4506e8702e2d2c0817ddf56616e551a9d80337dc",
+    "hardware35-native_ringback_test.log": "3898d0ea95128bd49e2456ab1c108bb5d838db509fb4d49f7e473366ad051fcc",
+    "hardware35-native_direct_call.log": "0db4b76c4e75ba93584c2411998f94e5aadecb53a6328f720ce99afa2daf4af3",
+    "hardware35-screen.log": "476a6bc457eeee95c1d0febae28c2d9e7af5b906ee9148bf924c4a9a9940464c",
+    "tests35-phase2-final.log": "290f006eeb002f975b2a7bda29f09631bca5f95fba09e6c20ea26f9a3018bbe4",
+    "lifecycle35-final.log": "e0db5025582526ff9c70f86eed9ac5e83a2574c92541a765dd10da2895cddb1f",
+    "screen35-final.log": "032143b0da688bcd5fb0a7e5aaa455050511e319e12d2adc0e3d539eaf52127f",
+    "server35-final.log": "74c52712186321a7fc039fac424e5a4c369c049243b75306ae3e0b71b3d6ce56",
+    "group-control35-final.log": "771dcb69cad7d0fb2ff1f9f4ec638c5fda9e3b7e7d22095934b5942b2463e021",
+    "token-server35-final.log": "28bde6367da92b70745c9dae3e6ad7d58e66497474817be4aa48a17de032ab23",
+    "android35-kotlin-check.log": "569bd0b8a2ff10e5c8702f13278d448d3c67f11cf63ada22367b99632bb9160b",
+    "web-exit35-build.log": "b80ed5fdd10f6f6a7a7c7c39888fa8ed6fb9cef4878108ed1c813a6024cf4569",
+    "xcode35-tests.log": "563980c9ea591ea8e021b116d7a53fd7524b94e9646cf6e6e8119de17b2dbdff",
+    "analyze35-final-scope.log": "6d4b9f687f33ed48a154b7aa478d0ad605c2795125a9224cc910d2e635fd150e"
+  },
+  "full_flutter_phase2": {
+    "pass": 468,
+    "skip": 4
+  },
+  "full_python_phase2": {
+    "total": 771,
+    "skip": 3,
+    "pass": true
+  },
+  "final_group_control_tests": {
+    "pass": 8
+  },
+  "final_token_server_tests": {
+    "pass": 11
+  },
+  "android_kotlin": {
+    "pass": true,
+    "task": ":app:compileDebugKotlin",
+    "signed_update": false,
+    "device_verified": false
+  },
+  "web_exit": {
+    "fixture_compilation": true,
+    "browser_verified": false,
+    "blocker": "IAB origin approval denied local fixture; no alternative browser used"
+  }
+}

@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:matrix/matrix.dart' show TimeoutHttpClient;
 import 'route_coordinator.dart';
 import 'transport.dart';
+import 'call_page_exit.dart';
 
 /// Matrix wraps injected clients in its timeout adapter. Keep that adapter for
 /// ordinary requests; unwrap only to find the shared routing coordinator.
@@ -146,9 +147,8 @@ class RouteTransport extends http.BaseClient {
         : null;
     if (syncAbort != null) _syncRequests[syncAbort] = route;
     try {
-      response = await _inner.send(
-        _RoutedRequest(request, destination, syncAbort?.future),
-      );
+      final routed = _RoutedRequest(request, destination, syncAbort?.future);
+      response = await (sendCallPageExit(routed) ?? _inner.send(routed));
     } on http.RequestAbortedException {
       _syncRequests.remove(syncAbort);
       rethrow;

@@ -14,7 +14,7 @@ class AppDelegate: FlutterAppDelegate {
 
   override func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     guard let updater = (mainFlutterWindow as? MainFlutterWindow)?.updater,
-          updater.installationPending else { return .terminateNow }
+          updater.installationPending else { return super.applicationShouldTerminate(sender) }
     updater.prepareInstallation { allowed in sender.reply(toApplicationShouldTerminate: allowed) }
     return .terminateLater
   }

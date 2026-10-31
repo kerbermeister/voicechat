@@ -253,8 +253,10 @@ class DirectCall implements VoiceCall {
   }
 
   Future<void> answer() async {
-    await authorize();
+    await authorize().timeout(const Duration(seconds: 8));
+    if (isClosed) return;
     await call.answer();
+    if (isClosed) return;
     if (video) await setVideoQuality(videoQuality);
     monitor();
     changed();
@@ -503,12 +505,33 @@ class DirectCall implements VoiceCall {
   }
 
   @override
-  Future<void> close() async {
-    if (_closed) return;
+  Future<void> close() => _closing ??= _close();
+
+  Future<void>? _closing;
+  Future<void> _close() async {
     _videoAtClose = video || _cameraTracks.isNotEmpty;
     _closed = true;
     _clock.stop();
     changed(); // UI and ringback must stop before media/signalling awaits.
+    try {
+      await Future.wait([
+        if (call.state != mx.CallState.kEnded &&
+            call.state != mx.CallState.kEnding)
+          call.hangup(reason: mx.CallErrorCode.userHangup),
+        _releaseMedia(),
+      ]);
+    } finally {
+      for (final renderer in _renderers) {
+        renderer.srcObject = null;
+        await renderer.dispose();
+      }
+      _streams.clear();
+      _renderedTracks.clear();
+      changed();
+    }
+  }
+
+  Future<void> _releaseMedia() async {
     // The SDK may already be ending and miss a camera attached during dialling.
     // Keep explicit ownership and release tracks even when hangup/metadata cannot run.
     final tracks = {
@@ -528,20 +551,6 @@ class DirectCall implements VoiceCall {
     _authorizationTimer?.cancel();
     for (final subscription in _subscriptions) {
       await subscription.cancel();
-    }
-    try {
-      if (call.state != mx.CallState.kEnded &&
-          call.state != mx.CallState.kEnding) {
-        await call.hangup(reason: mx.CallErrorCode.userHangup);
-      }
-    } finally {
-      for (final renderer in _renderers) {
-        renderer.srcObject = null;
-        await renderer.dispose();
-      }
-      _streams.clear();
-      _renderedTracks.clear();
-      changed();
     }
   }
 }

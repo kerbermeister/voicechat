@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -33,6 +34,187 @@ class CaptureStream extends Fake implements rtc.MediaStream {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'Ending a call cancels its pending Mac picker and releases the empty stream',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      const screen = MethodChannel('voicechat/screen');
+      const rtcChannel = MethodChannel('FlutterWebRTC.Method');
+      final opened = Completer<void>();
+      final selection = Completer<void>();
+      var disposed = false;
+      messenger.setMockMethodCallHandler(screen, (call) async {
+        if (call.method == 'pickerSupported') return true;
+        if (call.method == 'start') {
+          opened.complete();
+          await selection.future;
+          return null;
+        }
+        if (call.method == 'cancelSelection') {
+          expect(call.arguments, 'pending');
+          selection.completeError(PlatformException(code: 'screenCancelled'));
+        }
+        return null;
+      });
+      messenger.setMockMethodCallHandler(rtcChannel, (call) async {
+        if (call.method == 'createLocalMediaStream') {
+          return {'streamId': 'pending'};
+        }
+        if (call.method == 'mediaStreamGetTracks') {
+          return {'audioTracks': [], 'videoTracks': []};
+        }
+        if (call.method == 'streamDispose') disposed = true;
+        return null;
+      });
+      try {
+        final capture = expectLater(
+          ScreenCapture.start(),
+          throwsA(isA<PlatformException>()),
+        );
+        await opened.future;
+        await ScreenCapture.cancelPendingSelection();
+        await capture;
+        expect(disposed, true);
+        await ScreenCapture.cancelPendingSelection();
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+        messenger.setMockMethodCallHandler(screen, null);
+        messenger.setMockMethodCallHandler(rtcChannel, null);
+      }
+    },
+  );
+  test(
+    'Cancel during Mac stream allocation never opens a late picker',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      const screen = MethodChannel('voicechat/screen');
+      const rtcChannel = MethodChannel('FlutterWebRTC.Method');
+      final allocation = Completer<Map<String, String>>();
+      final allocating = Completer<void>();
+      var opened = 0, disposed = 0;
+      messenger.setMockMethodCallHandler(screen, (call) async {
+        if (call.method == 'pickerSupported') return true;
+        if (call.method == 'start') opened++;
+        return null;
+      });
+      messenger.setMockMethodCallHandler(rtcChannel, (call) async {
+        if (call.method == 'createLocalMediaStream') {
+          allocating.complete();
+          return allocation.future;
+        }
+        if (call.method == 'mediaStreamGetTracks') {
+          return {'audioTracks': [], 'videoTracks': []};
+        }
+        if (call.method == 'streamDispose') disposed++;
+        return null;
+      });
+      try {
+        final pending = expectLater(
+          ScreenCapture.start(),
+          throwsA(isA<PlatformException>()),
+        );
+        await allocating.future;
+        await expectLater(
+          ScreenCapture.start(),
+          throwsA(isA<PlatformException>()),
+        );
+        await ScreenCapture.cancelPendingSelection();
+        allocation.complete({'streamId': 'late-allocation'});
+        await pending;
+        expect(opened, 0);
+        expect(disposed, 1);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+        messenger.setMockMethodCallHandler(screen, null);
+        messenger.setMockMethodCallHandler(rtcChannel, null);
+      }
+    },
+  );
+  for (final cancelled in [false, true]) {
+    test(
+      'Mac system picker bypasses legacy preflight and cleans up on cancel=$cancelled',
+      () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        const screen = MethodChannel('voicechat/screen');
+        const rtcChannel = MethodChannel('FlutterWebRTC.Method');
+        const texture = MethodChannel('FlutterWebRTC/Texture72');
+        final methods = <String>[];
+        messenger.setMockMethodCallHandler(texture, (_) async => null);
+        messenger.setMockMethodCallHandler(screen, (call) async {
+          if (call.method == 'pickerSupported') return true;
+          if (call.method == 'start' && cancelled) {
+            throw PlatformException(code: 'screenCancelled');
+          }
+          return null;
+        });
+        messenger.setMockMethodCallHandler(rtcChannel, (call) async {
+          methods.add(call.method);
+          if (call.method == 'createLocalMediaStream') {
+            return {'streamId': 'selected'};
+          }
+          if (call.method == 'mediaStreamGetTracks') {
+            return {
+              'audioTracks': [],
+              'videoTracks': cancelled
+                  ? []
+                  : [
+                      {
+                        'id': 'selected-track',
+                        'kind': 'video',
+                        'label': 'selected',
+                        'enabled': true,
+                      },
+                    ],
+            };
+          }
+          if (call.method == 'createVideoRenderer') return {'textureId': 72};
+          if (call.method == 'videoRendererSetSrcObject') {
+            await messenger.handlePlatformMessage(
+              'FlutterWebRTC/Texture72',
+              const StandardMethodCodec().encodeSuccessEnvelope({
+                'event': 'didFirstFrameRendered',
+              }),
+              (_) {},
+            );
+          }
+          return null;
+        });
+        try {
+          if (cancelled) {
+            await expectLater(
+              ScreenCapture.start(),
+              throwsA(
+                isA<PlatformException>().having(
+                  (e) => e.code,
+                  'code',
+                  'screenCancelled',
+                ),
+              ),
+            );
+          } else {
+            final capture = await ScreenCapture.start();
+            expect(capture.source.mediaStream.id, 'selected');
+            await capture.close();
+            expect(methods, contains('trackDispose'));
+          }
+          expect(methods, contains('streamDispose'));
+          expect(methods, isNot(contains('requestCapturePermission')));
+          expect(methods, isNot(contains('getDisplayMedia')));
+        } finally {
+          debugDefaultTargetPlatformOverride = null;
+          for (final channel in [screen, rtcChannel, texture]) {
+            messenger.setMockMethodCallHandler(channel, null);
+          }
+        }
+      },
+    );
+  }
   for (final scenario in ['denied', 'no-frames', 'frames']) {
     test('Mac capture $scenario fails closed before publishing', () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.macOS;

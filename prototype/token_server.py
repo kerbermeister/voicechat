@@ -514,7 +514,7 @@ class Handler(BaseHTTPRequestHandler):
                     path.chmod(0o600)
                 return self.reply(200, {'ok': True})
             except (ValueError, TypeError): return self.reply(400, {'error': 'invalid_report'})
-        if self.path not in ('/token', '/call/leave'): return self.reply(404, {'error': 'not_found'})
+        if self.path not in ('/token', '/call/leave', '/call/active'): return self.reply(404, {'error': 'not_found'})
         try:
             size = int(self.headers.get('Content-Length', '0'))
             if not 0 < size <= 4096: return self.reply(400, {'error': 'invalid_size'})
@@ -529,11 +529,16 @@ class Handler(BaseHTTPRequestHandler):
                 call_store().leave(who, body['lease_id'])
                 return self.reply(200, {'ok': True})
             room = body['room_id']
+            if self.path == '/call/active':
+                if set(body) != {'room_id'}: return self.reply(400, {'error': 'invalid_request'})
+                self.call_room_members(room, who)
+                return self.reply(200, {'calls': call_store().active(room)})
             session = body['session']
             video = body.get('video', False)
             camera_capable = body.get('camera_capable', False)
-            if (type(video) is not bool or type(camera_capable) is not bool or body.get('protocol_version') != 1 or
-                set(body) - {'room_id', 'session', 'video', 'protocol_version', 'lease_id', 'reconnect', 'camera_capable'}):
+            join_existing = body.get('join_existing', False)
+            if (type(video) is not bool or type(camera_capable) is not bool or type(join_existing) is not bool or body.get('protocol_version') != 1 or
+                set(body) - {'room_id', 'session', 'video', 'protocol_version', 'lease_id', 'reconnect', 'camera_capable', 'join_existing'}):
                 return self.reply(400, {'error': 'invalid_call_mode'})
             if not isinstance(room, str) or not room.startswith('!') or len(room) > 255:
                 return self.reply(400, {'error': 'invalid_room'})
@@ -544,13 +549,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(400, {'error': 'invalid_lease'})
             if reconnect is not None and (not isinstance(reconnect, str) or len(reconnect) != 51):
                 return self.reply(400, {'error': 'invalid_generation'})
-            prefix = 'rooms/' + urllib.parse.quote(room, safe='') + '/state/'
-            members = self.matrix('rooms/' + urllib.parse.quote(room, safe='') + '/joined_members')['joined']
-            if who['user_id'] not in members: return self.reply(403, {'error': 'not_joined'})
-            if self.matrix(prefix + 'm.room.encryption/').get('algorithm') != 'm.megolm.v1.aes-sha2':
-                return self.reply(403, {'error': 'unencrypted_room'})
-            if self.matrix(prefix + 'm.room.create/').get('type') == 'dev.voicechat.personal':
-                return self.reply(403, {'error': 'personal_room_no_calls'})
+            members = self.call_room_members(room, who)
             store = call_store()
             wanted = {who['user_id']: [who['device_id']]}
             observed = store.roster(room, session)
@@ -573,7 +572,7 @@ class Handler(BaseHTTPRequestHandler):
                     values = candidate.get('keys', {})
                     valid[user + '/' + identifier] = (values.get('curve25519:' + identifier), values.get('ed25519:' + identifier))
             admission = store.admission(room, session, video, who, curve, ed, lease, reconnect, valid,
-                                        {peer['id'] for peer in observed}, camera_capable=camera_capable)
+                                        {peer['id'] for peer in observed}, camera_capable=camera_capable, join_existing=join_existing)
             now = int(time.time())
             token = jwt({'iss': 'prototype', 'sub': admission['identity'], 'nbf': now - 5, 'exp': now + 60,
                          'video': {'roomJoin': True, 'room': admission['generation'],
@@ -593,6 +592,18 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(400, {'error': 'invalid_request'})
         except Exception:
             self.reply(503, {'error': 'upstream_unavailable'})
+
+    def call_room_members(self, room, who):
+        if not isinstance(room, str) or not room.startswith('!') or len(room) > 255:
+            raise CallError('invalid_room', 400)
+        prefix = 'rooms/' + urllib.parse.quote(room, safe='')
+        members = self.matrix(prefix + '/joined_members')['joined']
+        if who['user_id'] not in members: raise CallError('not_joined')
+        if self.matrix(prefix + '/state/m.room.encryption/').get('algorithm') != 'm.megolm.v1.aes-sha2':
+            raise CallError('unencrypted_room')
+        if self.matrix(prefix + '/state/m.room.create/').get('type') == 'dev.voicechat.personal':
+            raise CallError('personal_room_no_calls')
+        return members
 
 if __name__ == '__main__':
     scheduled_store()

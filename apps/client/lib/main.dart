@@ -912,6 +912,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     }
     timeline?.cancelSubscriptions();
     selected = nextRoom;
+    calls?.groups.watch(nextRoom);
     timeline = nextTimeline;
     if (!nextRoom.isDirectChat &&
         nextRoom.historyVisibility == mx.HistoryVisibility.shared) {
@@ -2343,27 +2344,38 @@ class _ProbeScreenState extends State<ProbeScreen> {
         await select(target);
         if (mounted) setState(() {});
       },
-      header: ConversationHeader(
-        room: room,
-        lastSeenLabel: room.isDirectChat
-            ? lastSeen(_roomPresenceSnapshot(room), DateTime.now())
-            : '',
-        onClose: () => run(() async {
-          await stopActiveCapture();
-          if (mounted) setState(() => selected = null);
-        }),
-        onProfile: room.isDirectChat
-            ? () => run(() => profileCard(room.directChatMatrixID!))
-            : () => run(() => roomSettings()),
-        onInfo: busy ? null : () => run(() => roomSettings()),
-        onVoiceCall:
-            isPersonalRoom(room) || busy || (call != null && !call!.isClosed)
-            ? null
-            : () => run(() => startCall()),
-        onVideoCall:
-            isPersonalRoom(room) || busy || (call != null && !call!.isClosed)
-            ? null
-            : () => run(() => startCall(video: true)),
+      header: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ConversationHeader(
+            room: room,
+            lastSeenLabel: room.isDirectChat
+                ? lastSeen(_roomPresenceSnapshot(room), DateTime.now())
+                : '',
+            onClose: () => run(() async {
+              await stopActiveCapture();
+              calls?.groups.watch(null);
+              if (mounted) setState(() => selected = null);
+            }),
+            onProfile: room.isDirectChat
+                ? () => run(() => profileCard(room.directChatMatrixID!))
+                : () => run(() => roomSettings()),
+            onInfo: busy ? null : () => run(() => roomSettings()),
+            onVoiceCall:
+                isPersonalRoom(room) ||
+                    busy ||
+                    (call != null && !call!.isClosed)
+                ? null
+                : () => run(() => startCall()),
+            onVideoCall:
+                isPersonalRoom(room) ||
+                    busy ||
+                    (call != null && !call!.isClosed)
+                ? null
+                : () => run(() => startCall(video: true)),
+          ),
+          groupCallBanner(room),
+        ],
       ),
     );
   }
@@ -2412,6 +2424,20 @@ class _ProbeScreenState extends State<ProbeScreen> {
     } finally {
       callWindowOpen = false;
     }
+  }
+
+  Widget groupCallBanner(mx.Room room) {
+    final ongoing = calls?.groups.current;
+    if (ongoing != null &&
+        ongoing.room.id == room.id &&
+        calls?.active?.isClosed != false &&
+        calls?.starting != true) {
+      return ActiveCallBanner(
+        onPressed: () => run(() => startCall(video: ongoing.video)),
+        label: 'Идёт звонок · ${ongoing.participants} участн. · Присоединиться',
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   Widget callBanner() {

@@ -39,6 +39,7 @@ class CallProbe implements VoiceCall {
   final String session;
   final String tokenUrl;
   final String livekitUrl;
+  final bool joinExisting;
   late final http.Client _network =
       routeTransportOf(chat.client.httpClient)?.fork() ?? http.Client();
   final void Function(String) status;
@@ -121,6 +122,7 @@ class CallProbe implements VoiceCall {
     required this.livekitUrl,
     required this.status,
     this.changed,
+    this.joinExisting = false,
     bool video = false,
   }) : startedWithVideo = video;
 
@@ -340,6 +342,7 @@ class CallProbe implements VoiceCall {
               'video': startedWithVideo,
               'camera_capable': true,
               'protocol_version': 1,
+              if (joinExisting) 'join_existing': true,
               if (_admission != null) 'lease_id': _admission!['lease_id'],
               if (reconnect != null) 'reconnect': reconnect,
             }),
@@ -362,6 +365,11 @@ class CallProbe implements VoiceCall {
       }
       if (response.statusCode == 409 && data['error'] == 'call_full') {
         throw CallFull();
+      }
+      if (response.statusCode == 409 && data['error'] == 'call_ended') {
+        throw UserActionError(
+          'Групповой звонок уже завершён. Можно начать новый.',
+        );
       }
       if ([401, 403].contains(response.statusCode)) throw CallAccessChanged();
       if (response.statusCode != 200) {
@@ -747,28 +755,33 @@ class CallProbe implements VoiceCall {
     _clock.stop();
     cameraEnabled = false;
     _resend?.cancel();
+    final leave = _leave();
     try {
-      await _disposeTransport();
+      // Release admission immediately; media cleanup must not delay notifying peers.
+      await Future.wait([leave, _disposeTransport()]);
     } finally {
-      final lease = _admission?['lease_id'];
-      _admission = null;
-      if (lease != null) {
-        try {
-          await _network
-              .post(
-                Uri.parse('$tokenUrl/call/leave'),
-                headers: {
-                  'Authorization': 'Bearer ${chat.client.accessToken}',
-                  'Content-Type': 'application/json',
-                },
-                body: jsonEncode({'lease_id': lease}),
-              )
-              .timeout(const Duration(seconds: 5));
-        } catch (_) {
-          /* The server expires the lease even if release cannot be delivered. */
-        }
-      }
       _network.close();
+    }
+  }
+
+  Future<void> _leave() async {
+    final lease = _admission?['lease_id'];
+    _admission = null;
+    if (lease != null) {
+      try {
+        await _network
+            .post(
+              Uri.parse('$tokenUrl/call/leave'),
+              headers: {
+                'Authorization': 'Bearer ${chat.client.accessToken}',
+                'Content-Type': 'application/json',
+              },
+              body: jsonEncode({'lease_id': lease}),
+            )
+            .timeout(const Duration(seconds: 5));
+      } catch (_) {
+        /* The server expires the lease even if release cannot be delivered. */
+      }
     }
   }
 
