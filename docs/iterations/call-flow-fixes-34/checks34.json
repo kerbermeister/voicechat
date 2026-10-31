@@ -25,12 +25,17 @@
     "permission_toggle_visible_on": true,
     "ad_hoc_cdhash_requirement": true
   },
-  "github_actions_browser_access": "denied",
-  "published": false,
+  "github_actions_browser_access": "saved permission or managed policy denied GitHub, confirmed again after permissions change",
   "screen_permission_repair": "requires owner Touch ID/password; pending dialog cancelled without changing toggle",
   "macos_release_build": "PASS",
   "macos_signed_package": "PASS",
-  "candidate_startup": "blocked waiting for SecItemCopyMatching; owner Keychain confirmation required",
-  "installed_version": 33,
-  "public_channels_version": 33
+  "candidate_startup": "PASS: same account/device and old decrypted history",
+  "installed_version": 34,
+  "public_channels_version": {
+    "web": 33,
+    "android": 33,
+    "macos": 34
+  },
+  "macos_published": true,
+  "macos_installation": "PASS: stock Sparkle33to34, exact285 entries, account/device/history preserved"
 }

@@ -1,0 +1,17 @@
+{
+  "version": "1.15.2",
+  "build": 34,
+  "from_build": 33,
+  "stock_sparkle_update": true,
+  "manual_app_replacement": false,
+  "installed_exact_payload_verified": true,
+  "entries_checked": 285,
+  "codesign_verified": true,
+  "installed_process_running": true,
+  "profile_or_keychain_cleared": false,
+  "account_preserved": true,
+  "device_preserved": true,
+  "old_decrypted_fragments_preserved": 3,
+  "about34_verified": true,
+  "closed_backup_verified": true
+}

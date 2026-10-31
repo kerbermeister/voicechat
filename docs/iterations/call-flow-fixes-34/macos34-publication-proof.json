@@ -1,0 +1,24 @@
+{
+  "build": 34,
+  "published": true,
+  "stock_publisher_used": true,
+  "exact_candidate_profile_verified": true,
+  "managed_pointer_unchanged": true,
+  "https": {
+    "appcast.xml": {
+      "status": 200,
+      "sha256": "eadc256daa3c0cca8b3af8956d3e996685b43cd7bffb202b64b870292311e3a9",
+      "cache_control": "no-cache"
+    },
+    "VoiceChat.zip": {
+      "status": 200,
+      "sha256": "844c0d82f9a7d8cc925442b2130b21944ef82ace0274baff285b9ee9a983a5ed",
+      "cache_control": "public, max-age=31536000, immutable"
+    },
+    "VoiceChat.dmg": {
+      "status": 200,
+      "sha256": "8a1fd59058901b00c8fbcc846a33c3bfbd59788f720c75368f113e3985273049",
+      "cache_control": "public, max-age=31536000, immutable"
+    }
+  }
+}
