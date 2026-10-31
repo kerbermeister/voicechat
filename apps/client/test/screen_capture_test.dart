@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -221,91 +222,99 @@ void main() {
     );
   }
   for (final scenario in ['denied', 'no-frames', 'frames']) {
-    test('Mac capture $scenario fails closed before publishing', () async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
-      final messenger =
-          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
-      final methods = <String>[];
-      const channel = MethodChannel('FlutterWebRTC.Method');
-      const texture = MethodChannel('FlutterWebRTC/Texture71');
-      messenger.setMockMethodCallHandler(texture, (_) async => null);
-      messenger.setMockMethodCallHandler(channel, (call) async {
-        methods.add(call.method);
-        if (call.method == 'requestCapturePermission') {
-          return scenario != 'denied';
-        }
-        if (call.method == 'getDisplayMedia') {
-          return {
-            'streamId': 'display',
-            'audioTracks': [],
-            'videoTracks': [
-              {
-                'id': 'screen',
-                'kind': 'video',
-                'label': 'screen',
-                'enabled': true,
-                'remote': false,
-              },
-            ],
-          };
-        }
-        if (call.method == 'createVideoRenderer') return {'textureId': 71};
-        if (call.method == 'videoRendererSetSrcObject' &&
-            scenario == 'frames') {
-          await messenger.handlePlatformMessage(
-            'FlutterWebRTC/Texture71',
-            const StandardMethodCodec().encodeSuccessEnvelope({
-              'event': 'didFirstFrameRendered',
-            }),
-            (_) {},
-          );
-        }
-        return null;
-      });
-      try {
-        ScreenCapture? capture;
-        Object? error;
-        final starting = ScreenCapture.start().then<void>(
-          (value) {
-            capture = value;
-          },
-          onError: (Object e) {
-            error = e;
-          },
-        );
-        await starting;
-        if (scenario == 'frames') {
-          expect(error, isNull);
-          expect(capture, isNotNull);
-          expect(methods, isNot(contains('trackDispose')));
-          await capture!.close();
-        } else {
-          expect(error, isA<PlatformException>());
-          expect(
-            (error as PlatformException).code,
-            scenario == 'denied' ? 'screenPermissionDenied' : 'screenNoFrames',
-          );
-          if (scenario == 'denied') {
-            expect(methods, contains('requestCapturePermission'));
-            expect(methods, isNot(contains('getDisplayMedia')));
-          } else {
-            expect(
-              methods,
-              containsAll([
-                'videoRendererDispose',
-                'trackDispose',
-                'streamDispose',
-              ]),
+    test(
+      'Mac capture $scenario fails closed before publishing',
+      () async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+        final messenger =
+            TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        final methods = <String>[];
+        const channel = MethodChannel('FlutterWebRTC.Method');
+        const texture = MethodChannel('FlutterWebRTC/Texture71');
+        messenger.setMockMethodCallHandler(texture, (_) async => null);
+        messenger.setMockMethodCallHandler(channel, (call) async {
+          methods.add(call.method);
+          if (call.method == 'requestCapturePermission') {
+            return scenario != 'denied';
+          }
+          if (call.method == 'getDisplayMedia') {
+            return {
+              'streamId': 'display',
+              'audioTracks': [],
+              'videoTracks': [
+                {
+                  'id': 'screen',
+                  'kind': 'video',
+                  'label': 'screen',
+                  'enabled': true,
+                  'remote': false,
+                },
+              ],
+            };
+          }
+          if (call.method == 'createVideoRenderer') return {'textureId': 71};
+          if (call.method == 'videoRendererSetSrcObject' &&
+              scenario == 'frames') {
+            await messenger.handlePlatformMessage(
+              'FlutterWebRTC/Texture71',
+              const StandardMethodCodec().encodeSuccessEnvelope({
+                'event': 'didFirstFrameRendered',
+              }),
+              (_) {},
             );
           }
-          expect(screenCaptureNotice(error!), contains('macOS'));
+          return null;
+        });
+        try {
+          ScreenCapture? capture;
+          Object? error;
+          final starting = ScreenCapture.start().then<void>(
+            (value) {
+              capture = value;
+            },
+            onError: (Object e) {
+              error = e;
+            },
+          );
+          await starting;
+          if (scenario == 'frames') {
+            expect(error, isNull);
+            expect(capture, isNotNull);
+            expect(methods, isNot(contains('trackDispose')));
+            await capture!.close();
+          } else {
+            expect(error, isA<PlatformException>());
+            expect(
+              (error as PlatformException).code,
+              scenario == 'denied'
+                  ? 'screenPermissionDenied'
+                  : 'screenNoFrames',
+            );
+            if (scenario == 'denied') {
+              expect(methods, contains('requestCapturePermission'));
+              expect(methods, isNot(contains('getDisplayMedia')));
+            } else {
+              expect(
+                methods,
+                containsAll([
+                  'videoRendererDispose',
+                  'trackDispose',
+                  'streamDispose',
+                ]),
+              );
+            }
+            expect(screenCaptureNotice(error!), contains('macOS'));
+          }
+        } finally {
+          debugDefaultTargetPlatformOverride = null;
+          messenger.setMockMethodCallHandler(channel, null);
+          messenger.setMockMethodCallHandler(texture, null);
         }
-      } finally {
-        debugDefaultTargetPlatformOverride = null;
-        messenger.setMockMethodCallHandler(channel, null);
-        messenger.setMockMethodCallHandler(texture, null);
-      }
-    });
+      },
+      // WebRTC Helper checks dart:io Platform, not Flutter's platform override.
+      // These legacy macOS permission tests run in macos.yml and on local Macs.
+      skip: !Platform.isMacOS,
+    );
   }
   test(
     'Desktop capture support is not restricted to Android or determined by the viewer device',
