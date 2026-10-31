@@ -79,13 +79,7 @@ final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOut
     let track = factory.videoTrack(with: source, trackId: UUID().uuidString)
     media.addVideoTrack(track)
     plugin.localTracks?[track.trackId] = LocalVideoTrack(track: track)
-    let stopHandler: CapturerStopHandler = { [weak self] completion in
-      DispatchQueue.main.async {
-        guard let self, self.streamID == id else { completion(); return }
-        self.stop(completion)
-      }
-    }
-    plugin.videoCapturerStopHandlers?[track.trackId] = stopHandler
+    registerStopHandler(plugin, trackID: track.trackId, streamID: id)
     let config = SCStreamConfiguration()
     // Preserve aspect ratio and cap the source before WebRTC encoding.
     let size = filter.contentRect.size
@@ -111,11 +105,20 @@ final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOut
     } catch { fail("screenCaptureFailed", "Не удалось подключить захват экрана.") }
   }
 
+  func registerStopHandler(_ plugin: FlutterWebRTCPlugin, trackID: String, streamID id: String) {
+    let stopHandler: @convention(block) (@escaping CompletionHandler) -> Void = { [weak self] completion in
+      DispatchQueue.main.async {
+        guard let self, self.streamID == id else { completion(); return }
+        self.stop(completion)
+      }
+    }
+    // NSMutableDictionary erases the typedef. A Swift closure boxes as __SwiftValue;
+    // Objective-C invokes this value as a block, so preserve the block ABI.
+    plugin.videoCapturerStopHandlers?[trackID] = stopHandler
+  }
+
   func stream(_ stream: SCStream, didOutputSampleBuffer buffer: CMSampleBuffer, of type: SCStreamOutputType) {
-    guard type == .screen, buffer.isValid,
-      let attachments = CMSampleBufferGetSampleAttachmentsArray(buffer, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]],
-      attachments.first?[.status] as? Int == SCFrameStatus.complete.rawValue,
-      let pixel = buffer.imageBuffer else { return }
+    guard type == .screen, let pixel = Self.frame(from: buffer) else { return }
     // Keep capture ownership and shutdown on the same queue as method calls.
     DispatchQueue.main.async {
       guard !self.stopped, stream === self.stream, let source = self.source, let capturer = self.capturer else { return }
@@ -125,6 +128,14 @@ final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOut
       self.frameDeadline = nil
       if let result = self.pending { self.pending = nil; result(nil) }
     }
+  }
+
+  static func frame(from buffer: CMSampleBuffer) -> CVPixelBuffer? {
+    guard buffer.isValid,
+      let attachments = CMSampleBufferGetSampleAttachmentsArray(buffer, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]],
+      let status = attachments.first?[.status] as? Int,
+      [SCFrameStatus.complete.rawValue, SCFrameStatus.started.rawValue].contains(status) else { return nil }
+    return buffer.imageBuffer
   }
 
   func stream(_ stream: SCStream, didStopWithError error: Error) {

@@ -19,6 +19,8 @@ import 'direct_call_media_test.dart' show MediaTrack, MediaStream;
 
 class Peer extends Fake implements rtc.RTCPeerConnection {
   @override
+  void Function(rtc.RTCPeerConnectionState)? onConnectionState;
+  @override
   void Function(rtc.RTCIceConnectionState)? onIceConnectionState;
   @override
   void Function(rtc.RTCIceGatheringState)? onIceGatheringState;
@@ -356,6 +358,39 @@ void main() {
       expect(session.restarts, 2);
     },
   );
+  for (final state in [
+    rtc.RTCPeerConnectionState.RTCPeerConnectionStateClosed,
+    rtc.RTCPeerConnectionState.RTCPeerConnectionStateFailed,
+    rtc.RTCPeerConnectionState.RTCPeerConnectionStateDisconnected,
+  ]) {
+    testWidgets('Remote transport loss $state ends without a Matrix hangup', (
+      tester,
+    ) async {
+      await incoming();
+      session.setCallState(CallState.kConnected);
+      voip.delegate.peer.onConnectionState!(state);
+      await tester.pump(const Duration(seconds: 15));
+      expect(session.hangups, 1);
+      expect(session.callHasEnded, true);
+      voip.delegate.peer.onConnectionState!(
+        rtc.RTCPeerConnectionState.RTCPeerConnectionStateConnected,
+      );
+      expect(session.callHasEnded, true);
+    });
+  }
+  testWidgets('Recovered DTLS transport cancels disconnect deadline', (
+    tester,
+  ) async {
+    await incoming();
+    session.setCallState(CallState.kConnected);
+    final connection = voip.delegate.peer.onConnectionState!;
+    connection(rtc.RTCPeerConnectionState.RTCPeerConnectionStateDisconnected);
+    await tester.pump(const Duration(seconds: 5));
+    connection(rtc.RTCPeerConnectionState.RTCPeerConnectionStateConnected);
+    await tester.pump(const Duration(seconds: 15));
+    expect(session.hangups, 0);
+    await session.hangup(reason: CallErrorCode.userHangup);
+  });
   test(
     'Application exit waits for the same in-progress direct teardown',
     () async {

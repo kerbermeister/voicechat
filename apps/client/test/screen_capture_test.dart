@@ -200,6 +200,11 @@ void main() {
           } else {
             final capture = await ScreenCapture.start();
             expect(capture.source.mediaStream.id, 'selected');
+            expect(
+              methods,
+              isNot(contains('createVideoRenderer')),
+              reason: 'Native picker has already verified its first frame',
+            );
             await capture.close();
             expect(methods, contains('trackDispose'));
           }

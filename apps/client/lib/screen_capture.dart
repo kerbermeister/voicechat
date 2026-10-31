@@ -117,7 +117,10 @@ class ScreenCapture {
         await track.dispose();
         throw StateError('Unexpected screen audio');
       }
-      if (macOS) {
+      // The system picker already waits for an actual complete native frame.
+      // A second renderer attaches later and can miss the only frame of static
+      // content: ScreenCaptureKit emits idle samples until something changes.
+      if (macOS && !picker) {
         try {
           await _waitForFrames(track);
         } catch (_) {

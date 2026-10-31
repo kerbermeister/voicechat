@@ -1,5 +1,8 @@
 import XCTest
 import FlutterMacOS
+import WebRTC
+import ScreenCaptureKit
+import flutter_webrtc
 @testable import VoiceChat
 
 class RunnerTests: XCTestCase {
@@ -76,6 +79,63 @@ extension RunnerTests {
       let url = try XCTUnwrap(board.string(forType: .fileURL).flatMap(URL.init(string:)))
       XCTAssertEqual(try Data(contentsOf: url), Data([1, 2, 3]))
       try FileManager.default.removeItem(at: url.deletingLastPathComponent())
+    }
+  }
+}
+
+
+extension RunnerTests {
+  func testScreenStopHandlerSurvivesObjectiveCDictionaryAndBothDisposalPaths() throws {
+    guard #available(macOS 14.0, *) else { throw XCTSkip("System picker requires macOS 14") }
+    let plugin = try XCTUnwrap(FlutterWebRTCPlugin.sharedSingleton())
+    let initialized = expectation(description: "SDK initialize")
+    plugin.handle(FlutterMethodCall(methodName: "initialize", arguments: ["options": [:]])) { result in
+      XCTAssertFalse(result is FlutterError)
+      initialized.fulfill()
+    }
+    wait(for: [initialized], timeout: 3)
+    let factory = try XCTUnwrap(plugin.peerConnectionFactory)
+    let capture = ScreenCapture(messenger: ClipboardMessenger())
+    for method in ["trackDispose", "streamDispose"] {
+      let id = UUID().uuidString
+      let media = factory.mediaStream(withStreamId: id)
+      let track = factory.videoTrack(with: factory.videoSource(forScreenCast: true), trackId: UUID().uuidString)
+      media.addVideoTrack(track)
+      plugin.localStreams?[id] = media
+      plugin.localTracks?[track.trackId] = LocalVideoTrack(track: track)
+      capture.registerStopHandler(plugin, trackID: track.trackId, streamID: id)
+      let finished = expectation(description: method)
+      plugin.handle(FlutterMethodCall(methodName: method, arguments: ["streamId": id, "trackId": track.trackId])) { error in
+        XCTAssertNil(error)
+        finished.fulfill()
+      }
+      wait(for: [finished], timeout: 3)
+      XCTAssertNil(plugin.videoCapturerStopHandlers?[track.trackId])
+      plugin.localStreams?.removeObject(forKey: id)
+      plugin.localTracks?.removeObject(forKey: track.trackId)
+    }
+  }
+}
+
+
+extension RunnerTests {
+  func testScreenAcceptsInitialAndCompleteFramesButRejectsIdleAndBlank() throws {
+    guard #available(macOS 14.0, *) else { throw XCTSkip("System picker requires macOS 14") }
+    var pixel: CVPixelBuffer?
+    XCTAssertEqual(CVPixelBufferCreate(nil, 16, 16, kCVPixelFormatType_32BGRA, nil, &pixel), kCVReturnSuccess)
+    let image = try XCTUnwrap(pixel)
+    var format: CMVideoFormatDescription?
+    XCTAssertEqual(CMVideoFormatDescriptionCreateForImageBuffer(allocator: nil, imageBuffer: image, formatDescriptionOut: &format), noErr)
+    var timing = CMSampleTimingInfo(duration: .invalid, presentationTimeStamp: CMTime(value: 1, timescale: 15), decodeTimeStamp: .invalid)
+    var sample: CMSampleBuffer?
+    XCTAssertEqual(CMSampleBufferCreateReadyWithImageBuffer(allocator: nil, imageBuffer: image, formatDescription: try XCTUnwrap(format), sampleTiming: &timing, sampleBufferOut: &sample), noErr)
+    let buffer = try XCTUnwrap(sample)
+    XCTAssertNil(ScreenCapture.frame(from: buffer))
+    let attachments = try XCTUnwrap(CMSampleBufferGetSampleAttachmentsArray(buffer, createIfNecessary: true)) as NSArray
+    let entry = try XCTUnwrap(attachments.firstObject as? NSMutableDictionary)
+    for status in [SCFrameStatus.started, .complete, .idle, .blank, .suspended, .stopped] {
+      entry[SCStreamFrameInfo.status.rawValue] = status.rawValue
+      XCTAssertEqual(ScreenCapture.frame(from: buffer) != nil, status == .started || status == .complete)
     }
   }
 }

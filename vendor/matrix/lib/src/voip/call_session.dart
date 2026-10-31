@@ -1230,6 +1230,25 @@ class CallSession {
           }
         }
       };
+      // DTLS may close after the peer exits while ICE has not failed yet.
+      pc!.onConnectionState = (RTCPeerConnectionState state) {
+        if (callHasEnded) return;
+        switch (state) {
+          case RTCPeerConnectionState.RTCPeerConnectionStateClosed:
+          case RTCPeerConnectionState.RTCPeerConnectionStateFailed:
+            unawaited(hangup(reason: CallErrorCode.iceFailed));
+            break;
+          case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
+            _waitForConnection(const Duration(seconds: 15));
+            break;
+          case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
+            _connectionTimer?.cancel();
+            _connectionTimer = null;
+            break;
+          default:
+            break;
+        }
+      };
       pc!.onIceConnectionState = (RTCIceConnectionState state) async {
         Logs().v('[VOIP] RTCIceConnectionState => $state');
         if (callHasEnded) return;
