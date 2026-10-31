@@ -75,15 +75,25 @@ Control Center. Не обходили запрет. Межустройствен
 
 До новой установки создана и побайтно сверена закрытая backup34 и профиля:
 VoiceChatRelease/backups/2026-10-31-before-install35. Ключи Keychain не менялись.
-Новая версия пока не опубликована и не установлена. Чистый source870246a:
-release/AOT1.15.3(35) собран, подписан постоянным Sparkle-ключом; ZIP и DMG
-сверены со сборкой по всем285 файлам/ссылкам, codesign PASS.
-[Пакет](call-lifecycle-35/macos35-package-proof.json). После запуска точного ZIP
-сохранённый вход ждёт SecItemCopyMatching; это подтверждено стеком процесса.
-Инструмент запрещает доступ к SecurityAgent. Новая проверка account/device/history
-и штатный Sparkle34→35 не завершены; acceptance не подставлялся, feed остаётся34.
-Повторная закрытая резервная копия34 и профиля before-sparkle35 также сверена.
-[Фактический статус](call-lifecycle-35/release-status.json).
+Чистый source870246a: release/AOT1.15.3(35) собран, подписан постоянным
+Sparkle-ключом. ZIP и DMG сверены со сборкой по всем285 файлам/ссылкам, codesign
+PASS. [Пакет](call-lifecycle-35/macos35-package-proof.json).
+
+Кандидат сначала ожидал SecItemCopyMatching; инструмент не имел доступа к
+SecurityAgent. Позже вход открылся: прежние account/device и3 расшифрованных
+фрагмента подтверждены в UI. [Приёмка пакета](call-lifecycle-35/macos35-accepted-ui-proof.json).
+Перед заменой сохранена и сверена новая закрытая копия профиля после этой проверки.
+
+Точный35 опубликован штатным publish_macos.py в canonical edge-a канале.
+HTTPS feed/ZIP/DMG:200, hashes совпадают; feed no-cache, архивы immutable;
+managed pointer не менялся. Установленная34 предложила35 в «О приложении».
+«Скачать и установить» выполнила штатный Sparkle34→35 без ручной замены app.
+Все285 файлов/ссылок установленной35 совпали с точным ZIP, codesign PASS.
+Прежние account/device/history сохранены, About35 подтверждён. Это проверка
+обновления и профиля, не подтверждение передачи экрана или звонка на телефон.
+[Публикация](call-lifecycle-35/macos35-publication-proof.json),
+[установка](call-lifecycle-35/macos35-installed-proof.json),
+[UI](call-lifecycle-35/macos35-installed-ui-proof.json).
 
 Из-за backend и vendor/Matrix относительно production нужен full, а не web-only.
 Обычный web `lib/main.dart` с production-конфигурацией собран; crypto assets

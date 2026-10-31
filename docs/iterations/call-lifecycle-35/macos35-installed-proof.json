@@ -1,0 +1,12 @@
+{
+  "version": "1.15.3",
+  "build": 35,
+  "from_build": 34,
+  "stock_sparkle_update": true,
+  "manual_app_replacement": false,
+  "installed_exact_payload_verified": true,
+  "entries_checked": 285,
+  "codesign_verified": true,
+  "installed_process_running": true,
+  "profile_or_keychain_cleared": false
+}
