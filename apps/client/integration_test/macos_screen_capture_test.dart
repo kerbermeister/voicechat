@@ -70,6 +70,8 @@ void main() {
     skip:
         !Platform.isMacOS ||
         !const bool.fromEnvironment('HARDWARE_SCREEN_TEST'),
-    timeout: const Timeout(Duration(minutes: 2)),
+    // Allow time for the human to complete the system-owned picker.
+    // Native startup still has its independent ten-second frame deadline.
+    timeout: const Timeout(Duration(minutes: 5)),
   );
 }

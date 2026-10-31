@@ -96,6 +96,8 @@ extension RunnerTests {
     wait(for: [initialized], timeout: 3)
     let factory = try XCTUnwrap(plugin.peerConnectionFactory)
     let capture = ScreenCapture(messenger: ClipboardMessenger())
+    XCTAssertTrue(capture.responds(to: NSSelectorFromString("stream:didOutputSampleBuffer:ofType:")),
+                  "ScreenCaptureKit invokes its optional output callback through Objective-C")
     for method in ["trackDispose", "streamDispose"] {
       let id = UUID().uuidString
       let media = factory.mediaStream(withStreamId: id)

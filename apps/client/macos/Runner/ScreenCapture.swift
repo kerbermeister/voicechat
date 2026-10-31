@@ -1,4 +1,5 @@
 import Cocoa
+import OSLog
 import FlutterMacOS
 import ScreenCaptureKit
 import WebRTC
@@ -9,6 +10,10 @@ import flutter_webrtc
 // must not veto a picker-authorized stream on macOS 14 and later.
 @available(macOS 14.0, *)
 final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOutput, SCStreamDelegate {
+  private let logger = Logger(subsystem: "dev.voicechat.client", category: "screen-capture")
+  private var startCompleted = false
+  private var sampleCount = 0
+  private var frameStatuses: [Int: Int] = [:]
   private let channel: FlutterMethodChannel
   private let queue = DispatchQueue(label: "voicechat.screen")
   private let picker = SCContentSharingPicker.shared
@@ -45,6 +50,9 @@ final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOut
       result(FlutterError(code: "screenBusy", message: "Захват экрана уже запущен.", details: nil)); return
     }
     stopped = false
+    startCompleted = false
+    sampleCount = 0
+    frameStatuses = [:]
     pending = result
     streamID = id
     var configuration = SCContentSharingPickerConfiguration()
@@ -62,6 +70,7 @@ final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOut
   }
 
   func contentSharingPickerStartDidFailWithError(_ error: Error) {
+    logError(error, stage: "picker")
     fail("screenCaptureFailed", "Не удалось открыть системный выбор экрана.")
   }
 
@@ -94,15 +103,30 @@ final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOut
     self.stream = capture
     do {
       try capture.addStreamOutput(self, type: .screen, sampleHandlerQueue: queue)
-      let deadline = DispatchWorkItem { [weak self] in
-        self?.fail("screenNoFrames", "macOS не передала кадры выбранного экрана.")
+      let deadline = DispatchWorkItem { [weak self, weak capture] in
+        guard let self, let capture, capture === self.stream else { return }
+        self.logger.error("Capture timeout: started=\(self.startCompleted), samples=\(self.sampleCount), statuses=\(String(describing: self.frameStatuses), privacy: .public)")
+        self.fail("screenNoFrames", "macOS не передала кадры выбранного экрана.")
       }
       frameDeadline = deadline
       DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: deadline)
-      capture.startCapture { [weak self] error in
-        if error != nil { self?.fail("screenCaptureFailed", "macOS не смогла начать показ выбранного экрана.") }
+      logger.notice("Starting capture: width=\(config.width), height=\(config.height)")
+      capture.startCapture { [weak self, weak capture] error in
+        DispatchQueue.main.async {
+          guard let self, let capture, capture === self.stream, !self.stopped else { return }
+          if let error {
+            self.logError(error, stage: "start")
+            self.fail("screenCaptureFailed", "macOS не смогла начать показ выбранного экрана.")
+          } else {
+            self.startCompleted = true
+            self.logger.notice("Capture start completed")
+          }
+        }
       }
-    } catch { fail("screenCaptureFailed", "Не удалось подключить захват экрана.") }
+    } catch {
+      logError(error, stage: "output")
+      fail("screenCaptureFailed", "Не удалось подключить захват экрана.")
+    }
   }
 
   func registerStopHandler(_ plugin: FlutterWebRTCPlugin, trackID: String, streamID id: String) {
@@ -118,10 +142,16 @@ final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOut
   }
 
   func stream(_ stream: SCStream, didOutputSampleBuffer buffer: CMSampleBuffer, of type: SCStreamOutputType) {
-    guard type == .screen, let pixel = Self.frame(from: buffer) else { return }
-    // Keep capture ownership and shutdown on the same queue as method calls.
+    guard type == .screen else { return }
+    // Keep capture ownership, diagnostics and shutdown on the method-call queue.
     DispatchQueue.main.async {
       guard !self.stopped, stream === self.stream, let source = self.source, let capturer = self.capturer else { return }
+      self.sampleCount += 1
+      let attachments = CMSampleBufferGetSampleAttachmentsArray(buffer, createIfNecessary: false) as? [[SCStreamFrameInfo: Any]]
+      let status = attachments?.first?[.status] as? Int ?? -1
+      self.frameStatuses[status, default: 0] += 1
+      guard let pixel = Self.frame(from: buffer) else { return }
+      if self.pending != nil { self.logger.notice("First usable screen frame: status=\(status)") }
       let timestamp = Int64(CMTimeGetSeconds(buffer.presentationTimeStamp) * 1_000_000_000)
       source.capturer(capturer, didCapture: RTCVideoFrame(buffer: RTCCVPixelBuffer(pixelBuffer: pixel), rotation: ._0, timeStampNs: timestamp))
       self.frameDeadline?.cancel()
@@ -141,8 +171,15 @@ final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOut
   func stream(_ stream: SCStream, didStopWithError error: Error) {
     DispatchQueue.main.async {
       guard stream === self.stream else { return }
+      self.logError(error, stage: "stream-stop")
       self.fail("screenCaptureStopped", "Система остановила показ экрана.")
     }
+  }
+
+  // Do not log error descriptions/userInfo: they may contain window titles or paths.
+  private func logError(_ error: Error, stage: String) {
+    let error = error as NSError
+    logger.error("Capture error: stage=\(stage, privacy: .public), domain=\(error.domain, privacy: .public), code=\(error.code)")
   }
 
   private func fail(_ code: String, _ message: String) {
@@ -174,7 +211,13 @@ final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOut
       result(FlutterError(code: "screenCancelled", message: "Показ отменён.", details: nil))
     }
     if let capture {
-      capture.stopCapture { _ in DispatchQueue.main.async(execute: completion) }
+      // Keep the SCStream alive until its asynchronous stop has completed.
+      capture.stopCapture { [capture] error in
+        withExtendedLifetime(capture) {
+          if let error { self.logError(error, stage: "stop") }
+          DispatchQueue.main.async(execute: completion)
+        }
+      }
     } else { completion() }
   }
 }
