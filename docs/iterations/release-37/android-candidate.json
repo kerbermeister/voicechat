@@ -8,7 +8,7 @@
   "apksigner_verified": true,
   "artifact_sha256_verified": true,
   "physical_acceptance": false,
-  "published": false,
+  "published": true,
   "candidate_run": 41240949935,
   "artifact_id": 13057388488
 }

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "build": 37,
+  "sha256": "d750fa141d8411dcc4cad1976418f68d43e59834032c7dcc25eff7bf023043eb",
+  "published": true,
+  "physical_acceptance": false,
+  "authorization": "Owner explicitly requested APK37 in the in-app update channel before physical phone acceptance; phone check deferred",
+  "published_at_unix": 1793481378,
+  "previous_manifest": {
+    "schema": 1,
+    "applicationId": "dev.voicechat.voicechat_probe",
+    "versionName": "1.15.1",
+    "versionCode": 33,
+    "minSdk": 24,
+    "apkPath": "/updates/android/33/voicechat.apk",
+    "sizeBytes": 158788566,
+    "sha256": "882500aa3586d4c2aaaa0ecf70447e4560b25c234cd45fafb590e1b31a967004",
+    "notes": "Исправлены переключение групповой камеры и повторное воспроизведение звука\nв web-плитках звонка. Ключи защищённого звонка и экрана проверяются по серверным\nчасам, чтобы расхождение времени устройств не мешало подключению.\nAndroid показывает уведомления о сообщениях и входящих звонках в фоне,\nпока работает приложение и Matrix sync. Включение — в настройках приложения."
+  },
+  "services_unchanged": true,
+  "managed_release_pointer_unchanged": true,
+  "manifest_cache_control": "no-cache"
+}

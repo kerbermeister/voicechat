@@ -5,7 +5,7 @@
   "macos": {
     "published": true,
     "installed": true,
-    "update": "36→37",
+    "update": "36\u219237",
     "profile_preserved": true
   },
   "deploy": {
@@ -15,14 +15,15 @@
   },
   "android": {
     "candidate_run": 41240949935,
-    "status": "candidate_built_and_verified",
+    "status": "published_physical_acceptance_pending",
     "physical_acceptance": false,
-    "reason": "Physical Android unavailable; owner requested build and preparation",
+    "reason": "Owner explicitly requested publication before physical phone acceptance; phone unavailable",
     "artifact_id": 13057388488,
     "artifact_sha256": "f2e3e581fb5f2516b9e7b1645aad0e8eccef3be32fd044c77278d6a1c79c23df",
-    "published": false,
+    "published": true,
     "apk_sha256": "d750fa141d8411dcc4cad1976418f68d43e59834032c7dcc25eff7bf023043eb",
-    "certificate_sha256": "37d98de9eaf7151d8df38fe326711107d4ba4ac30bb03c6870269af84ac79ce4"
+    "certificate_sha256": "37d98de9eaf7151d8df38fe326711107d4ba4ac30bb03c6870269af84ac79ce4",
+    "tag": "app-v1.15.5+37"
   },
   "checks": {
     "flutter_analyze": "pass",
