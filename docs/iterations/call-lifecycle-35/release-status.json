@@ -1,0 +1,14 @@
+{
+  "build": 35,
+  "version": "1.15.3",
+  "candidate_launched": true,
+  "profile_verified": false,
+  "keychain_read_wait_observed": true,
+  "keychain_ui_tool_access_denied": true,
+  "installed": false,
+  "published": false,
+  "installed_build": 34,
+  "production_web_build": 33,
+  "production_android_build": 33,
+  "profile_or_keychain_cleared": false
+}

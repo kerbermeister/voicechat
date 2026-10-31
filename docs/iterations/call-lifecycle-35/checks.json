@@ -57,7 +57,8 @@
     "android35-kotlin-check.log": "569bd0b8a2ff10e5c8702f13278d448d3c67f11cf63ada22367b99632bb9160b",
     "web-exit35-build.log": "b80ed5fdd10f6f6a7a7c7c39888fa8ed6fb9cef4878108ed1c813a6024cf4569",
     "xcode35-tests.log": "563980c9ea591ea8e021b116d7a53fd7524b94e9646cf6e6e8119de17b2dbdff",
-    "analyze35-final-scope.log": "6d4b9f687f33ed48a154b7aa478d0ad605c2795125a9224cc910d2e635fd150e"
+    "analyze35-final-scope.log": "6d4b9f687f33ed48a154b7aa478d0ad605c2795125a9224cc910d2e635fd150e",
+    "web35-build.log": "df80eb9431ef240f8d38b3935ea2aaea35f7076e4b98035f1f5ed0e0114e6e47"
   },
   "full_flutter_phase2": {
     "pass": 468,
@@ -84,5 +85,12 @@
     "fixture_compilation": true,
     "browser_verified": false,
     "blocker": "IAB origin approval denied local fixture; no alternative browser used"
+  },
+  "ordinary_web_build": {
+    "pass": true,
+    "target": "lib/main.dart",
+    "production_config": true,
+    "pinned_crypto_rebuilt": true,
+    "deployed": false
   }
 }

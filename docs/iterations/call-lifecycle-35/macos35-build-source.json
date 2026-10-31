@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "commit": "870246a37b931b5a7498d1bcb1f43f661b7509ca",
+  "version": "1.15.3",
+  "build": 35,
+  "public_config_sha256": "ce0b9344cc8f2cf39c136269a10f4d19278b251f2ca14cde65cd528651d6a7be",
+  "same_personal_config": true,
+  "target": "lib/main.dart",
+  "source_clean": true,
+  "build_pass": true
+}

@@ -75,9 +75,20 @@ Control Center. Не обходили запрет. Межустройствен
 
 До новой установки создана и побайтно сверена закрытая backup34 и профиля:
 VoiceChatRelease/backups/2026-10-31-before-install35. Ключи Keychain не менялись.
-Новая версия пока не опубликована и не установлена.
+Новая версия пока не опубликована и не установлена. Чистый source870246a:
+release/AOT1.15.3(35) собран, подписан постоянным Sparkle-ключом; ZIP и DMG
+сверены со сборкой по всем285 файлам/ссылкам, codesign PASS.
+[Пакет](call-lifecycle-35/macos35-package-proof.json). После запуска точного ZIP
+сохранённый вход ждёт SecItemCopyMatching; это подтверждено стеком процесса.
+Инструмент запрещает доступ к SecurityAgent. Новая проверка account/device/history
+и штатный Sparkle34→35 не завершены; acceptance не подставлялся, feed остаётся34.
+Повторная закрытая резервная копия34 и профиля before-sparkle35 также сверена.
+[Фактический статус](call-lifecycle-35/release-status.json).
 
 Из-за backend и vendor/Matrix относительно production нужен full, а не web-only.
+Обычный web `lib/main.dart` с production-конфигурацией собран; crypto assets
+пересобраны закреплёнными Flutter3.47.7/Rust1.99.1/nightly-2026-10-24 и инструментами
+из crypto-tools.json, с проверенным чистым SDK commit. VPS не изменён.
 Локальный web exit fixture скомпилирован; его открытие в IAB тоже отклонено
 политикой origin approval, поэтому доставка при настоящем закрытии вкладки
 не считается проверенной. Android signing key доступен в GitHub production CI;
