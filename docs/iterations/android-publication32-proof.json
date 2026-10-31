@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "build": 32,
+  "sha256": "9dbf914e5661009745bb94f23be4c15d1ed8c54983c12e3011a95e78ea5729de",
+  "published": true,
+  "physical_acceptance": false,
+  "authorization": "Owner explicitly requested public publication without device/IP restriction before physical acceptance",
+  "published_at_unix": 1793457181,
+  "previous_manifest": null,
+  "services_unchanged": true,
+  "managed_release_pointer_unchanged": true,
+  "manifest_cache_control": "no-cache",
+  "public_https_manifest_verified": true,
+  "public_apk_headers_verified": true,
+  "private_metadata_hidden": true,
+  "route_healthy": true,
+  "tag": "app-v1.15.0+32",
+  "source": "c38b27a540b39c9288eafa548e1cfa2364888767"
+}
