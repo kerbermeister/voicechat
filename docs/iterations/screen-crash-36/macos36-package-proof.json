@@ -1,0 +1,14 @@
+{
+  "build": 36,
+  "version": "1.15.4",
+  "commit": "28ba8a9172f3a6a14eb0b30b18de85ff9755a1e3",
+  "files": {
+    "VoiceChat.dmg": "a502e0d61a287c008b92854b6a3d4cd7846e9dc26f54ce8435cafe06434d0c49",
+    "VoiceChat.zip": "7c7d84c7c6a350c5686d05e7ce32178e0705d76b0d75390ec2238faa8f720531",
+    "appcast.xml": "5e97510119c39f559bfbf873526cee66705495d317351c634c94e0b3fcde323d"
+  },
+  "exact_zip_dmg_payload": true,
+  "entries_checked": 285,
+  "codesign_verified": true,
+  "source_clean": true
+}

@@ -1,0 +1,22 @@
+{
+  "source_commit": "28ba8a9172f3a6a14eb0b30b18de85ff9755a1e3",
+  "macos": {
+    "published": 36,
+    "installed": 36,
+    "stock_update": "35→36",
+    "profile_verified": true
+  },
+  "web": {
+    "built": 36,
+    "published": 33
+  },
+  "android": {
+    "published": 33,
+    "new_signed_apk_available": false
+  },
+  "core": {
+    "published_commit": "5b3f08ceff117cb400e5e9cba2c8c239a689109c"
+  },
+  "fcm": "deferred by user",
+  "remaining": "GitHub access for full server/web workflow and signed Android release; physical screen sharing and crash/exit across devices unverified"
+}

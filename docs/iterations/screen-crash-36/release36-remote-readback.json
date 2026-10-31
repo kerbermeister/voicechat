@@ -1,0 +1,8 @@
+{
+  "core_commit": "5b3f08ceff117cb400e5e9cba2c8c239a689109c",
+  "edge_commits": {
+    "a": "5b3f08ceff117cb400e5e9cba2c8c239a689109c"
+  },
+  "android_published_build": 33,
+  "macos_published_build": 36
+}

@@ -1,0 +1,43 @@
+{
+  "source": "28ba8a9",
+  "flutter": {
+    "passed": 473,
+    "skipped": 4
+  },
+  "analyzer": "pass",
+  "native_xctest": {
+    "passed": 2,
+    "skipped": 0,
+    "configuration": "Release",
+    "macOS": "15.3.1",
+    "real_screen_picker_tested": false
+  },
+  "crash": {
+    "reported_version": "1.15.3+35",
+    "signal": "EXC_BAD_ACCESS SIGSEGV",
+    "pc": 0,
+    "return_image": "flutter_webrtc",
+    "return_offset": "0x19e84",
+    "symbol": "FlutterWebRTCPlugin handleMethodCall:result:",
+    "line": 953
+  },
+  "logs_sha256": {
+    "xcode36-tests.log": "47135ced514fba9fed1cba48fc256550102ecf3be03ab8ac2e37544c63158143",
+    "flutter36-verified.log": "4582b5a96b0324115cae9b51bd668cb72a14028965552b021e9bdafc99dbbd3d",
+    "flutter36-analyze.log": "9909f39ca41d321f19da891396c0a082e1fe2ab55e69b2668c25839dec34478a",
+    "python36-final.log": "aa4ad03ec305c9b8c48f9e0d4729a561de95dbe89db718e5e0ef57f785d4ec37",
+    "web36-build.log": "266d7d0e6f5f548b93f6ee272eac53b645336d0b010bda347e9d3dba796f3575"
+  },
+  "python": {
+    "run": 772,
+    "skipped": 3,
+    "result": "pass"
+  },
+  "web_build": {
+    "passed": true,
+    "target": "lib/main.dart",
+    "production_config": true,
+    "pinned_crypto_rebuilt": true,
+    "deployed": false
+  }
+}

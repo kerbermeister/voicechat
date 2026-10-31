@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "date": "2026-10-31T18:44:56.451563+00:00",
+  "from_build": 35,
+  "target_build": 36,
+  "closed_app_and_profile": true,
+  "exact_backup_verified": true,
+  "app_signature_verified": true,
+  "keychain_unchanged": true,
+  "backup": "/Users/anton/Library/Application Support/VoiceChatRelease/backups/2026-10-31-before-install36"
+}
