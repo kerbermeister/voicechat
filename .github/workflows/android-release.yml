@@ -50,6 +50,7 @@ jobs:
     runs-on: ubuntu-24.04
     environment: production
     env:
+      CARGO_BUILD_JOBS: '2'
       PUBLIC_URL: ${{ vars.PUBLIC_URL }}
       CLIENT_ROUTE_CONFIG: ${{ vars.CLIENT_ROUTE_CONFIG }}
       CLIENT_ROUTE_CATALOG_KEY: ${{ vars.CLIENT_ROUTE_CATALOG_KEY }}
@@ -95,7 +96,7 @@ jobs:
           assert data
           Path(os.environ['ANDROID_KEYSTORE']).write_bytes(data)
           PY
-          sdkmanager 'build-tools;36.0.0'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;36.0.0'
           rustup toolchain install stable --profile minimal
           python3 - <<'PY'
           import json, subprocess
@@ -117,7 +118,7 @@ jobs:
         run: |
           python3 -c 'import os; assert os.environ["SOURCE_RUN"].isdigit()'
           gh run download "$SOURCE_RUN" --name "android-$GITHUB_SHA" --dir /tmp/android-original
-          sdkmanager 'build-tools;36.0.0'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;36.0.0'
           python3 infra/client_config.py --environment --candidate /tmp/android-original/client-config.json "$PUBLIC_URL" /tmp/client.json
           python3 infra/android_release.py package --apk /tmp/android-original/voicechat.apk --tools "$ANDROID_HOME/build-tools/36.0.0" --certificate "$SIGNING_SHA256" --output /tmp/android-candidate
           cp /tmp/client.json /tmp/android-candidate/client-config.json
