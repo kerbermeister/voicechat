@@ -1,0 +1,14 @@
+{
+  "build": 37,
+  "version": "1.15.5",
+  "commit": "68f679bc873130780c9bf670196154af984417e6",
+  "apk_sha256": "d750fa141d8411dcc4cad1976418f68d43e59834032c7dcc25eff7bf023043eb",
+  "size_bytes": 158952406,
+  "certificate_sha256": "37d98de9eaf7151d8df38fe326711107d4ba4ac30bb03c6870269af84ac79ce4",
+  "apksigner_verified": true,
+  "artifact_sha256_verified": true,
+  "physical_acceptance": false,
+  "published": false,
+  "candidate_run": 41240949935,
+  "artifact_id": 13057388488
+}

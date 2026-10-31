@@ -1,0 +1,36 @@
+{
+  "source_commit": "68f679bc873130780c9bf670196154af984417e6",
+  "version": "1.15.5",
+  "build": 37,
+  "macos": {
+    "published": true,
+    "installed": true,
+    "update": "36→37",
+    "profile_preserved": true
+  },
+  "deploy": {
+    "run": 41240922991,
+    "status": "success",
+    "verified": true
+  },
+  "android": {
+    "candidate_run": 41240949935,
+    "status": "candidate_built_and_verified",
+    "physical_acceptance": false,
+    "reason": "Physical Android unavailable; owner requested build and preparation",
+    "artifact_id": 13057388488,
+    "artifact_sha256": "f2e3e581fb5f2516b9e7b1645aad0e8eccef3be32fd044c77278d6a1c79c23df",
+    "published": false,
+    "apk_sha256": "d750fa141d8411dcc4cad1976418f68d43e59834032c7dcc25eff7bf023043eb",
+    "certificate_sha256": "37d98de9eaf7151d8df38fe326711107d4ba4ac30bb03c6870269af84ac79ce4"
+  },
+  "checks": {
+    "flutter_analyze": "pass",
+    "screen_unit_tests": 10,
+    "native_screen_xctests": 2,
+    "macos_package_tests": 9,
+    "prototype_run": 41240861597,
+    "prototype_status": "success"
+  },
+  "fcm": "deferred"
+}

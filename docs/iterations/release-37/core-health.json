@@ -1,0 +1,66 @@
+{
+  "report": {
+    "schema": 1,
+    "service_id": "voicechat",
+    "node": "core",
+    "generation": 1,
+    "checked_at": 1793480979,
+    "checks": {
+      "network": {
+        "status": "passed"
+      },
+      "matrix": {
+        "status": "passed"
+      },
+      "control": {
+        "status": "passed"
+      },
+      "core_processes": {
+        "status": "passed",
+        "commit": "68f679bc873130780c9bf670196154af984417e6"
+      },
+      "edge_a_processes": {
+        "status": "passed",
+        "commit": "68f679bc873130780c9bf670196154af984417e6"
+      },
+      "edge_a_web_tls": {
+        "status": "passed",
+        "expires_in_days": 81,
+        "renewal_due": false
+      },
+      "edge_a_turn_tls": {
+        "status": "passed",
+        "expires_in_days": 87,
+        "renewal_due": false
+      },
+      "disk": {
+        "status": "passed",
+        "free_bytes": 27093573632
+      }
+    },
+    "metrics": {
+      "host": {
+        "cpu_count": 3,
+        "load_1m": 0.4052734375,
+        "load_5m": 0.4755859375,
+        "load_15m": 0.3974609375
+      },
+      "turn": {
+        "a": {
+          "rx_bytes": 27303,
+          "tx_bytes": 48899
+        }
+      }
+    },
+    "available_checks_passed": true,
+    "not_checked": [
+      "authenticated_wss",
+      "turn_allocation_and_media",
+      "media_decryption",
+      "external_reachability",
+      "firewall_rule_equivalence"
+    ],
+    "scope": "Node-local checks; informational host load and cumulative TURN container network bytes, including protocol overhead"
+  },
+  "maintenance": false
+}
