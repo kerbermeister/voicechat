@@ -5,12 +5,19 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'call_controller.dart';
 
-class MacOSNotifications {
+class NativeNotifications {
   static bool get supported =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+      !kIsWeb &&
+      {
+        TargetPlatform.macOS,
+        TargetPlatform.android,
+      }.contains(defaultTargetPlatform);
   static const channel = MethodChannel('voicechat/notifications');
-  static MacOSNotifications? _current;
+  static NativeNotifications? _current;
   final String account;
+  String get _preference => defaultTargetPlatform == TargetPlatform.macOS
+      ? 'macosNotifications:$account'
+      : 'androidNotifications:$account';
   final Future<void> Function(String) openRoom;
   final String session = List.generate(
     16,
@@ -18,7 +25,7 @@ class MacOSNotifications {
   ).join();
   final _calls = <String>{};
   bool _closed = false;
-  MacOSNotifications(this.account, this.openRoom);
+  NativeNotifications(this.account, this.openRoom);
 
   Future<void> open() async {
     if (!supported) return;
@@ -35,10 +42,7 @@ class MacOSNotifications {
     });
     await channel.invokeMethod<void>('begin', {'session': session});
     final enabled =
-        (await SharedPreferences.getInstance()).getBool(
-          'macosNotifications:$account',
-        ) ??
-        false;
+        (await SharedPreferences.getInstance()).getBool(_preference) ?? false;
     if (!_closed) {
       await channel.invokeMethod<void>('enabled', {
         'session': session,
@@ -55,13 +59,10 @@ class MacOSNotifications {
           false;
       if (_closed) return 'Сеанс закрыт.';
       if (!allowed) {
-        return 'Разрешите уведомления VoiceChat в системных настройках macOS.';
+        return 'Разрешите уведомления VoiceChat в системных настройках устройства.';
       }
     }
-    await (await SharedPreferences.getInstance()).setBool(
-      'macosNotifications:$account',
-      value,
-    );
+    await (await SharedPreferences.getInstance()).setBool(_preference, value);
     if (_closed) return 'Сеанс закрыт.';
     await channel.invokeMethod<void>('enabled', {
       'session': session,

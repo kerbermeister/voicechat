@@ -8,7 +8,7 @@ import 'p2p/service.dart';
 import 'p2p/panel.dart';
 import 'recovery_key_dialog.dart';
 import 'macos_camera.dart';
-import 'macos_notifications.dart';
+import 'native_notifications.dart';
 import 'package:camera_platform_interface/camera_platform_interface.dart';
 import 'device_name.dart';
 import 'scheduled_view.dart' show scheduledTime;
@@ -223,7 +223,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   StreamSubscription<dynamic>? sync;
   CallController? calls;
   AppSounds? sounds;
-  MacOSNotifications? desktopNotifications;
+  NativeNotifications? nativeNotifications;
   Uri? ownAvatar;
   PresenceTracker? presenceTracker;
   RecordingActivity? recordingActivity;
@@ -444,8 +444,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     recordingActivity = RecordingActivity(next.client, () {
       if (mounted) setState(() {});
     })..start();
-    if (MacOSNotifications.supported) {
-      desktopNotifications = MacOSNotifications(next.client.userID!, (
+    if (NativeNotifications.supported) {
+      nativeNotifications = NativeNotifications(next.client.userID!, (
         id,
       ) async {
         final room = next.client.getRoomById(id);
@@ -455,9 +455,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
           await select(room!);
         }
       });
-      await desktopNotifications!.open();
+      await nativeNotifications!.open();
     }
-    sounds = AppSounds(next.client, onReceived: desktopNotifications?.message);
+    sounds = AppSounds(next.client, onReceived: nativeNotifications?.message);
     await sounds!.open();
     actions = ChatActions(
       next.client,
@@ -477,7 +477,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       if (mounted) {
         setState(() {});
         sounds?.updateCall(calls!);
-        desktopNotifications?.updateCalls(calls!);
+        nativeNotifications?.updateCalls(calls!);
         maybeShowCall();
       }
     });
@@ -1569,8 +1569,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     await calls?.close();
     await verifications?.close();
     verifications = null;
-    await desktopNotifications?.close();
-    desktopNotifications = null;
+    await nativeNotifications?.close();
+    nativeNotifications = null;
     await sounds?.close();
     await historyRecovery?.close();
     await presenceTracker?.close();
@@ -1599,7 +1599,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
     unawaited(calls?.close());
     unawaited(verifications?.close());
     unawaited(historyRecovery?.close());
-    unawaited(desktopNotifications?.close());
+    unawaited(nativeNotifications?.close());
     unawaited(sounds?.close());
     unawaited(presenceTracker?.close());
     unawaited(contacts?.close());
@@ -1815,7 +1815,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
   Future<void> aboutApp() async {
     await showAppDialog<void>(
       context: context,
-      barrierDismissible: !MacOSNotifications.supported,
+      barrierDismissible:
+          kIsWeb || defaultTargetPlatform != TargetPlatform.macOS,
       animationStyle: appAnimationStyle(context),
       builder: (_) => AppUpdateDialog(
         updateRoute: () {
@@ -2025,15 +2026,17 @@ class _ProbeScreenState extends State<ProbeScreen> {
                       'Устройства и безопасность',
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
-                    if (kIsWeb || MacOSNotifications.supported) ...[
+                    if (kIsWeb || NativeNotifications.supported) ...[
                       ListTile(
                         leading: const Icon(
                           Icons.notifications_active_outlined,
                         ),
                         title: const Text('Включить уведомления'),
                         subtitle: Text(
-                          MacOSNotifications.supported
-                              ? 'Пока приложение работает, в том числе со скрытым окном.'
+                          NativeNotifications.supported
+                              ? defaultTargetPlatform == TargetPlatform.android
+                                    ? 'Пока приложение работает. После закрытия или остановки Android доставка пока недоступна.'
+                                    : 'Пока приложение работает, в том числе со скрытым окном.'
                               : 'На iPhone — из приложения на экране «Домой». iOS 16.4 и новее.',
                         ),
                         onTap: () => openSetting('push-enable'),
@@ -2174,8 +2177,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
           sounds!.updateCall(calls!);
         case 'push-enable':
           report(
-            MacOSNotifications.supported
-                ? await desktopNotifications!.setEnabled(true)
+            NativeNotifications.supported
+                ? await nativeNotifications!.setEnabled(true)
                 : await enablePushNotifications(
                     tokenServer.text.trim(),
                     probe!.client.accessToken!,
@@ -2184,8 +2187,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
           );
         case 'push-disable':
           report(
-            MacOSNotifications.supported
-                ? await desktopNotifications!.setEnabled(false)
+            NativeNotifications.supported
+                ? await nativeNotifications!.setEnabled(false)
                 : await disablePushNotifications(
                     tokenServer.text.trim(),
                     probe!.client.accessToken!,

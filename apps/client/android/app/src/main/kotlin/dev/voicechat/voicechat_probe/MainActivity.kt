@@ -46,6 +46,13 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        AppNotifications.open(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        AppNotifications.open(intent)
     }
 
     override fun onResume() { super.onResume(); AppUpdater.foreground = true }
@@ -55,6 +62,7 @@ class MainActivity : FlutterActivity() {
         val first = FlutterEngineCache.getInstance().get(ENGINE_ID) == null
         super.configureFlutterEngine(flutterEngine)
         FlutterEngineCache.getInstance().put(ENGINE_ID, flutterEngine)
+        AppNotifications.attach(this, flutterEngine.dartExecutor.binaryMessenger)
         val updater = AppUpdater(this)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/update")
             .setMethodCallHandler(updater::handle)
@@ -241,6 +249,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onDestroy() {
+        AppNotifications.detach(this)
         imageResult?.success(null); imageResult = null
         cameraPhoto?.delete(); cameraPhoto = null; cameraUri = null
         fileResult?.success(null); fileResult = null
@@ -320,6 +329,11 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        if (requestCode == AppNotifications.PERMISSION_REQUEST) {
+            super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+            AppNotifications.permissionResult()
+            return
+        }
         if (requestCode != 7505) { super.onRequestPermissionsResult(requestCode, permissions, grantResults); return }
         if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) capturePhoto()
         else { imageResult?.error("camera_denied", "Доступ к камере не разрешён.", null); imageResult = null }

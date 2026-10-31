@@ -11,6 +11,8 @@ import 'route_transport.dart';
 import 'media_routes.dart';
 import 'voice_call.dart';
 import 'call_quality.dart';
+import 'camera_capture.dart';
+import 'media_key_clock.dart';
 import 'user_action_error.dart';
 
 class CallFull extends UserActionError {
@@ -63,6 +65,8 @@ class CallProbe implements VoiceCall {
         lk.ConnectionQuality.lost => CallQuality.lost,
         _ => CallQuality.unknown,
       };
+  bool _changingCamera = false;
+  final _keyClock = MediaKeyClock();
   lk.CameraPosition _cameraPosition = lk.CameraPosition.front;
   final Set<String> decryptedVideoFrom = {};
   final Set<String> decryptedVideoTracks = {};
@@ -376,6 +380,7 @@ class CallProbe implements VoiceCall {
         throw const FormatException('Invalid call admission');
       }
       _authorizedAt = DateTime.now();
+      _keyClock.synchronize(data['server_time']);
       return data;
     }
     throw StateError('Call closed during admission');
@@ -558,18 +563,20 @@ class CallProbe implements VoiceCall {
         recipients.containsAll(_keyRecipients)) {
       return;
     }
-    await chat.client
-        .sendToDeviceEncrypted(devices, 'dev.voicechat.probe.media_key', {
-          'room_id': chat.id,
-          'session': session,
-          if (_admission != null) 'generation': _admission!['generation'],
-          'identity': identity,
-          'sender_device': chat.client.deviceID,
-          'expires_at': DateTime.now()
-              .add(const Duration(seconds: 20))
-              .millisecondsSinceEpoch,
-          'key': base64Encode(_senderKey),
-        });
+    await chat.client.sendToDeviceEncrypted(
+      devices,
+      'dev.voicechat.probe.media_key',
+      {
+        'room_id': chat.id,
+        'session': session,
+        if (_admission != null) 'generation': _admission!['generation'],
+        'identity': identity,
+        'sender_device': chat.client.deviceID,
+        'expires_at': DateTime.now().millisecondsSinceEpoch + 20000,
+        if (_keyClock.synchronized) 'server_expires_at': _keyClock.now + 20000,
+        'key': base64Encode(_senderKey),
+      },
+    );
     if (serial == _transportSerial) {
       _keyRecipients = recipients;
       _keySharedAt = DateTime.now();
@@ -592,15 +599,7 @@ class CallProbe implements VoiceCall {
     if (!_allowedParticipants.contains(data['identity'])) {
       return;
     }
-    final expires = data['expires_at'];
-    if (expires is! int ||
-        expires < DateTime.now().millisecondsSinceEpoch ||
-        expires >
-            DateTime.now()
-                .add(const Duration(minutes: 1))
-                .millisecondsSinceEpoch) {
-      return;
-    }
+    if (!_keyClock.accepts(data)) return;
     final senderKey = event.encryptedContent!['sender_key'];
     if (senderKey is! String) return;
     final device = chat.client.getUserDeviceKeysByCurve25519Key(senderKey);
@@ -662,7 +661,19 @@ class CallProbe implements VoiceCall {
     }
     final participant = media!.localParticipant!;
     if (enabled) {
-      final track = await lk.LocalVideoTrack.createCameraTrack(_cameraOptions);
+      final stream = await captureCamera(
+        _cameraPosition == lk.CameraPosition.back ? 'environment' : 'user',
+        videoQuality,
+      );
+      // Use the same strict facingMode capture as direct calls. The SDK's web
+      // constraints can select the old camera while only changing mirror mode.
+      // ignore: invalid_use_of_internal_member
+      final track = lk.LocalVideoTrack(
+        lk.TrackSource.camera,
+        stream,
+        stream.getVideoTracks().single,
+        _cameraOptions,
+      );
       try {
         if (_closed) throw StateError('Call ended during camera permission');
         await participant.publishVideoTrack(
@@ -689,15 +700,32 @@ class CallProbe implements VoiceCall {
 
   @override
   Future<void> switchCamera() async {
-    if (!cameraEnabled || _closed) return;
+    if (!cameraEnabled || _closed || _changingCamera) return;
+    _changingCamera = true;
+    final previous = _cameraPosition;
     final next = _cameraPosition == lk.CameraPosition.front
         ? lk.CameraPosition.back
         : lk.CameraPosition.front;
-    final track = media!.localParticipant!.videoTrackPublications.first.track;
-    if (track is! lk.LocalVideoTrack) return;
-    await track.setCameraPosition(next);
-    _cameraPosition = next;
-    changed?.call();
+    try {
+      // iPhone must release the first camera before opening the other one.
+      // Only video publications are replaced; the microphone keeps running.
+      await camera(false);
+      _cameraPosition = next;
+      try {
+        await camera(true);
+      } catch (_) {
+        _cameraPosition = previous;
+        try {
+          await camera(true);
+        } catch (_) {
+          status('Камера выключена. Проверьте разрешение и включите её снова.');
+        }
+        rethrow;
+      }
+    } finally {
+      _changingCamera = false;
+      changed?.call();
+    }
   }
 
   @override

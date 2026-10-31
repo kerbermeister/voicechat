@@ -9,6 +9,7 @@ import 'screen_binding.dart';
 import 'screen_capture.dart';
 import 'screen_state.dart';
 import 'screen_key.dart';
+import 'media_key_clock.dart';
 import 'screen_quality.dart';
 import 'screen_receive_deadline.dart';
 import 'call_quality.dart';
@@ -77,6 +78,7 @@ class ScreenShareController extends ChangeNotifier {
   List<mx.DeviceKeys> _devices = [];
   final _authorized = Stopwatch();
   DateTime? _sharedAt;
+  final _keyClock = MediaKeyClock();
   Future<void>? _closing;
   ({String action, Map<String, dynamic> body})? _pending;
   String get identity =>
@@ -376,6 +378,8 @@ class ScreenShareController extends ChangeNotifier {
             next.rosterVersion != snapshot!.rosterVersion)) {
       throw const FormatException('screen revision reuse');
     }
+    // Anchor before device verification can spend time on the network.
+    _keyClock.synchronize(json['server_time']);
     final users = next.roster
         .map((d) => d.identity.substring(0, d.identity.lastIndexOf('/')))
         .toSet();
@@ -727,22 +731,26 @@ class ScreenShareController extends ChangeNotifier {
               ),
         )
         .toList();
-    await call.chat.client
-        .sendToDeviceEncrypted(recipients, 'dev.voicechat.screen_key.v1', {
-          'protocol_version': 1,
-          'room_id': call.chat.id,
-          'call_session': call.session,
-          'binding_id': _binding,
-          'screen_generation': _generation,
-          'revision': current.revision,
-          'roster_version': current.rosterVersion,
-          'sender_identity': identity,
-          'sender_device': call.chat.client.deviceID,
-          'expires_at': DateTime.now()
-              .add(const Duration(seconds: 20))
-              .millisecondsSinceEpoch,
-          'key': base64Encode(_senderKey!),
-        });
+    await call.chat.client.sendToDeviceEncrypted(
+      recipients,
+      'dev.voicechat.screen_key.v1',
+      {
+        'protocol_version': 1,
+        'room_id': call.chat.id,
+        'call_session': call.session,
+        'binding_id': _binding,
+        'screen_generation': _generation,
+        'revision': current.revision,
+        'roster_version': current.rosterVersion,
+        'sender_identity': identity,
+        'sender_device': call.chat.client.deviceID,
+        'expires_at': DateTime.now()
+            .add(const Duration(seconds: 20))
+            .millisecondsSinceEpoch,
+        if (_keyClock.synchronized) 'server_expires_at': _keyClock.now + 20000,
+        'key': base64Encode(_senderKey!),
+      },
+    );
     _sharedAt = DateTime.now();
   }
 
@@ -784,6 +792,7 @@ class ScreenShareController extends ChangeNotifier {
       curve: device.curve25519Key!,
       ed: device.ed25519Key!,
       now: DateTime.now().millisecondsSinceEpoch,
+      serverNow: _keyClock.synchronized ? _keyClock.now : null,
     );
     if (key == null || _closed || keys != _keys) return;
     await keys.setRawKey(

@@ -248,6 +248,9 @@ class AdmissionTests(unittest.TestCase):
             self.assertEqual(status, expected)
             if status == 200:
                 import base64
+                import time
+                self.assertIsInstance(body['server_time'], int)
+                self.assertLess(abs(body['server_time'] - int(time.time() * 1000)), 5000)
                 payload = body['token'].split('.')[1]
                 grant = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))
                 self.assertEqual(grant['sub'], '@alice:local/DEVICE')

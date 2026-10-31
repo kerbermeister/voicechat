@@ -99,6 +99,8 @@ void main() {
         Map<String, dynamic> data, {
         String sender = '@a:local',
         String curve = '',
+        int now = 10000,
+        int? serverNow,
       }) => screenKey(
         data,
         snapshot: snapshot,
@@ -110,9 +112,17 @@ void main() {
             ? base64Encode(List.filled(32, 12)).replaceAll('=', '')
             : curve,
         ed: base64Encode(List.filled(32, 13)).replaceAll('=', ''),
-        now: 10000,
+        now: now,
+        serverNow: serverNow,
       );
       expect(read(envelope), List.generate(32, (i) => i));
+      final synchronized = {...envelope, 'server_expires_at': 220000};
+      expect(
+        read(synchronized, now: 500000, serverNow: 200000),
+        List.generate(32, (i) => i),
+      );
+      expect(read(synchronized, now: 0, serverNow: 220000), isNull);
+      expect(read({...synchronized, 'revision': 3}, serverNow: 200000), isNull);
       expect(read(envelope, sender: '@forged:local'), isNull);
       expect(read(envelope, curve: 'e' * 43), isNull);
       for (final change in <Map<String, dynamic>>[

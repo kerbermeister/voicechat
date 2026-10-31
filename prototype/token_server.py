@@ -580,7 +580,7 @@ class Handler(BaseHTTPRequestHandler):
                                    'canPublish': True, 'canSubscribe': True,
                                    'canPublishData': False,
                                    'canPublishSources': ['microphone', 'camera'] if admission.get('camera_allowed', video) else ['microphone']}})
-            self.reply(200, {**admission, 'token': token})
+            self.reply(200, {**admission, 'token': token, 'server_time': int(time.time() * 1000)})
         except ContactError:
             self.reply(401, {'error': 'unauthorized'})
         except CallError as error:

@@ -4,6 +4,7 @@
   const buffers = new Map();
   const sources = new Map();
   const wanted = new Map();
+  const duplicateAudio = new WeakSet();
   const callLevels = new Map();
   const callGraphs = new WeakMap();
   function audioContext() {
@@ -42,7 +43,25 @@
     return true;
   }
   function callElements() {
-    return [...document.querySelectorAll('audio,video')].filter(e => e.srcObject && !e.muted);
+    const elements = [...document.querySelectorAll('audio,video')];
+    // LiveKit already plays each remote microphone. Flutter's video renderer
+    // can attach that same audio track again from a combined remote stream.
+    const livekitTracks = new Set(elements
+      .filter(e => e.id?.startsWith('livekit_audio_') && e.srcObject && !e.muted)
+      .flatMap(e => e.srcObject.getAudioTracks?.().map(t => t.id) ?? []));
+    for (const element of elements) {
+      if (element.id?.startsWith('livekit_audio_')) continue;
+      const tracks = element.srcObject?.getAudioTracks?.() ?? [];
+      const duplicate = tracks.length > 0 && tracks.every(t => livekitTracks.has(t.id));
+      if (duplicate && !element.muted) {
+        element.muted = true;
+        duplicateAudio.add(element);
+      } else if (!duplicate && duplicateAudio.has(element)) {
+        duplicateAudio.delete(element);
+        element.muted = false;
+      }
+    }
+    return elements.filter(e => e.srcObject && !e.muted);
   }
   async function syncCallVolumes() {
     for (const element of callElements()) {
@@ -66,7 +85,7 @@
     }
   }
   async function resumeCalls() {
-    const results = await Promise.allSettled(callElements().map(e => e.play()));
+    const results = await Promise.allSettled(callElements().filter(e => e.paused !== false).map(e => e.play()));
     return results.every(r => r.status === 'fulfilled');
   }
   function unlock() {

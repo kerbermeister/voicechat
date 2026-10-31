@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'screen_state.dart';
+import 'media_key_clock.dart';
 
 /// Matrix уже расшифровал envelope; здесь связываем его с точным допуском экрана.
 Uint8List? screenKey(
@@ -13,6 +14,7 @@ Uint8List? screenKey(
   required String curve,
   required String ed,
   required int now,
+  int? serverNow,
 }) {
   final owner = '$sender/$device';
   if (snapshot.state != 'active' ||
@@ -32,10 +34,8 @@ Uint8List? screenKey(
       data['sender_device'] != device) {
     return null;
   }
-  final expires = data['expires_at'], raw = data['key'];
-  if (expires is! int ||
-      expires <= now ||
-      expires > now + 60000 ||
+  final raw = data['key'];
+  if (!validMediaKeyLifetime(data, now: now, serverNow: serverNow) ||
       raw is! String ||
       raw.length != 44) {
     return null;

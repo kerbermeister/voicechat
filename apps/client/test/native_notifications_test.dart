@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:voicechat_probe/macos_notifications.dart';
+import 'package:voicechat_probe/native_notifications.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +14,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     calls.clear();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(MacOSNotifications.channel, (call) async {
+        .setMockMethodCallHandler(NativeNotifications.channel, (call) async {
           calls.add(call);
           return call.method == 'request' ? false : null;
         });
@@ -22,11 +22,11 @@ void main() {
   tearDown(() {
     debugDefaultTargetPlatformOverride = null;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(MacOSNotifications.channel, null);
+        .setMockMethodCallHandler(NativeNotifications.channel, null);
   });
 
   test('permission denial does not persist consent', () async {
-    final notifications = MacOSNotifications('alice', (_) async {});
+    final notifications = NativeNotifications('alice', (_) async {});
     await notifications.open();
     expect(calls.map((call) => call.method), ['begin', 'enabled']);
     expect(await notifications.setEnabled(true), contains('Разрешите'));
@@ -46,13 +46,48 @@ void main() {
     await notifications.close();
   });
 
+  test(
+    'Android requests permission and persists consent for the current account',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      expect(NativeNotifications.supported, isTrue);
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(NativeNotifications.channel, (call) async {
+            calls.add(call);
+            return call.method == 'request' ? true : null;
+          });
+      final notifications = NativeNotifications('alice', (_) async {});
+      await notifications.open();
+      expect(await notifications.setEnabled(true), contains('включены'));
+      expect(
+        (await SharedPreferences.getInstance()).getBool(
+          'androidNotifications:alice',
+        ),
+        isTrue,
+      );
+      await notifications.message('!room', 'event');
+      expect(calls.last.method, 'show');
+      expect(calls.last.arguments, {
+        'session': notifications.session,
+        'room': '!room',
+        'id': 'event',
+        'call': false,
+      });
+      await notifications.close();
+      expect(calls.last.method, 'end');
+    },
+  );
+
   test('old-account click cannot open a chat in the next session', () async {
     final opened = <String>[];
-    final first = MacOSNotifications('alice', (room) async => opened.add(room));
+    final first = NativeNotifications(
+      'alice',
+      (room) async => opened.add(room),
+    );
     await first.open();
     final ended = Completer<void>();
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(MacOSNotifications.channel, (call) async {
+        .setMockMethodCallHandler(NativeNotifications.channel, (call) async {
           calls.add(call);
           if (call.method == 'end' &&
               call.arguments['session'] == first.session) {
@@ -61,7 +96,7 @@ void main() {
           return null;
         });
     final closing = first.close();
-    final second = MacOSNotifications('bob', (room) async => opened.add(room));
+    final second = NativeNotifications('bob', (room) async => opened.add(room));
     await second.open();
     ended.complete();
     await closing;
@@ -69,7 +104,7 @@ void main() {
     Future<void> click(String session) async {
       await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .handlePlatformMessage(
-            MacOSNotifications.channel.name,
+            NativeNotifications.channel.name,
             codec.encodeMethodCall(
               MethodCall('open', {'session': session, 'room': '!room'}),
             ),

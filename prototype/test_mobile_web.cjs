@@ -46,6 +46,36 @@ test('iOS audio unlock resumes remote tracks, preserves local muting and cancels
   api.close();
 });
 
+test('Camera tiles cannot replay a LiveKit microphone or restart playing audio', async () => {
+  const listeners = {};
+  let changed;
+  let plays = 0;
+  const stream = id => ({getAudioTracks: () => [{id}]});
+  const mic = {id: 'livekit_audio_mic', srcObject: stream('mic'), muted: false,
+    paused: false, play: async () => { plays++; }};
+  const tile = {id: 'flutter_video_audio', srcObject: stream('mic'), muted: false,
+    paused: true, play: async () => { plays++; }};
+  const local = {id: 'local_preview', srcObject: stream('local'), muted: true};
+  let elements = [mic, tile, local];
+  const document = {body: {}, querySelectorAll: () => elements,
+    addEventListener: (type, fn) => listeners[type] = fn};
+  vm.runInNewContext(code('media_audio.js'), {window: {}, document, URL,
+    MutationObserver: class { constructor(fn) { changed = fn; } observe() {} }});
+  changed();
+  await tick();
+  assert.equal(tile.muted, true);
+  assert.equal(mic.muted, false);
+  assert.equal(local.muted, true);
+  assert.equal(plays, 0);
+  // If the dedicated player disappears, the remaining renderer can play again.
+  elements = [tile, local];
+  changed();
+  await tick();
+  assert.equal(tile.muted, false);
+  assert.equal(plays, 1);
+  assert.equal(local.muted, true);
+});
+
 function clientEnvironment({installed = true, permission = 'granted', bindingOK = true} = {}) {
   const calls = [];
   let bind;

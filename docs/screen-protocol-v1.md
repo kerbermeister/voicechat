@@ -53,6 +53,17 @@ Owner/generation/deadline допускают null; в idle/ended owner и genera
 Roster — до десяти допущенных устройств с identity и проверенными публичными
 `curve/ed` keys, без чужих lease IDs. Объём ответа не более 32 КиБ.
 
+В encrypted to-device `dev.voicechat.screen_key.v1` обновлённые клиенты добавляют
+`server_expires_at`: Unix milliseconds по `server_time` snapshot, плюс локальный
+монотонный elapsed, TTL 20 секунд. Получатель проверяет это поле по своей оценке
+тех же серверных часов; просроченные и более чем на минуту будущие ключи отклоняет.
+Неверное поле не допускает fallback на legacy `expires_at`. Сам `expires_at`
+остаётся в часах отправителя для старых клиентов; без `server_expires_at` действует
+прежняя проверка. Привязки room/session/binding/generation/revision/roster/device
+не меняются. Для устранения зависимости от часов устройств обновляют обоих участников.
+Групповые медиаключи используют тот же additive-контракт; `POST /api/token` теперь
+возвращает `server_time` в миллисекундах. Старый control без него сохраняет legacy-путь.
+
 | Ответ | Дополнительные поля / смысл |
 | --- | --- |
 | Bind | `binding_id`, свой `lease_id`, `binding_state:pending|open`, `snapshot` |
