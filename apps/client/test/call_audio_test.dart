@@ -75,6 +75,8 @@ void main() {
   test(
     'Direct speakerphone toggles the WebRTC route and preserves state on failure',
     () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
       final writes = <bool>[];
       var fail = false;
       final messenger =
@@ -113,6 +115,39 @@ void main() {
       );
       expect(audio.speakerEnabled, false);
       await call.close();
+    },
+  );
+  test(
+    'Android direct audio acquires and releases the LiveKit session once',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final writes = <String>[];
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('livekit_client'),
+        (call) async {
+          writes.add(call.method);
+          return null;
+        },
+      );
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = null;
+        messenger.setMockMethodCallHandler(
+          const MethodChannel('livekit_client'),
+          null,
+        );
+      });
+      final audio = CallAudio();
+      await audio.stopDirectAudio();
+      expect(writes, isEmpty);
+      await audio.startDirectAudio();
+      await audio.stopDirectAudio();
+      await audio.stopDirectAudio();
+      expect(writes, [
+        'configureAndroidAudioSession',
+        'stopAndroidAudioSession',
+      ]);
     },
   );
   test(

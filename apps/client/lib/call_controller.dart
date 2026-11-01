@@ -859,7 +859,7 @@ class CallController extends ChangeNotifier
   Future<rtc.RTCPeerConnection> createPeerConnection(
     Map<String, dynamic> configuration, [
     Map<String, dynamic> constraints = const {},
-  ]) {
+  ]) async {
     // shortcut: force TURN in loopback tests; real deployments use ICE's direct-first policy.
     if (const {
       'localhost',
@@ -868,7 +868,13 @@ class CallController extends ChangeNotifier
     }.contains(client.homeserver?.host)) {
       configuration = {...configuration, 'iceTransportPolicy': 'relay'};
     }
-    return rtc.createPeerConnection(configuration, constraints);
+    await audio.startDirectAudio();
+    try {
+      return await rtc.createPeerConnection(configuration, constraints);
+    } catch (_) {
+      await audio.stopDirectAudio();
+      rethrow;
+    }
   }
 
   @override
@@ -918,6 +924,10 @@ class CallController extends ChangeNotifier
 
   @override
   Future<void> handleCallEnded(CallSession session) async {
+    if (active == null ||
+        (active is DirectCall && active!.session == session.callId)) {
+      await audio.stopDirectAudio();
+    }
     directInvitations.removeWhere((c) => c.session == session.callId);
     _refresh();
     final call = _directCalls[session.callId];

@@ -2650,9 +2650,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                   'Разрешите уведомления о сообщениях и звонках',
                 ),
                 trailing: TextButton(
-                  onPressed: busy
-                      ? null
-                      : () => run(() => settingsAction('push-enable')),
+                  onPressed: busy ? null : () => settingsAction('push-enable'),
                   child: const Text('Включить'),
                 ),
               ),

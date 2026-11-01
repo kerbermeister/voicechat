@@ -507,6 +507,39 @@ class DirectCall implements VoiceCall {
   @override
   Future<void> close() => _closing ??= _close();
 
+  Future<List<Map<String, Object>>> receivedVideoStatistics() async {
+    final reports = await call.pc?.getStats() ?? <rtc.StatsReport>[];
+    return [
+      for (final report in reports)
+        if (report.type == 'inbound-rtp' &&
+            (report.values['kind'] ?? report.values['mediaType']) == 'video')
+          {
+            for (final key in [
+              'packetsReceived',
+              'packetsLost',
+              'bytesReceived',
+              'framesReceived',
+              'framesDecoded',
+              'framesDropped',
+              'keyFramesDecoded',
+              'freezeCount',
+              'pliCount',
+              'nackCount',
+            ])
+              if (report.values[key] is num) key: report.values[key] as num,
+            for (final codec in reports)
+              if (codec.type == 'codec' && codec.id == report.values['codecId'])
+                if (const {
+                  'video/VP8',
+                  'video/VP9',
+                  'video/H264',
+                  'video/AV1',
+                }.contains(codec.values['mimeType']))
+                  'codec': codec.values['mimeType'] as String,
+          },
+    ];
+  }
+
   Future<void>? _closing;
   Future<void> _close() async {
     _videoAtClose = video || _cameraTracks.isNotEmpty;
