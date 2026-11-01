@@ -118,7 +118,7 @@ class NativeNotifications {
         return 'Не удалось подключить фоновые уведомления. Проверьте сеть и попробуйте снова.';
       }
     } else if (_android && !value) {
-      await _removePush();
+      await unregisterPush();
     }
     if (_closed) return 'Сеанс закрыт.';
     _enabled = value;
@@ -176,7 +176,9 @@ class NativeNotifications {
     _pushBound = true;
   }
 
-  Future<void> _removePush() async {
+  Future<void> unregisterPush() async {
+    if (!_android) return;
+    _enabled = false;
     _pushGeneration++;
     await channel.invokeMethod<void>('pushClear', {'session': session});
     _pushBound = false;
@@ -247,6 +249,10 @@ class NativeNotifications {
       for (final call in calls.directInvitations.toList()) {
         if (call.session == session && call.chat.id == data['room']) {
           _pendingPush = null;
+          if (data['video'] != call.video) {
+            report?.call('Тип вызова изменился. Ответьте в приложении.');
+            return;
+          }
           await calls.acceptDirect(call);
           return;
         }
@@ -254,6 +260,10 @@ class NativeNotifications {
       final invitation = calls.invitations[session];
       if (invitation != null && invitation.room.id == data['room']) {
         _pendingPush = null;
+        if (data['video'] != invitation.video) {
+          report?.call('Тип вызова изменился. Ответьте в приложении.');
+          return;
+        }
         await calls.start(invitation.room, invitation: invitation);
       }
     } catch (_) {
@@ -282,7 +292,7 @@ class NativeNotifications {
   Future<void> close() async {
     if (_closed || !supported) return;
     _closed = true;
-    if (_android) await _removePush();
+    if (_android) await unregisterPush();
     if (identical(_current, this)) {
       _current = null;
       channel.setMethodCallHandler(null);

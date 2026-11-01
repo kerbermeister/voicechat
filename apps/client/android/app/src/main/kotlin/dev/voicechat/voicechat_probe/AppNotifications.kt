@@ -113,6 +113,7 @@ object AppNotifications {
                         if (session != token || data == null || data.optString("kind") == "dismiss") result.success(null)
                         else result.success(mapOf("room" to data.optString("room"),
                             "session" to data.optString("session"), "expires" to data.optLong("expires"),
+                            "video" to data.optBoolean("video"),
                             "action" to intent.getStringExtra("pushAction")))
                     }
                 }

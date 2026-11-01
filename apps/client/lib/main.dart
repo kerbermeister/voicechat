@@ -1557,11 +1557,20 @@ class _ProbeScreenState extends State<ProbeScreen> {
           probe!.client.accessToken!,
           createClient: _pushClient,
         );
+      } else {
+        await nativeNotifications?.unregisterPush();
       }
       await p2p?.close();
       p2p = null;
       await probe!.logout();
     } catch (_) {
+      try {
+        await nativeNotifications?.open();
+      } catch (_) {
+        report(
+          'Не удалось восстановить уведомления после ошибки выхода. Включите их повторно.',
+        );
+      }
       storagePolicy = StoragePolicy(probe!.client, () => selected?.id);
       await storagePolicy!.open();
       if (p2p == null) await openP2p(probe!.client);

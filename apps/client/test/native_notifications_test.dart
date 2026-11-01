@@ -7,6 +7,30 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:voicechat_probe/native_notifications.dart';
+import 'package:voicechat_probe/call_controller.dart';
+import 'package:voicechat_probe/direct_call.dart';
+import 'package:matrix/matrix.dart' as mx;
+
+class NotificationRoom extends Fake implements mx.Room {
+  @override
+  String get id => '!room:local';
+}
+
+class NotificationCalls extends Fake implements CallController {
+  @override
+  final directInvitations = <DirectCall>[];
+  @override
+  final invitations = <String, CallInvitation>{};
+  int answers = 0;
+  @override
+  Future<void> start(
+    mx.Room room, {
+    CallInvitation? invitation,
+    bool video = false,
+  }) async {
+    answers++;
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -247,6 +271,98 @@ void main() {
       expect(calls.where((c) => c.method == 'pushBind'), isEmpty);
       expect(requests, ['register', 'remove']);
       client.close();
+    },
+  );
+
+  test(
+    'failed logout can rebind push without losing the account preference',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final requests = <String>[];
+      final client = MockClient((request) async {
+        final action = (jsonDecode(request.body) as Map)['action'] as String;
+        requests.add(action);
+        return http.Response(
+          jsonEncode(
+            action == 'register' ? {'binding': 'b' * 43} : {'ok': true},
+          ),
+          200,
+        );
+      });
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(NativeNotifications.channel, (call) async {
+            if (call.method == 'request') return true;
+            if (call.method == 'pushToken') return 'installation-token';
+            return null;
+          });
+      final notifications = NativeNotifications(
+        'alice',
+        (_) async {},
+        pushUrl: 'https://voice.example/api',
+        accessToken: 'matrix-token',
+        transport: client,
+      );
+      await notifications.open();
+      await notifications.setEnabled(true);
+      await notifications.unregisterPush();
+      expect(
+        (await SharedPreferences.getInstance()).getBool(
+          'androidNotifications:alice',
+        ),
+        true,
+      );
+      await notifications.open();
+      expect(requests, ['register', 'remove', 'register']);
+      await notifications.close();
+      client.close();
+    },
+  );
+
+  test(
+    'notification cannot silently upgrade a voice answer to camera access',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      for (final advertisedVideo in [false, true]) {
+        var delivered = false;
+        final reports = <String>[];
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(NativeNotifications.channel, (
+              method,
+            ) async {
+              if (method.method == 'takePush' && !delivered) {
+                delivered = true;
+                return {
+                  'room': '!room:local',
+                  'session': 'incoming',
+                  'action': 'answer',
+                  'video': advertisedVideo,
+                  'expires': DateTime.now().millisecondsSinceEpoch ~/ 1000 + 45,
+                };
+              }
+              return null;
+            });
+        final notifications = NativeNotifications(
+          'alice',
+          (_) async {},
+          report: reports.add,
+        );
+        await notifications.open();
+        final incoming = NotificationCalls();
+        incoming.invitations['incoming'] = CallInvitation(
+          NotificationRoom(),
+          'incoming',
+          '@bob:local',
+          DateTime.now(),
+          video: true,
+        );
+        notifications.updateCalls(incoming);
+        await Future<void>.delayed(Duration.zero);
+        expect(incoming.answers, advertisedVideo ? 1 : 0);
+        if (!advertisedVideo) {
+          expect(reports.single, contains('Тип вызова изменился'));
+        }
+        await notifications.close();
+      }
     },
   );
 }

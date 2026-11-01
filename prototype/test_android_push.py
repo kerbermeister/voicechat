@@ -98,6 +98,13 @@ class AndroidPushTests(unittest.TestCase):
         resolved = self.store.resolve(self.binding, self.sent[0][2])
         self.assertEqual((resolved['kind'], resolved['call']), ('call', notice))
 
+    def test_video_mode_is_explicit_and_malformed_mode_is_rejected(self):
+        body = {'action': 'invite', 'session': 'video-call', 'room': '!room:local', 'video': True}
+        notice = self.store.call_action('@alice:local', 'A', body, {'@alice:local', '@bob:local'})['call']
+        self.assertTrue(self.store.resolve(self.binding, notice)['video'])
+        with self.assertRaises(PushError):
+            self.store.call_action('@alice:local', 'A', {**body, 'session': 'invalid', 'video': 'true'}, {'@alice:local', '@bob:local'})
+
     def test_answer_is_atomic_per_user_and_decline_is_device_scoped(self):
         notice = self.invite()
         self.store.register_android('@bob:local', 'B2', 'd' * 100)

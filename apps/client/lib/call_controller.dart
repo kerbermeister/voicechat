@@ -469,30 +469,31 @@ class CallController extends ChangeNotifier
   }
 
   Future<void> _invitePush(VoiceCall call) async {
+    _outgoingPush = call.session;
     try {
-      await _push.request('invite', call.session, room: call.chat.id);
+      await _push.invite(call.session, call.chat.id, video: call.video);
       if (_closed || active != call || call.isClosed) {
-        await _push.request('end', call.session);
+        await _push.endOutgoing(call.session);
         return;
       }
-      _outgoingPush = call.session;
       _pushPoll?.cancel();
-      _pushPoll = Timer.periodic(const Duration(seconds: 2), (_) async {
+      _pushPoll = Timer.periodic(const Duration(seconds: 2), (timer) async {
         if (_pushPolling) return;
         if (_closed || active != call || call.isClosed) {
-          _pushPoll?.cancel();
-          await _endPush();
+          timer.cancel();
+          if (_outgoingPush == call.session) await _endPush();
           return;
         }
         _pushPolling = true;
         try {
           final state = await _push.request('status', call.session);
+          if (_closed || active != call || call.isClosed) return;
           if (state['declined'] == true ||
               (state['ended'] == true && call.duration == Duration.zero)) {
             await end();
           } else if (state['answered'] == true ||
               call.duration > Duration.zero) {
-            _pushPoll?.cancel();
+            timer.cancel();
           }
         } catch (_) {
           // Matrix and the existing ring timeout remain available on push failure.
@@ -504,19 +505,15 @@ class CallController extends ChangeNotifier
       report(
         'Фоновое уведомление не отправлено. Собеседник получит вызов при работающем приложении.',
       );
+      await _push.endOutgoing(call.session);
     }
   }
 
-  Future<void> _endPush() async {
+  Future<void> _endPush() {
     final session = _outgoingPush;
     _outgoingPush = null;
     _pushPoll?.cancel();
-    if (session == null) return;
-    try {
-      await _push.request('end', session);
-    } catch (_) {
-      // Server-side expiry bounds ringing even if cancellation cannot be delivered.
-    }
+    return session == null ? Future.value() : _push.endOutgoing(session);
   }
 
   Future<bool> _answerPush(String session) async {
@@ -704,7 +701,7 @@ class CallController extends ChangeNotifier
   }
 
   Future<void> end() async {
-    unawaited(_endPush());
+    final pushEnd = _endPush();
     _dialGeneration++;
     starting = false;
     _ringTimeout?.cancel();
@@ -715,6 +712,7 @@ class CallController extends ChangeNotifier
     final othersRemain = call is CallProbe && call.participants.length > 1;
     if (call == null || call.isClosed) {
       _refresh();
+      await pushEnd;
       return;
     }
     final screenClose = screen?.close();
@@ -736,6 +734,7 @@ class CallController extends ChangeNotifier
     _refresh(); // Stop ringback without waiting for network or media disposal.
     try {
       await Future.wait([
+        pushEnd,
         callClose,
         if (screenClose != null) screenClose,
         if (groupSignal != null) groupSignal,
@@ -787,7 +786,6 @@ class CallController extends ChangeNotifier
 
   Future<void>? _closing;
   Future<void> _close() async {
-    unawaited(_endPush());
     _closed = true;
     _stopPageExit();
     _dialGeneration++;
@@ -808,6 +806,7 @@ class CallController extends ChangeNotifier
     try {
       await Future.wait([
         ...mediaClosing,
+        _push.endAll(),
         if (_events != null) _events!.cancel(),
         if (_lateEvents != null) _lateEvents!.cancel(),
         if (_callSignals != null) _callSignals!.cancel(),

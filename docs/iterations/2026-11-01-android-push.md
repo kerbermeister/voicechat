@@ -6,9 +6,9 @@
 
 ## Проверки до выпуска
 
-- Полный Flutter:478 PASS,4 платформенных пропуска; analyzer PASS.
-- После последних изменений:15 адресных Flutter PASS.
-- Полный Python:787 тестов PASS,3 условных skip. Дополнительная регрессия
+- Полный Flutter:482 PASS,4 платформенных пропуска; analyzer PASS.
+- После исправления отмены:39 адресных Flutter PASS, включая несовпадение типа вызова/доступа к камере и восстановление уведомлений после ошибки logout.
+- Полный Python:789 тестов PASS,3 условных skip. Дополнительная регрессия
   Web Push/Android dedup проверена отдельно; финальный CI повторит весь набор.
 - Kotlin `:app:compileDebugKotlin`: PASS. Это компиляция, не проверка телефона.
 - Реальный Firebase service account: OAuth PASS; FCM HTTPv1 validate_only
@@ -21,6 +21,10 @@
 Серверный ключ вынесен за пределы Git, локально0600; runtime-копия на VPS
 подготовлена в control volume, UID10001/0600. Ключ не включается в образы,
 CI, APK, публичные отчёты и release tarball.
+
+До публикации исправлены гонки позднего invite/cancel и старого polling timer.
+На lock screen используется нейтральный native Activity; приватный Flutter UI
+не показывается до обычной разблокировки ОС. Для Android7 добавлен alarm expiry.
 
 ## Открытые условия
 

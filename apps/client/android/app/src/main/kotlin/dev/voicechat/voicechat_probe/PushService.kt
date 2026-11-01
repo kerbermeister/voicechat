@@ -1,6 +1,7 @@
 package dev.voicechat.voicechat_probe
 
 import android.app.Notification
+import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -9,6 +10,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.SystemClock
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -104,8 +106,13 @@ object PushNotifications {
             val data = resolve(context, binding, notice) ?: return
             val manager = context.getSystemService(NotificationManager::class.java)
             val isCall = data.optString("kind") == "call"
+            val video = isCall && data.optBoolean("video")
             val tag = PREFIX + if (data.has("session")) data.getString("session") else data.getString("room")
-            if (data.optString("kind") == "dismiss") { manager.cancel(tag, 0); return }
+            if (data.optString("kind") == "dismiss") {
+                manager.cancel(tag, 0)
+                IncomingCallActivity.dismiss(data.optString("call", notice))
+                return
+            }
             if (AppUpdater.foreground) return
             val routeNotice = data.optString("call", notice)
             if (isCall) manager.cancel(PREFIX + data.getString("room"), 0)
@@ -121,20 +128,23 @@ object PushNotifications {
             val intent = Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
                 .setAction(PREFIX + routeNotice).putExtra("pushBinding", binding).putExtra("pushNotice", routeNotice)
-                .putExtra("pushCall", isCall).putExtra("pushTag", tag)
+                .putExtra("pushTag", tag)
                 .putExtra("pushExpires", data.getLong("expires"))
             val open = PendingIntent.getActivity(context, 0, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(context, if (isCall) "push_calls" else "messages")
                 else Notification.Builder(context).setDefaults(Notification.DEFAULT_SOUND)
             builder.setSmallIcon(android.R.drawable.sym_action_chat).setContentTitle("VoiceChat")
-                .setContentText(if (isCall) "Входящий звонок" else "Новое сообщение")
+                .setContentText(if (video) "Входящий видеозвонок" else if (isCall) "Входящий звонок" else "Новое сообщение")
                 .setVisibility(Notification.VISIBILITY_PRIVATE).setAutoCancel(true)
                 .setOnlyAlertOnce(true).setCategory(if (isCall) Notification.CATEGORY_CALL else Notification.CATEGORY_MESSAGE).setContentIntent(open)
             if (isCall) {
-                val remaining = data.getLong("expires") * 1000 - System.currentTimeMillis()
+                val remaining = (data.getLong("expires") * 1000 - System.currentTimeMillis()).coerceAtMost(45000L)
                 if (remaining <= 0) return
-                val answer = PendingIntent.getActivity(context, 0, Intent(intent)
+                val incoming = Intent(intent).setClass(context, IncomingCallActivity::class.java)
+                val fullScreen = PendingIntent.getActivity(context, 0, incoming,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                val answer = PendingIntent.getActivity(context, 0, Intent(incoming)
                     .setAction(PREFIX + routeNotice + ":answer").putExtra("pushAction", "answer"),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
                 val decline = PendingIntent.getBroadcast(context, 0, Intent(context, PushDeclineReceiver::class.java)
@@ -142,12 +152,23 @@ object PushNotifications {
                     .putExtra("pushNotice", routeNotice).putExtra("pushTag", tag),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
                 if (Build.VERSION.SDK_INT >= 31) builder.setStyle(Notification.CallStyle.forIncomingCall(
-                    Person.Builder().setName("VoiceChat").setImportant(true).build(), decline, answer))
-                else builder.addAction(android.R.drawable.sym_action_call, "Ответить", answer)
+                    Person.Builder().setName("VoiceChat").setImportant(true).build(), decline, answer).setIsVideo(video))
+                else builder.addAction(android.R.drawable.sym_action_call, if (video) "Ответить с камерой" else "Ответить", answer)
                     .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Отклонить", decline)
                     .setPriority(Notification.PRIORITY_MAX)
                 if (Build.VERSION.SDK_INT >= 26) builder.setTimeoutAfter(remaining)
-                if (Build.VERSION.SDK_INT < 34 || manager.canUseFullScreenIntent()) builder.setFullScreenIntent(open, true)
+                else {
+                    // Android7 has no Notification timeout. Use a system alarm so
+                    // expiry survives the receiver process being reclaimed.
+                    val timeout = PendingIntent.getBroadcast(context, 0,
+                        Intent(context, PushDeclineReceiver::class.java).setAction(PREFIX + routeNotice + ":timeout")
+                            .putExtra("pushBinding", binding).putExtra("pushNotice", routeNotice)
+                            .putExtra("pushTag", tag).putExtra("pushTimeout", true),
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                    context.getSystemService(AlarmManager::class.java).setExactAndAllowWhileIdle(
+                        AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + remaining, timeout)
+                }
+                if (Build.VERSION.SDK_INT < 34 || manager.canUseFullScreenIntent()) builder.setFullScreenIntent(fullScreen, true)
                 builder.setOngoing(true)
             }
             if (binding != binding(context)) return
@@ -172,6 +193,7 @@ class PushDeclineReceiver : BroadcastReceiver() {
         if (binding != PushNotifications.binding(context)) return
         val notice = intent.getStringExtra("pushNotice") ?: return
         context.getSystemService(NotificationManager::class.java).cancel(intent.getStringExtra("pushTag"), 0)
+        if (intent.getBooleanExtra("pushTimeout", false)) return
         PushWork.enqueue(context, "decline", notice, binding)
     }
 }

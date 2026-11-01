@@ -33,7 +33,7 @@ class AndroidPushStore(PushStore):
                 CREATE TABLE IF NOT EXISTS push_calls (
                     id TEXT PRIMARY KEY, room TEXT NOT NULL, session TEXT NOT NULL UNIQUE,
                     caller TEXT NOT NULL, caller_device TEXT NOT NULL, expires INTEGER NOT NULL,
-                    ended INTEGER NOT NULL DEFAULT 0);
+                    ended INTEGER NOT NULL DEFAULT 0, video INTEGER NOT NULL DEFAULT 0);
                 CREATE TABLE IF NOT EXISTS android_deliveries (
                     binding TEXT NOT NULL, event TEXT NOT NULL, sent INTEGER NOT NULL,
                     PRIMARY KEY(binding, event));
@@ -93,7 +93,7 @@ class AndroidPushStore(PushStore):
             raise PushError('invalid_notice')
         with self.connect() as db:
             target = db.execute('SELECT user,device FROM android_devices WHERE binding=?', (binding,)).fetchone()
-            call = db.execute('SELECT c.room,c.session,c.expires,c.ended,u.state,u.device '
+            call = db.execute('SELECT c.room,c.session,c.expires,c.ended,u.state,u.device,c.video '
                 'FROM push_calls c JOIN push_call_users u ON u.call_id=c.id '
                 'WHERE c.id=? AND u.user=?', (notice, target[0] if target else '')).fetchone()
             row = db.execute('SELECT d.user,d.device,n.room,n.event,n.expires FROM android_notices n '
@@ -103,19 +103,19 @@ class AndroidPushStore(PushStore):
                 raise PushError('device_revoked', 403)
             ringing = not call[3] and call[4] == 'ringing' and call[2] > time.time()
             return {'room': call[0], 'session': call[1], 'expires': call[2],
-                    'kind': 'call' if ringing else 'dismiss', 'call': notice}
+                    'kind': 'call' if ringing else 'dismiss', 'call': notice, 'video': bool(call[6])}
         if row is None or row[4] <= time.time():
             raise PushError('notification_expired', 410)
         # Also checked on every receive/click, so a queued FCM cannot revive a revoked device.
         if not self.validate(row[0], row[1], row[2]):
             raise PushError('device_revoked', 403)
         with self.connect() as db:
-            ringing = db.execute('SELECT c.id,c.session,c.expires FROM push_calls c '
+            ringing = db.execute('SELECT c.id,c.session,c.expires,c.video FROM push_calls c '
                 'JOIN push_call_users u ON u.call_id=c.id WHERE c.room=? AND u.user=? '
                 'AND c.ended=0 AND c.expires>? AND u.state=? ORDER BY c.expires DESC LIMIT 1',
                 (row[2], row[0], int(time.time()), 'ringing')).fetchone()
         if ringing:
-            return {'room': row[2], 'session': ringing[1], 'expires': ringing[2], 'kind': 'call', 'call': ringing[0]}
+            return {'room': row[2], 'session': ringing[1], 'expires': ringing[2], 'kind': 'call', 'call': ringing[0], 'video': bool(ringing[3])}
         return {'room': row[2], 'event': row[3], 'expires': row[4]}
 
     def call_action(self, user, device, body, members=None):
@@ -127,6 +127,8 @@ class AndroidPushStore(PushStore):
             call = db.execute('SELECT id,room,caller,caller_device,expires,ended FROM push_calls WHERE session=?', (session,)).fetchone()
             if action == 'invite':
                 room = body.get('room')
+                video = body.get('video', False)
+                if type(video) is not bool: raise PushError('invalid_call_mode')
                 if not members or user not in members or len(members) > 10:
                     raise PushError('invalid_audience', 403)
                 if call:
@@ -137,8 +139,8 @@ class AndroidPushStore(PushStore):
                             (user, int(time.time()))).fetchone()[0] >= 3:
                         raise PushError('too_many_calls', 429)
                     identifier = secrets.token_urlsafe(24)
-                    db.execute('INSERT INTO push_calls VALUES(?,?,?,?,?,?,0)',
-                        (identifier, room, session, user, device, int(time.time()) + 45))
+                    db.execute('INSERT INTO push_calls VALUES(?,?,?,?,?,?,0,?)',
+                        (identifier, room, session, user, device, int(time.time()) + 45, int(video)))
                     db.executemany('INSERT INTO push_call_users VALUES(?,?,?,NULL)',
                         [(identifier, member, 'ringing') for member in members if member != user])
                     call = db.execute('SELECT id,room,caller,caller_device,expires,ended FROM push_calls WHERE id=?', (identifier,)).fetchone()

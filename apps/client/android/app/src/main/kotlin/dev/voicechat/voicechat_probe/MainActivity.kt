@@ -46,24 +46,13 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-        incomingWindow(intent)
         AppNotifications.open(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        incomingWindow(intent)
         AppNotifications.open(intent)
-    }
-
-    private fun incomingWindow(intent: Intent) {
-        if (Build.VERSION.SDK_INT >= 27) {
-            val incoming = intent.getBooleanExtra("pushCall", false) &&
-                intent.getStringExtra("pushBinding") == PushNotifications.binding(this)
-            setShowWhenLocked(incoming)
-            setTurnScreenOn(incoming)
-        }
     }
 
     override fun onResume() { super.onResume(); AppUpdater.foreground = true }

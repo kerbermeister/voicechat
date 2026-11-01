@@ -35,6 +35,9 @@
         </service>
         <receiver android:name=".UpdateResultReceiver" android:exported="false" />
         <receiver android:name=".PushDeclineReceiver" android:exported="false" />
+        <activity android:name=".IncomingCallActivity" android:exported="false"
+            android:launchMode="singleTop" android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
         <service android:name=".CallService" android:exported="false" android:foregroundServiceType="microphone" />
         <service android:name=".ScreenService" android:exported="false" android:foregroundServiceType="mediaProjection" />
         <activity
