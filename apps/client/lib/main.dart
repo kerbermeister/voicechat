@@ -1,3 +1,5 @@
+import 'notification_preferences.dart';
+import 'android_call_screen.dart';
 import 'resizable_chat_layout.dart';
 import 'chat_scale.dart';
 import 'message_media_cache.dart';
@@ -85,6 +87,7 @@ Future<void> main() async {
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
     CameraPlatform.instance = MacOSCamera();
   }
+  await AndroidCallScreen.instance.initialize();
   await cleanupRecordings();
   runApp(const VoiceChatApp());
 }
@@ -165,7 +168,19 @@ class _VoiceChatAppState extends State<VoiceChatApp>
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
     builder: (context, child) => MediaQuery(
       data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-      child: ChatScaleScope(scale: chatScale, child: child!),
+      child: ChatScaleScope(
+        scale: chatScale,
+        child: AndroidCallScreenGate(
+          audioOutput: () async {
+            final calls = AndroidCallScreen.instance.calls;
+            final call = calls?.active;
+            if (call != null && !call.isClosed) {
+              await calls!.audio.toggleSpeaker(call);
+            }
+          },
+          child: child!,
+        ),
+      ),
     ),
     theme: palette.theme,
     themeAnimationDuration: appMotionDuration,
@@ -224,6 +239,9 @@ class _ProbeScreenState extends State<ProbeScreen> {
   CallController? calls;
   AppSounds? sounds;
   NativeNotifications? nativeNotifications;
+  bool notificationPermissionNeeded = false;
+  String get _webNotificationPreference =>
+      'webNotifications:${probe!.client.userID}';
   Uri? ownAvatar;
   PresenceTracker? presenceTracker;
   RecordingActivity? recordingActivity;
@@ -378,6 +396,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
 
   Future<void> connected(MatrixProbe next) async {
     password.clear();
+    notificationPermissionNeeded = false;
     probe = next;
     linked = await deviceLinked(next.client);
     await refreshCurrentDeviceName(next.client);
@@ -461,7 +480,11 @@ class _ProbeScreenState extends State<ProbeScreen> {
         report: report,
       );
     }
-    sounds = AppSounds(next.client, onReceived: nativeNotifications?.message);
+    sounds = AppSounds(
+      next.client,
+      onReceived: nativeNotifications?.message,
+      systemIncomingRinging: nativeNotifications?.hasRingingCall,
+    );
     await sounds!.open();
     actions = ChatActions(
       next.client,
@@ -478,6 +501,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       report,
       initialEvents: next.startupCalls?.take() ?? const [],
     );
+    AndroidCallScreen.instance.attach(calls);
     calls!.addListener(() {
       if (mounted) {
         setState(() {});
@@ -496,6 +520,25 @@ class _ProbeScreenState extends State<ProbeScreen> {
     // Install chat actions and the VoIP delegate before consuming it.
     await nativeNotifications?.open();
     nativeNotifications?.updateCalls(calls!);
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      if (await applyNotificationDefault(prefs, _webNotificationPreference)) {
+        if (await pushNotificationsPermissionGranted()) {
+          try {
+            await enablePushNotifications(
+              tokenServer.text.trim(),
+              next.client.accessToken!,
+              createClient: _pushClient,
+            );
+          } catch (_) {
+            notificationPermissionNeeded = true;
+          }
+        } else {
+          notificationPermissionNeeded = true;
+        }
+        if (mounted) setState(() {});
+      }
+    }
     await saveAccount();
     final roomId = (await SharedPreferences.getInstance()).getString(
       'lastRoom:${profile.text.trim()}',
@@ -1115,11 +1158,17 @@ class _ProbeScreenState extends State<ProbeScreen> {
       );
       return;
     }
-    await lk.AudioManager.instance.setSpeakerOutputPreferred(
-      !lk.AudioManager.instance.isSpeakerOutputPreferred,
-    );
+    if (defaultTargetPlatform == TargetPlatform.macOS) {
+      report('Динамик и гарнитура выбираются в системных настройках звука.');
+      return;
+    }
+    final current = calls?.active;
+    if (current == null || current.isClosed) return;
+    await calls!.audio.toggleSpeaker(current);
     report(
-      'Переключён динамик/обычный аудиомаршрут. Гарнитурой управляет система.',
+      calls!.audio.speakerEnabled
+          ? 'Громкая связь включена.'
+          : 'Громкая связь выключена.',
     );
   }
 
@@ -1185,6 +1234,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
             probe = null;
             selected = null;
             timeline = null;
+            AndroidCallScreen.instance.attach(null);
             calls = null;
             verifications = null;
             historyRecovery = null;
@@ -1604,6 +1654,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       probe = null;
       selected = null;
       timeline = null;
+      AndroidCallScreen.instance.attach(null);
       calls = null;
       actions = null;
     });
@@ -1884,6 +1935,11 @@ class _ProbeScreenState extends State<ProbeScreen> {
   Future<void> settings() async {
     Future<dynamic>? settingsClosed;
     var privacyBusy = false;
+    var notificationsBusy = false;
+    var notificationsEnabled = NativeNotifications.supported
+        ? nativeNotifications?.enabled == true
+        : await pushNotificationsEnabled();
+    if (!mounted) return;
     String? privacyError;
     final choice = await showAppDialog<String>(
       context: context,
@@ -2046,26 +2102,41 @@ class _ProbeScreenState extends State<ProbeScreen> {
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     if (kIsWeb || NativeNotifications.supported) ...[
-                      ListTile(
-                        leading: const Icon(
+                      SwitchListTile(
+                        secondary: const Icon(
                           Icons.notifications_active_outlined,
                         ),
-                        title: const Text('Включить уведомления'),
+                        title: const Text('Уведомления'),
                         subtitle: Text(
-                          NativeNotifications.supported
-                              ? defaultTargetPlatform == TargetPlatform.android
-                                    ? 'Сообщения и звонки приходят и при закрытом приложении. После принудительной остановки откройте приложение снова.'
-                                    : 'Пока приложение работает, в том числе со скрытым окном.'
-                              : 'На iPhone — из приложения на экране «Домой». iOS 16.4 и новее.',
+                          !kIsWeb &&
+                                  defaultTargetPlatform ==
+                                      TargetPlatform.android
+                              ? 'Сообщения и звонки, в том числе при закрытом приложении. На Xiaomi разрешите автозапуск и показ на экране блокировки в настройках телефона.'
+                              : kIsWeb
+                              ? 'На iPhone — из приложения на экране «Домой». iOS 16.4 и новее.'
+                              : 'Пока приложение работает, в том числе со скрытым окном.',
                         ),
-                        onTap: () => openSetting('push-enable'),
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.notifications_off_outlined),
-                        title: const Text(
-                          'Выключить уведомления на этом устройстве',
-                        ),
-                        onTap: () => openSetting('push-disable'),
+                        value: notificationsEnabled,
+                        onChanged: notificationsBusy
+                            ? null
+                            : (value) async {
+                                updateSettings(() => notificationsBusy = true);
+                                try {
+                                  await openSetting(
+                                    value ? 'push-enable' : 'push-disable',
+                                  );
+                                  notificationsEnabled =
+                                      NativeNotifications.supported
+                                      ? nativeNotifications?.enabled == true
+                                      : await pushNotificationsEnabled();
+                                } finally {
+                                  if (dialogContext.mounted) {
+                                    updateSettings(
+                                      () => notificationsBusy = false,
+                                    );
+                                  }
+                                }
+                              },
                       ),
                     ],
                     ListTile(
@@ -2204,6 +2275,16 @@ class _ProbeScreenState extends State<ProbeScreen> {
                     createClient: _pushClient,
                   ),
           );
+          if (kIsWeb) {
+            final enabled = await pushNotificationsEnabled();
+            await (await SharedPreferences.getInstance()).setBool(
+              _webNotificationPreference,
+              true,
+            );
+            if (mounted) {
+              setState(() => notificationPermissionNeeded = !enabled);
+            }
+          }
         case 'push-disable':
           report(
             NativeNotifications.supported
@@ -2214,6 +2295,13 @@ class _ProbeScreenState extends State<ProbeScreen> {
                     createClient: _pushClient,
                   ),
           );
+          if (kIsWeb) {
+            await (await SharedPreferences.getInstance()).setBool(
+              _webNotificationPreference,
+              false,
+            );
+            if (mounted) setState(() => notificationPermissionNeeded = false);
+          }
         case 'avatar':
           await changeAvatar();
         case 'devices':
@@ -2401,7 +2489,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
   bool callWindowOpen = false;
   String? presentedCall;
   void maybeShowCall() {
-    if (calls == null || callWindowOpen || !mounted) return;
+    if (calls == null ||
+        callWindowOpen ||
+        !mounted ||
+        AndroidCallScreen.instance.active) {
+      return;
+    }
     final controller = calls!;
     final id = controller.active?.isClosed == false
         ? controller.active!.session
@@ -2550,6 +2643,19 @@ class _ProbeScreenState extends State<ProbeScreen> {
               height: 2,
               child: busy ? const LinearProgressIndicator(minHeight: 2) : null,
             ),
+            if (notificationPermissionNeeded)
+              ListTile(
+                leading: const Icon(Icons.notifications_active_outlined),
+                title: const Text(
+                  'Разрешите уведомления о сообщениях и звонках',
+                ),
+                trailing: TextButton(
+                  onPressed: busy
+                      ? null
+                      : () => run(() => settingsAction('push-enable')),
+                  child: const Text('Включить'),
+                ),
+              ),
             callBanner(),
             if (incomingContactLink != null)
               ListTile(

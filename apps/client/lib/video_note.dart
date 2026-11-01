@@ -339,29 +339,33 @@ class _RecorderState extends State<_Recorder> with WidgetsBindingObserver {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox.square(
-            dimension: (MediaQuery.sizeOf(context).height * .38).clamp(80, 320),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ClipOval(
-                  child: camera?.value.isInitialized == true
-                      ? FittedBox(
-                          fit: BoxFit.cover,
-                          child: SizedBox(
-                            width: camera!.value.previewSize!.width,
-                            child: CameraPreview(camera!),
-                          ),
-                        )
-                      : const Center(child: CircularProgressIndicator()),
-                ),
-                SmoothProgressRing(
-                  value: clock.elapsedMilliseconds / (widget.maxSeconds * 1000),
-                  running: clock.isRunning,
-                  duration: Duration(seconds: widget.maxSeconds),
-                  strokeWidth: 6,
-                ),
-              ],
+          SizedBox(
+            width: (MediaQuery.sizeOf(context).height * .38).clamp(80, 320),
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipOval(
+                    child: camera?.value.isInitialized == true
+                        ? FittedBox(
+                            fit: BoxFit.cover,
+                            child: SizedBox(
+                              width: camera!.value.previewSize!.width,
+                              child: CameraPreview(camera!),
+                            ),
+                          )
+                        : const Center(child: CircularProgressIndicator()),
+                  ),
+                  SmoothProgressRing(
+                    value:
+                        clock.elapsedMilliseconds / (widget.maxSeconds * 1000),
+                    running: clock.isRunning,
+                    duration: Duration(seconds: widget.maxSeconds),
+                    strokeWidth: 6,
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 16),

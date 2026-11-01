@@ -7,6 +7,21 @@ import 'call_audio_platform.dart';
 
 /// Local receiver gain only; never changes another participant's microphone.
 class CallAudio {
+  bool speakerEnabled = false;
+
+  Future<void> toggleSpeaker(VoiceCall call) async {
+    final enabled = !speakerEnabled;
+    if (call is DirectCall) {
+      await rtc.Helper.setSpeakerphoneOn(enabled);
+    } else {
+      await lk.AudioManager.instance.setSpeakerOutputPreferred(
+        enabled,
+        force: enabled,
+      );
+    }
+    speakerEnabled = enabled;
+  }
+
   final levels = <String, double>{};
   final _applied = <rtc.MediaStreamTrack, double>{};
   VoiceCall? _call;
@@ -30,6 +45,7 @@ class CallAudio {
   }
 
   void reset(VoiceCall? call) {
+    speakerEnabled = call?.video ?? false;
     for (final track in _applied.keys) {
       if (track.id != null) forgetCallTrackVolume(track.id!);
     }

@@ -33,6 +33,49 @@ class AudioSession extends VideoSession {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
+    'Direct speakerphone toggles the WebRTC route and preserves state on failure',
+    () async {
+      final writes = <bool>[];
+      var fail = false;
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(
+        const MethodChannel('FlutterWebRTC.Method'),
+        (call) async {
+          if (call.method == 'enableSpeakerphone') {
+            if (fail) throw PlatformException(code: 'route_unavailable');
+            writes.add((call.arguments as Map)['enable'] as bool);
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(
+          const MethodChannel('FlutterWebRTC.Method'),
+          null,
+        ),
+      );
+      final call = DirectCall(
+        AudioSession(OutboxRoom(ListClient())),
+        () {},
+        (_) {},
+      );
+      final audio = CallAudio();
+      await audio.toggleSpeaker(call);
+      expect(audio.speakerEnabled, true);
+      await audio.toggleSpeaker(call);
+      expect(audio.speakerEnabled, false);
+      expect(writes, [true, false]);
+      fail = true;
+      await expectLater(
+        audio.toggleSpeaker(call),
+        throwsA(isA<PlatformException>()),
+      );
+      expect(audio.speakerEnabled, false);
+      await call.close();
+    },
+  );
+  test(
     'Receiver volume clamps inputs, follows a replacement track and resets for a new call',
     () async {
       final writes = <Map<dynamic, dynamic>>[];

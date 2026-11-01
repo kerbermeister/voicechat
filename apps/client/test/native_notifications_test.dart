@@ -52,16 +52,69 @@ void main() {
         .setMockMethodCallHandler(NativeNotifications.channel, null);
   });
 
-  test('permission denial does not persist consent', () async {
+  test(
+    'Android enables notifications on first launch, respects explicit off',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(NativeNotifications.channel, (call) async {
+            calls.add(call);
+            return call.method == 'request' ? true : null;
+          });
+      final notifications = NativeNotifications('first-launch', (_) async {});
+      await notifications.open();
+      expect(notifications.enabled, true);
+      expect(calls.any((call) => call.method == 'request'), true);
+      await notifications.setEnabled(false);
+      await notifications.close();
+      calls.clear();
+      final reopened = NativeNotifications('first-launch', (_) async {});
+      await reopened.open();
+      expect(reopened.enabled, false);
+      expect(calls.any((call) => call.method == 'request'), false);
+      await reopened.close();
+    },
+  );
+  test(
+    'Ending a ringing call dismisses its Android system notification once',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      SharedPreferences.setMockInitialValues({
+        'androidNotifications:alice': false,
+      });
+      final notifications = NativeNotifications('alice', (_) async {});
+      await notifications.open();
+      final incoming = NotificationCalls();
+      incoming.invitations['cancelled'] = CallInvitation(
+        NotificationRoom(),
+        'cancelled',
+        '@bob:local',
+        DateTime.now(),
+      );
+      notifications.updateCalls(incoming);
+      await Future<void>.delayed(Duration.zero);
+      incoming.invitations.clear();
+      notifications.updateCalls(incoming);
+      notifications.updateCalls(incoming);
+      await Future<void>.delayed(Duration.zero);
+      final dismissals = calls
+          .where((call) => call.method == 'dismissCall')
+          .toList();
+      expect(dismissals.length, 1);
+      expect(dismissals.single.arguments['id'], 'cancelled');
+      await notifications.close();
+    },
+  );
+  test('permission denial keeps delivery off despite update default', () async {
     final notifications = NativeNotifications('alice', (_) async {});
     await notifications.open();
-    expect(calls.map((call) => call.method), ['begin', 'enabled']);
+    expect(calls.map((call) => call.method), ['begin', 'request', 'enabled']);
     expect(await notifications.setEnabled(true), contains('Разрешите'));
     expect(
       (await SharedPreferences.getInstance()).getBool(
         'macosNotifications:alice',
       ),
-      isNull,
+      isTrue,
     );
     expect(
       calls
@@ -198,37 +251,40 @@ void main() {
     },
   );
 
-  test('failed push registration does not persist consent', () async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.android;
-    final client = MockClient(
-      (_) async => http.Response('{"error":"unavailable"}', 503),
-    );
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(NativeNotifications.channel, (call) async {
-          calls.add(call);
-          if (call.method == 'request') return true;
-          if (call.method == 'pushToken') return 'installation-token';
-          return null;
-        });
-    final notifications = NativeNotifications(
-      'alice',
-      (_) async {},
-      pushUrl: 'https://voice.example/api',
-      accessToken: 'matrix-token',
-      transport: client,
-    );
-    await notifications.open();
-    expect(await notifications.setEnabled(true), contains('Не удалось'));
-    expect(
-      (await SharedPreferences.getInstance()).getBool(
-        'androidNotifications:alice',
-      ),
-      isNull,
-    );
-    expect(calls.where((c) => c.method == 'pushBind'), isEmpty);
-    await notifications.close();
-    client.close();
-  });
+  test(
+    'failed push registration leaves delivery off and retains update preference',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final client = MockClient(
+        (_) async => http.Response('{"error":"unavailable"}', 503),
+      );
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(NativeNotifications.channel, (call) async {
+            calls.add(call);
+            if (call.method == 'request') return true;
+            if (call.method == 'pushToken') return 'installation-token';
+            return null;
+          });
+      final notifications = NativeNotifications(
+        'alice',
+        (_) async {},
+        pushUrl: 'https://voice.example/api',
+        accessToken: 'matrix-token',
+        transport: client,
+      );
+      await notifications.open();
+      expect(await notifications.setEnabled(true), contains('Не удалось'));
+      expect(
+        (await SharedPreferences.getInstance()).getBool(
+          'androidNotifications:alice',
+        ),
+        isTrue,
+      );
+      expect(calls.where((c) => c.method == 'pushBind'), isEmpty);
+      await notifications.close();
+      client.close();
+    },
+  );
 
   test(
     'logout during registration cannot restore the native push binding',
@@ -261,8 +317,7 @@ void main() {
         accessToken: 'matrix-token',
         transport: client,
       );
-      await notifications.open();
-      final enabling = notifications.setEnabled(true);
+      final enabling = notifications.open();
       await started.future;
       final closing = notifications.close();
       release.complete();
@@ -409,7 +464,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         expect(incoming.answers, advertisedVideo ? 1 : 0);
         if (!advertisedVideo) {
-          expect(reports.single, contains('Тип вызова изменился'));
+          expect(reports, contains(contains('Тип вызова изменился')));
         }
         await notifications.close();
       }

@@ -25,7 +25,7 @@ class DirectCall implements VoiceCall {
   String _cameraFacing = 'user';
   bool get mirrorLocalVideo => _cameraFacing == 'user';
   final _streams = <mx.WrappedMediaStream, rtc.RTCVideoRenderer>{};
-  final _renderedTracks = <rtc.RTCVideoRenderer, List<String>>{};
+  final _renderedTracks = <rtc.RTCVideoRenderer, List<rtc.MediaStreamTrack>>{};
   final _statistics = CallStatistics();
   final audioLevels = AudioLevels();
   bool _readingLevels = false;
@@ -187,13 +187,13 @@ class DirectCall implements VoiceCall {
     mx.WrappedMediaStream stream,
     rtc.RTCVideoRenderer renderer,
   ) {
-    final tracks =
-        stream.stream?.getTracks().map((track) => track.id!).toList() ??
-        <String>[];
-    tracks.sort();
-    if (!listEquals(_renderedTracks[renderer], tracks)) {
+    final tracks = stream.stream?.getTracks() ?? <rtc.MediaStreamTrack>[];
+    // Native renegotiation can replace a stream/track wrapper while retaining
+    // its IDs. Rebind the renderer to the current native source in that case.
+    if (!identical(renderer.srcObject, stream.stream) ||
+        !listEquals(_renderedTracks[renderer], tracks)) {
       renderer.srcObject = stream.stream;
-      _renderedTracks[renderer] = tracks;
+      _renderedTracks[renderer] = tracks.toList();
     }
     if (video) {
       if (stream.isLocal()) {

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'call_controller.dart';
+import 'notification_preferences.dart';
 
 class NativeNotifications {
   static bool get supported =>
@@ -45,6 +46,7 @@ class NativeNotifications {
     this.transport,
     this.report,
   });
+  bool get enabled => _enabled;
   bool get _android => defaultTargetPlatform == TargetPlatform.android;
 
   Future<void> open() async {
@@ -78,28 +80,37 @@ class NativeNotifications {
       'session': session,
       'account': account,
     });
-    final enabled =
-        (await SharedPreferences.getInstance()).getBool(_preference) ?? false;
-    if (!_closed) {
-      _enabled = enabled;
-      if (_android && enabled) {
-        try {
-          await _registerPush();
-        } catch (_) {
-          report?.call(
-            'Фоновые уведомления недоступны. Проверьте сеть и повторите включение.',
-          );
-        }
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = await applyNotificationDefault(prefs, _preference);
+    if (_closed) return;
+    if (enabled) {
+      final prompt = prefs.getBool('$_preference:callScreenAsked') != true;
+      final status = await setEnabled(true, requestCallScreen: prompt);
+      if (_android && _enabled && _pushBound && prompt) {
+        await prefs.setBool('$_preference:callScreenAsked', true);
       }
+      if (!_enabled ||
+          _android && !_pushBound ||
+          status.contains('Разрешите')) {
+        report?.call(status);
+      }
+      if (!_enabled) {
+        await channel.invokeMethod<void>('enabled', {
+          'session': session,
+          'enabled': false,
+        });
+      }
+    } else {
+      _enabled = enabled;
       await channel.invokeMethod<void>('enabled', {
         'session': session,
         'enabled': enabled,
       });
-      if (_android) await _takePush();
     }
+    if (_android) await _takePush();
   }
 
-  Future<String> setEnabled(bool value) async {
+  Future<String> setEnabled(bool value, {bool requestCallScreen = true}) async {
     if (_closed) return 'Сеанс закрыт.';
     if (!value) _enabled = false;
     if (value) {
@@ -108,10 +119,11 @@ class NativeNotifications {
           false;
       if (_closed) return 'Сеанс закрыт.';
       if (!allowed) {
+        _enabled = false;
         return 'Разрешите уведомления VoiceChat в системных настройках устройства.';
       }
     }
-    if (_android && value) {
+    if (_android && value && !_pushBound) {
       try {
         await _registerPush();
       } catch (_) {
@@ -128,7 +140,7 @@ class NativeNotifications {
       'session': session,
       'enabled': value,
     });
-    if (value && _android && _pushBound) {
+    if (value && _android && _pushBound && requestCallScreen) {
       final fullScreen = await channel.invokeMethod<bool>('requestCallScreen', {
         'session': session,
       });
@@ -217,20 +229,35 @@ class NativeNotifications {
     if (data['action'] == 'answer') _pendingPush = data;
   }
 
+  Future<bool> hasRingingCall() async {
+    if (!_android || _closed) return false;
+    return await channel.invokeMethod<bool>('isRinging', {
+          'session': session,
+        }) ??
+        false;
+  }
+
   Future<void> message(String room, String event) => _show(room, event, false);
   void updateCalls(CallController calls) {
     if (_android && !_answeringPush) unawaited(_applyPush(calls));
-    for (final call in calls.directInvitations) {
-      if (_calls.add(call.session)) {
-        unawaited(_show(call.chat.id, call.session, true));
-      }
+    final incoming = <String, String>{
+      for (final call in calls.directInvitations)
+        if (!call.isClosed) call.session: call.chat.id,
+      for (final call in calls.invitations.values) call.session: call.room.id,
+    };
+    for (final session in _calls.difference(incoming.keys.toSet())) {
+      if (!_android) continue;
+      unawaited(
+        channel.invokeMethod<void>('dismissCall', {
+          'session': this.session,
+          'id': session,
+        }),
+      );
     }
-    for (final call in calls.invitations.values) {
-      if (_calls.add(call.session)) {
-        unawaited(_show(call.room.id, call.session, true));
-      }
+    _calls.removeWhere((session) => !incoming.containsKey(session));
+    for (final entry in incoming.entries) {
+      if (_calls.add(entry.key)) unawaited(_show(entry.value, entry.key, true));
     }
-    if (_calls.length > 2000) _calls.remove(_calls.first);
   }
 
   Future<void> _applyPush(CallController calls) async {

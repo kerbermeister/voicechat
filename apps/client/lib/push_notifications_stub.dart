@@ -10,3 +10,7 @@ Future<String> disablePushNotifications(
   String token, {
   http.Client Function()? createClient,
 }) async => '';
+
+Future<bool> pushNotificationsEnabled() async => false;
+
+Future<bool> pushNotificationsPermissionGranted() async => false;

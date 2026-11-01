@@ -35,6 +35,14 @@ class PinDevice implements DeviceKeys {
   String get curve25519Key => 'curve-$ed25519Key';
   @override
   bool directVerified = false;
+  bool signedByMaster = false;
+  @override
+  bool hasValidSignatureChain({
+    bool verifiedOnly = true,
+    Set<String>? visited,
+    Set<String>? onlyValidateUserIds,
+    bool verifiedByTheirMasterKey = false,
+  }) => signedByMaster;
   @override
   bool get blocked => false;
   @override
@@ -49,7 +57,90 @@ class PinDevice implements DeviceKeys {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class PinMaster extends Fake implements CrossSigningKey {
+  @override
+  final String userId;
+  PinMaster(this.userId);
+  @override
+  String get publicKey => 'master-key';
+  @override
+  List<String> get usage => ['master'];
+  @override
+  bool get isValid => true;
+  @override
+  bool get blocked => false;
+  @override
+  bool directVerified = false;
+  bool signedByTrustedDevice = false;
+  @override
+  bool hasValidSignatureChain({
+    bool verifiedOnly = true,
+    Set<String>? visited,
+    Set<String>? onlyValidateUserIds,
+    bool verifiedByTheirMasterKey = false,
+  }) {
+    expect(onlyValidateUserIds, {userId});
+    return signedByTrustedDevice;
+  }
+
+  @override
+  Future<void> setVerified(bool value, [bool sign = true]) async =>
+      directVerified = value;
+}
+
 void main() {
+  test(
+    'A later master signed by a trusted device authorizes its signed phone',
+    () async {
+      final client = PinClient();
+      final first = PinDevice('@friend:local', 'A', 'first-key');
+      final list = client.userDeviceKeys[first.userId] = DeviceKeysList(
+        first.userId,
+        client,
+        deviceKeys: {'A': first},
+      );
+      enableFirstContactTrust(client);
+      await acceptFirstKeys(client, {first.userId});
+      final master = PinMaster(first.userId);
+      list.crossSigningKeys[master.publicKey] = master;
+      final phone = PinDevice(first.userId, 'B', 'phone-key')
+        ..signedByMaster = true;
+      list.deviceKeys['B'] = phone;
+      await acceptFirstKeys(client, {first.userId});
+      expect(
+        phone.directVerified,
+        false,
+        reason: 'An unbound master cannot authorize a phone',
+      );
+      master.signedByTrustedDevice = true;
+      await acceptFirstKeys(client, {first.userId});
+      expect(master.directVerified, true);
+      expect(phone.directVerified, true);
+      final unsigned = PinDevice(first.userId, 'C', 'unsigned-key');
+      list.deviceKeys['C'] = unsigned;
+      await acceptFirstKeys(client, {first.userId});
+      expect(unsigned.directVerified, false);
+    },
+  );
+  test('Empty device discovery does not consume first-contact trust', () async {
+    final client = PinClient();
+    const user = '@new-group-member:local';
+    client.userDeviceKeys[user] = DeviceKeysList(user, client);
+    enableFirstContactTrust(client);
+    await acceptFirstKeys(client, {user});
+    expect(client.database.writes, 0);
+    await client.database.storeAccountData('dev.voicechat.local.first_keys', {
+      'version': 1,
+      'users': {
+        user: {'devices': <String, dynamic>{}, 'master': null},
+      },
+    });
+    final device = PinDevice(user, 'PHONE', 'phone-key');
+    client.userDeviceKeys[user]!.deviceKeys[device.deviceId] = device;
+    await acceptFirstKeys(client, {user});
+    expect(device.directVerified, true);
+    expect(client.database.writes, 2);
+  });
   test(
     'TOFU pins first keys durably, refuses replacement and does not auto-trust unsigned new devices',
     () async {

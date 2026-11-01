@@ -39,7 +39,15 @@ Future<void> _accept(Client client, Set<String> users) async {
     final master = list.crossSigningKeys.values
         .where((k) => k.usage.contains('master') && k.isValid && !k.blocked)
         .firstOrNull;
-    final first = !pinnedUsers.containsKey(user);
+    final previousPin = pinnedUsers[user];
+    // Also repair empty pins written before device discovery completed.
+    final first =
+        previousPin == null ||
+        previousPin is Map &&
+            previousPin['devices'] is Map &&
+            (previousPin['devices'] as Map).isEmpty &&
+            previousPin['master'] == null &&
+            previousPin['verified'] == null;
     final alreadyTrusted = devices.any((d) => d.directVerified);
     final pin =
         pinnedUsers[user] ??
@@ -61,6 +69,13 @@ Future<void> _accept(Client client, Set<String> users) async {
         );
       }
     }
+    if (pin['master'] == null &&
+        master != null &&
+        master.hasValidSignatureChain(onlyValidateUserIds: {user})) {
+      // Cross-signing may be set up after the first contact. An existing
+      // trusted device's signature binds its master without manual approval.
+      pin['master'] = master.publicKey;
+    }
     if (master != null && pin['master'] == master.publicKey) {
       masters.add(master);
     }
@@ -72,7 +87,9 @@ Future<void> _accept(Client client, Set<String> users) async {
         approve.add(device);
       }
     }
-    pinnedUsers[user] = pin;
+    // A room can arrive before its members publish keys. Do not consume
+    // first-contact trust with an empty device list.
+    if (known.isNotEmpty || pin['master'] != null) pinnedUsers[user] = pin;
   }
   // Pin durably before granting trust; a failed write must not silently accept new keys.
   if (jsonEncode(pins) != saved) {
@@ -83,7 +100,8 @@ Future<void> _accept(Client client, Set<String> users) async {
     if (!master.directVerified) await master.setVerified(true, false);
   }
   for (final user in users) {
-    final pin = pinnedUsers[user] as Map;
+    final pin = pinnedUsers[user];
+    if (pin == null) continue;
     final master = client.userDeviceKeys[user]!.crossSigningKeys.values
         .where(
           (k) => k.usage.contains('master') && k.publicKey == pin['master'],

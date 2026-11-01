@@ -52,8 +52,9 @@ class WindowCall implements VoiceCall {
   CallQuality get quality => CallQuality.good;
   @override
   List<String> get participants => [];
+  Duration elapsed = const Duration(seconds: 42);
   @override
-  Duration get duration => const Duration(seconds: 42);
+  Duration get duration => elapsed;
   @override
   Future<void> camera(bool enabled) async => cameraEnabled = enabled;
   @override
@@ -86,6 +87,36 @@ void main() {
         const MethodChannel('FlutterWebRTC.Event'),
         (_) async => null,
       );
+  testWidgets('Ringing calls have no conversation timer in voice or video', (
+    tester,
+  ) async {
+    final client = Client('ringing-timer', database: WindowDatabase());
+    final calls = CallController(
+      client,
+      'http://localhost:8090',
+      'ws://localhost:7880',
+      (_) {},
+    );
+    for (final video in [false, true]) {
+      final call = WindowCall(CallRoom(client), video: video)
+        ..elapsed = Duration.zero;
+      calls.active = call;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: CallWindow(calls: calls, audioOutput: () async {}),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('0:00'), findsNothing);
+      call.elapsed = const Duration(seconds: 1);
+      calls.devices.changed();
+      await tester.pump();
+      expect(find.text('0:01'), findsOneWidget);
+    }
+    await tester.pumpWidget(const SizedBox());
+    await tester.runAsync(calls.close);
+    await client.dispose();
+  });
   testWidgets(
     'Dismissed new calls never restore a previous call timer, room or error',
     (tester) async {

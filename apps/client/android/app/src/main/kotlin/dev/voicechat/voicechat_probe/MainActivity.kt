@@ -7,6 +7,10 @@ import androidx.core.content.FileProvider
 import java.io.File
 import android.content.Intent
 import android.content.Context
+import android.app.KeyguardManager
+import android.graphics.Color
+import android.view.View
+import android.view.ViewGroup
 import android.os.Build
 import android.net.Uri
 import android.os.Bundle
@@ -23,6 +27,7 @@ import java.util.UUID
 class MainActivity : FlutterActivity() {
     // The call engine can outlive its window; selected media handles must outlive it too.
     companion object {
+        private var callScreen = false
         const val ENGINE_ID = "voicechat-call-engine"
         private var cameraPhoto: File? = null
         private var cameraUri: Uri? = null
@@ -40,18 +45,43 @@ class MainActivity : FlutterActivity() {
 
     }
 
+    private var callCurtain: View? = null
+    private var callScreenChannel: MethodChannel? = null
+
+    private fun prepareCallScreen(incoming: Intent) {
+        val requested = incoming.getBooleanExtra("callScreen", false) &&
+            incoming.getStringExtra("pushBinding")?.let { it == PushNotifications.binding(this) } == true &&
+            incoming.getLongExtra("pushExpires", 0) * 1000 > System.currentTimeMillis()
+        if (requested) {
+            callScreen = true
+            if (callCurtain == null) {
+                callCurtain = View(this).apply { setBackgroundColor(Color.BLACK) }
+                addContentView(callCurtain, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            }
+            if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(true); setTurnScreenOn(true) }
+            else window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+        } else if (!getSystemService(KeyguardManager::class.java).isKeyguardLocked) {
+            callScreen = false
+            if (Build.VERSION.SDK_INT >= 27) { setShowWhenLocked(false); setTurnScreenOn(false) }
+            else window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+        }
+        callScreenChannel?.invokeMethod("show", callScreen)
+    }
+
     override fun provideFlutterEngine(context: Context): FlutterEngine? = FlutterEngineCache.getInstance().get(ENGINE_ID)
     override fun shouldDestroyEngineWithHost(): Boolean = !CallService.running && !ScreenService.running
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        prepareCallScreen(intent)
         AppNotifications.open(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        prepareCallScreen(intent)
         AppNotifications.open(intent)
     }
 
@@ -63,6 +93,20 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         FlutterEngineCache.getInstance().put(ENGINE_ID, flutterEngine)
         AppNotifications.attach(this, flutterEngine.dartExecutor.binaryMessenger)
+        callScreenChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/call_screen").apply {
+            setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "state" -> result.success(callScreen)
+                    "ready" -> {
+                        callCurtain?.let { (it.parent as? ViewGroup)?.removeView(it) }
+                        callCurtain = null
+                        result.success(null)
+                    }
+                    "hide" -> { moveTaskToBack(true); result.success(null) }
+                    else -> result.notImplemented()
+                }
+            }
+        }
         val updater = AppUpdater(this)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/update")
             .setMethodCallHandler(updater::handle)

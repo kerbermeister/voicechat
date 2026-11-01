@@ -1,7 +1,6 @@
 package dev.voicechat.voicechat_probe
 
 import android.app.Activity
-import android.app.KeyguardManager
 import android.app.NotificationManager
 import android.content.Intent
 import android.os.Build
@@ -15,10 +14,15 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import java.lang.ref.WeakReference
 
-/** Only this neutral native screen may appear over the keyguard, never chat UI. */
+/** Resolve the short-lived call before opening Flutter in call-only mode. */
 class IncomingCallActivity : Activity() {
     companion object {
         private var current = WeakReference<IncomingCallActivity>(null)
+        fun dismissSession(session: String) {
+            Handler(Looper.getMainLooper()).post {
+                current.get()?.let { if (it.intent.getStringExtra("pushSession") == session) it.finish() }
+            }
+        }
         fun dismiss(notice: String) {
             Handler(Looper.getMainLooper()).post {
                 current.get()?.let { if (it.intent.getStringExtra("pushNotice") == notice) it.finish() }
@@ -74,26 +78,12 @@ class IncomingCallActivity : Activity() {
                     answer.text = "Ответить с камерой"
                 }
                 answer.isEnabled = true
-                if (intent.getStringExtra("pushAction") == "answer") answerCall()
+                openCall(intent.getStringExtra("pushAction") == "answer")
             }
         }.start()
     }
 
-    private fun answerCall() {
-        answer.isEnabled = false
-        val keyguard = getSystemService(KeyguardManager::class.java)
-        if (!keyguard.isKeyguardLocked) openCall()
-        else if (Build.VERSION.SDK_INT >= 26) keyguard.requestDismissKeyguard(this, object : KeyguardManager.KeyguardDismissCallback() {
-            override fun onDismissSucceeded() { openCall() }
-            override fun onDismissCancelled() { answer.isEnabled = true }
-            override fun onDismissError() { title.text = "Разблокируйте телефон для ответа"; answer.isEnabled = true }
-        })
-        else {
-            val unlock = keyguard.createConfirmDeviceCredentialIntent("Ответить на звонок", "Разблокируйте телефон")
-            if (unlock != null) startActivityForResult(unlock, 1)
-            else openCall()
-        }
-    }
+    private fun answerCall() { openCall(true) }
 
     override fun onNewIntent(incoming: Intent) {
         super.onNewIntent(incoming)
@@ -106,19 +96,14 @@ class IncomingCallActivity : Activity() {
         if (incoming.getStringExtra("pushAction") == "answer" && answer.isEnabled) answerCall()
     }
 
-    private fun openCall() {
+    private fun openCall(answerNow: Boolean) {
         if (isFinishing || binding != PushNotifications.binding(this) ||
             intent.getLongExtra("pushExpires", 0) * 1000 <= System.currentTimeMillis()) return
-        getSystemService(NotificationManager::class.java).cancel(intent.getStringExtra("pushTag"), 0)
+        if (answerNow) getSystemService(NotificationManager::class.java).cancel(intent.getStringExtra("pushTag"), 0)
         startActivity(Intent(this, MainActivity::class.java).putExtras(intent)
-            .putExtra("pushAction", "answer").addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP))
+            .putExtra("callScreen", true)
+            .putExtra("pushAction", if (answerNow) "answer" else "show").addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP))
         finish()
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 1 && resultCode == RESULT_OK) openCall()
-        else if (::answer.isInitialized) answer.isEnabled = true
     }
 
     override fun onDestroy() {

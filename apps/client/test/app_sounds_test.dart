@@ -46,7 +46,7 @@ class SoundCalls extends Fake implements CallController {
   @override
   List<DirectCall> get directInvitations => [];
   @override
-  Map<String, CallInvitation> get invitations => {};
+  final invitations = <String, CallInvitation>{};
 }
 
 class WaitingCall extends WindowCall {
@@ -63,6 +63,41 @@ class WaitingCall extends WindowCall {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'A system ringtone is not doubled; foreground calls still ring locally',
+    () async {
+      final client = Client('system-ring', database: WindowDatabase());
+      final player = SoundPlayer();
+      var systemRinging = true;
+      final sounds = AppSounds(
+        client,
+        effect: SoundPlayer(),
+        ringing: player,
+        systemIncomingRinging: () async => systemRinging,
+      );
+      final calls = SoundCalls();
+      final invitation = CallInvitation(
+        CallRoom(client),
+        'incoming',
+        '@peer:local',
+        DateTime.now(),
+      );
+      calls.invitations['incoming'] = invitation;
+      sounds.updateCall(calls);
+      await Future<void>.delayed(Duration.zero);
+      expect(player.played, isEmpty);
+      calls.invitations.clear();
+      sounds.updateCall(calls);
+      await Future<void>.delayed(Duration.zero);
+      systemRinging = false;
+      calls.invitations['incoming'] = invitation;
+      sounds.updateCall(calls);
+      await Future<void>.delayed(Duration.zero);
+      expect(player.played, ['sounds/ringtone.wav']);
+      await sounds.close();
+      await client.dispose();
+    },
+  );
   test(
     'Cancel stops a preparing ring immediately; late playback cannot restore it',
     () async {

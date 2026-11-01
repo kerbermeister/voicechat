@@ -16,8 +16,14 @@ import 'screen_panel.dart';
 
 class CallWindow extends StatefulWidget {
   final CallController calls;
+  final VoidCallback? onMinimize;
   final Future<void> Function() audioOutput;
-  const CallWindow({super.key, required this.calls, required this.audioOutput});
+  const CallWindow({
+    super.key,
+    required this.calls,
+    required this.audioOutput,
+    this.onMinimize,
+  });
   @override
   State<CallWindow> createState() => _CallWindowState();
 }
@@ -85,6 +91,7 @@ class _CallWindowState extends State<CallWindow> {
       connected.removeWhere((p) => p != calls.client.userID);
     }
     final duration = current?.duration ?? active?.duration ?? Duration.zero;
+    final showDuration = duration > Duration.zero;
     final status = (calls.starting && current == null
         ? 'Вызываем…'
         : current?.connection ??
@@ -114,7 +121,7 @@ class _CallWindowState extends State<CallWindow> {
         alignment: Alignment.centerRight,
         child: IconButton(
           tooltip: 'Свернуть звонок',
-          onPressed: () => Navigator.pop(context),
+          onPressed: widget.onMinimize ?? () => Navigator.pop(context),
           icon: const Icon(Icons.expand_more),
         ),
       ),
@@ -139,9 +146,10 @@ class _CallWindowState extends State<CallWindow> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    Text(
-                      '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
-                    ),
+                    if (showDuration)
+                      Text(
+                        '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
+                      ),
                     if (qualityMenu != null) qualityMenu,
                   ],
                 ),
@@ -203,13 +211,7 @@ class _CallWindowState extends State<CallWindow> {
                 textAlign: TextAlign.center,
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
-              if (current != null ||
-                  active != null &&
-                      !calls.starting &&
-                      calls.dialError == null &&
-                      direct == null &&
-                      group == null &&
-                      remote == null) ...[
+              if (showDuration) ...[
                 const SizedBox(height: 8),
                 Semantics(
                   label: 'Время разговора',
@@ -510,8 +512,14 @@ class _CallWindowState extends State<CallWindow> {
                 ),
               ),
               IconButton(
-                tooltip: kIsWeb ? 'Включить звук' : 'Аудиовыход',
+                tooltip: kIsWeb
+                    ? 'Включить звук'
+                    : defaultTargetPlatform == TargetPlatform.macOS
+                    ? 'Аудиовыход'
+                    : 'Громкая связь',
                 onPressed: busy ? null : () => perform(widget.audioOutput),
+                isSelected: !kIsWeb && calls.audio.speakerEnabled,
+                selectedIcon: const Icon(Icons.volume_up),
                 icon: const Icon(Icons.speaker_outlined),
               ),
             ],
@@ -559,7 +567,7 @@ class _CallWindowState extends State<CallWindow> {
               )
             else
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: widget.onMinimize ?? () => Navigator.pop(context),
                 child: const Text('Закрыть'),
               ),
           ],
