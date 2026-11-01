@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "build": 44,
+  "source": "0dd2ff6644e57e23db2f37efcf78bd9284907c50",
+  "emulator": "Google APIs Android15/API35",
+  "installed": true,
+  "debuggable": false,
+  "original_signing_certificate": true,
+  "release_native_track_ownership_compiled": true,
+  "physical_device": false,
+  "account_continuity_tested": false,
+  "sha256": "1dd7d6c538bff0ee782949bc185d45696067bbc60d30323080e687b8e222051c"
+}

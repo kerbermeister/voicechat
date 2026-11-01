@@ -1,0 +1,17 @@
+{
+  "build": 44,
+  "previous_build": 40,
+  "installed_matches_published_zip": true,
+  "entries": 285,
+  "signature_verified": true,
+  "update_offer_observed_in_previous_app": true,
+  "backup_app_and_profile_verified": true,
+  "account_device_history_check_pending": false,
+  "same_saved_account_and_profile": true,
+  "same_device": true,
+  "decrypted_history_fragments": 2,
+  "notification_switch_on": true,
+  "voice_quality_hz_after_update": 24000,
+  "owner_interacted_with_app_during_acceptance": true,
+  "native_voice_quality_persisted_hz": 24000
+}
