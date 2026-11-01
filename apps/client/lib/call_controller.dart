@@ -20,6 +20,7 @@ import 'screen_controller.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'matrix_probe.dart';
 import 'user_action_error.dart';
+import 'call_push.dart';
 import 'group_calls.dart';
 import 'call_page_exit.dart';
 
@@ -74,6 +75,10 @@ class CallController extends ChangeNotifier
   StreamSubscription<dynamic>? _lateEvents;
   Timer? _expiry;
   Timer? _ringTimeout;
+  Timer? _pushPoll;
+  String? _outgoingPush;
+  bool _pushPolling = false;
+  late final _push = CallPush(client, tokenUrl);
   bool _closed = false;
   late final void Function() _stopPageExit;
   String? _resumeCamera;
@@ -89,7 +94,13 @@ class CallController extends ChangeNotifier
         TargetPlatform.android,
         TargetPlatform.macOS,
       }.contains(defaultTargetPlatform);
-  CallController(this.client, this.tokenUrl, this.mediaUrl, this.report) {
+  CallController(
+    this.client,
+    this.tokenUrl,
+    this.mediaUrl,
+    this.report, {
+    List<BasicEventWithSender> initialEvents = const [],
+  }) {
     devices = CallDevices(client, _refresh);
     groups = GroupCalls(client, tokenUrl, _refresh);
     _stopPageExit = listenCallPageExit(() {
@@ -134,6 +145,11 @@ class CallController extends ChangeNotifier
       );
       _refresh();
     });
+    if (initialEvents.isNotEmpty) {
+      scheduleMicrotask(() {
+        if (!_closed) client.onCallEvents.add(List.of(initialEvents));
+      });
+    }
   }
   @override
   Future<AppExitResponse> didRequestAppExit() async {
@@ -452,6 +468,74 @@ class CallController extends ChangeNotifier
     });
   }
 
+  Future<void> _invitePush(VoiceCall call) async {
+    try {
+      await _push.request('invite', call.session, room: call.chat.id);
+      if (_closed || active != call || call.isClosed) {
+        await _push.request('end', call.session);
+        return;
+      }
+      _outgoingPush = call.session;
+      _pushPoll?.cancel();
+      _pushPoll = Timer.periodic(const Duration(seconds: 2), (_) async {
+        if (_pushPolling) return;
+        if (_closed || active != call || call.isClosed) {
+          _pushPoll?.cancel();
+          await _endPush();
+          return;
+        }
+        _pushPolling = true;
+        try {
+          final state = await _push.request('status', call.session);
+          if (state['declined'] == true ||
+              (state['ended'] == true && call.duration == Duration.zero)) {
+            await end();
+          } else if (state['answered'] == true ||
+              call.duration > Duration.zero) {
+            _pushPoll?.cancel();
+          }
+        } catch (_) {
+          // Matrix and the existing ring timeout remain available on push failure.
+        } finally {
+          _pushPolling = false;
+        }
+      });
+    } catch (_) {
+      report(
+        'Фоновое уведомление не отправлено. Собеседник получит вызов при работающем приложении.',
+      );
+    }
+  }
+
+  Future<void> _endPush() async {
+    final session = _outgoingPush;
+    _outgoingPush = null;
+    _pushPoll?.cancel();
+    if (session == null) return;
+    try {
+      await _push.request('end', session);
+    } catch (_) {
+      // Server-side expiry bounds ringing even if cancellation cannot be delivered.
+    }
+  }
+
+  Future<bool> _answerPush(String session) async {
+    try {
+      await _push.request('accept', session);
+      return true;
+    } on CallPushError catch (error) {
+      // shortcut: older callers have no push record; remove after their migration.
+      if (error.code == 'call_not_found' || error.code == 'fcm_unavailable') {
+        return true;
+      }
+      report('Вызов уже завершён или принят на другом устройстве.');
+      return false;
+    } catch (_) {
+      report('Не удалось проверить актуальность вызова. Попробуйте снова.');
+      return false;
+    }
+  }
+
   Future<void> start(
     Room room, {
     CallInvitation? invitation,
@@ -478,6 +562,7 @@ class CallController extends ChangeNotifier
     var rejoining = invitation != null;
     _refresh();
     try {
+      if (invitation != null && !await _answerPush(invitation.session)) return;
       if (!room.isDirectChat && invitation == null) {
         final ongoing = await groups.find(room);
         if (generation != _dialGeneration || _closed) return;
@@ -528,6 +613,7 @@ class CallController extends ChangeNotifier
           }
         });
         _refresh();
+        unawaited(_invitePush(call));
         return;
       }
       final id =
@@ -559,6 +645,7 @@ class CallController extends ChangeNotifier
         }
         if (!rejoining) {
           await _signal(room, id, 'invite', video: video);
+          unawaited(_invitePush(call));
           if (generation != _dialGeneration || _closed || call.isClosed) return;
           _ringTimeout?.cancel();
           _ringTimeout = Timer(const Duration(seconds: 45), () {
@@ -600,6 +687,11 @@ class CallController extends ChangeNotifier
   }
 
   Future<void> decline(CallInvitation invitation) async {
+    unawaited(
+      _push
+          .request('decline', invitation.session)
+          .catchError((Object _) => <String, dynamic>{}),
+    );
     _dismissInvitation(invitation.room.id, invitation.session);
     _refresh();
     await _signal(
@@ -612,6 +704,7 @@ class CallController extends ChangeNotifier
   }
 
   Future<void> end() async {
+    unawaited(_endPush());
     _dialGeneration++;
     starting = false;
     _ringTimeout?.cancel();
@@ -694,6 +787,7 @@ class CallController extends ChangeNotifier
 
   Future<void>? _closing;
   Future<void> _close() async {
+    unawaited(_endPush());
     _closed = true;
     _stopPageExit();
     _dialGeneration++;
@@ -733,6 +827,7 @@ class CallController extends ChangeNotifier
     if (active != null && !active!.isClosed) {
       throw UserActionError('Сначала завершите текущий звонок.');
     }
+    if (!await _answerPush(call.session)) return;
     active = call;
     directInvitations.remove(call);
     _refresh();
@@ -748,6 +843,11 @@ class CallController extends ChangeNotifier
   }
 
   Future<void> declineDirect(DirectCall call) async {
+    unawaited(
+      _push
+          .request('decline', call.session)
+          .catchError((Object _) => <String, dynamic>{}),
+    );
     _dismissInvitation(call.chat.id, call.session);
     await call.close();
     directInvitations.remove(call);

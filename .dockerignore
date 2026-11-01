@@ -12,3 +12,6 @@
 !apps/client/build/web/
 !apps/client/build/web/**
 infra/runtime/
+
+**/*firebase-adminsdk*.json
+**/firebase-service-account*.json

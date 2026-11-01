@@ -17,6 +17,7 @@ import 'transport.dart';
 import 'user_action_error.dart';
 import 'first_keys.dart';
 import 'contact_service.dart';
+import 'startup_calls.dart';
 
 /// Matrix session backed by the platform encrypted store.
 class MatrixProbe {
@@ -24,8 +25,13 @@ class MatrixProbe {
   final Client client;
   final RouteCoordinator? routes;
   final http.Client? _ownedNetwork;
-  MatrixProbe(this.client, {this.routes, http.Client? ownedNetwork})
-    : _ownedNetwork = ownedNetwork;
+  final StartupCalls? startupCalls;
+  MatrixProbe(
+    this.client, {
+    this.routes,
+    http.Client? ownedNetwork,
+    this.startupCalls,
+  }) : _ownedNetwork = ownedNetwork;
 
   static Future<MatrixProbe> open(
     String profile, {
@@ -83,10 +89,17 @@ class MatrixProbe {
       shareKeysWith: ShareKeysWith.directlyVerifiedOnly,
       logLevel: Level.error,
     );
+    final startupCalls = StartupCalls(client.onCallEvents.stream);
     try {
       await client.init();
-      return MatrixProbe(client, routes: routes, ownedNetwork: ownedNetwork);
+      return MatrixProbe(
+        client,
+        routes: routes,
+        ownedNetwork: ownedNetwork,
+        startupCalls: startupCalls,
+      );
     } catch (_) {
+      await startupCalls.close();
       try {
         await client.dispose();
       } finally {
@@ -325,6 +338,7 @@ class MatrixProbe {
   }
 
   Future<void> close() async {
+    await startupCalls?.close();
     routes?.close();
     try {
       await client.dispose();

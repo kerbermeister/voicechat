@@ -445,16 +445,21 @@ class _ProbeScreenState extends State<ProbeScreen> {
       if (mounted) setState(() {});
     })..start();
     if (NativeNotifications.supported) {
-      nativeNotifications = NativeNotifications(next.client.userID!, (
-        id,
-      ) async {
-        final room = next.client.getRoomById(id);
-        if (mounted &&
-            identical(probe, next) &&
-            room?.membership == mx.Membership.join) {
-          await select(room!);
-        }
-      });
+      nativeNotifications = NativeNotifications(
+        next.client.userID!,
+        (id) async {
+          final room = next.client.getRoomById(id);
+          if (mounted &&
+              identical(probe, next) &&
+              room?.membership == mx.Membership.join) {
+            await select(room!);
+          }
+        },
+        pushUrl: tokenServer.text.trim(),
+        accessToken: next.client.accessToken,
+        transport: next.client.httpClient,
+        report: report,
+      );
       await nativeNotifications!.open();
     }
     sounds = AppSounds(next.client, onReceived: nativeNotifications?.message);
@@ -472,6 +477,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       tokenServer.text.trim(),
       mediaServer.text.trim(),
       report,
+      initialEvents: next.startupCalls?.take() ?? const [],
     );
     calls!.addListener(() {
       if (mounted) {

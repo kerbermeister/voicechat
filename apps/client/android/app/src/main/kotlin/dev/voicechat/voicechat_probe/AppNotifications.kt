@@ -9,10 +9,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.net.Uri
+import android.provider.Settings
+import com.google.firebase.messaging.FirebaseMessaging
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.lang.ref.WeakReference
+import java.util.concurrent.Executors
+import java.io.IOException
 
 /** Notifications from the running Matrix sync; this does not replace push. */
 object AppNotifications {
@@ -24,6 +31,10 @@ object AppNotifications {
     private var session: String? = null
     private var enabled = false
     private var pending: Pair<String, MethodChannel.Result>? = null
+    private var pendingPush: Intent? = null
+    private var account: String? = null
+    private val worker = Executors.newSingleThreadExecutor()
+    private val main = Handler(Looper.getMainLooper())
     private val manager get() = context.getSystemService(NotificationManager::class.java)
 
     fun attach(host: MainActivity, messenger: BinaryMessenger) {
@@ -52,10 +63,60 @@ object AppNotifications {
         val token = call.argument<String>("session")
         if (token == null) { result.error("invalid", "Missing session", null); return }
         if (call.method == "begin") {
+            account = call.argument<String>("account")
+            if (PushNotifications.account(context) != null && PushNotifications.account(context) != account) {
+                PushNotifications.clear(context)
+                pendingPush = null
+            }
             clear(); session = token; enabled = false; result.success(null); return
         }
         if (token != session) { result.success(null); return }
         when (call.method) {
+            "requestCallScreen" -> {
+                if (Build.VERSION.SDK_INT < 34 || manager.canUseFullScreenIntent()) result.success(true)
+                else {
+                    try {
+                        activity.get()?.startActivity(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,
+                            Uri.parse("package:" + context.packageName)))
+                    } catch (_: Exception) { /* The OS may not expose this settings page. */ }
+                    result.success(false)
+                }
+            }
+            "pushToken" -> {
+                FirebaseMessaging.getInstance().isAutoInitEnabled = true
+                FirebaseMessaging.getInstance().token
+                    .addOnSuccessListener { result.success(it) }
+                    .addOnFailureListener { result.error("fcm_unavailable", "Firebase token unavailable", null) }
+            }
+            "pushBind" -> {
+                try {
+                    PushNotifications.configure(context, account ?: "", call.argument<String>("base")!!, call.argument<String>("binding")!!)
+                    result.success(null)
+                } catch (_: Exception) { result.error("invalid", "Invalid push binding", null) }
+            }
+            "pushClear" -> { PushNotifications.clear(context); result.success(null) }
+            "takePush" -> {
+                val intent = pendingPush
+                pendingPush = null
+                if (intent == null || PushNotifications.account(context) != account) { result.success(null); return }
+                val binding = intent.getStringExtra("pushBinding") ?: ""
+                val notice = intent.getStringExtra("pushNotice") ?: ""
+                worker.execute {
+                    var retry = false
+                    val data = try { PushNotifications.resolve(context, binding, notice) }
+                        catch (_: IOException) { retry = true; null }
+                        catch (_: Exception) { null }
+                    main.post {
+                        if (retry && session == token && pendingPush == null &&
+                            binding == PushNotifications.binding(context) &&
+                            intent.getLongExtra("pushExpires", 0) * 1000 > System.currentTimeMillis()) pendingPush = intent
+                        if (session != token || data == null || data.optString("kind") == "dismiss") result.success(null)
+                        else result.success(mapOf("room" to data.optString("room"),
+                            "session" to data.optString("session"), "expires" to data.optLong("expires"),
+                            "action" to intent.getStringExtra("pushAction")))
+                    }
+                }
+            }
             "request" -> {
                 val host = activity.get()
                 if (allowed()) { result.success(true) }
@@ -73,7 +134,7 @@ object AppNotifications {
             "show" -> {
                 val room = call.argument<String>("room")
                 val id = call.argument<String>("id")
-                if (enabled && allowed() && !AppUpdater.foreground && room != null && id != null) {
+                if (enabled && allowed() && !AppUpdater.foreground && room != null && id != null && PushNotifications.binding(context) == null) {
                     val isCall = call.argument<Boolean>("call") == true
                     val tag = PREFIX + token + ":" + id
                     val intent = Intent(context, MainActivity::class.java)
@@ -108,6 +169,16 @@ object AppNotifications {
     }
 
     fun open(intent: Intent) {
+        if (intent.hasExtra("pushNotice")) {
+            if (intent.getStringExtra("pushBinding") != PushNotifications.binding(context)) return
+            if (intent.getStringExtra("pushAction") == "answer") {
+                manager.cancel(intent.getStringExtra("pushTag"), 0)
+            }
+            pendingPush = Intent(intent)
+            intent.removeExtra("pushNotice")
+            if (::channel.isInitialized) channel.invokeMethod("pushAvailable", null)
+            return
+        }
         val token = intent.getStringExtra("notificationSession") ?: return
         val room = intent.getStringExtra("notificationRoom") ?: return
         intent.removeExtra("notificationSession")
@@ -115,6 +186,10 @@ object AppNotifications {
         if (enabled && token == session) {
             channel.invokeMethod("open", mapOf("session" to token, "room" to room))
         }
+    }
+
+    fun tokenChanged() {
+        main.post { if (::channel.isInitialized) channel.invokeMethod("tokenChanged", null) }
     }
 
     fun detach(host: MainActivity) {

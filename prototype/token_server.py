@@ -22,6 +22,7 @@ from screen_control import ScreenStore, ScreenError
 from screen_http import ScreenService
 from screen_protocol import ScreenRequestError
 from web_push import PushStore, PushError, APP_ID as PUSH_APP_ID
+from android_push import AndroidPushStore, APP_ID as ANDROID_PUSH_APP_ID
 
 _secrets = ({'livekit': os.environ['VOICECHAT_LIVEKIT_SECRET'], 'policy': os.environ['VOICECHAT_POLICY_SECRET']}
             if 'VOICECHAT_LIVEKIT_SECRET' in os.environ else
@@ -54,8 +55,29 @@ def push_store():
     global _push
     with _push_lock:
         if _push is None:
-            _push = PushStore(Path(__file__).resolve().parents[1] / '.prototype/push', origins[0])
+            default = Path(__file__).resolve().parents[1] / '.prototype/push/firebase-service-account.json'
+            credentials = os.environ.get('VOICECHAT_FCM_CREDENTIALS', str(default) if default.is_file() else '')
+            if credentials:
+                from fcm import FCM
+                _push = AndroidPushStore(Path(__file__).resolve().parents[1] / '.prototype/push',
+                    origins[0], FCM(credentials).send, validate_push_device)
+                def watch():
+                    while True:
+                        time.sleep(1)
+                        try: _push.advance()
+                        except (OSError, ValueError, sqlite3.Error): pass
+                threading.Thread(target=watch, daemon=True, name='android-push').start()
+            else:
+                _push = PushStore(Path(__file__).resolve().parents[1] / '.prototype/push', origins[0])
     return _push
+
+
+def validate_push_device(user, device, room):
+    request = urllib.request.Request(matrix_url + '/_synapse/client/voicechat/push-device',
+        json.dumps({'user': user, 'device': device, 'room': room}).encode(),
+        {'Authorization': 'Bearer ' + policy_secret, 'Content-Type': 'application/json'})
+    with urllib.request.urlopen(request, timeout=5) as response:
+        return json.load(response).get('valid') is True
 
 
 def publish_scheduled(job):
@@ -192,10 +214,45 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(size))
             if self.path == '/_matrix/push/v1/notify':
                 return self.reply(200, store.notify(body))
+            if self.path in ('/push/android/resolve', '/push/android/action', '/push/android/rotate'):
+                if not isinstance(store, AndroidPushStore): raise PushError('fcm_unavailable', 503)
+                if not isinstance(body, dict): raise PushError('invalid_request')
+                auth = self.headers.get('Authorization', '')
+                if not auth.startswith('Bearer '): raise PushError('unauthorized', 401)
+                if self.path.endswith('/rotate'):
+                    return self.reply(200, store.rotate(auth[7:], body.get('token')))
+                if self.path.endswith('/action'):
+                    return self.reply(200, store.bound_call_action(auth.removeprefix('Bearer '), body))
+                return self.reply(200, store.resolve(auth.removeprefix('Bearer '), body.get('notice')))
             who = self.matrix('account/whoami')
             user, device = who['user_id'], who.get('device_id')
             if not isinstance(device, str) or not device: raise PushError('device_required', 403)
             if not isinstance(body, dict): raise PushError('invalid_request')
+            if self.path == '/push/call':
+                if not isinstance(store, AndroidPushStore): raise PushError('fcm_unavailable', 503)
+                members = None
+                if body.get('action') == 'invite':
+                    room = body.get('room')
+                    members = set(self.call_room_members(room, who))
+                return self.reply(200, store.call_action(user, device, body, members))
+            if self.path == '/push/android':
+                if not isinstance(store, AndroidPushStore): raise PushError('fcm_unavailable', 503)
+                if body.get('action') == 'remove':
+                    for token in store.remove_android(user, device):
+                        self.matrix('pushers/set', {'app_id': ANDROID_PUSH_APP_ID, 'pushkey': token, 'kind': None})
+                    return self.reply(200, {'ok': True})
+                if body.get('action') != 'register': raise PushError('invalid_request')
+                previous = store.android_tokens(user, device)
+                token = store.register_android(user, device, body.get('token'))
+                for old in previous:
+                    if old != token:
+                        self.matrix('pushers/set', {'app_id': ANDROID_PUSH_APP_ID, 'pushkey': old, 'kind': None})
+                self.matrix('pushers/set', {
+                    'app_id': ANDROID_PUSH_APP_ID, 'pushkey': token, 'kind': 'http',
+                    'app_display_name': 'VoiceChat', 'device_display_name': 'Android', 'lang': 'ru',
+                    'append': False, 'data': {'url': os.environ.get('VOICECHAT_PUSH_GATEWAY_URL', origins[0].rstrip('/') + '/_matrix/push/v1/notify'), 'format': 'event_id_only'},
+                })
+                return self.reply(200, {'binding': token})
             if body.get('action') == 'remove':
                 for token in store.remove(user, device):
                     self.matrix('pushers/set', {'app_id': PUSH_APP_ID, 'pushkey': token, 'kind': None})
@@ -211,7 +268,7 @@ class Handler(BaseHTTPRequestHandler):
                 'append': False, 'data': {'url': os.environ.get('VOICECHAT_PUSH_GATEWAY_URL', origins[0].rstrip('/') + '/_matrix/push/v1/notify'), 'format': 'event_id_only'},
             })
             return self.reply(200, {'binding': token})
-        except PushError as error: return self.reply(error.status, {'error': str(error)})
+        except (PushError, CallError) as error: return self.reply(error.status, {'error': str(error)})
         except ContactError: return self.reply(401, {'error': 'unauthorized'})
         except urllib.error.HTTPError as error:
             return self.reply(401 if error.code == 401 else 503, {'error': 'push_unavailable'})
@@ -462,7 +519,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/reports' and laboratory: return self.reply(200, reports)
         self.reply(404, {'error': 'not_found'})
     def do_POST(self):
-        if self.path in ('/push/subscribe', '/_matrix/push/v1/notify'): return self.push_request()
+        if self.path in ('/push/subscribe', '/push/android', '/push/android/resolve', '/push/android/action', '/push/android/rotate', '/push/call', '/_matrix/push/v1/notify'): return self.push_request()
         if self.path == '/contact-links': return self.contact_link_post()
         if self.path.startswith('/screen/'): return self.screen_request()
         if self.path == '/scheduled': return self.scheduled_request()

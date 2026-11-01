@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "986194287731",
+    "project_id": "voicechat-aa174",
+    "storage_bucket": "voicechat-aa174.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:986194287731:android:f3b2c55076f829b30cde06",
+        "android_client_info": {
+          "package_name": "dev.voicechat.voicechat_probe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD0vj2w3c6SMVhcLEmfxNshi7QQRKcZuvc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

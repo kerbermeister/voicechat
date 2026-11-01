@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -121,4 +124,129 @@ void main() {
     await second.message('!room', 'event');
     expect(calls.length, count);
   });
+
+  test(
+    'Android binds push after permission and removes it before logout',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final requests = <String>[];
+      final client = MockClient((request) async {
+        expect(request.followRedirects, isFalse);
+        expect(request.headers['Authorization'], 'Bearer matrix-token');
+        final body = jsonDecode(request.body) as Map;
+        requests.add(body['action'] as String);
+        if (body['action'] == 'register') {
+          expect(body['token'], 'installation-token');
+          return http.Response(jsonEncode({'binding': 'b' * 43}), 200);
+        }
+        return http.Response('{"ok":true}', 200);
+      });
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(NativeNotifications.channel, (call) async {
+            calls.add(call);
+            if (call.method == 'request') return true;
+            if (call.method == 'pushToken') return 'installation-token';
+            return null;
+          });
+      final notifications = NativeNotifications(
+        'alice',
+        (_) async {},
+        pushUrl: 'https://voice.example/api',
+        accessToken: 'matrix-token',
+        transport: client,
+      );
+      await notifications.open();
+      expect(
+        await notifications.setEnabled(true),
+        'Фоновые уведомления включены.',
+      );
+      expect(
+        calls.where((c) => c.method == 'pushBind').single.arguments['account'],
+        'alice',
+      );
+      await notifications.close();
+      expect(requests, ['register', 'remove']);
+      expect(
+        calls.map((c) => c.method),
+        containsAllInOrder(['pushClear', 'end']),
+      );
+      client.close();
+    },
+  );
+
+  test('failed push registration does not persist consent', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    final client = MockClient(
+      (_) async => http.Response('{"error":"unavailable"}', 503),
+    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(NativeNotifications.channel, (call) async {
+          calls.add(call);
+          if (call.method == 'request') return true;
+          if (call.method == 'pushToken') return 'installation-token';
+          return null;
+        });
+    final notifications = NativeNotifications(
+      'alice',
+      (_) async {},
+      pushUrl: 'https://voice.example/api',
+      accessToken: 'matrix-token',
+      transport: client,
+    );
+    await notifications.open();
+    expect(await notifications.setEnabled(true), contains('Не удалось'));
+    expect(
+      (await SharedPreferences.getInstance()).getBool(
+        'androidNotifications:alice',
+      ),
+      isNull,
+    );
+    expect(calls.where((c) => c.method == 'pushBind'), isEmpty);
+    await notifications.close();
+    client.close();
+  });
+
+  test(
+    'logout during registration cannot restore the native push binding',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final started = Completer<void>();
+      final release = Completer<void>();
+      final requests = <String>[];
+      final client = MockClient((request) async {
+        final action = (jsonDecode(request.body) as Map)['action'] as String;
+        requests.add(action);
+        if (action == 'register') {
+          started.complete();
+          await release.future;
+          return http.Response(jsonEncode({'binding': 'b' * 43}), 200);
+        }
+        return http.Response('{"ok":true}', 200);
+      });
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(NativeNotifications.channel, (call) async {
+            calls.add(call);
+            if (call.method == 'request') return true;
+            if (call.method == 'pushToken') return 'installation-token';
+            return null;
+          });
+      final notifications = NativeNotifications(
+        'alice',
+        (_) async {},
+        pushUrl: 'https://voice.example/api',
+        accessToken: 'matrix-token',
+        transport: client,
+      );
+      await notifications.open();
+      final enabling = notifications.setEnabled(true);
+      await started.future;
+      final closing = notifications.close();
+      release.complete();
+      await enabling;
+      await closing;
+      expect(calls.where((c) => c.method == 'pushBind'), isEmpty);
+      expect(requests, ['register', 'remove']);
+      client.close();
+    },
+  );
 }
