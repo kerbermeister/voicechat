@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "build": 41,
+  "source": "7013461dbb4c7e8b86d05e565228f20104daf2e5",
+  "sha256": "9cc66b2fc69e7271d8f7f1515a1de6676d85c5e400539e18b9ccff1b2322cf4b",
+  "published": true,
+  "physical_acceptance": false,
+  "emulator_installation": true,
+  "authorization": "Owner explicitly requested APK publication for physical Xiaomi verification on 2026-11-01",
+  "previous_build": 39,
+  "services_unchanged": true,
+  "managed_release_pointer_unchanged": true,
+  "manifest_cache_control": "no-cache",
+  "published_at_unix": 1793556207
+}

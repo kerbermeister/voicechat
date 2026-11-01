@@ -1,0 +1,10 @@
+{
+  "build": 41,
+  "installed_signed_apk": true,
+  "same_device_as_39": true,
+  "account_retained": true,
+  "single_notification_switch": true,
+  "notification_switch_on": true,
+  "sha256": "9cc66b2fc69e7271d8f7f1515a1de6676d85c5e400539e18b9ccff1b2322cf4b",
+  "physical_acceptance": false
+}

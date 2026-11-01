@@ -1,0 +1,7 @@
+{
+  "commit": "7013461dbb4c7e8b86d05e565228f20104daf2e5",
+  "sourceDirty": false,
+  "expectedTag": "app-v1.16.3+41",
+  "certificateSha256": "37d98de9eaf7151d8df38fe326711107d4ba4ac30bb03c6870269af84ac79ce4",
+  "apkSha256": "9cc66b2fc69e7271d8f7f1515a1de6676d85c5e400539e18b9ccff1b2322cf4b"
+}

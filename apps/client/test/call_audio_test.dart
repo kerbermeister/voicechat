@@ -1,3 +1,6 @@
+import 'package:flutter/foundation.dart';
+import 'package:livekit_client/livekit_client.dart' as lk;
+import 'package:voicechat_probe/call_probe.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart' as mx;
@@ -21,6 +24,10 @@ class AudioFeed extends Fake implements mx.WrappedMediaStream {
 
 class AudioSession extends VideoSession {
   @override
+  mx.CallType get type => mx.CallType.kVoice;
+  @override
+  bool get isLocalVideoMuted => true;
+  @override
   final mx.Room room;
   AudioSession(this.room);
   @override
@@ -30,8 +37,41 @@ class AudioSession extends VideoSession {
   List<mx.WrappedMediaStream> get getRemoteStreams => [feed];
 }
 
+class GroupAudioCall extends Fake implements CallProbe {
+  @override
+  bool get video => false;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'Android group speaker starts from the LiveKit route on the first tap',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final manager = lk.AudioManager.instance;
+      manager.resetForTest();
+      addTearDown(() {
+        debugDefaultTargetPlatformOverride = null;
+        manager.resetForTest();
+      });
+      final call = GroupAudioCall();
+      final audio = CallAudio();
+      expect(manager.isSpeakerOutputPreferred, true);
+      await audio.toggleSpeaker(call);
+      expect(audio.speakerEnabled, false);
+      await audio.toggleSpeaker(call);
+      expect(audio.speakerEnabled, true);
+      expect(manager.isSpeakerOutputPreferred, true);
+      audio.reset(GroupAudioCall());
+      expect(audio.speakerEnabled, true);
+    },
+  );
+  test('Desktop group speaker state keeps its existing behavior', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final audio = CallAudio()..reset(GroupAudioCall());
+    expect(audio.speakerEnabled, false);
+  });
   test(
     'Direct speakerphone toggles the WebRTC route and preserves state on failure',
     () async {

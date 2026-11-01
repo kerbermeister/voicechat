@@ -1,4 +1,4 @@
-# Android: исправления звонков, кандидат40
+# Android: исправления звонков, выпуски40/41
 
 01.11.2026. Основание: отчёт владельца о Xiaomi на предположительно39;
 модель/Android неизвестны. Дополнение: кнопка аудиовыхода существует, но не работает;
@@ -34,7 +34,7 @@ AspectRatio после ограничения ширины диалогом. Н�
 при замене объекта stream/track даже с прежними идентификаторами. Причинность для
 плавающего зависания на Xiaomi потребует проверки получаемых кадров на телефоне.
 
-Проверки и публикация будут дописаны по фактическим результатам. Кандидат не равен
+Проверки и публикация приведены ниже. Пакет не равен
 проверке реального телефона; на старте физический Android к ADB не подключён.
 
 Дополнение владельца01.11: rollout40 однократно ставит notification preference=true
@@ -43,3 +43,54 @@ AspectRatio после ограничения ширины диалогом. Н�
 при рестарте или следующем выпуске. Native запрашивает разрешения; web с granted
 автоматически восстанавливает subscription/binding, без granted показывает кнопку,
 сохраняющую требуемый браузером пользовательский жест. Разрешения ОС не подделываются.
+
+
+## Выпущенные пакеты и проверки
+
+WEB79/source39d6635: штатный mode=web, deploy=true, SUCCESS13m48s.
+HTTPS version.json=1.16.2(40), no-cache. Backend и12 остальных контейнеров
+сохранили ID/StartedAt/RestartCount; previous pointer соответствует прежней baseline.
+[Receipt](release-40/web-publication.json).
+
+Mac40/source39d6635: --personal, прежний Sparkle key, подписаны точные ZIP/DMG/feed.
+Из точного ZIP запущен кандидат: прежний account/device и2 контрольных фрагмента
+истории сохранены, switch уведомлений on. Keychain подтвердил владелец.
+После backup39/app/profile установленный39 предложил40 штатной проверкой;
+установленный40 перезапущен и совпал с ZIP по всем285 entries/codesign.
+Аккаунт/профиль, device, старая история и уведомления сохранены.
+[Package](release-40/macos-package.json), [publication](release-40/macos-publication.json),
+[installed](release-40/macos-installed.json).
+
+Android40 был отклонён **до публикации**: локальный build script использовал старый
+config без ROUTE_CONFIG/ROUTE_CATALOG_KEY. Канал оставался39. В новом APK41/source7013461
+задана та же полная конфигурация, что в проверенном Mac40; её signed-catalog guard
+прошёл. Повторная сборка получила новый BUILD41. Оригинальный signing certificate
+сохранён. По явному запросу владельца41 опубликован для физической проверки,
+без подделки ANDROID_ACCEPTED_BUILD/SHA256 и без объявления physical acceptance.
+Стандартный android_release.publish выполнил атомарный latest/previous/immutable APK,
+существующие проверки serving mount/managed baseline/подписанного каталога и HTTPS
+сохранены. Во время передачи APK пользователь получил статус ожидания;
+после полной публичной проверки дана прямая ссылка.
+[Package41](release-41/android-package.json), [config](release-41/client-config-proof.json),
+[publication](release-41/android-publication.json).
+
+Эмулятор Google APIs Android15/API35: signed39→40→41 без удаления данных,
+прежний account/device и один включённый switch. Настоящий FCM provider принял
+повторный wake; сохранились одно уведомление и прежний update time. Отмена вызова
+сняла системное уведомление. Это проверка транспорта/жизненного цикла, а не
+слышимого гудка или расшифрованного медиапотока.
+Secure keyguard=false; защищённый PIN сценарий не принят.
+[Installed41](release-41/android-installed.json), [FCM41](release-41/android-fcm.json).
+
+Flutter495 PASS/4skip, analyzer0; Python Android push12 PASS, macOS release9 PASS,
+Node web push9 PASS. Gate regression скрывает смонтированный чат и прежний dialog;
+при первом прогоне выявлен и исправлен общий HeroController двух Navigator.
+Изолированный браузерный видеопрогон не доведён до звонка: отдельный Chrome-процесс
+не доступен выбранному UI-соединению; во встроенном браузере не завершился startup.
+Ни двустороннее видео, ни реальный звук/динамик Xiaomi не объявляются проверенными.
+[Checks](release-41/checks.json).
+
+Все4 одноразовых аккаунта деактивированы обычным authenticated Matrix API;
+удалена только их1 push binding, остальные bindings не изменились.
+Основные профили/Keychain не очищались. [Cleanup](release-41/fixtures-cleanup.json).
+Текущий пользовательский остаток — только в [реестре](../user-acceptance.md).

@@ -1,0 +1,11 @@
+{
+  "flutter_unit_widget_passed": 495,
+  "flutter_skipped": 4,
+  "flutter_analyzer_issues": 0,
+  "android_push_python_passed": 12,
+  "macos_release_python_passed": 9,
+  "web_push_node_passed": 9,
+  "physical_xiaomi_checked": false,
+  "secure_keyguard_checked": false,
+  "actual_two_way_video_checked": false
+}

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'call_probe.dart';
@@ -10,6 +11,11 @@ class CallAudio {
   bool speakerEnabled = false;
 
   Future<void> toggleSpeaker(VoiceCall call) async {
+    if (!kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.android &&
+        _call != call) {
+      reset(call);
+    }
     final enabled = !speakerEnabled;
     if (call is DirectCall) {
       await rtc.Helper.setSpeakerphoneOn(enabled);
@@ -45,7 +51,12 @@ class CallAudio {
   }
 
   void reset(VoiceCall? call) {
-    speakerEnabled = call?.video ?? false;
+    speakerEnabled =
+        !kIsWeb &&
+            defaultTargetPlatform == TargetPlatform.android &&
+            call is CallProbe
+        ? lk.AudioManager.instance.isSpeakerOutputPreferred
+        : call?.video ?? false;
     for (final track in _applied.keys) {
       if (track.id != null) forgetCallTrackVolume(track.id!);
     }

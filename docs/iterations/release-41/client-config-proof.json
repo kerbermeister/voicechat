@@ -1,0 +1,9 @@
+{
+  "sha256": "d9efc500948e8ec5e503559b1541c6f69326d294fb47ca97a774569d10b85e10",
+  "routing_config_present": true,
+  "route_catalog_key_present": true,
+  "matches_macOS40_routing_config": true,
+  "same_original_android_signing_certificate": true,
+  "rejected_android_build": 40,
+  "rejected_before_publication": true
+}

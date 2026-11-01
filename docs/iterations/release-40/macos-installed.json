@@ -1,0 +1,14 @@
+{
+  "build": 40,
+  "installed_matches_published_zip": true,
+  "entries": 285,
+  "signature_verified": true,
+  "previous_build": 39,
+  "update_offer_observed_in_previous_app": true,
+  "backup_app_and_profile_verified": true,
+  "account_device_history_check_pending": false,
+  "same_device": true,
+  "notification_switch_on": true,
+  "decrypted_history_fragments": 2,
+  "same_saved_account_and_profile": true
+}

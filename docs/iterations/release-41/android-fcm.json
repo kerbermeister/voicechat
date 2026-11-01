@@ -1,0 +1,9 @@
+{
+  "build": 41,
+  "real_fcm_provider": true,
+  "repeated_wakeup_keeps_one_call_notification": true,
+  "repeated_wakeup_preserves_notification_update_time": true,
+  "cancel_dismissed_system_call": true,
+  "audible_sound_checked": false,
+  "physical_android": false
+}
