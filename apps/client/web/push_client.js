@@ -48,6 +48,14 @@
     });
   }
   window.VoiceChatPush = {
+    permissionGranted() {
+      return 'Notification' in window && Notification.permission === 'granted';
+    },
+    async enabled() {
+      if (!('serviceWorker' in navigator) || !('Notification' in window) || Notification.permission !== 'granted') return false;
+      const registration = await navigator.serviceWorker.getRegistration(workerURL.href);
+      return !!(registration && await registration.pushManager.getSubscription());
+    },
     async enable(base, token, routedRequest) {
       const reason = availability();
       if (reason) throw new Error(reason);
