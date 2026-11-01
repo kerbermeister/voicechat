@@ -133,6 +133,7 @@ void main() {
           expect(bytes.length.isEven, isTrue);
           final wav = voiceWav(bytes, sampleRate: rate);
           expect(ByteData.sublistView(wav).getUint32(24, Endian.little), rate);
+          // ignore: avoid_print
           print(
             'VOICE_CAPTURE rate=$rate bytes=${bytes.length}; synthetic microphone, subjective quality not tested',
           );
