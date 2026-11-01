@@ -319,6 +319,56 @@ void main() {
   );
 
   test(
+    'cold answer survives room loading and accepts an existing invite once',
+    () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final loadingRoom = Completer<void>();
+      var delivered = false;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(NativeNotifications.channel, (
+            method,
+          ) async {
+            if (method.method == 'takePush' && !delivered) {
+              delivered = true;
+              return {
+                'room': '!room:local',
+                'session': 'incoming',
+                'action': 'answer',
+                'video': false,
+                'expires': DateTime.now().millisecondsSinceEpoch ~/ 1000 + 45,
+              };
+            }
+            return null;
+          });
+      final incoming = NotificationCalls();
+      incoming.invitations['incoming'] = CallInvitation(
+        NotificationRoom(),
+        'incoming',
+        '@bob:local',
+        DateTime.now(),
+      );
+      final notifications = NativeNotifications(
+        'alice',
+        (_) => loadingRoom.future,
+      );
+      final opening = notifications.open();
+      await Future<void>.delayed(Duration.zero);
+      notifications.updateCalls(incoming);
+      await Future<void>.delayed(Duration.zero);
+      expect(incoming.answers, 0);
+      loadingRoom.complete();
+      await opening;
+      notifications.updateCalls(incoming);
+      await Future<void>.delayed(Duration.zero);
+      expect(incoming.answers, 1);
+      notifications.updateCalls(incoming);
+      await Future<void>.delayed(Duration.zero);
+      expect(incoming.answers, 1);
+      await notifications.close();
+    },
+  );
+
+  test(
     'notification cannot silently upgrade a voice answer to camera access',
     () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;

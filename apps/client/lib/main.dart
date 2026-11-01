@@ -460,7 +460,6 @@ class _ProbeScreenState extends State<ProbeScreen> {
         transport: next.client.httpClient,
         report: report,
       );
-      await nativeNotifications!.open();
     }
     sounds = AppSounds(next.client, onReceived: nativeNotifications?.message);
     await sounds!.open();
@@ -493,6 +492,10 @@ class _ProbeScreenState extends State<ProbeScreen> {
     connectionStatus = next.client.onSyncStatus.stream.listen((value) {
       if (mounted) setState(() => online = value.status != mx.SyncStatus.error);
     });
+    // A cold-start notification can open a room or answer immediately.
+    // Install chat actions and the VoIP delegate before consuming it.
+    await nativeNotifications?.open();
+    nativeNotifications?.updateCalls(calls!);
     await saveAccount();
     final roomId = (await SharedPreferences.getInstance()).getString(
       'lastRoom:${profile.text.trim()}',
@@ -2051,7 +2054,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
                         subtitle: Text(
                           NativeNotifications.supported
                               ? defaultTargetPlatform == TargetPlatform.android
-                                    ? 'Пока приложение работает. После закрытия или остановки Android доставка пока недоступна.'
+                                    ? 'Сообщения и звонки приходят и при закрытом приложении. После принудительной остановки откройте приложение снова.'
                                     : 'Пока приложение работает, в том числе со скрытым окном.'
                               : 'На iPhone — из приложения на экране «Домой». iOS 16.4 и новее.',
                         ),
