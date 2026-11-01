@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "build": 38,
+  "installed_matches_published_zip": true,
+  "verified_files_and_links": 285,
+  "codesign_pass": true,
+  "installation": "local exact published ZIP after Sparkle download error",
+  "sparkle_offered_build": 38,
+  "sparkle_installation_completed": false,
+  "profile_backup_verified": true,
+  "keychain_modified": false,
+  "profile_acceptance_pending": true,
+  "launched_version_ui": "1.16.0 (38)",
+  "saved_profile_opened": false,
+  "keychain_confirmation_performed": false
+}

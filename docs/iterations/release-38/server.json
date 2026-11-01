@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41288642461",
+  "server_source": "bddd8a94f87de8354cd4a1a2d83c45b891be1e35",
+  "images": {
+    "control": "ghcr.io/kerbermeister/voicechat/control@sha256:f80556c7913e54060e94b023a929d845d4252699e1b0d3c9b5c3f0eef46d8ca3",
+    "web": "ghcr.io/kerbermeister/voicechat/web@sha256:afff5936aa469cfd289c34bb76800bdc24402de9d601d1406e110efb645bb02d"
+  },
+  "baseline": "cd9b5e6f4581209d7e3220161d5e9b571f2437b415d290022c1eac6afa860305",
+  "previous_baseline": "1f9997ef482704a1e56f8c17091e428c54873a60bafb2c1eb8f6a1f93eddfcbb",
+  "data_identity_preserved": true,
+  "healthy_services": true,
+  "neighbors_unchanged": 6,
+  "cache_control": "no-cache",
+  "public_version": {
+    "app_name": "voicechat_probe",
+    "version": "1.16.0",
+    "build_number": "38",
+    "package_name": "voicechat_probe"
+  },
+  "real_synapse": {
+    "schema": 1,
+    "real_synapse_and_control": true,
+    "device_bound_resolve": true,
+    "foreign_binding_rejected": true,
+    "atomic_answer": true,
+    "foreign_end_rejected": true,
+    "revoked_device_rejected": true,
+    "real_fcm_delivery_tested": false,
+    "media_decryption_tested": false,
+    "fixtures_deactivated": true
+  },
+  "fcm": {
+    "project_matches": true,
+    "file_mode": "0600",
+    "owner_uid": 10001,
+    "oauth_and_api_authenticated": true,
+    "validate_only_fake_token_status": 400,
+    "real_fcm_delivery_tested": false
+  },
+  "screen_share_configuration_changed": false
+}

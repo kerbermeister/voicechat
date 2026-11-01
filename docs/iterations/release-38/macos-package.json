@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "build": 38,
+  "source": "e3869afc38c6b0435d74750feec6811933a59f12",
+  "source_dirty": false,
+  "archive_sha256": "1edda1282031dcedebf15ebbeba01922e601fd9d5957e4edc6911ba62700207b",
+  "zip_and_dmg_match_built_app": true,
+  "verified_files_and_links": 285,
+  "codesign_pass": true,
+  "same_permanent_sparkle_key_and_feed": true,
+  "no_xctest_bundle": true,
+  "profile_acceptance_pending": true
+}

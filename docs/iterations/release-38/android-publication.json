@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "build": 38,
+  "sha256": "2174ff83454ec1a20b2e1e00cfb5e377e1f223ce67c1f9b42ff4451c07e3fc63",
+  "published": true,
+  "physical_acceptance": false,
+  "authorization": "Owner explicitly requested APK38 in the in-app update channel before physical phone acceptance; phone check deferred",
+  "published_at_unix": 1793522232,
+  "services_unchanged": true,
+  "managed_release_pointer_unchanged": true,
+  "manifest_cache_control": "no-cache"
+}
