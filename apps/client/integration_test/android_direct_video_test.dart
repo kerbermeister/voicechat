@@ -1,6 +1,10 @@
 // Two real native WebRTC peers and emulated cameras; no accounts or server data.
 // This checks the Android media pipeline, not Xiaomi hardware or Matrix delivery.
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:record/record.dart';
+import 'package:voicechat_probe/voice_recording.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
@@ -83,6 +87,64 @@ Future<void> advancing(DirectCall call) async {
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  testWidgets('Android records PCM at all selectable voice sample rates', (
+    tester,
+  ) async {
+    final recorder = AudioRecorder();
+    try {
+      expect(await recorder.hasPermission(), isTrue);
+      for (final rate in voiceSampleRates) {
+        final pcm = BytesBuilder(copy: false);
+        final started = Completer<void>();
+        final done = Completer<void>();
+        final stream = await recorder.startStream(
+          RecordConfig(
+            encoder: AudioEncoder.pcm16bits,
+            sampleRate: rate,
+            numChannels: 1,
+            autoGain: true,
+            noiseSuppress: true,
+          ),
+        );
+        final subscription = stream.listen(
+          (chunk) {
+            pcm.add(chunk);
+            if (!started.isCompleted) started.complete();
+          },
+          onError: (Object error, StackTrace stack) {
+            if (!started.isCompleted) started.completeError(error, stack);
+            if (!done.isCompleted) done.completeError(error, stack);
+          },
+          onDone: () {
+            if (!done.isCompleted) done.complete();
+          },
+        );
+        try {
+          await started.future.timeout(const Duration(seconds: 10));
+          await Future<void>.delayed(const Duration(seconds: 1));
+          await recorder.stop();
+          await done.future.timeout(const Duration(seconds: 10));
+          final bytes = pcm.takeBytes();
+          expect(
+            bytes.length,
+            inInclusiveRange(rate, rate * 4),
+            reason: '$rate Hz PCM data',
+          );
+          expect(bytes.length.isEven, isTrue);
+          final wav = voiceWav(bytes, sampleRate: rate);
+          expect(ByteData.sublistView(wav).getUint32(24, Endian.little), rate);
+          print(
+            'VOICE_CAPTURE rate=$rate bytes=${bytes.length}; synthetic microphone, subjective quality not tested',
+          );
+        } finally {
+          await recorder.stop();
+          await subscription.cancel();
+        }
+      }
+    } finally {
+      await recorder.dispose();
+    }
+  });
   testWidgets(
     'Android voice to video keeps rendering after renegotiation and transceiver refresh',
     (tester) async {

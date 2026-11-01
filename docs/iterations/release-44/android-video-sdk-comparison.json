@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "platform": "Google APIs emulator Android15/API35",
+  "physical_xiaomi": false,
+  "fixture_signaling": "in-memory synthetic sessions; wire track IDs separated from local IDs",
+  "authorization_not_tested": true,
+  "baseline": {
+    "flutter_webrtc": "1.6.2+hotfix.4",
+    "livekit_client": "2.13.1",
+    "result": "FAIL",
+    "renderer_size": [
+      480,
+      270
+    ],
+    "decoded_size": [
+      320,
+      180
+    ],
+    "frames_decoded": 132,
+    "reason": "renderer did not resize within 20s after getTransceivers while decoder continued"
+  },
+  "candidate": {
+    "flutter_webrtc": "1.6.3",
+    "livekit_client": "2.13.2",
+    "result": "PASS",
+    "renderer_size": [
+      320,
+      180
+    ],
+    "decoded_size": [
+      320,
+      180
+    ],
+    "camera_stop_restart_cycles": 2,
+    "h264_encoder_available": false
+  },
+  "fixture_sha256": "e879f6fac2707d9545d2137f8d13e2d4f6d5245e80f3dc2b5a0ed734cc1e3599",
+  "upstream": "https://github.com/flutter-webrtc/flutter-webrtc/pull/2230"
+}
