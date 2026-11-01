@@ -29,8 +29,9 @@ class StatisticsSession extends VideoSession {
   @override
   final Room room;
   StatisticsSession(this.room);
+  final peer = StatisticsPeer();
   @override
-  final pc = StatisticsPeer();
+  StatisticsPeer get pc => peer;
 }
 
 void main() {
