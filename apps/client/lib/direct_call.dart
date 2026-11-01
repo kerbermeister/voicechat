@@ -422,10 +422,11 @@ class DirectCall implements VoiceCall {
         : _cameraFacing;
     final next = current == 'environment' ? 'user' : 'environment';
     if (!kIsWeb) {
-      if (!await rtc.Helper.switchCamera(track)) {
-        throw StateError('Camera switch unavailable');
-      }
-      _cameraFacing = next;
+      // Native returns whether the selected camera faces front; false is a
+      // successful switch to the rear camera. Failures throw PlatformException.
+      _cameraFacing = await rtc.Helper.switchCamera(track)
+          ? 'user'
+          : 'environment';
       changed();
       return;
     }
@@ -518,6 +519,8 @@ class DirectCall implements VoiceCall {
               'packetsReceived',
               'packetsLost',
               'bytesReceived',
+              'frameWidth',
+              'frameHeight',
               'framesReceived',
               'framesDecoded',
               'framesDropped',

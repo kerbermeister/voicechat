@@ -245,7 +245,7 @@ void main() {
         (call) async {
           if (call.method == 'mediaStreamTrackSwitchCamera') {
             switches++;
-            return true;
+            return switches.isEven;
           }
           return null;
         },
