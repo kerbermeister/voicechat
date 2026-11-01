@@ -23,7 +23,7 @@ exec(compile(ast.Module(body=nodes, type_ignores=[]), 'voicechat_policy.py', 'ex
 
 class PushDeviceTests(unittest.IsolatedAsyncioTestCase):
     async def test_authorization_revocation_and_room_membership(self):
-        store = SimpleNamespace(get_device=AsyncMock())
+        store = SimpleNamespace(get_device=AsyncMock(return_value={'device_id': 'B'}))
         api = SimpleNamespace(get_room_state=AsyncMock(return_value={
             ('m.room.member', '@bob:local'): SimpleNamespace(content={'membership': 'join'})}))
         api._hs = SimpleNamespace(is_mine=lambda _: True, get_datastores=lambda: SimpleNamespace(main=store))
@@ -39,5 +39,8 @@ class PushDeviceTests(unittest.IsolatedAsyncioTestCase):
         api.get_room_state.return_value = {}
         self.assertEqual(await resource._async_render_POST(request()), (200, {'valid': False}))
         self.assertEqual(await resource._async_render_POST(request(room='')), (200, {'valid': True}))
+        store.get_device.return_value = None
+        self.assertEqual(await resource._async_render_POST(request()), (200, {'valid': False}))
+        self.assertEqual(await resource._async_render_POST(request(room='')), (200, {'valid': False}))
         store.get_device.side_effect = ServerError(404, 'revoked')
         self.assertEqual(await resource._async_render_POST(request()), (200, {'valid': False}))

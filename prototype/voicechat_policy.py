@@ -165,7 +165,8 @@ class PushDevice(DirectServeJsonResource):
             if not hs.is_mine(UserID.from_string(user)):
                 return 200, {'valid': False}
             try:
-                await hs.get_datastores().main.get_device(user, device)
+                if await hs.get_datastores().main.get_device(user, device) is None:
+                    return 200, {'valid': False}
             except StoreError as error:
                 if error.code == 404: return 200, {'valid': False}
                 raise
