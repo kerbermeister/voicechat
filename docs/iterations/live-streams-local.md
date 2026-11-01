@@ -77,3 +77,27 @@ ADB не обнаружил подключённого Android; xctrace пере
    системного вызова на web описать ограничение, не включать утечку/auto-resume.
 4. После G1 подключать полноценную авторизацию, SFU grants/cleanup и Flutter UI;
    ядро само по себе к пользовательской приёмке не готово.
+
+## Локальная итерация 2 — настоящая инфраструктура
+
+Поднят отдельный compose-проект `voicechat-streams-local` с новыми volumes,
+сгенерированными локальными секретами и одноразовыми alice/bob/carol. Используются
+только loopback Matrix8008/SFU7880/TURN3478/mail8025; production не запрашивался.
+Рабочие профили/секреты из основного worktree не копировались.
+
+`python3 prototype/check_stream_cleanup.py`: PASS на pinned LiveKit. Создана
+реальная room; после stop выполнен DeleteRoom и подтверждено отсутствие room;
+после restart ядра оставшийся cleanup generation удалён, сессия/чат не восстановлены.
+Проба не публикует медиа и не доказывает JWT revoke/E2EE.
+
+Найден project Flutter в основном worktree `.prototype/tools/flutter/bin/flutter`.
+Системный Flutter3.32.2 отверг `flutter.config`; повторено закреплённым toolchain,
+`pub get --enforce-lockfile` PASS, lockfile не изменился. Системный SDK не обновлялся.
+Адресный прогон call_key_sharing/media_key_clock/screen_protocol: **10 Flutter tests PASS**.
+Первый прогон ошибочно указал несуществующий screen_key_test; после выбора
+реального screen_protocol_test весь набор успешно повторён.
+Это regression существующего ключевого протокола, а не доказательство нового E2EE.
+
+Изолированный инфраструктурный стенд подготовлен. G1 по-прежнему открыт:
+нет доказанной ephemeral выдачи исторических ключей позднему зрителю при паузе
+и нет аппаратного сценария системного прерывания iPhone web/PWA.

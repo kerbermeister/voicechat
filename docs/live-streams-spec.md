@@ -442,7 +442,8 @@ MVP завершён только когда выполнены STR-T01–07 п�
 
 Локальная база проверена 01.11.2026: `livekit_client 2.13.1`,
 `flutter_webrtc 1.6.2+hotfix.4` в lockfile; текущие camera/quality/room lifecycle
-и release-документы просмотрены. Ни одного прототипа стримов в этой работе не запускали.
+и release-документы просмотрены. Локальное ядро/протокол и cleanup на настоящем
+SFU проверены; end-to-end медиа стримов ещё не реализовано. Подробности в журнале.
 
 Официальные источники: [подписки/адаптивное качество LiveKit](https://docs.livekit.io/transport/media/subscribe/),
 [E2EE](https://docs.livekit.io/transport/encryption/),
