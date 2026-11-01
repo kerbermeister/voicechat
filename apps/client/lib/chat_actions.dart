@@ -1,3 +1,4 @@
+import 'voice_recording.dart' show maxVoiceRecordingBytes;
 import 'hidden_messages.dart';
 import 'reaction_usage.dart';
 import 'send_failure.dart';
@@ -605,8 +606,15 @@ class ChatActions extends ChangeNotifier {
             waveform.any((n) => n < 0 || n > 1024))) {
       throw UserActionError('Некорректные данные голосового сообщения.');
     }
-    if (file.bytes.isEmpty || file.size > maxAttachmentBytes) {
-      throw UserActionError('Размер вложения: от 1 байта до 10 МБ.');
+    final maxBytes = file is MatrixAudioFile
+        ? maxVoiceRecordingBytes
+        : maxAttachmentBytes;
+    if (file.bytes.isEmpty || file.size > maxBytes) {
+      throw UserActionError(
+        file is MatrixAudioFile
+            ? 'Голосовое сообщение слишком большое: максимум 3 минуты.'
+            : 'Размер вложения: от 1 байта до 10 МБ.',
+      );
     }
     if (file.msgType != MessageTypes.Image &&
         file.msgType != MessageTypes.Audio) {

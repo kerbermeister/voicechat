@@ -1,3 +1,4 @@
+import 'voice_recording.dart';
 import 'notification_preferences.dart';
 import 'android_call_screen.dart';
 import 'resizable_chat_layout.dart';
@@ -1933,6 +1934,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
   }
 
   Future<void> settings() async {
+    final preferences = await SharedPreferences.getInstance();
+    var voiceRate = preferredVoiceSampleRate(preferences);
     Future<dynamic>? settingsClosed;
     var privacyBusy = false;
     var notificationsBusy = false;
@@ -2052,6 +2055,40 @@ class _ProbeScreenState extends State<ProbeScreen> {
                           ],
                         ),
                       ),
+                    const Divider(height: 28),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: DropdownButtonFormField<int>(
+                        isExpanded: true,
+                        initialValue: voiceRate,
+                        decoration: const InputDecoration(
+                          labelText: 'Качество голосовых сообщений',
+                          helperText: 'Для новых записей',
+                        ),
+                        items: [
+                          for (final rate in voiceSampleRates)
+                            DropdownMenuItem(
+                              value: rate,
+                              child: Text('${rate ~/ 1000} кГц'),
+                            ),
+                        ],
+                        onChanged: (value) => value == null
+                            ? null
+                            : run(() async {
+                                if (!await preferences.setInt(
+                                  voiceSampleRateKey,
+                                  value,
+                                )) {
+                                  throw UserActionError(
+                                    'Не удалось сохранить качество записи.',
+                                  );
+                                }
+                                if (dialogContext.mounted) {
+                                  updateSettings(() => voiceRate = value);
+                                }
+                              }),
+                      ),
+                    ),
                     const Divider(height: 28),
                     ListTile(
                       leading: const Icon(Icons.storage_outlined),

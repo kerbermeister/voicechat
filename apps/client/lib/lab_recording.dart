@@ -16,7 +16,7 @@ Future<void> checkRecording() async {
     final stream = await recorder.startStream(
       const RecordConfig(
         encoder: AudioEncoder.pcm16bits,
-        sampleRate: 16000,
+        sampleRate: voiceSampleRate,
         numChannels: 1,
       ),
     );

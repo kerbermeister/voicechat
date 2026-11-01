@@ -625,8 +625,19 @@ void main() {
         actions.attachment(
           OutboxRoom(client),
           MatrixAudioFile(
-            bytes: Uint8List(maxAttachmentBytes + 1),
+            bytes: Uint8List(maxVoiceRecordingBytes + 1),
             name: 'large.wav',
+          ),
+        ),
+        throwsStateError,
+      );
+      await expectLater(
+        actions.attachment(
+          OutboxRoom(client),
+          MatrixImageFile(
+            bytes: Uint8List(maxAttachmentBytes + 1),
+            name: 'large.png',
+            mimeType: 'image/png',
           ),
         ),
         throwsStateError,
@@ -675,12 +686,24 @@ void main() {
     final wav = voiceWav(pcm);
     final header = ByteData.sublistView(wav);
     expect(String.fromCharCodes(wav.sublist(0, 4)), 'RIFF');
-    expect(header.getUint32(24, Endian.little), 16000);
+    expect(header.getUint32(24, Endian.little), voiceSampleRate);
     expect(header.getUint32(40, Endian.little), pcm.length);
     expect(wav.sublist(44), pcm);
+    final longest = voiceWav(Uint8List(voiceBytesPerSecond * 180));
+    expect(longest.length, lessThanOrEqualTo(maxAttachmentBytes));
+    final longestHeader = ByteData.sublistView(longest);
+    expect(
+      longestHeader.getUint32(40, Endian.little) *
+          1000 ~/
+          longestHeader.getUint32(28, Endian.little),
+      180000,
+    );
     expect(() => voiceWav(Uint8List(0)), throwsArgumentError);
     expect(() => voiceWav(Uint8List(3)), throwsArgumentError);
-    expect(() => voiceWav(Uint8List(16000 * 2 * 180 + 2)), throwsArgumentError);
+    expect(
+      () => voiceWav(Uint8List(voiceBytesPerSecond * 180 + 2)),
+      throwsArgumentError,
+    );
   });
   test('Each call obtains fresh expiring TURN credentials', () async {
     final turnClient = RotatingTurnClient();

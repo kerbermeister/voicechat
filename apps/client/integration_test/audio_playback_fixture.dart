@@ -14,25 +14,32 @@ class AudioFixtureEvent extends mx.Event {
   final Uint8List bytes;
   int loads = 0;
   bool failDownload = false;
-  AudioFixtureEvent(mx.Room room, String id, {int milliseconds = 1500})
-    : bytes = voiceWav(Uint8List(milliseconds * 32)),
-      super(
-        room: room,
-        eventId: id,
-        type: mx.EventTypes.Message,
-        senderId: '@fixture:local',
-        originServerTs: DateTime(2026),
-        content: {
-          'msgtype': mx.MessageTypes.Audio,
-          'body': '$id.wav',
-          'info': {
-            'size': milliseconds * 32 + 44,
-            'duration': milliseconds,
-            'mimetype': 'audio/wav',
-          },
-          'dev.voicechat.waveform': List.filled(32, 96),
-        },
-      );
+  AudioFixtureEvent(
+    mx.Room room,
+    String id, {
+    int milliseconds = 1500,
+    int sampleRate = voiceSampleRate,
+  }) : bytes = voiceWav(
+         Uint8List(milliseconds * sampleRate * 2 ~/ 1000),
+         sampleRate: sampleRate,
+       ),
+       super(
+         room: room,
+         eventId: id,
+         type: mx.EventTypes.Message,
+         senderId: '@fixture:local',
+         originServerTs: DateTime(2026),
+         content: {
+           'msgtype': mx.MessageTypes.Audio,
+           'body': '$id.wav',
+           'info': {
+             'size': milliseconds * sampleRate * 2 ~/ 1000 + 44,
+             'duration': milliseconds,
+             'mimetype': 'audio/wav',
+           },
+           'dev.voicechat.waveform': List.filled(32, 96),
+         },
+       );
   @override
   bool get isAttachmentEncrypted => true;
   @override

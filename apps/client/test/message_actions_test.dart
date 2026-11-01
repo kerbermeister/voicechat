@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'package:voicechat_probe/message_motion.dart';
 import 'package:image/image.dart' as img;
@@ -484,6 +485,7 @@ void main() {
   testWidgets('Holding microphone never opens camera or switches to video', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({});
     final previous = CameraPlatform.instance;
     final camera = NoteCamera();
     CameraPlatform.instance = camera;
@@ -498,6 +500,8 @@ void main() {
             if (call.method == 'startStream') {
               expect(call.arguments['encoder'], 'pcm16bits');
               expect(call.arguments['autoGain'], true);
+              expect(call.arguments['sampleRate'], 24000);
+              expect(call.arguments['noiseSuppress'], true);
               throw PlatformException(code: 'test-stream-unavailable');
             }
             return null;

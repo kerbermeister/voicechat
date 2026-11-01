@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'personal_room.dart';
 import 'message_motion.dart';
 import 'message_media_cache.dart';
@@ -164,6 +165,7 @@ class _ChatPaneState extends State<ChatPane>
   final recordingClock = Stopwatch();
   Timer? recordingMeter;
   PcmLevelMeter liveMeter = PcmLevelMeter();
+  int recordingSampleRate = voiceSampleRate;
 
   @override
   void initState() {
@@ -970,21 +972,25 @@ class _ChatPaneState extends State<ChatPane>
     }
     await widget.actions.refreshPolicy();
     recordingFailed = false;
-    liveMeter = PcmLevelMeter();
+    recordingSampleRate = preferredVoiceSampleRate(
+      await SharedPreferences.getInstance(),
+    );
+    liveMeter = PcmLevelMeter(sampleRate: recordingSampleRate);
     pcm = BytesBuilder(copy: false);
     recordingDone = Completer<void>();
     final stream = await recorder.startStream(
-      const RecordConfig(
+      RecordConfig(
         encoder: AudioEncoder.pcm16bits,
-        sampleRate: 16000,
+        sampleRate: recordingSampleRate,
         numChannels: 1,
         autoGain: true,
+        noiseSuppress: true,
       ),
     );
     recordingStream = stream.listen(
       (chunk) {
         if (pcm!.length + chunk.length <=
-            16000 * 2 * widget.actions.policy.voiceMaxSeconds) {
+            recordingSampleRate * 2 * widget.actions.policy.voiceMaxSeconds) {
           pcm!.add(chunk);
           liveMeter.add(chunk);
         } else if (!stopping) {
@@ -1040,10 +1046,10 @@ class _ChatPaneState extends State<ChatPane>
       final bytes = Uint8List.sublistView(raw, 0, raw.length - raw.length % 2);
       if (send && bytes.isNotEmpty) {
         unsentVoice = mx.MatrixAudioFile(
-          bytes: voiceWav(bytes),
+          bytes: voiceWav(bytes, sampleRate: recordingSampleRate),
           name: 'Голосовое сообщение.wav',
           mimeType: 'audio/wav',
-          duration: bytes.length * 1000 ~/ 32000,
+          duration: bytes.length * 1000 ~/ (recordingSampleRate * 2),
         );
         unsentWave = pcmWaveform(bytes);
         voiceReply = reply;
@@ -3363,8 +3369,12 @@ class _AttachmentViewState extends State<AttachmentView> {
 
   Future<mx.MatrixFile> load() async {
     final size = widget.event.infoMap['size'];
+    final maxBytes = widget.event.messageType == mx.MessageTypes.Audio
+        ? maxVoiceRecordingBytes
+        : maxAttachmentBytes;
     if (size is! num ||
-        size > maxAttachmentBytes ||
+        !size.isFinite ||
+        size > maxBytes ||
         size <= 0 ||
         !widget.event.isAttachmentEncrypted) {
       throw StateError('Unencrypted or oversized attachment refused');
