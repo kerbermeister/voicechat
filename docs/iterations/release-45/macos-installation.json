@@ -1,0 +1,19 @@
+{
+  "build": 45,
+  "previous_build": 44,
+  "installed_matches_published_zip": true,
+  "entries": 285,
+  "signature_verified": true,
+  "update_offer_observed_in_previous_app": true,
+  "installed_through_download_install_button": true,
+  "backup_app_and_profile_hashes_verified": true,
+  "same_saved_account_and_profile": true,
+  "same_device": true,
+  "previous_history_access": true,
+  "keychain_deleted_or_reset": false,
+  "same_account": true,
+  "previous_history_voice_cards_visible": 3,
+  "previous_voice_payload_playback_progress_observed": true,
+  "latest_version_recheck": "Совместимых обновлений нет.",
+  "account_device_history_check_pending": false
+}

@@ -15,7 +15,7 @@
     "flutter_first": {
       "passed": 532,
       "skipped": 4,
-      "final_rerun": "pending after additional lifecycle/teardown tests"
+      "final_rerun": "completed: see flutter_final"
     },
     "python": {
       "total": 789,
@@ -26,21 +26,26 @@
       "passed": 9,
       "status": "PASS"
     },
-    "analyzer": "PASS before final typing guard; final check pending",
+    "analyzer": "PASS: no issues on final source",
     "native_storage": "PASS: real Keychain/SQLCipher; disposable profile",
     "native_camera": "PASS: real Mac camera cleanup with synthetic session in three stages",
     "web_ui": {
       "version": "1.16.6(45)",
       "reply_cancel": "PASS, existing draft retained",
       "temporary_photo": "PASS, gallery opened before 30s TTL and automatically closed afterwards",
-      "remote_revoke": "PASS after additional ChatPane typing guard: settings close, login screen explains revocation, no Flutter/null/disposed errors. One SDK M_UNKNOWN_TOKEN log is expected."
+      "remote_revoke": "PASS after typing guard: modal settings close, clear login screen, no Flutter/null/disposed errors; one expected SDK M_UNKNOWN_TOKEN"
+    },
+    "flutter_final": {
+      "passed": 534,
+      "skipped": 4,
+      "command": "flutter test --concurrency=1 --reporter expanded"
     }
   },
   "observations": {
     "UA-24.C06": {
       "classification": "confirmed initial timeline aggregation defect; fixed",
       "evidence": "restored_edit_test: two failing assertions before patch and both passing after; decrypt fixture, real SDK Room/Timeline",
-      "limitation": "full first-time trusted device re-run not yet performed"
+      "limitation": "Full new-device UI replay attempted: QA login reached device-link screen, but saved disposable QA recovery files were empty; restore was not completed. SDK regression assertions pass."
     },
     "UA-05.C39": {
       "classification": "SDK ratchet recovery race; no proven app-path defect",
@@ -55,13 +60,43 @@
     }
   },
   "publication": {
-    "production": "pending; full required due to vendored SDK diff",
-    "macos": "pending",
-    "android": "shared Flutter affected; release decision pending"
+    "production": "PASS: full workflow83, sourcef44855e, health/digests/rollback/routes verified",
+    "macos": "PASS: personal signed Sparkle44→45, exact ZIP/DMG,285 installed entries; account/device/history retained",
+    "android": "Published by explicit user authorization for later physical QA; original certificate; HTTPS manifest and exact APK hash verified; physical/emulator acceptance false"
   },
   "privacy": {
     "real_user_calls": 0,
     "real_user_messages": 0,
     "main_profile_or_keychain_deleted": false
+  },
+  "source_release": "f44855e93180f83f365688844c47a59c4cebf66e",
+  "remaining": [
+    "physical Android/Xiaomi and iPhone/Safari/PWA acceptance, including real cross-platform call scenarios",
+    "full first-time trusted device history/edit UI replay; SDK regression mechanism is proved and fixed",
+    "native SDK wrong-key in-place restore remains a laboratory limitation; no app-path wrong-key injection is claimed"
+  ],
+  "log_sha256": {
+    "flutter-final.log": "a4b1cc28e6da4eeddbd050e646cb8accda5b0fc0269e2ac2c6d16e19b5e209da",
+    "python-final.log": "2e47e68e0a2733349839210f7d83d241c424b795dce07919b2514d200a3c7478",
+    "analyze-verified.log": "be7948789eb5b8a77b7f709541d1afb1cdaa29a655dfc3954c4a36daa56f0abc",
+    "js.log": "3f8025ed914d6933ee4f1ea652682880d179166ba4c81396a596c826577c3c50",
+    "macos_storage_test.log": "7fd48ea383650dcc5cf52bb6d08477290e6a4d80c4c6b6fa97d49846f59bac9a",
+    "direct_camera_cleanup_test.log": "813de6cac4fe33c18de2c84e6ba791e76a6f66d53fee8bda651fa6e8f856d1e4",
+    "web-local-final.log": "462da4cec7aa108107aad0b0f207ff0424699b6a1e32dd0581dc38ee33b51df9",
+    "native-key-default.log": "3af65876f465e8d780ff9a4680a14787085015f184ddb539b4eca00b6cffa5a8",
+    "native-key.log": "a9ee5061879463a007be1ca5bdc85fdbc92e66e70d1dd25601c17951e17f3727"
+  },
+  "cleanup": {
+    "owned_SFU_container_stopped_and_removed": true,
+    "private_media_token_file_removed": true,
+    "QA_service_shutdown": "complete: own Synapse/control and both static web processes stopped",
+    "primary_profile_and_keychain_not_deleted": true,
+    "owned_loopback_ports_closed": [
+      18008,
+      18090,
+      17357,
+      17358,
+      17880
+    ]
   }
 }

@@ -1,0 +1,13 @@
+{
+  "build": 45,
+  "source": "f44855e93180f83f365688844c47a59c4cebf66e",
+  "signed_candidate_ready": true,
+  "published": true,
+  "physical_acceptance": false,
+  "connected_physical_android_devices": 0,
+  "blocker": null,
+  "sha256": "b3af082bbd06a72e0d876ad31a77f491933e9cafd263a015551350b7dc1c6220",
+  "standard_channel_check": "PASS",
+  "emulator_installation": false,
+  "authorization": "02.11.2026: user explicitly requested immediate publication for later physical verification; no accepted-build variables fabricated"
+}

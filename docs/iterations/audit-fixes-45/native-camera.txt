@@ -1,0 +1,4 @@
+PASS: native camera capture released — off-with-signalling-error
+PASS: native camera capture released — timeout
+PASS: native camera capture released — late-sender
+02:48 +1: All tests passed!
