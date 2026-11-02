@@ -6,6 +6,7 @@ import hmac
 import json
 import time
 import threading
+import re
 import sqlite3
 import os
 import sys
@@ -677,7 +678,7 @@ class Handler(BaseHTTPRequestHandler):
             camera_capable = body.get('camera_capable', False)
             join_existing = body.get('join_existing', False)
             if (type(video) is not bool or type(camera_capable) is not bool or type(join_existing) is not bool or body.get('protocol_version') != 1 or
-                set(body) - {'room_id', 'session', 'video', 'protocol_version', 'lease_id', 'reconnect', 'camera_capable', 'join_existing'}):
+                set(body) - {'room_id', 'session', 'video', 'protocol_version', 'lease_id', 'reconnect', 'camera_capable', 'join_existing', 'generation'}):
                 return self.reply(400, {'error': 'invalid_call_mode'})
             if not isinstance(room, str) or not room.startswith('!') or len(room) > 255:
                 return self.reply(400, {'error': 'invalid_room'})
@@ -689,8 +690,12 @@ class Handler(BaseHTTPRequestHandler):
             if reconnect is not None and (not isinstance(reconnect, str) or len(reconnect) != 51):
                 return self.reply(400, {'error': 'invalid_generation'})
             heartbeat = self.path == '/call/heartbeat'
-            if heartbeat and (lease is None or 'reconnect' in body):
+            if heartbeat and (lease is None or 'reconnect' in body or
+                              not isinstance(body.get('generation'), str) or
+                              not re.fullmatch(r'vc-[a-f0-9]{48}', body['generation'])):
                 return self.reply(400, {'error': 'invalid_heartbeat'})
+            if not heartbeat and 'generation' in body:
+                return self.reply(400, {'error': 'invalid_call_mode'})
             members = self.call_room_members(room, who)
             store = call_store()
             wanted = {who['user_id']: [who['device_id']]}
@@ -717,7 +722,7 @@ class Handler(BaseHTTPRequestHandler):
                                         {peer['id'] for peer in observed}, camera_capable=camera_capable, join_existing=join_existing)
             admission = {**admission, 'heartbeat_supported': True,
                          'server_time': int(time.time() * 1000)}
-            if heartbeat:
+            if heartbeat and body['generation'] == admission['generation']:
                 return self.reply(200, admission)
             now = int(time.time())
             token = jwt({'iss': 'prototype', 'sub': admission['identity'], 'nbf': now - 5, 'exp': now + 60,

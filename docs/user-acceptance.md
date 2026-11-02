@@ -2238,8 +2238,8 @@ analyzer чистый. [Свидетельство](iterations/call-network-lab-
 он отдельно указан в исследовании и не засчитан как успешная проверка.
 
 OPT-06, кандидат51/02.11: реализован отдельный `/call/heartbeat` без выдачи JWT,
-с сохранением тех же membership/device/roster/lease проверок. Первичный вход,
-новое поколение и rebuild требуют свежий `/token`; старый JWT не переносится
+с сохранением тех же membership/device/roster/lease проверок. Первичный вход и rebuild требуют свежий `/token`; новое поколение получает
+свежий JWT в том же heartbeat-ответе; старый JWT не переносится
 между identity/lease/generation. Старые клиенты/откат сервера совместимы.
 Python844 PASS/4skip, адресные Flutter admission/key-sharing/cleanup7 PASS,
 analyzer чистый; модель20 запросов JWT20→0/JSON−50.06%, не экономия медиатрафика.

@@ -376,6 +376,7 @@ class CallProbe implements VoiceCall {
               if (joinExisting) 'join_existing': true,
               if (_admission != null) 'lease_id': _admission!['lease_id'],
               if (reconnect != null) 'reconnect': reconnect,
+              if (heartbeat) 'generation': _admission!['generation'],
             }),
           )
           .timeout(const Duration(seconds: 10));

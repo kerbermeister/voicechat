@@ -284,7 +284,7 @@ class AdmissionTests(unittest.TestCase):
                 self.assertNotIn('roomAdmin', grant['video'])
                 self.assertNotIn('key', grant)
 
-    def test_heartbeat_renews_only_existing_authorized_lease_without_signing_jwt(self):
+    def test_heartbeat_signs_only_for_new_generation_and_never_renews_denied_lease(self):
         who = {'user_id': '@alice:local', 'device_id': 'DEVICE'}
         joined = [True]
         bob = {'user_id': '@bob:local', 'device_id': 'B'}
@@ -310,18 +310,22 @@ class AdmissionTests(unittest.TestCase):
                 self.assertEqual(status, 200)
                 self.assertTrue(initial['heartbeat_supported'])
                 self.assertIsInstance(initial['token'], str)
-                body = {'room_id': '!room:local', 'session': 'test', 'lease_id': initial['lease_id']}
+                body = {'room_id': '!room:local', 'session': 'test', 'lease_id': initial['lease_id'], 'generation': initial['generation']}
                 now[0] += 3
-                with patch.object(token_server, 'jwt', side_effect=AssertionError('Heartbeat signed a JWT')):
+                with patch.object(token_server, 'jwt', wraps=token_server.jwt) as signing:
                     status, heartbeat = self.request(body, path='/call/heartbeat')
                     self.assertEqual(status, 200)
                     self.assertNotIn('token', heartbeat)
+                    signing.assert_not_called()
                     for key in ('identity', 'generation', 'lease_id', 'roster'):
                         self.assertEqual(heartbeat[key], initial[key])
                     self.assertEqual(store.roster('!room:local', 'test')[0]['expires'], now[0] + 30)
                     expires = now[0] + 30
                     self.assertEqual(self.request({k: v for k, v in body.items() if k != 'lease_id'}, path='/call/heartbeat')[0], 400)
                     self.assertEqual(self.request({**body, 'reconnect': initial['generation']}, path='/call/heartbeat')[0], 400)
+                    for generation in (None, [], 'bad-room', 'vc-' + 'Z' * 48):
+                        self.assertEqual(self.request({**body, 'generation': generation}, path='/call/heartbeat')[0], 400)
+                    self.assertEqual(self.request(body)[0], 400)
                     self.assertEqual(self.request(body, auth='', path='/call/heartbeat')[0], 401)
                     joined[0] = False
                     self.assertEqual(self.request(body, path='/call/heartbeat')[0], 403)
@@ -332,10 +336,18 @@ class AdmissionTests(unittest.TestCase):
                     now[0] += 1
                     status, rotated = self.request(body, path='/call/heartbeat')
                     self.assertEqual(status, 200)
-                    self.assertNotIn('token', rotated)
+                    self.assertIsInstance(rotated['token'], str)
+                    self.assertEqual(signing.call_count, 1)
+                    import base64
+                    payload = rotated['token'].split('.')[1]
+                    claims = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))
+                    self.assertEqual(claims['video']['room'], rotated['generation'])
                     self.assertNotEqual(rotated['generation'], initial['generation'])
                     self.assertEqual(rotated['lease_id'], initial['lease_id'])
                     self.assertEqual(len(rotated['roster']), 2)
+                    body['generation'] = rotated['generation']
+                    self.assertEqual(self.request(body, path='/call/heartbeat')[0], 200)
+                    self.assertEqual(signing.call_count, 1)
                     expires = now[0] + 30
                     device_key[0] = 'C' * 43
                     self.assertEqual(self.request(body, path='/call/heartbeat')[0], 410)
@@ -363,7 +375,7 @@ class AdmissionTests(unittest.TestCase):
                 with patch.object(token_server.Handler, 'matrix', side_effect=error), \
                      patch.object(token_server, 'call_store', return_value=store):
                     status, response = self.request(body)
-                    heartbeat_status, heartbeat_response = self.request(body, path='/call/heartbeat')
+                    heartbeat_status, heartbeat_response = self.request({**body, 'generation': grant['generation']}, path='/call/heartbeat')
                 self.assertEqual(heartbeat_status, expected)
                 self.assertEqual(heartbeat_response, response)
                 self.assertEqual(status, expected)

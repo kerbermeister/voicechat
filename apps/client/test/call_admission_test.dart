@@ -57,6 +57,18 @@ void main() {
         false,
         reason: 'A new generation must request its own JWT',
       );
+      final refreshed = parseCallAdmission(
+        admission(generation: 'c'),
+        identity: identity,
+        heartbeat: true,
+        previous: previous,
+      );
+      expect(
+        refreshed['token'],
+        'fixture-jwt-c',
+        reason:
+            'New-generation heartbeat can supply its fresh JWT in one request',
+      );
       for (final invalid in [
         {...next, 'lease_id': 'd' * 64},
         {...next, 'identity': '@other:local/B'},
