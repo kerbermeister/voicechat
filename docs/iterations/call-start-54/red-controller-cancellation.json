@@ -1,0 +1,11 @@
+{
+  "base_runtime_release": "915d0e943dae24d21c62c5235b872374148682f8",
+  "scope": "Real CallController and CallSession, fake peer/capture/beforeMedia; no hardware/network",
+  "sha256": {
+    "apps/client/test/call_start_cancellation_test.dart": "7d61a783b5c7bee018646c87759b9dcbcfa8b9149c9ba95e2834e7e8c1138d6f",
+    "apps/client/lib/call_controller.dart": "f2de31e95b184ce51b903e3afa49cf1a2857732b765625856eb494495ddb26d5",
+    ".prototype/call-start54-red.log": "ad56b1b4ff9be47ae9463c595c331edffc7f610e3ae283d608846f57cb5df164"
+  },
+  "result": "FAIL both: UI end leaves registered outgoing session live during capture; cancelled start remains pending and blocks its retry",
+  "reported_iphone_cause_proven": false
+}

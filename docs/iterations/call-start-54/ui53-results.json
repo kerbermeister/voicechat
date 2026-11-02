@@ -1,0 +1,40 @@
+[
+  {
+    "scenario": "callback_after_prior_unanswered_calls",
+    "source": "915d0e9",
+    "delivery_ms": 1129,
+    "connected_both": true,
+    "expiry_to_callback_ms": null,
+    "synthetic_media": true,
+    "physical_device": false
+  },
+  {
+    "scenario": "missed_then_immediate_callback",
+    "ring_ms": 44684,
+    "expiry_to_callback_ms": 945,
+    "delivery_ms": 1330,
+    "connected_both": true,
+    "synthetic_media": true,
+    "physical_device": false
+  },
+  {
+    "scenario": "declined_then_same_caller_retry",
+    "decline_to_retry_ms": 1745,
+    "delivery_ms": 1099,
+    "connected_both": true,
+    "synthetic_media": true,
+    "physical_device": false
+  },
+  {
+    "scenario": "caller_cancelled_remote_dismissal",
+    "source": "915d0e9",
+    "remote_incoming_after_10s": true,
+    "synthetic_media": true,
+    "physical_device": false
+  },
+  {
+    "scenario": "caller_cancelled_remote_dismissal_repeat",
+    "remote_dismiss_ms": 302,
+    "passed": true
+  }
+]

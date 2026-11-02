@@ -1,0 +1,69 @@
+[
+  {
+    "scenario": "concurrent_cross_calls_audio",
+    "both_visible_busy": true,
+    "resolution_ms": 1268,
+    "automatic_answer": false
+  },
+  {
+    "scenario": "retry_after_concurrent_cross_calls_audio",
+    "delivery_ms": 1043,
+    "connected_both": true,
+    "received_audio_packets": 576,
+    "secure_turn_relay": true
+  },
+  {
+    "scenario": "burst_retry_audio",
+    "cycle": 1,
+    "delivery_ms": 1185,
+    "connected_both": true,
+    "remote_ended": true
+  },
+  {
+    "scenario": "burst_retry_audio",
+    "cycle": 2,
+    "delivery_ms": 1090,
+    "connected_both": true,
+    "remote_ended": true
+  },
+  {
+    "scenario": "burst_retry_audio",
+    "cycle": 3,
+    "delivery_ms": 1153,
+    "connected_both": true,
+    "remote_ended": true
+  },
+  {
+    "scenario": "burst_retry_audio",
+    "cycle": 4,
+    "delivery_ms": 989,
+    "connected_both": true,
+    "remote_ended": true
+  },
+  {
+    "scenario": "concurrent_cross_calls_audio_video",
+    "outcome": "one_outgoing_video_one_incoming_after_audio_busy",
+    "automatic_answer": false,
+    "callee_capture_before_accept": false,
+    "video_manual_accept": true,
+    "remote_frame_counter_visible_both": true,
+    "video_receiver": [
+      {
+        "packetsReceived": 7972,
+        "packetsLost": 0,
+        "bytesReceived": 8191092,
+        "frameWidth": 640,
+        "frameHeight": 360,
+        "framesReceived": 1003,
+        "framesDecoded": 1003,
+        "framesDropped": 0,
+        "keyFramesDecoded": 1,
+        "freezeCount": 0,
+        "pliCount": 0,
+        "nackCount": 0,
+        "codec": "video/VP8"
+      }
+    ],
+    "secure_turn_relay": true
+  }
+]

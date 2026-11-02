@@ -1,0 +1,32 @@
+{
+  "candidate": "1.19.6+54",
+  "flutter": {
+    "passed": 636,
+    "skipped": 4
+  },
+  "targeted_passed": 81,
+  "python": {
+    "total": 849,
+    "skipped": 4
+  },
+  "client_analyze": "PASS",
+  "patched_matrix_analyze": "PASS",
+  "native_macos": "PASS3cycles; real RTC/microphone, memory signalling, no audio playout",
+  "physical_phones": false,
+  "runtime_test_sha256": {
+    "apps/client/lib/call_controller.dart": "79603627151e593d542057e3433a7627515c7f579989c117ed24c4248474b875",
+    "vendor/matrix/lib/src/voip/voip.dart": "924415ae5afb63f8f0b279954541f14635cc744dbd6dfe0e990be05677736468",
+    "vendor/matrix/lib/src/voip/call_session.dart": "712945bcbea26ec40ebc0712a10c4bba103dd2e6ad9c473c246a273644fad25b",
+    "apps/client/test/call_start_cancellation_test.dart": "79182311f49296cc139778851a019539f77dacacd1167fe766665f541b95531e",
+    "apps/client/test/call_signaling_rate_limit_test.dart": "d64461d304f88dc0966843772c8dbd83ef6920b16f031a628c8e160054a47b0e"
+  },
+  "logs_sha256": {
+    ".prototype/call-start54-flutter-final.log": "9ccfdc412dc7d72a59149644b3b05bb37d3aa8d4f88b190f4457f366c2d19d88",
+    ".prototype/call-rate-limit54-targeted-final.log": "8291b7416f598d34da3f5fa8f495ab660145c0b7b698b2f4d6073cd6a1b18aa8",
+    ".prototype/call-start54-analyze-final.log": "a814290ae71dea65e2597695eb77f0de860f64670598dffcb59b650a4ea8e20c",
+    ".prototype/call-start54-sdk-analyze-final.log": "8aa0c3f9bee06710693801db0ccbc508c46aaf45cf1c764a96d3a26073f0ca39",
+    ".prototype/call-start54-python.log": "49313af05473469b25ec6eb58f4fb27da0936c9e1e9137a18650fdada67da082",
+    ".prototype/call54-macos-native-call.log": "cc6283b09531d66d081e7300a76f2f95a1375cdea34f123b5e63eb73272587d3"
+  },
+  "prior_python_failure": "Version metadata mismatch corrected; 2GiB disk guard hit during concurrent builds. Guard unchanged; isolated rerun PASS."
+}

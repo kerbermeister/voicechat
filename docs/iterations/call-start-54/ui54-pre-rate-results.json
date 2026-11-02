@@ -1,0 +1,50 @@
+[
+  {
+    "scenario": "cancel_pending_capture_retry_before_old_result",
+    "cancel_to_retry_ms": 884,
+    "delivery_ms": 1076,
+    "connected_both": true,
+    "synthetic_media": true,
+    "physical_device": false,
+    "late_old_capture_stopped": true,
+    "live_new_call_preserved": true
+  },
+  {
+    "scenario": "early_cancel_as_invite_arrives_native_clicks",
+    "remote_dismiss_ms": 345,
+    "passed": true,
+    "synthetic_media": true,
+    "physical_device": false
+  },
+  {
+    "scenario": "caller_cancelled_then_callee_callback_native_clicks",
+    "delivery_ms": 1043,
+    "connected_both": true,
+    "synthetic_media": true,
+    "physical_device": false
+  },
+  {
+    "scenario": "concurrent_cross_calls_audio",
+    "both_visible_busy": true,
+    "resolution_ms": 1228,
+    "automatic_answer": false,
+    "synthetic_media": true,
+    "physical_device": false
+  },
+  {
+    "scenario": "retry_after_concurrent_cross_calls_audio",
+    "delivery_ms": 906,
+    "connected_both": true,
+    "synthetic_media": true,
+    "physical_device": false
+  },
+  {
+    "scenario": "retry_after_concurrent_cross_calls_audio",
+    "delivery_ms": 906,
+    "connected_both": false,
+    "caller_ended_callee_connected": true,
+    "matrix_http_429_confirmed": true,
+    "synthetic_media": true,
+    "physical_device": false
+  }
+]

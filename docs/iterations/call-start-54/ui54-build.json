@@ -1,0 +1,8 @@
+{
+  "candidate": "1.19.6+54",
+  "runtime_dirty": true,
+  "stage": "with-rate-limit-fix-and-consistent-version",
+  "synthetic_media_only": true,
+  "main_sha256": "248082c7b863f13178ce8792b3d8bfcdf812e868b56fae4c9896267f6169af4f",
+  "media_fixture_sha256": "d7f45fa6d0cfce3cbb9264c8eff6f3171c11511699e8853f07d0e840a17f663b"
+}

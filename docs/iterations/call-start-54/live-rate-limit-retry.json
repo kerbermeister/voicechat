@@ -1,0 +1,578 @@
+{
+  "scope": "isolated local Synapse; default message limit unchanged; encrypted sends only",
+  "status_counts": {
+    "200": 72,
+    "429": 8
+  },
+  "transactions_recovered_429_to_200": 4,
+  "recovered_transactions": [
+    [
+      {
+        "elapsed_ms": 57236,
+        "status": 429,
+        "transaction_hash": "301ce2b78017b54c4eb8245aad2c02e33f67d048ca24b381517948c0cab4121a",
+        "kind": "summary"
+      },
+      {
+        "elapsed_ms": 61608,
+        "status": 200,
+        "transaction_hash": "301ce2b78017b54c4eb8245aad2c02e33f67d048ca24b381517948c0cab4121a",
+        "kind": "summary"
+      }
+    ],
+    [
+      {
+        "elapsed_ms": 100872,
+        "status": 429,
+        "transaction_hash": "afbcde4b4c7f8f39d7a584dbbd346a2676769d63c3abf8c7ab54b11d17ab86f2",
+        "kind": "encrypted_event"
+      },
+      {
+        "elapsed_ms": 102111,
+        "status": 429,
+        "transaction_hash": "afbcde4b4c7f8f39d7a584dbbd346a2676769d63c3abf8c7ab54b11d17ab86f2",
+        "kind": "encrypted_event"
+      },
+      {
+        "elapsed_ms": 106620,
+        "status": 200,
+        "transaction_hash": "afbcde4b4c7f8f39d7a584dbbd346a2676769d63c3abf8c7ab54b11d17ab86f2",
+        "kind": "encrypted_event"
+      }
+    ],
+    [
+      {
+        "elapsed_ms": 107636,
+        "status": 429,
+        "transaction_hash": "129a37da5cbd02c02851c81ee38389870118ac9ac7432f6a795b3d8719afb11d",
+        "kind": "encrypted_event"
+      },
+      {
+        "elapsed_ms": 112102,
+        "status": 429,
+        "transaction_hash": "129a37da5cbd02c02851c81ee38389870118ac9ac7432f6a795b3d8719afb11d",
+        "kind": "encrypted_event"
+      },
+      {
+        "elapsed_ms": 116604,
+        "status": 200,
+        "transaction_hash": "129a37da5cbd02c02851c81ee38389870118ac9ac7432f6a795b3d8719afb11d",
+        "kind": "encrypted_event"
+      }
+    ],
+    [
+      {
+        "elapsed_ms": 107827,
+        "status": 429,
+        "transaction_hash": "16ff9224458c97b4e0ce6378fdd49f653ef80e894c4f9ac6e60ae890fea5ed61",
+        "kind": "summary"
+      },
+      {
+        "elapsed_ms": 111606,
+        "status": 200,
+        "transaction_hash": "16ff9224458c97b4e0ce6378fdd49f653ef80e894c4f9ac6e60ae890fea5ed61",
+        "kind": "summary"
+      }
+    ]
+  ],
+  "unrecovered_429_transactions": [
+    [
+      {
+        "elapsed_ms": 56515,
+        "status": 429,
+        "transaction_hash": "3065bdc446d48b24c26b119fca4a7a43ebf7149a8c783a7da02266e175b9b595",
+        "kind": "encrypted_event"
+      }
+    ],
+    [
+      {
+        "elapsed_ms": 107213,
+        "status": 429,
+        "transaction_hash": "9d0077c1d1d261c21bc38d8e60e82dd19f2424d9fac72dcc33f5396c4c326f9f",
+        "kind": "encrypted_event"
+      }
+    ]
+  ],
+  "all_records": [
+    {
+      "elapsed_ms": 664,
+      "status": 200,
+      "transaction_hash": "71f6b1e48bda60b5c31e2c090c04f7e046650819f09df14be06ffc7a664d4d67",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 809,
+      "status": 200,
+      "transaction_hash": "c9196c564b08ba42f8464b3294d788fe10e917fcff0b48c2b696a641943b3f3c",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 830,
+      "status": 200,
+      "transaction_hash": "4d35f9f33eff6f49fa0cbf090e824ee505f620ecb3781684777266f610a40673",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 933,
+      "status": 200,
+      "transaction_hash": "c0008fed6fa684d22ac4d9faa35304a35b80b127f296d231ab1004e4ab7aba5c",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 979,
+      "status": 200,
+      "transaction_hash": "9512c470dd6d7210ae4005ba1ff3dd9629af6ba42ae1f7f0b3ab69fea1234715",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 997,
+      "status": 200,
+      "transaction_hash": "841db3dbb6c58ce8d454288a9bcdb036d71b7deb11da6eebe8c5be9d2e5abc71",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 1456,
+      "status": 200,
+      "transaction_hash": "0f20bf14e9a41d2a4c77270d907ac91fb332c2b99b3ebcb196044a5af09ed43d",
+      "kind": "summary"
+    },
+    {
+      "elapsed_ms": 1480,
+      "status": 200,
+      "transaction_hash": "0734960c5e568ba32ee17e180033c10ed2f401497b7b31af5a4611d48438fe2c",
+      "kind": "summary"
+    },
+    {
+      "elapsed_ms": 2574,
+      "status": 200,
+      "transaction_hash": "02443619c13a5d50c99230dccd6c6b1f1e62078256e21d87718f9863952c3cdd",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 2668,
+      "status": 200,
+      "transaction_hash": "d2d52473bf632b35fda792fe16c7a7edcd8031577e01dc783e3a36226f73d3fb",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 3629,
+      "status": 200,
+      "transaction_hash": "ce52cbf52fcc4bcd947e1ad5b9c1457c2dc6d0850e671942fe2cdfcf984ce943",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 3656,
+      "status": 200,
+      "transaction_hash": "dd07dae06f5f31674d012300d38ca537f47e8b1d45831aa2580985e0c3fa1fe1",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 3710,
+      "status": 200,
+      "transaction_hash": "513665a767cb70dee4529ec81c872a84fa42ce99d7f3f160237debaa49e78032",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 3855,
+      "status": 200,
+      "transaction_hash": "f3800c1f105c900fee2b5c2f69ded07eaa3e832a3d807d235acfad2862aec14c",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 3887,
+      "status": 200,
+      "transaction_hash": "fe3a523d1459aaad3da8a8883923573b6d63ec482ff976f62fae8bf5f6bbd1a2",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 30277,
+      "status": 200,
+      "transaction_hash": "aa699192e7b98284845a9adcb92f2625828a8a6bab1442b4b71945c51371d351",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 30813,
+      "status": 200,
+      "transaction_hash": "76915307dc6e24bbecd527bf12ee39e347e33dacf90ca5df73d50069e5b3030b",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 30894,
+      "status": 200,
+      "transaction_hash": "aad6d87a0b68fe683cf36b07ebfd57e40323405a6a88672ba52730f41ad6a420",
+      "kind": "summary"
+    },
+    {
+      "elapsed_ms": 51108,
+      "status": 200,
+      "transaction_hash": "a600b0a5d7fe3cf8be2f92f20626e91c1bcd2df6f3ec26a0900e792e910dcaf4",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 51288,
+      "status": 200,
+      "transaction_hash": "c9e4b248892aa22fe028a1d20ce50a5d8d08bcf8ee204342ebaa42a833b89374",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 52161,
+      "status": 200,
+      "transaction_hash": "348f3304a4e284276dda4fe874650fdc71ba619b0c9b9d502b7d3fcd2b4be0e6",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 52191,
+      "status": 200,
+      "transaction_hash": "440436192c24e2d91565475a64d7889a4955c58dc264131a2c4fff28200fd5cf",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 52235,
+      "status": 200,
+      "transaction_hash": "8242676eaf78a1d36684ad87ba22a3d9e4f7cee3585c1a394407c2ecfb9b83f9",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 52396,
+      "status": 200,
+      "transaction_hash": "8c1a0441368d59d360e129b3991d97668742c90fa3ac394e461d675de7db61b0",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 52430,
+      "status": 200,
+      "transaction_hash": "b3693e8bddd4d64fa2cd871c606b3228be5721a98c2818da0b4d5c15a617d93d",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 52880,
+      "status": 200,
+      "transaction_hash": "2e2e6cf7fa32f88e0fe4e22e20c1239f1ec3fd87955dcbabc09c70acb1bb7b62",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 52919,
+      "status": 200,
+      "transaction_hash": "7cb107e6067c84009fc16b80a656d9d15794c2fb92858737930f06e5622752d6",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 53108,
+      "status": 200,
+      "transaction_hash": "5a5d83bfabb9f8d9b296b92c2942478a272da598fc7e025e4632d370909fd3c0",
+      "kind": "summary"
+    },
+    {
+      "elapsed_ms": 54784,
+      "status": 200,
+      "transaction_hash": "6a207c2523aba01b85f3ceb72ab0e92a3bc7b2f47749e34ccd86e6fa45655ddc",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 54858,
+      "status": 200,
+      "transaction_hash": "d4f6470c4f754f9f8efc51fa6522d0504ed42c7280e130b299d2f03887508ee0",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 54969,
+      "status": 200,
+      "transaction_hash": "9b1232559e8951434976ef671e2a9dc4398aef97b105e54965950bd435dc131d",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 55764,
+      "status": 200,
+      "transaction_hash": "6553ca046e96d9b559fb4ef6205890694a4b767148c222e0a36733111efd5cea",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 55785,
+      "status": 200,
+      "transaction_hash": "74b4d5f75043b41ccfac437bfbf105f1b8dfd57a5e4e07b2747b258ee1268ff1",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 55871,
+      "status": 200,
+      "transaction_hash": "e73e40cd7f384fc87a43632541e83fdcfbbb2566adaf294ef26e7f859b260376",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 56103,
+      "status": 200,
+      "transaction_hash": "3c88c99242c2bb9f79979ff2b0164abf93d234c1872786614ab969eac307e1c6",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 56515,
+      "status": 429,
+      "transaction_hash": "3065bdc446d48b24c26b119fca4a7a43ebf7149a8c783a7da02266e175b9b595",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 56527,
+      "status": 200,
+      "transaction_hash": "fb7c08a3d372fc72346d14edfb330f655b569ea75e5d9d00b1cfc9c29aa36633",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 56557,
+      "status": 200,
+      "transaction_hash": "6d14c55fa956820a964100beff2235efaa534865ce0e8845949a132c438126fb",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 57236,
+      "status": 429,
+      "transaction_hash": "301ce2b78017b54c4eb8245aad2c02e33f67d048ca24b381517948c0cab4121a",
+      "kind": "summary"
+    },
+    {
+      "elapsed_ms": 61608,
+      "status": 200,
+      "transaction_hash": "301ce2b78017b54c4eb8245aad2c02e33f67d048ca24b381517948c0cab4121a",
+      "kind": "summary"
+    },
+    {
+      "elapsed_ms": 96446,
+      "status": 200,
+      "transaction_hash": "c032e44ca29b05367824d892eb68c26e9faddc7632f3ea46cfbeae9e9d00361a",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 96674,
+      "status": 200,
+      "transaction_hash": "60be3d99aaf024edec717d7fb342f66b59c77b81256bab44c5239980bb37218f",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 97552,
+      "status": 200,
+      "transaction_hash": "ab51fd5208aed2f96c9c79e74f04e310a891ef6fff179463e6ab7af03dba574b",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 97569,
+      "status": 200,
+      "transaction_hash": "f59905993a8f2ecc1873cbecf65f6428fece9c8a10dcb0ed4717f00139c2607b",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 97683,
+      "status": 200,
+      "transaction_hash": "40bae51c582c392ebb777e8dd0180c668ae8282f6fcac7a8a4204457136f5aaa",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 97799,
+      "status": 200,
+      "transaction_hash": "fc719688d5c00f262083e765f1ae1ef8b994e76311632ca5de2a198574dbfcf2",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 97877,
+      "status": 200,
+      "transaction_hash": "0281cad1936300bb3e8debc7301a3067e38a5c6ed8c1f515ff0fd343a2956da4",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 98340,
+      "status": 200,
+      "transaction_hash": "f439e76f14a2ec59222c6cfa3881aa616785b485792155d0baceeb16b9b263fb",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 98374,
+      "status": 200,
+      "transaction_hash": "48f460be157deead5022d9d27f1b5b1ee50bba1f317d474a7cfcfd02bc8ade45",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 98565,
+      "status": 200,
+      "transaction_hash": "b8eb0276765109c28f8e7bf224f4749ede5ce72a9ad81fb77d1db6d207e3d2f5",
+      "kind": "summary"
+    },
+    {
+      "elapsed_ms": 100238,
+      "status": 200,
+      "transaction_hash": "8a54ab7a4266e0c84ed5c544b07dce6b89ae816735e55275fc667ee495860b88",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 100872,
+      "status": 429,
+      "transaction_hash": "afbcde4b4c7f8f39d7a584dbbd346a2676769d63c3abf8c7ab54b11d17ab86f2",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 101086,
+      "status": 200,
+      "transaction_hash": "03719da2e8daec78b4704d77cb1be61a636f358731c99e39700d5051caab5987",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 101110,
+      "status": 200,
+      "transaction_hash": "7fcd5efe08b3b1aa42ed6fdc0f4505840af4d2e32ba2b808049c6f927fbcb5e2",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 101209,
+      "status": 200,
+      "transaction_hash": "6e0a22f296f85cee1d6d6531103a3036f36326e99372166879c2fe726f0d4168",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 102111,
+      "status": 429,
+      "transaction_hash": "afbcde4b4c7f8f39d7a584dbbd346a2676769d63c3abf8c7ab54b11d17ab86f2",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 106620,
+      "status": 200,
+      "transaction_hash": "afbcde4b4c7f8f39d7a584dbbd346a2676769d63c3abf8c7ab54b11d17ab86f2",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 106740,
+      "status": 200,
+      "transaction_hash": "536db50f2ebea96269dd1c5cba374016278ac0f5875398c2bfda0cce5491285d",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 107213,
+      "status": 429,
+      "transaction_hash": "9d0077c1d1d261c21bc38d8e60e82dd19f2424d9fac72dcc33f5396c4c326f9f",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 107636,
+      "status": 429,
+      "transaction_hash": "129a37da5cbd02c02851c81ee38389870118ac9ac7432f6a795b3d8719afb11d",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 107827,
+      "status": 429,
+      "transaction_hash": "16ff9224458c97b4e0ce6378fdd49f653ef80e894c4f9ac6e60ae890fea5ed61",
+      "kind": "summary"
+    },
+    {
+      "elapsed_ms": 111606,
+      "status": 200,
+      "transaction_hash": "16ff9224458c97b4e0ce6378fdd49f653ef80e894c4f9ac6e60ae890fea5ed61",
+      "kind": "summary"
+    },
+    {
+      "elapsed_ms": 112102,
+      "status": 429,
+      "transaction_hash": "129a37da5cbd02c02851c81ee38389870118ac9ac7432f6a795b3d8719afb11d",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 113055,
+      "status": 200,
+      "transaction_hash": "cd6e5063a0e82dcbd4b584bd9e0fdec7f9de4681b4639f46d0e00cbd9e707154",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 113223,
+      "status": 200,
+      "transaction_hash": "22d61244058d8901f4c0a7241b43422a32e2170b3ecb0a7645d11bf8a3f5ac47",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 116604,
+      "status": 200,
+      "transaction_hash": "129a37da5cbd02c02851c81ee38389870118ac9ac7432f6a795b3d8719afb11d",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 116628,
+      "status": 200,
+      "transaction_hash": "db5eb620597a139a2e6ce6f187be74edfd1946e29325e118d69e977e75f92c54",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 207487,
+      "status": 200,
+      "transaction_hash": "288da764d4f9e159fd27b7f21877b4f1247947a8677649820337e90b0ed88756",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 207530,
+      "status": 200,
+      "transaction_hash": "0d091f801cf00c5a81533d498a09222fc618f639be2cd48ad80452bffce5489a",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 207552,
+      "status": 200,
+      "transaction_hash": "b46993744e659803988e48c38b7b4adea83f5d07ebe39dd3bc11de7854a5a664",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 207618,
+      "status": 200,
+      "transaction_hash": "2a94bdf3f4cbc17ffbc1a0b39a933878f2b4e692ee662a97ee5285475e9bedda",
+      "kind": "summary"
+    },
+    {
+      "elapsed_ms": 207646,
+      "status": 200,
+      "transaction_hash": "b581fd233615ae4e025014e5a3e3e2f100c0006b960a51180d8f68bed60cfa50",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 237629,
+      "status": 200,
+      "transaction_hash": "f8911cc58dc8f22800c2f5c1844a02ad9e89872f83a80dee0f1da7d6fe702224",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 237680,
+      "status": 200,
+      "transaction_hash": "3613ef6bfc5f217f4d36c2665469537a7ec89abf354a3aa2da1be7ff602db701",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 237738,
+      "status": 200,
+      "transaction_hash": "ad6ccd6ac4c86471eeb026bf0a5e5ec63a99b3359eec8380855e300393170c32",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 237963,
+      "status": 200,
+      "transaction_hash": "a8ac370579e607dac87336904d0ef07dfd02bce2a0f2b85d2ea3abaa1ab5b011",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 238003,
+      "status": 200,
+      "transaction_hash": "9044c35002f728da19f1c0b7ed0bf88273317ec87be6c5f9e9ba8f001d3a1ee9",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 315946,
+      "status": 200,
+      "transaction_hash": "611a5831ca1324179ba30c83e2e9ceb9a1b82f17487ffd1be766c5c6cc43363a",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 316049,
+      "status": 200,
+      "transaction_hash": "fe7ca67b9fed5354ca70714a7fbdc212b81e89b32f25647425004ad47c9b3e08",
+      "kind": "encrypted_event"
+    },
+    {
+      "elapsed_ms": 316724,
+      "status": 200,
+      "transaction_hash": "2638df3ef6d80b7932f70cf5e966a0154cd8ca1336b2b7ba752556a623afbffd",
+      "kind": "summary"
+    }
+  ]
+}

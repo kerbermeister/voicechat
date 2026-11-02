@@ -67,6 +67,7 @@ class CallController extends ChangeNotifier
   String? dialError;
   bool starting = false;
   bool _dialPending = false;
+  Completer<void>? _dialCancellation;
   int _dialGeneration = 0;
   final _recordedEnds = <({String room, String session})>{};
   late final VoIP voip;
@@ -565,6 +566,7 @@ class CallController extends ChangeNotifier
     if (active != null && !active!.isClosed) {
       throw UserActionError('Сначала завершите текущий звонок.');
     }
+    final cancellation = _dialCancellation = Completer<void>();
     _dialPending = true;
     starting = true;
     dialingRoom = room;
@@ -573,9 +575,28 @@ class CallController extends ChangeNotifier
     String? existingSession;
     var rejoining = invitation != null;
     _refresh();
-    try {
+    // A platform permission or setup request can remain unanswered. Bound that
+    // phase independently of the ringing time after the invite is published.
+    final preparationTimeout = Timer(const Duration(seconds: 45), () {
+      final current = active;
+      if (generation != _dialGeneration ||
+          _closed ||
+          !starting ||
+          (current?.duration ?? Duration.zero) > Duration.zero ||
+          current is DirectCall && current.call.state == CallState.kConnected) {
+        return;
+      }
+      unawaited(end().catchError((Object _) {}));
+      dialingRoom = room;
+      dialError =
+          'Не удалось подготовить звонок. Проверьте доступ к микрофону и соединение.';
+      _refresh();
+    });
+    Future<void> connect() async {
       if (invitation != null && !await _answerPush(invitation.session)) return;
+      if (generation != _dialGeneration || _closed) return;
       await beforeMedia?.call();
+      if (generation != _dialGeneration || _closed) return;
       if (!room.isDirectChat && invitation == null) {
         final ongoing = await groups.find(room);
         if (generation != _dialGeneration || _closed) return;
@@ -601,9 +622,10 @@ class CallController extends ChangeNotifier
           room,
           video ? CallType.kVideo : CallType.kVoice,
           userId: users.single,
+          isCancelled: () => generation != _dialGeneration || _closed,
         );
         final call = _directCalls[session]!;
-        if (generation != _dialGeneration || _closed) {
+        if (generation != _dialGeneration || _closed || call.isClosed) {
           await call.close();
           return;
         }
@@ -658,8 +680,8 @@ class CallController extends ChangeNotifier
         }
         if (!rejoining) {
           await _signal(room, id, 'invite', video: video);
-          unawaited(_invitePush(call));
           if (generation != _dialGeneration || _closed || call.isClosed) return;
+          unawaited(_invitePush(call));
           _ringTimeout?.cancel();
           _ringTimeout = Timer(const Duration(seconds: 45), () {
             if (active == call &&
@@ -679,16 +701,27 @@ class CallController extends ChangeNotifier
       } finally {
         _refresh();
       }
+    }
+
+    try {
+      // Platform permission/setup futures may outlive a cancelled call. Their
+      // generation guards still own cleanup, while the UI can finish immediately.
+      await Future.any<void>([connect(), cancellation.future]);
     } catch (error) {
       if (generation != _dialGeneration || _closed) return;
       await active?.close();
+      if (generation != _dialGeneration || _closed) return;
       dialError = error is UserActionError
           ? error.message
           : 'Не удалось начать звонок. Проверьте сеть, микрофон и проверку устройств.';
       rethrow;
     } finally {
-      _dialPending = false;
-      starting = false;
+      preparationTimeout.cancel();
+      if (identical(_dialCancellation, cancellation)) {
+        _dialCancellation = null;
+        _dialPending = false;
+        starting = false;
+      }
       _refresh();
     }
   }
@@ -719,6 +752,9 @@ class CallController extends ChangeNotifier
   Future<void> end() async {
     final pushEnd = _endPush();
     _dialGeneration++;
+    if (_dialCancellation?.isCompleted == false) {
+      _dialCancellation!.complete();
+    }
     starting = false;
     _ringTimeout?.cancel();
     dialingRoom = null;
@@ -805,6 +841,9 @@ class CallController extends ChangeNotifier
     _closed = true;
     _stopPageExit();
     _dialGeneration++;
+    if (_dialCancellation?.isCompleted == false) {
+      _dialCancellation!.complete();
+    }
     starting = false;
     WidgetsBinding.instance.removeObserver(this);
     _expiry?.cancel();
@@ -897,7 +936,8 @@ class CallController extends ChangeNotifier
   @override
   bool get isWeb => kIsWeb;
   @override
-  bool get canHandleNewCall => !_closed && (active == null || active!.isClosed);
+  bool get canHandleNewCall =>
+      !_closed && !starting && (active == null || active!.isClosed);
   @override
   EncryptionKeyProvider? get keyProvider => null;
   @override
@@ -908,6 +948,11 @@ class CallController extends ChangeNotifier
   Future<void> registerListeners(CallSession session) async {
     final call = DirectCall(session, _refresh, report);
     _directCalls[session] = call;
+    if (session.direction == CallDirection.kOutgoing && starting) {
+      // The cancel button must own the session before RTC/capture can await.
+      active = call;
+      _refresh();
+    }
     if (session.direction == CallDirection.kIncoming) {
       try {
         await call.authorize().timeout(const Duration(seconds: 8));
@@ -928,6 +973,8 @@ class CallController extends ChangeNotifier
         !session.room.encrypted ||
         !session.room.isDirectChat) {
       await call.close();
+      if (identical(active, call)) active = null;
+      _refresh();
       return;
     }
     if (call.isClosed || _closed) return;

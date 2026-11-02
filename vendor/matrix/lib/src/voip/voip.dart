@@ -968,39 +968,69 @@ class VoIP {
   /// Ideally only group calls would need setting both userId and deviceId to allow
   /// having 2 devices from the same user in a group call
   ///
+  /// [isCancelled] fences an abandoned setup across TURN and platform awaits.
+  ///
   /// For p2p call, you want to have all the devices of the specified `userId` ring
   Future<CallSession> inviteToCall(
     Room room,
     CallType type, {
     String? userId,
     String? deviceId,
+    bool Function()? isCancelled,
   }) async {
+    if (isCancelled?.call() == true) {
+      throw StateError('Call startup cancelled');
+    }
     final roomId = room.id;
     final callId = genCallID();
     if (currentGroupCID == null) {
       incomingCallRoomId[roomId] = callId;
     }
-    final opts = CallOptions(
-      callId: callId,
-      type: type,
-      dir: CallDirection.kOutgoing,
-      room: room,
-      voip: this,
-      localPartyId: localPartyId,
-      iceServers: await getIceServers(),
-    );
-    final newCall = createNewCall(opts);
+    CallSession? newCall;
+    try {
+      final opts = CallOptions(
+        callId: callId,
+        type: type,
+        dir: CallDirection.kOutgoing,
+        room: room,
+        voip: this,
+        localPartyId: localPartyId,
+        iceServers: await getIceServers(),
+      );
+      // Cancellation may happen while temporary TURN credentials are in flight.
+      if (isCancelled?.call() == true) {
+        throw StateError('Call startup cancelled');
+      }
+      newCall = createNewCall(opts);
 
-    newCall.remoteUserId = userId;
-    newCall.remoteDeviceId = deviceId;
+      newCall.remoteUserId = userId;
+      newCall.remoteDeviceId = deviceId;
 
-    await delegate.registerListeners(newCall);
+      await delegate.registerListeners(newCall);
+      if (isCancelled?.call() == true) {
+        throw StateError('Call startup cancelled');
+      }
 
-    currentCID = VoipId(roomId: roomId, callId: callId);
-    await newCall.initOutboundCall(type).then((_) {
-      unawaited(delegate.handleNewCall(newCall));
-    });
-    return newCall;
+      currentCID = VoipId(roomId: roomId, callId: callId);
+      await newCall.initOutboundCall(type);
+      if (isCancelled?.call() == true) {
+        throw StateError('Call startup cancelled');
+      }
+      if (!newCall.callHasEnded) unawaited(delegate.handleNewCall(newCall));
+      return newCall;
+    } catch (_) {
+      incomingCallRoomId.removeWhere(
+        (key, value) => key == roomId && value == callId,
+      );
+      if (newCall != null && !newCall.callHasEnded) {
+        await newCall.hangup(
+          reason: isCancelled?.call() == true
+              ? CallErrorCode.userHangup
+              : CallErrorCode.unknownError,
+        );
+      }
+      rethrow;
+    }
   }
 
   CallSession createNewCall(CallOptions opts) {

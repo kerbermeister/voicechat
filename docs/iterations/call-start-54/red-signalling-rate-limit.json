@@ -1,0 +1,10 @@
+{
+  "base_runtime_release": "915d0e943dae24d21c62c5235b872374148682f8",
+  "result": "6 FAIL, 2 PASS: rate limits are not retried and local offer failure sends no hangup",
+  "scope": "CallSession, synthetic HTTP errors/encryption, no hardware",
+  "sha256": {
+    "vendor/matrix/lib/src/voip/call_session.dart": "9ecab0e6c2fe78c884877277a72858dadad00b1687319e79452bcf24629d7b89",
+    "apps/client/test/call_signaling_rate_limit_test.dart": "c7a9c0dff63caf93a97e592709ed9e62684d2526d0eae6d7a0407bb5bd7b1779",
+    ".prototype/call-rate-limit54-red-final.log": "3e23b90c0358568d8415f8659eb789ca5636a9b4cd4e823a85bd16650e099738"
+  }
+}

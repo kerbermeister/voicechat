@@ -64,3 +64,25 @@ deduplication by room/session, so a late callback cannot close a different room
 sharing its call ID. These are protocol/timer fixtures, not physical phone or WAN acceptance. No
 cryptographic algorithm, trust check, TURN credential policy or media preset is
 weakened.
+
+### Cancellable outgoing setup (2 November 2026)
+
+`VoIP.inviteToCall` accepts an optional local `isCancelled` guard across TURN,
+listener registration and outbound RTC setup. Cancelled or failed setup removes
+only its own room/call routing and terminates an allocated session; it cannot
+publish the abandoned session through the delegate. Existing callers may omit
+the guard. The app registers the outgoing session before media awaits and races
+its preparation against an explicit cancellation signal. Late platform results
+still run the existing session cleanup. Regression coverage is in
+`apps/client/test/call_start_cancellation_test.dart`. No wire protocol, media
+preset, encryption or trust policy changes.
+
+Room call signalling retries explicit `M_LIMIT_EXCEEDED` only, at most3 retries
+and15s total scheduled wait. It preserves the encrypted envelope and transaction
+ID, respects numeric Retry-After before legacy retry_after_ms, and fences
+nonterminal retries after cancellation. Unknown header formats and excessive
+waits fail without an early retry; ambiguous network failures are not replayed.
+A local offer failure sends hangup so the peer can stop as well. Synapse limits
+are unchanged. Twelve focused cases cover retry timing, cancellation, terminal
+messages, encrypted payload/transaction reuse, bounds and non-retryable errors in
+`apps/client/test/call_signaling_rate_limit_test.dart`.

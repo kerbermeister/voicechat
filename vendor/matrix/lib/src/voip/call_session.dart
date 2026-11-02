@@ -1602,7 +1602,7 @@ class CallSession {
     Logs().e('Failed to get local offer $err');
     fireCallEvent(CallStateChange.kError);
 
-    await terminate(CallParty.kLocal, CallErrorCode.localOfferFailed, true);
+    await hangup(reason: CallErrorCode.localOfferFailed);
   }
 
   Future<void> _getUserMediaFailed(dynamic err) async {
@@ -2037,14 +2037,47 @@ class CallSession {
       if (mustEncrypt && type != EventTypes.CallInvite) {
         sendMessageContent['dev.voicechat.silent'] = true;
       }
-      return await client.sendMessage(
-        room.id,
-        sendMessageContent.containsKey('ciphertext')
-            ? EventTypes.Encrypted
-            : type,
-        txid,
-        sendMessageContent,
-      );
+      final terminal = const {
+        EventTypes.CallHangup,
+        EventTypes.CallReject,
+        EventTypes.CallReplaces,
+        EventTypes.GroupCallMemberHangup,
+        EventTypes.GroupCallMemberReject,
+        EventTypes.GroupCallMemberReplaces,
+      }.contains(type);
+      var retries = 0;
+      var waitedMs = 0;
+      while (true) {
+        if (callHasEnded && !terminal) return null;
+        try {
+          // Reuse the encrypted envelope and transaction: an explicit 429 is
+          // retryable, unlike an ambiguous network failure after publication.
+          return await client.sendMessage(
+            room.id,
+            sendMessageContent.containsKey('ciphertext')
+                ? EventTypes.Encrypted
+                : type,
+            txid,
+            sendMessageContent,
+          );
+        } on MatrixException catch (error) {
+          if (error.error != MatrixError.M_LIMIT_EXCEEDED || retries >= 3) {
+            rethrow;
+          }
+          final header = error.response?.headers['retry-after'];
+          final seconds = header == null ? null : int.tryParse(header.trim());
+          // Unknown header formats must not cause a retry earlier than requested.
+          if (header != null && (seconds == null || seconds < 0)) rethrow;
+          final requestedMs = seconds != null
+              ? seconds * 1000
+              : error.retryAfterMs ?? 1000;
+          final delayMs = requestedMs < 100 ? 100 : requestedMs;
+          if (waitedMs + delayMs > 15000) rethrow;
+          retries++;
+          waitedMs += delayMs;
+          await Future<void>.delayed(Duration(milliseconds: delayMs));
+        }
+      }
     }
   }
 }

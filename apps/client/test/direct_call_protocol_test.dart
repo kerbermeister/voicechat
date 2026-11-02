@@ -73,6 +73,8 @@ class Peer extends Fake implements rtc.RTCPeerConnection {
 }
 
 class Capture extends Fake implements MediaDevices {
+  @override
+  Function(dynamic)? ondevicechange;
   late final requested = Completer<void>();
   late final result = Completer<rtc.MediaStream>();
   @override

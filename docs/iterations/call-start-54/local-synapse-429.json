@@ -1,0 +1,24 @@
+{
+  "isolated_fixture": true,
+  "production_config_changed": false,
+  "records": [
+    {
+      "local_time": "2026-11-02 22:11:17,804",
+      "status": 429,
+      "limiter": "rc_messages",
+      "endpoint": "PUT /_matrix/client/v3/rooms/<QA-room>/send/m.room.encrypted/<transaction>"
+    },
+    {
+      "local_time": "2026-11-02 22:11:18,309",
+      "status": 429,
+      "limiter": "rc_messages",
+      "endpoint": "PUT /_matrix/client/v3/rooms/<QA-room>/send/m.room.encrypted/<transaction>"
+    },
+    {
+      "local_time": "2026-11-02 22:11:18,448",
+      "status": 429,
+      "limiter": "rc_messages",
+      "endpoint": "PUT /_matrix/client/v3/rooms/<QA-room>/send/m.room.encrypted/<transaction>"
+    }
+  ]
+}
