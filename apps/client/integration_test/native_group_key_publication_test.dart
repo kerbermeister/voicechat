@@ -92,6 +92,8 @@ Future<Map<String, Object>> probePublication({required bool pinned}) async {
         call.method == 'frameCryptorFactoryCreateFrameCryptor' &&
         (call.arguments as Map)['type'] == 'sender') {
       constructorDelayed = true;
+      // A reconnect/other track may negotiate while this sender is pending.
+      await alice.engine.negotiate();
       await Future<void>.delayed(const Duration(seconds: 1));
       constructorDelayed = false;
     }
@@ -275,10 +277,31 @@ Future<Map<String, Object>> probePublication({required bool pinned}) async {
     expect(identical(alice.engine.publisher!.pc, senderPeer), isTrue);
     expect(identical(bob.engine.subscriber!.pc, receiverPeer), isTrue);
     expect(participant.sid, participantSid);
+    final observerDecoded = await decoded(secondObserver);
+    final reconnectEvents = alice.createListener();
+    int reconnectedFrames;
+    try {
+      final reconnected = reconnectEvents.waitFor<lk.RoomReconnectedEvent>(
+        duration: const Duration(seconds: 25),
+      );
+      await alice.sendSimulateScenario(fullReconnect: true);
+      await reconnected;
+      expect(identical(alice.engine.publisher!.pc, senderPeer), isFalse);
+      final republished = alice.localParticipant!.videoTrackPublications.single;
+      final thirdRemote = await remote(bob, republished.sid);
+      reconnectedFrames = await decodedAfter(
+        thirdRemote,
+        await decoded(thirdRemote),
+      );
+      expect(republished.encryptionType, lk.EncryptionType.kGcm);
+    } finally {
+      await reconnectEvents.dispose();
+    }
     return {
       'pinned_provider': pinned,
       'require_frame_encryption': requireEncryption,
       'sender_constructor_delay_ms': 1000,
+      'competing_negotiation_during_constructor': true,
       'pre_native_sender_cryptor_samples': preCryptorSamples,
       'pre_native_sender_cryptor_decoded_frames': preCryptorFrames,
       'no_media_before_native_sender_encryptor': preCryptorFrames == 0,
@@ -290,12 +313,16 @@ Future<Map<String, Object>> probePublication({required bool pinned}) async {
       'new_camera_decoded_delta_before_future_key_delivery':
           framesBeforeKeyDelivery - newCameraBaseline,
       'new_camera_frames_after_commit': committedFrames,
-      'observer_decoded_counter_after_startup': await decoded(secondObserver),
+      'observer_decoded_counter_after_startup': observerDecoded,
+      'full_reconnect_republished_encrypted_frames': reconnectedFrames,
+      'full_reconnect_recreated_sender_transport': true,
       'post_startup_counter_alone_is_not_content_proof': true,
       'observer_received_rtp': true,
       'same_sfu_transport_and_participant': true,
       'publication_recreated_intentionally': true,
-      'sdk_forked': false,
+      'local_sdk_patch': const bool.fromEnvironment(
+        'GROUP_TEST_LOCAL_SDK_PATCH',
+      ),
       'ratchet_defaults_changed': false,
       'matrix_epoch_protocol_tested': false,
       'physical_lip_sync_measured': false,
@@ -339,7 +366,7 @@ void main() {
         });
       },
       skip:
-          !Platform.isMacOS ||
+          !(Platform.isMacOS || Platform.isAndroid) ||
           !const bool.fromEnvironment('HARDWARE_CALL_TEST'),
       timeout: const Timeout(Duration(minutes: 2)),
     );

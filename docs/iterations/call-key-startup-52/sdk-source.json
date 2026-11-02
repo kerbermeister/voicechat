@@ -1,0 +1,42 @@
+{
+  "origin": "https://pub.dev/packages/livekit_client/versions/2.13.2",
+  "archive_sha256": "c63211bd5073b308417de2b048809c156f50cb5bda02713150478742be2a1bc1",
+  "version": "2.13.2",
+  "flutter_webrtc_version": "1.6.3",
+  "changed_or_added": {
+    "VOICECHAT_PATCH.md": {
+      "patched_sha256": "b40f086a23536b514769d604c30824b56b455ef9cb4f174f2ce6c08b875bb10e",
+      "upstream_sha256": null
+    },
+    "lib/src/core/engine.dart": {
+      "patched_sha256": "3e46cc18028ee8915a14ed20432b2a44f89ae141e6108838760075f2e1150b1a",
+      "upstream_sha256": "49680eed8c5c9efce70ecfd3b478bf7317718608eb39ec95c226e4659ab5e97b"
+    },
+    "lib/src/core/room.dart": {
+      "patched_sha256": "0f866022e2170184dd44c0b85173793ba32abc39f28c17ba079ca800a72a8657",
+      "upstream_sha256": "29cb65083ff0fd7161a8c90d8d4dbece5e33da4852a944c2fa2feb9c24b7fa61"
+    },
+    "lib/src/e2ee/e2ee_manager.dart": {
+      "patched_sha256": "ceedc8c5cca76ddb63a8c579a9e8e8def84f94388c00d174601b83380c289172",
+      "upstream_sha256": "78f9f2374cf0d2c3ddcd2a7ce6faf63f0d8c1aa1c5f624ad2470a7c0cbdb470b"
+    },
+    "lib/src/participant/local.dart": {
+      "patched_sha256": "cc6ac4632518cddf239b1a74c511c48775da012884b9aa5cb92886fd9b9dc924",
+      "upstream_sha256": "758fd5bf7517550e7a1736ee11682f9441cb327ceb1dbde0cbf4374142524efb"
+    },
+    "lib/src/support/rtc_identity_native.dart": {
+      "patched_sha256": "0d62b261c05f823bfa1edf3e12690d5404a3eba1f5832f233ae5ceb0c9acae63",
+      "upstream_sha256": null
+    },
+    "lib/src/support/rtc_identity_web.dart": {
+      "patched_sha256": "372b95489959306059e392bdef0864addfc79070d762dd977c741b6150401af2",
+      "upstream_sha256": null
+    },
+    "lib/src/utils.dart": {
+      "patched_sha256": "49019b46e974de5fc6f5285efca71109c719aa8fea38009d133640dbc8f1ceaf",
+      "upstream_sha256": "b9277da33f5197070fbdbd5ebbd8ec8abd9e8ceac7a31041ce19abab011c2b4a"
+    }
+  },
+  "unlisted_runtime_files_equal_verified_archive": true,
+  "omitted": "Upstream examples, tests and development tools; runtime/plugin/worker sources and notices retained."
+}

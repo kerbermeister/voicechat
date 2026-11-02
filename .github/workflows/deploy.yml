@@ -164,7 +164,7 @@ jobs:
             apps/client/web/e2ee.worker.dart.js*
             apps/client/web/zxing
             apps/client/web/zxing.js
-          key: crypto-assets-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('infra/crypto-tools.json', 'prototype/build_web_assets.py', 'prototype/build_qr_assets.py', 'apps/client/pubspec.yaml', 'apps/client/pubspec.lock', 'vendor/matrix/lib/**', 'vendor/matrix/pubspec.yaml', 'vendor/matrix/pubspec.lock') }}
+          key: crypto-assets-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('infra/crypto-tools.json', 'prototype/build_web_assets.py', 'prototype/build_qr_assets.py', 'apps/client/pubspec.yaml', 'apps/client/pubspec.lock', 'vendor/matrix/lib/**', 'vendor/matrix/pubspec.yaml', 'vendor/matrix/pubspec.lock', 'vendor/livekit_client/lib/**', 'vendor/livekit_client/web/**', 'vendor/livekit_client/pubspec.yaml') }}
       - name: Restore crypto build tools
         if: ${{ inputs.mode != 'core' && steps.assets.outputs.cache-hit != 'true' }}
         id: tools

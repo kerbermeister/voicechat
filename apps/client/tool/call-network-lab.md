@@ -89,9 +89,10 @@ python3 - <<'PY'
 import json, subprocess
 from pathlib import Path
 from urllib.parse import unquote, urlparse
-packages = json.loads(Path('.dart_tool/package_config.json').read_text())['packages']
+config = Path('.dart_tool/package_config.json').resolve()
+packages = json.loads(config.read_text())['packages']
 sdk = next(p for p in packages if p['name'] == 'livekit_client')
-source = Path(unquote(urlparse(sdk['rootUri']).path)) / 'web/e2ee.worker.dart'
+source = (config.parent / unquote(urlparse(sdk['rootUri']).path)).resolve() / 'web/e2ee.worker.dart'
 subprocess.run(['dart', 'compile', 'js', '--packages=.dart_tool/package_config.json',
                 str(source), '-o', 'web/e2ee.worker.dart.js', '-m'], check=True)
 PY

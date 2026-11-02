@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import time
 from urllib.request import urlopen
+from urllib.parse import unquote, urlparse
 import uuid
 
 from call_network_lab import ROOT, require_local_docker
@@ -21,16 +22,37 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--flutter', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--device', default='macos')
+    parser.add_argument('--android-emulator', action='store_true')
+    parser.add_argument('--adb', type=Path)
     parser.add_argument('--case', choices=('both', 'baseline', 'pinned'), default='both')
     parser.add_argument('--require-frame-encryption', action='store_true')
+    parser.add_argument('--web-root', type=Path, help='Serve a built synthetic browser probe instead of running native tests')
+    parser.add_argument('--web-port', type=int, default=7395)
+    parser.add_argument('--failures', action='store_true', help='Exercise native capture/cryptor rollback')
     args = parser.parse_args()
+    if args.device != 'macos':
+        if not args.android_emulator or args.adb is None or args.web_root:
+            parser.error('Non-Mac native probes require the disposable Android emulator and --adb')
+        def adb(*command):
+            return subprocess.check_output([str(args.adb.resolve()), '-s', args.device, *command], text=True).strip()
+        if adb('shell', 'getprop', 'ro.kernel.qemu') != '1' or adb('emu', 'avd', 'name').splitlines()[0] != 'VoiceChat_KeyEpoch35':
+            parser.error('Only the account-free VoiceChat_KeyEpoch35 emulator is supported')
+    elif args.android_emulator:
+        parser.error('Select the Android emulator with --device')
     require_local_docker()
     image = re.search(r'^FROM (livekit/livekit-server@sha256:\w+)',
                       (ROOT / 'infra/control.Dockerfile').read_text())[1]
     name = 'voicechat-sdk-key-' + uuid.uuid4().hex[:12]
     first, held = reserve_range()
     api_key, secret = 'local-probe', secrets.token_hex(32)
-    target = ROOT / 'apps/client/integration_test/native_group_key_publication_test.dart'
+    target = ROOT / 'apps/client/integration_test' / (
+        'native_key_startup_failure_test.dart' if args.failures
+        else 'native_group_key_publication_test.dart')
+    package_config = ROOT / 'apps/client/.dart_tool/package_config.json'
+    package = next(p for p in json.loads(package_config.read_text())['packages']
+                   if p['name'] == 'livekit_client')
+    sdk = (package_config.parent / unquote(urlparse(package['rootUri']).path)).resolve()
     log = ROOT / '.prototype' / (name + '.private.log')
     log.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=name) as temporary:
@@ -40,7 +62,8 @@ def main():
         config.write_text(json.dumps({
             'port': 7880, 'keys': {api_key: secret},
             'rtc': {'port_range_start': first, 'port_range_end': first + 7,
-                    'use_external_ip': False, 'node_ip': '127.0.0.1'},
+                    'use_external_ip': False,
+                    'node_ip': '10.0.2.2' if args.android_emulator else '127.0.0.1'},
         }))
         config.chmod(0o600)
         created = False
@@ -70,39 +93,62 @@ def main():
                     time.sleep(.1)
             else:
                 raise RuntimeError('Local SFU not ready')
+            client_address = address.replace('127.0.0.1:', '10.0.2.2:') if args.android_emulator else address
             defines = folder / 'client.json'
             defines.write_text(json.dumps({
-                'HARDWARE_CALL_TEST': True, 'GROUP_TEST_URL': 'ws://' + address,
+                'HARDWARE_CALL_TEST': True, 'GROUP_TEST_URL': 'ws://' + client_address,
                 'GROUP_TEST_CASE': args.case,
+                'GROUP_TEST_LOCAL_SDK_PATCH': (sdk / 'VOICECHAT_PATCH.md').is_file(),
                 'GROUP_TEST_REQUIRE_FRAME_ENCRYPTION': args.require_frame_encryption,
                 'GROUP_TEST_ALICE': token('alice', api_key, secret),
                 'GROUP_TEST_BOB': token('bob', api_key, secret),
                 'GROUP_TEST_OBSERVER': token('observer', api_key, secret),
             }))
             defines.chmod(0o600)
+            if args.web_root:
+                from serve_key_epoch_fixture import fixture_server
+                if not 1024 <= args.web_port <= 65535 or not (args.web_root / 'main.dart.js').is_file():
+                    raise ValueError('A built fixture and unprivileged port are required')
+                with fixture_server(args.web_root, args.web_port, {
+                    'url': 'ws://' + address,
+                    **{identity: token(identity, api_key, secret)
+                       for identity in ('alice', 'bob', 'observer')},
+                }) as server:
+                    print(f'http://127.0.0.1:{args.web_port}/index.html (synthetic SDK/SFU probe)', flush=True)
+                    server.serve_forever()
+                return
+
             env = {**os.environ, 'LANG': 'en_US.UTF-8',
                    'LC_ALL': 'en_US.UTF-8', 'LC_CTYPE': 'en_US.UTF-8'}
             print('Local SDK/SFU private log: ' + str(log), flush=True)
             with log.open('w') as output:
                 log.chmod(0o600)
                 result = subprocess.run([
-                    str(args.flutter.resolve()), 'test', '-d', 'macos',
+                    str(args.flutter.resolve()), 'test', '-d', args.device,
                     '--dart-define-from-file=' + str(defines),
-                    'integration_test/native_group_key_publication_test.dart',
+                    'integration_test/' + target.name,
                 ], cwd=ROOT / 'apps/client', env=env, stdout=output,
-                    stderr=subprocess.STDOUT, timeout=360)
+                    stderr=subprocess.STDOUT, timeout=600 if args.android_emulator else 360)
             text = log.read_text()
             if result.returncode or 'All tests passed!' not in text:
                 raise RuntimeError('SDK assertions failed; inspect private log ' + str(log))
+            marker = 'SDK_KEY_FAILURE_PROOF' if args.failures else 'SDK_KEY_PUBLICATION_PROOF'
             proofs = [json.loads(value) for value in re.findall(
-                r'SDK_KEY_PUBLICATION_PROOF (\{[^\n]+\})', text)]
+                marker + r' (\{[^\n]+\})', text)]
             expected = {'both': [False, True], 'baseline': [False], 'pinned': [True]}
-            assert [proof['pinned_provider'] for proof in proofs] == expected[args.case]
+            if args.failures:
+                assert len(proofs) == 12
+            else:
+                assert [proof['pinned_provider'] for proof in proofs] == expected[args.case]
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(json.dumps({
                 'pinned_sfu': image, 'loopback_only': True,
-                'platform': 'native macOS', 'local_camera': True,
-                'case': args.case,
+                'platform': 'Android emulator API35' if args.android_emulator else 'native macOS',
+                'local_camera': not args.android_emulator, 'emulated_camera': args.android_emulator,
+                'case': 'failure rollback' if args.failures else args.case,
+                'local_sdk_patch': (sdk / 'VOICECHAT_PATCH.md').is_file(),
+                'sdk_e2ee_manager_sha256': hashlib.sha256(
+                    (sdk / 'lib/src/e2ee/e2ee_manager.dart').read_bytes()).hexdigest(),
                 'require_frame_encryption': args.require_frame_encryption,
                 'production_modified': False,
                 'fixture_sha256': hashlib.sha256(target.read_bytes()).hexdigest(),

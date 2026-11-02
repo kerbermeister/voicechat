@@ -1,0 +1,136 @@
+{
+  "pinned_sfu": "livekit/livekit-server@sha256:89ca9ce0791e18d6e03bf6e2c49ceb27e1c754eae8bd50c989386c1a5963791a",
+  "loopback_only": true,
+  "platform": "Android emulator API35",
+  "local_camera": false,
+  "emulated_camera": true,
+  "case": "failure rollback",
+  "local_sdk_patch": true,
+  "sdk_e2ee_manager_sha256": "ceedc8c5cca76ddb63a8c579a9e8e8def84f94388c00d174601b83380c289172",
+  "require_frame_encryption": false,
+  "production_modified": false,
+  "fixture_sha256": "305fe14dadb5f4b131b61f6356c54662cf8ae1a8b687eb891861f706d0f24924",
+  "private_log_sha256": "8b96e51424bc55941a7ff3dcb9a430eca99d49799c40567dec818bbb48daee22",
+  "runs": [
+    {
+      "failure": "constructor",
+      "media": "video",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 0,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": false,
+      "media_saved": false
+    },
+    {
+      "failure": "enable_exception",
+      "media": "video",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 1,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": false,
+      "media_saved": false
+    },
+    {
+      "failure": "enable_false",
+      "media": "video",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 1,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": false,
+      "media_saved": false
+    },
+    {
+      "failure": "index_false",
+      "media": "video",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 1,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": false,
+      "media_saved": false
+    },
+    {
+      "failure": "activate_false",
+      "media": "video",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 1,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": false,
+      "media_saved": false
+    },
+    {
+      "failure": "close_pending",
+      "media": "video",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 1,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": true,
+      "media_saved": false
+    },
+    {
+      "failure": "constructor",
+      "media": "audio",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 0,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": false,
+      "media_saved": false
+    },
+    {
+      "failure": "enable_exception",
+      "media": "audio",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 1,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": false,
+      "media_saved": false
+    },
+    {
+      "failure": "enable_false",
+      "media": "audio",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 1,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": false,
+      "media_saved": false
+    },
+    {
+      "failure": "index_false",
+      "media": "audio",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 1,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": false,
+      "media_saved": false
+    },
+    {
+      "failure": "activate_false",
+      "media": "audio",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 1,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": false,
+      "media_saved": false
+    },
+    {
+      "failure": "close_pending",
+      "media": "audio",
+      "publication_rejected": true,
+      "capture_stopped": true,
+      "created_sender_cryptors": 1,
+      "cryptors_disposed_once": true,
+      "close_awaited_pending_native_reply": true,
+      "media_saved": false
+    }
+  ]
+}

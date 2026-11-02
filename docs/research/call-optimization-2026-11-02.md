@@ -906,3 +906,39 @@ negotiate/start. Требуется awaited подготовка ключа/cryp
 стенде окно не устранила; полагаться на её применение нельзя. Ratchet, cipher,
 доверие/lease и общая room rotation не ослабляются. До исправления, настоящих
 отрицательных проверок и выпуска новый групповой epoch protocol не включать.
+
+
+Проверенное исправление, кандидат52 (ещё не production): локальная копия точного
+SDK2.13.2 с проверенной контрольной суммой архива, без смены flutter_webrtc1.6.3.
+Первый await-only вариант дал10 кадров при конкурирующем negotiate и был отвергнут.
+Теперь encodings нового RTP sender создаются неактивными; ключ и cryptor
+устанавливаются/включаются до восстановления исходных active flags. Битрейт,
+framerate, RID, масштабирование и scalability mode сохраняются. Published handler
+переиспользует готовый cryptor по устойчивой идентичности endpoint, включая новые
+Dart-обёртки одного JS sender. Конструктор/ключ/enable/activation, вернувшие ошибку
+или false, отклоняют публикацию; собственный незапубликованный capture останавливается.
+Room освобождает cryptors после остановки транспорта и дожидается pending init.
+
+На камере Mac и в отдельном Android35-эмуляторе с синтетическими камерами:
+параллельный negotiate +1000мс задержки native constructor дают0 decoded до
+конструктора; получатель без ключа стабильно блокируется, после ключа decoding
+растёт. Проверены новая публикация, сохранение активного старого sender при
+prepare, настоящий full reconnect и возвращение зашифрованных кадров. Во
+внутреннем браузере реальные SDK/worker/SFU с canvas тоже прошли публикацию,
+late key, пересоздание publication и full reconnect. Post-startup counters
+наблюдателя не подменяют проверку содержания кадра; A/V sync здесь не измерялся.
+
+Mac:12 реальных native failure/close проверок камеры и микрофона PASS (ошибка
+конструктора/enable, false keyIndex/enable/activation, close с pending native reply).
+Все отклоняют публикацию и останавливают собственный capture; созданные cryptors
+освобождаются ровно один раз. Android тоже прошёл все12 failure/close сценариев; выпуск ещё выполняется.
+Python849/4skip, Flutter586/4skip PASS; анализ клиента и изменённых SDK-файлов чистый.
+Проверка нового helper подтверждает сохранение всех encoding options и отсутствие
+мутации настроек вызывающего кода. [Источник SDK](../iterations/call-key-startup-52/sdk-source.json),
+[Mac](../iterations/call-key-startup-52/native-macos.json),
+[Android emulator](../iterations/call-key-startup-52/android-emulator.json),
+[browser](../iterations/call-key-startup-52/browser.json),
+[отказы Mac](../iterations/call-key-startup-52/native-failures.json),
+[отказы Android emulator](../iterations/call-key-startup-52/android-failures.json).
+Это закрывает локализованный startup-дефект на стендах; новый epoch protocol,
+физические телефоны, акустическая синхронизация и общий остаток OPT остаются открыты.

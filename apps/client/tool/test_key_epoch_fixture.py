@@ -54,6 +54,39 @@ class KeyEpochServerTest(unittest.TestCase):
                 process.terminate()
                 process.wait(timeout=5)
 
+class ProbeConfigurationTest(unittest.TestCase):
+    def test_probe_credentials_are_optional_and_restricted_to_loopback_host(self):
+        from serve_key_epoch_fixture import fixture_server
+        import json
+        import threading
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for config in (None, {'alice': 'synthetic-test-token'}):
+                with socket.socket() as reservation:
+                    reservation.bind(('127.0.0.1', 0))
+                    port = reservation.getsockname()[1]
+                with fixture_server(root, port, config) as server:
+                    thread = threading.Thread(target=server.serve_forever)
+                    thread.start()
+                    try:
+                        url = f'http://127.0.0.1:{port}/probe.json'
+                        if config is None:
+                            with self.assertRaises(HTTPError) as error:
+                                urlopen(url, timeout=2)
+                            self.assertEqual(error.exception.code, 404)
+                        else:
+                            with urlopen(url, timeout=2) as response:
+                                self.assertEqual(json.load(response), config)
+                                self.assertEqual(response.headers['Cache-Control'], 'no-store')
+                                self.assertEqual(response.headers['Content-Type'], 'application/json')
+                            with self.assertRaises(HTTPError) as error:
+                                urlopen(Request(url, headers={'Host': 'untrusted.invalid'}), timeout=2)
+                            self.assertEqual(error.exception.code, 403)
+                        self.assertFalse((root / 'probe.json').exists())
+                    finally:
+                        server.shutdown()
+                        thread.join(timeout=5)
+
 
 if __name__ == '__main__':
     unittest.main()

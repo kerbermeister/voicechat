@@ -1,0 +1,16 @@
+{
+  "scope": "Local physical Mac camera / isolated SFU, first await-only candidate. Another real negotiation is forced while sender constructor is delayed. No accounts or recordings.",
+  "expected_pre_constructor_frames": 0,
+  "actual": {
+    "require_frame_encryption": false,
+    "sender_constructor_delay_ms": 1000,
+    "samples_before_native_constructor_forwarded": 50,
+    "max_decoded_before_native_sender_encryptor": 10,
+    "decoded_sizes_before_constructor": [
+      "640x480"
+    ]
+  },
+  "result": "FAIL: await before the publication-owned negotiation alone is insufficient",
+  "private_log_sha256": "53eb2d8a9b962e3044e4d45ba89a3229330f9e9a0a0d94152d93845cf0612823",
+  "production_changed": false
+}
