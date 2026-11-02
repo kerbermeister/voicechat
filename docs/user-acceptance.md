@@ -2195,3 +2195,17 @@ Keychain не очищался. Android50 опубликован прежним 
 iPhone Safari/PWA speaker/gain, Xiaomi и нагрузка не проверены; расширенный A/B
 OPT-02 и безопасность групповых key epochs обязательны и открыты.
 [Свидетельства50](iterations/call-media-measurements-50.md).
+
+OPT-02/07/14,02.11 после50 — только тестовый код, распространяемый клиент прежний50.
+Внутренний Chromium156 прошёл synthetic TURN UDP/TCP delay/loss/3с outage и30с
+recovery; подтверждены выбранный relay, остановка/возврат RTP и рост RTT. У TCP
+через10с остаются большие buffer counters; это гипотеза для UA-08, не физический
+lip-sync и не установленная причина разговора владельца. Native Mac прошёл16
+различных sender-key slots без receiver recreation, старый ключ не декодирует
+новый поток. UA-05.C39 shared-key recovery этим не закрывается. На точном SFU
+подтверждён повторный вход прежним JWT после RemoveParticipant: текущая ротация
+поколения сохраняется, новый membership protocol ещё не реализован. Аппаратная
+готовность UA-02/04/05/08/09/14 не повышена; асимметрия, конечный A/V-marker,
+key ACK/reordering/reuse и физические iPhone/Xiaomi остаются обязательны.
+[Измерения/границы](iterations/call-network-lab-2026-11-02/summary.json),
+[ход OPT](research/call-optimization-2026-11-02.md).

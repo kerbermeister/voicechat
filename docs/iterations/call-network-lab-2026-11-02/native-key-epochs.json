@@ -1,0 +1,11 @@
+{
+  "initial_frames": 9,
+  "old_key_blocked": true,
+  "frames_after_late_epoch": 20,
+  "frames_after_preinstalled_epoch": 27,
+  "frames_after_16_distinct_slots": 113,
+  "key_slots_reused": false,
+  "receiver_recreated": false,
+  "ratchet_defaults_changed": false,
+  "matrix_membership_protocol_tested": false
+}

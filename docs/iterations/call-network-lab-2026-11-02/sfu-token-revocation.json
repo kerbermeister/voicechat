@@ -1,0 +1,9 @@
+{
+  "pinned_sfu": "livekit/livekit-server@sha256:89ca9ce0791e18d6e03bf6e2c49ceb27e1c754eae8bd50c989386c1a5963791a",
+  "loopback_only": true,
+  "same_original_jwt_reaccepted_after_remove": true,
+  "new_participant_sid": true,
+  "room_name_changed": false,
+  "media_decryption_tested": false,
+  "production_modified": false
+}

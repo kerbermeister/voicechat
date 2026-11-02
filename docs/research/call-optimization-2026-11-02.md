@@ -538,3 +538,74 @@ OPT-02 выполнен частично: RTP pause/resume, renderer/ICE fixture
 WebRTC A/B и не доказательство улучшения медиасвязи. Полная impairment matrix,
 асимметрия, длительный A/V-marker, нагрузка iPhone/Xiaomi и групповые key epochs
 остаются открытыми. [Свидетельства выпуска50](../iterations/call-media-measurements-50.md).
+
+### OPT-02/14: локальный TURN impairment, после выпуска50
+
+Тестовые runner/инструкции сохранены в
+[call-network-lab.md](../../apps/client/tool/call-network-lab.md),
+[счётчики и assertions](../iterations/call-network-lab-2026-11-02/summary.json).
+Внутренний Chromium156, production renderer/MediaStatistics50, синтетические
+canvas+беззвучный oscillator; по одному прогону UDP/TCP. Последовательность:
+clean6с → netem40мс6с → loss2%6с → loss100%3с → clean30с. По51 interval samples.
+Выбранные relayProtocol действительно udp/tcp; финальный интервал обрыва имеет
+нулевой bitrate обоих видов, после восстановления оба принимаются. RTT при
+netem вырос более20мс; tc queue/drop snapshots сохранены. Это не A/B48→50,
+не фиксированный random seed, не Matrix/LiveKit group и не физический lip-sync.
+
+| Транспорт | Буфер audio/video до помех, мс | Через10с восстановления | Через30с восстановления |
+| --- | --- | --- | --- |
+| TURN UDP | 33.80 / 7.10 | 83.60 / 78.19 | 73.20 / 83.44 |
+| TURN TCP | 49.00 / 10.56 | 2122.95 / 792.54 | 78.40 / 342.52 |
+
+Значения — интервальный jitterBufferDelay/emittedCount, не акустическая задержка
+и не измеренный A/V skew. При восстановленном малом RTT буфер TCP остаётся велик:
+это воспроизводимая гипотеза вклада очереди/повторной доставки в H03/H06, а не
+доказанная причина прежнего разговора владельца. В рабочем каталоге UDP уже
+доступен; удалять TCP fallback нельзя. Следующие обязательные проверки OPT-02/08/14:
+асимметрия, реальный A/V-marker конечного Web Audio, длительный recovery, повторяемость
+и физические iPhone/Xiaomi; затем оценивать ограничение очереди/восстановление
+маршрута с явным бюджетом потерь. Самовольный periodic reset renderer не введён.
+
+Локальная граница стенда: unit2 PASS (asset traversal/symlink и remote Docker),
+live API1 PASS (Host/Origin/nonce/invalid body, профиль не меняется). Чужие сервисы
+и production не затрагиваются; собственные контейнеры удалены после проб.
+
+### OPT-07: проверенные предпосылки и граница отзыва
+
+Native Mac/flutter_webrtc1.6.3/LiveKit2.13.2, sender-specific GCM keys и default
+ratchet: [native_key_epoch_test.dart](../../apps/client/integration_test/native_key_epoch_test.dart)
+прошёл1 integration test. Старый ключ перестал открывать кадры, кодирование
+продолжалось; поздняя установка нового восстановила framesDecoded. Затем16
+различных key slots декодировали без нового receiver/cryptor/SDP/ICE. Итог9→20→27→113
+кадров в контрольных точках. [Свидетельство](../iterations/call-network-lab-2026-11-02/native-key-epochs.json).
+Это не закрывает UA-05.C39: прежнее наблюдение относится к возврату ошибочного
+shared key, новый probe использует sender-specific keys и не переиспользует slots.
+
+Негативный [SFU probe](../../apps/client/tool/check_sfu_revocation.py) на точном
+production image v1.13.10/digest89ca9c подтвердил: после RemoveParticipant тот же
+исходный JWT снова получил участника с новым SID в той же комнате. Медиа этим
+probe не расшифровывалось. Текущий VoiceChat защищает сменой generation/room;
+это **не** новый доказанный обход действующего протокола. [Результат](../iterations/call-network-lab-2026-11-02/sfu-token-revocation.json).
+Ограничение self-hosted token revocation описано в
+[официальной документации](https://docs.livekit.io/home/server/generating-tokens#token-revocation).
+В [закреплённом roommanager.go](https://github.com/livekit/livekit/blob/e5655ac20267fa5005dccaf3f0e3bfc3ea688c07/pkg/service/roommanager.go)
+RemoveParticipant удаляет сеанс; сервер также выдаёт refresh JWT с минимум10мин
+срока. Поэтому сокращения TTL исходного токена недостаточно для нового протокола.
+
+Минимальный безопасный путь OPT-07 остаётся обязательной работой:
+
+1. Разделить transport generation, roster revision и sender-key epoch. Ревизия
+   состава — от авторизующего сервера, доверие/ключи устройств — прежние Matrix-проверки.
+2. До сохранения комнаты при уходе обеспечить серверный отказ повторного входа
+   с прежним и refreshed JWT: проверять активный lease/поколение/устройство на
+   входе SFU, закрывать удалённый сеанс. Не полагаться только на RemoveParticipant.
+3. Версионированный key offer/ACK через encrypted to-device: generation+roster
+   revision+sender+key epoch, exact recipients, nonce/expiry, проверка current trust.
+   Late/duplicate/reordered offer и ACK не возвращают старую эпоху.
+4. Новая случайная sender key/свободный key slot до переключения; ACK только после
+   успешной установки. Не отправлять свежий ключ исключённым устройствам и не
+   передавать новым участникам старый. До подтверждения безопасно приостановить
+   отправку; timeout/revocation/legacy peer сохраняют прежний fallback с room rotation.
+5. Проверить совместимость старых клиентов, concurrent join/leave, crash между
+   prepare/commit, refresh/reconnect, reuse/ring exhaustion и все три платформы.
+   До этих отрицательных проверок общая ротация не удаляется.

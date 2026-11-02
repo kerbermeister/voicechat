@@ -1,11 +1,13 @@
 // Browser-only loopback fixture: synthetic silent audio/video, no account,
 // microphone, external signalling, upload or saved media.
 import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'package:dart_webrtc/dart_webrtc.dart' show MediaStreamWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
+import 'package:http/http.dart' as http;
 import 'package:web/web.dart' as web;
 import 'package:voicechat_probe/call_renderer.dart';
 import 'package:voicechat_probe/media_statistics.dart';
@@ -35,8 +37,42 @@ class _FixtureState extends State<Fixture> {
   }
 
   Future<void> run() async {
-    setState(() => running = true);
+    setState(() {
+      running = true;
+      result = 'Starting synthetic media';
+    });
+    // Resume in the click gesture, before fetching the optional lab config.
     final audio = web.AudioContext();
+    final audioReady = audio.resume().toDart;
+    final networkLab = Uri.base.queryParameters['network_lab'] == '1';
+    var configuration = <String, dynamic>{};
+    String? labKey;
+    if (networkLab) {
+      if (Uri.base.host != '127.0.0.1') {
+        await audio.close().toDart;
+        setState(() {
+          result = 'FAIL: network fixture requires loopback';
+          running = false;
+        });
+        return;
+      }
+      try {
+        final response = await http
+            .get(Uri.base.resolve('/turn.json'))
+            .timeout(const Duration(seconds: 5));
+        if (response.statusCode != 200) throw StateError('TURN config rejected');
+        configuration = jsonDecode(response.body) as Map<String, dynamic>;
+        labKey = configuration.remove('lab_key') as String;
+        configuration.remove('profile');
+      } catch (error) {
+        await audio.close().toDart;
+        setState(() {
+          result = 'FAIL: $error';
+          running = false;
+        });
+        return;
+      }
+    }
     final oscillator = audio.createOscillator();
     final gain = audio.createGain()..gain.value = 0;
     final destination = audio.createMediaStreamDestination();
@@ -58,8 +94,9 @@ class _FixtureState extends State<Fixture> {
     );
     source.addTrack(destination.stream.getAudioTracks().toDart.single);
     final local = MediaStreamWeb(source, 'local');
-    final sender = await rtc.createPeerConnection({});
-    final receiver = await rtc.createPeerConnection({});
+    final sender = await rtc.createPeerConnection(configuration);
+    final receiver = await rtc.createPeerConnection(configuration);
+    setState(() => result = 'Peers created; negotiating synthetic A/V');
     final view = createCallRenderer();
     rtc.MediaStream? remote;
     sender.onIceCandidate = (c) {
@@ -83,12 +120,13 @@ class _FixtureState extends State<Fixture> {
     }
 
     try {
-      await audio.resume().toDart;
+      await audioReady.timeout(const Duration(seconds: 5));
       await view.initialize();
       for (final track in local.getTracks()) {
         await sender.addTrack(track, local);
       }
-      await negotiate();
+      await negotiate().timeout(const Duration(seconds: 15));
+      setState(() => result = 'Negotiated; waiting for frames');
       await waitFor(
         () =>
             remote?.getAudioTracks().length == 1 &&
@@ -137,7 +175,7 @@ class _FixtureState extends State<Fixture> {
       canvas.height = 360;
       await waitFor(() => view.videoWidth == 640);
       await sender.restartIce();
-      await negotiate();
+      await negotiate().timeout(const Duration(seconds: 15));
       final before = video.currentTime;
       await waitFor(() => video.currentTime > before + .5);
       if (!(video.srcObject! as web.MediaStream).getAudioTracks().toDart.any(
@@ -159,9 +197,64 @@ class _FixtureState extends State<Fixture> {
       )) {
         throw StateError('Recovered video interval counters unavailable');
       }
+      if (networkLab) {
+        Future<void> profile(String name) async {
+          final response = await http.post(
+            Uri.base.resolve('/profile'),
+            headers: {'Content-Type': 'application/json', 'X-Lab-Key': labKey!},
+            body: jsonEncode({'profile': name}),
+          );
+          if (response.statusCode != 200) {
+            throw StateError('Network profile rejected');
+          }
+        }
+
+        final samples = <Map<String, Object>>[];
+        try {
+          for (final phase in [
+            ('clean', 6),
+            ('delay', 6),
+            ('loss', 6),
+            ('offline', 3),
+            ('clean', 30),
+          ]) {
+            await profile(phase.$1);
+            setState(() => result = 'Network phase: ${phase.$1}');
+            for (var i = 0; i < phase.$2; i++) {
+              await Future<void>.delayed(const Duration(seconds: 1));
+              samples.add({
+                'profile': phase.$1,
+                'second': samples.length,
+                'media': statistics.read(await receiver.getStats()),
+              });
+            }
+          }
+          final finalMedia = samples.last['media'] as List<Map<String, Object>>;
+          for (final kind in ['audio', 'video']) {
+            if (!finalMedia.any(
+              (row) =>
+                  row['direction'] == 'inbound-rtp' &&
+                  row['kind'] == kind &&
+                  row['candidateType'] == 'relay' &&
+                  row['bitrate_bps'] is num &&
+                  (row['bitrate_bps'] as num) > 0,
+            )) {
+              throw StateError('Relay $kind did not recover');
+            }
+          }
+          final proof = await http.post(
+            Uri.base.resolve('/result'),
+            headers: {'Content-Type': 'application/json', 'X-Lab-Key': labKey!},
+            body: jsonEncode({'rtp_recovered': true, 'samples': samples}),
+          );
+          if (proof.statusCode != 200) throw StateError('Proof rejected');
+        } finally {
+          await profile('clean');
+        }
+      }
       setState(
         () => result =
-            'PASS: combined A/V, one audio path, media pause/resume, 320→640 frames, ICE restart, recovered interval counters; physical lip-sync not measured',
+            'PASS: combined A/V, one audio path, media pause/resume, 320→640 frames, ICE restart, recovered interval counters${networkLab ? ', TURN netem delay/loss/offline recovery' : ''}; physical lip-sync not measured',
       );
     } catch (error) {
       setState(() => result = 'FAIL: $error');
