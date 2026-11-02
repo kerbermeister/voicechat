@@ -15,6 +15,7 @@ import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.MethodChannel
 
 class CallService : Service() {
+    private lateinit var audioRoute: CallAudioRoute
     companion object {
         var running = false; private set
         fun endCall(done: () -> Unit = {}) {
@@ -37,6 +38,8 @@ class CallService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onCreate() {
         super.onCreate()
+        audioRoute = CallAudioRoute(this)
+        audioRoute.start()
         running = true
         val manager = getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -74,6 +77,7 @@ class CallService : Service() {
         super.onTaskRemoved(rootIntent)
     }
     override fun onDestroy() {
+        audioRoute.stop()
         running = false
         // Matrix must finish the encrypted hangup/history write after the microphone stops.
         super.onDestroy()

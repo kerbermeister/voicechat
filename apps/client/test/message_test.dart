@@ -91,6 +91,7 @@ class TestClient implements Client {
     if (i.memberName == #getJoinedMembersByRoom) {
       return Future.value(<String, RoomMember>{userID: RoomMember()});
     }
+    if (i.memberName == #setPushRule) return Future<void>.value();
     if (i.memberName == #updateUserDeviceKeys) {
       if (!failRefresh) userDeviceKeys[userID]!.outdated = false;
       return Future<void>.value();

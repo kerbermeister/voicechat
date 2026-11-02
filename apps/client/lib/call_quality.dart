@@ -1,5 +1,35 @@
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 
+enum AudioBitrate {
+  // Android's SDK ignores null when updating maxBitrate. The Opus ceiling
+  // removes our voice preset cap while retaining WebRTC congestion control.
+  auto('Авто', 510000),
+  low('Экономный · 16 кбит/с', 16000),
+  medium('Обычный · 32 кбит/с', 32000),
+  high('Высокий · 64 кбит/с', 64000);
+
+  final String label;
+  final int bitsPerSecond;
+  const AudioBitrate(this.label, this.bitsPerSecond);
+}
+
+Future<void> applyAudioBitrate(
+  rtc.RTCRtpSender sender,
+  AudioBitrate value,
+) async {
+  final parameters = sender.parameters;
+  final encodings = parameters.encodings;
+  if (encodings == null || encodings.isEmpty) {
+    throw StateError('Audio sender is not ready');
+  }
+  for (final encoding in encodings) {
+    encoding.maxBitrate = value.bitsPerSecond;
+  }
+  if (!await sender.setParameters(parameters)) {
+    throw StateError('Audio bitrate was not applied');
+  }
+}
+
 enum VideoQuality {
   auto('Авто', 1280, 720, 30, 1500000),
   low('Низкое', 320, 180, 15, 150000),

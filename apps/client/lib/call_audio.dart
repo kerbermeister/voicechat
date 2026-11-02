@@ -10,11 +10,30 @@ import 'call_audio_platform.dart';
 /// Local receiver gain only; never changes another participant's microphone.
 class CallAudio {
   static const _androidAudio = MethodChannel('livekit_client');
+  static const _routes = MethodChannel('voicechat/audio_route');
+  Future<List<Map<String, dynamic>>> outputs() async =>
+      (await _routes.invokeListMethod<dynamic>('routes') ?? [])
+          .map((value) => Map<String, dynamic>.from(value as Map))
+          .toList();
+
+  Future<void> selectOutput(VoiceCall call, Map<String, dynamic> output) async {
+    if (_call != call) reset(call);
+    final speaker = output['speaker'] == true;
+    await _androidAudio.invokeMethod<void>('setAndroidSpeakerphoneOn', {
+      'enable': speaker,
+      'force': speaker,
+    });
+    await _routes.invokeMethod<void>('select', output['id']);
+    speakerEnabled = speaker;
+  }
+
   bool _directAudioStarted = false;
   Future<void> startDirectAudio() async {
     if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     // LiveKit disables flutter_webrtc's AudioSwitch when its plugin registers.
-    await _androidAudio.invokeMethod<void>('configureAndroidAudioSession');
+    await _androidAudio.invokeMethod<void>('configureAndroidAudioSession', {
+      'forceHandleAudioRouting': true,
+    });
     _directAudioStarted = true;
   }
 

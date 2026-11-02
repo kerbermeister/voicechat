@@ -9,6 +9,7 @@ String screenCaptureNotice(Object error) {
   if (error is PlatformException) {
     if (error.code == 'screenCancelled') return 'Выбор экрана отменён.';
     if (error.code == 'screenCaptureFailed' ||
+        error.code == 'screenSystemUnavailable' ||
         error.code == 'screenCaptureStopped') {
       return error.message ?? 'macOS остановила показ. Выберите экран снова.';
     }

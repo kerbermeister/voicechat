@@ -46,6 +46,10 @@ class PreviewCall implements VoiceCall {
   @override
   bool cameraEnabled = false, muted = false, isClosed = false;
   @override
+  AudioBitrate get audioBitrate => AudioBitrate.auto;
+  @override
+  Future<void> setAudioBitrate(AudioBitrate value) async {}
+  @override
   VideoQuality videoQuality = VideoQuality.auto;
   @override
   CallQuality get quality => CallQuality.good;

@@ -61,6 +61,7 @@ import 'conversation_list.dart';
 import 'room_members_dialog.dart';
 import 'auth_layout.dart';
 import 'call_controller.dart';
+import 'call_push_rules.dart';
 import 'chat_actions.dart';
 import 'chat_pane.dart';
 import 'people_picker.dart';
@@ -622,6 +623,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
         ),
       );
       if (completed == true && !reset && next != null) {
+        await installCallPushRule(next!.client);
         await connected(next!);
         adopted = true;
         if (mounted) {

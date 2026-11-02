@@ -12,6 +12,8 @@ abstract interface class VoiceCall {
   bool get video;
   bool get cameraEnabled;
   VideoQuality get videoQuality;
+  AudioBitrate get audioBitrate;
+  Future<void> setAudioBitrate(AudioBitrate value);
   CallQuality get quality;
   Future<void> camera(bool enabled);
   Future<void> switchCamera();

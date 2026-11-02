@@ -193,6 +193,20 @@ void main() {
               callee.state == mx.CallState.kConnected,
         );
         await local.camera(true);
+        await fixture.until(() => (local.localVideo?.videoWidth ?? 0) > 0);
+        await advancing(remote);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Row(
+                children: [
+                  Expanded(child: rtc.RTCVideoView(local.localVideo!)),
+                  Expanded(child: rtc.RTCVideoView(remote.remoteVideo!)),
+                ],
+              ),
+            ),
+          ),
+        );
         await advancing(remote);
         // Exercise the SDK's explicit track binding as used by native track renderers.
         expect(
@@ -232,13 +246,51 @@ void main() {
         debugPrint(
           'VIDEO_RENDER_AFTER_TRANSCEIVERS: ${remote.remoteVideo!.videoWidth}x${remote.remoteVideo!.videoHeight}',
         );
+        for (final bitrate in AudioBitrate.values) {
+          await local.setAudioBitrate(bitrate);
+          final sender = (await caller.pc!.getSenders()).singleWhere(
+            (sender) => sender.track?.kind == 'audio',
+          );
+          expect(
+            sender.parameters.encodings!.single.maxBitrate,
+            bitrate.bitsPerSecond,
+          );
+          debugPrint('AUDIO_BITRATE_VERIFIED ${bitrate.bitsPerSecond}');
+        }
+        final outputs = await audio.outputs();
+        expect(outputs.where((value) => value['speaker'] == true), isNotEmpty);
+        for (final output in outputs.where(
+          (value) =>
+              value['label'] == 'Громкая связь' ||
+              value['label'] == 'Динамик телефона',
+        )) {
+          await audio.selectOutput(local, output);
+          final selected = (await audio.outputs()).singleWhere(
+            (value) => value['selected'] == true,
+          );
+          expect(selected['id'], output['id']);
+          debugPrint('AUDIO_ROUTE_VERIFIED ${output['label']}');
+        }
         await local.setVideoQuality(VideoQuality.auto);
         await advancing(remote);
         for (var cycle = 0; cycle < 2; cycle++) {
+          await local.setVideoQuality(
+            cycle == 0 ? VideoQuality.low : VideoQuality.auto,
+          );
           await local.camera(false);
           await Future<void>.delayed(const Duration(seconds: 1));
           await local.camera(true);
           await advancing(remote);
+          await fixture.until(
+            () => cycle == 0
+                ? local.localVideo!.videoWidth <= 320 &&
+                      local.localVideo!.videoWidth > 0
+                : local.localVideo!.videoWidth > 320,
+          );
+          await tester.pump();
+          debugPrint(
+            'LOCAL_PREVIEW_REPLACED ${local.localVideo!.videoWidth}x${local.localVideo!.videoHeight}',
+          );
           debugPrint(
             'VIDEO_REPLACEMENT $cycle: ${await remote.receivedVideoStatistics()}',
           );

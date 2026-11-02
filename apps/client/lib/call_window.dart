@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'call_controller.dart';
 import 'direct_call.dart';
@@ -54,13 +55,51 @@ class _CallWindowState extends State<CallWindow> {
     });
     try {
       await action();
-    } catch (_) {
+    } catch (failure) {
       if (mounted) {
-        setState(() => error = 'Действие не удалось. Проверьте сеть и доступ.');
+        setState(
+          () => error =
+              failure is PlatformException && failure.code == 'audio_route'
+              ? failure.message ?? 'Android не переключил аудиовыход.'
+              : 'Действие не удалось. Проверьте сеть и доступ.',
+        );
       }
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  Future<void> selectAudioOutput() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      await widget.audioOutput();
+      return;
+    }
+    final calls = widget.calls;
+    final call = calls.active;
+    if (call == null || call.isClosed) return;
+    final outputs = await calls.audio.outputs();
+    if (!mounted) return;
+    final output = await showDialog<Map<String, dynamic>>(
+      context: context,
+      useRootNavigator: false,
+      builder: (context) => SimpleDialog(
+        title: const Text('Вывод звука'),
+        children: [
+          for (final output in outputs)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, output),
+              child: Row(
+                children: [
+                  Expanded(child: Text(output['label'] as String)),
+                  if (output['selected'] == true) const Icon(Icons.check),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+    if (output == null || call.isClosed || calls.active != call) return;
+    await calls.audio.selectOutput(call, output);
   }
 
   Future<void> end() async {
@@ -133,6 +172,24 @@ class _CallWindowState extends State<CallWindow> {
             icon: const Icon(Icons.tune),
           )
         : null;
+    final audioQualityMenu = current == null
+        ? null
+        : PopupMenuButton<AudioBitrate>(
+            tooltip: 'Качество звука',
+            initialValue: current.audioBitrate,
+            enabled: !busy && current.duration > Duration.zero,
+            onSelected: (value) =>
+                perform(() => current.setAudioBitrate(value)),
+            itemBuilder: (_) => [
+              const PopupMenuItem<AudioBitrate>(
+                enabled: false,
+                child: Text('Ваш микрофон · битрейт Opus'),
+              ),
+              for (final value in AudioBitrate.values)
+                PopupMenuItem(value: value, child: Text(value.label)),
+            ],
+            icon: const Icon(Icons.graphic_eq),
+          );
     final title = AppDialogTitle(
       child: Align(
         alignment: Alignment.centerRight,
@@ -167,6 +224,7 @@ class _CallWindowState extends State<CallWindow> {
                       Text(
                         '${duration.inMinutes}:${(duration.inSeconds % 60).toString().padLeft(2, '0')}',
                       ),
+                    if (audioQualityMenu != null) audioQualityMenu,
                     if (qualityMenu != null) qualityMenu,
                   ],
                 ),
@@ -284,6 +342,11 @@ class _CallWindowState extends State<CallWindow> {
                         error!,
                         style: TextStyle(color: colors.error),
                       ),
+                    ),
+                  if (audioQualityMenu != null)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: audioQualityMenu,
                     ),
                   if (video && current != null) ...[
                     Align(alignment: Alignment.centerRight, child: qualityMenu),
@@ -534,7 +597,7 @@ class _CallWindowState extends State<CallWindow> {
                     : defaultTargetPlatform == TargetPlatform.macOS
                     ? 'Аудиовыход'
                     : 'Громкая связь',
-                onPressed: busy ? null : () => perform(widget.audioOutput),
+                onPressed: busy ? null : () => perform(selectAudioOutput),
                 isSelected: !kIsWeb && calls.audio.speakerEnabled,
                 selectedIcon: const Icon(Icons.volume_up),
                 icon: const Icon(Icons.speaker_outlined),

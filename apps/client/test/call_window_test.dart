@@ -47,6 +47,11 @@ class WindowCall implements VoiceCall {
   @override
   bool cameraEnabled = true, muted = false, isClosed = false;
   @override
+  AudioBitrate audioBitrate = AudioBitrate.auto;
+  @override
+  Future<void> setAudioBitrate(AudioBitrate value) async =>
+      audioBitrate = value;
+  @override
   VideoQuality videoQuality = VideoQuality.auto;
   @override
   CallQuality get quality => CallQuality.good;
@@ -112,6 +117,12 @@ void main() {
       calls.devices.changed();
       await tester.pump();
       expect(find.text('0:01'), findsOneWidget);
+      await tester.tap(find.byTooltip('Качество звука'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(AudioBitrate.low.label));
+      await tester.pumpAndSettle();
+      expect(call.audioBitrate, AudioBitrate.low);
+      expect(call.isClosed, false);
     }
     await tester.pumpWidget(const SizedBox());
     await tester.runAsync(calls.close);

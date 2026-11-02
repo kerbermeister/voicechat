@@ -45,6 +45,38 @@ class GroupAudioCall extends Fake implements CallProbe {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test(
+    'Android selection requires OS confirmation and preserves state on failure',
+    () async {
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      final selected = <String>[];
+      var fail = false;
+      for (final name in ['livekit_client', 'voicechat/audio_route']) {
+        messenger.setMockMethodCallHandler(MethodChannel(name), (method) async {
+          if (method.method == 'select') {
+            if (fail) throw PlatformException(code: 'audio_route');
+            selected.add(method.arguments as String);
+          }
+          return null;
+        });
+        addTearDown(
+          () => messenger.setMockMethodCallHandler(MethodChannel(name), null),
+        );
+      }
+      final audio = CallAudio();
+      final call = GroupAudioCall();
+      await audio.selectOutput(call, {'id': '2', 'speaker': true});
+      expect(audio.speakerEnabled, true);
+      fail = true;
+      await expectLater(
+        audio.selectOutput(call, {'id': '1', 'speaker': false}),
+        throwsA(isA<PlatformException>()),
+      );
+      expect(audio.speakerEnabled, true);
+      expect(selected, ['2']);
+    },
+  );
+  test(
     'Android group speaker starts from the LiveKit route on the first tap',
     () async {
       debugDefaultTargetPlatformOverride = TargetPlatform.android;

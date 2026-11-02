@@ -56,6 +56,24 @@ class CallProbe implements VoiceCall {
   @override
   VideoQuality videoQuality = VideoQuality.auto;
   @override
+  AudioBitrate audioBitrate = AudioBitrate.auto;
+
+  @override
+  Future<void> setAudioBitrate(AudioBitrate value) async {
+    if (_closed) return;
+    final track = media?.localParticipant?.audioTrackPublications
+        .where((publication) => publication.source == lk.TrackSource.microphone)
+        .firstOrNull
+        ?.track;
+    final sender = track?.sender;
+    if (sender == null) throw StateError('Audio sender is not ready');
+    await applyAudioBitrate(sender, value);
+    if (_closed) return;
+    audioBitrate = value;
+    changed?.call();
+  }
+
+  @override
   bool cameraEnabled = false;
   @override
   CallQuality get quality =>
@@ -311,7 +329,12 @@ class CallProbe implements VoiceCall {
     connection = 'Включаем медиа';
     status(connection);
     changed?.call();
-    if (microphone) await media!.localParticipant!.setMicrophoneEnabled(true);
+    if (microphone) {
+      await media!.localParticipant!.setMicrophoneEnabled(true);
+      if (audioBitrate != AudioBitrate.auto) {
+        await setAudioBitrate(audioBitrate);
+      }
+    }
     if (camera && (startedWithVideo || data['camera_allowed'] == true)) {
       await this.camera(true);
     } else if (camera) {
@@ -641,6 +664,9 @@ class CallProbe implements VoiceCall {
   @override
   Future<void> mute(bool value) async {
     await media?.localParticipant?.setMicrophoneEnabled(!value);
+    if (!value && audioBitrate != AudioBitrate.auto) {
+      await setAudioBitrate(audioBitrate);
+    }
     muted = value;
     changed?.call();
   }

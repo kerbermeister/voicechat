@@ -57,6 +57,22 @@ class DirectCall implements VoiceCall {
   @override
   VideoQuality videoQuality = VideoQuality.auto;
   @override
+  AudioBitrate audioBitrate = AudioBitrate.auto;
+
+  @override
+  Future<void> setAudioBitrate(AudioBitrate value) async {
+    if (isClosed) return;
+    final sender = (await call.pc?.getSenders() ?? <rtc.RTCRtpSender>[])
+        .where((sender) => sender.track?.kind == 'audio')
+        .firstOrNull;
+    if (sender == null) throw StateError('Audio sender is not ready');
+    await applyAudioBitrate(sender, value);
+    if (isClosed) return;
+    audioBitrate = value;
+    changed();
+  }
+
+  @override
   CallQuality quality = CallQuality.unknown;
   bool? _videoAtClose;
   @override
@@ -110,7 +126,11 @@ class DirectCall implements VoiceCall {
   void _refreshStreams() {
     // SDK feed changes include late tracks and mute metadata without a new call state.
     for (final entry in _streams.entries) {
-      _updateRenderer(entry.key, entry.value);
+      unawaited(
+        _updateRenderer(entry.key, entry.value).catchError((Object _) {
+          report('Не удалось обновить видео. Выключите и включите камеру.');
+        }),
+      );
     }
     if (video) {
       for (final stream in [
@@ -161,7 +181,11 @@ class DirectCall implements VoiceCall {
         await renderer.dispose();
         return;
       }
-      _updateRenderer(stream, renderer);
+      await _updateRenderer(stream, renderer);
+      if (_closed) {
+        await renderer.dispose();
+        return;
+      }
       // Native muting controls the microphone and rejects remote streams; web muting only silences preview playback.
       if (kIsWeb) renderer.muted = stream.isLocal();
       _renderers.add(renderer);
@@ -183,16 +207,21 @@ class DirectCall implements VoiceCall {
     }
   }
 
-  void _updateRenderer(
+  Future<void> _updateRenderer(
     mx.WrappedMediaStream stream,
     rtc.RTCVideoRenderer renderer,
-  ) {
+  ) async {
     final tracks = stream.stream?.getTracks() ?? <rtc.MediaStreamTrack>[];
     // Native renegotiation can replace a stream/track wrapper while retaining
     // its IDs. Rebind the renderer to the current native source in that case.
     if (!identical(renderer.srcObject, stream.stream) ||
         !listEquals(_renderedTracks[renderer], tracks)) {
-      renderer.srcObject = stream.stream;
+      // Resolve the capture track from the native registry, not a stream's
+      // cached videoTracks list (which can retain a replaced camera wrapper).
+      await renderer.setSrcObject(
+        stream: stream.stream,
+        trackId: stream.stream?.getVideoTracks().firstOrNull?.id,
+      );
       _renderedTracks[renderer] = tracks.toList();
     }
     if (video) {
@@ -314,7 +343,9 @@ class DirectCall implements VoiceCall {
         }
       }
       call.localUserMediaStream?.setVideoMuted(true);
-      if (localVideo != null) localVideo!.srcObject = stream;
+      if (localVideo != null && call.localUserMediaStream != null) {
+        await _updateRenderer(call.localUserMediaStream!, localVideo!);
+      }
       changed();
       try {
         if (_cameraSender != null) {
@@ -409,7 +440,9 @@ class DirectCall implements VoiceCall {
     if (enabled && localVideo == null && call.localUserMediaStream != null) {
       await _render(call.localUserMediaStream!);
     }
-    localVideo?.srcObject = stream;
+    if (localVideo != null && call.localUserMediaStream != null) {
+      await _updateRenderer(call.localUserMediaStream!, localVideo!);
+    }
     changed();
   }
 

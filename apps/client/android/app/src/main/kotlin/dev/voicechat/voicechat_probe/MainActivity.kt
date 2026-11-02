@@ -119,6 +119,8 @@ class MainActivity : FlutterActivity() {
                 } else result.notImplemented()
             }
         if (first) {
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/audio_route")
+                .setMethodCallHandler(CallAudioRoute(applicationContext)::handle)
             MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/clipboard")
                 .setMethodCallHandler(ClipboardFiles(applicationContext)::handle)
             flutterEngine.platformViewsController.registry.registerViewFactory("voicechat/youtube", YouTubeFactory())

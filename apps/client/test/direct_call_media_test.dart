@@ -172,12 +172,16 @@ void main() {
     () async {
       var texture = 0;
       var bindings = 0;
+      final boundTracks = <String?>[];
       final messenger =
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
       messenger.setMockMethodCallHandler(
         const MethodChannel('FlutterWebRTC.Method'),
         (method) async {
-          if (method.method == 'videoRendererSetSrcObject') bindings++;
+          if (method.method == 'videoRendererSetSrcObject') {
+            bindings++;
+            boundTracks.add((method.arguments as Map)['trackId'] as String?);
+          }
           if (method.method == 'createVideoRenderer') {
             return {'textureId': ++texture};
           }
@@ -210,6 +214,7 @@ void main() {
         reason: 'Native stream replacement with the same IDs must rebind',
       );
       expect(call.remoteVideo!.srcObject, same(replacement));
+      expect(boundTracks.last, 'late-video');
       session.remoteUserMediaStream.videoMuted = true;
       session.onCallStreamsChanged.add(session);
       await Future<void>.delayed(Duration.zero);

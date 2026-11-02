@@ -18,6 +18,7 @@ import 'user_action_error.dart';
 import 'first_keys.dart';
 import 'contact_service.dart';
 import 'startup_calls.dart';
+import 'call_push_rules.dart';
 
 /// Matrix session backed by the platform encrypted store.
 class MatrixProbe {
@@ -136,6 +137,7 @@ class MatrixProbe {
       addedAt = DateTime.now();
     }
     await client.firstSyncReceived;
+    await installCallPushRule(client);
     if (addedAt != null) await recordDeviceAdded(client, addedAt);
     if (!client.encryptionEnabled) throw StateError('E2EE unavailable');
   }

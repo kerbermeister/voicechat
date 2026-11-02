@@ -61,21 +61,33 @@ class SynapsePushTests(unittest.TestCase):
                     ]})['room_id']
                     path = 'rooms/' + urllib.parse.quote(room, safe='')
                     matrix('join/' + urllib.parse.quote(room, safe=''), receiver, {})
-                    def send(transaction):
+                    def send(transaction, silent=False):
                         # Synthetic ciphertext tests notification transport, not encryption/decryption.
                         return matrix(path + '/send/m.room.encrypted/' + transaction, sender, {
                             'algorithm': 'm.megolm.v1.aes-sha2', 'ciphertext': 'synthetic-transport-fixture',
                             'session_id': 'fixture', 'device_id': sender['device_id'],
+                            **({'dev.voicechat.silent': True} if silent else {}),
                         }, 'PUT')
                     send('first')
                     self.assertTrue(received.wait(15), 'Real Synapse did not reach the local gateway')
                     self.assertEqual(len(payloads), 1)
                     self.assertEqual(set(payloads[0]), {'title', 'body', 'binding'})
+                    matrix('pushrules/global/override/dev.voicechat.silent', receiver, {
+                        'actions': [], 'conditions': [{'kind': 'event_property_is',
+                            'key': r'content.dev\.voicechat\.silent', 'value': True}],
+                    }, 'PUT')
+                    received.clear()
+                    for index in range(3):
+                        send('call-signal-' + str(index), silent=True)
+                    send('real-message-after-call')
+                    self.assertTrue(received.wait(15))
+                    time.sleep(1)
+                    self.assertEqual(len(payloads), 2, 'Call signalling must not alert; real messages still must')
                     api(base, '/push/subscribe', receiver['access_token'], {'action': 'remove'})
                     self.assertEqual(matrix('pushers', receiver)['pushers'], [])
                     send('after-revocation')
                     time.sleep(1)
-                    self.assertEqual(len(payloads), 1)
+                    self.assertEqual(len(payloads), 2)
             finally:
                 server.shutdown()
                 server.server_close()

@@ -31,6 +31,16 @@ Future<int> visibleUnreadCount(Room room) async {
   final loaded = events.map((event) => event.eventId).toSet();
   final expected = positions.isEmpty ? ids : ids.take(positions.first + 1);
   if (!expected.every(loaded.contains)) return count;
+  // The database retains ciphertext even when the open timeline has decrypted
+  // it. Reconcile the same plaintext as the timeline, without advancing receipts.
+  final encryption = room.client.encryption;
+  if (encryption != null) {
+    for (var i = 0; i < events.length; i++) {
+      if (events[i].type == EventTypes.Encrypted) {
+        events[i] = await encryption.decryptRoomEvent(events[i]);
+      }
+    }
+  }
   final unread = events.takeWhile((event) => event.eventId != boundary);
   if (unread.any((event) => event.type == EventTypes.Encrypted)) return count;
   final incoming = unread.where(

@@ -1236,6 +1236,17 @@ class Room {
           )
         : content;
 
+    // Only a notification hint leaves the ciphertext. SDP, ICE, membership and
+    // call identifiers remain encrypted. Invitations still wake the recipient.
+    if (mustEncrypt &&
+        ((type.startsWith('m.call.') && type != EventTypes.CallInvite) ||
+            type == EventTypes.Message &&
+                (content['msgtype'] == 'dev.voicechat.call_summary' ||
+                    content['msgtype'] == 'dev.voicechat.call' &&
+                        content['action'] != 'invite'))) {
+      sendMessageContent['dev.voicechat.silent'] = true;
+    }
+
     // The server needs the duration to expire ciphertext; the plaintext stays encrypted.
     if (mustEncrypt && content.containsKey('dev.voicechat.ttl_seconds')) {
       sendMessageContent['dev.voicechat.ttl_seconds'] =

@@ -1974,6 +1974,10 @@ class CallSession {
               type: type,
             )
           : content;
+      // CallSession sends directly, bypassing Room's notification hints.
+      if (mustEncrypt && type != EventTypes.CallInvite) {
+        sendMessageContent['dev.voicechat.silent'] = true;
+      }
       return await client.sendMessage(
         room.id,
         sendMessageContent.containsKey('ciphertext')

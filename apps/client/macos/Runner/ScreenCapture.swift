@@ -99,6 +99,11 @@ final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOut
     config.pixelFormat = kCVPixelFormatType_32BGRA
     config.showsCursor = true
     config.capturesAudio = false
+    startStream(filter, config: config, canRetry: true)
+  }
+
+  private func startStream(_ filter: SCContentFilter, config: SCStreamConfiguration, canRetry: Bool) {
+    guard !stopped, pending != nil else { return }
     let capture = SCStream(filter: filter, configuration: config, delegate: self)
     self.stream = capture
     do {
@@ -106,7 +111,21 @@ final class ScreenCapture: NSObject, SCContentSharingPickerObserver, SCStreamOut
       let deadline = DispatchWorkItem { [weak self, weak capture] in
         guard let self, let capture, capture === self.stream else { return }
         self.logger.error("Capture timeout: started=\(self.startCompleted), samples=\(self.sampleCount), statuses=\(String(describing: self.frameStatuses), privacy: .public)")
-        self.fail("screenNoFrames", "macOS не передала кадры выбранного экрана.")
+        // A successful start with no callbacks is not a permission denial.
+        // Recreate only the user's selected source; never capture another display.
+        if canRetry && self.startCompleted && self.sampleCount == 0 {
+          capture.stopCapture { [capture] _ in
+            withExtendedLifetime(capture) {
+              DispatchQueue.main.async {
+                guard capture === self.stream, !self.stopped else { return }
+                self.startCompleted = false
+                self.startStream(filter, config: config, canRetry: false)
+              }
+            }
+          }
+        } else {
+          self.fail("screenSystemUnavailable", "macOS подтвердила захват, но не передаёт кадры. Попробуйте выбрать отдельное окно. Если это повторяется, сохраните работу и перезагрузите Mac.")
+        }
       }
       frameDeadline = deadline
       DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: deadline)

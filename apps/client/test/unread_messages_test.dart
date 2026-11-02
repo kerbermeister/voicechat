@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:voicechat_probe/conversation_list.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart';
+import 'package:matrix/encryption.dart';
 import 'package:voicechat_probe/unread_messages.dart';
 import 'chat_actions_test.dart' show OutboxDatabase;
 import 'conversation_list_test.dart' show ListClient;
@@ -30,8 +31,21 @@ class UnreadEvents extends OutboxDatabase {
 
 class UnreadClient extends ListClient {
   @override
+  Encryption? encryption;
+  @override
   final UnreadEvents database;
   UnreadClient(this.database);
+}
+
+class StoredCiphertext extends Fake implements Encryption {
+  final Map<String, Event> plaintext;
+  StoredCiphertext(this.plaintext);
+  @override
+  Future<Event> decryptRoomEvent(
+    Event event, {
+    bool store = false,
+    EventUpdateType updateType = EventUpdateType.timeline,
+  }) async => plaintext[event.eventId] ?? event;
 }
 
 void main() {
@@ -90,6 +104,30 @@ void main() {
       );
       expect(room.notificationCount, 0);
       expect(room.fullyRead, r'$read');
+    },
+  );
+  test(
+    'Stored ciphertext is decrypted before counting hidden call signals',
+    () async {
+      final plaintext = {
+        for (final event in database.events) event.eventId: event,
+      };
+      (room.client as UnreadClient).encryption = StoredCiphertext(plaintext);
+      for (var i = 0; i < database.events.length; i++) {
+        final previous = database.events[i];
+        database.events[i] = Event.fromJson({
+          ...previous.toJson(),
+          'type': EventTypes.Encrypted,
+          'content': {'ciphertext': 'stored'},
+        }, room);
+      }
+      expect(await visibleUnreadCount(room), 3);
+      plaintext.remove(r'$text2');
+      expect(
+        await visibleUnreadCount(room),
+        9,
+        reason: 'Missing keys preserve the badge',
+      );
     },
   );
   test('Only hidden signalling leaves no false unread badge', () async {
