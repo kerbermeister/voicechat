@@ -1,0 +1,14 @@
+{
+  "build": 48,
+  "previous_build": 47,
+  "source": "61a7d223f8dfb27deeb2b4194f0e21b902d27f5a",
+  "update_offered_in_previous_app": true,
+  "download_install_button_used": true,
+  "installed_exact_zip_entries": 285,
+  "installed_hashes_match": true,
+  "candidate_account_and_device_preserved": true,
+  "post_install_acceptance_pending": false,
+  "keychain_deleted_or_reset": false,
+  "post_install_device_id_same": true,
+  "post_install_ui": "PASS: account/device preserved; pre-existing encrypted QA voice played 0:00 to 0:09"
+}

@@ -1,0 +1,55 @@
+{
+  "source": "61a7d223f8dfb27deeb2b4194f0e21b902d27f5a",
+  "python": {
+    "total": 839,
+    "skipped": 3,
+    "passed": 836
+  },
+  "flutter_full_before_final_diagnostics_and_android_tests": {
+    "passed": 556,
+    "skipped": 4
+  },
+  "final_quality_diagnostics": {
+    "passed": 8
+  },
+  "final_capture_tests": {
+    "passed": 12
+  },
+  "final_node_audio": {
+    "passed": 10
+  },
+  "analyzer": "no issues",
+  "native_macos_direct_call": {
+    "passed": 1,
+    "cycles": 3,
+    "external_signalling_or_turn": false
+  },
+  "native_android_capture": {
+    "passed": false,
+    "stage": "system MediaProjection consent",
+    "reason": "UI tool could not target standalone emulator; test timed out",
+    "physical_device": false
+  },
+  "browser_audio": {
+    "engine": "Chromium156 internal browser",
+    "rms_levels": {
+      "1": 0.07097118776581601,
+      ".5": 0.035416563405839596,
+      "0": 0,
+      "2": 0.14063707877720658
+    },
+    "synthetic_loopback": true,
+    "physical_iphone": false
+  },
+  "browser_renderer": {
+    "passed": true,
+    "combined_stream": true,
+    "pause_seconds": 2,
+    "resolution_change": [
+      320,
+      640
+    ],
+    "ice_restart": true,
+    "physical_lip_sync_measured": false
+  }
+}
