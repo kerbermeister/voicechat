@@ -1,0 +1,10 @@
+{
+  "base_release": "c456c620d065d07f361ab5b089c5262625acf6b5",
+  "state": "Initial local owner guard only; not committed or released",
+  "result": "2 PASS /5 FAIL: late push failures report into a newer call; local/remote/controller cancellation leaves the acceptance Future pending",
+  "sha256": {
+    "apps/client/lib/call_controller.dart": "0874ccd5c0761124499925f4b10e760365c16eedf078872dc16882e3413299c7",
+    "apps/client/test/call_accept_cancellation_test.dart": "b14853d3ffbf9fe811097d5876aed00b1dec430ae1b274735f26a80865e35977",
+    ".prototype/call-accept55-red-extended.log": "2d8b11bce6d38733dc674ada3bb308a55d359d7083265c6b0c47eeda2980c519"
+  }
+}

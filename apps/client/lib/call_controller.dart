@@ -532,7 +532,10 @@ class CallController extends ChangeNotifier
     return session == null ? Future.value() : _push.endOutgoing(session);
   }
 
-  Future<bool> _answerPush(String session) async {
+  Future<bool> _answerPush(
+    String session, {
+    required bool Function() isCurrent,
+  }) async {
     try {
       await _push.request('accept', session);
       return true;
@@ -541,10 +544,14 @@ class CallController extends ChangeNotifier
       if (error.code == 'call_not_found' || error.code == 'fcm_unavailable') {
         return true;
       }
-      report('Вызов уже завершён или принят на другом устройстве.');
+      if (isCurrent()) {
+        report('Вызов уже завершён или принят на другом устройстве.');
+      }
       return false;
     } catch (_) {
-      report('Не удалось проверить актуальность вызова. Попробуйте снова.');
+      if (isCurrent()) {
+        report('Не удалось проверить актуальность вызова. Попробуйте снова.');
+      }
       return false;
     }
   }
@@ -593,7 +600,13 @@ class CallController extends ChangeNotifier
       _refresh();
     });
     Future<void> connect() async {
-      if (invitation != null && !await _answerPush(invitation.session)) return;
+      if (invitation != null &&
+          !await _answerPush(
+            invitation.session,
+            isCurrent: () => generation == _dialGeneration && !_closed,
+          )) {
+        return;
+      }
       if (generation != _dialGeneration || _closed) return;
       await beforeMedia?.call();
       if (generation != _dialGeneration || _closed) return;
@@ -878,23 +891,45 @@ class CallController extends ChangeNotifier
   }
 
   Future<void> acceptDirect(DirectCall call) async {
-    if (active != null && !active!.isClosed) {
+    if (_closed || call.isClosed || !directInvitations.contains(call)) return;
+    if (starting || _dialPending || (active != null && !active!.isClosed)) {
       throw UserActionError('Сначала завершите текущий звонок.');
     }
-    if (!await _answerPush(call.session)) return;
-    await beforeMedia?.call();
+    final cancellation = _dialCancellation = Completer<void>();
+    final generation = ++_dialGeneration;
+    // Reserve the slot before push/platform awaits, so cancel owns this session
+    // and a second acceptance cannot start another microphone in parallel.
     active = call;
     directInvitations.remove(call);
     _refresh();
-    try {
+    bool current() =>
+        !_closed &&
+        generation == _dialGeneration &&
+        identical(active, call) &&
+        !call.isClosed;
+    Future<void> answer() async {
+      if (!await _answerPush(call.session, isCurrent: current)) {
+        await call.close();
+        return;
+      }
+      if (!current()) return;
+      await beforeMedia?.call().timeout(const Duration(seconds: 45));
+      if (!current()) return;
       await call.answer();
-      if (!call.isClosed) devices.accept(call);
-    } catch (_) {
-      await call.close();
-      rethrow;
+      if (current()) devices.accept(call);
     }
-    directInvitations.remove(call);
-    _refresh();
+
+    try {
+      await Future.any<void>([answer(), cancellation.future]);
+    } catch (_) {
+      final abandoned = !current();
+      await call.close();
+      if (!abandoned) rethrow;
+    } finally {
+      if (identical(_dialCancellation, cancellation)) _dialCancellation = null;
+      directInvitations.remove(call);
+      _refresh();
+    }
   }
 
   Future<void> declineDirect(DirectCall call) async {
@@ -989,6 +1024,11 @@ class CallController extends ChangeNotifier
   @override
   Future<void> handleCallEnded(CallSession session) async {
     final current = active;
+    if (current is DirectCall &&
+        identical(current.call, session) &&
+        _dialCancellation?.isCompleted == false) {
+      _dialCancellation!.complete();
+    }
     if (current is DirectCall &&
         identical(current.call, session) &&
         session.direction == CallDirection.kOutgoing &&

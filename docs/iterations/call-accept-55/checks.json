@@ -1,0 +1,28 @@
+{
+  "candidate": "1.19.7+55",
+  "flutter": {
+    "passed": 647,
+    "skipped": 4
+  },
+  "targeted_passed": 42,
+  "final_regressions_passed": 11,
+  "version_package_tests": 8,
+  "analyze": "PASS",
+  "runtime_fixture_sha256": {
+    "apps/client/lib/call_controller.dart": "8646031212f7aa0cb24074f110618ad4967962969499cf6c0fe748e282762595",
+    "apps/client/lib/app_version.dart": "e41a0a349d1f6292b63b676f21d566d51541dd4274e139a98a53f625e90f5d0b",
+    "apps/client/pubspec.yaml": "cf4ec65075eebd393457aea26ac3ad92a62c86de5f5762719d6c952a13c0884c",
+    "apps/client/test/call_accept_cancellation_test.dart": "0daf3493f5f95ada02080f24822ca87996c2d74a120f19ef12bcdf33b850518e"
+  },
+  "logs_sha256": {
+    ".prototype/call-accept55-flutter.log": "b4a7a1da3f2bfdba3235d8ad133807a3401fea49ff2a0cb7775df4a1726f3fe7",
+    ".prototype/call-accept55-targeted.log": "d73ef1bb3529e885494c9c21244b5756f06fb8a1b69321b6e4d0fd77ccd6a4ea",
+    ".prototype/call-accept55-final-regressions.log": "86de08ea63321a3916d383131ca7f776e701576fea41598f3a3e7e274f276b29",
+    ".prototype/call-accept55-analyze.log": "b9c476711366ada3485b01630a473d2d1fe9e9f2f10e92d76636f7f168c91d35",
+    ".prototype/call-accept55-version-tests.log": "a3446e1db11a71b539a05c82cac87fe7f19ece451ce163ac364310697feeafe7"
+  },
+  "native_rtc_last_verified_build": 54,
+  "native_rtc_implementation_changed_since54": false,
+  "physical_phones": false,
+  "final_macos_53_to55_update_pending": true
+}

@@ -1,0 +1,21 @@
+{
+  "baseline": "1.19.6+54",
+  "source": "c456c620d065d07f361ab5b089c5262625acf6b5",
+  "gate_seconds": 6,
+  "connected_at_ms": 4564,
+  "initially_both_connected": true,
+  "caller_still_connected": true,
+  "late_old_accept_ends_new_ui": true,
+  "b_media": {
+    "mode": "synthetic",
+    "requests": 1,
+    "pending": 0,
+    "hold_next": false,
+    "sources": 1,
+    "ended": 0,
+    "audio": "running"
+  },
+  "synthetic_media": true,
+  "physical_device": false,
+  "accept_to_callback_ms": 1994
+}

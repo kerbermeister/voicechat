@@ -1,0 +1,11 @@
+{
+  "base": "c456c620d065d07f361ab5b089c5262625acf6b5",
+  "result": "2 FAIL: a cancelled incoming accept overwrites the newer active call after push/beforeMedia await",
+  "scope": "Real CallController; synthetic HTTP/DirectCall.answer/RTC; no hardware or WAN",
+  "sha256": {
+    "apps/client/lib/call_controller.dart": "79603627151e593d542057e3433a7627515c7f579989c117ed24c4248474b875",
+    "apps/client/test/call_accept_cancellation_test.dart": "5061d942ca4bd40c9da89fae425e12920383d98836f101c8301ade020b806c0c",
+    ".prototype/call-accept55-red.log": "57977272599fedfbf04a3f3ccb4bb91bc4764ec23b8d86deef273d2a9d8fb431"
+  },
+  "reported_iphone_cause_proven": false
+}

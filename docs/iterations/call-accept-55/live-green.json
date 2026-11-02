@@ -1,0 +1,50 @@
+{
+  "candidate": "1.19.7+55",
+  "gate_seconds": 6,
+  "accept_to_callback_ms": 2026,
+  "connected_after_ms": 4379,
+  "connected_before_old_response": true,
+  "old_response": {
+    "held": false,
+    "started_ms": 1793657552292,
+    "ended_ms": 1793657558301,
+    "duration_ms": 6009,
+    "endpoint": "/push/call",
+    "normal_handler_returned": true
+  },
+  "caller_still_connected": true,
+  "callee_still_connected": true,
+  "b_media": {
+    "mode": "synthetic",
+    "requests": 1,
+    "pending": 0,
+    "hold_next": false,
+    "sources": 1,
+    "ended": 0,
+    "audio": "running"
+  },
+  "synthetic_media": true,
+  "physical_device": false,
+  "received_audio_packets": 416,
+  "secure_turn_relay": true,
+  "media_after_end": {
+    "a": {
+      "mode": "synthetic",
+      "requests": 2,
+      "pending": 0,
+      "hold_next": false,
+      "sources": 2,
+      "ended": 2,
+      "audio": "running"
+    },
+    "b": {
+      "mode": "synthetic",
+      "requests": 1,
+      "pending": 0,
+      "hold_next": false,
+      "sources": 1,
+      "ended": 1,
+      "audio": "running"
+    }
+  }
+}

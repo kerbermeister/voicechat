@@ -1,0 +1,17 @@
+{
+  "source": "c456c620d065d07f361ab5b089c5262625acf6b5",
+  "build": 54,
+  "zip_dmg_files_identical": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "bundle_id_feed_sparkle_key_match_installed53": true,
+  "physical_candidate_ui_pending": false,
+  "installed53_to54_pending": false,
+  "superseded_by_build": 55,
+  "published": false,
+  "installed53_to54_performed": false,
+  "installed53_to55_pending": true,
+  "candidate_closed_while_saved_login_pending": true,
+  "keychain_access_verified": false,
+  "physical_candidate_ui": false
+}

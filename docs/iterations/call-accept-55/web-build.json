@@ -1,0 +1,8 @@
+{
+  "candidate": "1.19.7+55",
+  "stage": "uncommitted runtime, ordinary main.dart with loopback config",
+  "main_sha256": "a08a1d8496fad95088272492bf619fdee2339ec623ae97a898ed17d3500f9027",
+  "synthetic_media_only": true,
+  "qa_fixture_sha256": "d7f45fa6d0cfce3cbb9264c8eff6f3171c11511699e8853f07d0e840a17f663b",
+  "gate_fixture_sha256": "39f9a84a54dcb023f4ace27838f37b193a7b872cff6d63ed6a55ee046f5ecd2c"
+}

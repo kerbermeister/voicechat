@@ -1,0 +1,28 @@
+{
+  "source": "c456c620d065d07f361ab5b089c5262625acf6b5",
+  "deploy": {
+    "run": 94,
+    "id": 41529105090,
+    "job": 125564409823,
+    "status": "success",
+    "duration": "16m53s",
+    "mode": "full",
+    "deploy": true,
+    "rollout": "managed"
+  },
+  "prototype": {
+    "218": {
+      "id": 41528936669,
+      "attempt1": "failed Android NDK download: Error on ZipFile unknown archive; earlier tests passed",
+      "attempt2": "success; same commit, full checks and Android preview"
+    },
+    "219": {
+      "id": 41528937107,
+      "status": "success"
+    },
+    "220": {
+      "id": 41528937151,
+      "status": "success"
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "source": "c456c620d065d07f361ab5b089c5262625acf6b5",
+  "build": 54,
+  "previous_build": 53,
+  "emulator": "VoiceChat_Push_GMS35",
+  "api": "35",
+  "installed_apk_equals_signed_candidate": true,
+  "apk_sha256": "beb503bba641c2c6d1fc92ac043168557cf2a2ebc87d8fb5c5a428657330c8c8",
+  "data_cleared": false,
+  "account_identity_compared": false,
+  "physical_device": false,
+  "release_media_call_tested": false,
+  "scope": "APK upgrade and exact installed bytes; real Mac and browser media tests recorded separately"
+}
