@@ -1,0 +1,110 @@
+{
+  "source": "5ed9369c33ccdb29cb1f818a6e675f0f0c089f4b",
+  "version": "1.17.0+46",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41399441873",
+  "mode": "managed/full",
+  "baseline": "ced65375d9f9ee09511f516188bea83fcd0a8a705ea65a791cb34766052205f7",
+  "previous_baseline": "6381b7ca9fc45d2b6eaaa88e3990db874a49e89b7f5fbefb095c5e6d3de650a1",
+  "previous_points_to_prior_release": true,
+  "data_identity_unchanged": true,
+  "core_images": {
+    "configure": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+    "control": "ghcr.io/kerbermeister/voicechat/control@sha256:0934d256534928ff569f74f41def65e7b1f2816abb21f7c3504fc14f9de1dfd5",
+    "postgres": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+    "synapse": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0"
+  },
+  "edge_images": {
+    "a": {
+      "configure": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+      "route-health": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+      "turn": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+      "web": "ghcr.io/kerbermeister/voicechat/web@sha256:857c8c106f930c76ad0521bef7eda4332361b681017a776c33bab2fe99bd5f9f"
+    }
+  },
+  "containers": {
+    "voicechat-edge-a-web-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/web@sha256:857c8c106f930c76ad0521bef7eda4332361b681017a776c33bab2fe99bd5f9f",
+      "health": "healthy",
+      "restarts": 0,
+      "status": "running"
+    },
+    "voicechat-edge-a-turn-1": {
+      "image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+      "health": null,
+      "restarts": 0,
+      "status": "running"
+    },
+    "voicechat-edge-a-route-health-1": {
+      "image": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+      "health": null,
+      "restarts": 0,
+      "status": "running"
+    },
+    "voicechat-synapse-1": {
+      "image": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+      "health": "healthy",
+      "restarts": 0,
+      "status": "running"
+    },
+    "voicechat-control-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/control@sha256:0934d256534928ff569f74f41def65e7b1f2816abb21f7c3504fc14f9de1dfd5",
+      "health": "healthy",
+      "restarts": 0,
+      "status": "running"
+    },
+    "voicechat-shared-front-ingress-1": {
+      "image": "haproxy:3.2.26-alpine@sha256:5893840576071e6217cd52ebdcc14f454c6f7a631056fa6f4e0f40d3cac4215b",
+      "health": null,
+      "restarts": 0,
+      "status": "running"
+    },
+    "deploy-caddy-1": {
+      "image": "caddy@sha256:226d1f059b75399fe19182893c7184591c07b97afc8dfcf44eeb80c9a77a530f",
+      "health": null,
+      "restarts": 0,
+      "status": "running"
+    },
+    "voicechat-postgres-1": {
+      "image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "health": "healthy",
+      "restarts": 0,
+      "status": "running"
+    },
+    "amnezia-awg2": {
+      "image": "amnezia-awg2",
+      "health": null,
+      "restarts": 0,
+      "status": "running"
+    },
+    "deploy-frontend-1": {
+      "image": "ghcr.io/kerbermeister/avito-helper/frontend:latest",
+      "health": null,
+      "restarts": 0,
+      "status": "running"
+    },
+    "deploy-backend-1": {
+      "image": "ghcr.io/kerbermeister/avito-helper/backend:latest",
+      "health": null,
+      "restarts": 0,
+      "status": "running"
+    },
+    "deploy-stt-1": {
+      "image": "ghcr.io/kerbermeister/avito-helper/stt:latest",
+      "health": null,
+      "restarts": 0,
+      "status": "running"
+    },
+    "deploy-postgres-1": {
+      "image": "postgres:18",
+      "health": "healthy",
+      "restarts": 0,
+      "status": "running"
+    }
+  },
+  "main_js_sha256": "77fc4a544056f9f41ce83250ca4b66564c4f28a2cd35d69eec3500fd8aa57146",
+  "main_js_cache_control": "no-cache",
+  "public_web_build": 46,
+  "health": {
+    "ok": true
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "build": 46,
+  "source": "5ed9369c33ccdb29cb1f818a6e675f0f0c089f4b",
+  "sha256": "7e85667fdb992def3740ee8ba8db4a80343dfc101d46326d54bfb888ebf44de5",
+  "certificate_verified": true,
+  "https_hash_verified": true,
+  "published": true,
+  "physical_acceptance": false,
+  "artifact": "local release build with existing production signing certificate",
+  "ci_candidate_run": "https://github.com/kerbermeister/voicechat/actions/runs/41399513060",
+  "authorization": "Owner requested publication for downloading and testing; hardware acceptance pending"
+}

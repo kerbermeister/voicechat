@@ -1,0 +1,37 @@
+{
+  "source": "5ed9369c33ccdb29cb1f818a6e675f0f0c089f4b",
+  "date": "2026-11-02",
+  "merge_preserves_release45": "7bcf26a is an ancestor; main updated by fast-forward without force push",
+  "local_python_full": {
+    "tests": 837,
+    "skipped": 3,
+    "result": "PASS before final multipart regression addition"
+  },
+  "local_stream_python": {
+    "tests": 49,
+    "result": "PASS"
+  },
+  "local_flutter_full": {
+    "passed": 544,
+    "skipped": 4,
+    "result": "PASS"
+  },
+  "local_stream_flutter": {
+    "passed": 10,
+    "result": "PASS with expanded opt-in test"
+  },
+  "flutter_analyze": "PASS: no issues",
+  "ci_deploy84": "PASS: tests, exact web crypto assets, ordinary main build, full managed release",
+  "ci_android10": "PASS: tests, signed APK candidate; published APK is separately verified local release build from same clean source",
+  "macos_package": "PASS: existing Sparkle key, ZIP/DMG apps identical, signatures and HTTPS hashes verified",
+  "macos_upgrade": "PASS: offer in45, Download/install button, installed46 matches285 entries of exact published ZIP",
+  "macos_candidate_profile": "PASS: saved account/device retained, existing encrypted9sec voice played to completion; local toggle on/off and real server-backed form checked",
+  "macos_post_install_ui": "PASS: saved conversation reopened and existing encrypted9sec voice played0:00→0:09 after Sparkle installation; final settings/device read unavailable due native tool noWindowsAvailable",
+  "web_gate": "PASS in built-in browser: default off; enable reveals menu and live server-backed form; reload retains enable; disable removes menu; left disabled",
+  "physical_android": false,
+  "physical_iphone": false,
+  "native_stream_media": false,
+  "ten_viewer_load": false,
+  "three_hour_endurance": false,
+  "keychain_deleted_or_reset": false
+}

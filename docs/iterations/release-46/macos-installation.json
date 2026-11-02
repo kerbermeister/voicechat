@@ -1,0 +1,15 @@
+{
+  "build": 46,
+  "previous_build": 45,
+  "installed_through_download_install_button": true,
+  "installed_matches_published_zip": true,
+  "entries": 285,
+  "signature_verified": true,
+  "backup_app_and_profile_hashes_verified": true,
+  "candidate_same_account_and_device_as45": true,
+  "saved_account_preference_hash_unchanged": true,
+  "post_install_history_playback": "PASS: existing encrypted voice0:00\u21920:09",
+  "post_install_device_id_recheck": "not completed: noWindowsAvailable from UI tool",
+  "keychain_deleted_or_reset": false,
+  "keychain_prompt_confirmed_by_owner": true
+}
