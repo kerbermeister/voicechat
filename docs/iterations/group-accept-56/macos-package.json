@@ -1,0 +1,23 @@
+{
+  "source": "c430542c0dc3e900528de4f7e6e1619109736365",
+  "build": 56,
+  "zip_dmg_files_identical": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "bundle_id_feed_sparkle_key_match_installed53": true,
+  "physical_candidate_ui_pending": false,
+  "installed53_to56_pending": true,
+  "candidate_launched": true,
+  "keychain_copy_matching_block_confirmed": true,
+  "sqlite_frames_observed_in_startup_sample": false,
+  "physical_candidate_ui": true,
+  "published": false,
+  "native_ui_version": "1.19.8+56",
+  "same_account_device_as_installed53": true,
+  "identity_verified_against": "pre52 read-only account/device hash; installed53 was independently equal to that reference",
+  "old_history_visible": true,
+  "old_audio_played_to_end_after_candidate_launch": null,
+  "keychain_block_resolved": true,
+  "keychain_reset": false,
+  "profile_cleared": false
+}

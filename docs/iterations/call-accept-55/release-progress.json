@@ -20,5 +20,6 @@
   "backend_unchanged": true,
   "macos55_closed_unpublished": true,
   "macos_superseded_by_build": 56,
-  "macos_update_53_to56_pending": true
+  "macos_update_53_to56_pending": false,
+  "macos_update_53_to56_verified_in": "../group-accept-56/macos-installation.json"
 }

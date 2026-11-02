@@ -1003,7 +1003,7 @@ invite/answer, terminal hangup при offer failure. Серверные лими
 Проверка на реальном iPhone/WAN остаётся открытой.
 Web55/workflow95 и Android55 опубликованы; backend не перезапущен. Подписанный
 Mac55 не публиковался и закрыт на ожидании Keychain; итоговый Mac56 включает54–56,
-проверка и выпуск53→56 ещё не выполнены.
+штатный53→56 с прежними account/device/history теперь проверен.
 Причина случая iPhone не доказана. Приёмка остаётся UA-04.C14.
 
 
@@ -1015,5 +1015,8 @@ room/session/initiator, expiry/membership/verified own-device; свежая ав
 ключи и full room rotation не ослаблены. 673 Flutter/4skip,26 адресных, analyzer,1 admission/8 package PASS. Тот же UI fault
 на acceptor56 не открыл медиа после отмены; обычная группа после отмены приняла
 защищённое аудио, оставшийся участник сохранил звонок после выхода второго.
-Прежняя full rotation/capture rebuild остаётся; OPT-07 не реализован. Выпуск56 выполняется.
+Прежняя full rotation/capture rebuild остаётся; OPT-07 не реализован. Web96 и CI224/225/226 SUCCESS; Mac53→56 кнопкой с285 exact entries и прежними
+account/device/history PASS, Android55→56 emulator exact APK; все каналы56 опубликованы.
+Нативный RTC54 не повторялся в56; физические iPhone/Xiaomi, WAN/A-V sync и
+вся multi-device/push матрица остаются обязательными и открытыми.
 [Техническое свидетельство](../iterations/group-accept-56/), единая приёмка UA-04.C14.

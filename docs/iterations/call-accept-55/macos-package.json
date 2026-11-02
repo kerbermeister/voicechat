@@ -13,5 +13,6 @@
   "sqlite_frames_observed_in_startup_sample": false,
   "superseded_by_build": 56,
   "installed53_to55_performed": false,
-  "installed53_to56_pending": true
+  "macos_update_53_to56_pending": false,
+  "macos_update_53_to56_verified_in": "../group-accept-56/macos-installation.json"
 }

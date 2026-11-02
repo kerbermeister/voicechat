@@ -1,0 +1,37 @@
+{
+  "source": "c430542c0dc3e900528de4f7e6e1619109736365",
+  "version": "1.19.8+56",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41546031733",
+  "mode": "web",
+  "web_status": "success",
+  "ci": {
+    "main": "https://github.com/kerbermeister/voicechat/actions/runs/41545810622",
+    "branch": "https://github.com/kerbermeister/voicechat/actions/runs/41545810672",
+    "tag": "https://github.com/kerbermeister/voicechat/actions/runs/41545810807"
+  },
+  "macos_build": "passed",
+  "macos_package": "passed",
+  "macos_published": true,
+  "macos_previous_public_and_installed_build": 53,
+  "macos_update_53_to56_pending": false,
+  "android_build": "passed",
+  "android_published": true,
+  "physical_iphone_xiaomi": false,
+  "before_backup": {
+    "previous_build": 53,
+    "app_entries": 285,
+    "profile_entries": 332,
+    "hashes_match": true,
+    "keychain_modified": false
+  },
+  "macos_saved_login_waits_system_keychain_access": false,
+  "macos_zip_dmg_entries": 285,
+  "macos_codesign_strict": true,
+  "release_job_duration": "13m18s",
+  "ci_status": "all_success",
+  "macos_update_53_to56_verified": true,
+  "macos_os": "15.3.1",
+  "android_emulator_upgrade": "55_to56_exact_bytes_no_clear",
+  "production_verified": true,
+  "backend_unchanged": true
+}
