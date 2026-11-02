@@ -4,13 +4,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
+
 import 'package:dart_webrtc/dart_webrtc.dart' show MediaStreamWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:http/http.dart' as http;
 import 'package:web/web.dart' as web;
 import 'package:voicechat_probe/call_renderer.dart';
-import 'package:voicechat_probe/media_statistics.dart';
+import 'package:voicechat_probe/call_quality.dart';
 import 'package:voicechat_probe/call_audio_platform.dart';
 
 void main() => runApp(const MaterialApp(home: Fixture()));
@@ -25,12 +26,13 @@ class _FixtureState extends State<Fixture> {
   String result = 'Ready: local synthetic media only';
   bool running = false;
   rtc.RTCVideoRenderer? renderer;
+  rtc.RTCVideoRenderer? reverseRenderer;
 
   Future<void> waitFor(bool Function() condition) async {
     final watch = Stopwatch()..start();
     while (!condition()) {
       if (watch.elapsed > const Duration(seconds: 15)) {
-        throw StateError('Media deadline');
+        throw StateError('Media deadline at $result');
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
@@ -47,6 +49,8 @@ class _FixtureState extends State<Fixture> {
     final networkLab = Uri.base.queryParameters['network_lab'] == '1';
     var configuration = <String, dynamic>{};
     String? labKey;
+    var direction = 'both';
+    var receiverConfiguration = <String, dynamic>{};
     if (networkLab) {
       if (Uri.base.host != '127.0.0.1') {
         await audio.close().toDart;
@@ -60,10 +64,21 @@ class _FixtureState extends State<Fixture> {
         final response = await http
             .get(Uri.base.resolve('/turn.json'))
             .timeout(const Duration(seconds: 5));
-        if (response.statusCode != 200) throw StateError('TURN config rejected');
+        if (response.statusCode != 200) {
+          throw StateError('TURN config rejected');
+        }
         configuration = jsonDecode(response.body) as Map<String, dynamic>;
         labKey = configuration.remove('lab_key') as String;
         configuration.remove('profile');
+        final otherServers = configuration.remove('peer_ice_servers');
+        direction = configuration.remove('direction') as String;
+        if (!const {'both', 'incoming', 'outgoing'}.contains(direction)) {
+          throw StateError('Unknown lab direction');
+        }
+        receiverConfiguration = {
+          ...configuration,
+          if (otherServers != null) 'iceServers': otherServers,
+        };
       } catch (error) {
         await audio.close().toDart;
         setState(() {
@@ -94,10 +109,20 @@ class _FixtureState extends State<Fixture> {
     );
     source.addTrack(destination.stream.getAudioTracks().toDart.single);
     final local = MediaStreamWeb(source, 'local');
+    final otherLocal = direction == 'both'
+        ? null
+        : MediaStreamWeb(source.clone(), 'local');
     final sender = await rtc.createPeerConnection(configuration);
-    final receiver = await rtc.createPeerConnection(configuration);
+    final receiver = await rtc.createPeerConnection(
+      networkLab ? receiverConfiguration : configuration,
+    );
     setState(() => result = 'Peers created; negotiating synthetic A/V');
     final view = createCallRenderer();
+    final otherView = createCallRenderer();
+    rtc.MediaStream? otherRemote;
+    sender.onTrack = (event) {
+      otherRemote = event.streams.firstOrNull;
+    };
     rtc.MediaStream? remote;
     sender.onIceCandidate = (c) {
       if (c.candidate?.isNotEmpty == true) unawaited(receiver.addCandidate(c));
@@ -122,6 +147,12 @@ class _FixtureState extends State<Fixture> {
     try {
       await audioReady.timeout(const Duration(seconds: 5));
       await view.initialize();
+      if (otherLocal != null) {
+        await otherView.initialize();
+        for (final track in otherLocal.getTracks()) {
+          await receiver.addTrack(track, otherLocal);
+        }
+      }
       for (final track in local.getTracks()) {
         await sender.addTrack(track, local);
       }
@@ -132,6 +163,19 @@ class _FixtureState extends State<Fixture> {
             remote?.getAudioTracks().length == 1 &&
             remote?.getVideoTracks().length == 1,
       );
+      if (otherLocal != null) {
+        await waitFor(
+          () =>
+              otherRemote?.getAudioTracks().length == 1 &&
+              otherRemote?.getVideoTracks().length == 1,
+        );
+        await setCallTrackVolume(otherRemote!.getAudioTracks().single, 0);
+        await otherView.setSrcObject(
+          stream: otherRemote,
+          trackId: otherRemote!.getVideoTracks().single.id,
+        );
+        setState(() => reverseRenderer = otherView);
+      }
       await setCallTrackVolume(remote!.getAudioTracks().single, 0);
       await view.setSrcObject(
         stream: remote,
@@ -210,36 +254,134 @@ class _FixtureState extends State<Fixture> {
         }
 
         final samples = <Map<String, Object>>[];
+        final otherStatistics = MediaStatistics();
+        final incomingStatistics = CallStatistics();
+        final stable = StableCallQuality();
+        VideoQuality? appliedVideo;
+        var encodingUpdates = 0;
+        final autoSender = (await sender.getSenders()).firstWhere(
+          (s) => s.track?.kind == 'video',
+        );
         try {
-          for (final phase in [
-            ('clean', 6),
-            ('delay', 6),
-            ('loss', 6),
-            ('offline', 3),
-            ('clean', 30),
-          ]) {
+          for (final phase
+              in (direction == 'both'
+                  ? [
+                      ('clean', 6),
+                      ('delay', 6),
+                      ('loss', 6),
+                      ('offline', 3),
+                      ('clean', 30),
+                    ]
+                  : [('clean', 9), ('loss', 18), ('clean', 15)])) {
             await profile(phase.$1);
             setState(() => result = 'Network phase: ${phase.$1}');
             for (var i = 0; i < phase.$2; i++) {
               await Future<void>.delayed(const Duration(seconds: 1));
+              final otherReports = direction == 'both'
+                  ? <rtc.StatsReport>[]
+                  : await sender.getStats();
+              final incoming = incomingStatistics.read(otherReports);
+              final outgoing = outgoingVideoQuality(otherReports);
+              if (direction != 'both' && samples.length % 3 == 0) {
+                stable.update(outgoing);
+                final effective = adaptiveVideoQuality(
+                  VideoQuality.auto,
+                  stable.value,
+                );
+                if (effective != appliedVideo) {
+                  await applyVideoEncoding(autoSender, effective);
+                  appliedVideo = effective;
+                  encodingUpdates++;
+                }
+              }
               samples.add({
+                if (direction != 'both') ...{
+                  'direction': direction,
+                  'encoding_updates': encodingUpdates,
+                  'incoming_quality': incoming.name,
+                  'outgoing_quality': outgoing.name,
+                  'stable_outgoing': stable.value.name,
+                  'effective_video': adaptiveVideoQuality(
+                    VideoQuality.auto,
+                    stable.value,
+                  ).name,
+                  'reverse_media': otherStatistics.read(otherReports),
+                },
                 'profile': phase.$1,
                 'second': samples.length,
                 'media': statistics.read(await receiver.getStats()),
               });
             }
           }
-          final finalMedia = samples.last['media'] as List<Map<String, Object>>;
-          for (final kind in ['audio', 'video']) {
-            if (!finalMedia.any(
-              (row) =>
-                  row['direction'] == 'inbound-rtp' &&
-                  row['kind'] == kind &&
-                  row['candidateType'] == 'relay' &&
-                  row['bitrate_bps'] is num &&
-                  (row['bitrate_bps'] as num) > 0,
-            )) {
-              throw StateError('Relay $kind did not recover');
+          for (final key in [
+            'media',
+            if (direction != 'both') 'reverse_media',
+          ]) {
+            final finalMedia = samples.last[key] as List<Map<String, Object>>;
+            for (final kind in ['audio', 'video']) {
+              if (!finalMedia.any(
+                (row) =>
+                    row['direction'] == 'inbound-rtp' &&
+                    row['kind'] == kind &&
+                    row['candidateType'] == 'relay' &&
+                    row['bitrate_bps'] is num &&
+                    (row['bitrate_bps'] as num) > 0,
+              )) {
+                throw StateError('Relay $key $kind did not recover');
+              }
+            }
+          }
+          if (direction != 'both') {
+            final impaired = samples
+                .where((s) => s['profile'] == 'loss')
+                .toList();
+            bool encodedWidth(Map<String, Object> sample, int width) =>
+                (sample['reverse_media'] as List<Map<String, Object>>).any(
+                  (r) =>
+                      r['direction'] == 'outbound-rtp' &&
+                      r['kind'] == 'video' &&
+                      r['frameWidth'] == width,
+                );
+            if (direction == 'incoming') {
+              if (impaired
+                          .where((s) => s['incoming_quality'] == 'poor')
+                          .length <
+                      9 ||
+                  impaired
+                          .where((s) => s['outgoing_quality'] == 'excellent')
+                          .length <
+                      15 ||
+                  !impaired.every(
+                    (s) =>
+                        s['effective_video'] == 'auto' && encodedWidth(s, 640),
+                  )) {
+                throw StateError(
+                  'Incoming loss incorrectly changed outgoing video',
+                );
+              }
+            } else {
+              if (impaired
+                          .where((s) => s['outgoing_quality'] == 'poor')
+                          .length <
+                      9 ||
+                  impaired
+                          .where((s) => s['incoming_quality'] == 'excellent')
+                          .length <
+                      15 ||
+                  !impaired.any(
+                    (s) =>
+                        s['effective_video'] == 'low' && encodedWidth(s, 320),
+                  )) {
+                throw StateError(
+                  'Outgoing loss did not adapt video independently',
+                );
+              }
+            }
+            if (samples.last['effective_video'] != 'auto' ||
+                !encodedWidth(samples.last, 640)) {
+              throw StateError(
+                'Auto video did not recover after network repair',
+              );
             }
           }
           final proof = await http.post(
@@ -247,19 +389,35 @@ class _FixtureState extends State<Fixture> {
             headers: {'Content-Type': 'application/json', 'X-Lab-Key': labKey!},
             body: jsonEncode({'rtp_recovered': true, 'samples': samples}),
           );
-          if (proof.statusCode != 200) throw StateError('Proof rejected');
+          if (proof.statusCode != 200) {
+            throw StateError(
+              'Proof rejected ${proof.statusCode}: ${proof.body} (${proof.request?.contentLength} bytes)',
+            );
+          }
         } finally {
           await profile('clean');
         }
       }
       setState(
         () => result =
-            'PASS: combined A/V, one audio path, media pause/resume, 320→640 frames, ICE restart, recovered interval counters${networkLab ? ', TURN netem delay/loss/offline recovery' : ''}; physical lip-sync not measured',
+            'PASS: combined A/V, one audio path, media pause/resume, 320→640 frames, ICE restart, recovered interval counters${networkLab ? ', TURN network recovery ($direction)' : ''}; physical lip-sync not measured',
       );
     } catch (error) {
-      setState(() => result = 'FAIL: $error');
+      setState(
+        () => result =
+            'FAIL: $error; ICE ${sender.iceConnectionState?.name}/${receiver.iceConnectionState?.name}',
+      );
     } finally {
       timer.cancel();
+      if (otherLocal != null) otherView.srcObject = null;
+      for (final t
+          in otherRemote?.getAudioTracks() ?? <rtc.MediaStreamTrack>[]) {
+        forgetCallTrackVolume(t.id!);
+      }
+      for (final t in otherLocal?.getTracks() ?? <rtc.MediaStreamTrack>[]) {
+        await t.stop();
+      }
+      if (otherLocal != null) await otherView.dispose();
       oscillator.stop();
       for (final track in local.getTracks()) {
         await track.stop();
@@ -275,6 +433,7 @@ class _FixtureState extends State<Fixture> {
       await audio.close().toDart;
       setState(() {
         renderer = null;
+        reverseRenderer = null;
         running = false;
       });
     }
@@ -291,6 +450,8 @@ class _FixtureState extends State<Fixture> {
           ),
           SelectableText(result),
           if (renderer != null) Expanded(child: rtc.RTCVideoView(renderer!)),
+          if (reverseRenderer != null)
+            Expanded(child: rtc.RTCVideoView(reverseRenderer!)),
         ],
       ),
     ),

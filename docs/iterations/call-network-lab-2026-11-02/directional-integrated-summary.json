@@ -1,0 +1,977 @@
+{
+  "state": "directional assertions and symmetric recovery regression passed",
+  "date": "2026-11-02",
+  "synthetic_media": true,
+  "physical_lip_sync_measured": false,
+  "production_runtime_changed": false,
+  "client_version": "1.19.2+50",
+  "production_release": "full89",
+  "seed": null,
+  "browser": "internal Chromium156",
+  "final_runs_per_direction": 1,
+  "sources": {
+    "apps/client/integration_test/call_renderer_fixture.dart": "f480282ba36219bf59dd9f3b2fec62d88c01a49b4e39666256636ecb3a9cc5ca",
+    "apps/client/tool/call_network_lab.py": "89bb6030538d2d52fae17230687353cf0e077d2e280b03ed0d0d41cde0fa8488",
+    "apps/client/tool/test_call_network_lab.py": "66939b91a8f70494f29307226b1923381589b0921c12334d8dfef9fcc6c92e75"
+  },
+  "compiled_main_sha256": "f76e07f9dd7ee2d8788386c315d5e1544dfdf3f104c09a02f6787515fc897814",
+  "runs": {
+    "incoming": {
+      "raw_sha256": "ae714d981077479cb4524e197385192e5e6711e29716d7df2e6170829b82c171",
+      "samples": 42,
+      "loss_samples": 18,
+      "incoming_poor_samples": 18,
+      "incoming_excellent_samples": 0,
+      "outgoing_poor_samples": 0,
+      "outgoing_excellent_samples": 18,
+      "encoding_updates": 1,
+      "impaired_qdisc": "qdisc prio 1: root refcnt 5 bands 2 priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n Sent 6822801 bytes 10519 pkt (dropped 462, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\nqdisc netem 30: parent 1:2 limit 1000 loss 15%\n Sent 2913802 bytes 4632 pkt (dropped 462, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "timeline": [
+        {
+          "second": 0,
+          "profile": "clean",
+          "incoming": "unknown",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 1,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 2,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 3,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 4,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 5,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 6,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 7,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 8,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 9,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 10,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 11,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 12,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 13,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 14,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 15,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 16,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 17,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 18,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 19,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 20,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 21,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 22,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 23,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 24,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 25,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 26,
+          "profile": "loss",
+          "incoming": "poor",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 27,
+          "profile": "clean",
+          "incoming": "good",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 28,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 29,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 30,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 31,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 32,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 33,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 34,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 35,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 36,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 37,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 38,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 39,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 40,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 41,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        }
+      ],
+      "final_rtp": {
+        "media": [
+          {
+            "kind": "audio",
+            "relayProtocol": "udp",
+            "candidateType": "relay",
+            "bitrate_bps": 14217.513749385635
+          },
+          {
+            "kind": "video",
+            "relayProtocol": "udp",
+            "candidateType": "relay",
+            "bitrate_bps": 967523.7143783596,
+            "decoded_fps": 14.934363182127768
+          }
+        ],
+        "reverse_media": [
+          {
+            "kind": "audio",
+            "relayProtocol": "udp",
+            "candidateType": "relay",
+            "bitrate_bps": 8351.734883683674
+          },
+          {
+            "kind": "video",
+            "relayProtocol": "udp",
+            "candidateType": "relay",
+            "bitrate_bps": 14722.915494950932,
+            "decoded_fps": 14.913812292292272
+          }
+        ]
+      }
+    },
+    "outgoing": {
+      "raw_sha256": "9c92d2124268ac10ec23c2524fb0b046e5b543aced17157767e33ea0dc5dfb7e",
+      "samples": 42,
+      "loss_samples": 18,
+      "incoming_poor_samples": 0,
+      "incoming_excellent_samples": 18,
+      "outgoing_poor_samples": 15,
+      "outgoing_excellent_samples": 1,
+      "encoding_updates": 3,
+      "impaired_qdisc": "qdisc prio 1: root refcnt 5 bands 2 priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n Sent 6319287 bytes 10057 pkt (dropped 359, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\nqdisc netem 30: parent 1:2 limit 1000 loss 15%\n Sent 2418382 bytes 4225 pkt (dropped 359, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "timeline": [
+        {
+          "second": 0,
+          "profile": "clean",
+          "incoming": "unknown",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 1,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 2,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 3,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 4,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 5,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 6,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 7,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 8,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 9,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "good",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 10,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 11,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 12,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 13,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 14,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 1
+        },
+        {
+          "second": 15,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 640,
+          "encoding_updates": 2
+        },
+        {
+          "second": 16,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 17,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 18,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 19,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 20,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 21,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 22,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "good",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 23,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 24,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 25,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 26,
+          "profile": "loss",
+          "incoming": "excellent",
+          "outgoing": "poor",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 27,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "good",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 28,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 29,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 30,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 31,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 32,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 33,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 34,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 35,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "poor",
+          "effective_video": "low",
+          "outgoing_width": 320,
+          "encoding_updates": 2
+        },
+        {
+          "second": 36,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 320,
+          "encoding_updates": 3
+        },
+        {
+          "second": 37,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 3
+        },
+        {
+          "second": 38,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 3
+        },
+        {
+          "second": 39,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 3
+        },
+        {
+          "second": 40,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 3
+        },
+        {
+          "second": 41,
+          "profile": "clean",
+          "incoming": "excellent",
+          "outgoing": "excellent",
+          "stable_outgoing": "excellent",
+          "effective_video": "auto",
+          "outgoing_width": 640,
+          "encoding_updates": 3
+        }
+      ],
+      "final_rtp": {
+        "media": [
+          {
+            "kind": "audio",
+            "relayProtocol": "udp",
+            "candidateType": "relay",
+            "bitrate_bps": 8378.066891777215
+          },
+          {
+            "kind": "video",
+            "relayProtocol": "udp",
+            "candidateType": "relay",
+            "bitrate_bps": 15758.744867866666,
+            "decoded_fps": 14.960833735316456
+          }
+        ],
+        "reverse_media": [
+          {
+            "kind": "audio",
+            "relayProtocol": "udp",
+            "candidateType": "relay",
+            "bitrate_bps": 13965.798115016667
+          },
+          {
+            "kind": "video",
+            "relayProtocol": "udp",
+            "candidateType": "relay",
+            "bitrate_bps": 999432.4153909213,
+            "decoded_fps": 14.963355123232143
+          }
+        ]
+      }
+    }
+  },
+  "limitations": [
+    "Synthetic canvas, no Matrix DirectCall or LiveKit group",
+    "No physical iPhone/Xiaomi, acoustic latency or lip-sync measurement",
+    "Random losses, no fixed seed or A/B48 baseline",
+    "An initial disposable namespace failed twice before impairment; recreating it recovered. Cause is not established. Failure is not counted as PASS."
+  ],
+  "symmetric_regression": {
+    "samples": 51,
+    "raw_sha256": "b0253ecace4e661a15962e5a09742295ee47407456c29f308c7d1ea924c806e0",
+    "final_rtp": [
+      {
+        "kind": "audio",
+        "relayProtocol": "udp",
+        "candidateType": "relay",
+        "bitrate_bps": 14248.511346506695
+      },
+      {
+        "kind": "video",
+        "relayProtocol": "udp",
+        "candidateType": "relay",
+        "bitrate_bps": 15741.212535188348,
+        "decoded_fps": 14.966923683305351
+      }
+    ]
+  },
+  "boundary_tests": "4 PASS including live HTTP API",
+  "analyzer": "PASS"
+}

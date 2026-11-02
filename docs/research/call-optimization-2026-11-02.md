@@ -692,3 +692,37 @@ buffer counters. Для iPhone Safari/PWA и физического Xiaomi ап�
 остаётся условной; Xiaomi у другого человека, ADB подключить невозможно.
 Дополнительную таймерную систему переключения аудиопресетов16/32/64 по последнему
 вопросу владельца не добавлять: он просил только объяснить существующий Auto.
+
+## Продолжение после паузы — 02.11.2026, OPT-02/03
+
+Оба directional UDP-сценария объединены с общими
+`call_renderer_fixture.dart`/`call_network_lab.py`; отдельные копии экспериментального
+runner больше не нужны для воспроизведения. В окончательном fixture параметры
+кодировщика обновляются только при смене ступени, как в DirectCall.
+
+Входящие loss15%:18/18 samples incoming=poor,18/18 outgoing=excellent,
+Auto/640 сохраняется; одно начальное применение encoding. Исходящие loss15%:
+15/18 outgoing=poor при18/18 incoming=excellent; encoding проходит
+Auto→low→Auto, фактическая ширина640→320→640, всего3 применения.
+42 samples каждого направления; оба peers восстанавливают audio/video RTP
+с выбранным relayProtocol=udp. Проверки разделения направлений и фактического
+разрешения встроены в fixture: без действующего impairment он не сообщает PASS.
+[Свидетельство](../iterations/call-network-lab-2026-11-02/directional-integrated-summary.json).
+
+Один первоначальный disposable namespace дважды не дождался первых кадров до
+помех; после пересоздания namespace последующие проверки прошли. Причина этого
+локального startup failure не установлена, он не засчитан как PASS и не объявлен
+production-дефектом/исправлением. Deadline теперь показывает этап и состояния ICE.
+
+Это проверка существующего алгоритма версии50, **не новая продуктовая адаптация**.
+Обычный main.dart, backend и нативные артефакты не изменились. Случайные потери без
+fixed seed, короткий synthetic canvas, один успешный окончательный прогон каждого
+направления не заменяют A/B48, долгий звонок, физический A/V-marker, Matrix DirectCall,
+LiveKit group и приёмку Safari/PWA/Xiaomi. OPT-02 и аппаратная часть OPT-03 открыты.
+
+Регрессия прежнего симметричного режима на том же final fixture также PASS:
+51 samples clean/delay40ms/loss2%/offline100%/clean; конечные audio/video RTP по UDP
+relay положительны. Это не утверждение о возврате буферной задержки к baseline.
+HTTP/asset/nonce/size и запрет неподдержанного directional TCP:4 PASS с живым API;
+analyzer и release-сборка тестового web-entrypoint PASS. Поскольку изменились только
+integration_test/tool/docs, установленный клиент50 и full89 не требуют переиздания.

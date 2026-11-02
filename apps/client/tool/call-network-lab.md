@@ -52,11 +52,11 @@ python3 -m unittest discover -s apps/client/tool -p test_call_network_lab.py
 CALL_NETWORK_LAB_ORIGIN=http://127.0.0.1:7390 python3 -m unittest discover -s apps/client/tool -p test_call_network_lab.py
 ```
 
-Ограничения: один TURN namespace, симметричные помехи, короткий synthetic stream,
+Ограничения базового сценария: один TURN namespace, симметричные помехи, короткий synthetic stream,
 случайные потери без фиксированного seed. Это ещё не полный A/B48→50, не настоящие
 Matrix DirectCall/LiveKit/E2EE membership, не физический акустический маркер и
-не приёмка iPhone/Xiaomi. Для длительного/асимметричного испытания и групповой
-нагрузки нужны следующие этапы OPT-02; текущий отчёт их не закрывает.
+не приёмка iPhone/Xiaomi. Для длительного испытания и групповой
+нагрузки нужны следующие этапы OPT-02; асимметричный UDP probe описан ниже; текущий отчёт их не закрывает.
 
 ## Предварительная проверка групповых эпох
 
@@ -83,3 +83,32 @@ aiohttp. Он создаёт только свою localhost-комнату/ко
 Его успешный результат означает, что прежний JWT **принят после RemoveParticipant**.
 Это ограничение, препятствующее простому отказу от общей ротации комнаты;
 проверка не объявляет такой отзыв безопасным. Media decrypt этим probe не измеряется.
+
+## Раздельные направления Auto video
+
+Тот же скомпилированный fixture поддерживает два UDP-сценария. Направление считается
+относительно peer A (`sender` в коде), который отправляет и принимает A/V:
+
+```sh
+python3 apps/client/tool/call_network_lab.py --web-root .prototype/call-network-web --output .prototype/call-incoming.json --direction incoming
+python3 apps/client/tool/call_network_lab.py --web-root .prototype/call-network-web --output .prototype/call-outgoing.json --direction outgoing
+```
+
+Запускать по очереди, завершив предыдущий стенд Ctrl+C. Два TURN listeners3478/3480
+делят namespace, но имеют отдельные relay ranges. `u32` направляет в netem только
+UDP-ответы одного listener на eth0, не loopback/hairpin и не трафик Mac в целом.
+Сценарий: clean9с → loss15%18с → clean15с;42 samples обоих peers. TCP для этих
+сценариев пока отклоняется, обычный симметричный TCP-тест сохранён.
+
+Проверяются production `CallStatistics`, `outgoingVideoQuality`,
+`StableCallQuality`, `applyVideoEncoding`; Auto обновляется раз в3 samples.
+При incoming loss исходящий Auto/640 сохраняется; при outgoing loss видны
+remote-inbound feedback, low/320 и затем возврат Auto/640. В обоих направлениях
+проверяется восстановление audio/video RTP по relay. Не менее половины18 samples
+должны действительно показать poor на испорченном пути; это защищает от ложного
+PASS, когда netem не действует. Фактические samples и qdisc drops остаются в JSON.
+
+Потери пока случайные, длительности номинальные: запрос профиля/getStats и ожидание
+планировщика увеличивают реальное время. Synthetic canvas сжимается гораздо проще
+камеры. Результат не доказывает экономию канала, физический lip-sync, отсутствие
+долгого дрейфа, работу Matrix DirectCall или E2EE-группы на iPhone/Xiaomi.

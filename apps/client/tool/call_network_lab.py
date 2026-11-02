@@ -54,9 +54,14 @@ def main():
     parser.add_argument('--netem-image', default='voicechat-network-probe:fixture')
     parser.add_argument('--port', type=int, default=7390)
     parser.add_argument('--transport', choices=('udp', 'tcp'), default='udp')
+    parser.add_argument('--direction', choices=('both', 'incoming', 'outgoing'), default='both')
     args = parser.parse_args()
     if not 1024 <= args.port <= 65535:
         parser.error('Use an unprivileged port')
+    if args.direction != 'both' and args.transport != 'udp':
+        parser.error('Directional feedback checks currently require UDP')
+    directional = args.direction != 'both'
+    profiles = {**PROFILES, 'loss': ['loss', '15%' if directional else '2%']}
     web_root = args.web_root.resolve()
     if not (web_root / 'main.dart.js').is_file():
         parser.error('Build call_renderer_fixture.dart first')
@@ -70,6 +75,10 @@ def main():
     nonce = secrets.token_hex(24)
     secret = secrets.token_hex(32)
     first, sockets = reserve_range()
+    other_first = None
+    if directional:
+        other_first, other_sockets = reserve_range()
+        sockets.extend(other_sockets)
     with tempfile.TemporaryDirectory(prefix=project) as temporary:
         folder = Path(temporary)
         folder.chmod(0o700)
@@ -83,6 +92,12 @@ def main():
         ]) + '\n'
         (folder / 'turn.conf').write_text(config)
         (folder / 'turn.conf').chmod(0o600)
+        if directional:
+            other_config = config.replace('listening-port=3478', 'listening-port=3480')
+            other_config = other_config.replace(f'min-port={first}', f'min-port={other_first}')
+            other_config = other_config.replace(f'max-port={first + 7}', f'max-port={other_first + 7}')
+            (folder / 'other.conf').write_text(other_config)
+            (folder / 'other.conf').chmod(0o600)
         services = {
             'turn': {
                 'image': image('turn'), 'command': ['-c', '/turn.conf'],
@@ -98,6 +113,16 @@ def main():
                 'cap_add': ['NET_ADMIN'], 'read_only': True, 'mem_limit': '64m',
             },
         }
+        if directional:
+            services['turn']['ports'].extend([
+                '127.0.0.1::3480/tcp', '127.0.0.1::3480/udp',
+                *[f'127.0.0.1:{p}:{p}/udp' for p in range(other_first, other_first + 8)],
+            ])
+            services['other'] = {
+                'image': image('turn'), 'command': ['-c', '/other.conf'],
+                'volumes': ['./other.conf:/other.conf:ro'],
+                'network_mode': 'service:turn', 'mem_limit': '128m', 'cpus': .5,
+            }
         compose = folder / 'compose.json'
         compose.write_text(json.dumps({'name': project, 'services': services}))
         command = ['docker', 'compose', '-f', str(compose)]
@@ -107,13 +132,14 @@ def main():
 
         def profile(name):
             nonlocal current
-            if name not in PROFILES:
+            if name not in profiles:
                 raise ValueError('Unknown profile')
             with lock:
-                for device in ('lo', 'eth0'):
+                for device in (('eth0',) if directional else ('lo', 'eth0')):
+                    placement = ['parent', '1:2', 'handle', '30:'] if directional else ['root']
                     subprocess.run([
                         *command, 'exec', '-T', 'netem', 'tc', 'qdisc', 'replace',
-                        'dev', device, 'root', 'netem', *PROFILES[name],
+                        'dev', device, *placement, 'netem', *profiles[name],
                     ], check=True, capture_output=True, timeout=10)
                 current = name
 
@@ -129,6 +155,25 @@ def main():
                 text=True).strip()
             if not address.startswith('127.0.0.1:'):
                 raise ValueError('TURN must bind loopback')
+            other_address = None
+            if directional:
+                other_address = subprocess.check_output([
+                    *command, 'port', '--protocol', 'udp', 'turn', '3480',
+                ], text=True).strip()
+                if not other_address.startswith('127.0.0.1:'):
+                    raise ValueError('TURN must bind loopback')
+                tc = [*command, 'exec', '-T', 'netem', 'tc']
+                subprocess.run([
+                    *tc, 'qdisc', 'replace', 'dev', 'eth0', 'root', 'handle', '1:',
+                    'prio', 'bands', '2', 'priomap', *(['0'] * 16),
+                ], check=True, capture_output=True, timeout=10)
+                # Only listener responses to one peer enter netem; relay hairpin stays clean.
+                subprocess.run([
+                    *tc, 'filter', 'add', 'dev', 'eth0', 'protocol', 'ip', 'parent',
+                    '1:', 'prio', '1', 'u32', 'match', 'ip', 'protocol', '17', '0xff',
+                    'match', 'ip', 'sport', '3478' if args.direction == 'incoming' else '3480',
+                    '0xffff', 'flowid', '1:2',
+                ], check=True, capture_output=True, timeout=10)
             username = f'{int(time.time()) + 900}:call-lab'
             password = base64.b64encode(hmac.digest(
                 secret.encode(), username.encode(), hashlib.sha1)).decode()
@@ -159,6 +204,11 @@ def main():
                             'iceTransportPolicy': 'relay',
                             'iceServers': [{'urls': f'turn:{address}?transport={args.transport}',
                                             'username': username, 'credential': password}],
+                            'direction': args.direction,
+                            **({'peer_ice_servers': [{
+                                'urls': f'turn:{other_address}?transport=udp',
+                                'username': username, 'credential': password,
+                            }]} if directional else {}),
                             'lab_key': nonce, 'profile': current,
                         })
                     path = asset_path(web_root, self.path)
@@ -173,14 +223,14 @@ def main():
                         return self.reply(403, {'error': 'forbidden'})
                     try:
                         size = int(self.headers.get('Content-Length', '0'))
-                        if not 0 < size <= 200000:
+                        if not 0 < size <= 500000:
                             return self.reply(400, {'error': 'invalid_size'})
                         data = json.loads(self.rfile.read(size))
                         if not isinstance(data, dict):
                             return self.reply(400, {'error': 'invalid_request'})
                         if self.path == '/profile':
                             if (not isinstance(data.get('profile'), str) or
-                                    data['profile'] not in PROFILES):
+                                    data['profile'] not in profiles):
                                 return self.reply(400, {'error': 'unknown_profile'})
                             qdiscs.append({'profile': current, **{
                                 device: subprocess.check_output([
@@ -194,14 +244,15 @@ def main():
                         if self.path == '/result':
                             samples = data.get('samples')
                             if (data.get('rtp_recovered') is not True or not isinstance(samples, list)
-                                    or len(samples) != 51):
+                                    or len(samples) != (42 if directional else 51)):
                                 return self.reply(400, {'error': 'invalid_result'})
                             args.output.parent.mkdir(parents=True, exist_ok=True)
                             args.output.write_text(json.dumps({
                                 'synthetic_media': True, 'physical_lip_sync_measured': False,
                                 'transport': 'TURN ' + args.transport.upper(),
                                 'namespace_only': True,
-                                'profiles': PROFILES, 'qdiscs': qdiscs, 'result': data,
+                                'direction': args.direction,
+                                'profiles': profiles, 'qdiscs': qdiscs, 'result': data,
                             }, indent=2) + '\n')
                             return self.reply(200, {'saved': True})
                         return self.reply(404, {'error': 'not_found'})

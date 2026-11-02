@@ -1,4 +1,6 @@
 import tempfile
+import subprocess
+import sys
 import unittest
 import os
 import json
@@ -26,6 +28,15 @@ class AssetBoundaryTest(unittest.TestCase):
                        return_value=context('ssh://remote')):
                 with self.assertRaises(ValueError):
                     require_local_docker()
+
+    def test_directional_tcp_is_rejected_before_creating_a_lab(self):
+        result = subprocess.run([
+            sys.executable, str(Path(__file__).with_name('call_network_lab.py')),
+            '--web-root', '/unused', '--output', '/unused',
+            '--direction', 'outgoing', '--transport', 'tcp',
+        ], capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('Directional feedback checks currently require UDP', result.stderr)
 
     def test_queries_work_but_traversal_and_symlinks_cannot_escape(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -57,6 +68,15 @@ class LiveApiBoundaryTest(unittest.TestCase):
         with urlopen(origin + '/turn.json', timeout=5) as response:
             config = json.load(response)
 
+        self.assertIn(config['direction'], ('both', 'incoming', 'outgoing'))
+        if config['direction'] != 'both':
+            primary = config['iceServers'][0]['urls']
+            secondary = config['peer_ice_servers'][0]['urls']
+            self.assertNotEqual(primary, secondary)
+            for url in (primary, secondary):
+                self.assertTrue(url.startswith('turn:127.0.0.1:'))
+                self.assertTrue(url.endswith('?transport=udp'))
+
         def status(path, headers=None, body=None):
             try:
                 with urlopen(Request(origin + path, headers=headers or {}, data=body),
@@ -75,6 +95,9 @@ class LiveApiBoundaryTest(unittest.TestCase):
         for body in (b'[]', b'{"profile":[]}', b'{"profile":"unsupported"}', b'bad-json'):
             with self.subTest(body=body):
                 self.assertEqual(status('/profile', headers, body), 400)
+        self.assertEqual(status('/profile', headers, b'x' * 500001), 400)
+        for body in (b'{}', b'{"rtp_recovered":true,"samples":[]}'):
+            self.assertEqual(status('/result', headers, body), 400)
         with urlopen(origin + '/turn.json', timeout=5) as response:
             self.assertEqual(json.load(response)['profile'], config['profile'])
 
