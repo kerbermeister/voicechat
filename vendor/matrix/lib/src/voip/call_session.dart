@@ -208,6 +208,7 @@ class CallSession {
   // outgoing call
   Future<void> initOutboundCall(CallType type) async {
     await _preparePeerConnection();
+    if (callHasEnded) return;
     setCallState(CallState.kCreateOffer);
     final stream = await _getUserMedia(type);
     if (stream != null) {
@@ -223,6 +224,20 @@ class CallSession {
     int lifetime,
     bool isGroupCall,
   ) async {
+    if (callHasEnded) return;
+    final localLifetime = voip.timeouts!.callInviteLifetime.inMilliseconds;
+    final remaining = lifetime < localLifetime ? lifetime : localLifetime;
+    if (remaining <= 0) {
+      await hangup(reason: CallErrorCode.inviteTimeout);
+      return;
+    }
+    // RTC/SDP setup consumes the caller's remaining time as well.
+    _ringingTimer = Timer(Duration(milliseconds: remaining), () {
+      _ringingTimer = null;
+      if (state == CallState.kFledgling || state == CallState.kRinging) {
+        unawaited(hangup(reason: CallErrorCode.inviteTimeout));
+      }
+    });
     if (!isGroupCall) {
       // glare fixes
       final prevCallId = voip.incomingCallRoomId[room.id];
@@ -242,6 +257,7 @@ class CallSession {
                 roomId: room.id,
                 callId: prevCall.callId,
               );
+              return;
             } else {
               Logs().d(
                 '[glare] nice, lex of newer call $callId is smaller auto accept this here',
@@ -258,25 +274,21 @@ class CallSession {
     }
 
     await _preparePeerConnection();
+    if (callHasEnded) return;
     if (metadata != null) {
       _updateRemoteSDPStreamMetadata(metadata);
     }
-    await pc!.setRemoteDescription(offer);
+    try {
+      await pc!.setRemoteDescription(offer);
+    } catch (_) {
+      await terminate(CallParty.kLocal, CallErrorCode.unknownError, true);
+      rethrow;
+    }
+    if (callHasEnded) return;
 
     // Capture starts only after the user accepts; an invite must not open the microphone.
 
     setCallState(CallState.kRinging);
-
-    _ringingTimer = Timer(voip.timeouts!.callInviteLifetime, () {
-      if (state == CallState.kRinging) {
-        Logs().v('[VOIP] Call invite has expired. Hanging up.');
-
-        fireCallEvent(CallStateChange.kHangup);
-        unawaited(hangup(reason: CallErrorCode.inviteTimeout));
-      }
-      _ringingTimer?.cancel();
-      _ringingTimer = null;
-    });
   }
 
   Future<void> answerWithStreams(List<WrappedMediaStream> callFeeds) async {
@@ -341,6 +353,7 @@ class CallSession {
     // create the peer connection now so it can be gathering candidates while we get user
     // media (assuming a candidate pool size is configured)
     await _preparePeerConnection();
+    if (callHasEnded) return;
     await gotCallFeedsForInvite(
       callFeeds,
       requestScreenSharing: requestScreenSharing,
@@ -1052,17 +1065,17 @@ class CallSession {
     setCallState(CallState.kEnded);
 
     if (!isGroupCall) {
-      // when a call crash and this call is already terminated the currentCId is null.
-      // So don't return bc the hangup or reject will not proceed anymore.
-      if (voip.currentCID != null &&
-          voip.currentCID != VoipId(roomId: room.id, callId: callId)) {
-        return;
+      // A callback may already own currentCID while stopRingtone was awaiting.
+      // Preserve that owner, but always release this ended call's resources.
+      if (voip.currentCID == VoipId(roomId: room.id, callId: callId)) {
+        voip.currentCID = null;
       }
-      voip.currentCID = null;
-      voip.incomingCallRoomId.removeWhere((key, value) => value == callId);
+      voip.incomingCallRoomId.removeWhere(
+        (key, value) => key == room.id && value == callId,
+      );
     }
 
-    voip.calls.removeWhere((key, value) => key.callId == callId);
+    voip.calls.removeWhere((key, value) => identical(value, this));
 
     await cleanUp();
     if (shouldEmit) {
@@ -1197,10 +1210,15 @@ class CallSession {
   }
 
   Future<void> _preparePeerConnection() async {
+    if (callHasEnded) return;
     _iceRestartedCount = 0;
 
     try {
       pc = await _createPeerConnection();
+      if (callHasEnded) {
+        await cleanUp();
+        return;
+      }
       pc!.onRenegotiationNeeded = onNegotiationNeeded;
 
       pc!.onIceCandidate = (RTCIceCandidate candidate) async {
@@ -1281,6 +1299,8 @@ class CallSession {
       };
     } catch (e) {
       Logs().v('[VOIP] prepareMediaStream error => $e');
+      await terminate(CallParty.kLocal, CallErrorCode.unknownError, true);
+      rethrow;
     }
   }
 
@@ -1301,10 +1321,15 @@ class CallSession {
       Logs().e('[VOIP] cleaning up streams failed', e, s);
     }
 
+    final peer = pc;
+    pc = null;
     try {
-      if (pc != null) {
-        await pc!.close();
-        await pc!.dispose();
+      if (peer != null) {
+        try {
+          await peer.close();
+        } finally {
+          await peer.dispose();
+        }
       }
     } catch (e, s) {
       Logs().e('[VOIP] removing pc failed', e, s);

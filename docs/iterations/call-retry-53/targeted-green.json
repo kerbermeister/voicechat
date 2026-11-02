@@ -1,0 +1,182 @@
+{
+  "scope": "Real SDK protocol + component UI; fake transport/capture, not hardware/network",
+  "result": "50 PASS",
+  "base_release": "bf0fbd44383f95227a5b47560e2e6f4188c9a651",
+  "fixtures": {
+    "apps/client/test/call_event_batch_test.dart": "1b41893a4fbcde4015ad75fc3bf2077c2e7eb2955e2b45b4e16ac4a2e7004e78",
+    "apps/client/test/call_peer_lifecycle_test.dart": "a03f1285e5d10b47881ff530328cf8a5da26c449ad46514af193c5313ee72f3b",
+    "apps/client/test/call_retry_protocol_test.dart": "89dd166e993ff680e512af617cebe5db2a5eba61135a652b90cff8a59ab1f9b1",
+    "apps/client/test/call_invite_lifetime_test.dart": "e2ae3e1bbbcf449722718d994d5403496e7f916cc4b24486edfc521e4abeb866",
+    "apps/client/test/call_busy_result_test.dart": "f33ae4de2301c955ce2066aed8564826cc1b186454df00405ae6632c086fefe4"
+  },
+  "runtime_sha256": {
+    "vendor/matrix/lib/src/voip/voip.dart": "ca98ca36209abdf3cbde5db98bb1b9a4265b876c1a9c2ba84c2a940c8751485a",
+    "vendor/matrix/lib/src/voip/call_session.dart": "9ecab0e6c2fe78c884877277a72858dadad00b1687319e79452bcf24629d7b89",
+    "apps/client/lib/call_controller.dart": "f2de31e95b184ce51b903e3afa49cf1a2857732b765625856eb494495ddb26d5"
+  },
+  "log_sha256": "8c6c52121327453ecb021479ca579db23d8c840065042d7905a99375fe06f4c1",
+  "cases": [
+    {
+      "type": "CALL_GLARE_PROOF",
+      "result": {
+        "busy_wire_replies": [
+          [
+            "user_busy"
+          ],
+          [
+            "user_busy"
+          ]
+        ],
+        "originals_preserved": [
+          true,
+          true
+        ],
+        "capture_requests": [
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "type": "CALL_BATCH_PROOF",
+      "result": {
+        "scenario": "fresh_only",
+        "dispatched": [
+          "!same:fixture/fresh"
+        ],
+        "expected": [
+          "!same:fixture/fresh"
+        ],
+        "shared_batch_preserved": true
+      }
+    },
+    {
+      "type": "CALL_BATCH_PROOF",
+      "result": {
+        "scenario": "expired_first",
+        "dispatched": [
+          "!same:fixture/fresh"
+        ],
+        "expected": [
+          "!same:fixture/fresh"
+        ],
+        "shared_batch_preserved": true
+      }
+    },
+    {
+      "type": "CALL_BATCH_PROOF",
+      "result": {
+        "scenario": "expired_last",
+        "dispatched": [
+          "!same:fixture/fresh"
+        ],
+        "expected": [
+          "!same:fixture/fresh"
+        ],
+        "shared_batch_preserved": true
+      }
+    },
+    {
+      "type": "CALL_BATCH_PROOF",
+      "result": {
+        "scenario": "exact_expiry",
+        "dispatched": [
+          "!same:fixture/fresh"
+        ],
+        "expected": [
+          "!same:fixture/fresh"
+        ],
+        "shared_batch_preserved": true
+      }
+    },
+    {
+      "type": "CALL_BATCH_PROOF",
+      "result": {
+        "scenario": "foreign_room_end",
+        "dispatched": [
+          "!same:fixture/fresh"
+        ],
+        "expected": [
+          "!same:fixture/fresh"
+        ],
+        "shared_batch_preserved": true
+      }
+    },
+    {
+      "type": "CALL_BATCH_PROOF",
+      "result": {
+        "scenario": "same_room_end",
+        "dispatched": [],
+        "expected": [],
+        "shared_batch_preserved": true
+      }
+    },
+    {
+      "type": "CALL_PEER_LIFECYCLE",
+      "result": {
+        "scenario": "incoming_cancel",
+        "capture_requested": false,
+        "ended": true,
+        "late_peer_disposed": 1,
+        "error_propagated": false
+      }
+    },
+    {
+      "type": "CALL_PEER_LIFECYCLE",
+      "result": {
+        "scenario": "outgoing_cancel",
+        "capture_requested": false,
+        "ended": true,
+        "late_peer_disposed": 1,
+        "error_propagated": false
+      }
+    },
+    {
+      "type": "CALL_PEER_LIFECYCLE",
+      "result": {
+        "scenario": "outgoing_failure",
+        "capture_requested": false,
+        "ended": true,
+        "late_peer_disposed": 0,
+        "error_propagated": true
+      }
+    },
+    {
+      "type": "CALL_PEER_LIFECYCLE",
+      "result": {
+        "scenario": "incoming_sdp_failure",
+        "capture_requested": false,
+        "ended": true,
+        "late_peer_disposed": 1,
+        "error_propagated": true
+      }
+    },
+    {
+      "type": "CALL_RETRY_TERMINATION",
+      "result": {
+        "replacement": "none",
+        "old_session_retained": false,
+        "old_peer_disposed": true,
+        "new_owner_preserved": true
+      }
+    },
+    {
+      "type": "CALL_RETRY_TERMINATION",
+      "result": {
+        "replacement": "same_room",
+        "old_session_retained": false,
+        "old_peer_disposed": true,
+        "new_owner_preserved": true
+      }
+    },
+    {
+      "type": "CALL_RETRY_TERMINATION",
+      "result": {
+        "replacement": "other_room",
+        "old_session_retained": false,
+        "old_peer_disposed": true,
+        "new_owner_preserved": true
+      }
+    }
+  ]
+}

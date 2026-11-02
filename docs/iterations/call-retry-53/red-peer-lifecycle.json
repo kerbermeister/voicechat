@@ -1,0 +1,32 @@
+{
+  "scope": "Real CallSession setup/cancellation with a delayed or failing fake RTC factory; no microphone, device or network.",
+  "base_release": "bf0fbd44383f95227a5b47560e2e6f4188c9a651",
+  "working_tree_note": "Batch/termination/busy fixes in progress; peer preparation and capture path unchanged when tested.",
+  "fixture_sha256": "92560d34f8e650f3bf27f09d0d6763701d4d2d612c1c5613c9a3e83bac99b165",
+  "sdk_session_sha256": "fdc06f02dd30e92881b08255ac5b6534930b800297ea370671d505b9ed883927",
+  "log_sha256": "bf5f05472ea2cb9cb4d2b291f2adbbc64495bdccd17b559e3a7da166640c142a",
+  "cases": [
+    {
+      "scenario": "incoming_cancel",
+      "capture_requested": false,
+      "ended": true,
+      "late_peer_disposed": 0,
+      "error_propagated": false
+    },
+    {
+      "scenario": "outgoing_cancel",
+      "capture_requested": true,
+      "ended": true,
+      "late_peer_disposed": 0,
+      "error_propagated": false
+    },
+    {
+      "scenario": "outgoing_failure",
+      "capture_requested": true,
+      "ended": false,
+      "late_peer_disposed": 0,
+      "error_propagated": false
+    }
+  ],
+  "result": "FAIL all3: late incoming PC not disposed, outgoing requests capture after cancel, failed PC setup still requests capture and remains live"
+}

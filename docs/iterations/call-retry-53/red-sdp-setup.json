@@ -1,0 +1,11 @@
+{
+  "scope": "Real CallSession, synthetic failing remote SDP setup; no device/network",
+  "base_release": "bf0fbd44383f95227a5b47560e2e6f4188c9a651",
+  "working_tree_note": "Other53 fixes already applied; remote SDP failure unchanged",
+  "sha256": {
+    "apps/client/test/call_peer_lifecycle_test.dart": "e0fcb80819092a9971e3f89e6fa140646a7816960662ab349e211e4634e7c4fb",
+    "vendor/matrix/lib/src/voip/call_session.dart": "acd6be6cea4f28b4c9f6cae41e33d9c30f1b915dc617296a0a6a427650483dfb",
+    ".prototype/call-sdp-53-red.log": "f3b46971340323c4621005b5cdf3a30f1bdf39a7df976e45bafb83e540533047"
+  },
+  "result": "FAIL: error propagated, but call remains live and peer not disposed"
+}

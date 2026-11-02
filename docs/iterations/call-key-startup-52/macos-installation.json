@@ -1,0 +1,19 @@
+{
+  "source": "bf0fbd44383f95227a5b47560e2e6f4188c9a651",
+  "build": 52,
+  "previous_build": 51,
+  "actual_button_update": true,
+  "installation_performed_by": "Owner confirmed after automation input failed; agent independently verifies files and profile",
+  "installed_equals_verified_zip_and_dmg": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "same_account": true,
+  "same_device": true,
+  "old_history_visible": true,
+  "old_audio_played_to_end_after_installation": null,
+  "keychain_reset": false,
+  "profile_cleared": false,
+  "backup_verified": true,
+  "update_channel_latest_pending": true,
+  "identity_verified_by": "Read-only UI comparison of account/device against pre-update SHA256; identifiers not exported"
+}

@@ -1,0 +1,14 @@
+{
+  "scope": "Real VoIP / CallController with two synthetic rooms sharing a call ID; no network/hardware",
+  "base_release": "bf0fbd44383f95227a5b47560e2e6f4188c9a651",
+  "working_tree_note": "Other53 fixes applied; these owner/controller keys unchanged",
+  "sha256": {
+    "apps/client/test/call_event_batch_test.dart": "f19122fbb9d4d9f845ba6f2efd1750c199932534bb7b009e3f42d99c44cd6bbf",
+    "apps/client/test/call_busy_result_test.dart": "8edac54a505fc6d6f3e7d58fe6b942f32758725a72a0479f0e48839a3ab41ae2",
+    "apps/client/lib/call_controller.dart": "e230b3602a19f871ead77b1603488df64958e16fe83794e1c648dfaf67bc84ed",
+    "vendor/matrix/lib/src/voip/voip.dart": "6a1f95e9a871453fdd21388bb430f03f0e7d268fff6f055760d60d40c688b251",
+    ".prototype/call-controller-scope-53-red.log": "93e5af18ed0316191d943949c9bab51cf05031427fd985a8d46dd58fda662f3f",
+    ".prototype/call-hangup-scope-53-red.log": "c367cdf050466298ef930c317b3484600b5edd7aed75ceddb114ecdeb3b3f36d"
+  },
+  "result": "FAIL both: foreign-room hangup clears currentCID; ending old room closes another room peer via string-keyed controller map"
+}

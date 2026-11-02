@@ -1,0 +1,29 @@
+{
+  "scope": "Real Matrix CallSession + fake RTC peer, no accounts/media/network. Late inviteTimeout termination after a new owner is installed. Not a physical iPhone reproduction.",
+  "source_before_fix": "bf0fbd44383f95227a5b47560e2e6f4188c9a651",
+  "fixture_sha256": "83800c50c0462410cec1c3c6c4db75e774a6536f97c43d5f3bba6b8914fb8cd3",
+  "sdk_session_sha256": "dce78c1623d4c5f3bbac6756fd6eeeaeb2421b1f73b13efbfe6077c35a593198",
+  "log_sha256": "f38ecea9fd174790c068b1d8924cb08424207c72cfafbb4e076fdf090e33dda1",
+  "cases": [
+    {
+      "replacement": "none",
+      "old_session_retained": false,
+      "old_peer_disposed": true,
+      "new_owner_preserved": true
+    },
+    {
+      "replacement": "same_room",
+      "old_session_retained": true,
+      "old_peer_disposed": false,
+      "new_owner_preserved": true
+    },
+    {
+      "replacement": "other_room",
+      "old_session_retained": true,
+      "old_peer_disposed": false,
+      "new_owner_preserved": true
+    }
+  ],
+  "result": "1 normal baseline PASS; 2 replacement cases FAIL: old call remains routed and RTC cleanup is skipped, new owner preserved",
+  "historical_user_call_cause_proven": false
+}

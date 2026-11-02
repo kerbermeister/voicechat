@@ -2,7 +2,7 @@ name: voicechat_probe
 description: "VoiceChat Android/web E2EE prototype."
 publish_to: 'none'
 
-version: 1.19.4+52
+version: 1.19.5+53
 
 environment:
   sdk: ">=3.11.0 <4.0.0"

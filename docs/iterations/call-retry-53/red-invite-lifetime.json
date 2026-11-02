@@ -1,0 +1,11 @@
+{
+  "base_release": "bf0fbd44383f95227a5b47560e2e6f4188c9a651",
+  "scope": "Real CallSession timers with fake peer; no device/network",
+  "working_tree_note": "Other53 fixes applied; incoming lifetime/timer unchanged",
+  "sha256": {
+    "apps/client/test/call_invite_lifetime_test.dart": "4e9917fcd9ac3c3a90ac7f0dbb3511459626a1840423251e6ff6bd693b95e1ad",
+    "vendor/matrix/lib/src/voip/call_session.dart": "7140a778fcf623ed39fd3561ced834ff72b7820a8607a3e47afc34b241e32b81",
+    ".prototype/call-lifetime-53-red.log": "8b5de5e99ebfc299cc7087f2c5e01944462ebe76fee0543ba9581f356540638d"
+  },
+  "result": "1 PASS local_cap baseline;3 FAIL: remaining duration ignored, zero lifetime rings, pending peer allocation extends invite"
+}

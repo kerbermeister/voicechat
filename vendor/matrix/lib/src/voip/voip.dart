@@ -139,56 +139,55 @@ class VoIP {
   }
 
   Future<void> _handleCallEvents(List<BasicEventWithSender> callEvents) async {
-    // Call invites should be omitted for a call that is already answered,
-    // has ended, is rejectd or replaced.
-    final callEventsCopy = List<BasicEventWithSender>.from(callEvents);
-    for (final callEvent in callEventsCopy) {
-      final callId = callEvent.content.tryGet<String>('call_id');
+    final processing = Stopwatch()..start();
+    // Broadcast listeners share this list. Filtering must leave their input intact.
+    final pending = List<BasicEventWithSender>.of(callEvents);
+    String? roomId(BasicEventWithSender event) => event is Event
+        ? event.room.id
+        : event.content.tryGet<String>('room_id');
 
-      if (CallConstants.callEndedEventTypes.contains(callEvent.type)) {
-        callEvents.removeWhere((event) {
-          if (CallConstants.omitWhenCallEndedTypes.contains(event.type) &&
-              event.content.tryGet<String>('call_id') == callId) {
-            Logs().v(
-              'Ommit "${event.type}" event for an already terminated call',
-            );
-            return true;
-          }
-
-          return false;
-        });
-      }
-
-      // checks for ended events and removes invites for that call id.
-      if (callEvent is Event) {
-        // removes expired invites
-        final age =
-            callEvent.unsigned?.tryGet<int>('age') ??
-            (DateTime.now().millisecondsSinceEpoch -
-                callEvent.originServerTs.millisecondsSinceEpoch);
-
-        callEvents.removeWhere((element) {
-          if (callEvent.type == EventTypes.CallInvite &&
-              age >
-                  (callEvent.content.tryGet<int>('lifetime') ??
-                      timeouts!.callInviteLifetime.inMilliseconds)) {
-            Logs().w(
-              '[VOIP] Ommiting invite event ${callEvent.eventId} as age was older than lifetime',
-            );
-            return true;
-          }
-          return false;
-        });
+    for (final event in callEvents) {
+      final callId = event.content.tryGet<String>('call_id');
+      final room = roomId(event);
+      if (callId != null &&
+          room != null &&
+          CallConstants.callEndedEventTypes.contains(event.type)) {
+        pending.removeWhere(
+          (candidate) =>
+              CallConstants.omitWhenCallEndedTypes.contains(candidate.type) &&
+              candidate.content.tryGet<String>('call_id') == callId &&
+              roomId(candidate) == room,
+        );
       }
     }
-
-    // and finally call the respective methods on the clean callEvents list
-    for (final callEvent in callEvents) {
-      await _handleCallEvent(callEvent);
+    for (final event in pending) {
+      int? remainingLifetime;
+      if (event is Event && event.type == EventTypes.CallInvite) {
+        final syncAge = event.unsigned?.tryGet<int>('age');
+        final age = syncAge != null
+            ? syncAge + processing.elapsedMilliseconds
+            : (DateTime.now().millisecondsSinceEpoch -
+                  event.originServerTs.millisecondsSinceEpoch);
+        final lifetime =
+            event.content.tryGet<int>('lifetime') ??
+            timeouts!.callInviteLifetime.inMilliseconds;
+        remainingLifetime = lifetime - (age < 0 ? 0 : age);
+        // An old invite must never discard a fresh callback in the same sync.
+        if (remainingLifetime <= 0) continue;
+      }
+      try {
+        await _handleCallEvent(event, inviteLifetime: remainingLifetime);
+      } catch (error, stack) {
+        // One failed setup must not hide the next independent call in this sync.
+        Logs().e('[VOIP] Failed to handle ${event.type}', error, stack);
+      }
     }
   }
 
-  Future<void> _handleCallEvent(BasicEventWithSender event) async {
+  Future<void> _handleCallEvent(
+    BasicEventWithSender event, {
+    int? inviteLifetime,
+  }) async {
     // member event updates handled in onRoomState for ease
     if (event.type == EventTypes.GroupCallMember) return;
 
@@ -268,7 +267,9 @@ class VoIP {
       return;
     }
 
-    final content = event.content;
+    final content = inviteLifetime == null
+        ? event.content
+        : {...event.content, 'lifetime': inviteLifetime};
 
     if (client.userID != null &&
         client.deviceID != null &&
@@ -424,12 +425,18 @@ class VoIP {
     String? remoteDeviceId,
     Map<String, dynamic> content,
   ) async {
+    final processing = Stopwatch()..start();
     Logs().v(
       '[VOIP] onCallInvite $remoteUserId:$remoteDeviceId => ${client.userID}:${client.deviceID}, \ncontent => $content',
     );
 
     final String callId = content['call_id'];
-    final int lifetime = content['lifetime'];
+    final advertisedLifetime = content['lifetime'] as int;
+    final localLifetime = timeouts!.callInviteLifetime.inMilliseconds;
+    final lifetime = advertisedLifetime < localLifetime
+        ? advertisedLifetime
+        : localLifetime;
+    if (lifetime <= 0) return;
     final String? confId = content['conf_id'];
 
     final call = calls[VoipId(roomId: room.id, callId: callId)];
@@ -496,6 +503,7 @@ class VoIP {
       iceServers: await getIceServers(),
     );
 
+    if (processing.elapsedMilliseconds >= lifetime) return;
     final newCall = createNewCall(opts);
 
     /// both invitee userId and deviceId are set here because there can be
@@ -513,7 +521,7 @@ class VoIP {
         '[VOIP] onCallInvite: Unable to handle new calls, maybe user is busy.',
       );
       // no need to emit here because handleNewCall was never triggered yet
-      await newCall.reject(reason: CallErrorCode.userBusy, shouldEmit: false);
+      await newCall.hangup(reason: CallErrorCode.userBusy, shouldEmit: false);
       await delegate.handleMissedCall(newCall);
       return;
     }
@@ -553,7 +561,7 @@ class VoIP {
       callType,
       offer,
       sdpStreamMetadata,
-      lifetime,
+      lifetime - processing.elapsedMilliseconds,
       confId != null,
     );
 
@@ -660,7 +668,7 @@ class VoIP {
     } else {
       Logs().v('[VOIP] onCallHangup: Session [$callId] not found!');
     }
-    if (callId == currentCID?.callId) {
+    if (currentCID == VoipId(roomId: room.id, callId: callId)) {
       currentCID = null;
     }
   }

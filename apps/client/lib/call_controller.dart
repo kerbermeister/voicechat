@@ -68,10 +68,10 @@ class CallController extends ChangeNotifier
   bool starting = false;
   bool _dialPending = false;
   int _dialGeneration = 0;
-  final _recordedEnds = <String>{};
+  final _recordedEnds = <({String room, String session})>{};
   late final VoIP voip;
   final directInvitations = <DirectCall>[];
-  final _directCalls = <String, DirectCall>{};
+  final _directCalls = <CallSession, DirectCall>{};
   StreamSubscription<Event>? _events;
   StreamSubscription<dynamic>? _lateEvents;
   Timer? _expiry;
@@ -602,7 +602,7 @@ class CallController extends ChangeNotifier
           video ? CallType.kVideo : CallType.kVoice,
           userId: users.single,
         );
-        final call = _directCalls[session.callId]!;
+        final call = _directCalls[session]!;
         if (generation != _dialGeneration || _closed) {
           await call.close();
           return;
@@ -776,7 +776,7 @@ class CallController extends ChangeNotifier
 
   Future<void> _recordDirectEnd(DirectCall call) async {
     if (call.call.direction != CallDirection.kOutgoing ||
-        !_recordedEnds.add(call.session)) {
+        !_recordedEnds.add((room: call.chat.id, session: call.session))) {
       return;
     }
     try {
@@ -907,7 +907,7 @@ class CallController extends ChangeNotifier
   @override
   Future<void> registerListeners(CallSession session) async {
     final call = DirectCall(session, _refresh, report);
-    _directCalls[session.callId] = call;
+    _directCalls[session] = call;
     if (session.direction == CallDirection.kIncoming) {
       try {
         await call.authorize().timeout(const Duration(seconds: 8));
@@ -920,7 +920,7 @@ class CallController extends ChangeNotifier
 
   @override
   Future<void> handleNewCall(CallSession session) async {
-    final call = _directCalls[session.callId]!;
+    final call = _directCalls[session]!;
     if (_closed ||
         (session.direction == CallDirection.kOutgoing && !starting) ||
         (!canHandleNewCall && active != call) ||
@@ -941,13 +941,21 @@ class CallController extends ChangeNotifier
 
   @override
   Future<void> handleCallEnded(CallSession session) async {
+    final current = active;
+    if (current is DirectCall &&
+        identical(current.call, session) &&
+        session.direction == CallDirection.kOutgoing &&
+        session.hangupReason == CallErrorCode.userBusy) {
+      dialingRoom = session.room;
+      dialError = 'Собеседник занят. Попробуйте позвонить ещё раз.';
+    }
     if (active == null ||
-        (active is DirectCall && active!.session == session.callId)) {
+        (current is DirectCall && identical(current.call, session))) {
       await audio.stopDirectAudio();
     }
-    directInvitations.removeWhere((c) => c.session == session.callId);
+    directInvitations.removeWhere((c) => identical(c.call, session));
     _refresh();
-    final call = _directCalls[session.callId];
+    final call = _directCalls[session];
     if (call != null) {
       // The SDK awaits this delegate while terminating. Neither media cleanup
       // nor a history write may hold up its hangup signalling.

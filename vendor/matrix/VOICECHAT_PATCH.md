@@ -43,3 +43,24 @@ constructor indexed the encrypted placeholders before decryption, leaving edits
 invisible until reopening even when their plaintext had been restored. Both
 outer-relation variants are covered by `apps/client/test/restored_edit_test.dart`.
 No encryption, trust or protocol change.
+
+### Direct-call retries and incoming lifetime (2 November 2026)
+
+`voip.dart` filters a private copy of each sync batch by room and call ID. An
+expired invite drops only itself; delivery age and time spent dispatching earlier
+events reduce the remaining lifetime. TURN/delegate setup consumes that same
+budget; `CallSession` starts its capped remaining timer before RTC/SDP allocation.
+A failed event is logged without discarding later independent events. Busy calls send the terminal `user_busy` event even when local UI callbacks are
+suppressed. No automatic answering or new glare policy is introduced.
+
+`call_session.dart` always removes the ended session and disposes its peer, while
+preserving a newer call owner. Cancellation fences late peer creation and capture;
+failed peer/remote SDP setup ends the session and propagates the error. Peer
+ownership is detached before awaited disposal. Regression tests are
+`call_event_batch_test.dart`, `call_retry_protocol_test.dart`,
+`call_peer_lifecycle_test.dart` and `call_invite_lifetime_test.dart` in the client.
+The app CallController keys direct calls by CallSession and scopes end-summary
+deduplication by room/session, so a late callback cannot close a different room
+sharing its call ID. These are protocol/timer fixtures, not physical phone or WAN acceptance. No
+cryptographic algorithm, trust check, TURN credential policy or media preset is
+weakened.

@@ -1,0 +1,22 @@
+{
+  "candidate": "1.19.5+53 working tree",
+  "base_release": "bf0fbd44383f95227a5b47560e2e6f4188c9a651",
+  "device": "Mac macOS15.3.1 arm64",
+  "fixture": "apps/client/integration_test/native_direct_call_test.dart",
+  "fixture_sha256": "396cf36e75389a4421f0daa3b976f37030049ad11a1cce1d890d58f8493ecf88",
+  "result": "PASS",
+  "cycles": 3,
+  "real_microphone_and_rtc": true,
+  "signalling": "in memory, no Matrix/production account",
+  "audio_playout_disabled_to_avoid_feedback": true,
+  "dtls_and_inbound_rtp_asserted": true,
+  "two_second_encoding_pause_recovered": true,
+  "wan_or_phone_tested": false,
+  "lip_sync_measured": false,
+  "log_sha256": "67e2dd9719daeb65e63f3578f81ff2868c8b3b3c2add88e0f1cd8235b9e90be1",
+  "runtime_sha256": {
+    "vendor/matrix/lib/src/voip/call_session.dart": "9ecab0e6c2fe78c884877277a72858dadad00b1687319e79452bcf24629d7b89",
+    "apps/client/lib/direct_call.dart": "ea27a7ba1ada0a097b427dbf6325eda7711214c6a26673ced7febb9ff2fc9f0e"
+  },
+  "scope_note": "NativeVoip fake uses real CallSession/DirectCall, not the VoIP batch or app CallController."
+}

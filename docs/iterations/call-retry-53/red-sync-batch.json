@@ -1,0 +1,62 @@
+{
+  "scope": "Real VoIP sync-batch filtering/dispatch, observed invite handler and no accounts/media/network. Fresh calls must survive an unrelated expired invite or another room ending the same ID.",
+  "source_before_fix": "bf0fbd44383f95227a5b47560e2e6f4188c9a651",
+  "sdk_voip_sha256": "52e35cbdb67711f9d9f51775e4175e3e8b96a910c96c1fbd1b0a9cdb60382fce",
+  "fixture_sha256": "f2eb846b2bc701c2299d88ffe229ed713fa4d27134a078aa0084876b87c83503",
+  "log_sha256": "e6611a7b88404ac5384fa96b192f16af4e7aa707cd953618da4cc96e25d44db5",
+  "cases": [
+    {
+      "scenario": "fresh_only",
+      "dispatched": [
+        "!same:fixture/fresh"
+      ],
+      "expected": [
+        "!same:fixture/fresh"
+      ],
+      "shared_batch_preserved": true
+    },
+    {
+      "scenario": "expired_first",
+      "dispatched": [],
+      "expected": [
+        "!same:fixture/fresh"
+      ],
+      "shared_batch_preserved": false
+    },
+    {
+      "scenario": "expired_last",
+      "dispatched": [],
+      "expected": [
+        "!same:fixture/fresh"
+      ],
+      "shared_batch_preserved": false
+    },
+    {
+      "scenario": "exact_expiry",
+      "dispatched": [
+        "!same:fixture/old",
+        "!same:fixture/fresh"
+      ],
+      "expected": [
+        "!same:fixture/fresh"
+      ],
+      "shared_batch_preserved": true
+    },
+    {
+      "scenario": "foreign_room_end",
+      "dispatched": [],
+      "expected": [
+        "!same:fixture/fresh"
+      ],
+      "shared_batch_preserved": false
+    },
+    {
+      "scenario": "same_room_end",
+      "dispatched": [],
+      "expected": [],
+      "shared_batch_preserved": false
+    }
+  ],
+  "result": "1 fresh-only PASS; 5 assertions FAIL. Expired invite drops fresh events in either order, exact expiry is accepted, another room end suppresses fresh ID, shared input batch mutated.",
+  "historical_user_call_cause_proven": false
+}

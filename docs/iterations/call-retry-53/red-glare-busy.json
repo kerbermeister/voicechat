@@ -1,0 +1,24 @@
+{
+  "scope": "Two real VoIP.onCallInvite busy paths with outgoing sessions and in-memory wire interception. No Matrix delivery, media or phone tested.",
+  "base_release": "bf0fbd44383f95227a5b47560e2e6f4188c9a651",
+  "working_tree_note": "Sync filtering and old-call cleanup fixes already applied; busy rejection branch still unchanged.",
+  "sdk_voip_sha256": "32fca29d2f63a54239351dce6c703e31b3df222e6b3640fe657786d15c54ebb1",
+  "fixture_sha256": "fc1cd0f8ffaa3c45f80dee4f85abac20a3790f7d53e96b4e01adac6b69e1ffcb",
+  "log_sha256": "7409d9e1c57445b9c7c2f5f46ca6ca8123cac7d1735a751da1554682417c2538",
+  "proof": {
+    "busy_wire_replies": [
+      [],
+      []
+    ],
+    "originals_preserved": [
+      true,
+      true
+    ],
+    "capture_requests": [
+      false,
+      false
+    ]
+  },
+  "expected": "Exactly one user_busy terminal wire reply from each busy side, original outgoing owners preserved until matching terminal response",
+  "result": "FAIL: both busy recipients emit no terminal wire reply"
+}

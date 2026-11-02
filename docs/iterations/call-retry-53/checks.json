@@ -1,0 +1,29 @@
+{
+  "candidate": "1.19.5+53",
+  "flutter": {
+    "passed": 614,
+    "skipped": 4
+  },
+  "targeted_passed": 50,
+  "python": {
+    "total": 849,
+    "skipped": 4
+  },
+  "client_analyze": "PASS",
+  "patched_matrix_analyze": "PASS",
+  "version_check": "1.19.5+53",
+  "native_macos": "PASS3cycles, real RTC, memory signalling",
+  "runtime_sha256": {
+    "vendor/matrix/lib/src/voip/voip.dart": "ca98ca36209abdf3cbde5db98bb1b9a4265b876c1a9c2ba84c2a940c8751485a",
+    "vendor/matrix/lib/src/voip/call_session.dart": "9ecab0e6c2fe78c884877277a72858dadad00b1687319e79452bcf24629d7b89",
+    "apps/client/lib/call_controller.dart": "f2de31e95b184ce51b903e3afa49cf1a2857732b765625856eb494495ddb26d5"
+  },
+  "logs_sha256": {
+    ".prototype/call-retry-53-flutter.log": "8951c6ddac8d0abaab54f872180492ec381e394e845430d6139a0c6c719037c2",
+    ".prototype/call-retry-53-targeted-final.log": "8c6c52121327453ecb021479ca579db23d8c840065042d7905a99375fe06f4c1",
+    ".prototype/call-retry-53-python.log": "56c271781fa7b439d21d76d1f0c70e2b19735735c4c8e84fea9d0e6192729936",
+    ".prototype/call-retry-53-analyze.log": "87c3a45e4e9d038c223c6053468bf7db0ece3c2eac42379f581e3c78d5e722f8",
+    ".prototype/call-retry-53-sdk-analyze.log": "639edde6ed613a88c5aede2b2ee2e9a77f0a3ee9ba685cc3e104a838e1f3f8d7"
+  },
+  "physical_phones_tested": false
+}

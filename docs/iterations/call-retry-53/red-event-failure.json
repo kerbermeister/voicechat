@@ -1,0 +1,11 @@
+{
+  "scope": "Real VoIP sync stream, synthetic first invite failure; no network/device",
+  "base_release": "bf0fbd44383f95227a5b47560e2e6f4188c9a651",
+  "working_tree_note": "Other53 fixes applied; dispatch still stops on exception",
+  "sha256": {
+    "apps/client/test/call_event_batch_test.dart": "8ffa3e6c44bdb71fa37622cd4098379d6f7c4644a854ae9d810d19699f948eec",
+    "vendor/matrix/lib/src/voip/voip.dart": "b4408989de587892252a0544e8a6c35528fa68463ee919eded3ae3cf560a9ba8",
+    ".prototype/call-batch-failure-53-red.log": "ff01ee737e6659a0700f35379c0cdff26ca0ebf22831348275a43d56be82e4b6"
+  },
+  "result": "FAIL: first invite exception escapes sync listener and second fresh invite is never dispatched"
+}
