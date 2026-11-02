@@ -5,6 +5,7 @@ friend/block decision. This core does not issue media grants: API/SFU integratio
 must enforce the same state and lease checks before it can be enabled.
 """
 from dataclasses import dataclass, field
+from pathlib import Path
 import math
 import hashlib
 import secrets
@@ -47,9 +48,11 @@ class Session:
     generation: str
     request_id: str = ''
     settings_hash: str = ''
+    key_epoch: int = 1
     state: str = 'live'
     revision: int = 1
     disconnected_at: float | None = None
+    owner_seen: float | None = None
     viewers: dict = field(default_factory=dict)
     messages: list = field(default_factory=list)
     message_ids: dict = field(default_factory=dict)
@@ -67,8 +70,24 @@ class StreamSessions:
         # Only opaque generations survive restart, so the SFU adapter can retire
         # them before enabling streams. Content and chat never enter this table.
         self.db = sqlite3.connect(path, check_same_thread=False)
-        with self.db:
-            self.db.execute('CREATE TABLE IF NOT EXISTS stream_cleanup (generation TEXT PRIMARY KEY)')
+        try:
+            with self.db:
+                self.db.execute('BEGIN IMMEDIATE')
+                if self.db.execute("SELECT 1 FROM sqlite_master WHERE name='stream_schema'").fetchone():
+                    version = self.db.execute('SELECT version FROM stream_schema WHERE singleton=1').fetchone()
+                    if version != (1,):
+                        raise ValueError('unsupported_stream_schema')
+                self.db.execute('CREATE TABLE IF NOT EXISTS stream_cleanup (generation TEXT PRIMARY KEY)')
+                columns = self.db.execute('PRAGMA table_info(stream_cleanup)').fetchall()
+                if len(columns) != 1 or columns[0][1:3] != ('generation', 'TEXT') or columns[0][5] != 1:
+                    raise ValueError('invalid_stream_cleanup_schema')
+                self.db.execute('CREATE TABLE IF NOT EXISTS stream_schema (singleton INTEGER PRIMARY KEY CHECK(singleton=1), version INTEGER NOT NULL)')
+                self.db.execute('INSERT OR IGNORE INTO stream_schema VALUES(1,1)')
+            if Path(path).is_file():
+                Path(path).chmod(0o600)
+        except Exception:
+            self.db.close()
+            raise
 
     def close(self):
         with self.lock:
@@ -111,6 +130,10 @@ class StreamSessions:
         now = self.clock()
         self.ended_attempts = {key: expires for key, expires in self.ended_attempts.items() if expires > now}
         for session in list(self.sessions.values()):
+            if session.owner_seen is not None and session.state == 'live' and now - session.owner_seen >= 15:
+                session.state = 'reconnecting'
+                session.disconnected_at = session.owner_seen
+                session.revision += 1
             if (now >= session.ends_at or
                     (session.state == 'reconnecting' and
                      now - session.disconnected_at >= self.limits.reconnect)):
@@ -185,12 +208,73 @@ class StreamSessions:
                 audience, comments, now, now + duration, generation, request_id or '', settings_hash)
             return self.info(identifier, actor)
 
+    def arm_owner(self, identifier, actor):
+        with self.lock:
+            s = self._get(identifier, actor)
+            if actor != s.owner:
+                raise StreamError('stream_owner_required', 403)
+            if s.owner_seen is None:
+                s.owner_seen = self.clock()
+
+    def heartbeat(self, identifier, actor, ready):
+        if type(ready) is not bool:
+            raise StreamError('invalid_capture_state')
+        with self.lock:
+            s = self._get(identifier, actor)
+            if actor != s.owner:
+                return self.join(identifier, actor)
+            s.owner_seen = self.clock()
+            if s.state == 'live' and not ready:
+                return self.transition(identifier, actor, 'disconnect', s.revision)
+            if s.state == 'reconnecting' and ready:
+                return self.transition(identifier, actor, 'recover', s.revision)
+            return self.info(identifier, actor)
+
+    def retire(self, identifier):
+        """Trusted device-revocation/startup path, never a client operation."""
+        with self.lock:
+            s = self.sessions.get(identifier)
+            if s is not None:
+                self._finish(s)
+
+    def participants(self):
+        """Trusted adapter snapshot, not a viewer-facing roster."""
+        with self.lock:
+            self._tick()
+            return [(s.id, s.owner, [(user, device) for user, (device, _) in s.viewers.items()])
+                    for s in self.sessions.values()]
+
+    def rotate(self, identifier, *, keys=True):
+        with self.lock:
+            s = self.sessions.get(identifier)
+            if s is None:
+                return
+            generation = secrets.token_urlsafe(24)
+            with self.db:
+                self.db.execute('INSERT INTO stream_cleanup VALUES(?)', (generation,))
+            s.generation = generation
+            s.key_epoch += int(keys)
+            s.revision += 1
+
+    def media_state(self, identifier, actor):
+        with self.lock:
+            s = self._get(identifier, actor)
+            self._member(s, actor)
+            return dict(generation=s.generation, epoch=s.key_epoch, owner=s.owner,
+                        state=s.state, ends_at=s.ends_at)
+
+    def retired_generations(self):
+        with self.lock:
+            active = {s.generation for s in self.sessions.values()}
+            return [g for g in self.pending_cleanup() if g not in active]
+
     def info(self, identifier, actor):
         with self.lock:
             s = self._get(identifier, actor)
             result = dict(id=s.id, title=s.title, description=s.description, state=s.state,
                 revision=s.revision, started_at=s.started_at, ends_at=s.ends_at,
-                server_now=self.clock(), comments=s.comments, viewers=len(s.viewers))
+                server_now=self.clock(), comments=s.comments, viewers=len(s.viewers), owner=s.owner[0], owner_device=s.owner[1],
+                generation=s.generation, key_epoch=s.key_epoch)
             if actor == s.owner:
                 result['viewer_users'] = list(s.viewers)
             return result
@@ -248,6 +332,8 @@ class StreamSessions:
             if state is None:
                 raise StreamError('invalid_transition', 409)
             s.state = state
+            if state == 'live' and s.owner_seen is not None:
+                s.owner_seen = self.clock()
             s.revision += 1
             s.disconnected_at = self.clock() if state == 'reconnecting' else None
             return self.info(identifier, actor)

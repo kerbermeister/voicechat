@@ -32,6 +32,7 @@ class ContactPolicy:
         api.register_web_resource('/_synapse/client/voicechat-direct-pins', DirectPins(self))
         api.register_web_resource('/_synapse/client/voicechat/presence', ContactPresence(self))
         api.register_web_resource('/_synapse/client/voicechat/push-device', PushDevice(self))
+        api.register_web_resource('/_synapse/client/voicechat/stream-pair', StreamPair(self))
         api.register_web_resource('/_synapse/client/voicechat/scheduled-publish', ScheduledPublish(self))
         api.register_spam_checker_callbacks(user_may_invite=self.user_may_invite,
                                            user_may_send_state_event=self.user_may_send_state_event)
@@ -174,6 +175,38 @@ class PushDevice(DirectServeJsonResource):
             state = await self.policy.api.get_room_state(room, [('m.room.member', user)])
             member = state.get(('m.room.member', user))
             return 200, {'valid': member is not None and member.content.get('membership') == 'join'}
+        except (ValueError, TypeError, KeyError):
+            raise SynapseError(400, 'Invalid request') from None
+
+
+class StreamPair(DirectServeJsonResource):
+    """Internal symmetric block check; public callers cannot query relationships."""
+    isLeaf = True
+
+    def __init__(self, policy):
+        super().__init__()
+        self.policy = policy
+
+    async def _async_render_POST(self, request):
+        if not hmac.compare_digest((request.getHeader('Authorization') or '').encode(),
+                                   ('Bearer ' + self.policy.secret).encode()):
+            raise SynapseError(403, 'Forbidden')
+        try:
+            raw = request.content.read(2049)
+            body = json.loads(raw) if 0 < len(raw) <= 2048 else None
+            if not isinstance(body, dict) or set(body) != {'owner', 'viewer'}:
+                raise ValueError()
+            owner, viewer = body['owner'], body['viewer']
+            if not all(isinstance(v, str) and v.startswith('@') and 1 < len(v) <= 255
+                       for v in (owner, viewer)):
+                raise ValueError()
+            hs = self.policy.api._hs
+            if not all(hs.is_mine(UserID.from_string(v)) for v in (owner, viewer)):
+                return 200, {'allowed': False}
+            store = hs.get_datastores().main
+            owner_ignored = await store.ignored_users(owner)
+            viewer_ignored = await store.ignored_users(viewer)
+            return 200, {'allowed': viewer not in owner_ignored and owner not in viewer_ignored}
         except (ValueError, TypeError, KeyError):
             raise SynapseError(400, 'Invalid request') from None
 

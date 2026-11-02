@@ -66,6 +66,14 @@ class MainActivity : FlutterActivity() {
         val updater = AppUpdater(this)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/update")
             .setMethodCallHandler(updater::handle)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/stream")
+            .setMethodCallHandler { call, result ->
+                if (call.method == "keepAwake" && call.arguments is Boolean) {
+                    if (call.arguments == true) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    result.success(null)
+                } else result.notImplemented()
+            }
         if (first) {
             MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "voicechat/clipboard")
                 .setMethodCallHandler(ClipboardFiles(applicationContext)::handle)

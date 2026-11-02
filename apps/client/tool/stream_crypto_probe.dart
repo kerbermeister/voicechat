@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:vodozemac/vodozemac.dart' as crypto;
+import '../lib/stream_crypto.dart';
 
 void require(bool condition, String message) {
   if (!condition) throw StateError(message);
@@ -67,6 +68,63 @@ Future<void> main(List<String> arguments) async {
     () => crypto.GroupSession().toInbound().decrypt(first),
     'wrong session',
   );
+  final identity = crypto.Account();
+  final host = LiveStreamCrypto('stream-fixture', 123456);
+  final viewer = LiveStreamCrypto('stream-fixture', 123456);
+  host.createEpoch(1);
+  final comment = host.encryptComment(
+    text: 'stream-only text',
+    id: 'one',
+    author: '@a:local',
+    device: 'A',
+    sign: (value) => identity.sign(value).toBase64(),
+  );
+  viewer.importBundle(host.exportBundle(), 1);
+  String decrypt(LiveStreamCrypto keys, {String author = '@a:local'}) =>
+      keys.decryptComment(
+        ciphertext: comment,
+        id: 'one',
+        author: author,
+        device: 'A',
+        signingKey: identity.identityKeys.ed25519,
+      );
+  require(decrypt(viewer) == 'stream-only text', 'production chat decrypt');
+  mustReject(() => decrypt(viewer, author: '@forged:local'), 'forged author');
+  host.createEpoch(2);
+  final nextComment = host.encryptComment(
+    text: 'new epoch',
+    id: 'two',
+    author: '@a:local',
+    device: 'A',
+    sign: (value) => identity.sign(value).toBase64(),
+  );
+  mustReject(
+    () => viewer.decryptComment(
+      ciphertext: nextComment,
+      id: 'two',
+      author: '@a:local',
+      device: 'A',
+      signingKey: identity.identityKeys.ed25519,
+    ),
+    'old viewer excluded',
+  );
+  final lateViewer = LiveStreamCrypto('stream-fixture', 123456);
+  lateViewer.importBundle(host.exportBundle(), 2);
+  require(
+    decrypt(lateViewer) == 'stream-only text',
+    'production full late history',
+  );
+  mustReject(
+    () => LiveStreamCrypto(
+      'wrong-stream',
+      123456,
+    ).importBundle(host.exportBundle(), 2),
+    'cross stream key replay',
+  );
+  host.clear();
+  viewer.clear();
+  lateViewer.clear();
+  require(host.mediaKey == null && host.epoch == 0, 'key cleanup');
   stdout.writeln(
     jsonEncode({
       'result': 'PASS',
@@ -76,6 +134,11 @@ Future<void> main(List<String> arguments) async {
         'retained history key permits late join',
         'new epoch excludes old key',
         'wrong session rejects ciphertext',
+        'production signed chat roundtrip',
+        'forged author rejected',
+        'production history after rekey',
+        'cross-stream key replay rejected',
+        'RAM key cleanup',
       ],
       'deviceEnvelopeDeliveryChecked': false,
       'mediaDecryptionChecked': false,

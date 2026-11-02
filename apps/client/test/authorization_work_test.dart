@@ -9,8 +9,9 @@ class RecipientEncryption implements Encryption {
   Future<Map<String, Map<String, Map<String, dynamic>>>> encryptToDeviceMessage(
     List<DeviceKeys> devices,
     String type,
-    Map<String, dynamic> content,
-  ) async {
+    Map<String, dynamic> content, {
+    bool persistPayload = true,
+  }) async {
     encryptions++;
     return {};
   }

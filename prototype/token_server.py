@@ -8,6 +8,7 @@ import time
 import threading
 import sqlite3
 import os
+import sys
 from contacts import ContactStore, ContactError
 from call_control import CallStore, CallError
 from scheduled_messages import ScheduledStore, ScheduleError, audience_digest, scheduled_audience, validate_envelope
@@ -21,6 +22,8 @@ from pathlib import Path
 from screen_control import ScreenStore, ScreenError
 from screen_http import ScreenService
 from screen_protocol import ScreenRequestError
+from stream_http import StreamService, stream_limits
+from stream_sessions import StreamError
 from web_push import PushStore, PushError, APP_ID as PUSH_APP_ID
 from android_push import AndroidPushStore, APP_ID as ANDROID_PUSH_APP_ID
 
@@ -45,6 +48,9 @@ _call_failure = threading.Event()
 _screen_failure = threading.Event()
 _screens = None
 _screens_lock = threading.Lock()
+_streams = None
+_streams_lock = threading.Lock()
+_stream_failure = threading.Event()
 _scheduled = None
 _scheduled_lock = threading.Lock()
 _push = None
@@ -136,7 +142,9 @@ def call_store():
                     try:
                         store.sweep()
                         _call_failure.clear()
-                    except Exception:
+                    except Exception as error:
+                        if laboratory and not _call_failure.is_set():
+                            print('call sweep: ' + type(error).__name__, file=sys.stderr, flush=True)
                         _call_failure.set()
             threading.Thread(target=watch, daemon=True, name='call-leases').start()
     return _calls
@@ -164,10 +172,47 @@ def screen_service():
                     try:
                         service.tick()
                         _screen_failure.clear()
-                    except Exception:
+                    except Exception as error:
+                        if laboratory and not _screen_failure.is_set():
+                            print('screen sweep: ' + type(error).__name__, file=sys.stderr, flush=True)
                         _screen_failure.set()
             threading.Thread(target=watch,daemon=True,name='screen-leases').start()
         return _screens
+
+
+def stream_pair_allowed(owner, viewer):
+    request = urllib.request.Request(matrix_url + '/_synapse/client/voicechat/stream-pair',
+        json.dumps({'owner': owner, 'viewer': viewer}).encode(),
+        {'Authorization': 'Bearer ' + policy_secret, 'Content-Type': 'application/json'})
+    with urllib.request.urlopen(request, timeout=5) as response:
+        return json.load(response).get('allowed') is True
+
+
+def stream_service():
+    global _streams
+    with _streams_lock:
+        if _streams is None:
+            path = Path(__file__).resolve().parents[1] / '.prototype/streams'
+            path.mkdir(mode=0o700, parents=True, exist_ok=True)
+            service = StreamService(path / 'cleanup.sqlite', contact_store(), stream_pair_allowed,
+                lambda user, device: validate_push_device(user, device, ''), media_api,
+                enabled=os.environ.get('VOICECHAT_STREAMS_ENABLED') == '1',
+                limits=stream_limits(os.environ), signer=jwt,
+                media_enabled=os.environ.get('VOICECHAT_STREAM_MEDIA_ENABLED') == '1')
+            (path / 'cleanup.sqlite').chmod(0o600)
+            _streams = service
+            def watch():
+                while True:
+                    time.sleep(2)
+                    try:
+                        service.tick()
+                        _stream_failure.clear()
+                    except Exception as error:
+                        if laboratory and not _stream_failure.is_set():
+                            print('stream sweep: ' + type(error).__name__, file=sys.stderr, flush=True)
+                        _stream_failure.set()
+            threading.Thread(target=watch, daemon=True, name='stream-leases').start()
+        return _streams
 
 
 def contact_store():
@@ -274,6 +319,31 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(401 if error.code == 401 else 503, {'error': 'push_unavailable'})
         except (KeyError, TypeError, ValueError): return self.reply(400, {'error': 'invalid_request'})
         except (OSError, sqlite3.Error, ImportError): return self.reply(503, {'error': 'push_unavailable'})
+    def stream_request(self):
+        try:
+            raw = b''
+            if self.command == 'POST':
+                if self.headers.get('Transfer-Encoding') is not None:
+                    return self.reply(400, {'error': 'invalid_request'})
+                size = int(self.headers.get('Content-Length', '0'))
+                if not 0 < size <= 32768:
+                    return self.reply(400, {'error': 'invalid_request'})
+                self.connection.settimeout(10)
+                raw = self.rfile.read(size)
+                if len(raw) != size:
+                    return self.reply(400, {'error': 'invalid_request'})
+            return self.reply(200, stream_service().handle(self.command, raw, self.matrix))
+        except StreamError as error:
+            return self.reply(error.status, {'error': str(error)})
+        except ContactError:
+            return self.reply(401, {'error': 'unauthorized'})
+        except urllib.error.HTTPError as error:
+            return self.reply(401 if error.code == 401 else 503, {'error': 'stream_unavailable'})
+        except (OSError, sqlite3.Error):
+            return self.reply(503, {'error': 'stream_unavailable'})
+        except (ValueError, KeyError, TypeError):
+            return self.reply(400, {'error': 'invalid_request'})
+
     def screen_request(self):
         try:
             raw=b''
@@ -476,11 +546,12 @@ class Handler(BaseHTTPRequestHandler):
         except (BrokenPipeError, ConnectionResetError): pass
     def do_OPTIONS(self): self.reply(204, {})
     def do_GET(self):
+        if self.path == '/streams': return self.stream_request()
         if self.path == '/push/config': return self.push_request()
         if self.path.startswith('/screen/'): return self.screen_request()
         if self.path == '/scheduled' or self.path.startswith('/scheduled?'): return self.scheduled_request()
         if self.path == '/health':
-            healthy=not (_call_failure.is_set() or _screen_failure.is_set())
+            healthy=not (_call_failure.is_set() or _screen_failure.is_set() or _stream_failure.is_set())
             return self.reply(200 if healthy else 503, {'ok':healthy})
         if self.path.startswith('/presence?'):
             try:
@@ -519,6 +590,7 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/reports' and laboratory: return self.reply(200, reports)
         self.reply(404, {'error': 'not_found'})
     def do_POST(self):
+        if self.path == '/streams': return self.stream_request()
         if self.path in ('/push/subscribe', '/push/android', '/push/android/resolve', '/push/android/action', '/push/android/rotate', '/push/call', '/_matrix/push/v1/notify'): return self.push_request()
         if self.path == '/contact-links': return self.contact_link_post()
         if self.path.startswith('/screen/'): return self.screen_request()
@@ -665,5 +737,6 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     scheduled_store()
     screen_service()
+    if os.environ.get('VOICECHAT_STREAMS_ENABLED') == '1': stream_service()
     print('Prototype token issuer: http://127.0.0.1:8090 (local test accounts only)', flush=True)
     ControlServer((os.environ.get('VOICECHAT_BIND', '127.0.0.1'), 8090), Handler).serve_forever()

@@ -381,9 +381,16 @@ class Encryption {
   Future<Map<String, Map<String, Map<String, dynamic>>>> encryptToDeviceMessage(
     List<DeviceKeys> deviceKeys,
     String type,
-    Map<String, dynamic> payload,
-  ) async {
-    return await olmManager.encryptToDeviceMessage(deviceKeys, type, payload);
+    Map<String, dynamic> payload, {
+    bool persistPayload = true,
+  }) async {
+    // Ephemeral key envelopes must not enter the durable plaintext replay cache.
+    return await olmManager.encryptToDeviceMessage(
+      deviceKeys,
+      type,
+      payload,
+      persistPayload: persistPayload,
+    );
   }
 
   Future<void> autovalidateMasterOwnKey() async {

@@ -50,6 +50,10 @@ services:
       VOICECHAT_MATRIX_INTERNAL: http://synapse:8008
       VOICECHAT_CLIENT_POLICY: /config/client-policy.json
       VOICECHAT_ORIGINS: ${PUBLIC_URL:?}
+      # Opt-in until stream device acceptance and an authorised rollout.
+      VOICECHAT_STREAMS_ENABLED: ${VOICECHAT_STREAMS_ENABLED:-0}
+      VOICECHAT_STREAM_MEDIA_ENABLED: ${VOICECHAT_STREAM_MEDIA_ENABLED:-0}
+      STREAM_MAX_DURATION_SECONDS: ${STREAM_MAX_DURATION_SECONDS:-10800}
     volumes: [control:/work/.prototype, media-config:/config:ro]
     ports:
       - '${BIND}:7981:7981/tcp'

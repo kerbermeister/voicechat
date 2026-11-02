@@ -665,6 +665,7 @@ class OlmManager {
     String type,
     Map<String, dynamic> payload, {
     bool getFromDb = true,
+    bool persistPayload = true,
   }) async {
     final sess = await getOlmSessions(
       device.curve25519Key!,
@@ -683,7 +684,7 @@ class OlmManager {
     };
     final encryptResult = sess.first.session!.encrypt(json.encode(fullPayload));
     await storeOlmSession(sess.first);
-    if (encryption.olmDatabase != null) {
+    if (persistPayload && encryption.olmDatabase != null) {
       try {
         await encryption.olmDatabase?.setLastSentMessageUserDeviceKey(
           json.encode({'type': type, 'content': payload}),
@@ -710,8 +711,9 @@ class OlmManager {
   Future<Map<String, Map<String, Map<String, dynamic>>>> encryptToDeviceMessage(
     List<DeviceKeys> deviceKeys,
     String type,
-    Map<String, dynamic> payload,
-  ) async {
+    Map<String, dynamic> payload, {
+    bool persistPayload = true,
+  }) async {
     final data = <String, Map<String, Map<String, dynamic>>>{};
     // first check if any of our sessions we want to encrypt for are in the database
     if (encryption.olmDatabase != null) {
@@ -735,6 +737,7 @@ class OlmManager {
           type,
           payload,
           getFromDb: false,
+          persistPayload: persistPayload,
         );
       } on NoOlmSessionFoundException catch (e) {
         Logs().d('[Vodozemac] Error encrypting to-device event', e);

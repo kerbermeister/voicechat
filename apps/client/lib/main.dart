@@ -1,3 +1,5 @@
+import 'stream_controller.dart';
+import 'stream_panel.dart';
 import 'resizable_chat_layout.dart';
 import 'chat_scale.dart';
 import 'message_media_cache.dart';
@@ -222,6 +224,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
   mx.Timeline? timeline;
   StreamSubscription<dynamic>? sync;
   CallController? calls;
+  LiveStreamController? streams;
+  bool _streamPanelOpen = false;
   AppSounds? sounds;
   NativeNotifications? nativeNotifications;
   Uri? ownAvatar;
@@ -471,12 +475,26 @@ class _ProbeScreenState extends State<ProbeScreen> {
     );
     await actions!.open();
     await openP2p(next.client);
+    streams = LiveStreamController(
+      next.client,
+      tokenServer.text.trim(),
+      mediaServer.text.trim(),
+      callActive: () =>
+          calls?.active?.isClosed == false || calls?.starting == true,
+    );
+    streams!.addListener(() {
+      if (mounted) setState(() {});
+    });
+    unawaited(streams!.open());
     calls = CallController(
       next.client,
       tokenServer.text.trim(),
       mediaServer.text.trim(),
       report,
       initialEvents: next.startupCalls?.take() ?? const [],
+      beforeMedia: () async {
+        await streams?.pauseForCall();
+      },
     );
     calls!.addListener(() {
       if (mounted) {
@@ -1162,6 +1180,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
         .close(); // Abort network operations before closing local keys.
     try {
       await Future.wait([
+        if (streams != null) streams!.close(),
         if (calls != null) calls!.close(),
         if (verifications != null) verifications!.close(),
         if (historyRecovery != null) historyRecovery!.close(),
@@ -1585,6 +1604,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     await prefs.remove('lastRoom:${profile.text.trim()}');
     writeTabAccount(null);
     savedAccount = false;
+    await streams?.close();
+    streams = null;
     await calls?.close();
     await verifications?.close();
     verifications = null;
@@ -1615,6 +1636,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     if (probe != null) MessageMediaCache.clear(probe!.client);
     unawaited(sync?.cancel());
     timeline?.cancelSubscriptions();
+    unawaited(streams?.close());
+    streams = null;
     unawaited(calls?.close());
     unawaited(verifications?.close());
     unawaited(historyRecovery?.close());
@@ -2239,6 +2262,30 @@ class _ProbeScreenState extends State<ProbeScreen> {
     });
   }
 
+  Future<void> openStreams({String? identifier}) async {
+    final controller = streams;
+    if (controller == null || !controller.available || _streamPanelOpen) return;
+    if (calls?.active?.isClosed == false) {
+      report('Сначала завершите текущий звонок.');
+      return;
+    }
+    _streamPanelOpen = true;
+    try {
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => LiveStreamPanel(
+            controller: controller,
+            friends: contacts?.acceptedUsers ?? {},
+            initialStream: identifier,
+          ),
+        ),
+      );
+    } finally {
+      _streamPanelOpen = false;
+    }
+  }
+
   Widget rooms({bool compact = false}) => ConversationList(
     compact: compact,
     client: probe!.client,
@@ -2247,6 +2294,13 @@ class _ProbeScreenState extends State<ProbeScreen> {
     onNewPerson: () => run(() => newChat()),
     onNewGroup: () => run(() => newChat(group: true)),
     onSettings: settings,
+    onStreams: streams?.available == true
+        ? () => run(() => openStreams())
+        : null,
+    liveStreams: {
+      for (final stream in streams?.directory ?? [])
+        stream.owner: () => run(() => openStreams(identifier: stream.id)),
+    },
     onP2p: p2p == null
         ? null
         : () => Navigator.of(context).push(

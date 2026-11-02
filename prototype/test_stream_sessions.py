@@ -265,3 +265,33 @@ class StreamRetryAndResourceTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class StreamMigrationTests(unittest.TestCase):
+    def test_old_cleanup_only_database_migrates_without_losing_retirement(self):
+        import sqlite3
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'cleanup.sqlite'
+            with sqlite3.connect(path) as db:
+                db.execute('CREATE TABLE stream_cleanup (generation TEXT PRIMARY KEY)')
+                db.execute("INSERT INTO stream_cleanup VALUES('retire-me')")
+            core = StreamSessions(path, lambda a, b: True)
+            try:
+                self.assertEqual(core.pending_cleanup(), ['retire-me'])
+                self.assertEqual(core.db.execute('SELECT version FROM stream_schema').fetchone(), (1,))
+                self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            finally:
+                core.close()
+
+    def test_future_schema_rejected_without_mutation(self):
+        import sqlite3
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'cleanup.sqlite'
+            with sqlite3.connect(path) as db:
+                db.execute('CREATE TABLE stream_schema (singleton INTEGER PRIMARY KEY, version INTEGER)')
+                db.execute('INSERT INTO stream_schema VALUES(1,2)')
+            with self.assertRaisesRegex(ValueError, 'unsupported_stream_schema'):
+                StreamSessions(path, lambda a, b: True)
+            with sqlite3.connect(path) as db:
+                self.assertEqual(db.execute('SELECT version FROM stream_schema').fetchone(), (2,))
+                self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='stream_cleanup'").fetchone())

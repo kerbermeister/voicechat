@@ -8,6 +8,7 @@ import 'app_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'typing_indicator.dart';
+import 'stream_badge.dart';
 import 'avatar_image.dart';
 import 'theme.dart';
 import 'presence_tracker.dart';
@@ -125,6 +126,7 @@ class PersonAvatar extends StatelessWidget {
   final bool online;
   final double size;
   final bool showPresence;
+  final VoidCallback? onStream;
   const PersonAvatar({
     super.key,
     required this.name,
@@ -135,6 +137,7 @@ class PersonAvatar extends StatelessWidget {
     this.online = false,
     this.size = 48,
     this.showPresence = true,
+    this.onStream,
   });
   @override
   Widget build(BuildContext context) {
@@ -219,6 +222,8 @@ class PersonAvatar extends StatelessWidget {
                 ),
               ),
             ),
+          if (onStream != null)
+            Positioned.fill(child: LiveStreamBadge(onTap: onStream!)),
         ],
       ),
     );
@@ -233,6 +238,8 @@ class ConversationList extends StatefulWidget {
   final VoidCallback onNewGroup;
   final VoidCallback onSettings;
   final VoidCallback? onP2p;
+  final VoidCallback? onStreams;
+  final Map<String, VoidCallback> liveStreams;
   final int p2pIncoming;
   final VoidCallback? onInvitations;
   final VoidCallback? onSearch;
@@ -255,6 +262,8 @@ class ConversationList extends StatefulWidget {
     required this.onNewGroup,
     required this.onSettings,
     this.onP2p,
+    this.onStreams,
+    this.liveStreams = const {},
     this.p2pIncoming = 0,
     this.onInvitations,
     this.onSearch,
@@ -439,6 +448,9 @@ class _ConversationListState extends State<ConversationList> {
                                           size: 34,
                                           client: widget.client,
                                           url: roomAvatar(room),
+                                          onStream:
+                                              widget.liveStreams[room
+                                                  .directChatMatrixID],
                                           group: groups,
                                           personal: isPersonalRoom(room),
                                           online:
@@ -470,6 +482,8 @@ class _ConversationListState extends State<ConversationList> {
               },
             ),
           ),
+          if (widget.onStreams != null)
+            action('Стримы', Icons.sensors, widget.onStreams),
           if (widget.onInvitations != null)
             action('Приглашения', Icons.mail_outline, widget.onInvitations),
           action(
@@ -630,6 +644,12 @@ class _ConversationListState extends State<ConversationList> {
                         widget.onTabChanged(value.single),
                   ),
                 ),
+                if (widget.onStreams != null)
+                  ListTile(
+                    leading: const Icon(Icons.sensors),
+                    title: const Text('Стримы'),
+                    onTap: widget.onStreams,
+                  ),
                 if (widget.onP2p != null)
                   ListTile(
                     dense: true,
@@ -798,6 +818,9 @@ class _ConversationListState extends State<ConversationList> {
                                             size: 38,
                                             client: widget.client,
                                             url: roomAvatar(room),
+                                            onStream:
+                                                widget.liveStreams[room
+                                                    .directChatMatrixID],
                                             group: groups,
                                             personal: isPersonalRoom(room),
                                             online: presence == 'В сети',

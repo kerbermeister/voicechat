@@ -28,12 +28,17 @@ def parse_command(raw, limits=None):
     operation = body.get('operation')
     fields = {
         'start': {'request_id', 'title', 'description', 'audience', 'comments', 'duration'},
+        'heartbeat': {'stream_id', 'ready'},
         'info': {'stream_id'}, 'join': {'stream_id'}, 'leave': {'stream_id'},
         'pause': {'stream_id', 'revision'}, 'resume': {'stream_id', 'revision'},
         'stop': {'stream_id', 'revision'},
         'history': {'stream_id', 'after', 'head', 'limit'},
         'comment': {'stream_id', 'message_id', 'ciphertext'},
         'discover': set(),
+        'grant': {'stream_id', 'epoch'},
+        'key_roster': {'stream_id'},
+        'key_get': {'stream_id'},
+        'key_put': {'stream_id', 'epoch', 'user', 'device', 'part', 'parts', 'envelope'},
     }
     if not isinstance(operation, str) or operation not in fields:
         raise StreamError('invalid_request')
@@ -74,6 +79,8 @@ def dispatch(core, actor, raw):
     identifier = command.pop('stream_id')
     if operation in ('pause', 'resume', 'stop'):
         return core.transition(identifier, actor, operation, command['revision'])
+    if operation == 'heartbeat':
+        return core.heartbeat(identifier, actor, command['ready'])
     if operation == 'comment':
         return {'sequence': core.send(identifier, actor, command['message_id'], command['ciphertext'])}
     if operation == 'history':
@@ -81,6 +88,8 @@ def dispatch(core, actor, raw):
         for message in result['messages']:
             message['ciphertext'] = base64.b64encode(message['ciphertext']).decode()
         return result
+    if operation in ('grant', 'key_get', 'key_put', 'key_roster'):
+        raise StreamError('stream_media_unavailable', 503)
     if operation == 'leave':
         core.leave(identifier, actor)
         return {'left': True}

@@ -47,6 +47,7 @@ class CallController extends ChangeNotifier
   final String tokenUrl;
   final String mediaUrl;
   final void Function(String) report;
+  final Future<void> Function()? beforeMedia;
   final invitations = <String, CallInvitation>{};
   final declined = <({String room, String session})>{};
   final _endedInvitations =
@@ -100,6 +101,7 @@ class CallController extends ChangeNotifier
     this.mediaUrl,
     this.report, {
     List<BasicEventWithSender> initialEvents = const [],
+    this.beforeMedia,
   }) {
     devices = CallDevices(client, _refresh);
     groups = GroupCalls(client, tokenUrl, _refresh);
@@ -560,6 +562,7 @@ class CallController extends ChangeNotifier
     _refresh();
     try {
       if (invitation != null && !await _answerPush(invitation.session)) return;
+      await beforeMedia?.call();
       if (!room.isDirectChat && invitation == null) {
         final ongoing = await groups.find(room);
         if (generation != _dialGeneration || _closed) return;
@@ -827,6 +830,7 @@ class CallController extends ChangeNotifier
       throw UserActionError('Сначала завершите текущий звонок.');
     }
     if (!await _answerPush(call.session)) return;
+    await beforeMedia?.call();
     active = call;
     directInvitations.remove(call);
     _refresh();
