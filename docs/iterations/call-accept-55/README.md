@@ -63,8 +63,8 @@ fixture-helper также PASS, включая настоящий45с преде
 
 ## Воспроизводимость стенда
 
-[qa-control-delay.py.txt](qa-control-delay.py.txt) — точный исходник использованного
-локального wrapper. Для запуска его копируют в `.prototype/callback55-control.py`;
+[qa-control-delay.py.txt](qa-control-delay.py.txt) — исходник использованного
+локального wrapper (пробельный конец файла нормализован). Для запуска его копируют в `.prototype/callback55-control.py`;
 он использует уже подготовленный изолированный `.prototype/scenario-audit` и
 слушает только127.0.0.1:18090. Файл `.prototype/callback55-hold-next` с числом6
 задерживает один следующий POST `/push/call`; метаданные без токенов/тела пишутся

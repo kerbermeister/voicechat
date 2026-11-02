@@ -28,4 +28,3 @@ class GatedHandler(s['Handler']):
   finally:
    state.write_text(json.dumps({'held':False,'started_ms':started_ms,'ended_ms':round(time.time()*1000),'duration_ms':round((time.monotonic()-started)*1000),'endpoint':'/push/call','normal_handler_returned':True}))
 s['ControlServer'](('127.0.0.1',18090),GatedHandler).serve_forever()
-
