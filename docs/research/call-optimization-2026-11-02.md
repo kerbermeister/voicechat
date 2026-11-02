@@ -779,3 +779,80 @@ OPT-03 имеет независимый browser feedback probe, но долги
 связь server admission gate с original/refreshed SFU JWT и sender-key ACK/epochs;
 обычная room rotation остаётся до доказанного отзыва/совместимости. Новую таймерную
 систему переключения аудиопресетов по вопросу владельца не добавлять.
+
+### OPT-07: подготовленный ключ и текущий индекс — нативная проверка после51
+
+Расширенный Mac probe PASS: decoded8→14 при подготовленном slot1 и активном
+sender0; после перевода receiver в1 старые кадры0 продолжили декодироваться20;
+после явного sender commit в1 —26. Следующий неизвестный slot2 блокировал decoding
+при растущем encoding; после доставки ключа —34, затем40 и121 после всех16 slots.
+Прежние cryptor/receiver/SDP/ICE сохранены, ratchet defaults не менялись, slots не
+переиспользовались. [Свидетельство](../iterations/call-network-lab-2026-11-02/native-key-preinstall.json).
+
+В `BaseKeyProvider.setRawKey(..., keyIndex:1)` SDK latest index уже становится1,
+пока активный sender cryptor ещё0. Создание новой публикации в `E2EEManager`
+берёт этот latest index. Поэтому prepare и commit нельзя объединять: нужен
+закреплённый активный sender index до ACK, в том числе для новой камеры/публикации.
+Это вывод из исходников SDK и измерения индексов; новую публикацию во время prepare
+сам probe не создавал. [SDK2.13.2](https://github.com/livekit/client-sdk-flutter/blob/v2.13.2/lib/src/e2ee/e2ee_manager.dart),
+[key provider](https://github.com/livekit/client-sdk-flutter/blob/v2.13.2/lib/src/e2ee/key_provider.dart).
+Приёмку UA-05.C39 wrong-key/shared-key recovery эта проверка не закрывает.
+
+**H07, ещё не реализация:** меньший безопасный первый объём — сохранять транспорт
+только при строгом добавлении участника, если все участники согласовали новый
+протокол. Любой выход/expiry/revoke/key change/reconnect/старый клиент сохраняет
+полную room rotation. Тогда JWT текущего поколения выдавались только остающимся
+разрешённым участникам; отказ от rotation при удалении по-прежнему требует
+отдельного доказанного SFU admission/revocation решения. Это гипотеза для проверки,
+не разрешение просто убрать `_rotate` на join: нынешний `_shareKey` иначе отдаст
+новичку прежний sender key, что позволит ему расшифровать записанные старые кадры.
+
+Для этого ограниченного протокола необходимы согласование v2 без новых неизвестных
+полей на legacy `/token`, идентификатор экземпляра клиента с идемпотентным retry,
+снимок roster с lease/instance и привязкой к поколению, свежий sender key в новом
+slot, authenticated offer/ACK точного состава и одноразового nonce. Повтор offer
+не должен повторно устанавливать тот же raw key; устаревшие ACK/roster игнорируются.
+До ACK сохраняется активный индекс, включая новые публикации. Нельзя ждать ACK
+внутри продления lease и тем самым блокировать свежую авторизацию/новый roster.
+Concurrent join, camera/mute во время prepare, потеря offer/ACK, timeout и exhaustion
+нуждаются в тестах; любой неразрешённый случай должен возвращать нынешний безопасный
+полный rebuild, без циклических reconnect и без отключения E2EE. До этих проверок
+production51 сохраняет прежнюю ротацию; бесшовный join ещё не готов.
+
+### OPT-07: общий probe Mac/Android/browser после51
+
+Один общий GCM probe теперь запускается нативной и browser-only обёртками.
+Окончательные прогоны: реальная камера Mac15.3.1, эмулируемая камера одноразового
+Android15/API35arm64 и синтетический canvas во внутреннем Chromium. Все прошли:
+
+| Платформа/начальный slot | Initial → prepare → receiver ahead → commit → late key → следующий → последний decoded counter |
+| --- | --- |
+| Mac,0 | 11→18→30→36→43→50→130 |
+| Android emulator,0 | 7→14→21→27→34→41→120 |
+| Browser,0 | 7→14→20→26→35→41→117 |
+| Browser,5 | 8→14→20→26→35→41→88 |
+
+Начальный0 активирует все16 разных slots; начальный5 —11 slots5–15 без когда-либо
+установленного slot0. В каждом прогоне неизвестный свежий ключ прекращал decoding
+при растущем encoding; доставка этого ключа восстанавливала decoding. Существующие
+receiver/cryptor/SDP/ICE сохранены, default ratchet и discard-unready не ослаблены.
+Эти счётчики проверяют корректность, а не сравнивают производительность платформ.
+[Манифест с hashes/границами](../iterations/call-network-lab-2026-11-02/key-preinstall-platforms.json),
+[воспроизводимые команды](../../apps/client/tool/call-network-lab.md#предварительная-проверка-групповых-эпох).
+
+В browser loopback только тестовый SDP получает отдельный msid receiver track:
+закреплённый worker индексирует cryptors по track ID, поэтому два конца одной
+пары в одном процессе иначе столкнулись бы. Это изоляция стенда, не изменение
+продуктовой сигнализации и не доказанный дефект межустройственного звонка.
+Тестовый HTTP-сервер проверен настоящими запросами: Host, COOP/COEP/no-store,
+encoded traversal, symlink и неверный путь. Полный Flutter analyzer чистый;
+release-сборка browser target прошла. Исправленные ошибки самого harness
+(native remote mute и разрешение CAMERA в одноразовом Android-профиле) отдельно
+сохранены в манифесте; они не выданы за дефекты production.
+
+Обычный runtime51 не менялся; новые Mac/Android/серверные артефакты для тестовых
+файлов не нужны. Это проверка внутри каждой платформы, ещё не interop между
+платформами, не Matrix/SFU membership protocol и не физические iPhone/Xiaomi.
+Новая публикация во время prepare, authenticated ACK/reorder/replay, concurrency,
+slot reuse/exhaustion и безопасный fallback по-прежнему обязательны. UA-05.C39,
+физический lip-sync и причина прежних скачков качества остаются открыты.

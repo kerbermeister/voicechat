@@ -1,0 +1,30 @@
+{
+  "initial_frames": 7,
+  "frames_while_future_key_prepared": 13,
+  "old_frames_after_receiver_index_advanced": 20,
+  "frames_after_prepared_key_activation": 26,
+  "sdk_latest_index_ahead_of_active_sender": true,
+  "old_key_blocked": true,
+  "frames_after_late_epoch": 33,
+  "frames_after_preinstalled_epoch": 41,
+  "frames_after_16_distinct_slots": 118,
+  "key_slots_reused": false,
+  "receiver_recreated": false,
+  "ratchet_defaults_changed": false,
+  "matrix_membership_protocol_tested": false,
+  "platform": "Android emulator",
+  "system": {
+    "ro.build.version.release": "15",
+    "ro.build.version.sdk": "35",
+    "ro.product.cpu.abi": "arm64-v8a"
+  },
+  "physical_device": false,
+  "emulated_camera": true,
+  "disposable_profile_without_account": true,
+  "sdk": "livekit_client 2.13.2",
+  "production_version": "1.19.3+51",
+  "production_runtime_changed": false,
+  "fixture_sha256": "b6fb80ee12714f69556cbae7e2dbc757c39fb03f23ad1c982f9b538d75517004",
+  "new_publication_during_prepare_tested": false,
+  "media_saved": false
+}

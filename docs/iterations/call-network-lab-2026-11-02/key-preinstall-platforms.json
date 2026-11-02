@@ -1,0 +1,153 @@
+{
+  "date": "2026-11-02",
+  "purpose": "OPT-07 prerequisite: fresh sender keys and preinstall/commit, within each platform",
+  "production_version": "1.19.3+51",
+  "production_runtime_source": "e44a726b403762acba7f01533c875e521b222b13",
+  "production_runtime_changed": false,
+  "sdk": {
+    "livekit_client": "2.13.2",
+    "flutter_webrtc": "1.6.3",
+    "dart_webrtc": "1.8.2"
+  },
+  "source_sha256": {
+    "apps/client/integration_test/key_epoch_probe.dart": "bab9a954ace65c122a98232fcb70ed11bd40078d4038cd01321a44e4f921c513",
+    "apps/client/integration_test/native_key_epoch_test.dart": "cd3cb504f60b396c076eb05701ea5f4cf861e977a6d9f9897c64c05f057c9231",
+    "apps/client/integration_test/key_epoch_browser_fixture.dart": "dd80685f0d2681d199f80592f545e204d475205946e107c092262ff1ae7e4455",
+    "apps/client/tool/serve_key_epoch_fixture.py": "18f82b3c12f1c252d697f6159a219ee98ae9de27ac3b4c0618512b88fd5e799c",
+    "apps/client/tool/test_key_epoch_fixture.py": "4cdd837f62233e11454a277726f56061a679c675f870e1e8ffbed389bffc2e2c",
+    "apps/client/pubspec.lock": "83807cf6816be65c87485a1eedefaaa3fe530812afd86b885ea9bc909140e374"
+  },
+  "post_native_run_change": "Only narrowed the Flutter foundation import to show kIsWeb; executable probe logic unchanged (equality asserted).",
+  "browser_build": {
+    "main_dart_js_sha256": "7974ebadc3c374e8beb04c516fedcf5a77d5fa24d49c7614dcb25e5e349c58d2",
+    "worker_sha256": "158df1cdab5326a6f09f9c9ab6dd7794f8cf6cf777a67ecd1260338adec203d7",
+    "worker_freshly_compiled_from_locked_livekit_sdk": true,
+    "target": "integration_test/key_epoch_browser_fixture.dart",
+    "fixture_only_worker_build": true
+  },
+  "checks": {
+    "flutter_analyze": "PASS; no issues",
+    "browser_release_fixture_build": "PASS",
+    "fixture_http_host_headers_traversal_symlink": "PASS (1 real-HTTP test)",
+    "existing_asset_boundary_tests": "3 PASS, 1 conditional network-lab API skip"
+  },
+  "runs": [
+    {
+      "platform": "macOS 15.3.1 arm64",
+      "physical_device": true,
+      "input": "local camera; no saved frames",
+      "result": {
+        "initial_frames": 11,
+        "frames_while_future_key_prepared": 18,
+        "old_frames_after_receiver_index_advanced": 30,
+        "frames_after_prepared_key_activation": 36,
+        "sdk_latest_index_ahead_of_active_sender": true,
+        "old_key_blocked": true,
+        "frames_after_late_epoch": 43,
+        "frames_after_preinstalled_epoch": 50,
+        "last_frames": 130,
+        "initial_slot": 0,
+        "distinct_slots_activated": 16,
+        "frames_after_16_distinct_slots": 130,
+        "key_slots_reused": false,
+        "receiver_recreated": false,
+        "ratchet_defaults_changed": false,
+        "matrix_membership_protocol_tested": false
+      },
+      "test_log_sha256": "1f041dd337d4d6614dcea154244ced9678b0726e492ed80930d3d67fe79e61aa",
+      "tested_probe_sha256": "ac634b2a58ca8e7205703d57ce657dd6a8e1a94c9f40e4cde5b52b02762ead5b"
+    },
+    {
+      "platform": "Android 15 API35 arm64 emulator",
+      "physical_device": false,
+      "input": "emulated camera; disposable account-free VoiceChat_KeyEpoch35",
+      "result": {
+        "initial_frames": 7,
+        "frames_while_future_key_prepared": 14,
+        "old_frames_after_receiver_index_advanced": 21,
+        "frames_after_prepared_key_activation": 27,
+        "sdk_latest_index_ahead_of_active_sender": true,
+        "old_key_blocked": true,
+        "frames_after_late_epoch": 34,
+        "frames_after_preinstalled_epoch": 41,
+        "last_frames": 120,
+        "initial_slot": 0,
+        "distinct_slots_activated": 16,
+        "frames_after_16_distinct_slots": 120,
+        "key_slots_reused": false,
+        "receiver_recreated": false,
+        "ratchet_defaults_changed": false,
+        "matrix_membership_protocol_tested": false
+      },
+      "test_log_sha256": "b4fc7a3c554ddeb0c32510db18e1ccc4b7567643de99259035b1ab9bfd5cb00b",
+      "tested_probe_sha256": "ac634b2a58ca8e7205703d57ce657dd6a8e1a94c9f40e4cde5b52b02762ead5b"
+    },
+    {
+      "platform": "internal Chromium browser (IAB)",
+      "physical_device": false,
+      "input": "synthetic animated canvas; no audio/microphone",
+      "result": {
+        "initial_frames": 7,
+        "frames_while_future_key_prepared": 14,
+        "old_frames_after_receiver_index_advanced": 20,
+        "frames_after_prepared_key_activation": 26,
+        "sdk_latest_index_ahead_of_active_sender": true,
+        "old_key_blocked": true,
+        "frames_after_late_epoch": 35,
+        "frames_after_preinstalled_epoch": 41,
+        "last_frames": 117,
+        "initial_slot": 0,
+        "distinct_slots_activated": 16,
+        "frames_after_16_distinct_slots": 117,
+        "key_slots_reused": false,
+        "receiver_recreated": false,
+        "ratchet_defaults_changed": false,
+        "matrix_membership_protocol_tested": false
+      },
+      "tested_probe_sha256": "bab9a954ace65c122a98232fcb70ed11bd40078d4038cd01321a44e4f921c513",
+      "screenshot_sha256": "17fb1b6b0779c334d731e5d7c4817684bf7d19d125ce3ca71fbe688990691a58"
+    },
+    {
+      "platform": "internal Chromium browser (IAB)",
+      "physical_device": false,
+      "input": "synthetic animated canvas; no audio/microphone",
+      "result": {
+        "initial_frames": 8,
+        "frames_while_future_key_prepared": 14,
+        "old_frames_after_receiver_index_advanced": 20,
+        "frames_after_prepared_key_activation": 26,
+        "sdk_latest_index_ahead_of_active_sender": true,
+        "old_key_blocked": true,
+        "frames_after_late_epoch": 35,
+        "frames_after_preinstalled_epoch": 41,
+        "last_frames": 88,
+        "initial_slot": 5,
+        "distinct_slots_activated": 11,
+        "key_slots_reused": false,
+        "receiver_recreated": false,
+        "ratchet_defaults_changed": false,
+        "matrix_membership_protocol_tested": false
+      },
+      "tested_probe_sha256": "bab9a954ace65c122a98232fcb70ed11bd40078d4038cd01321a44e4f921c513",
+      "screenshot_sha256": "ab93d91dbe592df13698bd9634138a64ad9c7e8980579daa90a69828d089be14"
+    }
+  ],
+  "scope": {
+    "real_gcm_encode_decode_and_missing_key_negative_control": true,
+    "default_ratchet_and_discard_unready_preserved": true,
+    "loopback_receiver_msid_aliased_for_worker_track_id_isolation": true,
+    "cross_platform_peer_interop_tested": false,
+    "matrix_membership_protocol_tested": false,
+    "new_publication_during_prepare_tested": false,
+    "authenticated_ack_reordering_replay_tested": false,
+    "key_slot_reuse_tested": false,
+    "sfu_revocation_changed": false,
+    "physical_iphone_or_xiaomi_tested": false,
+    "physical_lip_sync_measured": false,
+    "media_saved": false
+  },
+  "harness_failures_before_final_pass": [
+    "Native refactor attempted browser-only renderer muting on native remote stream; fixed with kIsWeb guard, then Mac passed.",
+    "First Android common-probe run timed out on CAMERA permission in the disposable profile; preinstalled same test APK, granted only CAMERA, reran successfully."
+  ]
+}

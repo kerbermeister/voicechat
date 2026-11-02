@@ -60,18 +60,62 @@ Matrix DirectCall/LiveKit/E2EE membership, не физический акуст�
 
 ## Предварительная проверка групповых эпох
 
-Нативный Mac проверяет GCM sender keys с default ratchet и16 разными slots,
-рост decoded frames, блокировку прежним ключом и доставку нового после задержки,
-без пересоздания cryptor/receiver. Материалы камеры остаются в памяти локальной
-WebRTC-пары, без Matrix/SFU/аккаунта и сохранения кадров:
+Общий `integration_test/key_epoch_probe.dart` проверяет GCM sender keys с default
+ratchet и16 разными slots, подготовку ключа без переключения sender, приём старого
+slot после продвижения receiver index, блокировку неизвестного ключа и доставку
+после задержки. Без пересоздания cryptor/receiver, SDP/ICE restart, Matrix/SFU,
+аккаунта и сохранения кадров. Рост `framesDecoded` обязателен; одного флага E2EE
+недостаточно. Нативная обёртка использует локальную камеру:
 
 ```sh
 cd apps/client
 flutter test integration_test/native_key_epoch_test.dart -d macos --dart-define=HARDWARE_CALL_TEST=true
 ```
 
-Это не реализация membership protocol. Reuse slots, ACK/reordering, исключение
-участника и совместимость платформ проверяются отдельно.
+Android запускается той же командой с `-d emulator-5554` только на отдельном
+профиле с эмулируемой камерой и без аккаунтов. Перед `flutter test` собрать этот
+debug target, установить его с `adb install -r -t` и разрешить только CAMERA для
+`dev.voicechat.voicechat_probe`: тестовый runner удаляет пакет после прогона,
+поэтому разрешение предыдущего теста может не сохраниться. Это не физический Xiaomi.
+
+Браузерная обёртка `key_epoch_browser_fixture.dart` использует движущийся canvas.
+Для неё достаточно заново скомпилировать LiveKit worker из закреплённого SDK
+(Matrix/WASM/QR этот target не использует):
+
+```sh
+cd apps/client
+flutter pub get --enforce-lockfile
+python3 - <<'PY'
+import json, subprocess
+from pathlib import Path
+from urllib.parse import unquote, urlparse
+packages = json.loads(Path('.dart_tool/package_config.json').read_text())['packages']
+sdk = next(p for p in packages if p['name'] == 'livekit_client')
+source = Path(unquote(urlparse(sdk['rootUri']).path)) / 'web/e2ee.worker.dart'
+subprocess.run(['dart', 'compile', 'js', '--packages=.dart_tool/package_config.json',
+                str(source), '-o', 'web/e2ee.worker.dart.js', '-m'], check=True)
+PY
+flutter build web --release --no-web-resources-cdn --target integration_test/key_epoch_browser_fixture.dart --output ../../.prototype/key-epoch-web
+cd ../..
+.prototype/python/bin/python apps/client/tool/serve_key_epoch_fixture.py --web-root .prototype/key-epoch-web
+```
+
+Открыть `http://127.0.0.1:7394/index.html` во внутреннем браузере и нажать
+`Run encrypted probe`; ожидается `PASS KEY_EPOCH_PROOF`. Повторить после полной
+навигации с `?initial_slot=5`: новый cryptor начинает сразу с ненулевого slot,
+активируются11 slots5–15. Сервер привязан к loopback, проверяет Host/границу
+каталога и выдаёт COOP/COEP; остановить Ctrl+C. Его HTTP-проверка:
+`python3 -m unittest discover -s apps/client/tool -p test_key_epoch_fixture.py`.
+
+В loopback SDP только этого стенда receiver получает другой msid track ID:
+web worker SDK индексирует cryptors по track ID, а два конца в одном процессе
+иначе разделяют запись. Продуктовая сигнализация не меняется. Этот выбор не
+объявляется дефектом реального межустройственного звонка.
+
+Это не реализация membership protocol. Новая публикация во время prepare, reuse
+slots, authenticated ACK/reordering, исключение участника, interop между разными
+платформами и физическая приёмка проверяются отдельно. Обычный production web
+собирается полным `prototype/build_web_assets.py` и target `lib/main.dart`.
 
 Негативный probe закреплённого OSS SFU использует имеющийся Python runtime с
 aiohttp. Он создаёт только свою localhost-комнату/контейнер и одноразовые ключи:

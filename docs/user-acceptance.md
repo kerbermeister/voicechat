@@ -2252,3 +2252,19 @@ UA-02/04/05/08/09/14 на iPhone Safari/PWA и Xiaomi этим не закрыт
 полная fault matrix и остальные OPT остаются обязательными. [Проверки51](iterations/call-heartbeat-51/checks.json),
 [production](iterations/call-heartbeat-51/production-verified.json),
 [ход OPT](research/call-optimization-2026-11-02.md).
+
+
+OPT-07/UA-05/08, после51/02.11 — общий GCM probe прошёл на реальном Mac15.3.1,
+Android15/API35arm64 с эмулируемой камерой и во внутреннем Chromium. На каждой
+платформе проверены16 свежих slots, prepare без смены активного sender, decoding
+старых кадров при продвинутом receiver index, commit, блокировка неизвестного
+ключа при растущем encoding и восстановление после доставки. Browser отдельно
+прошёл старт сразу с slot5 (11 slots5–15). Default ratchet/discard-unready и
+receiver/SDP/ICE сохранены. Runtime51 не менялся; новый релиз не требуется.
+Это проверки внутри платформ, не cross-platform interop или новый групповой
+membership protocol. Новая публикация во время prepare, authenticated ACK/
+reordering/replay, slot reuse/exhaustion и fallback остаются обязательной работой
+агента. UA-05.C39, физические iPhone Safari/PWA/Xiaomi, A/V-marker и причина прежних
+скачков качества этим не закрыты; готовность аппаратных UA-02/04/05/08/09/14 не
+повышена. [Свидетельство](iterations/call-network-lab-2026-11-02/key-preinstall-platforms.json),
+[задачи/ограничения](research/call-optimization-2026-11-02.md).
