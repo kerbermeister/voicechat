@@ -1,0 +1,6 @@
+{
+  "scope": "isolated local QA account only",
+  "target_device_deleted": true,
+  "other_device_whoami_after_revoke": 200,
+  "credentials_recorded": false
+}

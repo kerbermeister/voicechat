@@ -1,0 +1,7 @@
+Selected assertions; raw SDP and transport details omitted.
+QA_VIDEO initial frames and renderer PASS
+QA_VIDEO low 320x180 PASS
+QA_VIDEO restart 0 decoded frames and renderer PASS
+QA_VIDEO restart 1 decoded frames and renderer PASS
+QA_VIDEO remote hangup and local camera stopped PASS
+00:07 +1: All tests passed!

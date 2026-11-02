@@ -1,0 +1,9 @@
+{
+  "encrypted_event_rows": 5,
+  "megolm_payloads": 4,
+  "cleared_payloads": 1,
+  "qa_text_marker_in_event_json": false,
+  "alice_visible_devices_after_revoke": 1,
+  "revoked_device_rows": 0,
+  "revoked_device_access_tokens": 0
+}

@@ -487,6 +487,7 @@ class _ChatPaneState extends State<ChatPane>
   }
 
   void typing(String value) {
+    if (widget.room.client.userID == null) return;
     final now = DateTime.now();
     if (value.isEmpty || now.difference(lastTyping).inSeconds >= 4) {
       lastTyping = now;
@@ -557,6 +558,7 @@ class _ChatPaneState extends State<ChatPane>
         reply: reply,
       );
       draftPhotos.clear();
+      if (!mounted) return;
       if (input.text == caption) input.clear();
       if (mounted) setState(() {});
     }
@@ -586,7 +588,7 @@ class _ChatPaneState extends State<ChatPane>
           );
           final sent = draftFiles.removeAt(0);
           caption = '';
-          if (input.text == text) input.clear();
+          if (mounted && input.text == text) input.clear();
           if (mounted) {
             setState(() {});
             await WidgetsBinding.instance.endOfFrame;
@@ -621,6 +623,7 @@ class _ChatPaneState extends State<ChatPane>
             : edit!.content['dev.voicechat.ttl_seconds'] as int?,
       );
     }
+    if (!mounted) return;
     if (input.text == text) {
       input.clear();
       linkPreviews.clear();
@@ -2576,9 +2579,9 @@ class _ChatPaneState extends State<ChatPane>
                       trailing: IconButton(
                         tooltip: 'Отменить',
                         onPressed: () => setState(() {
+                          if (edit != null) input.clear();
                           reply = null;
                           edit = null;
-                          input.clear();
                         }),
                         icon: const Icon(Icons.close),
                       ),
@@ -3299,7 +3302,9 @@ class _ChatPaneState extends State<ChatPane>
           })
           .catchError((Object _) {}),
     );
-    unawaited(widget.room.setTyping(false).catchError((Object _) {}));
+    if (widget.room.client.userID != null) {
+      unawaited(widget.room.setTyping(false).catchError((Object _) {}));
+    }
     input.dispose();
     searchFocus.dispose();
     composerFocus.dispose();
@@ -3603,8 +3608,12 @@ class _AttachmentViewState extends State<AttachmentView> {
           );
         }
         return InkWell(
-          onTap: () =>
-              showPhotos(context, [() async => snapshot.data!.bytes], 0),
+          onTap: () => showPhotos(
+            context,
+            [() async => snapshot.data!.bytes],
+            0,
+            event: widget.event,
+          ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: Image.memory(

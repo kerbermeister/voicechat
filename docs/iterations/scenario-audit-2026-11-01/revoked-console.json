@@ -1,0 +1,74 @@
+[
+  {
+    "level": "error",
+    "message": "Another exception was thrown: Instance of 'minified:lE<void>'",
+    "timestamp": "2026-11-01T20:57:49.490Z",
+    "url": "http://localhost:17359/main.dart.js"
+  },
+  {
+    "level": "error",
+    "message": "Another exception was thrown: Instance of 'minified:lE<void>'",
+    "timestamp": "2026-11-01T20:57:54.488Z",
+    "url": "http://localhost:17359/main.dart.js"
+  },
+  {
+    "level": "error",
+    "message": "Another exception was thrown: Instance of 'minified:lE<void>'",
+    "timestamp": "2026-11-01T20:57:59.400Z",
+    "url": "http://localhost:17359/main.dart.js"
+  },
+  {
+    "level": "error",
+    "message": "Another exception was thrown: Instance of 'minified:lE<void>'",
+    "timestamp": "2026-11-01T20:57:59.511Z",
+    "url": "http://localhost:17359/main.dart.js"
+  },
+  {
+    "level": "error",
+    "message": "Another exception was thrown: Instance of 'minified:lE<void>'",
+    "timestamp": "2026-11-01T20:58:04.484Z",
+    "url": "http://localhost:17359/main.dart.js"
+  },
+  {
+    "level": "error",
+    "message": "Another exception was thrown: Instance of 'minified:lE<void>'",
+    "timestamp": "2026-11-01T20:58:09.381Z",
+    "url": "http://localhost:17359/main.dart.js"
+  },
+  {
+    "level": "error",
+    "message": "Another exception was thrown: Instance of 'minified:lE<void>'",
+    "timestamp": "2026-11-01T20:58:09.484Z",
+    "url": "http://localhost:17359/main.dart.js"
+  },
+  {
+    "level": "error",
+    "message": "Another exception was thrown: Instance of 'minified:lE<void>'",
+    "timestamp": "2026-11-01T20:58:14.490Z",
+    "url": "http://localhost:17359/main.dart.js"
+  },
+  {
+    "level": "error",
+    "message": "Error\n    at T6.gDA (http://localhost:17359/main.dart.js:205222:3)\n    at http://localhost:17359/main.dart.js:217696:18\n    at c2Z.a (http://localhost:17359/main.dart.js:5694:63)\n    at c2Z.$2 (http://localhost:17359/main.dart.js:68807:14)\n    at Object.i (http://localhost:17359/main.dart.js:5680:10)\n    at beN.bGs (http://localhost:17359/main.dart.js:217762:10)\n    at beN.Fi (http://localhost:17359/main.dart.js:217682:19)\n    at beN.dO (http://localhost:17359/main.dart.js:217683:18)\n    at beP.$1 (http://localhost:17359/main.dart.js:217780:21)\n    at bZN.$0 (http://localhost:17359/main.dart.js:68782:5)",
+    "timestamp": "2026-11-01T20:58:19.384Z",
+    "url": "http://localhost:17359/main.dart.js"
+  },
+  {
+    "level": "error",
+    "message": "Another exception was thrown: Instance of 'minified:lE<void>'",
+    "timestamp": "2026-11-01T20:58:19.394Z",
+    "url": "http://localhost:17359/main.dart.js"
+  },
+  {
+    "level": "error",
+    "message": "Another exception was thrown: Instance of 'minified:lE<void>'",
+    "timestamp": "2026-11-01T20:58:19.501Z",
+    "url": "http://localhost:17359/main.dart.js"
+  },
+  {
+    "level": "error",
+    "message": "Another exception was thrown: Instance of 'minified:lE<void>'",
+    "timestamp": "2026-11-01T20:58:24.510Z",
+    "url": "http://localhost:17359/main.dart.js"
+  }
+]

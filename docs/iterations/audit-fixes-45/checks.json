@@ -1,0 +1,67 @@
+{
+  "date": "2026-11-02",
+  "source_before": "e35dd306ff65855b2cdaa31fc87189bb5b889eb0",
+  "candidate": "1.16.6+45",
+  "scope": "11 audit defect groups and two observations; published status maintained in user-acceptance.md",
+  "environment": {
+    "os": "macOS 15.3.1 arm64",
+    "flutter": "3.47.7"
+  },
+  "initial_priority_reproduction": {
+    "failing_assertions": 5,
+    "note": "Original lifecycle probe also has debug override cleanup issue, corrected in production regression copy"
+  },
+  "checks": {
+    "flutter_first": {
+      "passed": 532,
+      "skipped": 4,
+      "final_rerun": "pending after additional lifecycle/teardown tests"
+    },
+    "python": {
+      "total": 789,
+      "skipped": 3,
+      "status": "PASS"
+    },
+    "javascript_vm": {
+      "passed": 9,
+      "status": "PASS"
+    },
+    "analyzer": "PASS before final typing guard; final check pending",
+    "native_storage": "PASS: real Keychain/SQLCipher; disposable profile",
+    "native_camera": "PASS: real Mac camera cleanup with synthetic session in three stages",
+    "web_ui": {
+      "version": "1.16.6(45)",
+      "reply_cancel": "PASS, existing draft retained",
+      "temporary_photo": "PASS, gallery opened before 30s TTL and automatically closed afterwards",
+      "remote_revoke": "PASS after additional ChatPane typing guard: settings close, login screen explains revocation, no Flutter/null/disposed errors. One SDK M_UNKNOWN_TOKEN log is expected."
+    }
+  },
+  "observations": {
+    "UA-24.C06": {
+      "classification": "confirmed initial timeline aggregation defect; fixed",
+      "evidence": "restored_edit_test: two failing assertions before patch and both passing after; decrypt fixture, real SDK Room/Timeline",
+      "limitation": "full first-time trusted device re-run not yet performed"
+    },
+    "UA-05.C39": {
+      "classification": "SDK ratchet recovery race; no proven app-path defect",
+      "native_default": "shared template export matches correct key, qa-a participant key differs after 26s; frames frozen 33->33; republish fails; fresh Room recovers",
+      "native_ratchet0": "participant key matches; frames38->766 without replacing receiver",
+      "inference": "Native decrypt failure ratchet writes captured initial material back after an external setKey, overwriting the participant key. Native exported keys and ratchet0 control isolate this mechanism. Upstream source supports the inference; no native debugger interleaving trace.",
+      "product_difference": "CallProbe uses per-participant keys. _newKeys only follows _disposeTransport and _connect creates a fresh native provider; the probe deliberately overwrites a live shared key. No product settings weakened.",
+      "upstream": [
+        "https://github.com/webrtc-sdk/webrtc/blob/m150_release/api/crypto/frame_crypto_transformer.cc",
+        "https://github.com/webrtc-sdk/webrtc/blob/m150_release/api/crypto/frame_crypto_transformer.h"
+      ]
+    }
+  },
+  "publication": {
+    "production": "pending; full required due to vendored SDK diff",
+    "macos": "pending",
+    "android": "shared Flutter affected; release decision pending"
+  },
+  "privacy": {
+    "real_user_calls": 0,
+    "real_user_messages": 0,
+    "main_profile_or_keychain_deleted": false
+  }
+}

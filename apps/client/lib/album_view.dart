@@ -61,10 +61,15 @@ class _AlbumViewState extends State<AlbumView> {
     child: Material(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: InkWell(
-        onTap: () => showPhotos(context, [
-          for (var j = 0; j < photos.length; j++)
-            () => loaded.putIfAbsent(j, () => loadPhoto(photos[j])),
-        ], i),
+        onTap: () => showPhotos(
+          context,
+          [
+            for (var j = 0; j < photos.length; j++)
+              () => loaded.putIfAbsent(j, () => loadPhoto(photos[j])),
+          ],
+          i,
+          event: widget.event,
+        ),
         child: Stack(
           fit: StackFit.expand,
           children: [

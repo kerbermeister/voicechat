@@ -1,0 +1,16 @@
+test_an_inflight_check_must_not_remove_a_concurrent_new_join (prototype.test_call_control.CallControlTests.test_an_inflight_check_must_not_remove_a_concurrent_new_join) ... ok
+test_audio_camera_capability_mixed_clients_and_upgrade (prototype.test_call_control.CallControlTests.test_audio_camera_capability_mixed_clients_and_upgrade) ... ok
+test_cap_expiry_released_slot_and_old_generation (prototype.test_call_control.CallControlTests.test_cap_expiry_released_slot_and_old_generation) ... ok
+test_crash_recovery_and_failed_deletion_never_issue_admission (prototype.test_call_control.CallControlTests.test_crash_recovery_and_failed_deletion_never_issue_admission) ... ok
+test_discovery_survives_one_departure_and_rejoins_the_same_session (prototype.test_call_control.CallControlTests.test_discovery_survives_one_departure_and_rejoins_the_same_session) ... ok
+test_last_departure_between_discovery_and_join_cannot_restart_a_call (prototype.test_call_control.CallControlTests.test_last_departure_between_discovery_and_join_cannot_restart_a_call) ... ok
+test_member_leave_or_device_revocation_prunes_and_rotates (prototype.test_call_control.CallControlTests.test_member_leave_or_device_revocation_prunes_and_rotates) ... ok
+test_ownership_mode_key_change_and_reconnect_are_bound (prototype.test_call_control.CallControlTests.test_ownership_mode_key_change_and_reconnect_are_bound) ... ok
+test_allocation_and_cleanup_require_authenticated_response_and_expected_relay (prototype.test_entry_turn.EntryTurnTests.test_allocation_and_cleanup_require_authenticated_response_and_expected_relay) ... ok
+test_retired_credentials_must_be_rejected_instead_of_allocated (prototype.test_entry_turn.EntryTurnTests.test_retired_credentials_must_be_rejected_instead_of_allocated) ... ok
+test_wrong_transaction_and_truncated_responses_fail_closed (prototype.test_entry_turn.EntryTurnTests.test_wrong_transaction_and_truncated_responses_fail_closed) ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.117s
+
+OK

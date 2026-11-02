@@ -237,6 +237,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   mx.Room? selected;
   mx.Timeline? timeline;
   StreamSubscription<dynamic>? sync;
+  StreamSubscription<mx.SessionClearReason>? sessionChanges;
   CallController? calls;
   AppSounds? sounds;
   NativeNotifications? nativeNotifications;
@@ -350,7 +351,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
       report(
         e is UserActionError
             ? e.message
-            : 'Не удалось выполнить действие: ${e.runtimeType}. Проверьте подключение и ключ.',
+            : 'Не удалось выполнить действие. Проверьте подключение и данные входа, затем повторите попытку.',
       );
     } finally {
       if (mounted) setState(() => busy = false);
@@ -399,6 +400,17 @@ class _ProbeScreenState extends State<ProbeScreen> {
     password.clear();
     notificationPermissionNeeded = false;
     probe = next;
+    sessionChanges = next.client.onSessionCleared.stream.listen((reason) {
+      if (reason != mx.SessionClearReason.logout && identical(probe, next)) {
+        unawaited(
+          lock(sessionEnded: true).catchError((Object _) {
+            report(
+              'Сессия завершена. Не удалось полностью закрыть локальные службы. Перезапустите приложение.',
+            );
+          }),
+        );
+      }
+    });
     linked = await deviceLinked(next.client);
     await refreshCurrentDeviceName(next.client);
     enableFirstContactTrust(next.client);
@@ -1206,45 +1218,65 @@ class _ProbeScreenState extends State<ProbeScreen> {
     return value;
   }
 
-  Future<void> lock() async {
-    MessageMediaCache.clear(probe!.client);
-    probe!.client.httpClient
-        .close(); // Abort network operations before closing local keys.
-    try {
-      await Future.wait([
-        if (calls != null) calls!.close(),
-        if (verifications != null) verifications!.close(),
-        if (historyRecovery != null) historyRecovery!.close(),
-        if (sounds != null) sounds!.close(),
-        if (presenceTracker != null) presenceTracker!.close(),
-        if (contacts != null) contacts!.close(),
-        if (storagePolicy != null) storagePolicy!.close(),
-        if (recordingActivity != null) recordingActivity!.close(),
-        if (actions != null) actions!.close(),
-      ]);
-    } finally {
-      await connectionStatus?.cancel();
-      await sync?.cancel();
-      timeline?.cancelSubscriptions();
+  Future<void> lock({bool sessionEnded = false}) async {
+    final opened = probe;
+    if (opened == null) return;
+    final cleanup = <Future<void> Function()>[
+      if (calls != null) calls!.close,
+      if (verifications != null) verifications!.close,
+      if (historyRecovery != null) historyRecovery!.close,
+      if (nativeNotifications != null) nativeNotifications!.close,
+      if (sounds != null) sounds!.close,
+      if (presenceTracker != null) presenceTracker!.close,
+      if (contacts != null) contacts!.close,
+      if (p2p != null) p2p!.close,
+      if (storagePolicy != null) storagePolicy!.close,
+      if (recordingActivity != null) recordingActivity!.close,
+      if (actions != null) actions!.close,
+    ];
+    MessageMediaCache.clear(opened.client);
+    timeline?.cancelSubscriptions();
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    // Detach the authenticated UI before any asynchronous native/network cleanup.
+    setState(() {
+      probe = null;
+      selected = null;
+      timeline = null;
+      AndroidCallScreen.instance.attach(null);
+      calls = null;
+      verifications = null;
+      historyRecovery = null;
+      nativeNotifications = null;
+      sounds = null;
+      presenceTracker = null;
+      contacts = null;
+      p2p = null;
       storagePolicy = null;
-      try {
-        await probe!.close();
-      } finally {
-        if (mounted) {
-          setState(() {
-            probe = null;
-            selected = null;
-            timeline = null;
-            AndroidCallScreen.instance.attach(null);
-            calls = null;
-            verifications = null;
-            historyRecovery = null;
-            actions = null;
-          });
-        }
-      }
+      recordingActivity = null;
+      actions = null;
+      linked = false;
+      if (sessionEnded) savedAccount = false;
+      status = sessionEnded
+          ? 'Сессия завершена: доступ устройства отозван или вход больше недействителен. Войдите снова.'
+          : 'Хранилище заблокировано. Откройте сохранённый вход.';
+    });
+    await sessionChanges?.cancel();
+    sessionChanges = null;
+    await connectionStatus?.cancel();
+    connectionStatus = null;
+    await sync?.cancel();
+    sync = null;
+    if (sessionEnded) {
+      writeTabAccount(null);
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('lastAccount');
     }
-    report('Хранилище заблокировано. Для открытия введите локальную фразу.');
+    opened.client.httpClient.close();
+    try {
+      await Future.wait(cleanup.map((close) => Future<void>.sync(close)));
+    } finally {
+      await opened.close();
+    }
   }
 
   Future<void> verifyDevices({Object? choice}) async {
@@ -1636,6 +1668,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     await prefs.remove('lastRoom:${profile.text.trim()}');
     writeTabAccount(null);
     savedAccount = false;
+    await sessionChanges?.cancel();
+    sessionChanges = null;
     await calls?.close();
     await verifications?.close();
     verifications = null;
@@ -1665,6 +1699,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   @override
   void dispose() {
     if (probe != null) MessageMediaCache.clear(probe!.client);
+    unawaited(sessionChanges?.cancel());
     unawaited(sync?.cancel());
     timeline?.cancelSubscriptions();
     unawaited(calls?.close());
@@ -2669,7 +2704,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
         ),
       );
     }
-    if (probe == null) return connection();
+    if (probe == null || probe!.client.userID == null) return connection();
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: colors.surface,

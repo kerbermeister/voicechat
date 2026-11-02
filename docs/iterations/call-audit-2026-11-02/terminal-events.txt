@@ -1,0 +1,4 @@
+24 permutations; callback errors from late SDK events are logged and handled. Assertions require kEnded after each event, hangups1, answers0 after31s.
+00:00 +0: loading /Users/anton/IdeaProjects/VoiceChat/docs/iterations/call-audit-2026-11-02/terminal_events_probe.dart
+00:00 +0: 24 late event orderings cannot resurrect a hung-up call
+00:00 +1: All tests passed!

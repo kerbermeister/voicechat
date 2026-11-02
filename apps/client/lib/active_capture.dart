@@ -11,25 +11,26 @@ void releaseCapture(Future<void> Function() cancel) {
 }
 
 Future<void> stopActiveCapture() async {
-  final cancel = _cancel;
-  if (cancel == null) return;
-  final operation = _stopping ??= cancel();
-  unawaited(
-    operation.then(
-      (_) {
-        releaseCapture(cancel);
-        if (identical(_stopping, operation)) _stopping = null;
-      },
-      onError: (Object _) {
-        if (identical(_stopping, operation)) _stopping = null;
-      },
-    ),
-  );
+  final operation = _stopping ??= _stopCaptures();
   try {
     await operation.timeout(const Duration(seconds: 30));
   } catch (_) {
     throw UserActionError(
       'Микрофон или камера ещё освобождаются. Повторите действие.',
     );
+  }
+}
+
+Future<void> _stopCaptures() async {
+  // Publish the shared operation before invoking callbacks, including sync ones.
+  await Future<void>.value();
+  try {
+    while (_cancel != null) {
+      final cancel = _cancel!;
+      await cancel();
+      releaseCapture(cancel);
+    }
+  } finally {
+    _stopping = null;
   }
 }

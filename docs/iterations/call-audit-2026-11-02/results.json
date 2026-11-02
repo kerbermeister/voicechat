@@ -1,0 +1,268 @@
+{
+  "date": "2026-11-02",
+  "timezone": "Europe/Berlin",
+  "task": "Focused audio/video personal/group call audit and combined final report; no interaction with real users",
+  "source_commit": "e35dd306ff65855b2cdaa31fc87189bb5b889eb0",
+  "client_version": "1.16.5(44)",
+  "product_code_changes": false,
+  "release_required": false,
+  "host": {
+    "os": "macOS15.3.1",
+    "architecture": "arm64",
+    "flutter": "3.47.7",
+    "livekit_sdk": "2.13.2",
+    "sfu_image": "livekit/livekit-server@sha256:89ca9ce0791e18d6e03bf6e2c49ceb27e1c754eae8bd50c989386c1a5963791a"
+  },
+  "previous_snapshot": "../scenario-audit-2026-11-01/results.json",
+  "registry": "../../user-acceptance.md",
+  "registry_sha256": "1e667fb370bb150a50b27d5e8c6c1d2fc5e541373d33d63fd0e8de350992e5ff",
+  "scenario_count": 546,
+  "functional_ua_count": 82,
+  "focused_call_area_count": 11,
+  "focused_call_scenarios": 170,
+  "new_scenarios": 95,
+  "scenario_result_counts": {
+    "open_with_existing_automated_foundation": 232,
+    "open_integration": 141,
+    "conditional_physical_or_external": 108,
+    "probe_pass": 19,
+    "native_scoped_pass": 8,
+    "ui_scoped_pass": 19,
+    "defect": 14,
+    "observation": 2,
+    "previous_user_acceptance_retained": 3
+  },
+  "new_scenario_result_counts": {
+    "scoped_pass": 14,
+    "defect": 4,
+    "observation": 1,
+    "open_integration": 44,
+    "conditional_physical_or_external": 32
+  },
+  "counting_note": "Tests are not scenarios or platform pairs. Existing suites overlap the previous audit; do not add them as unique extra coverage. Old451 snapshot is historical, not rewritten. Full physical UA stays open.",
+  "checks": [
+    {
+      "name": "core Flutter call modules",
+      "passed": 58,
+      "failed": 0,
+      "skipped": 0,
+      "log": "baseline.txt",
+      "raw_sha256": "27cbbce4b54c1aedc112b98336ca7ae1581deac11d4eb3460f1ac25317185b6b",
+      "command": "../../.prototype/tools/flutter/bin/flutter test test/direct_call_protocol_test.dart test/direct_call_media_test.dart test/call_cleanup_test.dart test/group_calls_test.dart test/group_camera_test.dart test/call_devices_test.dart test/call_key_sharing_test.dart test/call_audio_test.dart test/call_window_test.dart test/call_video_layout_test.dart test/call_quality_test.dart test/call_event_test.dart test/call_push_test.dart test/media_publication_guard_test.dart --reporter expanded",
+      "cwd": "apps/client"
+    },
+    {
+      "name": "additional Flutter call modules",
+      "passed": 15,
+      "failed": 0,
+      "skipped": 0,
+      "log": "extra-baseline.txt",
+      "raw_sha256": "78f1c9181ec6c2e547e740a8985e85a1fb39a0db08e8b72d8023bf5c5e23537f",
+      "command": "../../.prototype/tools/flutter/bin/flutter test test/startup_calls_test.dart test/active_capture_test.dart test/macos_camera_test.dart test/android_call_screen_test.dart test/participant_status_test.dart test/media_routes_test.dart test/media_routes_io_test.dart test/media_key_clock_test.dart --reporter expanded",
+      "cwd": "apps/client"
+    },
+    {
+      "name": "existing call control and TURN protocol tests",
+      "passed": 11,
+      "failed": 0,
+      "log": "server.txt",
+      "raw_sha256": "7885cdef8ca0d420511593d260d896a03270141dfe5484bdba9e25b899ccf81e",
+      "cwd": "repo root",
+      "command": "PYTHONPATH=prototype python3 -m unittest prototype.test_call_control prototype.test_entry_turn -v"
+    },
+    {
+      "name": "new SQLite group compound boundaries",
+      "passed": 5,
+      "failed": 0,
+      "log": "group-boundaries.txt",
+      "raw_sha256": "46e59160035003808b5ca45c5f3fc3390e18dd25d67c6f955487de89958834df",
+      "cwd": "repo root",
+      "command": "python3 docs/iterations/call-audit-2026-11-02/group_boundaries_probe.py"
+    },
+    {
+      "name": "24 terminal callback permutations",
+      "passed": 1,
+      "failed": 0,
+      "log": "terminal-events.txt",
+      "raw_sha256": "a91826445e0c2c1391e2d8d92f4ded5a552ca356ed21c8b456176eb8d804be1c",
+      "command": "../../.prototype/tools/flutter/bin/flutter test ../../docs/iterations/call-audit-2026-11-02/terminal_events_probe.dart --reporter expanded",
+      "cwd": "apps/client"
+    },
+    {
+      "name": "new call controls and lifecycle assertions",
+      "passed": 0,
+      "expected_failures": 3,
+      "defect_groups": 2,
+      "log": "ui-races.txt",
+      "raw_sha256": "1ba966414f13cbffc5200c8a47c6e0ebab835c4ef38cdb807690b5e6e1d93840",
+      "command": "../../.prototype/tools/flutter/bin/flutter test ../../docs/iterations/call-audit-2026-11-02/call_ui_race_probe.dart --reporter expanded",
+      "cwd": "apps/client"
+    },
+    {
+      "name": "new late discovery membership assertions",
+      "passed": 0,
+      "expected_failures": 2,
+      "defect_groups": 1,
+      "log": "discovery-races.txt",
+      "raw_sha256": "dad617895a72a4ea9bfb8ff5179d7d82d675117de5cad6b25fda65af1be5c73f",
+      "command": "../../.prototype/tools/flutter/bin/flutter test ../../docs/iterations/call-audit-2026-11-02/discovery_membership_probe.dart --reporter expanded",
+      "cwd": "apps/client"
+    },
+    {
+      "name": "native audio",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-audio.txt",
+      "raw_sha256": "4b5043052fcf613362f12005ffa02371e8eb4eea2951924a0aba18e0ec437eb0",
+      "command": "../../.prototype/tools/flutter/bin/flutter test integration_test/native_direct_call_test.dart -d macos --dart-define=HARDWARE_CALL_TEST=true",
+      "scope": "One Mac, real microphone, 2 accepted cycles with packets/DTLS and 1 cancellation before answer; in-memory signaling; received audio playback disabled",
+      "cwd": "apps/client"
+    },
+    {
+      "name": "native camera cleanup",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-camera.txt",
+      "raw_sha256": "71ff5b6d69161e004dc10cd20896df497e039d47606efa9379d6c6cc007bcdd8",
+      "command": "../../.prototype/tools/flutter/bin/flutter test integration_test/direct_camera_cleanup_test.dart -d macos --dart-define=HARDWARE_CAMERA_TEST=true",
+      "scope": "Real capture with synthetic sender: signaling error, timeout and late sender; native tracks released",
+      "cwd": "apps/client"
+    },
+    {
+      "name": "native direct video",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-video.txt",
+      "raw_sha256": "cc4012e8737aed2b6c9f93972dec0221b45af580eb4e96335b6768784e629ebb",
+      "command": "../../.prototype/tools/flutter/bin/flutter test integration_test/call_audit_video_test.dart -d macos",
+      "scope": "Two same-Mac native peers, real camera, decoded frames and renderer, low320x180, two off/on cycles, hangup; synthetic signaling/authorization",
+      "cwd": "apps/client"
+    },
+    {
+      "name": "native three-party SDK media",
+      "passed": 1,
+      "failed": 0,
+      "skipped": 0,
+      "log": "native-group.txt",
+      "raw_sha256": "2ff90f1f54814c7bf62c7fdb4852df9f2ea4d75d223eedf0f57f9710f294754a",
+      "command": "../../.prototype/tools/flutter/bin/flutter test integration_test/call_audit_group_test.dart -d macos --dart-define-from-file=../../.prototype/call-audit-media.json",
+      "scope": "Three same-Mac SDK peers, separate owned loopback SFU room and synthetic shared GCM key; silent source audio kOk+RTP, decoded video, late join, off/on, wrong-key negative control, fresh Room receiver restore, creator leave, remaining sender switch; no app UI/Matrix key exchange",
+      "cwd": "apps/client"
+    }
+  ],
+  "positive_test_total": 94,
+  "expected_failing_assertions": 5,
+  "new_product_defect_groups": [
+    {
+      "ids": [
+        "UA-07.C05",
+        "UA-07.C06"
+      ],
+      "priority": "P1",
+      "actual": "hangup disabled during pending camera/mute",
+      "level": "production widget, synthetic call"
+    },
+    {
+      "ids": [
+        "UA-08.C09"
+      ],
+      "priority": "P1",
+      "actual": "queued resume camera true in final inactive state",
+      "level": "production controller, synthetic capture"
+    },
+    {
+      "ids": [
+        "UA-05.C18"
+      ],
+      "priority": "P2",
+      "actual": "late group discovery remains after leave and ban",
+      "level": "production GroupCalls with delayed HTTP fixture"
+    }
+  ],
+  "new_observation": {
+    "id": "UA-05.C39",
+    "actual": "bare correct-key restore did not resume frames in25s; same Room reconnect also did not prove recovery; a fresh Room+key provider+receiver resumed decoding",
+    "classification": "SDK laboratory observation, not proven application defect",
+    "evidence": "group-key-observation.txt"
+  },
+  "exploratory_attempts": [
+    "Initial SFU connect404: empty QA room expired during build. Recreating the owned room with600s empty timeout fixed it. Re-creating an existing room did not reset its pending departure timeout; delete/create only owned room used.",
+    "Wrong-key exploratory run: receiver C froze while B decoded; bare setKey restore timed out after25s. This negative result retained separately.",
+    "Same-Room reconnect probe originally held a stale RemoteTrack in the test map. Map cleared, re-run still did not prove recovery. Fresh Room/key provider successfully recovered; SDK failure not promoted to product bug.",
+    "Initial Python suite invocation without PYTHONPATH failed import; corrected supported local path and all11 passed.",
+    "Two probe-writing commands used the client cwd with repo-relative evidence paths and failed before creating files; corrected absolute/root paths. Missing-file load attempts are not product failures."
+  ],
+  "replay_notes": [
+    "From repo root, create private loopback media fixture with media_fixture.py create using Python with PyYAML, after verifying it points at the local owned test SFU. It reads configured key privately and writes ignored0600 token file. No production endpoint.",
+    "For native video copy native_video_probe.dart to apps/client/integration_test/call_audit_video_test.dart and rewrite import prefix ../../../apps/client/integration_test/ to empty; for native group copy native_group_probe.dart unchanged to integration_test/call_audit_group_test.dart. Temporary entrypoints were removed after run.",
+    "Native environment: LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8; prepend .prototype/tools/flutter/bin and .prototype/cargo/bin to PATH, set CARGO_HOME to repo/.prototype/cargo and RUSTUP_HOME to repo/.prototype/rustup.",
+    "Always call media_fixture.py cleanup in finally, then remove only temporary audit entrypoints. No private credentials are tracked.",
+    "Positive probes were finalized once assertions passed; native group repeat was justified by room expiry, fixture correction and unresolved recovery."
+  ],
+  "not_verified": [
+    "full Matrix/control/SFU group UI and sender-key authorization",
+    "physical Android/Xiaomi or iPhone/Safari/PWA calls",
+    "audible speech/echo/call loudness",
+    "production TURN/NAT traversal",
+    "production faults or service restarts",
+    "OS Bluetooth/speaker/permission toggles and lock-screen push",
+    "H264 Xiaomi video and mixed physical 3-10 participant groups"
+  ],
+  "cleanup": {
+    "owned_room_deleted": true,
+    "private_token_file_deleted": true,
+    "temporary_integration_entrypoints_removed": true,
+    "sfu_id_startedat_restartcount_unchanged": true,
+    "primary_installed_app_pid_unchanged": 30468,
+    "user_profile_keychain_untouched": true,
+    "evidence": "cleanup.txt"
+  },
+  "public_evidence_note": "Native logs are selected assertions; raw SDP/ICE/server config remain only in /tmp. No user contacts or private content included.",
+  "public_evidence_sha256": {
+    "baseline.txt": "2b031bb560980588dd8eb23615d0de4a77799e97edd1740c19eb5a3b36808c8e",
+    "build_report.py": "9a142bf48338fc7849b421d006b2d70cae09aca7d282439aa5ca4be3c9bedcfb",
+    "call_ui_race_probe.dart": "143386f09435ffaa2c21e83cde61b05c8b257f71cec342fb43145a79ef322574",
+    "cleanup.txt": "4574f05fc7cdce8e2b3dfff8a103fd8dede14b60da001b3a746c4356fa352fec",
+    "discovery-races.txt": "4568b4f2763aa212856f441cfcdae56aae07d098a18f2dd51712fcab6d085f43",
+    "discovery_membership_probe.dart": "d85b18364bc17c911470a2610e55a1d573ebae761122ef49e4225daf364e5afb",
+    "extra-baseline.txt": "8ef5edd7c3efb1cb57bd7a7e0f816305901d78bb25347a59160706fb43a4e4f5",
+    "group-boundaries.txt": "46e59160035003808b5ca45c5f3fc3390e18dd25d67c6f955487de89958834df",
+    "group-key-observation.txt": "489e722aef5f234ba850a689c0f923a8c99dcba372c5a3ceff0ec71cd7e572ac",
+    "group_boundaries_probe.py": "2fb55ffe4e533956c0bd46d1e1e5393f1112ae1b6c5d03a2895ebe944c3a250e",
+    "media_fixture.py": "af764887e666bb36a02793e38f7b3b160bdccccfc20b48becfaed4127501ee02",
+    "native-audio.txt": "3bb1e9ca164e8cbd77aea115024d88069eb082264760f97c449fed584f6178ae",
+    "native-camera.txt": "f62cd735d2c646f51daef459e658803e96f0c39aeafd83987de1cc6a42156bba",
+    "native-group.txt": "3022bd030f8175b434132afd73802e26a423e24264fe2463f8d7ec4f6e29ef0e",
+    "native-video.txt": "d9a51d081845117cc6cd7325183940c1db4c80c8421f1a2cb6ca7bf05ba0a91a",
+    "native_group_probe.dart": "56cf1ba5101ecbab410020adb30e963c8886e2865dbdcac57b83d868ad652816",
+    "native_video_probe.dart": "3d8ee4aca16de2574859e09da2e3b134d6eb97759e0af9990d7fd4a11f69aad0",
+    "server.txt": "7885cdef8ca0d420511593d260d896a03270141dfe5484bdba9e25b899ccf81e",
+    "terminal-events.txt": "8ad4102b9a1116c9e0cb15da81437f6c3362d6f0b092dcf49875caceabe92aaa",
+    "terminal_events_probe.dart": "f9677bf78755a3cbabf2e24df2d1c99cc1bcb606199a4ecfbcd89a83a2d8ad53",
+    "ui-races.txt": "30b7007fe8dad61aa4d5d7bf22bad29f44d28976076f32bc1b57999949faaf78"
+  },
+  "report": {
+    "file": "voicechat-audit-2026-11-02.docx",
+    "sha256": "73dccf6189b16be2b678d46e258b7aec3e782b641e72fbf6346ac081099f9b8e",
+    "rendered_pages": 6,
+    "all_pages_visually_inspected": true,
+    "layout": "PASS; no clipping, overlap, missing glyphs or table breaks",
+    "renderer": "documents skill render_docx.py with bundled Python",
+    "render_page_sha256": {
+      "page-1.png": "8ae8d83398cad1114a3434e9ed7f66fd498e2e88cce377ccc29c6e4e127808a5",
+      "page-2.png": "2891517e2e971041d33c5f0f0380d348924b398b10f0d61305881b885b3d8c15",
+      "page-3.png": "5c8e902325bf14e563c9c03ba0b6c128d497f7abe9ac9c0e9fcaeb868231f5d0",
+      "page-4.png": "ae8f0c8bbdf9663e86fc6dd0ae8395a143e360353b7001118080ffb53963202b",
+      "page-5.png": "5553dc4112fc2342fa5cef7e29931ac43117f005b9ca2cd54089762ce726218b",
+      "page-6.png": "338c0f9ec6fb716de3c8d7888deb59677b7b12955a58248989071266a37c180d"
+    }
+  },
+  "build_observations": [
+    "sqflite_sqlcipher has no macOS Swift Package Manager support; existing dependency maintenance warning, not failure of these tests",
+    "native test runner could not foreground app through open; tests executed and passed; full real-app UI interaction not inferred"
+  ],
+  "formatting_note": "Evidence Dart sources formatted after successful probes; no semantic change or product source edit."
+}

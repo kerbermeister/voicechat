@@ -31,6 +31,7 @@ class CallWindow extends StatefulWidget {
 class _CallWindowState extends State<CallWindow> {
   Timer? timer;
   bool busy = false;
+  bool ending = false;
   String? error;
   mx.Room? room;
   Future<List<mx.User>>? members;
@@ -46,7 +47,7 @@ class _CallWindowState extends State<CallWindow> {
   }
 
   Future<void> perform(Future<void> Function() action) async {
-    if (busy) return;
+    if (busy || ending) return;
     setState(() {
       busy = true;
       error = null;
@@ -59,6 +60,22 @@ class _CallWindowState extends State<CallWindow> {
       }
     } finally {
       if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> end() async {
+    if (ending) return;
+    setState(() => ending = true);
+    try {
+      await widget.calls.end();
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => error = 'Не удалось завершить звонок. Повторите попытку.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => ending = false);
     }
   }
 
@@ -561,7 +578,7 @@ class _CallWindowState extends State<CallWindow> {
                   backgroundColor: colors.error,
                   foregroundColor: colors.onError,
                 ),
-                onPressed: busy ? null : () => perform(calls.end),
+                onPressed: ending ? null : end,
                 icon: const Icon(Icons.call_end),
                 label: const Text('Завершить'),
               )

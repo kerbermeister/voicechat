@@ -1,0 +1,5 @@
+Selected assertions; raw SDP and transport details omitted.
+PASS: native camera capture released — off-with-signalling-error
+PASS: native camera capture released — timeout
+PASS: native camera capture released — late-sender
+00:07 +1: All tests passed!

@@ -1,0 +1,381 @@
+00:00 +0: loading $REPO/apps/client/test/direct_call_protocol_test.dart
+00:00 +0: $REPO/apps/client/test/direct_call_protocol_test.dart: Hangup is sent before slow cleanup and delegate/history, only once
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +1: $REPO/apps/client/test/direct_call_protocol_test.dart: Cancellation during permission releases late capture without answering
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +2: $REPO/apps/client/test/direct_call_protocol_test.dart: Candidates received during answer are applied; completed ICE cannot regress
+00:00 +3: $REPO/apps/client/test/direct_call_protocol_test.dart: Candidates received during answer are applied; completed ICE cannot regress
+00:00 +4: $REPO/apps/client/test/direct_call_protocol_test.dart: Candidates received during answer are applied; completed ICE cannot regress
+00:00 +5: $REPO/apps/client/test/direct_call_protocol_test.dart: Candidates received during answer are applied; completed ICE cannot regress
+00:00 +6: $REPO/apps/client/test/direct_call_protocol_test.dart: Candidates received during answer are applied; completed ICE cannot regress
+00:00 +7: $REPO/apps/client/test/direct_call_protocol_test.dart: Candidates received during answer are applied; completed ICE cannot regress
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kCreateAnswer[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kConnecting[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kConnected[0m
+00:00 +8: $REPO/apps/client/test/direct_call_protocol_test.dart: Candidates received during answer are applied; completed ICE cannot regress
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +9: $REPO/apps/client/test/call_cleanup_test.dart: Closing during provider creation disposes the late provider
+00:00 +9: $REPO/apps/client/test/direct_call_protocol_test.dart: A failed ICE send preserves candidates and retries with later arrivals
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kCreateAnswer[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kConnecting[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +10: $REPO/apps/client/test/call_cleanup_test.dart: Closing during provider creation disposes the late provider
+00:00 +10: $REPO/apps/client/test/direct_call_protocol_test.dart: Cancel during SDP prevents late answer and connection watchdog
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kCreateAnswer[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kConnecting[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +11: $REPO/apps/client/test/call_cleanup_test.dart: Closing during provider creation disposes the late provider
+00:00 +12: $REPO/apps/client/test/direct_call_protocol_test.dart: Initial connection and interrupted transport have bounded waits
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kConnecting[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +13: $REPO/apps/client/test/call_cleanup_test.dart: Failed key setup disposes the per-call provider exactly once before close completes
+00:00 +13: $REPO/apps/client/test/direct_call_protocol_test.dart: Transient disconnect recovers, permanent loss ends after 15 seconds
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kConnected[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kConnected[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +14: $REPO/apps/client/test/call_cleanup_test.dart: Failed key setup disposes the per-call provider exactly once before close completes
+00:00 +15: $REPO/apps/client/test/direct_call_protocol_test.dart: Remote transport loss RTCPeerConnectionState.RTCPeerConnectionStateClosed ends without a Matrix hangup
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kConnected[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +16: $REPO/apps/client/test/direct_call_protocol_test.dart: Remote transport loss RTCPeerConnectionState.RTCPeerConnectionStateFailed ends without a Matrix hangup
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kConnected[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +17: $REPO/apps/client/test/direct_call_protocol_test.dart: Remote transport loss RTCPeerConnectionState.RTCPeerConnectionStateDisconnected ends without a Matrix hangup
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kConnected[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +18: $REPO/apps/client/test/direct_call_protocol_test.dart: Recovered DTLS transport cancels disconnect deadline
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kConnected[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +19: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit waits for the same in-progress direct teardown
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +20: $REPO/apps/client/test/direct_call_protocol_test.dart: Mac window close ends its call while the controller can receive another
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:00 +21: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+00:00 +22: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:00 +23: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:00 +24: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:00 +25: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:00 +26: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:01 +27: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:01 +28: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:01 +29: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:01 +30: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:01 +30: $REPO/apps/client/test/call_devices_test.dart: verified own-device encrypted hangup ends the matching incoming SDK session without echo
+[Matrix] [33mIgnoring call event m.call.hangup for room !room:local because we do not have the call[0m
+[Matrix] [33mIgnoring call event m.call.hangup for room !room:local because we do not have the call[0m
+00:01 +31: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:01 +32: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:01 +33: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:01 +34: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:01 +35: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:01 +36: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:01 +37: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:02 +38: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:02 +39: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:03 +40: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:03 +41: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:03 +42: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:03 +43: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:03 +44: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:04 +45: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:04 +46: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:04 +47: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:04 +48: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+00:04 +49: $REPO/apps/client/test/direct_call_protocol_test.dart: Application exit remains bounded when cleanup cannot finish
+Call teardown did not finish before application exit
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+[Matrix] [33mFailed to close database:  - NoSuchMethodError: Class 'OutboxDatabase' has no instance method 'close' with matching arguments.
+Receiver: Instance of 'OutboxDatabase'
+Tried calling: close()
+Found: close() => Future<void>
+#0      Object.noSuchMethod (dart:core-patch/object_patch.dart:38:5)
+#1      OutboxDatabase.noSuchMethod (file://$REPO/apps/client/test/chat_actions_test.dart:37:56)
+#2      OutboxDatabase.close (file://$REPO/apps/client/test/chat_actions_test.dart:18:7)
+#3      Client.dispose (package:matrix/src/client.dart:4093:24)
+<asynchronous suspension>
+#4      main.<anonymous closure> (file://$REPO/apps/client/test/direct_call_protocol_test.dart:221:5)
+<asynchronous suspension>
+#5      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+[0m
+00:05 +50: $REPO/apps/client/test/call_key_sharing_test.dart: Key repeats are bounded; access, new recipients and repairs are not
+00:05 +51: $REPO/apps/client/test/call_key_sharing_test.dart: Key repeats are bounded; access, new recipients and repairs are not
+00:05 +52: $REPO/apps/client/test/call_key_sharing_test.dart: Key repeats are bounded; access, new recipients and repairs are not
+00:05 +53: $REPO/apps/client/test/call_key_sharing_test.dart: Key repeats are bounded; access, new recipients and repairs are not
+00:05 +54: $REPO/apps/client/test/call_key_sharing_test.dart: Key repeats are bounded; access, new recipients and repairs are not
+00:05 +55: $REPO/apps/client/test/call_key_sharing_test.dart: Key repeats are bounded; access, new recipients and repairs are not
+00:06 +56: $REPO/apps/client/test/call_key_sharing_test.dart: Key repeats are bounded; access, new recipients and repairs are not
+00:06 +57: $REPO/apps/client/test/call_key_sharing_test.dart: Key repeats are bounded; access, new recipients and repairs are not
+00:10 +58: All tests passed!
