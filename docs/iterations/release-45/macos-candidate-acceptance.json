@@ -1,0 +1,18 @@
+{
+  "build": 45,
+  "source": "f44855e93180f83f365688844c47a59c4cebf66e",
+  "exact_signed_zip_launched": true,
+  "dmg_and_zip_apps_identical": true,
+  "dmg_checksum_verified": true,
+  "same_account": true,
+  "same_device": true,
+  "previous_history_cards_visible": true,
+  "previous_voice_playback_progress_observed": true,
+  "previous_voice_cards_with_nonzero_progress": 3,
+  "audible_quality_assessed": false,
+  "backup_app_and_profile_hashes_verified": true,
+  "keychain_deleted_or_reset": false,
+  "new_keychain_prompt_required": false,
+  "zip_sha256": "9a859d03b2ab6be0325b36febcc4240700af298046e8f6b6e566881805583a1b",
+  "sparkle_installation": "PASS: published exact archive installed44→45 through app button;285 entries match; account/device and previous history retained"
+}

@@ -9,6 +9,8 @@ import 'package:voicechat_probe/theme.dart';
 
 class ListClient implements Client {
   @override
+  final onSync = CachedStreamController<SyncUpdate>();
+  @override
   final onPresenceChanged = CachedStreamController<CachedPresence>();
   @override
   bool get autoRequestProfileForMissingUsers => false;

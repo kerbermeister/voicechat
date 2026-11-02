@@ -1,0 +1,10 @@
+{
+  "build": 43,
+  "installed_signed_apk": true,
+  "previous_build": 41,
+  "adb_update_without_uninstall": true,
+  "physical_acceptance": false,
+  "account_retention_rechecked": false,
+  "reason": "Disposable QA accounts deactivated after release41 checks; build43 verifies package update, not active-account continuity",
+  "sha256": "043eaf6785dd317ff8088d8a04a80ebd802f380adafd95ad30cce236f578bc17"
+}

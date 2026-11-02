@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "app_version": "1.16.1+39",
+  "source": "8dafa875309c606da17c35dd2d673fe81a07c98e",
+  "apk_sha256": "a80f599e34a14aff114ee4ef84de70a1293022b6244d960e9e3993c79c484c2c",
+  "emulator": true,
+  "physical_device_tested": false,
+  "tests": {
+    "upgrade_38_to_39_without_profile_reset": "passed",
+    "real_call_native_alert_after_process_death": "passed",
+    "cold_answer_from_native_notification_establishes_real_call": "passed",
+    "receiver_acceptance_confirmed_by_server": "passed",
+    "both_clients_show_connected_call": "passed",
+    "cold_start_has_no_null_assertion_or_fatal_exception": "passed",
+    "actual_group_message_synapse_to_fcm_after_process_death": "passed",
+    "group_notification_opens_matching_room_and_decrypts": "passed",
+    "previous_group_history_preserved_and_decrypted_after_upgrade": "passed",
+    "queued_fcm_after_device_revocation_is_not_displayed": "passed",
+    "revoked_device_notice_resolve_returns_403": "passed",
+    "logout_removes_server_binding_and_returns_to_login": "passed"
+  },
+  "media_decryption_or_audibility_verified": false
+}

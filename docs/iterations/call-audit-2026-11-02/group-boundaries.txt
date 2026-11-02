@@ -1,0 +1,10 @@
+test_foreign_leave_and_cross_room_lease_cannot_remove_owner (__main__.GroupBoundaries.test_foreign_leave_and_cross_room_lease_cannot_remove_owner) ... ok
+test_lost_leave_retry_does_not_close_new_device_call (__main__.GroupBoundaries.test_lost_leave_retry_does_not_close_new_device_call) ... ok
+test_old_client_leaves_camera_capability_recovers_without_new_session (__main__.GroupBoundaries.test_old_client_leaves_camera_capability_recovers_without_new_session) ... ok
+test_second_device_denied_then_can_join_after_explicit_leave (__main__.GroupBoundaries.test_second_device_denied_then_can_join_after_explicit_leave) ... ok
+test_two_rooms_expiry_rotates_only_affected_room (__main__.GroupBoundaries.test_two_rooms_expiry_rotates_only_affected_room) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.056s
+
+OK

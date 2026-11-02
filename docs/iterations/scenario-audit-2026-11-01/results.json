@@ -1,0 +1,472 @@
+{
+  "date": "2026-11-01",
+  "timezone": "Europe/Berlin",
+  "task": "Broad usage-path audit requested in this Codex chat, including novel cases beyond prior tests; no interaction with real users",
+  "source_commit": "e35dd306ff65855b2cdaa31fc87189bb5b889eb0",
+  "client_version": "1.16.5(44)",
+  "product_code_changes": false,
+  "release_required": false,
+  "release_reason": "HEAD differs from published source0dd2ff6 only in docs; this audit changes registry and technical evidence only",
+  "host": {
+    "os": "macOS15.3.1",
+    "architecture": "arm64",
+    "browser": "Codex internal Chromium browser; user Chrome not automated"
+  },
+  "registry": "../../user-acceptance.md",
+  "scenario_count": 451,
+  "functional_ua_count": 82,
+  "scenario_result_counts": {
+    "open_integration": 97,
+    "open_with_existing_automated_foundation": 232,
+    "conditional_physical_or_external": 76,
+    "new_probe_pass_in_stated_scope": 13,
+    "defect": 10,
+    "ui_pass_in_stated_scope": 19,
+    "observation_needing_repeat": 1,
+    "previous_user_acceptance_retained": 3
+  },
+  "counting_note": "Cases with automated foundation remain open; no Cartesian matrix multiplication and no claim that all451 paths passed",
+  "checks": [
+    {
+      "name": "shared Flutter default suite",
+      "cwd": "apps/client",
+      "command": "../../.prototype/tools/flutter/bin/flutter test --reporter expanded",
+      "passed": 511,
+      "skipped": 4,
+      "failed": 0,
+      "log_sha256": "ea530d932748a05a51bcd9226336101e970127e14062de6b89ecc83301a134dc",
+      "skipped_tests": [
+        "auth_capture_test:AUTH_CAPTURE",
+        "chat_features_visual_test:CHAT_FEATURES_CAPTURE",
+        "halo_capture_test:HALO_CAPTURE",
+        "halo_polish_capture_test:HALO_POLISH_CAPTURE"
+      ]
+    },
+    {
+      "name": "Flutter analyzer",
+      "cwd": "apps/client",
+      "command": "../../.prototype/tools/flutter/bin/flutter analyze",
+      "status": "PASS; no issues",
+      "log_sha256": "d7dbbc199d5f2c08fb78867bd8b32861f6f04b9766822e78ccd1416b914a9328"
+    },
+    {
+      "name": "Python full suite in documented environment",
+      "cwd": ".",
+      "command": ".prototype/python/bin/python -m unittest discover -s prototype -p 'test_*.py'",
+      "total": 789,
+      "passed": 786,
+      "skipped": 3,
+      "failed": 0,
+      "summary": "Ran 789 tests in 85.778s; OK (skipped=3)",
+      "log_sha256": "0838c74ff07ef6f22dbb730658d4fbab01475357dff7740fb78d2daaecc638d1",
+      "skipped_tests": [
+        "test_android_caddy.AndroidCaddyTests.test_apk_route_is_separate_from_spa_and_private_files: requires isolated Docker",
+        "test_web_deploy_docker.WebDeployDockerTests.test_health_rollback_preserves_backend_and_release_records: opt-in isolated Docker",
+        "test_web_push_synapse.SynapsePushTests.test_registration_callback_and_revocation: opt-in local Synapse fixture"
+      ]
+    },
+    {
+      "name": "browser JS policy/worker tests without browser automation",
+      "command": "node --test prototype/test_mobile_web.cjs",
+      "passed": 9,
+      "failed": 0,
+      "log_sha256": "b22a3e19669da053d453e369d781e4cf0ae501c2968c78039244edbca80df19b"
+    },
+    {
+      "name": "new server state audits",
+      "command": ".prototype/python/bin/python docs/iterations/scenario-audit-2026-11-01/call_state_probe.py",
+      "passed": 2,
+      "failed": 0,
+      "scope": [
+        "1000 deterministic join/leave/renew/expiry/recover transitions",
+        "12 simultaneous admissions:10 slots and2 refusals"
+      ],
+      "evidence": "call-state.txt"
+    },
+    {
+      "name": "new boundary probes",
+      "cwd": "apps/client",
+      "command": "../../.prototype/tools/flutter/bin/flutter test ../../docs/iterations/scenario-audit-2026-11-01/novel_boundaries_probe.dart ../../docs/iterations/scenario-audit-2026-11-01/native_http_probe.dart --reporter expanded",
+      "passed": 19,
+      "failed": 0,
+      "scope": [
+        "account cache lifecycle",
+        "100 competing playback requests",
+        "200 random ZIP ranges",
+        "1000 server-clock media-key boundaries",
+        "8 malformed chunk manifests and a malformed album",
+        "real loopback HTTP concurrent seek/HEAD/nonce"
+      ],
+      "evidence": "additional-probes.txt; this log also contains the separate expected failing revocation probe"
+    },
+    {
+      "name": "intended assertions reproducing defects",
+      "cwd": "apps/client",
+      "command": "../../.prototype/tools/flutter/bin/flutter test ../../docs/iterations/scenario-audit-2026-11-01/{left_room_invitation,capture_race,expired_photo,search_visibility,send_navigation}_probe.dart --reporter expanded",
+      "passed_controls": 2,
+      "expected_failing_tests": 9,
+      "status": "DEFECTS REPRODUCED; not a green suite",
+      "evidence": "defects.txt"
+    },
+    {
+      "name": "revoked contact getter",
+      "cwd": "apps/client",
+      "command": "../../.prototype/tools/flutter/bin/flutter test ../../docs/iterations/scenario-audit-2026-11-01/revoked_contact_probe.dart --reporter expanded",
+      "expected_failing_tests": 1,
+      "status": "DEFECT REPRODUCED",
+      "evidence": "additional-probes.txt"
+    },
+    {
+      "name": "four normally skipped visual fixtures enabled explicitly",
+      "command": "python3 docs/iterations/scenario-audit-2026-11-01/capture_probe.py",
+      "passed": 3,
+      "failed": 1,
+      "status": "halo_polish_capture_test pumpAndSettle timeout; validation harness issue, product cause unproven",
+      "transformations": "Only helper import paths and screenshot destinations redirected; assertions retained",
+      "evidence": "captures.txt"
+    },
+    {
+      "name": "bounded visual diagnostic",
+      "command": "python3 docs/iterations/scenario-audit-2026-11-01/capture_probe.py --bounded-polish",
+      "passed": 1,
+      "status": "Diagnostic only; not equivalent to original test",
+      "transformations": "pumpAndSettle replaced with500ms pump in a temporary copy; no product change",
+      "evidence": "capture-bounded.txt"
+    },
+    {
+      "name": "ordinary web and pinned crypto assets",
+      "command": "PATH=<project Flutter/cargo/crypto-tools bins> CARGO_HOME=<repo>/.prototype/cargo RUSTUP_HOME=<repo>/.prototype/rustup python3 prototype/build_web_assets.py; then flutter build web --release --no-web-resources-cdn --target lib/main.dart --dart-define=MATRIX_URL=http://localhost:18008 --dart-define=TOKEN_URL=http://localhost:18090 --dart-define=LIVEKIT_URL=ws://localhost:17880",
+      "status": "PASS",
+      "notes": "Local test configuration only; no deployment. JS build, not wasm build. wasm dry-run and missing optional Cupertino font warnings observed.",
+      "build_log_sha256": "818259188f46fd1f3eacf318efc76dcb738c9b9384d4557bb73b5b5d4abd4cc8"
+    },
+    {
+      "name": "real normal-client UI",
+      "status": "executed on isolated host Synapse; no mocked crypto",
+      "evidence": [
+        "ui-proof.json",
+        "fixture-proof.json",
+        "*.png"
+      ],
+      "scope": "two QA accounts, third QA account created but unused; two Alice devices on3 origins on one physical Mac",
+      "limitations": "SQLite/loopback; no physical phone, camera/audio call or production data"
+    }
+  ],
+  "new_product_defect_groups": [
+    {
+      "id": "UA-05.C12",
+      "priority": "P1",
+      "result": "late encrypted group invite accepted while membership leave/ban/invite; control join accepted",
+      "probe": "left_room_invitation_probe.dart",
+      "scope": "controller state; media access bypass not proven"
+    },
+    {
+      "id": "UA-13.C05/C06",
+      "priority": "P1",
+      "result": "capture stop can return while a new owner remains or earlier native stop is pending",
+      "probe": "capture_race_probe.dart",
+      "scope": "callback coordination only; actual simultaneous hardware capture not proven"
+    },
+    {
+      "id": "UA-22.C07",
+      "priority": "P2",
+      "result": "login error exposes minified runtimeType",
+      "evidence": "login-error-320.png",
+      "scope": "UI text; original login failure cause unknown"
+    },
+    {
+      "id": "UA-27.C08",
+      "priority": "P1",
+      "result": "remote device revoke clears server token but client renders gray areas/no composer and recurring exceptions",
+      "probe": "revoked_contact_probe.dart",
+      "evidence": [
+        "revoked-device-broken-ui.png",
+        "revoked-console.json",
+        "fixture-proof.json"
+      ],
+      "scope": "real QA revoke and null-user getter reproduction; no new content leak observed"
+    },
+    {
+      "id": "UA-32.C05",
+      "priority": "P1",
+      "result": "temporary photo remains displayed in modal gallery after TTL and actual server payload removal",
+      "probe": "expired_photo_probe.dart",
+      "evidence": [
+        "ttl-gallery-before.png",
+        "ttl-gallery-after.png",
+        "fixture-proof.json"
+      ],
+      "scope": "real QA photo plus widgets; no claim for video/album/read-after fullscreen"
+    },
+    {
+      "id": "UA-34.C05",
+      "priority": "P2",
+      "result": "successful delayed enqueue reports false failure after leaving old chat",
+      "probe": "send_navigation_probe.dart",
+      "scope": "widget with successful fixture enqueue; real network delivery not tested in this case"
+    },
+    {
+      "id": "UA-70.C07",
+      "priority": "P1",
+      "result": "cancelling reply erases a pre-existing unsent draft",
+      "evidence": [
+        "reply-draft-before.png",
+        "reply-draft-after.png"
+      ],
+      "scope": "real ordinary web44 UI with synthetic text"
+    },
+    {
+      "id": "UA-82.C01/C02",
+      "priority": "P2",
+      "result": "query refresh retains hidden message or message from room excluded by membership; redaction control passes",
+      "probe": "search_visibility_probe.dart",
+      "scope": "snapshot search UI; no claim of server access-control bypass"
+    }
+  ],
+  "validation_deficiencies": [
+    "halo_polish_capture_test cannot settle in its original capture harness",
+    "auth capture fixture renders Cyrillic as placeholder squares, unlike actual web UI"
+  ],
+  "observation": {
+    "id": "UA-24.C06",
+    "result": "new trusted device initially showed original text; after reload showed later edit",
+    "cause": "unproven; convergence time without reload not measured"
+  },
+  "not_executed": [
+    "physical Xiaomi12S/Android15 and iPhone PWA/Safari paths",
+    "physical call audio/video, Bluetooth, H264 and subjective quality",
+    "system screen picker and multi-device decrypted screen media",
+    "real SMTP/optical QR/VoiceOver",
+    "WAN/SFU failures and full cross-platform combinations",
+    "all remaining registry cases marked open or conditional"
+  ],
+  "environment_attempts": [
+    {
+      "step": "system Python suite",
+      "result": "17 dependency errors; not product failures",
+      "resolution": "full789 suite rerun successfully with .prototype/python"
+    },
+    {
+      "step": "unqualified node wildcard suite",
+      "result": "browser-dependent scripts lacked Playwright in default NODE_PATH; not product failures",
+      "resolution": "Only intended9 JS VM tests executed; all actual browser UI through permitted CUA/internal browser. Existing standalone Playwright scripts were not rerun in another browser."
+    },
+    {
+      "step": "new isolated Docker stack",
+      "result": "Docker bridge local-kv.db read-only; no running stack restarted"
+    },
+    {
+      "step": "register fixture on existing local stack",
+      "result": "HTTP500, creation completion unknown; no login or messages via this attempt; no data used as evidence"
+    },
+    {
+      "step": "alternative host Synapse",
+      "result": "PASS; separate SQLite/signing identity/media, current policies, exact Synapse1.163.0",
+      "install_command": "python3 -m venv /tmp/voicechat-scenario-matrix; /tmp/voicechat-scenario-matrix/bin/python -m pip install 'matrix-synapse==1.163.0'",
+      "binding": "loopback18008; isolated control18090; static web17357/17358/17359",
+      "secret_handling": "all accounts/recovery/signing keys only in private gitignored fixture directory; never in public evidence"
+    }
+  ],
+  "cleanup": {
+    "temporary_test_copies_removed": true,
+    "own_browser_tabs_closed": true,
+    "own_local_services_stopped": true,
+    "other_local_stack_restarted": false,
+    "production_changed": false
+  },
+  "source_test_hashes": {
+    "apps/client/test/message_actions_test.dart": "699ac195c6bf4aae36a2c05c3b8d40a67b66b7962f81aaaee5b4ba82904f2464",
+    "apps/client/test/call_key_sharing_test.dart": "1e6c7860d251e6fda5cce80f295b31168b8713f3abd020ec202defb91ba76fed",
+    "apps/client/test/halo_polish_capture_test.dart": "351a6053cca4edf25e0e0e2c734d66ebf672cfda56dff8727fbadd252aa5074c",
+    "apps/client/test/media_cache_and_save_test.dart": "35d18d6156adb01381c5c3d45d6eb01ca083426ea54b5d664cc40a734bbbdbdb",
+    "apps/client/test/history_window_test.dart": "2e9cab01c162441a6fdb7bcd3d975321e55a547a2a85d4a153e4787eb0139a6d",
+    "apps/client/test/media_publication_guard_test.dart": "0f5572caeb0bf078e39279f455da7527e4fa6958999f4cf41882156eea3cd7a5",
+    "apps/client/test/p2p_archive_test.dart": "9f162c51b57864f748bc48c358875094c0787a237055d9d11c68b446a38f6609",
+    "apps/client/test/screen_protocol_test.dart": "a65da2bbcd0ee0ba2c42961bd5cbd481bb314b6f111e5721d7b29e8cb6d4448e",
+    "apps/client/test/scheduled_queue_test.dart": "484abce7f92c3b8105bfe138b1cffa09a720844a8ea102085837212f83f7ec9f",
+    "apps/client/test/device_qr_test.dart": "310b50e95034fb10a9d82091e4b3b3f22a7905c196f9bb0d96919176c8df5792",
+    "apps/client/test/app_update_test.dart": "5ba058b8aabc1cde85640c58aa8947f36431e36749ac0f330d06496bb78dc299",
+    "apps/client/test/push_browser_test.dart": "ee421125d643fa4a54b42c7c23704c69a4290a6ce7ff4e34ddbfa9f3e2efe4b6",
+    "apps/client/test/device_link_test.dart": "10ebc909e372d0203f29dc29ebebfd7de870d6d04c09358fa51ef1aa07a466b0",
+    "apps/client/test/media_key_clock_test.dart": "32a58acd58802ff82f206147a459a392b15e0b778056ab53274a6be3bcba4780",
+    "apps/client/test/macos_update_test.dart": "aa7caebbb015a68e27f9e58dd75b4a743a6fd4afbd19f241294941a8437e3427",
+    "apps/client/test/forward_picker_test.dart": "50029313073f8fe7a645259709f167e4456a2e3712702492cb8f1e13e7cf31ee",
+    "apps/client/test/transport_test.dart": "6b7350ca8a57153ace3792a33609a6bb571fdb28a1adcc28cca7ce86299657d6",
+    "apps/client/test/voice_waveform_test.dart": "306a2fffba281477d57d72b0eaced0abc841af1d63c6fc3ef73d139066988fe4",
+    "apps/client/test/first_keys_test.dart": "e80b78dc8a874c1b4cc99af42f79aaaeb059a28ebde27eb957ca9c541530c6d2",
+    "apps/client/test/halo_iteration_test.dart": "9de4a822cc9596cb2531a00c8bf8ab55a5143e37b1fc21f91927cad747156e03",
+    "apps/client/test/chat_features_visual_test.dart": "655a2c79cf1fd1bc34b58569ee254ff32a3d3b32921a9316bec6b15d95dc6d1b",
+    "apps/client/test/audio_playback_regression_test.dart": "09d86f665b6784f33dc31f568587608c133ed2cb2a477ec28cfea2e8d17ead79",
+    "apps/client/test/video_note_test.dart": "b09eaea7398f19fe4dab03e1e59bd9ce1150b7e5ae807c98e72cc18a3ab6a011",
+    "apps/client/test/update_drafts_test.dart": "17259a6a8071362cd548ce284da144d9e567649eb684f218c199e7b1fed65dcf",
+    "apps/client/test/copy_and_banner_test.dart": "0d63c0f5b3fb52b1befe151669d4be989e4f1b709b8109d1b57f43531d5d7bc0",
+    "apps/client/test/settings_footer_test.dart": "2366e75e87c48bd30abb1e8133d09377de260e10c1292b1b7fa0f8be1aeb4173",
+    "apps/client/test/voice_normalization_test.dart": "14b5cf6cba0d39d491ea79a17a75a0a4c134c05d537fbbca931798918c2d876d",
+    "apps/client/test/dropped_attachments_test.dart": "818061ce927d709f16e37f07bbee16a7a57c5410df2ca11138565e8195ce540c",
+    "apps/client/test/chat_scale_and_layout_test.dart": "f28576d92ab0d5abd3c5ac770bbd0077a898bc0531a81171af1d624c0014cfe9",
+    "apps/client/test/rich_media_test.dart": "89bd703e7d14505a94da18c1a7e67d98ca0486bbfadc94b4b375ddf4826e027a",
+    "apps/client/test/screen_quality_test.dart": "9de82fe83aa4681e63ac7c3c90fc722d8f841b4f9150feefadaa1ca12408bafe",
+    "apps/client/test/call_cleanup_test.dart": "78591a49a945612d2032991f33fa4f755d0578aedafc5673685a90372c637d85",
+    "apps/client/test/smooth_progress_test.dart": "2b43908e15f8859a62827a9e8fa76a8ea086b9ec59df1812fb65ad18564ed3d5",
+    "apps/client/test/p2p_widgets_test.dart": "a5c05a47ed20870b64079eeb373d8b004389d4a9f1503185d95f996a40e29a68",
+    "apps/client/test/screen_binding_test.dart": "f747a1e2282b28c0ca294940791efd8de5b226ae1b2d390a153918bcfb1ba769",
+    "apps/client/test/media_routes_io_test.dart": "78f2e009032bc759626b26decf7a423e471d4ba752debb89c4b7bd5addd84d78",
+    "apps/client/test/file_drop_native_test.dart": "62ae466a0a424ac48eba693e7be1bc8849a0ee33fc45cf4ae532e6eb8fadb3de",
+    "apps/client/test/voice_send_and_receipts_test.dart": "05bad85162ae226cc36ac561ff59a3b82dbf7f029d0586d4ab4c1749d16562c5",
+    "apps/client/test/voice_quality_test.dart": "76f608df25ecd181a67f6042be4d9f125eb325aa67cecf713628b6538f0793bb",
+    "apps/client/test/screen_media_test.dart": "d8db0206de91389bf51eed342c1a4ce328373cbbc94e7ecf239d62faf2212a05",
+    "apps/client/test/temporary_message_test.dart": "36a736ac51d15b25fae9a9825cbf9c103b128a5405842eb947bc235e152d8ad3",
+    "apps/client/test/scheduled_layout_test.dart": "c28d0edde38071361424e2ac3f05a19d37fa8c56602b0adb62e94b42b695e5d8",
+    "apps/client/test/message_motion_test.dart": "073afc44612eeb0868b63aabc3e44a813ff056d3c00f64837a0a0241bbfc2c32",
+    "apps/client/test/session_preservation_test.dart": "a04532abdfe7ed67d6eb6a72aa11b05baed331b3efd3c0b234bc3d62965ca003",
+    "apps/client/test/invitations_test.dart": "2f869a11df05cf789869bf7e676dd4f2112d8ece017aeaf14ff02dc4d0538b76",
+    "apps/client/test/media_routes_test.dart": "d42f72b4f483b7e9a805e09c4915fd09fb0115c7a69560b04d57e5452f8e50fb",
+    "apps/client/test/screen_lifecycle_test.dart": "7a3369a28f41ebe3c98b7c25ed335dc0741ff3f53fbe3601f0c0df0acc6b9569",
+    "apps/client/test/auth_fit_test.dart": "2f5c4849422c2912274ac2ae699e0bd202d0ed4607f60bacc337fc16d793aae4",
+    "apps/client/test/halo_design_test.dart": "6ad0a6ffa68680d1d6bf2f708e76db103ec93c76e2e26f9068b6970bf70400d9",
+    "apps/client/test/storage_integrity_test.dart": "b263532d80083ac8239e5871170030549d5dc3f18f0670d7abb1b5c2918e68d8",
+    "apps/client/test/direct_call_media_test.dart": "dfb1e5c386a846892b148d7a1d35b00110a29190aa14f0a4961713b2a721904b",
+    "apps/client/test/p2p_protocol_test.dart": "faba06ea8ae16d4936afe8822249637843aeff6621e9ccbd870c38917c8766b0",
+    "apps/client/test/direct_pins_test.dart": "7d816fee6d5c831526d9afe832ce2111d7792fb09f420e3cdba55b86cdbf8d50",
+    "apps/client/test/device_name_test.dart": "27d767206d778dca7395b32a5a3234ea1e503912a661e418160b25ec05736805",
+    "apps/client/test/p2p_service_test.dart": "4ea1c7712fff5d1f16adc776e936ab5132b02d7eba74ca3bb0d6f9ccd0ef9659",
+    "apps/client/test/notification_preferences_test.dart": "f7e9fcdab5183595bab5665fb7a51e4ff3443787d00feeeca85190c38a62fdc2",
+    "apps/client/test/verification_layout_test.dart": "d73be417f46d64ebe03120bd321c8bf53d99bbb49ed57d5cff559d04d624ccf2",
+    "apps/client/test/participant_status_test.dart": "f23b42a5156836106d917c17a7bae5fa468084b9d6267c90cc8b648f040a9746",
+    "apps/client/test/device_key_refresh_test.dart": "79c4e4f89ea0e53ceb3b4ff35947581ce5b8a452c68dc0f2419af52c9fc27348",
+    "apps/client/test/chat_actions_test.dart": "ca1b03ba76f52b9d5bf13eed96ea0eddbccf91e82e5be5bfa6ab01eac1509215",
+    "apps/client/test/call_event_test.dart": "d2bbb72691d3ed073c1228becb06c235e82229b0f9245b0418de9e03ed714f9b",
+    "apps/client/test/call_quality_test.dart": "8862e06a2da6e663300a02b233028831cadf4484537402062c5f694ab73bbcb8",
+    "apps/client/test/registration_screen_test.dart": "020db2d8f1be8eed26efce801e757a7e6294aa6b641bc3b03f2d253bb14b8d70",
+    "apps/client/test/message_playback_test.dart": "d45953ae103211ecd192ef3d25f28f8ebebc2b8e4e945497ad20a7258185e69f",
+    "apps/client/test/speaking_avatar_test.dart": "5e6f25e8cb5f5015f35096ccc1f54583523a63d88361b99c920d36d80fbcc0c0",
+    "apps/client/test/widget_test.dart": "3b620834068249e00ec9f113a86fac0b0d80cd0c6eac2ccc2ebe3796420301c8",
+    "apps/client/test/p2p_native_files_test.dart": "ca86dc0c49b8c85510e6db847a0aa71385e3041c4f0d5f09250b48eb71cb397d",
+    "apps/client/test/push_api_test.dart": "ad141b47dc97d5b7b93d0e1f720e4f78dc9f202856d9f493db8a0bc23a93712a",
+    "apps/client/test/scheduled_messages_test.dart": "00c2ecaa6f450aef116df8742b42ed9326b630bc5015e2cffaffe848a096a1b0",
+    "apps/client/test/p2p_export_test.dart": "61d9ed36814410243c92376d620e2befe2f5b0c9b4aa4e436831709df67e6e92",
+    "apps/client/test/message_video_preview_test.dart": "73eb025db9af596a3ccbbb1500380410db6ebe9d39e61fa7792f34efc7594e79",
+    "apps/client/test/screen_capture_browser_test.dart": "ce4c8d3b27e46e647daec6f0816b485e9617834bee63ad1b76706ea06e9b1464",
+    "apps/client/test/halo_capture_test.dart": "051ebf6ccef4f780483cdf3c6512eaaaf5ed83cec799e6f1b8539e96261ad0bc",
+    "apps/client/test/verification_send_race_test.dart": "b6429da95c252deeac5daebbdd2aa483ae8203d7e5fd89259e66792d04f6221f",
+    "apps/client/test/route_status_banner_test.dart": "cc66c569c72f7ebcb484190fa72bfb148f2b53ae5edf0094f43a7440b761354e",
+    "apps/client/test/app_sounds_test.dart": "b11afc66aa6672cb436445219b556f63488459866b280029fee912895b95d73d",
+    "apps/client/test/storage_policy_test.dart": "d4ebfd3dffc96c3d00707ebbf48885d42d3f1439f4fd7b80086b797bc8d869ef",
+    "apps/client/test/route_io_test.dart": "7b41369647d62b471316e1713fc5bdb64e5a020c224c14cf22d647edda8a1887",
+    "apps/client/test/call_video_layout_test.dart": "5ef5f4eb8c1f413c889c05948d3e18f7df2429918968899d8c6efda53560a15d",
+    "apps/client/test/hidden_messages_test.dart": "ffb13d1c91f2efd0707c2101b4ced9a33825cc96560664dbfd31ddeed0e40a30",
+    "apps/client/test/screen_capture_test.dart": "ed7149b00a2e9b484c4760ab500ea228edccb446b273e21f46492d77e42c4e50",
+    "apps/client/test/screen_receive_deadline_test.dart": "041e118a0013985c13fd231255922786d172018667ac5dfeebd64d8a439a7aca",
+    "apps/client/test/design_refinements_test.dart": "1707aa3dcd08cbdecb218a458f49d4e8ca2d6fb6682cca2e2a63989d2186a50c",
+    "apps/client/test/chat_iteration_state_test.dart": "f64fd398788803b5158c9fb00beab110742e9b1251550ea44a17e54b79e2c009",
+    "apps/client/test/call_audio_test.dart": "eba96b5024a666dbc051ca1be4283a0a84e6a8e40cece6ec397514091547a383",
+    "apps/client/test/photo_viewer_test.dart": "267acb664aa908ed522a4cbef89ce6e53953216b8a639a175f630c59f7ca260c",
+    "apps/client/test/high_quality_voice_test.dart": "1a78abd3488b6bc2419b6bfe32644a5e9315175789bb7c819da5706853527844",
+    "apps/client/test/device_refresh_test.dart": "65ddbd3d301a0a1620b724acecb5c19c9e3c32be2ba3dc23d462b46adbd54eae",
+    "apps/client/test/chat_iteration_regression_test.dart": "8bd68853466ffc8f70df56adc33fbf7ba51f340b9c26008e6ea358c7fbb93a9d",
+    "apps/client/test/call_window_test.dart": "bfec95fb4424647f2c7d146e9f90f98cc78bbdfa6bb8f50d787c48c79d84c955",
+    "apps/client/test/conversation_list_test.dart": "e6f44915cdec3899a1b3e726950cb5564261ca3ffd2c753511ccb6963630ed7d",
+    "apps/client/test/direct_call_protocol_test.dart": "6632eec3c03f36d53a3e2ae0979da49f27a0c436c634dc1423309c786f30d4c6",
+    "apps/client/test/quote_navigation_test.dart": "c51f87875885d358c0b69aaab0cb193903f6ca303b2a8f5007f13adf942bafa5",
+    "apps/client/test/contact_link_test.dart": "45160100f211b30840c53ab9ec4f732bcb00931c39470ef5cc9d709243c89e54",
+    "apps/client/test/recovery_key_dialog_test.dart": "6194df8bdba1b095184a63b7adef7f83597ad9feafe3cf168a42d2f1b167785c",
+    "apps/client/test/link_preview_test.dart": "4886493a03fd9620d611c6383d40055486e55c7899b1c62a216505e2f8235594",
+    "apps/client/test/halo_polish_test.dart": "8358ab13bcb9632032b8d9aec8d514d2378aeb5235c8b8c9910c883d12e0e0e0",
+    "apps/client/test/local_account_data_test.dart": "4c9f4e574f9c362731451c1c3c9787085192b6ff16eef69c784d3e7ce490ba06",
+    "apps/client/test/call_devices_test.dart": "602ddb8a6329911fc67debfe51de44ae458616338065c6f6697646fdcee5d61a",
+    "apps/client/test/routed_livekit_engine_test.dart": "edf9ff27f3ac517bf702cfc7aa22fc1f49abd215387f009af0c6caffa995259e",
+    "apps/client/test/message_test.dart": "e6e32cdcf0cb8df78863e31b497280efd9a5273a5d54aaf0953c2713c21a0ffd",
+    "apps/client/test/route_transport_test.dart": "2ecf4a7654aa213c1b970e1568c324b5b17dfa77936be698c85dd71a6f87cd0e",
+    "apps/client/test/history_backup_test.dart": "808d681be9de521b27f578c852ce0b83d21908ee97a265a749b724e3f136943b",
+    "apps/client/test/p2p_browser_test.dart": "1323ee05e8b3b39a36e75e744ea249ee4f756b41a34c8068618df517259b3b55",
+    "apps/client/test/device_verification_test.dart": "cfce03ff2503ac10cd82a2c9515e82f683ced62ab60f0577fa2eba2946c9003d",
+    "apps/client/test/connection_diagnostics_test.dart": "fd8662b22052049dc08e5d53058a957b24c15f29bf01c594cf26456e6906a010",
+    "apps/client/test/group_camera_test.dart": "adc007e0b3e0f53ee81d43b0d8b4bb908abb85b5660226ac2b57912ef55651a5",
+    "apps/client/test/authorization_work_test.dart": "db5e8ddc1a395ee488c32e30a10924c88d04f052568a114cbb22bd70d3e17f07",
+    "apps/client/test/web_startup_test.dart": "d9a5c38d2e37a3d1684925ee9d54e4eebba241d11103e828579daa8013530977",
+    "apps/client/test/auth_capture_test.dart": "b892b8008aacf282a7c0cf5af11dcd969e8646f446d0425a72d9d312db89b5bc",
+    "apps/client/test/route_coordinator_test.dart": "987dab708149c21d43737f34169c55ec8e43601191ca70c28ec177b0aaece561",
+    "apps/client/test/android_call_screen_test.dart": "44ab77ce406115a7eb4d1841cfa83f675704978885154cf2a220871c6c19f091",
+    "apps/client/test/p2p_recipients_test.dart": "0962fb2f8fa97993298f3e4c64dabaaf13ef0548c97eb411a1c81d9a27fb810b",
+    "apps/client/test/macos_camera_test.dart": "630074374083191c7d7d12b442408366d6d1024ce9cb737c749af7cc6e89ea30",
+    "apps/client/test/presence_tracker_test.dart": "ddc7492223f2fdbedd7ed00d6853fafe172a0407e51736baca3394fb51570f5c",
+    "apps/client/test/auth_flow_test.dart": "0c5032e10f1c1ad278324ee3e52b1e09b43f5c944f56a4212d21a08f494eb791",
+    "apps/client/test/email_auto_registration_test.dart": "7ef690dbdf139cee7c3b2ecf17ae75f2cf07cb6a9155c2ac254dd99c2d2e0775",
+    "apps/client/test/mobile_layout_test.dart": "e9c9f5aab514f15424aab164684f0bd244946e1e3f45d9ca205b0d80a69f6493",
+    "apps/client/test/call_push_test.dart": "6b3b7b090d6f16be4f67139ec9ca987c335f902a9f5f01f07fc559f8a25d97a1",
+    "apps/client/test/active_capture_test.dart": "bfff79b973770b62b274c4d5d0a0f73767663a476e8fd11aed403876ea2e0c0f",
+    "apps/client/test/unread_sync_test.dart": "079e15c9122a753ac5072db804b1707ffbf72416f6ba6bb824bfde8b94264aaf",
+    "apps/client/test/recording_activity_test.dart": "57119f524b05c2dfe921d6c33bf9e18cb2376ed26e2556335551b672e78df0d1",
+    "apps/client/test/file_drop_browser_test.dart": "411437eeb969f72b3160581a0a8510b6dc2f8d19c315fffd9566ea3862260c60",
+    "apps/client/test/unread_messages_test.dart": "75b0b7975ef0dd6501229a3171604906017bf5f409fe5bea101716f7149af263",
+    "apps/client/test/screen_panel_test.dart": "2cc6dcccdfc065022967064b93437e1ca013dcc9999d6f24b3d2b336f2effaa7",
+    "apps/client/test/forward_message_test.dart": "8dea4d34bbc45f91372d7348c6f1db90d11140f6d28974097e5f9d6f526d3cec",
+    "apps/client/test/startup_calls_test.dart": "0c24950cd1bc94183f9ed4dd1674347dc1beba1733bc2c018f04a6d43fae3277",
+    "apps/client/test/history_recovery_test.dart": "5797c633ee31f8e91b75edc07beb6aa8217251bb46471eebc5370c66c4a6875c",
+    "apps/client/test/video_source_test.dart": "11a22c9bfa4e0b06f77b945be7ea31a1acdc309f48b779265c07d1e7ed4ef8db",
+    "apps/client/test/native_notifications_test.dart": "e363c19b1a6f28c6692a5aa40e4f2e82b73faa66f4ed652276f6b3022ba0b4d3",
+    "apps/client/test/app_motion_test.dart": "0648fbb995c7702c16aeffef86766e3e7a3b06e4fc2a126d06b552bbbcbab36f",
+    "apps/client/test/verification_without_frames_test.dart": "4c7cdb4557625499721be765d05d1dccc6d83357e3e206d2e4742db3e8701ed7",
+    "apps/client/test/chat_user_features_test.dart": "733cd9d0d2e21795298d38977c691268c181869a6635d3c7b8ed1cdf02a30ac2",
+    "apps/client/test/group_calls_test.dart": "28c97aa7c4c56a4b1736edeed8d2f83ccf7ac8040baba8bfa04f67ca294521f5",
+    "apps/client/test/contact_link_navigation_test.dart": "656a4b460f047865bbd044b83fbc8e6089ca60a5ed60f8ad1e3712088d564e8a",
+    "apps/client/test/video_note_browser_test.dart": "bd671819160d8b16609006c521b751b3a8b2e584bc52c46deb5470582dd0c8cb"
+  },
+  "probe_hashes": {
+    "search_visibility_probe.dart": "df58295d97e7fefaf790ef0dc641cf411414ea07cacab074573e7e21be964bee",
+    "send_navigation_probe.dart": "0196efa2ff67d3eea80d6cba644ea1d1dee42c0cb67385890b4e9b7903750d1b",
+    "capture_probe.py": "566e6c77ccfe988b0ebe573484d42080650c472768fc1def1822b3142538a541",
+    "call_state_probe.py": "cc0cfd0572ebc62906f9a5020c2a5ddb80d7c14ec65aa2309e776865c54098a5",
+    "novel_boundaries_probe.dart": "f9a3b8afce2a33bff7b844fa71d9158bb2819ce2407a744ed446934120b32c15",
+    "revoked_contact_probe.dart": "16a16c4d051532a08febcf2c91a57466a34857904441752b65bca41f9f754835",
+    "left_room_invitation_probe.dart": "8fb25eb331171ee3ca82af5270cab4d76fed94488de62bf5acc81e75a69598bd",
+    "capture_race_probe.dart": "f4f15600be448da0bcec0331df81089705ff0821ef56f18f6ed27cb4cb6aa95e",
+    "native_http_probe.dart": "ee12bc6b6e85a5ea36b7577740dbc91249771c5f5e9360986844e818ff730de0",
+    "expired_photo_probe.dart": "3f3289960be56199ceac6fa4341520a7404e4d0daa9cdcd2f5e5af5cd52a8787"
+  },
+  "artifact_hashes": {
+    "login-error-320.png": "8c6214d50f15dace997cbaa07e53a80f0d26e09c0060d75de3f7398c049877ed",
+    "search_visibility_probe.dart": "df58295d97e7fefaf790ef0dc641cf411414ea07cacab074573e7e21be964bee",
+    "send_navigation_probe.dart": "0196efa2ff67d3eea80d6cba644ea1d1dee42c0cb67385890b4e9b7903750d1b",
+    "fixture-proof.json": "6de22595f1dc1ff14a257c6593cc60c7e249d06025f86a8af12dd66406befdcb",
+    "ui-proof.json": "3cbec4faa4eb1d52246fe32d28331766e025c61ddcbad8a15d681bd7971d6e78",
+    "new-device-history-before-reload.png": "e6cea6a08fb3aebc93ba2caaebe0b93f87949a2b5831d6dfb447776444d3c93e",
+    "captures.txt": "2d234c1c87c077396a2a32e557c9feef504ad34915ee2c3c48038fa1dca57d50",
+    "capture_probe.py": "566e6c77ccfe988b0ebe573484d42080650c472768fc1def1822b3142538a541",
+    "ttl-gallery-before.png": "19d60efe38af44edc48ee7a01b6565dc2223ead12628a37bd3d474c3f885513e",
+    "defects.txt": "70345caf2c6fd7eafd3ed1e66d7d76431d02a67466c31beaab070836cf431719",
+    "call_state_probe.py": "cc0cfd0572ebc62906f9a5020c2a5ddb80d7c14ec65aa2309e776865c54098a5",
+    "new-device-history-after-reload.png": "f483d37188d6e240d4cfd32fb5627f72ba2c96e65b5c0b1a5c7831a74e4ebaf0",
+    "additional-probes.txt": "ed0296ced1a0203d4278f9aae6a57effb414ecc49c5f56ab58157748217143d0",
+    "novel_boundaries_probe.dart": "f9a3b8afce2a33bff7b844fa71d9158bb2819ce2407a744ed446934120b32c15",
+    "revoked_contact_probe.dart": "16a16c4d051532a08febcf2c91a57466a34857904441752b65bca41f9f754835",
+    "ttl-gallery-after.png": "c627bba9420757d4977d754d8614de9bf59675284caacad215a69cb492dc1bbc",
+    "revoked-console.json": "67e55fce5c7ce588afea288ccc0c0ffd171d727c93c1157e166d4bba44ad0bdd",
+    "reset-320.png": "2f44f2491c15092bb82560ac78f05fa7079d6da5bf7922e8d2496e43af139406",
+    "left_room_invitation_probe.dart": "8fb25eb331171ee3ca82af5270cab4d76fed94488de62bf5acc81e75a69598bd",
+    "capture_race_probe.dart": "f4f15600be448da0bcec0331df81089705ff0821ef56f18f6ed27cb4cb6aa95e",
+    "reply-draft-after.png": "128cfd8f413851df61ef8d2af670bfcb260ff66f666a0f0135eb8cd72fa7fa7e",
+    "native_http_probe.dart": "ee12bc6b6e85a5ea36b7577740dbc91249771c5f5e9360986844e818ff730de0",
+    "reply-draft-before.png": "2f318acc8dd6f5884b394e021aca87db45df9b016f46dc6acbe6d570a2c4cc07",
+    "call-state.txt": "6e1426cfed9a01ca226d9dc5b915ed4e083a7a8e040f31ac7790ee849d5bbe38",
+    "capture-bounded.txt": "cc5804a353163e0acd600793376077905d3916f6d427fb85d70d80032ca3caaf",
+    "expired_photo_probe.dart": "3f3289960be56199ceac6fa4341520a7404e4d0daa9cdcd2f5e5af5cd52a8787",
+    "revoked-device-broken-ui.png": "902825814c2e46efaad15f769f9fc07096526560284f506740f7eaa183ded90b"
+  },
+  "registry_sha256": "46b400b1f48ec71b2f58837e8daf703116fdeb54023eaf22c0c876be50ecb503",
+  "validation": {
+    "git_diff_check": "PASS",
+    "unique_scenarios": 451,
+    "unique_parent_ua": 82,
+    "new_local_links": "PASS",
+    "artifact_hashes": "PASS",
+    "fixture_listen_ports_closed": [
+      18008,
+      18090,
+      17357,
+      17358,
+      17359
+    ],
+    "product_files_changed": false
+  }
+}

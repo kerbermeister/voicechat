@@ -115,7 +115,12 @@ object PushNotifications {
             }
             if (AppUpdater.foreground) return
             val routeNotice = data.optString("call", notice)
-            if (isCall) manager.cancel(PREFIX + data.getString("room"), 0)
+            if (isCall) {
+                manager.cancel(PREFIX + data.getString("room"), 0)
+                // Matrix wakeups can resolve to this same ringing call. Updating
+                // an insistent notification with onlyAlertOnce silences it.
+                if (Build.VERSION.SDK_INT >= 23 && manager.activeNotifications.any { it.tag == tag }) return
+            }
             if (Build.VERSION.SDK_INT >= 26) manager.createNotificationChannel(
                 NotificationChannel("messages", "Новые сообщения", NotificationManager.IMPORTANCE_DEFAULT))
             if (isCall && Build.VERSION.SDK_INT >= 26) {
@@ -142,6 +147,9 @@ object PushNotifications {
                 val remaining = (data.getLong("expires") * 1000 - System.currentTimeMillis()).coerceAtMost(45000L)
                 if (remaining <= 0) return
                 val incoming = Intent(intent).setClass(context, IncomingCallActivity::class.java)
+                    .putExtra("pushSession", data.getString("session"))
+                builder.setContentIntent(PendingIntent.getActivity(context, 0, incoming,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
                 val fullScreen = PendingIntent.getActivity(context, 0, incoming,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
                 val answer = PendingIntent.getActivity(context, 0, Intent(incoming)
@@ -208,7 +216,7 @@ object PushWork {
         if (Build.VERSION.SDK_INT >= 31) request.setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
         val id = MessageDigest.getInstance("SHA-256").digest("$binding:$action:$value".toByteArray())
             .joinToString("") { "%02x".format(it) }
-        WorkManager.getInstance(context).enqueueUniqueWork("vc-push:$id", ExistingWorkPolicy.KEEP, request.build())
+        WorkManager.getInstance(context).enqueueUniqueWork("vc-push:$id", ExistingWorkPolicy.APPEND_OR_REPLACE, request.build())
     }
 }
 

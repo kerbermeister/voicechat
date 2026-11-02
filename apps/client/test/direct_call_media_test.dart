@@ -67,8 +67,9 @@ class Feed implements mx.WrappedMediaStream {
   Feed({this.local = true});
   @override
   bool videoMuted = false;
+  MediaStream currentStream = MediaStream();
   @override
-  final MediaStream stream = MediaStream();
+  MediaStream get stream => currentStream;
   @override
   bool isLocal() => local;
   @override
@@ -170,11 +171,13 @@ void main() {
     'Late remote video upgrades an audio call on feed events without a call state change',
     () async {
       var texture = 0;
+      var bindings = 0;
       final messenger =
           TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
       messenger.setMockMethodCallHandler(
         const MethodChannel('FlutterWebRTC.Method'),
         (method) async {
+          if (method.method == 'videoRendererSetSrcObject') bindings++;
           if (method.method == 'createVideoRenderer') {
             return {'textureId': ++texture};
           }
@@ -195,6 +198,18 @@ void main() {
       expect(call.video, true);
       expect(call.remoteVideo, isNotNull);
       expect(call.cameraEnabled, false);
+      final before = bindings;
+      final replacement = MediaStream()..tracks.clear();
+      replacement.tracks.add(MediaTrack('late-video', 'video'));
+      session.remoteUserMediaStream.currentStream = replacement;
+      session.onCallStreamsChanged.add(session);
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        bindings,
+        greaterThan(before),
+        reason: 'Native stream replacement with the same IDs must rebind',
+      );
+      expect(call.remoteVideo!.srcObject, same(replacement));
       session.remoteUserMediaStream.videoMuted = true;
       session.onCallStreamsChanged.add(session);
       await Future<void>.delayed(Duration.zero);
@@ -230,7 +245,7 @@ void main() {
         (call) async {
           if (call.method == 'mediaStreamTrackSwitchCamera') {
             switches++;
-            return true;
+            return switches.isEven;
           }
           return null;
         },

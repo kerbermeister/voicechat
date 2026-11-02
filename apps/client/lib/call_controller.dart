@@ -83,6 +83,7 @@ class CallController extends ChangeNotifier
   bool _closed = false;
   late final void Function() _stopPageExit;
   String? _resumeCamera;
+  AppLifecycleState? _lifecycleState;
   Future<void> _cameraLifecycle = Future.value();
   static const _nativeCalls = MethodChannel('voicechat/calls');
   Future<void>? _backgroundUpdate;
@@ -168,6 +169,7 @@ class CallController extends ChangeNotifier
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (_closed) return;
+    _lifecycleState = state;
     if (state == AppLifecycleState.resumed) {
       unawaited(groups.refresh());
       unawaited(routeTransportOf(client.httpClient)?.coordinator?.refresh());
@@ -177,18 +179,26 @@ class CallController extends ChangeNotifier
     if (kIsWeb) return;
     final call = active;
     if (call == null || call.isClosed || !call.video) return;
-    if (state == AppLifecycleState.inactive && call.cameraEnabled) {
+    if (state != AppLifecycleState.resumed &&
+        (call.cameraEnabled || _resumeCamera == call.session)) {
       _resumeCamera = call.session;
       _cameraLifecycle = _cameraLifecycle
           .catchError((Object _) {})
           .then((_) => call.camera(false));
     } else if (state == AppLifecycleState.resumed &&
         _resumeCamera == call.session) {
-      _resumeCamera = null;
       _cameraLifecycle = _cameraLifecycle.catchError((Object _) {}).then((
         _,
       ) async {
-        if (active == call && !call.isClosed) await call.camera(true);
+        if (active == call &&
+            !call.isClosed &&
+            _lifecycleState == AppLifecycleState.resumed &&
+            _resumeCamera == call.session) {
+          await call.camera(true);
+          if (_lifecycleState == AppLifecycleState.resumed) {
+            _resumeCamera = null;
+          }
+        }
       });
     }
     unawaited(
@@ -204,7 +214,9 @@ class CallController extends ChangeNotifier
     unawaited(audio.sync(active).catchError((Object _) {}));
     devices.update(active);
     invitations.removeWhere(
-      (id, invitation) => devices.answered(invitation.room.id, id),
+      (id, invitation) =>
+          invitation.room.membership != Membership.join ||
+          devices.answered(invitation.room.id, id),
     );
     directInvitations.removeWhere(
       (call) => call.isClosed || devices.answered(call.chat.id, call.session),
@@ -393,6 +405,7 @@ class CallController extends ChangeNotifier
       session: id,
     );
     if (content['action'] == 'invite' &&
+        event.room.membership == Membership.join &&
         age < const Duration(seconds: 45) &&
         !_endedInvitations.containsKey(invitationKey) &&
         event.senderId != client.userID &&
@@ -863,7 +876,7 @@ class CallController extends ChangeNotifier
   Future<rtc.RTCPeerConnection> createPeerConnection(
     Map<String, dynamic> configuration, [
     Map<String, dynamic> constraints = const {},
-  ]) {
+  ]) async {
     // shortcut: force TURN in loopback tests; real deployments use ICE's direct-first policy.
     if (const {
       'localhost',
@@ -872,7 +885,13 @@ class CallController extends ChangeNotifier
     }.contains(client.homeserver?.host)) {
       configuration = {...configuration, 'iceTransportPolicy': 'relay'};
     }
-    return rtc.createPeerConnection(configuration, constraints);
+    await audio.startDirectAudio();
+    try {
+      return await rtc.createPeerConnection(configuration, constraints);
+    } catch (_) {
+      await audio.stopDirectAudio();
+      rethrow;
+    }
   }
 
   @override
@@ -922,6 +941,10 @@ class CallController extends ChangeNotifier
 
   @override
   Future<void> handleCallEnded(CallSession session) async {
+    if (active == null ||
+        (active is DirectCall && active!.session == session.callId)) {
+      await audio.stopDirectAudio();
+    }
     directInvitations.removeWhere((c) => c.session == session.callId);
     _refresh();
     final call = _directCalls[session.callId];

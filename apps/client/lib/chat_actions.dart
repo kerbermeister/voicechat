@@ -1,12 +1,16 @@
+import 'voice_recording.dart' show maxVoiceRecordingBytes;
 import 'hidden_messages.dart';
 import 'reaction_usage.dart';
 import 'send_failure.dart';
 import 'read_after.dart';
 import 'message_receipts.dart';
+
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:matrix/matrix.dart';
+
 import 'matrix_probe.dart';
 import 'user_action_error.dart';
 import 'media_policy.dart';
@@ -605,8 +609,15 @@ class ChatActions extends ChangeNotifier {
             waveform.any((n) => n < 0 || n > 1024))) {
       throw UserActionError('Некорректные данные голосового сообщения.');
     }
-    if (file.bytes.isEmpty || file.size > maxAttachmentBytes) {
-      throw UserActionError('Размер вложения: от 1 байта до 10 МБ.');
+    final maxBytes = file is MatrixAudioFile
+        ? maxVoiceRecordingBytes
+        : maxAttachmentBytes;
+    if (file.bytes.isEmpty || file.size > maxBytes) {
+      throw UserActionError(
+        file is MatrixAudioFile
+            ? 'Голосовое сообщение слишком большое: максимум 3 минуты.'
+            : 'Размер вложения: от 1 байта до 10 МБ.',
+      );
     }
     if (file.msgType != MessageTypes.Image &&
         file.msgType != MessageTypes.Audio) {
@@ -1227,6 +1238,22 @@ bool isGroupJoin(Event event) =>
     event.content['membership'] == 'join' &&
     event.prevContent?['membership'] != 'join';
 
+bool visibleChatMessage(Event event, {bool includeExpiring = false}) =>
+    !emptyEncryptedEvent(event) &&
+    !messageHidden(event) &&
+    (!messageExpired(event) ||
+        (includeExpiring &&
+            messageExpiry(event)!
+                .add(const Duration(milliseconds: 1250))
+                .isAfter(DateTime.now()))) &&
+    (isGroupJoin(event) ||
+        event.type == EventTypes.Message ||
+        event.type == EventTypes.CallInvite ||
+        event.type == EventTypes.Encrypted &&
+            event.messageType == MessageTypes.BadEncrypted) &&
+    event.relationshipType != RelationshipTypes.edit &&
+    event.status.isSent;
+
 List<Event> visibleMessages(
   Timeline timeline,
   String query, {
@@ -1234,25 +1261,11 @@ List<Event> visibleMessages(
 }) {
   final search = query.trim().toLowerCase();
   return timeline.events
-      .where((event) => !emptyEncryptedEvent(event) && !messageHidden(event))
       .where(
-        (event) =>
-            !messageExpired(event) ||
-            (includeExpiring &&
-                search.isEmpty &&
-                messageExpiry(event)!
-                    .add(const Duration(milliseconds: 1250))
-                    .isAfter(DateTime.now())),
-      )
-      .where(
-        (event) =>
-            (isGroupJoin(event) ||
-                event.type == EventTypes.Message ||
-                event.type == EventTypes.CallInvite ||
-                event.type == EventTypes.Encrypted &&
-                    event.messageType == MessageTypes.BadEncrypted) &&
-            event.relationshipType != RelationshipTypes.edit &&
-            event.status.isSent,
+        (event) => visibleChatMessage(
+          event,
+          includeExpiring: includeExpiring && search.isEmpty,
+        ),
       )
       .where(
         (event) =>

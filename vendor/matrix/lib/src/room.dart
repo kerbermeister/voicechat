@@ -1917,6 +1917,12 @@ class Room {
       }
     }
 
+    // The timeline was constructed before initial decryption. Replace encrypted
+    // relations in its aggregation tree so restored edits render immediately.
+    for (final event in chunk.events) {
+      timeline.addAggregatedEvent(event);
+    }
+
     // Fetch poll responses for fragmented timelines after decryption so
     // encrypted poll start events are visible as poll events.
     if (eventContextId != null) {

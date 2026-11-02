@@ -1,0 +1,18 @@
+{
+  "source": "0dd2ff6644e57e23db2f37efcf78bd9284907c50",
+  "flutter_test": {
+    "passed": 511,
+    "skipped": 4
+  },
+  "flutter_analyze": "PASS",
+  "native_android_media": {
+    "passed": 2,
+    "physical_device": false
+  },
+  "macos_release_python_tests": {
+    "passed": 9
+  },
+  "production_workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41344929401",
+  "production_status": "PASS",
+  "production_postflight": "production-verified.json"
+}

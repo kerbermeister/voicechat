@@ -29,6 +29,28 @@ void main() {
     },
   );
   test(
+    'Legacy 16 kHz recordings keep their pitch and header during normalization',
+    () {
+      final source = wav([1000, -2000]);
+      final header = ByteData.sublistView(source);
+      header.setUint32(24, 16000, Endian.little);
+      header.setUint32(28, 32000, Endian.little);
+      final result = normalizedVoice(source);
+      expect(result.sublist(0, 44), source.sublist(0, 44));
+      expect(ByteData.sublistView(result).getInt16(44, Endian.little), 12000);
+    },
+  );
+  test(
+    'A high-rate size allowance cannot admit more than three minutes at a legacy rate',
+    () {
+      final source = voiceWav(Uint8List(16000 * 2 * 180 + 2));
+      final header = ByteData.sublistView(source);
+      header.setUint32(24, 16000, Endian.little);
+      header.setUint32(28, 32000, Endian.little);
+      expect(identical(normalizedVoice(source), source), true);
+    },
+  );
+  test(
     'Silence, loud audio, unknown formats and malformed headers pass through',
     () {
       for (final bytes in [

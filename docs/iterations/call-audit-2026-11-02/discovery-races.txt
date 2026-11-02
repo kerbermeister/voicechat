@@ -1,0 +1,26 @@
+00:00 +0: loading $REPO/docs/iterations/call-audit-2026-11-02/discovery_membership_probe.dart
+00:00 +0: Late discovery must not advertise a call after leave
+00:00 +0 -1: Late discovery must not advertise a call after leave [E]
+  Expected: null
+    Actual: <Instance of 'OngoingGroupCall'>
+  Eligibility must be rechecked after the awaited server response
+  
+  package:matcher                                                                   expect
+  package:flutter_test/src/widget_tester.dart 473:18                                expect
+  ../../docs/iterations/call-audit-2026-11-02/discovery_membership_probe.dart 29:7  main.<fn>
+  
+00:00 +0 -1: Late discovery must not advertise a call after ban
+00:00 +0 -2: Late discovery must not advertise a call after ban [E]
+  Expected: null
+    Actual: <Instance of 'OngoingGroupCall'>
+  Eligibility must be rechecked after the awaited server response
+  
+  package:matcher                                                                   expect
+  package:flutter_test/src/widget_tester.dart 473:18                                expect
+  ../../docs/iterations/call-audit-2026-11-02/discovery_membership_probe.dart 29:7  main.<fn>
+  
+00:00 +0 -2: Some tests failed.
+
+Failing tests:
+  $REPO/docs/iterations/call-audit-2026-11-02/discovery_membership_probe.dart: Late discovery must not advertise a call after ban
+  $REPO/docs/iterations/call-audit-2026-11-02/discovery_membership_probe.dart: Late discovery must not advertise a call after leave

@@ -56,3 +56,13 @@ Future<String> disablePushNotifications(
   String token, {
   http.Client Function()? createClient,
 }) => _change(url, token, false, createClient);
+
+@JS('VoiceChatPush.enabled')
+external JSPromise<JSBoolean> _enabled();
+Future<bool> pushNotificationsEnabled() async =>
+    (await _enabled().toDart).toDart;
+
+@JS('VoiceChatPush.permissionGranted')
+external JSBoolean _permissionGranted();
+Future<bool> pushNotificationsPermissionGranted() async =>
+    _permissionGranted().toDart;

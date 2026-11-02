@@ -17,11 +17,11 @@ import 'package:voicechat_probe/waveform_view.dart';
 import 'mobile_layout_test.dart' show LayoutClient, EmptyTimeline;
 
 Uint8List pcmWindows(List<int> amplitudes) {
-  final data = ByteData(amplitudes.length * 1600);
-  for (var i = 0; i < amplitudes.length * 800; i++) {
+  final data = ByteData(amplitudes.length * (voiceSampleRate ~/ 20) * 2);
+  for (var i = 0; i < amplitudes.length * (voiceSampleRate ~/ 20); i++) {
     data.setInt16(
       i * 2,
-      amplitudes[i ~/ 800] * (i.isEven ? 1 : -1),
+      amplitudes[i ~/ (voiceSampleRate ~/ 20)] * (i.isEven ? 1 : -1),
       Endian.little,
     );
   }

@@ -1,0 +1,8 @@
+Selected assertions from final fresh-receiver run; raw transport details omitted.
+QA_GROUP both audio receivers GCM kOk and RTP increases; source silent PASS
+QA_GROUP two receivers decode encrypted video; third joined late PASS
+QA_GROUP camera off/on and both receivers decode PASS
+QA_GROUP wrong key freezes only C while B decodes PASS
+QA_GROUP C reconnect with correct key resumes decoding PASS
+QA_GROUP creator leaves; remaining pair and new sender video PASS
+00:14 +1: All tests passed!

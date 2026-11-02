@@ -1,0 +1,18 @@
+{
+  "build": 44,
+  "source": "0dd2ff6644e57e23db2f37efcf78bd9284907c50",
+  "exact_signed_zip_launched": true,
+  "same_account": true,
+  "same_device": true,
+  "decrypted_history_fragments": 2,
+  "notification_switch_on": true,
+  "default_voice_quality_hz": 24000,
+  "voice_quality_48000_selected_through_ui": true,
+  "new_keychain_prompt_required": false,
+  "sparkle_update_pending": false,
+  "voice_quality_persistence_unit_test": "PASS",
+  "post_update_voice_quality_hz": 24000,
+  "owner_interacted_with_app_during_acceptance": true,
+  "native_voice_quality_persisted_hz": 24000,
+  "voice_quality_sparkle_persistence_isolated": false
+}

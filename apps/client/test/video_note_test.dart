@@ -106,6 +106,10 @@ void main() {
       testWidgets(
         'Video note preserves $previewSize camera proportions in $orientation',
         (tester) async {
+          tester.view.physicalSize = const Size(360, 800);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
           camera.previewSize = previewSize;
           camera.orientation = orientation;
           final held = ValueNotifier(true);

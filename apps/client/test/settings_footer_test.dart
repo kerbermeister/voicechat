@@ -68,6 +68,20 @@ void main() {
           lessThanOrEqualTo(64),
         );
         expect(tester.getSize(scroll).height, greaterThan(150));
+        final quality = find.byType(DropdownButtonFormField<int>);
+        await tester.ensureVisible(quality);
+        await tester.pumpAndSettle();
+        expect(find.text(scale == 1 ? '24 кГц' : '48 кГц'), findsOneWidget);
+        await tester.tap(quality);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('48 кГц').last);
+        await tester.pumpAndSettle();
+        expect(
+          (await SharedPreferences.getInstance()).getInt(
+            'voiceRecordingSampleRate',
+          ),
+          48000,
+        );
         await tester.tap(button);
         await tester.pumpAndSettle();
         expect(find.byType(AlertDialog), findsNothing);

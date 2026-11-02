@@ -25,7 +25,7 @@ class DirectCall implements VoiceCall {
   String _cameraFacing = 'user';
   bool get mirrorLocalVideo => _cameraFacing == 'user';
   final _streams = <mx.WrappedMediaStream, rtc.RTCVideoRenderer>{};
-  final _renderedTracks = <rtc.RTCVideoRenderer, List<String>>{};
+  final _renderedTracks = <rtc.RTCVideoRenderer, List<rtc.MediaStreamTrack>>{};
   final _statistics = CallStatistics();
   final audioLevels = AudioLevels();
   bool _readingLevels = false;
@@ -187,13 +187,13 @@ class DirectCall implements VoiceCall {
     mx.WrappedMediaStream stream,
     rtc.RTCVideoRenderer renderer,
   ) {
-    final tracks =
-        stream.stream?.getTracks().map((track) => track.id!).toList() ??
-        <String>[];
-    tracks.sort();
-    if (!listEquals(_renderedTracks[renderer], tracks)) {
+    final tracks = stream.stream?.getTracks() ?? <rtc.MediaStreamTrack>[];
+    // Native renegotiation can replace a stream/track wrapper while retaining
+    // its IDs. Rebind the renderer to the current native source in that case.
+    if (!identical(renderer.srcObject, stream.stream) ||
+        !listEquals(_renderedTracks[renderer], tracks)) {
       renderer.srcObject = stream.stream;
-      _renderedTracks[renderer] = tracks;
+      _renderedTracks[renderer] = tracks.toList();
     }
     if (video) {
       if (stream.isLocal()) {
@@ -422,10 +422,11 @@ class DirectCall implements VoiceCall {
         : _cameraFacing;
     final next = current == 'environment' ? 'user' : 'environment';
     if (!kIsWeb) {
-      if (!await rtc.Helper.switchCamera(track)) {
-        throw StateError('Camera switch unavailable');
-      }
-      _cameraFacing = next;
+      // Native returns whether the selected camera faces front; false is a
+      // successful switch to the rear camera. Failures throw PlatformException.
+      _cameraFacing = await rtc.Helper.switchCamera(track)
+          ? 'user'
+          : 'environment';
       changed();
       return;
     }
@@ -506,6 +507,41 @@ class DirectCall implements VoiceCall {
 
   @override
   Future<void> close() => _closing ??= _close();
+
+  Future<List<Map<String, Object>>> receivedVideoStatistics() async {
+    final reports = await call.pc?.getStats() ?? <rtc.StatsReport>[];
+    return [
+      for (final report in reports)
+        if (report.type == 'inbound-rtp' &&
+            (report.values['kind'] ?? report.values['mediaType']) == 'video')
+          {
+            for (final key in [
+              'packetsReceived',
+              'packetsLost',
+              'bytesReceived',
+              'frameWidth',
+              'frameHeight',
+              'framesReceived',
+              'framesDecoded',
+              'framesDropped',
+              'keyFramesDecoded',
+              'freezeCount',
+              'pliCount',
+              'nackCount',
+            ])
+              if (report.values[key] is num) key: report.values[key] as num,
+            for (final codec in reports)
+              if (codec.type == 'codec' && codec.id == report.values['codecId'])
+                if (const {
+                  'video/VP8',
+                  'video/VP9',
+                  'video/H264',
+                  'video/AV1',
+                }.contains(codec.values['mimeType']))
+                  'codec': codec.values['mimeType'] as String,
+          },
+    ];
+  }
 
   Future<void>? _closing;
   Future<void> _close() async {

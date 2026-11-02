@@ -1,0 +1,5 @@
+Selected assertions; raw SDP and transport details omitted.
+PASS: native call cycle 0; remote ended; accept, audio packets and DTLS
+PASS: native call cycle 1; remote ended; cancel before answer
+PASS: native call cycle 2; remote ended; accept, audio packets and DTLS
+00:06 +1: All tests passed!

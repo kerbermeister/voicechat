@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "platform": "Android15/API35 Google APIs emulator",
+  "physical_device": false,
+  "fixture_sha256": "f4f6f6909f75fadf7fd4680e68e9980992fd4d413ca29ddf4f08914cfb0a2c8b",
+  "tests_passed": 2,
+  "voice_pcm16_mono": [
+    {
+      "sample_rate": 16000,
+      "bytes": 34816
+    },
+    {
+      "sample_rate": 24000,
+      "bytes": 49920
+    },
+    {
+      "sample_rate": 48000,
+      "bytes": 92160
+    }
+  ],
+  "synthetic_microphone": true,
+  "subjective_quality_tested": false,
+  "video_codec": "VP8",
+  "camera_restart_cycles": 2,
+  "camera_clients_after_test": [],
+  "h264_hardware_tested": false,
+  "matrix_authorization_e2ee_tested": false,
+  "known_upstream_cleanup_warning": "streamDispose may report ConcurrentModificationException; native cameras disconnected and Active Camera Clients empty after this run"
+}

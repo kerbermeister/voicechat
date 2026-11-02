@@ -1,0 +1,19 @@
+{
+  "date": "2026-11-01",
+  "client_version": "1.16.5(44)",
+  "fixture_only": true,
+  "account_count_used": 2,
+  "alice_browser_devices_created": 2,
+  "normal_text_decrypted_on_bob": true,
+  "reply_decrypted_on_alice": true,
+  "active_device_delivery_after_revocation": true,
+  "new_message_visible_on_revoked_ui": false,
+  "sas_sequence_compared_on_both": true,
+  "sas_both_showed_confirmed": true,
+  "photo_ttl_gallery_remained_after_server_expiry": true,
+  "reply_cancel_erased_existing_draft": true,
+  "restored_history_after_reload": true,
+  "restored_edit_before_reload": "initial body observed; convergence time not measured",
+  "calls_to_real_users": 0,
+  "messages_to_real_users": 0
+}

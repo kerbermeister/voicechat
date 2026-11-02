@@ -33,10 +33,11 @@ class NativeDelegate extends Fake implements mx.WebRTCDelegate {
 }
 
 class NativeVoip extends Fake implements mx.VoIP {
-  NativeVoip(this.name);
+  NativeVoip(this.name, {NativeDelegate? delegate})
+    : delegate = delegate ?? NativeDelegate();
   final String name;
   @override
-  final delegate = NativeDelegate();
+  final NativeDelegate delegate;
   @override
   final calls = <VoipId, mx.CallSession>{};
   @override
@@ -53,6 +54,7 @@ class NativeVoip extends Fake implements mx.VoIP {
 class LocalSession extends mx.CallSession {
   LocalSession(super.opts);
   late LocalSession peer;
+  String wireSdp(String sdp) => sdp;
   final invited = Completer<void>();
   @override
   Future<String?> sendInviteToCall(
@@ -68,8 +70,10 @@ class LocalSession extends mx.CallSession {
     mx.SDPStreamMetadata? metadata,
   }) async {
     await peer.initWithInvite(
-      mx.CallType.kVoice,
-      rtc.RTCSessionDescription(sdp, type),
+      RegExp(r'^m=video ', multiLine: true).hasMatch(sdp)
+          ? mx.CallType.kVideo
+          : mx.CallType.kVoice,
+      rtc.RTCSessionDescription(wireSdp(sdp), type),
       metadata,
       lifetime,
       false,
@@ -90,7 +94,10 @@ class LocalSession extends mx.CallSession {
     mx.CallCapabilities? capabilities,
     mx.SDPStreamMetadata? metadata,
   }) async {
-    await peer.onAnswerReceived(rtc.RTCSessionDescription(sdp, type), metadata);
+    await peer.onAnswerReceived(
+      rtc.RTCSessionDescription(wireSdp(sdp), type),
+      metadata,
+    );
     return 'answer';
   }
 
@@ -145,7 +152,7 @@ class LocalSession extends mx.CallSession {
     if (!peer.callHasEnded) {
       await peer.onNegotiateReceived(
         metadata,
-        rtc.RTCSessionDescription(sdp, type),
+        rtc.RTCSessionDescription(wireSdp(sdp), type),
       );
     }
     return 'negotiate';

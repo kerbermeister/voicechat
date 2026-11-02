@@ -1,0 +1,7 @@
+test_seeded_1000_join_leave_expiry_recovery_transitions (__main__.CallStateAudit.test_seeded_1000_join_leave_expiry_recovery_transitions) ... ok
+test_twelve_concurrent_admissions_reserve_exactly_ten_slots (__main__.CallStateAudit.test_twelve_concurrent_admissions_reserve_exactly_ten_slots) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.805s
+
+OK

@@ -1,0 +1,81 @@
+{
+  "schema": 1,
+  "checked_at_utc": "2026-11-01T09:39:21.882026+00:00",
+  "app_version": "1.16.0+38",
+  "apk_sha256": "2174ff83454ec1a20b2e1e00cfb5e377e1f223ce67c1f9b42ff4451c07e3fc63",
+  "android": "15",
+  "api": "35",
+  "model": "sdk_gphone64_arm64",
+  "emulator": true,
+  "google_play_services_present": true,
+  "physical_device_tested": false,
+  "tests": {
+    "first_android_login_and_recovery_export": "passed",
+    "permission_denied_creates_no_push_binding": "passed",
+    "real_fcm_registration": "passed",
+    "foreground_suppresses_duplicate_system_alert": "passed",
+    "background_message_fcm_to_native_notification": "passed",
+    "fcm_after_background_process_death_without_flutter": "passed",
+    "background_incoming_call_style": "passed",
+    "remote_cancel_removes_native_call_notification": "passed",
+    "fcm_after_cold_android_boot_before_app_open": "passed",
+    "native_decline_without_flutter": "passed",
+    "native_call_expiry_45_seconds": "passed",
+    "locked_screen_native_video_call": "passed",
+    "private_chat_not_shown_above_pin_keyguard": "passed",
+    "answer_requires_system_pin_unlock": "passed",
+    "camera_and_microphone_not_enabled_before_unlock": "passed",
+    "actual_encrypted_group_message_synapse_to_fcm": "passed",
+    "group_notification_after_process_death": "passed",
+    "group_notification_tap_requires_pin_when_locked": "passed",
+    "group_notification_tap_opens_matching_room": "passed",
+    "group_message_decrypted_after_notification_tap": "passed",
+    "real_call_after_process_death_native_alert": "passed",
+    "real_call_answer_and_media": "not yet verified",
+    "real_voice_call_in_open_client_established": "passed",
+    "force_stop_blocks_push_until_manual_open": "passed",
+    "manual_open_does_not_ring_expired_call": "passed",
+    "offline_call_cancel_does_not_ring_after_network_restoration": "passed",
+    "disable_notifications_removes_server_binding": "passed",
+    "re_enable_restores_one_binding": "passed",
+    "call_notification_after_removal_from_recents": "passed"
+  },
+  "findings": [
+    {
+      "kind": "copy",
+      "file": "apps/client/lib/main.dart",
+      "issue": "Android notification settings still describe sync-only delivery although release38 contains FCM; verify and correct after runtime testing."
+    },
+    {
+      "kind": "cold_start",
+      "file": "apps/client/lib/main.dart",
+      "issue": "Notification opens room before ChatActions is initialized; null assertion actions!. Candidate39 delays notification consumption until chat actions and VoIP are installed. Exact APK retest pending."
+    }
+  ],
+  "process_death_precondition": {
+    "pid_absent": true,
+    "notification_update_before": 1793526351198,
+    "notification_update_after": 1793526426680
+  },
+  "emulator_host_incidents": [
+    {
+      "kind": "QEMU main loop hang in Vulkan software renderer",
+      "voicechat_crash": false,
+      "affected_checks_repeated": true
+    },
+    {
+      "kind": "QEMU main loop and both virtual CPU threads hung during real incoming call; subsequent software renderer restart reported invalid ColorBuffer",
+      "affected_check": "real call answer",
+      "result": "Host renderer and disabled host audio allowed continued testing; warm real call established. A separate cold-start client exception was found and fixed in candidate39."
+    }
+  ],
+  "expiry_observation_seconds": 48.3,
+  "renderer": "Receiver host / caller swiftshader; both no host audio; lowered 540x1200 display for later tests",
+  "group_checks": {
+    "room_is_direct": false,
+    "encryption": "m.megolm.v1.aes-sha2",
+    "real_ui_messages_sent": 2,
+    "exact_matrix_event_matched_to_fcm_delivery": true,
+    "process_absent_before_second_message": true
+  }
+}

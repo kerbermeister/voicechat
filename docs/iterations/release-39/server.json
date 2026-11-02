@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "source": "8dafa875309c606da17c35dd2d673fe81a07c98e",
+  "mode": "web",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41300741162",
+  "current_baseline": "bdd437255c1bb7d798a95cbc41292260d0d14b6ea55dbc7a2e7a22a895fc2642",
+  "previous_baseline": "cd9b5e6f4581209d7e3220161d5e9b571f2437b415d290022c1eac6afa860305",
+  "data_identity_preserved": true,
+  "non_web_containers_unchanged": 12,
+  "healthy": true,
+  "images": {
+    "voicechat-edge-a-web-1": "ghcr.io/kerbermeister/voicechat/web@sha256:53519cfac2fe78588dce13947046286ae6ca3d48bd3bf14d9fc3d6b63319945c",
+    "voicechat-edge-a-turn-1": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+    "voicechat-edge-a-route-health-1": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+    "voicechat-synapse-1": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+    "voicechat-control-1": "ghcr.io/kerbermeister/voicechat/control@sha256:f80556c7913e54060e94b023a929d845d4252699e1b0d3c9b5c3f0eef46d8ca3",
+    "voicechat-shared-front-ingress-1": "haproxy:3.2.26-alpine@sha256:5893840576071e6217cd52ebdcc14f454c6f7a631056fa6f4e0f40d3cac4215b",
+    "voicechat-postgres-1": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24"
+  },
+  "public_version": "1.16.1+39"
+}

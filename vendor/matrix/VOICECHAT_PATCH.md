@@ -35,3 +35,11 @@ window and current recipients there, so a slow completed upload cannot publish
 an already-paused transaction or its file keys. Existing callers omit the guard
 and retain their behavior. A request already sent to the homeserver cannot be
 recalled by this hook. Covered by `apps/client/test/media_publication_guard_test.dart`.
+
+### Restored edit aggregation (2 November 2026)
+
+`Room.getTimeline` refreshes relation aggregation after initial decryption. Its
+constructor indexed the encrypted placeholders before decryption, leaving edits
+invisible until reopening even when their plaintext had been restored. Both
+outer-relation variants are covered by `apps/client/test/restored_edit_test.dart`.
+No encryption, trust or protocol change.

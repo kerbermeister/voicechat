@@ -77,6 +77,13 @@ class ProvenMaster implements CrossSigningKey {
   @override
   bool directVerified = false;
   @override
+  bool hasValidSignatureChain({
+    bool verifiedOnly = true,
+    Set<String>? visited,
+    Set<String>? onlyValidateUserIds,
+    bool verifiedByTheirMasterKey = false,
+  }) => false;
+  @override
   Future<void> setVerified(bool value, [bool sign = true]) async =>
       directVerified = value;
   @override
@@ -84,12 +91,9 @@ class ProvenMaster implements CrossSigningKey {
 }
 
 class SignedDevice extends PinDevice {
-  SignedDevice(super.userId, super.deviceId, super.ed25519Key);
-  @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      invocation.memberName == #hasValidSignatureChain
-      ? true
-      : super.noSuchMethod(invocation);
+  SignedDevice(super.userId, super.deviceId, super.ed25519Key) {
+    signedByMaster = true;
+  }
 }
 
 class WaitingVerification extends KeyVerification {

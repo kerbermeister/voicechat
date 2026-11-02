@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'personal_room.dart';
 import 'message_motion.dart';
 import 'message_media_cache.dart';
@@ -164,6 +165,7 @@ class _ChatPaneState extends State<ChatPane>
   final recordingClock = Stopwatch();
   Timer? recordingMeter;
   PcmLevelMeter liveMeter = PcmLevelMeter();
+  int recordingSampleRate = voiceSampleRate;
 
   @override
   void initState() {
@@ -485,6 +487,7 @@ class _ChatPaneState extends State<ChatPane>
   }
 
   void typing(String value) {
+    if (widget.room.client.userID == null) return;
     final now = DateTime.now();
     if (value.isEmpty || now.difference(lastTyping).inSeconds >= 4) {
       lastTyping = now;
@@ -555,6 +558,7 @@ class _ChatPaneState extends State<ChatPane>
         reply: reply,
       );
       draftPhotos.clear();
+      if (!mounted) return;
       if (input.text == caption) input.clear();
       if (mounted) setState(() {});
     }
@@ -584,7 +588,7 @@ class _ChatPaneState extends State<ChatPane>
           );
           final sent = draftFiles.removeAt(0);
           caption = '';
-          if (input.text == text) input.clear();
+          if (mounted && input.text == text) input.clear();
           if (mounted) {
             setState(() {});
             await WidgetsBinding.instance.endOfFrame;
@@ -619,6 +623,7 @@ class _ChatPaneState extends State<ChatPane>
             : edit!.content['dev.voicechat.ttl_seconds'] as int?,
       );
     }
+    if (!mounted) return;
     if (input.text == text) {
       input.clear();
       linkPreviews.clear();
@@ -970,21 +975,25 @@ class _ChatPaneState extends State<ChatPane>
     }
     await widget.actions.refreshPolicy();
     recordingFailed = false;
-    liveMeter = PcmLevelMeter();
+    recordingSampleRate = preferredVoiceSampleRate(
+      await SharedPreferences.getInstance(),
+    );
+    liveMeter = PcmLevelMeter(sampleRate: recordingSampleRate);
     pcm = BytesBuilder(copy: false);
     recordingDone = Completer<void>();
     final stream = await recorder.startStream(
-      const RecordConfig(
+      RecordConfig(
         encoder: AudioEncoder.pcm16bits,
-        sampleRate: 16000,
+        sampleRate: recordingSampleRate,
         numChannels: 1,
         autoGain: true,
+        noiseSuppress: true,
       ),
     );
     recordingStream = stream.listen(
       (chunk) {
         if (pcm!.length + chunk.length <=
-            16000 * 2 * widget.actions.policy.voiceMaxSeconds) {
+            recordingSampleRate * 2 * widget.actions.policy.voiceMaxSeconds) {
           pcm!.add(chunk);
           liveMeter.add(chunk);
         } else if (!stopping) {
@@ -1040,10 +1049,10 @@ class _ChatPaneState extends State<ChatPane>
       final bytes = Uint8List.sublistView(raw, 0, raw.length - raw.length % 2);
       if (send && bytes.isNotEmpty) {
         unsentVoice = mx.MatrixAudioFile(
-          bytes: voiceWav(bytes),
+          bytes: voiceWav(bytes, sampleRate: recordingSampleRate),
           name: 'Голосовое сообщение.wav',
           mimeType: 'audio/wav',
-          duration: bytes.length * 1000 ~/ 32000,
+          duration: bytes.length * 1000 ~/ (recordingSampleRate * 2),
         );
         unsentWave = pcmWaveform(bytes);
         voiceReply = reply;
@@ -2570,9 +2579,9 @@ class _ChatPaneState extends State<ChatPane>
                       trailing: IconButton(
                         tooltip: 'Отменить',
                         onPressed: () => setState(() {
+                          if (edit != null) input.clear();
                           reply = null;
                           edit = null;
-                          input.clear();
                         }),
                         icon: const Icon(Icons.close),
                       ),
@@ -3293,7 +3302,9 @@ class _ChatPaneState extends State<ChatPane>
           })
           .catchError((Object _) {}),
     );
-    unawaited(widget.room.setTyping(false).catchError((Object _) {}));
+    if (widget.room.client.userID != null) {
+      unawaited(widget.room.setTyping(false).catchError((Object _) {}));
+    }
     input.dispose();
     searchFocus.dispose();
     composerFocus.dispose();
@@ -3363,8 +3374,12 @@ class _AttachmentViewState extends State<AttachmentView> {
 
   Future<mx.MatrixFile> load() async {
     final size = widget.event.infoMap['size'];
+    final maxBytes = widget.event.messageType == mx.MessageTypes.Audio
+        ? maxVoiceRecordingBytes
+        : maxAttachmentBytes;
     if (size is! num ||
-        size > maxAttachmentBytes ||
+        !size.isFinite ||
+        size > maxBytes ||
         size <= 0 ||
         !widget.event.isAttachmentEncrypted) {
       throw StateError('Unencrypted or oversized attachment refused');
@@ -3593,8 +3608,12 @@ class _AttachmentViewState extends State<AttachmentView> {
           );
         }
         return InkWell(
-          onTap: () =>
-              showPhotos(context, [() async => snapshot.data!.bytes], 0),
+          onTap: () => showPhotos(
+            context,
+            [() async => snapshot.data!.bytes],
+            0,
+            event: widget.event,
+          ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
             child: Image.memory(

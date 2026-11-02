@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'chat_actions.dart';
 import 'temporary_message.dart';
+import 'hidden_messages.dart';
 
 Future<({mx.Room room, String? event})?> searchHistory(
   BuildContext context,
@@ -23,6 +24,7 @@ class _HistorySearch extends StatefulWidget {
 
 class _HistorySearchState extends State<_HistorySearch> {
   Timer? expiration;
+  StreamSubscription<dynamic>? sync;
   final input = TextEditingController();
   final messages = <({mx.Event event, mx.Event shown})>[];
   bool busy = false;
@@ -35,6 +37,9 @@ class _HistorySearchState extends State<_HistorySearch> {
   @override
   void initState() {
     super.initState();
+    sync = widget.client.onSync.stream.listen((_) {
+      if (mounted) setState(() {});
+    });
     load();
   }
 
@@ -104,6 +109,10 @@ class _HistorySearchState extends State<_HistorySearch> {
             .where(
               (e) =>
                   query.isNotEmpty &&
+                  e.event.room.membership == mx.Membership.join &&
+                  widget.client.rooms.contains(e.event.room) &&
+                  !messageHidden(e.event) &&
+                  !e.event.redacted &&
                   !messageExpired(e.event) &&
                   messageSearchText(e.shown).toLowerCase().contains(query),
             )
@@ -202,6 +211,7 @@ class _HistorySearchState extends State<_HistorySearch> {
   @override
   void dispose() {
     expiration?.cancel();
+    unawaited(sync?.cancel());
     input.dispose();
     super.dispose();
   }

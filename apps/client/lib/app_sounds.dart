@@ -23,9 +23,11 @@ class AppSounds {
   VoiceCall? _observedCall;
   Future<void> _ringWrites = Future.value();
   final Future<void> Function(String room, String event)? onReceived;
+  final Future<bool> Function()? systemIncomingRinging;
   AppSounds(
     this.client, {
     this.onReceived,
+    this.systemIncomingRinging,
     AudioPlayer? effect,
     AudioPlayer? ringing,
   }) : effect = effect ?? AudioPlayer(),
@@ -72,6 +74,11 @@ class AppSounds {
   Future<void> _play(AudioPlayer player, String asset) async {
     if (!enabled || _closed) return;
     try {
+      if (player == ringing &&
+          asset == 'ringtone' &&
+          await systemIncomingRinging?.call() == true) {
+        return; // The insistent Android notification already owns this ringtone.
+      }
       if (kIsWeb) {
         blocked = !await playBrowserSound(
           player == ringing ? 'ring' : 'effect',

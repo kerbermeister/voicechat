@@ -48,15 +48,18 @@ class ContactService extends ChangeNotifier {
     _services[client] = this;
   }
   static ContactService? of(Client client) => _services[client];
-  bool acceptsRoom(String roomId, String peer) => requests.any(
-    (r) =>
-        r.roomId == roomId &&
-        r.peer(client.userID!) == peer &&
-        r.state == 'accepted',
-  );
+  bool acceptsRoom(String roomId, String peer) =>
+      client.userID != null &&
+      requests.any(
+        (r) =>
+            r.roomId == roomId &&
+            r.peer(client.userID!) == peer &&
+            r.state == 'accepted',
+      );
   Set<String> get acceptedUsers => {
     for (final r in requests)
-      if (r.state == 'accepted') r.peer(client.userID!),
+      if (client.userID != null && r.state == 'accepted')
+        r.peer(client.userID!),
   };
   Future<GetPresenceResponse> presence(String userId) async {
     if (!acceptedUsers.contains(userId)) {

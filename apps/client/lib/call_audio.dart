@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'call_probe.dart';
@@ -7,6 +9,41 @@ import 'call_audio_platform.dart';
 
 /// Local receiver gain only; never changes another participant's microphone.
 class CallAudio {
+  static const _androidAudio = MethodChannel('livekit_client');
+  bool _directAudioStarted = false;
+  Future<void> startDirectAudio() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    // LiveKit disables flutter_webrtc's AudioSwitch when its plugin registers.
+    await _androidAudio.invokeMethod<void>('configureAndroidAudioSession');
+    _directAudioStarted = true;
+  }
+
+  Future<void> stopDirectAudio() async {
+    if (!_directAudioStarted) return;
+    _directAudioStarted = false;
+    await _androidAudio.invokeMethod<void>('stopAndroidAudioSession');
+  }
+
+  bool speakerEnabled = false;
+
+  Future<void> toggleSpeaker(VoiceCall call) async {
+    if (!kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.android &&
+        _call != call) {
+      reset(call);
+    }
+    final enabled = !speakerEnabled;
+    if (call is DirectCall && defaultTargetPlatform != TargetPlatform.android) {
+      await rtc.Helper.setSpeakerphoneOn(enabled);
+    } else {
+      await lk.AudioManager.instance.setSpeakerOutputPreferred(
+        enabled,
+        force: enabled,
+      );
+    }
+    speakerEnabled = enabled;
+  }
+
   final levels = <String, double>{};
   final _applied = <rtc.MediaStreamTrack, double>{};
   VoiceCall? _call;
@@ -30,6 +67,12 @@ class CallAudio {
   }
 
   void reset(VoiceCall? call) {
+    speakerEnabled =
+        !kIsWeb &&
+            defaultTargetPlatform == TargetPlatform.android &&
+            call != null
+        ? lk.AudioManager.instance.isSpeakerOutputPreferred
+        : call?.video ?? false;
     for (final track in _applied.keys) {
       if (track.id != null) forgetCallTrackVolume(track.id!);
     }

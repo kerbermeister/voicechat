@@ -1,0 +1,15 @@
+{
+  "source": "39d6635daea3c3a331554ee01f1413763473aead",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41331303944",
+  "mode": "web",
+  "version": {
+    "app_name": "voicechat_probe",
+    "version": "1.16.2",
+    "build_number": "40",
+    "package_name": "voicechat_probe"
+  },
+  "unchanged_other_containers": 12,
+  "backend_unchanged": true,
+  "rollback_pointer_matches_previous_baseline": true,
+  "version_cache_control": "no-cache"
+}

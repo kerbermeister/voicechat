@@ -1,0 +1,17 @@
+{
+  "commit": "f44855e93180f83f365688844c47a59c4cebf66e",
+  "sourceDirty": false,
+  "distributable": true,
+  "signingMode": "personal-adhoc",
+  "build": "45",
+  "version": "1.16.6",
+  "minimumOS": "12.0",
+  "architecture": "arm64",
+  "feedURL": "https://univc.duckdns.org/updates/macos/appcast.xml",
+  "previousFeedSha256": "37001ecf1739583f240241f73d5f5976ae408ba66597dea4e243757f2adf634e",
+  "files": {
+    "VoiceChat.dmg": "a7963a3b0730f6b82d79865bef3967022577183a0a00724fa0f403dcf8530dda",
+    "VoiceChat.zip": "9a859d03b2ab6be0325b36febcc4240700af298046e8f6b6e566881805583a1b",
+    "appcast.xml": "7ee108ccfd54191c1a329c141d631158336f9aa772969a7025062fd081c05769"
+  }
+}

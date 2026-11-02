@@ -1,10 +1,31 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:typed_data';
 import 'dart:math';
 
-/// Consecutive 50 ms RMS windows of PCM16 mono at 16 kHz, independent of chunks.
+const voiceSampleRate = 24000;
+const voiceSampleRates = [16000, 24000, 48000];
+const voiceSampleRateKey = 'voiceRecordingSampleRate';
+int preferredVoiceSampleRate(SharedPreferences prefs) {
+  final value = prefs.get(voiceSampleRateKey);
+  return value is int && voiceSampleRates.contains(value)
+      ? value
+      : voiceSampleRate;
+}
+
+const voiceBytesPerSecond = voiceSampleRate * 2;
+const maxVoiceRecordingBytes = 44 + 48000 * 2 * 180;
+
+/// Consecutive 50 ms RMS windows of PCM16 mono, independent of chunks.
 class PcmLevelMeter {
   static const interval = Duration(milliseconds: 50);
   static const historySize = 56;
+  final int sampleRate;
+  PcmLevelMeter({this.sampleRate = voiceSampleRate}) {
+    if (!voiceSampleRates.contains(sampleRate)) {
+      throw ArgumentError('Unsupported voice sample rate');
+    }
+  }
+  int get samplesPerWindow => sampleRate ~/ 20;
   final levels = <int>[];
   double _squares = 0;
   int _samples = 0;
@@ -20,7 +41,7 @@ class PcmLevelMeter {
       _lowByte = null;
       final sample = (word >= 32768 ? word - 65536 : word) / 32768;
       _squares += sample * sample;
-      if (++_samples == 800) {
+      if (++_samples == samplesPerWindow) {
         levels.add((sqrt(_squares / _samples) * 1024).round().clamp(0, 1024));
         if (levels.length > historySize) levels.removeAt(0);
         _samples = 0;
@@ -30,9 +51,12 @@ class PcmLevelMeter {
   }
 }
 
-/// PCM16 mono, 16 kHz; the recorder streams into memory, never a plaintext file.
-Uint8List voiceWav(Uint8List pcm) {
-  if (pcm.isEmpty || pcm.length.isOdd || pcm.length > 16000 * 2 * 180) {
+/// PCM16 mono; the recorder streams into memory, never a plaintext file.
+Uint8List voiceWav(Uint8List pcm, {int sampleRate = voiceSampleRate}) {
+  if (!voiceSampleRates.contains(sampleRate) ||
+      pcm.isEmpty ||
+      pcm.length.isOdd ||
+      pcm.length > sampleRate * 2 * 180) {
     throw ArgumentError('Voice recording must contain 1 sample to 3 minutes');
   }
   final bytes = Uint8List(44 + pcm.length);
@@ -46,8 +70,8 @@ Uint8List voiceWav(Uint8List pcm) {
   header.setUint32(16, 16, Endian.little);
   header.setUint16(20, 1, Endian.little);
   header.setUint16(22, 1, Endian.little);
-  header.setUint32(24, 16000, Endian.little);
-  header.setUint32(28, 32000, Endian.little);
+  header.setUint32(24, sampleRate, Endian.little);
+  header.setUint32(28, sampleRate * 2, Endian.little);
   header.setUint16(32, 2, Endian.little);
   header.setUint16(34, 16, Endian.little);
   label(36, 'data');
@@ -80,7 +104,7 @@ List<int> pcmWaveform(Uint8List pcm, {int bins = 64}) {
 /// Unknown formats and near-silence keep their original bytes.
 Uint8List normalizedVoice(Uint8List bytes) {
   if (bytes.length < 46 ||
-      bytes.length > 44 + 16000 * 2 * 180 ||
+      bytes.length > maxVoiceRecordingBytes ||
       bytes.length.isOdd) {
     return bytes;
   }
@@ -92,6 +116,7 @@ Uint8List normalizedVoice(Uint8List bytes) {
     return true;
   }
 
+  final sampleRate = data.getUint32(24, Endian.little);
   if (!label(0, 'RIFF') ||
       !label(8, 'WAVE') ||
       !label(12, 'fmt ') ||
@@ -100,8 +125,9 @@ Uint8List normalizedVoice(Uint8List bytes) {
       data.getUint32(16, Endian.little) != 16 ||
       data.getUint16(20, Endian.little) != 1 ||
       data.getUint16(22, Endian.little) != 1 ||
-      data.getUint32(24, Endian.little) != 16000 ||
-      data.getUint32(28, Endian.little) != 32000 ||
+      !voiceSampleRates.contains(sampleRate) ||
+      bytes.length > 44 + sampleRate * 2 * 180 ||
+      data.getUint32(28, Endian.little) != sampleRate * 2 ||
       data.getUint16(32, Endian.little) != 2 ||
       data.getUint16(34, Endian.little) != 16 ||
       data.getUint32(40, Endian.little) != bytes.length - 44) {

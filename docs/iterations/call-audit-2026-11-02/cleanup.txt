@@ -1,0 +1,1 @@
+PASS: only audit room deleted; SFU ID/StartedAt/RestartCount unchanged

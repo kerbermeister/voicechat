@@ -132,6 +132,18 @@ object AppNotifications {
                 result.success(null)
             }
             "end" -> { session = null; enabled = false; clear(); result.success(null) }
+            "isRinging" -> result.success(Build.VERSION.SDK_INT >= 23 && manager.activeNotifications.any {
+                it.notification.category == Notification.CATEGORY_CALL &&
+                    (it.tag?.startsWith(PREFIX) == true || it.tag?.startsWith("vc-push:") == true)
+            })
+            "dismissCall" -> {
+                call.argument<String>("id")?.let { id ->
+                    manager.cancel(PREFIX + token + ":" + id, 0)
+                    manager.cancel("vc-push:" + id, 0)
+                    IncomingCallActivity.dismissSession(id)
+                }
+                result.success(null)
+            }
             "show" -> {
                 val room = call.argument<String>("room")
                 val id = call.argument<String>("id")

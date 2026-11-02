@@ -1,12 +1,19 @@
+import 'unread_messages.dart';
+
 import 'dart:math' as math;
+
 import 'chat_scale.dart';
+
 import 'package:flutter/gestures.dart';
+
 import 'hidden_messages.dart';
 import 'personal_room.dart';
 import 'message_receipts.dart';
 import 'app_motion.dart';
+
 import 'package:flutter/material.dart';
 import 'package:matrix/matrix.dart' as mx;
+
 import 'typing_indicator.dart';
 import 'stream_badge.dart';
 import 'avatar_image.dart';
@@ -287,6 +294,70 @@ class _ConversationListState extends State<ConversationList> {
   String query = '';
   String? menuRoom;
   final peopleScroll = ScrollController(), groupsScroll = ScrollController();
+  final _unreadCounts =
+      <String, ({int raw, String? last, String marker, int visible})>{};
+  final _readingUnread = <String>{};
+
+  int unreadCount(mx.Room room) {
+    final raw = serverUnreadCount(room);
+    if (raw == 0) return 0;
+    final saved = _unreadCounts[room.id];
+    return saved != null &&
+            saved.raw == raw &&
+            saved.last == room.lastEvent?.eventId &&
+            saved.marker == room.fullyRead
+        ? saved.visible
+        : raw;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    refreshUnread();
+  }
+
+  @override
+  void didUpdateWidget(covariant ConversationList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.client != widget.client) _unreadCounts.clear();
+    refreshUnread();
+  }
+
+  void refreshUnread() {
+    for (final room in widget.client.rooms) {
+      if (serverUnreadCount(room) == 0) {
+        _unreadCounts.remove(room.id);
+        continue;
+      }
+      if (!_readingUnread.add(room.id)) continue;
+      final client = widget.client;
+      final count = serverUnreadCount(room);
+      final last = room.lastEvent?.eventId;
+      final marker = room.fullyRead;
+      visibleUnreadCount(room)
+          .then((value) {
+            if (mounted &&
+                widget.client == client &&
+                serverUnreadCount(room) == count &&
+                room.lastEvent?.eventId == last &&
+                room.fullyRead == marker) {
+              setState(
+                () => _unreadCounts[room.id] = (
+                  raw: count,
+                  last: last,
+                  marker: marker,
+                  visible: value,
+                ),
+              );
+            }
+          })
+          .catchError((Object _) {
+            // Preserve the server badge when the local interval is unavailable.
+          })
+          .whenComplete(() => _readingUnread.remove(room.id));
+    }
+  }
+
   @override
   void dispose() {
     peopleScroll.dispose();
@@ -401,8 +472,7 @@ class _ConversationListState extends State<ConversationList> {
               itemBuilder: (context, index) {
                 final room = rooms[index];
                 final name = roomDisplayName(room);
-                final unread =
-                    room.unreadMessageCount ?? room.notificationCount;
+                final unread = unreadCount(room);
                 return LayoutBuilder(
                   builder: (context, box) {
                     final avatarSize = math.min(
@@ -508,7 +578,7 @@ class _ConversationListState extends State<ConversationList> {
               r.membership == mx.Membership.join &&
               !widget.hiddenDirectRooms.contains(r.id) &&
               r.isDirectChat != groups &&
-              (r.unreadMessageCount ?? r.notificationCount) > 0,
+              unreadCount(r) > 0,
         )
         .length;
     Widget tab(String label, int count) => Row(
@@ -722,9 +792,7 @@ class _ConversationListState extends State<ConversationList> {
                             ),
                             itemBuilder: (_, index) {
                               final room = rooms[index];
-                              final messageCount =
-                                  room.unreadMessageCount ??
-                                  room.notificationCount;
+                              final messageCount = unreadCount(room);
                               final selected = room.id == widget.selected?.id;
                               final presence = roomPresence(room);
                               final voice =

@@ -1,0 +1,11 @@
+{
+  "build": 40,
+  "source": "39d6635daea3c3a331554ee01f1413763473aead",
+  "exact_signed_zip_launched": true,
+  "same_account": true,
+  "same_device": true,
+  "decrypted_history_fragments": 2,
+  "notification_switch_on": true,
+  "keychain_confirmed_by_owner": true,
+  "sparkle_update_pending": true
+}

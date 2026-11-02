@@ -39,8 +39,10 @@ class GroupCalls {
       room.membership == Membership.join;
 
   void watch(Room? room) {
-    if (_closed || _room?.id == room?.id) return;
-    _room = room != null && _eligible(room) ? room : null;
+    if (_closed) return;
+    final next = room != null && _eligible(room) ? room : null;
+    if (_room == next) return;
+    _room = next;
     current = null;
     _stale?.cancel();
     unawaited(refresh());
@@ -58,6 +60,7 @@ class GroupCalls {
           body: jsonEncode({'room_id': room.id}),
         )
         .timeout(const Duration(seconds: 5));
+    if (_closed || !_eligible(room)) return null;
     // Compatibility with servers before call discovery; ordinary calling remains available.
     if (response.statusCode == 404) return null;
     if (response.statusCode != 200) {
@@ -100,12 +103,20 @@ class GroupCalls {
 
   Future<void> refresh() async {
     final room = _room;
-    if (_closed || _loading || room == null) return;
+    if (_closed || room == null) return;
+    if (!_eligible(room)) {
+      final hadCurrent = current != null;
+      current = null;
+      _stale?.cancel();
+      if (hadCurrent) changed();
+      return;
+    }
+    if (_loading) return;
     _loading = true;
     try {
       final next = await find(room);
       if (_closed || _room != room) return;
-      current = next;
+      current = _eligible(room) ? next : null;
       _stale?.cancel();
       if (next != null) {
         _stale = Timer(const Duration(seconds: 30), () {

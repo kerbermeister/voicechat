@@ -1,0 +1,5 @@
+Selected assertions; raw SDP and transport details omitted.
+QA_GROUP two receivers decode encrypted video; third joined late PASS
+QA_GROUP camera off/on and both receivers decode PASS
+00:40 +0 -1: Some tests failed.
+After restoring the key without reconnect, advancing(2) timed out after25s. Exploratory SDK fixture; not application authorization.
