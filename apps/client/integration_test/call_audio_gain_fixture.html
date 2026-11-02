@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>VoiceChat real Web Audio gain probe</title>
+<style>body{font:16px system-ui;max-width:1000px;margin:32px auto;padding:16px}pre{white-space:pre-wrap;overflow-wrap:anywhere}button{padding:12px}</style>
+<h1>Real Web Audio gain probe</h1>
+<p>Synthetic local tone; measured before a silent test sink. No microphone, account, recording or RTP. This does not measure physical lip-sync or iPhone routing.</p>
+<button id="run">Run gain probe</button>
+<pre id="result" role="status">Ready</pre>
+<script>
+// Keep the product's source/gain graph and use real browser DSP. Only the final
+// output is instrumented and silenced, so the test cannot play the tone aloud.
+const NativeAudioContext = window.AudioContext || window.webkitAudioContext;
+const graphs = [], contexts = [];
+window.AudioContext = class extends NativeAudioContext {
+  constructor(...args) { super(...args); contexts.push(this); }
+  createGain() {
+    const gain = super.createGain(), meter = super.createAnalyser(), silence = super.createGain();
+    meter.fftSize = 2048; silence.gain.value = 0;
+    meter.connect(silence); silence.connect(this.destination);
+    const graph = {meter, released:false}; graphs.push(graph);
+    const connect = gain.connect.bind(gain), disconnect = gain.disconnect.bind(gain);
+    gain.connect = (destination, ...args) => connect(destination === this.destination ? meter : destination, ...args);
+    gain.disconnect = (...args) => {
+      disconnect(...args); meter.disconnect(); silence.disconnect(); graph.released = true;
+    };
+    return gain;
+  }
+};
+</script>
+<script src="media_audio.js"></script>
+<script>
+const result = document.querySelector('#result');
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+function check(condition, message) { if (!condition) throw new Error(message); }
+function activeGraph() {
+  const active = graphs.filter(graph => !graph.released);
+  check(active.length === 1, `Expected one active participant graph, found ${active.length}`);
+  return active[0];
+}
+async function rms() {
+  await delay(300); // Let the product's 20ms gain ramp settle.
+  const meter = activeGraph().meter, samples = new Float32Array(meter.fftSize);
+  let energy = 0;
+  for (let n = 0; n < 20; n++) {
+    meter.getFloatTimeDomainData(samples);
+    energy += samples.reduce((sum, value) => sum + value * value, 0) / samples.length;
+    await delay(25);
+  }
+  return Math.sqrt(energy / 20);
+}
+document.querySelector('#run').onclick = async event => {
+  event.target.disabled = true;
+  result.textContent = 'Running real DSP and DOM replacement checks';
+  const sourceContext = new NativeAudioContext();
+  contexts.push(sourceContext);
+  const sourceReady = sourceContext.resume(); // Stay in the trusted click.
+  const destination = sourceContext.createMediaStreamDestination();
+  const oscillator = sourceContext.createOscillator(), amplitude = sourceContext.createGain();
+  oscillator.frequency.value = 440; amplitude.gain.value = .01;
+  oscillator.connect(amplitude); amplitude.connect(destination); oscillator.start();
+  const track = destination.stream.getAudioTracks()[0];
+  let element;
+  try {
+    await sourceReady;
+    element = document.createElement('audio');
+    element.srcObject = destination.stream; document.body.append(element);
+    const levels = {}, measurements = [];
+    for (const level of [0, 1, 2, .5, 0]) {
+      await VoiceChatAudio.setCallVolume(track.id, level);
+      check(element.muted, 'Raw element became audible beside the gain graph');
+      levels[level] = await rms();
+      measurements.push({level, rms:levels[level]});
+      if (level === 0) check(levels[level] < 1e-7, 'Zero gain did not silence PCM');
+    }
+    check(levels[0] < 1e-7, 'Zero gain did not silence PCM');
+    check(levels[1] > .003, 'Unity gain produced no meaningful PCM');
+    check(Math.abs(levels[2] / levels[1] - 2) < .1, '200% did not double PCM amplitude');
+    check(Math.abs(levels[.5] / levels[1] - .5) < .05, '50% did not halve PCM amplitude');
+    await VoiceChatAudio.setCallVolume(track.id, .5);
+    const replacement = document.createElement('audio');
+    replacement.srcObject = destination.stream;
+    element.replaceWith(replacement); element = replacement;
+    const replaced = await rms();
+    check(element.muted, 'Replacement raw element was not muted');
+    check(Math.abs(replaced / levels[1] - .5) < .05, 'Replacement lost the receiver level');
+    result.textContent = 'PASS AUDIO_GAIN_PROOF ' + JSON.stringify({
+      real_browser_dsp:true, source:'synthetic local oscillator',
+      measurements, rms_by_level:levels, replacement_rms:replaced,
+      active_graphs:graphs.filter(graph => !graph.released).length,
+      doubled_amplitude:true, half_amplitude:true, silent_zero:true,
+      physical_device:false, rtp_tested:false, physical_lip_sync_measured:false,
+      output_selection_tested:false, microphone_used:false, media_saved:false,
+    });
+  } catch (error) {
+    result.textContent = 'FAIL: ' + error;
+  } finally {
+    oscillator.stop(); track.stop(); element?.remove();
+    VoiceChatAudio.forgetCallVolume(track.id);
+    await Promise.allSettled(contexts.map(context => context.close()));
+  }
+};
+</script>
+</html>

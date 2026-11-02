@@ -2268,3 +2268,16 @@ reordering/replay, slot reuse/exhaustion и fallback остаются обяза
 скачков качества этим не закрыты; готовность аппаратных UA-02/04/05/08/09/14 не
 повышена. [Свидетельство](iterations/call-network-lab-2026-11-02/key-preinstall-platforms.json),
 [задачи/ограничения](research/call-optimization-2026-11-02.md).
+
+
+OPT-08/UA-08/09, после51/02.11 — настоящий Web Audio DSP точного production
+`media_audio.js` прошёл в Chromium:0→100→200→50→0% меняют PCM RMS ожидаемо;
+оба нуля проверены отдельно. Замена DOM-проигрывателя сохраняет50%, один активный
+gain graph и muted исходного player. Только выход инструментирован analyser и
+нулевым test sink; синтетический тон вслух не воспроизводился. Runtime не менялся.
+Это не RTP, не физическая громкость/route iPhone и не A/V-маркер: H01/H06,
+UA-08/09 и конечный lip-sync остаются открытыми. [Измерения/границы](iterations/call-network-lab-2026-11-02/audio-gain-dsp.json).
+
+CI210/211/source2eef49b общего стенда SUCCESS; tag-CI209/sourcee44a726 после
+сбоя распаковки NDK повторён на том же коде и SUCCESS. Это технические проверки,
+готовность физической приёмки не повышена. [CI-свидетельство](iterations/call-network-lab-2026-11-02/ci-verification.json).

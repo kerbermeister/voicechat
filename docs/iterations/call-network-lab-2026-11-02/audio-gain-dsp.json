@@ -1,0 +1,54 @@
+{
+  "real_browser_dsp": true,
+  "source": "synthetic local oscillator",
+  "measurements": [
+    {
+      "level": 0,
+      "rms": 0
+    },
+    {
+      "level": 1,
+      "rms": 0.007071777584747703
+    },
+    {
+      "level": 2,
+      "rms": 0.014139974646019491
+    },
+    {
+      "level": 0.5,
+      "rms": 0.0035377102282248126
+    },
+    {
+      "level": 0,
+      "rms": 0
+    }
+  ],
+  "rms_by_level": {
+    "0": 0,
+    "1": 0.007071777584747703,
+    "2": 0.014139974646019491,
+    "0.5": 0.0035377102282248126
+  },
+  "replacement_rms": 0.003534467190988164,
+  "active_graphs": 1,
+  "doubled_amplitude": true,
+  "half_amplitude": true,
+  "silent_zero": true,
+  "physical_device": false,
+  "rtp_tested": false,
+  "physical_lip_sync_measured": false,
+  "output_selection_tested": false,
+  "microphone_used": false,
+  "media_saved": false,
+  "date": "2026-11-02",
+  "platform": "internal Chromium browser (IAB)",
+  "production_version": "1.19.3+51",
+  "production_runtime_changed": false,
+  "fixture_sha256": "3affec25f561959055f828ee4c3cf1de5489558a00a8550a5de70c6e5fc7fc05",
+  "production_script_sha256": "ae152bc3e5dc8c69e089b8d0d175562a0a8fca84a17133c391786d6c247c640d",
+  "screenshot_sha256": "d1f94846caaf4c80a02a234acd2485bf9c4b20380617eb8533cb60c37ce99023",
+  "instrumentation": "The production AudioContext uses real MediaStreamSource/GainNode DSP. Only its final destination is redirected through a real analyser and zero-gain test sink; this is not acoustic output or routing verification.",
+  "script_syntax_checks": "PASS: both inline fixture scripts",
+  "initial_and_final_zero_separately_checked": true,
+  "source_unchanged": true
+}

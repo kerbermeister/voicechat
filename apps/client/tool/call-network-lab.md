@@ -117,6 +117,25 @@ slots, authenticated ACK/reordering, исключение участника, in
 платформами и физическая приёмка проверяются отдельно. Обычный production web
 собирается полным `prototype/build_web_assets.py` и target `lib/main.dart`.
 
+## Реальное Web Audio усиление без слышимого тестового тона
+
+После сборки browser fixture скопировать HTML в тот же каталог и запустить
+loopback-сервер, описанный выше:
+
+```sh
+cp apps/client/integration_test/call_audio_gain_fixture.html .prototype/key-epoch-web/call_audio_gain_fixture.html
+```
+
+Открыть `http://127.0.0.1:7394/call_audio_gain_fixture.html` во внутреннем браузере
+и нажать `Run gain probe`. Используется точный `media_audio.js` из web-сборки;
+при проверке02.11 его SHA256 совпал с исходным production-файлом. Настоящий браузер
+обрабатывает synthetic oscillator через MediaStreamSource/GainNode; инструментирован
+только конечный выход: analyser и нулевой gain перед destination заглушают тон.
+Проверяются PCM RMS при0→100→200→50→0%, один активный gain graph, muted исходного
+проигрывателя и сохранение50% при замене DOM. Ожидается `PASS AUDIO_GAIN_PROOF`.
+После прогона контексты/источник закрыты; для повтора перезагрузить страницу.
+Это не RTP, не акустическая громкость/route iPhone и не A/V-marker/lip-sync.
+
 Негативный probe закреплённого OSS SFU использует имеющийся Python runtime с
 aiohttp. Он создаёт только свою localhost-комнату/контейнер и одноразовые ключи:
 

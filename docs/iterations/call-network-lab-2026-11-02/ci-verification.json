@@ -1,0 +1,40 @@
+{
+  "date": "2026-11-02",
+  "tested_source": "2eef49b304b0d821a534e4ca2ca3febe4a8cfc89",
+  "production_runtime_source": "e44a726b403762acba7f01533c875e521b222b13",
+  "production_runtime_changed": false,
+  "prototype_checks": [
+    {
+      "run": 210,
+      "ref": "codex/call-room-reconciliation",
+      "url": "https://github.com/kerbermeister/voicechat/actions/runs/41479368842",
+      "job": "125393285192",
+      "job_duration": "15m31s",
+      "result": "SUCCESS"
+    },
+    {
+      "run": 211,
+      "ref": "main",
+      "url": "https://github.com/kerbermeister/voicechat/actions/runs/41479369927",
+      "job": "125393286036",
+      "job_duration": "15m44s",
+      "result": "SUCCESS"
+    }
+  ],
+  "release51_tag_followup": {
+    "run": 209,
+    "url": "https://github.com/kerbermeister/voicechat/actions/runs/41468089995",
+    "source": "e44a726b403762acba7f01533c875e521b222b13",
+    "first_attempt": "Failed ordinary Android preview before compilation: SDKmanager NDK 28.2.13676358 download/unpack reported Error on ZipFile unknown archive; tests and analyzer passed.",
+    "second_attempt": {
+      "job": "125394080448",
+      "job_duration": "17m6s",
+      "result": "SUCCESS",
+      "same_source": true,
+      "debug_logging_enabled": false
+    },
+    "production_artifacts_replaced": false
+  },
+  "subsequent_change_scope": "Only a standalone integration HTML fixture and documentation/evidence. CI Dart/Python/product sources remain identical to tested_source; the new HTML scripts passed node --check and real browser DSP assertions separately.",
+  "physical_acceptance_closed": false
+}
