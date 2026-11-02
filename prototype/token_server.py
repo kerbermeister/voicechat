@@ -653,7 +653,7 @@ class Handler(BaseHTTPRequestHandler):
                     path.chmod(0o600)
                 return self.reply(200, {'ok': True})
             except (ValueError, TypeError): return self.reply(400, {'error': 'invalid_report'})
-        if self.path not in ('/token', '/call/leave', '/call/active'): return self.reply(404, {'error': 'not_found'})
+        if self.path not in ('/token', '/call/heartbeat', '/call/leave', '/call/active'): return self.reply(404, {'error': 'not_found'})
         try:
             size = int(self.headers.get('Content-Length', '0'))
             if not 0 < size <= 4096: return self.reply(400, {'error': 'invalid_size'})
@@ -688,6 +688,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(400, {'error': 'invalid_lease'})
             if reconnect is not None and (not isinstance(reconnect, str) or len(reconnect) != 51):
                 return self.reply(400, {'error': 'invalid_generation'})
+            heartbeat = self.path == '/call/heartbeat'
+            if heartbeat and (lease is None or 'reconnect' in body):
+                return self.reply(400, {'error': 'invalid_heartbeat'})
             members = self.call_room_members(room, who)
             store = call_store()
             wanted = {who['user_id']: [who['device_id']]}
@@ -712,13 +715,17 @@ class Handler(BaseHTTPRequestHandler):
                     valid[user + '/' + identifier] = (values.get('curve25519:' + identifier), values.get('ed25519:' + identifier))
             admission = store.admission(room, session, video, who, curve, ed, lease, reconnect, valid,
                                         {peer['id'] for peer in observed}, camera_capable=camera_capable, join_existing=join_existing)
+            admission = {**admission, 'heartbeat_supported': True,
+                         'server_time': int(time.time() * 1000)}
+            if heartbeat:
+                return self.reply(200, admission)
             now = int(time.time())
             token = jwt({'iss': 'prototype', 'sub': admission['identity'], 'nbf': now - 5, 'exp': now + 60,
                          'video': {'roomJoin': True, 'room': admission['generation'],
                                    'canPublish': True, 'canSubscribe': True,
                                    'canPublishData': False,
                                    'canPublishSources': ['microphone', 'camera'] if admission.get('camera_allowed', video) else ['microphone']}})
-            self.reply(200, {**admission, 'token': token, 'server_time': int(time.time() * 1000)})
+            self.reply(200, {**admission, 'token': token})
         except ContactError:
             self.reply(401, {'error': 'unauthorized'})
         except CallError as error:

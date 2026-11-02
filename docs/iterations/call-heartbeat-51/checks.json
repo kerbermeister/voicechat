@@ -1,0 +1,22 @@
+{
+  "state": "candidate_validated_not_published",
+  "version": "1.19.3+51",
+  "python": {
+    "total": 848,
+    "passed": 844,
+    "skipped": 4
+  },
+  "flutter": {
+    "passed": 585,
+    "skipped": 4
+  },
+  "final_admission_clock_tests": 6,
+  "flutter_analyze": "PASS",
+  "directional_and_symmetric_network_fixture": "../call-network-lab-2026-11-02/directional-integrated-summary.json",
+  "jwt_lifetime_seconds": 60,
+  "lease_seconds": 30,
+  "authorization_deadline_seconds": 25,
+  "matrix_checks_cached": false,
+  "native_artifacts_required": true,
+  "physical_iphone_xiaomi_tested": false
+}

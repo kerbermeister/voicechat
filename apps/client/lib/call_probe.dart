@@ -12,6 +12,7 @@ import 'media_routes.dart';
 import 'routed_livekit_engine.dart' show RoomMediaStatistics;
 import 'voice_call.dart';
 import 'call_quality.dart';
+import 'call_admission.dart';
 import 'camera_capture.dart';
 import 'media_key_clock.dart';
 import 'user_action_error.dart';
@@ -353,13 +354,15 @@ class CallProbe implements VoiceCall {
 
   Future<Map<String, dynamic>> _requestAdmission({String? reconnect}) async {
     final budget = Stopwatch()..start();
+    var heartbeat =
+        reconnect == null && _admission?['heartbeat_supported'] == true;
     while (!_closed) {
       if (budget.elapsed >= const Duration(seconds: 25)) {
         throw TimeoutException('Call admission negotiation timed out');
       }
       final response = await _network
           .post(
-            Uri.parse('$tokenUrl/token'),
+            Uri.parse('$tokenUrl/${heartbeat ? 'call/heartbeat' : 'token'}'),
             headers: {
               'Authorization': 'Bearer ${chat.client.accessToken}',
               'Content-Type': 'application/json',
@@ -376,6 +379,13 @@ class CallProbe implements VoiceCall {
             }),
           )
           .timeout(const Duration(seconds: 10));
+      // A server rollback may remove the negotiated endpoint. Retry the existing
+      // admission API, but never treat an authorization failure as unsupported.
+      if (heartbeat && const [404, 405, 501].contains(response.statusCode)) {
+        heartbeat = false;
+        continue;
+      }
+      if (_closed) throw StateError('Call closed during admission');
       if (response.bodyBytes.length > 32768) {
         throw const FormatException('Invalid admission size');
       }
@@ -383,6 +393,7 @@ class CallProbe implements VoiceCall {
       if (response.statusCode == 410) {
         _admission = null;
         reconnect = null;
+        heartbeat = false;
         continue;
       }
       if (response.statusCode == 409 &&
@@ -403,21 +414,21 @@ class CallProbe implements VoiceCall {
       if (response.statusCode != 200) {
         throw http.ClientException('Call admission unavailable');
       }
-      if (data['identity'] != identity ||
-          data['lease_seconds'] != 30 ||
-          data['generation'] is! String ||
-          !RegExp(r'^vc-[a-f0-9]{48}$').hasMatch(data['generation']) ||
-          data['lease_id'] is! String ||
-          !RegExp(r'^[a-f0-9]{64}$').hasMatch(data['lease_id']) ||
-          data['token'] is! String ||
-          data['roster'] is! List ||
-          (data['roster'] as List).isEmpty ||
-          (data['roster'] as List).length > 10) {
-        throw const FormatException('Invalid call admission');
+      final admission = parseCallAdmission(
+        data,
+        identity: identity,
+        heartbeat: heartbeat,
+        previous: _admission,
+      );
+      // New generations require a fresh JWT. The next request retains the lease
+      // and does not ask for another reconnect/rotation.
+      if (admission['token'] == null) {
+        heartbeat = false;
+        continue;
       }
+      _keyClock.synchronize(admission['server_time']);
       _authorized.reset();
-      _keyClock.synchronize(data['server_time']);
-      return data;
+      return admission;
     }
     throw StateError('Call closed during admission');
   }

@@ -726,3 +726,34 @@ relay положительны. Это не утверждение о возвр
 HTTP/asset/nonce/size и запрет неподдержанного directional TCP:4 PASS с живым API;
 analyzer и release-сборка тестового web-entrypoint PASS. Поскольку изменились только
 integration_test/tool/docs, установленный клиент50 и full89 не требуют переиздания.
+
+## OPT-06: отдельный heartbeat без выдачи JWT — кандидат51
+
+Новый `/call/heartbeat` требует уже существующий lease и запрещает `reconnect`.
+Он проходит те же whoami, membership/encryption, keys/query, roster/lease/device
+проверки и `CallStore.admission`, что `/token`, затем возвращает roster/generation/
+server_time без JWT. Ранние фоновое восстановление SFU-room, expiry/revocation и
+сроки30/25с не ослаблены. Период HTTP-проверок по-прежнему3с; кеш Matrix-состояния
+или доверия не добавлялся.
+
+Новый клиент включает путь только после `heartbeat_supported=true` от control.
+При том же identity/lease/generation он сохраняет свой исходный JWT в памяти;
+здоровому соединению не требуется передавать его SFU заново. Если generation
+изменилась, запрашивает свежий `/token` с прежним lease без дополнительного
+`reconnect`/ротации. Настоящий rebuild также получает свежий токен. Его срок60с
+не увеличен. Старые клиенты продолжают `/token`; при откате сервера новый клиент
+после404/405/501 heartbeat возвращается к `/token`, но не маскирует401/403/503.
+
+Метаданные допуска проверяются до обновления authorization clock. Парсер запрещает
+перенос прежнего JWT между lease/identity/generation. Ключи медиа/crypto epochs не
+менялись: общая ротация группы OPT-07 сохраняется.
+
+В локальном HTTP-сравнении20 запросов: выдача JWT20→0, JSON ответов17660→8820байт
+(−50.06%) для одного synthetic участника и неизменной генерации. Это не экономия
+медиаполосы, не p95/CPU production и не устранение всех повторных Matrix-запросов.
+[Модель](../iterations/call-heartbeat-51/response-comparison.json).
+
+Пока это кандидат: Python848 tests,844 PASS/4skip; адресные Flutter admission/
+key-sharing/cleanup7 PASS, analyzer чистый. Полные клиентские проверки585 PASS/4skip; выпуск51
+ещё выполняется; опубликованные артефакты пока50/full89. OPT-06 не объявляется
+выпущенным до проверки согласованного server/web и нативных каналов.

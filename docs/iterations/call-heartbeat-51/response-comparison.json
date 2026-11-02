@@ -1,0 +1,19 @@
+{
+  "model_only": true,
+  "media_bandwidth_measured": false,
+  "rounds": 20,
+  "heartbeat_interval_seconds": 3,
+  "paths": {
+    "/token": {
+      "requests": 20,
+      "jwt_issued": 20,
+      "json_response_bytes": 17660
+    },
+    "/call/heartbeat": {
+      "requests": 20,
+      "jwt_issued": 0,
+      "json_response_bytes": 8820
+    }
+  },
+  "response_json_reduction_percent": 50.06
+}

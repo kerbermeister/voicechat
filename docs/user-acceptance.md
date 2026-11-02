@@ -2236,3 +2236,14 @@ analyzer чистый. [Свидетельство](iterations/call-network-lab-
 не повышена: физические iPhone Safari/PWA, Xiaomi и конечный A/V-marker не проверены.
 Первоначальный локальный startup failure до помех остаётся с неустановленной причиной;
 он отдельно указан в исследовании и не засчитан как успешная проверка.
+
+OPT-06, кандидат51/02.11: реализован отдельный `/call/heartbeat` без выдачи JWT,
+с сохранением тех же membership/device/roster/lease проверок. Первичный вход,
+новое поколение и rebuild требуют свежий `/token`; старый JWT не переносится
+между identity/lease/generation. Старые клиенты/откат сервера совместимы.
+Python844 PASS/4skip, адресные Flutter admission/key-sharing/cleanup7 PASS,
+analyzer чистый; модель20 запросов JWT20→0/JSON−50.06%, не экономия медиатрафика.
+Это ещё не опубликованный51: текущие пользовательские артефакты50/full89,
+физическая готовность UA-05 не повышена. Ход выпуска — в
+[исследовании](research/call-optimization-2026-11-02.md),
+[модель](iterations/call-heartbeat-51/response-comparison.json).

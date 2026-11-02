@@ -26,7 +26,7 @@ class AdmissionTests(unittest.TestCase):
         cls.thread.join()
 
     def request(self, body=None, auth='Bearer test', path='/token'):
-        if path == '/token' and isinstance(body, dict): body = {'protocol_version': 1, **body}
+        if path in ('/token', '/call/heartbeat') and isinstance(body, dict): body = {'protocol_version': 1, **body}
         request = urllib.request.Request(
             f'http://127.0.0.1:{self.server.server_port}{path}',
             None if body is None else json.dumps(body).encode(), {'Authorization': auth})
@@ -284,6 +284,66 @@ class AdmissionTests(unittest.TestCase):
                 self.assertNotIn('roomAdmin', grant['video'])
                 self.assertNotIn('key', grant)
 
+    def test_heartbeat_renews_only_existing_authorized_lease_without_signing_jwt(self):
+        who = {'user_id': '@alice:local', 'device_id': 'DEVICE'}
+        joined = [True]
+        bob = {'user_id': '@bob:local', 'device_id': 'B'}
+        device_key = ['A' * 43]
+        def matrix(handler, path, body=None):
+            if handler.headers.get('Authorization') != 'Bearer test':
+                raise ContactError('unauthorized')
+            if path == 'account/whoami': return who
+            if path.endswith('joined_members'): return {'joined': {who['user_id']: {}, bob['user_id']: {}} if joined[0] else {}}
+            if path.endswith('m.room.encryption/'): return {'algorithm': 'm.megolm.v1.aes-sha2'}
+            if path.endswith('m.room.create/'): return {}
+            if path == 'keys/query': return {'device_keys': {who['user_id']: {'DEVICE': {
+                **who, 'keys': {'curve25519:DEVICE': device_key[0], 'ed25519:DEVICE': 'B' * 43}}}, bob['user_id']: {'B': {**bob, 'keys': {'curve25519:B': 'D' * 43, 'ed25519:B': 'E' * 43}}}}}
+            raise AssertionError(path)
+        with tempfile.TemporaryDirectory() as directory:
+            now = [1000.]
+            store = CallStore(directory + '/calls.sqlite', Mock(), lambda: now[0])
+            try: store.admission('!room:local', 'test', False, who, 'A' * 43, 'B' * 43)
+            except ValueError as error: self.assertEqual(str(error), 'generation_settling')
+            now[0] += 1
+            with patch.object(token_server.Handler, 'matrix', matrix), patch.object(token_server, 'call_store', return_value=store):
+                status, initial = self.request({'room_id': '!room:local', 'session': 'test'})
+                self.assertEqual(status, 200)
+                self.assertTrue(initial['heartbeat_supported'])
+                self.assertIsInstance(initial['token'], str)
+                body = {'room_id': '!room:local', 'session': 'test', 'lease_id': initial['lease_id']}
+                now[0] += 3
+                with patch.object(token_server, 'jwt', side_effect=AssertionError('Heartbeat signed a JWT')):
+                    status, heartbeat = self.request(body, path='/call/heartbeat')
+                    self.assertEqual(status, 200)
+                    self.assertNotIn('token', heartbeat)
+                    for key in ('identity', 'generation', 'lease_id', 'roster'):
+                        self.assertEqual(heartbeat[key], initial[key])
+                    self.assertEqual(store.roster('!room:local', 'test')[0]['expires'], now[0] + 30)
+                    expires = now[0] + 30
+                    self.assertEqual(self.request({k: v for k, v in body.items() if k != 'lease_id'}, path='/call/heartbeat')[0], 400)
+                    self.assertEqual(self.request({**body, 'reconnect': initial['generation']}, path='/call/heartbeat')[0], 400)
+                    self.assertEqual(self.request(body, auth='', path='/call/heartbeat')[0], 401)
+                    joined[0] = False
+                    self.assertEqual(self.request(body, path='/call/heartbeat')[0], 403)
+                    self.assertEqual(store.roster('!room:local', 'test')[0]['expires'], expires)
+                    joined[0] = True
+                    try: store.admission('!room:local', 'test', False, bob, 'D' * 43, 'E' * 43)
+                    except ValueError as error: self.assertEqual(str(error), 'generation_settling')
+                    now[0] += 1
+                    status, rotated = self.request(body, path='/call/heartbeat')
+                    self.assertEqual(status, 200)
+                    self.assertNotIn('token', rotated)
+                    self.assertNotEqual(rotated['generation'], initial['generation'])
+                    self.assertEqual(rotated['lease_id'], initial['lease_id'])
+                    self.assertEqual(len(rotated['roster']), 2)
+                    expires = now[0] + 30
+                    device_key[0] = 'C' * 43
+                    self.assertEqual(self.request(body, path='/call/heartbeat')[0], 410)
+                    self.assertEqual(store.roster('!room:local', 'test')[0]['expires'], expires)
+                    now[0] = expires + 1
+                    self.assertEqual(self.request(body, path='/call/heartbeat')[0], 410)
+                    self.assertEqual(store.roster('!room:local', 'test'), [])
+
     def test_matrix_outage_does_not_renew_a_lease_or_disguise_itself_as_revocation(self):
         with tempfile.TemporaryDirectory() as directory:
             now = [1000.]
@@ -303,6 +363,9 @@ class AdmissionTests(unittest.TestCase):
                 with patch.object(token_server.Handler, 'matrix', side_effect=error), \
                      patch.object(token_server, 'call_store', return_value=store):
                     status, response = self.request(body)
+                    heartbeat_status, heartbeat_response = self.request(body, path='/call/heartbeat')
+                self.assertEqual(heartbeat_status, expected)
+                self.assertEqual(heartbeat_response, response)
                 self.assertEqual(status, expected)
                 self.assertEqual(response['error'], 'upstream_unavailable' if expected == 503 else 'matrix_denied')
                 self.assertEqual(store.roster('!room:local', 'test')[0]['expires'], expires)
