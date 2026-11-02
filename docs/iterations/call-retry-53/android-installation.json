@@ -1,0 +1,14 @@
+{
+  "source": "915d0e943dae24d21c62c5235b872374148682f8",
+  "build": 53,
+  "previous_build": 52,
+  "emulator": "VoiceChat_Push_GMS35 / Android15 API35 arm64",
+  "adb_install_r": "PASS",
+  "installed_apk_equals_signed_candidate": true,
+  "apk_sha256": "ba45e0162b3c52a1c57636104045b6940f3c8a17458a8fad6dd53b10a4cc4b4c",
+  "original_certificate_sha256": "37d98de9eaf7151d8df38fe326711107d4ba4ac30bb03c6870269af84ac79ce4",
+  "physical_phone_tested": false,
+  "media_call_in_ordinary_release_app_tested": false,
+  "account_identity_compared": false,
+  "app_data_cleared": false
+}

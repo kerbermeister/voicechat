@@ -5,7 +5,10 @@
 потерю черновика, просмотр фото после TTL и сломанный UI отозванной сессии.
 Исправления продукта в этом аудите не вносились. [Проверки и точные границы](iterations/scenario-audit-2026-11-01/results.json).
 
-Актуализирован 1 ноября 2026. **Опубликованы Android, macOS и web1.16.5(44).** FULL81/source0dd2ff6 завершён;
+Актуализирован 2 ноября 2026. Текущий выпуск: **web/macOS/Android1.19.5(53)**;
+проверки и остаток приведены в дополнении53 ниже.
+
+Предыдущая сводка1 ноября: **опубликованы Android, macOS и web1.16.5(44).** FULL81/source0dd2ff6 завершён;
 commit/digests/health/rollback/public routes/version44 проверены.
 Source0dd2ff6:511 Flutter PASS/4skip, analyzer PASS, два native Android media tests PASS.
 Mac40→44 установлен штатной кнопкой с сохранением account/device/двух контрольных
@@ -13,6 +16,17 @@ Mac40→44 установлен штатной кнопкой с сохране�
 Xiaomi12S/Android15, H264 и субъективное качество звука не приняты.
 [Техническая запись44](iterations/android-call-fixes-44.md), [APK44](iterations/release-44/android-publication.json),
 [Mac44](iterations/release-44/macos-installation.json).
+
+**Дополнение02.11 — опубликован1.19.5(53), source915d0e9.** FULL93 и CI215/216/217
+SUCCESS; production commit/digests/health/rollback/HTTPS проверены. Mac52→53
+установлен агентом штатной кнопкой;285 файлов равны подписанным ZIP/DMG,
+аккаунт/device ID и прежняя история сохранены. Check Updates на53: новых
+совместимых обновлений нет. Владелец разрешил Keychain для точного кандидата;
+ключи/профиль не очищались. Старое аудио после фактической установки53 ещё
+не проиграно. Android53 установлен поверх52 только в эмуляторе, hash APK совпал;
+физические iPhone/Xiaomi и WAN/push/multi-device часть матрицы UA-04 открыты.
+614 Flutter PASS/4skip,849 Python/4skip,50 адресных проверок; анализ чистый.
+[Выпуск и проверки53](iterations/call-retry-53/).
 
 **Дополнение02.11 — опубликован1.19.4(52), source bf0fbd4.** FULL92 и CI212/213/214
 SUCCESS; commit/digests/health/rollback/HTTPS проверены. Подписанные macOS и Android
@@ -725,12 +739,12 @@ Wire assertions: до expiry4 события имеют Megolm-алгоритм;
 
 | Ссылка | Сценарий | Ожидаемый результат | Фактическая проверка текущей реализации |
 | --- | --- | --- | --- |
-| C09 · timeout | B не отвечает до срока; B сразу звонит A; повторить ещё дважды | A видит новый входящий; прежний invite/timer не блокирует новый ID | Кандидат53: три последовательных SDK invite/timeout/retry с synthetic RTC PASS, поздний hangup старого ID не завершает новый. Полный iPhone PWA/WAN цикл не выполнен. |
-| C09 · late end | Как timeout, но старый hangup/expiry приходит после нового invite или answer | Завершается только старый ID, новый звонок остаётся | Найден02.11 и исправлен в кандидате53: реальный SDK CallSession с fake RTC пропускал cleanup при новом owner. Все3 варианта none/same room/other room PASS: старый peer освобождён, routing удалён, новый owner сохранён. Дополнительно owner guard и контроллер PASS для одинакового ID в двух разных чатах. Это не аппаратное воспроизведение. [Red](iterations/call-retry-53/red-termination.json). |
-| C09 · sync batch | Просроченный invite и свежий callback в одном sync, оба порядка; чужой чат завершает совпавший ID | Удаляется только просроченный/соответствующий своему чату вызов; свежий доставляется; общий входной batch не мутируется | Найден02.11 и исправлен в кандидате53: SDK удалял весь batch при expired invite, подавлял чужой room ID и изменял общий список. До исправления fresh-only PASS/5 FAIL; после все6 PASS. Дополнительно проверены доставка оставшегося срока и expiry за время предыдущего dispatch. [Red](iterations/call-retry-53/red-sync-batch.json). |
-| C09 · decline | B отклоняет; A сразу повторяет и B перезванивает | Каждая разрешённая попытка проходит, локальный рингтон и карточка старого вызова сняты | Кандидат53: три SDK invite/reject/retry цикла с synthetic RTC PASS; физическая доставка, рингтон и UI двух сторон открыты. |
-| C06/C09 · cancel | A отменяет до ответа; A/B немедленно звонит снова; старый SDP/mic callback задержан | Старый capture закрыт; новый call ID, одна новая авторизация/медиасессия | Кандидат53: три SDK remote cancel/retry цикла PASS. Отмена pending peer и отказ RTC/SDP не запрашивают микрофон, late peer disposed; incoming remaining timer проверен до/во время RTC setup. Полный аппаратный цикл открыт. |
-| C08 · glare | A и B нажимают звонок одновременно и со сдвигом в обе стороны; audio/video | Одна согласованная сессия либо понятный отказ без зависшего «занято»; повтор доступен | Кандидат53: real VoIP + synthetic transport, два встречных outgoing получают user_busy, оба могут начать свежий callback; capture не запрошен. UI занятого исходящего и защита нового звонка от поздней ошибки PASS. Реальная сеть/смещения/audio-video открыты. [Red](iterations/call-retry-53/red-glare-busy.json). |
+| C09 · timeout | B не отвечает до срока; B сразу звонит A; повторить ещё дважды | A видит новый входящий; прежний invite/timer не блокирует новый ID | Выпуск53/source915d0e9: три последовательных SDK invite/timeout/retry с synthetic RTC PASS, поздний hangup старого ID не завершает новый. Полный iPhone PWA/WAN цикл не выполнен. |
+| C09 · late end | Как timeout, но старый hangup/expiry приходит после нового invite или answer | Завершается только старый ID, новый звонок остаётся | Найден02.11 и исправлен в выпуске53/source915d0e9: реальный SDK CallSession с fake RTC пропускал cleanup при новом owner. Все3 варианта none/same room/other room PASS: старый peer освобождён, routing удалён, новый owner сохранён. Дополнительно owner guard и контроллер PASS для одинакового ID в двух разных чатах. Это не аппаратное воспроизведение. [Red](iterations/call-retry-53/red-termination.json). |
+| C09 · sync batch | Просроченный invite и свежий callback в одном sync, оба порядка; чужой чат завершает совпавший ID | Удаляется только просроченный/соответствующий своему чату вызов; свежий доставляется; общий входной batch не мутируется | Найден02.11 и исправлен в выпуске53/source915d0e9: SDK удалял весь batch при expired invite, подавлял чужой room ID и изменял общий список. До исправления fresh-only PASS/5 FAIL; после все6 PASS. Дополнительно проверены доставка оставшегося срока и expiry за время предыдущего dispatch. [Red](iterations/call-retry-53/red-sync-batch.json). |
+| C09 · decline | B отклоняет; A сразу повторяет и B перезванивает | Каждая разрешённая попытка проходит, локальный рингтон и карточка старого вызова сняты | Выпуск53/source915d0e9: три SDK invite/reject/retry цикла с synthetic RTC PASS; физическая доставка, рингтон и UI двух сторон открыты. |
+| C06/C09 · cancel | A отменяет до ответа; A/B немедленно звонит снова; старый SDP/mic callback задержан | Старый capture закрыт; новый call ID, одна новая авторизация/медиасессия | Выпуск53/source915d0e9: три SDK remote cancel/retry цикла PASS. Отмена pending peer и отказ RTC/SDP не запрашивают микрофон, late peer disposed; incoming remaining timer проверен до/во время RTC setup. Полный аппаратный цикл открыт. |
+| C08 · glare | A и B нажимают звонок одновременно и со сдвигом в обе стороны; audio/video | Одна согласованная сессия либо понятный отказ без зависшего «занято»; повтор доступен | Выпуск53/source915d0e9: real VoIP + synthetic transport, два встречных outgoing получают user_busy, оба могут начать свежий callback; capture не запрошен. UI занятого исходящего и защита нового звонка от поздней ошибки PASS. Реальная сеть/смещения/audio-video открыты. [Red](iterations/call-retry-53/red-glare-busy.json). |
 | C14 · answer/end | Answer пересекается с cancel/expiry, затем новый вызов с каждой стороны | Согласованный конец старого вызова; его ответ не занимает новую сессию | Есть прежняя авто-опора; повторный вызов ещё не проверен |
 | C26 · lost ACK | Отбой/expiry при потере Matrix, восстановление и быстрый restart/callback | Старые sync/push не оживляют завершённый вызов и не скрывают новый | Ещё не проверено |
 | C22/C23 · devices | Два устройства принимают/отклоняют, push и карточка пересекаются, затем callback | Одна победившая сессия; действия другого устройства не гасят новый ID | Ещё не проверено |

@@ -1,0 +1,20 @@
+{
+  "source": "915d0e943dae24d21c62c5235b872374148682f8",
+  "build": 53,
+  "previous_build": 52,
+  "actual_button_update": true,
+  "installation_performed_by": "Agent clicked Check Updates and Download/Install in installed52; app relaunched itself",
+  "installed_equals_verified_zip_and_dmg": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "same_account": true,
+  "same_device": true,
+  "old_history_visible": true,
+  "old_audio_played_to_end_after_installation": null,
+  "keychain_reset": false,
+  "profile_cleared": false,
+  "backup_verified": true,
+  "update_channel_latest_pending": false,
+  "identity_verified_by": "Read-only UI hash comparison against pre52 account/device; identifiers not exported",
+  "installed53_check_updates": "No compatible updates"
+}
