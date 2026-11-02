@@ -1,0 +1,29 @@
+{
+  "source": "f7aa48217fdad030ccfa448454598e6f064d8621",
+  "python": {
+    "total": 841,
+    "passed": 838,
+    "skipped": 3
+  },
+  "flutter_full_before_final_two_recovery_tests": {
+    "passed": 567,
+    "skipped": 4
+  },
+  "final_protocol_tests": {
+    "passed": 22
+  },
+  "final_video_and_capture_tests": {
+    "passed": 10
+  },
+  "analyzer": "no issues",
+  "native_macos_direct_call": {
+    "passed": 1,
+    "cycles": 3,
+    "external_signalling_or_turn": false
+  },
+  "physical_Xiaomi_or_iPhone_tested": false,
+  "acoustic_lip_sync_measured": false,
+  "production_pending": false,
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41435600604",
+  "production_source_digests_health_rollback_verified": true
+}

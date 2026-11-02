@@ -1,0 +1,7 @@
+{
+  "scenario": "10 admitted participants, 20 synchronized 3-second renewal rounds",
+  "baseline48_CreateRoom": 200,
+  "candidate49_CreateRoom": 20,
+  "reduction_percent": 90.0,
+  "real_media_or_network_benchmark": false
+}

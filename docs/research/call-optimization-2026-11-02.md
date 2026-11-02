@@ -490,7 +490,10 @@ SFU, слышимость, длительность паузы или production
 
 ## Ход реализации после исследования, 02.11.2026
 
-Кандидат49, **ещё не опубликован**. OPT-01: независимый sampler личного звонка,
+Выпуск49 **опубликован для web/macOS/Android**, source`f7aa482`, full87 SUCCESS.
+Независимые source/digests/health/rollback/HTTPS проверки PASS. Mac48→49 установлен
+штатной кнопкой, прежний account/device/старая зашифрованная запись сохранены.
+[Свидетельства49](../iterations/call-optimization-49.md). OPT-01: независимый sampler личного звонка,
 allowlist накопительных media counters в direct/group; полная общая история,
 SSRC epochs/interval deltas, screen и профилирование ещё открыты. OPT-03: направление
 адаптации исправлено на remote-inbound video feedback/CPU, добавлены адресные

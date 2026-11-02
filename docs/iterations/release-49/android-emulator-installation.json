@@ -1,0 +1,8 @@
+{
+  "build": 49,
+  "version": "1.19.1",
+  "exact_apk_sha256": "d535f3bff6a4d8e04959b433bb40b71ea5869898b5d33aa5d7e40b4233f6117b",
+  "installed": true,
+  "device": "API35 emulator",
+  "physical_device": false
+}

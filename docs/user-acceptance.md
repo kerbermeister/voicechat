@@ -2173,6 +2173,10 @@ CreateRoom при heartbeat; величина влияния на живое м�
 feedback, bounded TURN retry, совместимая смена групповых caps и coalescing SFU
 provision подготовлены локально. Полный первый Flutter прогон565 PASS/4skip;
 финальный Flutter после камеры567 PASS/4skip, Python838 PASS/3skip,
-22 заключительных protocol-теста PASS, analyzer чист. Выпуска49
-ещё нет; готовность аппаратных UA-02/04/05/08/09/14 не повышена. Подробный ход —
+22 заключительных protocol-теста PASS, analyzer чист. Выпуск49 опубликован: full87/sourcef7aa482 и независимые production source/
+digests/health/rollback/HTTPS PASS; Mac48→49 установлен штатной кнопкой,285 entries
+равны ZIP/DMG, account/device сохранены, прежнее зашифрованное аудио проиграно до
+конца; Keychain не очищался. Android49 опубликован с прежним сертификатом и точный
+APK установлен в API35 эмулятор, SHA256 сверена; физическая приёмка=false.
+[Свидетельства49](iterations/call-optimization-49.md). готовность аппаратных UA-02/04/05/08/09/14 не повышена. Подробный ход —
 [исследование/задачи OPT](research/call-optimization-2026-11-02.md).
