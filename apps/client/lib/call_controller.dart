@@ -193,8 +193,9 @@ class CallController extends ChangeNotifier
             _lifecycleState == AppLifecycleState.resumed &&
             _resumeCamera == call.session) {
           await call.camera(true);
-          if (_lifecycleState == AppLifecycleState.resumed)
+          if (_lifecycleState == AppLifecycleState.resumed) {
             _resumeCamera = null;
+          }
         }
       });
     }
