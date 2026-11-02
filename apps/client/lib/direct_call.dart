@@ -9,6 +9,7 @@ import 'voice_call.dart';
 import 'call_quality.dart';
 import 'camera_capture.dart';
 import 'audio_levels.dart';
+import 'call_renderer.dart';
 
 /// Matrix authenticates SDP/ICE; WebRTC supplies DTLS-SRTP end to end, including over TURN.
 class DirectCall implements VoiceCall {
@@ -27,6 +28,9 @@ class DirectCall implements VoiceCall {
   final _streams = <mx.WrappedMediaStream, rtc.RTCVideoRenderer>{};
   final _renderedTracks = <rtc.RTCVideoRenderer, List<rtc.MediaStreamTrack>>{};
   final _statistics = CallStatistics();
+  List<Map<String, Object>> get qualitySamples => _statistics.samples;
+  final _stableQuality = StableCallQuality();
+  VideoQuality? _appliedVideoQuality;
   final audioLevels = AudioLevels();
   bool _readingLevels = false;
   DateTime _levelsReadAt = DateTime(1970);
@@ -96,7 +100,7 @@ class DirectCall implements VoiceCall {
   Set<String>? _devices;
   bool _checking = false;
   bool _closed = false;
-  DateTime _authorizedAt = DateTime.now();
+  final _authorized = Stopwatch()..start();
   final _clock = Stopwatch();
   @override
   Duration get duration => _clock.elapsed;
@@ -174,7 +178,7 @@ class DirectCall implements VoiceCall {
       return; // Native WebRTC renders audio itself; web needs a media element.
     }
     if (!_rendering.add(stream)) return;
-    final renderer = rtc.RTCVideoRenderer();
+    final renderer = createCallRenderer();
     try {
       await renderer.initialize();
       if (_closed) {
@@ -214,8 +218,16 @@ class DirectCall implements VoiceCall {
     final tracks = stream.stream?.getTracks() ?? <rtc.MediaStreamTrack>[];
     // Native renegotiation can replace a stream/track wrapper while retaining
     // its IDs. Rebind the renderer to the current native source in that case.
-    if (!identical(renderer.srcObject, stream.stream) ||
-        !listEquals(_renderedTracks[renderer], tracks)) {
+    final previous = _renderedTracks[renderer];
+    // Web creates fresh Dart wrappers on every getTracks(). Rebinding an
+    // unchanged browser source resets its playout clocks during metadata updates.
+    final sameTracks = kIsWeb
+        ? listEquals(
+            previous?.map((track) => track.id).toList(),
+            tracks.map((track) => track.id).toList(),
+          )
+        : listEquals(previous, tracks);
+    if (!identical(renderer.srcObject, stream.stream) || !sameTracks) {
       // Resolve the capture track from the native registry, not a stream's
       // cached videoTracks list (which can retain a replaced camera wrapper).
       await renderer.setSrcObject(
@@ -245,7 +257,7 @@ class DirectCall implements VoiceCall {
       throw CallAccessChanged();
     }
     _devices = devices;
-    _authorizedAt = DateTime.now();
+    _authorized.reset();
   }
 
   void monitor() {
@@ -256,7 +268,17 @@ class DirectCall implements VoiceCall {
         authorize()
             .then((_) async {
               try {
-                quality = _statistics.read(await call.pc?.getStats() ?? []);
+                quality = _stableQuality.update(
+                  _statistics.read(await call.pc?.getStats() ?? []),
+                );
+                if (cameraEnabled &&
+                    videoQuality == VideoQuality.auto &&
+                    quality != CallQuality.unknown) {
+                  final effective = adaptiveVideoQuality(videoQuality, quality);
+                  if (effective != _appliedVideoQuality) {
+                    await setVideoQuality(videoQuality);
+                  }
+                }
               } catch (_) {
                 quality = CallQuality.unknown;
               }
@@ -264,10 +286,14 @@ class DirectCall implements VoiceCall {
             })
             .timeout(const Duration(seconds: 5))
             .catchError((Object error) async {
-              quality = CallQuality.lost;
+              if ({
+                rtc.RTCPeerConnectionState.RTCPeerConnectionStateDisconnected,
+                rtc.RTCPeerConnectionState.RTCPeerConnectionStateFailed,
+              }.contains(call.pc?.connectionState)) {
+                quality = _stableQuality.update(CallQuality.lost);
+              }
               if (!callAccessDenied(error) &&
-                  DateTime.now().difference(_authorizedAt) <
-                      const Duration(seconds: 15)) {
+                  _authorized.elapsed < const Duration(seconds: 15)) {
                 changed();
                 return;
               }
@@ -482,16 +508,20 @@ class DirectCall implements VoiceCall {
   @override
   Future<void> setVideoQuality(VideoQuality value) async {
     if (!video || isClosed) return;
+    final effective = adaptiveVideoQuality(value, quality);
     for (final sender in await call.pc?.getSenders() ?? <rtc.RTCRtpSender>[]) {
       if (sender.track?.kind != 'video') continue;
       final parameters = sender.parameters;
       for (final encoding in parameters.encodings ?? <rtc.RTCRtpEncoding>[]) {
-        encoding.maxBitrate = value.bitrate;
-        encoding.maxFramerate = value.fps;
+        encoding.maxBitrate = effective.bitrate;
+        encoding.maxFramerate = effective.fps;
         final width = sender.track!.getSettings()['width'] as num? ?? 1280;
         final height = sender.track!.getSettings()['height'] as num? ?? 720;
         encoding.scaleResolutionDownBy = math
-            .max(1, math.max(width / value.width, height / value.height))
+            .max(
+              1,
+              math.max(width / effective.width, height / effective.height),
+            )
             .toDouble();
       }
       if (!await sender.setParameters(parameters)) {
@@ -499,6 +529,7 @@ class DirectCall implements VoiceCall {
       }
     }
     videoQuality = value;
+    _appliedVideoQuality = effective;
     changed();
   }
 

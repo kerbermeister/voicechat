@@ -41,14 +41,33 @@ class ScreenAdmissionTests(unittest.TestCase):
         with self.assertRaises(ScreenError):
             self.auth(self.b, first)
 
-    def test_leave_and_expiry_do_not_resurrect_same_direct_call(self):
+    def test_expiry_revokes_old_leases_and_requires_fresh_bilateral_admission(self):
+        first = self.bind(self.a, self.b)
+        second = self.bind(self.b, self.a)
+        self.now += 31
+        with self.assertRaises(ScreenError):
+            self.auth(self.a, first)
+        again = self.bind(self.a, self.b)
+        self.assertNotEqual(again['lease_id'], first['lease_id'])
+        with self.assertRaises(ScreenError):
+            self.auth(self.a, again)
+        with self.assertRaises(ScreenError):
+            self.auth(self.b, second)
+        peer = self.bind(self.b, self.a)
+        self.auth(self.a, again)
+        self.auth(self.b, peer)
+        with self.assertRaises(ScreenError):
+            self.auth(self.a, first)
+        # A delayed cleanup from the expired attempt cannot end the new pair.
+        self.store.leave(self.a, first['binding_id'], first['lease_id'])
+        self.auth(self.a, again)
+
+    def test_explicit_leave_does_not_resurrect_same_direct_call(self):
         first = self.bind(self.a, self.b)
         self.bind(self.b, self.a)
         with self.assertRaises(ScreenError):
             self.store.leave(self.b, first['binding_id'], first['lease_id'])
-        self.now += 31
-        with self.assertRaises(ScreenError):
-            self.auth(self.a, first)
+        self.store.leave(self.a, first['binding_id'], first['lease_id'])
         with self.assertRaisesRegex(ScreenError, 'call_ended'):
             self.bind(self.a, self.b)
         ScreenStore(self.path, lambda:self.now)

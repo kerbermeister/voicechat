@@ -1,3 +1,4 @@
+import 'browser_audio.dart';
 import 'participant_quality.dart';
 import 'speaking_avatar.dart';
 import 'app_motion.dart';
@@ -70,7 +71,60 @@ class _CallWindowState extends State<CallWindow> {
   }
 
   Future<void> selectAudioOutput() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+    if (kIsWeb) {
+      final resumed = resumeBrowserAudio();
+      final outputs = await browserAudioOutputs();
+      await resumed;
+      if (!mounted) return;
+      Future<void>? selecting;
+      await showDialog<void>(
+        context: context,
+        useRootNavigator: false,
+        builder: (dialogContext) => SimpleDialog(
+          title: const Text('Аудиовыход звонка'),
+          children: [
+            if (outputs['supported'] != true ||
+                (outputs['devices'] as List).isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'Браузер не предоставляет выбор динамиков. Доступными аудиовыходами управляет система устройства.',
+                ),
+              ),
+            for (final device in outputs['devices'] as List)
+              SimpleDialogOption(
+                onPressed: () {
+                  selecting = selectBrowserAudioOutput(device['id'] as String);
+                  Navigator.pop(dialogContext);
+                },
+                child: Row(
+                  children: [
+                    Expanded(child: Text(device['label'] as String)),
+                    if (device['selected'] == true) const Icon(Icons.check),
+                  ],
+                ),
+              ),
+            if (outputs['systemPicker'] == true)
+              SimpleDialogOption(
+                onPressed: () {
+                  // Invoke before navigation/await so browser activation survives.
+                  selecting = chooseBrowserAudioOutput();
+                  Navigator.pop(dialogContext);
+                },
+                child: const Text('Выбрать устройство…'),
+              ),
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Закрыть'),
+            ),
+          ],
+        ),
+      );
+      await selecting;
+      return;
+    }
+
+    if (defaultTargetPlatform != TargetPlatform.android) {
       await widget.audioOutput();
       return;
     }
@@ -593,7 +647,7 @@ class _CallWindowState extends State<CallWindow> {
               ),
               IconButton(
                 tooltip: kIsWeb
-                    ? 'Включить звук'
+                    ? 'Аудиовыход'
                     : defaultTargetPlatform == TargetPlatform.macOS
                     ? 'Аудиовыход'
                     : 'Громкая связь',

@@ -7,6 +7,7 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:matrix/matrix.dart';
 import 'package:voicechat_probe/call_probe.dart';
 import 'package:voicechat_probe/screen_api.dart';
+import 'package:voicechat_probe/screen_state.dart';
 import 'package:voicechat_probe/screen_controller.dart';
 import 'package:voicechat_probe/screen_capture.dart';
 import 'screen_capture_test.dart' show CaptureTrack;
@@ -62,9 +63,83 @@ class DeadlineCapture extends ScreenCapture {
 
 void main() {
   test(
-    'Screen capture pauses only an enabled camera and restores once on system stop',
+    'A long system picker keeps its lease alive and remains retryable',
     () async {
-      for (final camera in [false, true]) {
+      final client = Client('picker-lease', database: LifecycleDatabase());
+      final call = LifecycleCall(Room(id: '!picker:local', client: client));
+      const binding = '22222222-2222-4222-8222-222222222222';
+      final snapshot = {
+        'protocol_version': 1,
+        'binding_id': binding,
+        'state': 'idle',
+        'revision': 0,
+        'roster_version': 0,
+        'roster': [],
+        'owner_identity': null,
+        'generation': null,
+      };
+      var heartbeats = 0, unbinds = 0;
+      final selection = Completer<ScreenCapture>();
+      final api = ScreenApi(
+        'http://localhost',
+        () => '',
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/bind')) {
+            return http.Response(
+              jsonEncode({
+                'binding_id': binding,
+                'lease_id': 'b' * 64,
+                'binding_state': 'open',
+                'snapshot': snapshot,
+              }),
+              200,
+            );
+          }
+          if (request.url.path.endsWith('/heartbeat')) {
+            heartbeats++;
+            return http.Response(jsonEncode({'snapshot': snapshot}), 200);
+          }
+          if (request.url.path.endsWith('/unbind')) unbinds++;
+          return http.Response('{}', 200);
+        }),
+      );
+      final screen = ScreenShareController(
+        call,
+        api,
+        'ws://localhost:7880',
+        captureFactory: () => selection.future,
+      );
+      await screen.connect();
+      final choosing = screen.share();
+      await Future<void>.delayed(const Duration(seconds: 35));
+      expect(heartbeats, greaterThanOrEqualTo(30));
+      expect(screen.isClosed, false);
+      selection.completeError(UnsupportedError('Cancelled fixture'));
+      await choosing;
+      expect(screen.canShare, true);
+      screen.reconnectAllowed = true;
+      await screen.close();
+      expect(
+        unbinds,
+        0,
+        reason:
+            'Transient cleanup must not terminally close the peer screen session',
+      );
+      await client.dispose();
+    },
+    timeout: const Timeout(Duration(seconds: 50)),
+  );
+
+  test(
+    'Screen capture restores only its paused camera on stop or lease recovery',
+    () async {
+      for (final scenario in [
+        (camera: false, reconnect: false),
+        (camera: true, reconnect: false),
+        (camera: false, reconnect: true),
+        (camera: true, reconnect: true),
+      ]) {
+        final camera = scenario.camera;
         final client = Client('restore-camera', database: LifecycleDatabase());
         final call = LifecycleCall(Room(id: '!restore:local', client: client))
           ..cameraEnabled = camera;
@@ -118,13 +193,19 @@ void main() {
         await claimed.future;
         expect(call.cameraEnabled, false);
         expect(call.cameraChanges, camera ? [false] : isEmpty);
-        capture.source.mediaStreamTrack.onEnded!();
-        await Future<void>.delayed(Duration.zero);
+        if (scenario.reconnect) {
+          screen.reconnectAllowed = true;
+          await screen.close();
+        } else {
+          capture.source.mediaStreamTrack.onEnded!();
+          await Future<void>.delayed(Duration.zero);
+        }
         expect(call.cameraEnabled, camera);
         release.complete(
           http.Response('{"error":"screen_revision_conflict"}', 409),
         );
         await sharing;
+        if (scenario.reconnect) expect(screen.phase, ScreenPhase.closed);
         expect(call.cameraChanges, camera ? [false, true] : isEmpty);
         await screen.stop();
         expect(call.cameraChanges, camera ? [false, true] : isEmpty);

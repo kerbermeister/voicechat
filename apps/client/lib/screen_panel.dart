@@ -95,7 +95,10 @@ class ScreenPanel extends StatelessWidget {
         ScreenPhase.connecting => 'Подключаем защищённый экран',
         ScreenPhase.reconnecting => 'Восстанавливаем демонстрацию',
         ScreenPhase.error => 'Не удалось получить изображение экрана',
-        ScreenPhase.closed => 'Демонстрация недоступна до следующего звонка',
+        ScreenPhase.closed =>
+          controller.reconnectAllowed
+              ? 'Переподключаем демонстрацию'
+              : 'Защищённый сеанс демонстрации завершён',
         _ => active ? 'Экран показывает: $ownerLabel' : 'Демонстрация экрана',
       };
       return Column(

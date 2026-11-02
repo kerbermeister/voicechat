@@ -30,6 +30,12 @@ class Peer extends Fake implements rtc.RTCPeerConnection {
   void Function(rtc.RTCTrackEvent)? onTrack;
   @override
   void Function()? onRenegotiationNeeded;
+  int nativeRestarts = 0;
+  @override
+  Future<void> restartIce() async {
+    nativeRestarts++;
+  }
+
   rtc.RTCSessionDescription? remote;
   Completer<void>? localDescription;
   bool connectDuringDescription = false;
@@ -96,6 +102,10 @@ class Delegate extends Fake implements WebRTCDelegate {
 }
 
 class ProtocolVoip extends Fake implements VoIP {
+  Completer<List<Map<String, dynamic>>>? servers;
+  @override
+  Future<List<Map<String, dynamic>>> getIceServers() async =>
+      await servers?.future ?? [];
   @override
   final Delegate delegate = Delegate();
   @override
@@ -121,6 +131,7 @@ class Session extends CallSession {
   int answers = 0;
   int hangups = 0;
   int restarts = 0;
+  bool nativeRestart = false;
   bool failCandidates = false;
   final sentCandidates = <List<String>>[];
   final captured = <rtc.MediaStream>[];
@@ -139,6 +150,7 @@ class Session extends CallSession {
   @override
   Future<void> restartIce() async {
     restarts++;
+    if (nativeRestart) await super.restartIce();
   }
 
   @override
@@ -377,6 +389,54 @@ void main() {
       );
       expect(session.callHasEnded, true);
     });
+  }
+  testWidgets('Failed transport can recover before its bounded deadline', (
+    tester,
+  ) async {
+    await incoming();
+    session.setCallState(CallState.kConnected);
+    final connection = voip.delegate.peer.onConnectionState!;
+    connection(rtc.RTCPeerConnectionState.RTCPeerConnectionStateFailed);
+    voip.delegate.peer.onIceConnectionState!(
+      rtc.RTCIceConnectionState.RTCIceConnectionStateFailed,
+    );
+    await tester.pump(const Duration(seconds: 5));
+    expect(session.hangups, 0);
+    expect(
+      session.restarts,
+      1,
+      reason: 'ICE and DTLS callbacks coalesce one recovery',
+    );
+    connection(rtc.RTCPeerConnectionState.RTCPeerConnectionStateConnected);
+    await tester.pump(const Duration(seconds: 20));
+    expect(session.hangups, 0);
+    await session.hangup(reason: CallErrorCode.userHangup);
+  });
+  for (final recovered in [false, true]) {
+    testWidgets(
+      'A delayed TURN refresh respects recovered transport: $recovered',
+      (tester) async {
+        await incoming();
+        session.nativeRestart = true;
+        session.setCallState(CallState.kConnected);
+        voip.servers = Completer<List<Map<String, dynamic>>>();
+        final peer = voip.delegate.peer;
+        peer.onConnectionState!(
+          rtc.RTCPeerConnectionState.RTCPeerConnectionStateFailed,
+        );
+        await tester.pump(const Duration(seconds: 2));
+        if (recovered) {
+          peer.onConnectionState!(
+            rtc.RTCPeerConnectionState.RTCPeerConnectionStateConnected,
+          );
+        }
+        voip.servers!.complete([]);
+        await tester.pump();
+        expect(peer.nativeRestarts, recovered ? 0 : 1);
+        expect(session.hangups, 0);
+        await session.hangup(reason: CallErrorCode.userHangup);
+      },
+    );
   }
   testWidgets('Recovered DTLS transport cancels disconnect deadline', (
     tester,

@@ -67,6 +67,7 @@ class ScreenStore:
     def _prune(self, db, binding, valid):
         participants = db.execute('SELECT * FROM screen_participants WHERE binding_id=?', (binding['id'],)).fetchall()
         invalid = []
+        revoked = False
         for participant in participants:
             expired = participant['expires'] <= self._now()
             # Отсутствующий в снимке identity мог вступить, пока выполнялся Matrix IO.
@@ -81,7 +82,15 @@ class ScreenStore:
                         participant['curve'], participant['ed'], self.clock(), binding['room_id'], binding['call_session'])).fetchone()
             if expired or keys_changed or call_expired:
                 invalid.append(participant['identity'])
+                revoked = revoked or keys_changed or call_expired
         if invalid:
+            if binding['transport'] == 'direct' and not revoked:
+                # Expiration revokes every old lease/key generation, but is not
+                # a hangup. Both devices must freshly confirm the pair again.
+                self._invalidate(db, binding['id'])
+                db.execute('DELETE FROM screen_participants WHERE binding_id=?', (binding['id'],))
+                db.execute("UPDATE screen_bindings SET state='pending' WHERE id=?", (binding['id'],))
+                return
             terminal = binding['transport'] == 'direct' or len(invalid) == len(participants)
             owner = db.execute('SELECT owner_identity FROM screen_sessions WHERE binding_id=?',(binding['id'],)).fetchone()[0]
             self._invalidate(db, binding['id'], terminal, retain_owner=owner not in invalid)

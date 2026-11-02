@@ -162,7 +162,14 @@ class ScreenShareController extends ChangeNotifier {
   }
 
   Future<void> poll() async {
-    if (_closed || _polling || _acting || _binding == null) return;
+    // A system picker can remain open for a minute. It must not suspend the
+    // 30-second authorization lease of an otherwise connected call.
+    if (_closed ||
+        _polling ||
+        (_acting && !_preparingCapture) ||
+        _binding == null) {
+      return;
+    }
     _polling = true;
     final finished = _pollFinished = Completer<void>();
     try {
@@ -189,6 +196,7 @@ class ScreenShareController extends ChangeNotifier {
           error.code == 'screen_disabled') {
         reconnectAllowed =
             error.code == 'lease_expired' ||
+            error.code == 'screen_session_not_found' ||
             error.code == 'screen_access_denied';
         await close();
       } else {
@@ -299,6 +307,7 @@ class ScreenShareController extends ChangeNotifier {
       await captured?.close();
       if (captured != null) await _disposeMedia();
       await _restoreCamera();
+      if (_closed) return;
       notice = error is TimeoutException
           ? 'Не удалось подключить показ вовремя. Попробуйте ещё раз.'
           : captured == null
@@ -434,7 +443,7 @@ class ScreenShareController extends ChangeNotifier {
         await _command('claim');
         return;
       }
-      phase = ScreenPhase.idle;
+      if (!_preparingCapture) phase = ScreenPhase.idle;
       _changed();
       return;
     }
@@ -856,8 +865,9 @@ class ScreenShareController extends ChangeNotifier {
         await _messages?.cancel();
         await _disposeMedia();
       } finally {
+        if (reconnectAllowed) await _restoreCamera();
         try {
-          if (_binding != null) {
+          if (_binding != null && !reconnectAllowed) {
             await api.request('unbind', {
               'protocol_version': 1,
               'binding_id': _binding,

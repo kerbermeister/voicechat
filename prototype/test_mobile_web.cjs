@@ -162,36 +162,56 @@ test('Worker persists account binding, ignores old-account push and displays gen
 test('Receiver gain reuses the existing element, isolates participants and reapplies on replacement', async () => {
   let observer;
   const graphs = [];
-  const alice = {srcObject: {getAudioTracks: () => [{id: 'alice'}]}, muted: false, volume: 1, play: async () => {}};
-  const bob = {srcObject: {getAudioTracks: () => [{id: 'bob'}]}, muted: false, volume: 1, play: async () => {}};
+  const aliceTrack = {id: 'alice'}, bobTrack = {id: 'bob'};
+  const alice = {srcObject: {getAudioTracks: () => [aliceTrack]}, muted: false, volume: 1, play: async () => {}};
+  const bob = {srcObject: {getAudioTracks: () => [bobTrack]}, muted: false, volume: 1, play: async () => {}};
   const elements = [alice, bob];
   class AudioContext {
     constructor() { this.state = 'running'; this.destination = {}; this.currentTime = 0; }
     resume() { return Promise.resolve(); }
-    createMediaElementSource(element) { const node = {element, connect() {}}; graphs.push(node); return node; }
-    createGain() { const node = {value: 1, connect() {}, gain: {setTargetAtTime(value) {node.value = value;}}}; graphs[graphs.length - 1].gain = node; return node; }
+    createMediaStreamSource(stream) { const node = {stream, connect() {}, disconnect() {this.disconnected = true;}}; graphs.push(node); return node; }
+    createGain() { const node = {value: 1, connect() {}, disconnect() {}, gain: {setTargetAtTime(value) {node.value = value;}}}; graphs[graphs.length - 1].gain = node; return node; }
   }
   const document = {body: {}, querySelectorAll: () => elements, addEventListener() {}};
-  const window = {AudioContext};
+  const window = {AudioContext, MediaStream: class {constructor(tracks) {this.tracks = tracks;}}};
   vm.runInNewContext(code('media_audio.js'), {window, document, Promise, Map, WeakMap,
     MutationObserver: class {constructor(fn) {observer = fn;} observe() {}}});
   const api = window.VoiceChatAudio;
+  Object.defineProperty(alice, 'volume', {get: () => 1, set() {}});
+  await api.setCallVolume('alice', 0);
+  assert.equal(graphs[0].gain.value, 0, 'Zero works before any amplification, even when element.volume is ignored');
   await api.setCallVolume('alice', 3);
   assert.equal(graphs.length, 1);
-  assert.equal(graphs[0].element, alice);
+  assert.equal(graphs[0].stream.tracks[0], aliceTrack);
   assert.equal(graphs[0].gain.value, 3);
   assert.equal(bob.volume, 1);
   await api.setCallVolume('alice', 0);
   assert.equal(graphs.length, 1);
   assert.equal(graphs[0].gain.value, 0);
-  assert.equal(alice.muted, false);
-  const replacement = {...alice}; elements.push(replacement);
+  assert.equal(alice.muted, true);
+  const replacement = {...alice, muted: false};
+  alice.isConnected = false; elements.splice(elements.indexOf(alice), 1, replacement);
   observer(); await tick();
-  assert.equal(replacement.volume, 0);
+  assert.equal(graphs[1].gain.value, 0);
   await assert.rejects(api.setCallVolume('bob', 4), /Invalid/);
   await api.setCallVolume('bob', .5);
-  assert.equal(bob.volume, .5);
+  assert.equal(graphs[2].gain.value, .5);
   assert.equal(graphs[0].gain.value, 0);
+  const video = {...replacement, tagName: 'VIDEO', muted: false}; elements.push(video);
+  observer(); await tick();
+  assert.equal(graphs[1].disconnected, true, 'Audio-only graph is retired when video appears');
+  assert.equal(graphs[3].gain.value, 0, 'The video path retains the receiver level');
+  assert.equal(replacement.muted, true);
+  assert.equal(graphs.filter(g => !g.disconnected).length, 2, 'One graph per participant');
+  video.isConnected = false; elements.splice(elements.indexOf(video), 1);
+  observer(); await tick();
+  assert.equal(graphs[3].disconnected, true);
+  assert.equal(graphs[4].gain.value, 0, 'Audio resumes at the same level when video disappears');
+  assert.equal(graphs.filter(g => !g.disconnected).length, 2);
+  api.forgetCallVolume('alice');
+  assert.equal(graphs[4].disconnected, true);
+  assert.equal(graphs[0].disconnected, true);
+  assert.equal(alice.muted, false);
 });
 
 test('Routed push preserves click permission and binding without direct canonical fetch', async () => {
@@ -222,4 +242,60 @@ test('Routed binding failure cleans up through the same transport, with no fallb
   assert.deepEqual(actions, ['register', 'remove']);
   assert.ok(env.calls.includes('unsubscribe'));
   assert.ok(!env.calls.some(value => value.startsWith('https:')));
+});
+
+test('Call output selection routes the gain path, verifies the sink and preserves audio on rejection', async () => {
+  for (const mode of ['context', 'element', 'unsupported']) {
+    const nodes = [];
+    const track = {id: 'remote'};
+    const remote = {srcObject: {getAudioTracks: () => [track]}, muted: false, paused: false};
+    const elements = [remote];
+    const node = () => ({connections: new Set(), connect(target) {this.connections.add(target);},
+      disconnect(target) {if (target) this.connections.delete(target); else this.connections.clear();}});
+    let context, generatedStops = 0;
+    class Element {
+      async setSinkId(id) {if (id === 'bad') throw Error('Denied'); this.sinkId = id;}
+      async play() {this.paused = false;}
+      remove() {elements.splice(elements.indexOf(this), 1);}
+    }
+    class AudioContext {
+      constructor() {
+        context = this; this.state = 'running'; this.currentTime = 0; this.destination = {};
+        if (mode === 'context') this.setSinkId = async id => {if (id === 'bad') throw Error('Denied'); this.sinkId = id;};
+      }
+      createMediaStreamSource() {return node();}
+      createGain() {const gain = {...node(), gain: {setTargetAtTime() {}}}; nodes.push(gain); return gain;}
+      createMediaStreamDestination() {return {stream: {getAudioTracks: () => [], getTracks: () => [{stop() {generatedStops++;}}]}};}
+    }
+    const window = {AudioContext, MediaStream: class {},
+      navigator: {mediaDevices: {enumerateDevices: async () => [
+        {kind: 'audiooutput', deviceId: 'speaker', label: 'Speaker'},
+        {kind: 'audiooutput', deviceId: 'receiver', label: 'Receiver'},
+        {kind: 'audioinput', deviceId: 'microphone', label: 'Microphone'},
+      ]}},
+      ...(mode === 'element' ? {HTMLMediaElement: Element} : {}),
+    };
+    const document = {querySelectorAll: () => elements, addEventListener() {},
+      createElement: () => new Element(), body: {append(element) {elements.push(element);}}};
+    vm.runInNewContext(code('media_audio.js'), {window, document, Promise,
+      MutationObserver: class {observe() {}}});
+    const api = window.VoiceChatAudio;
+    await api.setCallVolume('remote', .5);
+    assert.equal(nodes[0].connections.has(context.destination), true);
+    const available = JSON.parse(await api.outputDevices());
+    assert.equal(available.supported, mode !== 'unsupported');
+    assert.equal(available.devices.length, mode === 'unsupported' ? 0 : 2);
+    await assert.rejects(api.selectOutput('bad'));
+    assert.equal(nodes[0].connections.has(context.destination), true, 'Failed selection keeps the previous audible path');
+    if (mode === 'unsupported') continue;
+    await api.selectOutput('receiver');
+    assert.equal(JSON.parse(await api.outputDevices()).devices.find(d => d.selected).id, 'receiver');
+    if (mode === 'element') {
+      assert.equal(generatedStops, 1, 'Rejected generated output was released');
+      assert.equal(nodes[0].connections.has(context.destination), false);
+      assert.equal(nodes[0].connections.size, 1, 'One call output, no echo path');
+      assert.equal(elements.at(-1).sinkId, 'receiver');
+    } else assert.equal(context.sinkId, 'receiver');
+    assert.equal(remote.muted, true);
+  }
 });

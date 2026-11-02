@@ -118,7 +118,7 @@ class CallProbe implements VoiceCall {
   int _transportSerial = 0, _sharingSerial = 0;
   bool _closed = false;
   Future<void>? _closing;
-  DateTime _authorizedAt = DateTime.now();
+  final _authorized = Stopwatch()..start();
   Map<String, dynamic>? _admission;
 
   /// Только собственный допуск активного группового звонка, не отдельное место SFU.
@@ -410,7 +410,7 @@ class CallProbe implements VoiceCall {
           (data['roster'] as List).length > 10) {
         throw const FormatException('Invalid call admission');
       }
-      _authorizedAt = DateTime.now();
+      _authorized.reset();
       _keyClock.synchronize(data['server_time']);
       return data;
     }
@@ -470,8 +470,7 @@ class CallProbe implements VoiceCall {
     } catch (error) {
       if (_closed) return;
       if (callAccessDenied(error) ||
-          DateTime.now().difference(_authorizedAt) >=
-              const Duration(seconds: 25)) {
+          _authorized.elapsed >= const Duration(seconds: 25)) {
         await close();
         status('Звонок завершён: доступ отозван или не удалось его проверить');
       } else {
@@ -651,9 +650,7 @@ class CallProbe implements VoiceCall {
     )) {
       return;
     }
-    if (_closed ||
-        DateTime.now().difference(_authorizedAt) >=
-            const Duration(seconds: 25)) {
+    if (_closed || _authorized.elapsed >= const Duration(seconds: 25)) {
       return;
     }
     final key = base64Decode(data['key'] as String);

@@ -221,15 +221,27 @@ void main() {
       },
     );
   }
-  for (final scenario in ['denied', 'no-frames', 'frames']) {
+  for (final entry in [
+    (TargetPlatform.macOS, 'denied'),
+    (TargetPlatform.macOS, 'no-frames'),
+    (TargetPlatform.macOS, 'frames'),
+    (TargetPlatform.android, 'no-frames'),
+    (TargetPlatform.android, 'frames'),
+  ]) {
+    final (platform, scenario) = entry;
     test(
-      'Mac capture $scenario fails closed before publishing',
+      '$platform capture $scenario fails closed before publishing',
       () async {
-        debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+        debugDefaultTargetPlatformOverride = platform;
         final messenger =
             TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
         final methods = <String>[];
         const channel = MethodChannel('FlutterWebRTC.Method');
+        const screen = MethodChannel('voicechat/screen');
+        messenger.setMockMethodCallHandler(screen, (call) async {
+          methods.add('screen_${call.method}');
+          return null;
+        });
         const texture = MethodChannel('FlutterWebRTC/Texture71');
         messenger.setMockMethodCallHandler(texture, (_) async => null);
         messenger.setMockMethodCallHandler(channel, (call) async {
@@ -253,6 +265,9 @@ void main() {
             };
           }
           if (call.method == 'createVideoRenderer') return {'textureId': 71};
+          if (call.method == 'videoRendererSetSrcObject') {
+            expect(call.arguments['trackId'], 'screen');
+          }
           if (call.method == 'videoRendererSetSrcObject' &&
               scenario == 'frames') {
             await messenger.handlePlatformMessage(
@@ -288,6 +303,8 @@ void main() {
               (error as PlatformException).code,
               scenario == 'denied'
                   ? 'screenPermissionDenied'
+                  : platform == TargetPlatform.android
+                  ? 'screenCaptureNoFrames'
                   : 'screenNoFrames',
             );
             if (scenario == 'denied') {
@@ -303,12 +320,28 @@ void main() {
                 ]),
               );
             }
-            expect(screenCaptureNotice(error!), contains('macOS'));
+            expect(
+              screenCaptureNotice(error!),
+              platform == TargetPlatform.macOS
+                  ? contains('macOS')
+                  : contains('Система не передаёт кадры'),
+            );
+            if (platform == TargetPlatform.android) {
+              expect(
+                methods,
+                containsAllInOrder([
+                  'screen_start',
+                  'getDisplayMedia',
+                  'screen_stop',
+                ]),
+              );
+            }
           }
         } finally {
           debugDefaultTargetPlatformOverride = null;
           messenger.setMockMethodCallHandler(channel, null);
           messenger.setMockMethodCallHandler(texture, null);
+          messenger.setMockMethodCallHandler(screen, null);
         }
       },
       // WebRTC Helper checks dart:io Platform, not Flutter's platform override.

@@ -193,6 +193,9 @@ class CallSession {
   Timer? _ringingTimer;
   Timer? _connectionTimer;
   bool _answering = false;
+  Future<void>? _recoveringConnection;
+  int _iceRestartedCount = 0;
+  int _connectionEpoch = 0;
 
   void _waitForConnection(Duration timeout) {
     _connectionTimer ??= Timer(timeout, () {
@@ -1191,7 +1194,7 @@ class CallSession {
   }
 
   Future<void> _preparePeerConnection() async {
-    var iceRestartedCount = 0;
+    _iceRestartedCount = 0;
 
     try {
       pc = await _createPeerConnection();
@@ -1235,13 +1238,14 @@ class CallSession {
         if (callHasEnded) return;
         switch (state) {
           case RTCPeerConnectionState.RTCPeerConnectionStateClosed:
-          case RTCPeerConnectionState.RTCPeerConnectionStateFailed:
             unawaited(hangup(reason: CallErrorCode.iceFailed));
             break;
+          case RTCPeerConnectionState.RTCPeerConnectionStateFailed:
           case RTCPeerConnectionState.RTCPeerConnectionStateDisconnected:
-            _waitForConnection(const Duration(seconds: 15));
+            unawaited(_recoverConnection());
             break;
           case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
+            _connectionEpoch++;
             _connectionTimer?.cancel();
             _connectionTimer = null;
             break;
@@ -1256,7 +1260,8 @@ class CallSession {
             state == RTCIceConnectionState.RTCIceConnectionStateCompleted) {
           _localCandidates.clear();
           _remoteCandidates.clear();
-          iceRestartedCount = 0;
+          _iceRestartedCount = 0;
+          _connectionEpoch++;
           setCallState(CallState.kConnected);
           // fix any state/race issues we had with sdp packets and cloned streams
           await updateMuteStatus();
@@ -1265,13 +1270,7 @@ class CallSession {
           RTCIceConnectionState.RTCIceConnectionStateFailed,
           RTCIceConnectionState.RTCIceConnectionStateDisconnected,
         }.contains(state)) {
-          _waitForConnection(const Duration(seconds: 15));
-          if (iceRestartedCount < 3) {
-            await restartIce();
-            iceRestartedCount++;
-          } else {
-            await hangup(reason: CallErrorCode.iceFailed);
-          }
+          await _recoverConnection();
         }
       };
     } catch (e) {
@@ -1355,20 +1354,37 @@ class CallSession {
     return metadata;
   }
 
+  Future<void> _recoverConnection() {
+    if (callHasEnded) return Future.value();
+    _waitForConnection(const Duration(seconds: 15));
+    return _recoveringConnection ??= (() async {
+      if (_iceRestartedCount >= 3) return;
+      _iceRestartedCount++;
+      try {
+        await restartIce();
+      } catch (error, stack) {
+        // A temporary TURN/signalling failure must not end live media early.
+        // The original bounded disconnect timer still owns final termination.
+        Logs().w('[VOIP] ICE recovery deferred', error, stack);
+      }
+    })().whenComplete(() => _recoveringConnection = null);
+  }
+
   Future<void> restartIce() async {
     Logs().v('[VOIP] iceRestart.');
     final connection = pc;
+    final epoch = _connectionEpoch;
     if (connection == null || callHasEnded) return;
     // TURN credentials and the trusted relay list may change during a call.
     final servers = await voip.getIceServers();
-    if (callHasEnded || pc != connection) return;
+    if (callHasEnded || pc != connection || epoch != _connectionEpoch) return;
     if (servers.isNotEmpty) {
       await connection.setConfiguration({
         ...connection.getConfiguration,
         'iceServers': servers,
       });
     }
-    if (callHasEnded || pc != connection) return;
+    if (callHasEnded || pc != connection || epoch != _connectionEpoch) return;
     // Needs restart ice on session.pc and renegotiation.
     _iceGatheringFinished = false;
     _localCandidates.clear();

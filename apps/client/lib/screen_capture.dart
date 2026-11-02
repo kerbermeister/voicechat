@@ -8,6 +8,9 @@ import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 String screenCaptureNotice(Object error) {
   if (error is PlatformException) {
     if (error.code == 'screenCancelled') return 'Выбор экрана отменён.';
+    if (error.code == 'screenCaptureNoFrames') {
+      return 'Система не передаёт кадры экрана. Показ не начат. Повторите выбор источника.';
+    }
     if (error.code == 'screenCaptureFailed' ||
         error.code == 'screenSystemUnavailable' ||
         error.code == 'screenCaptureStopped') {
@@ -121,7 +124,7 @@ class ScreenCapture {
       // The system picker already waits for an actual complete native frame.
       // A second renderer attaches later and can miss the only frame of static
       // content: ScreenCaptureKit emits idle samples until something changes.
-      if (macOS && !picker) {
+      if (_android || (macOS && !picker)) {
         try {
           await _waitForFrames(track);
         } catch (_) {
@@ -194,10 +197,15 @@ class ScreenCapture {
       renderer.onFirstFrameRendered = () {
         if (!frame.isCompleted) frame.complete();
       };
-      await renderer.setSrcObject(stream: track.mediaStream);
+      await renderer.setSrcObject(
+        stream: track.mediaStream,
+        trackId: track.mediaStreamTrack.id,
+      );
       await frame.future.timeout(const Duration(seconds: 8));
     } catch (_) {
-      throw PlatformException(code: 'screenNoFrames');
+      throw PlatformException(
+        code: _android ? 'screenCaptureNoFrames' : 'screenNoFrames',
+      );
     } finally {
       await renderer.dispose();
     }

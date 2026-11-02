@@ -6,7 +6,9 @@
   const wanted = new Map();
   const duplicateAudio = new WeakSet();
   const callLevels = new Map();
-  const callGraphs = new WeakMap();
+  const callGraphs = new Map();
+  let callDestination, outputElement;
+  let outputId = '';
   function audioContext() {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) throw new Error('Web Audio unavailable');
@@ -44,45 +46,122 @@
   }
   function callElements() {
     const elements = [...document.querySelectorAll('audio,video')];
-    // LiveKit already plays each remote microphone. Flutter's video renderer
-    // can attach that same audio track again from a combined remote stream.
-    const livekitTracks = new Set(elements
-      .filter(e => e.id?.startsWith('livekit_audio_') && e.srcObject && !e.muted)
-      .flatMap(e => e.srcObject.getAudioTracks?.().map(t => t.id) ?? []));
-    for (const element of elements) {
-      if (element.id?.startsWith('livekit_audio_')) continue;
-      const tracks = element.srcObject?.getAudioTracks?.() ?? [];
-      const duplicate = tracks.length > 0 && tracks.every(t => livekitTracks.has(t.id));
-      if (duplicate && !element.muted) {
+    // A microphone can move from an audio player to a video tile, or LiveKit
+    // can also attach it. Keep exactly one audible path across those transitions.
+    const candidates = elements.filter(e => e.srcObject &&
+      (!e.muted || callGraphs.has(e) || duplicateAudio.has(e)));
+    const priority = e => e.id?.startsWith('livekit_audio_') ? 0 : e.tagName === 'VIDEO' ? 1 : 2;
+    candidates.sort((a, b) => priority(a) - priority(b));
+    const owners = new Map();
+    for (const element of candidates) {
+      const tracks = element.srcObject.getAudioTracks?.() ?? [];
+      const duplicate = tracks.length > 0 && tracks.every(t => owners.has(t.id));
+      if (duplicate) {
+        const graph = callGraphs.get(element);
+        if (graph) releaseCallGraph(element, graph);
         element.muted = true;
         duplicateAudio.add(element);
-      } else if (!duplicate && duplicateAudio.has(element)) {
-        duplicateAudio.delete(element);
-        element.muted = false;
+      } else {
+        for (const track of tracks) owners.set(track.id, element);
+        if (duplicateAudio.has(element)) {
+          duplicateAudio.delete(element);
+          element.muted = false;
+        }
       }
     }
-    return elements.filter(e => e.srcObject && !e.muted);
+    return elements.filter(e => e.srcObject && (!e.muted || callGraphs.has(e)));
+  }
+  function releaseCallGraph(element, graph) {
+    graph.source.disconnect(); graph.gain.disconnect();
+    callGraphs.delete(element);
+    element.muted = false;
   }
   async function syncCallVolumes() {
-    for (const element of callElements()) {
-      if (typeof element.srcObject.getAudioTracks !== 'function') continue;
-      const track = element.srcObject.getAudioTracks().find(t => callLevels.has(t.id));
-      if (!track) continue;
-      const level = callLevels.get(track.id);
-      let graph = callGraphs.get(element);
-      if (!graph && level <= 1) { element.volume = level; continue; }
-      const ctx = audioContext();
-      if (ctx.state !== 'running') await ctx.resume();
-      graph = callGraphs.get(element);
-      if (!graph) {
-        const source = ctx.createMediaElementSource(element);
-        const gain = ctx.createGain();
-        source.connect(gain); gain.connect(ctx.destination);
-        graph = {source, gain}; callGraphs.set(element, graph);
+    for (const [element, graph] of callGraphs) {
+      if (element.isConnected === false || !callLevels.has(graph.track.id) ||
+          !element.srcObject?.getAudioTracks?.().includes(graph.track)) {
+        releaseCallGraph(element, graph);
       }
-      element.volume = 1;
-      graph.gain.gain.setTargetAtTime(level, ctx.currentTime, 0.02);
     }
+    for (const element of callElements()) {
+      const track = element.srcObject.getAudioTracks?.().find(t => callLevels.has(t.id));
+      if (!track) continue;
+      const ctx = audioContext();
+      let graph = callGraphs.get(element);
+      if (!graph) {
+        // iOS ignores element.volume, and MediaElementSource can be silent for
+        // srcObject streams. Read the remote track directly for the whole range.
+        const source = ctx.createMediaStreamSource(new window.MediaStream([track]));
+        const gain = ctx.createGain();
+        gain.gain.value = callLevels.get(track.id);
+        source.connect(gain);
+        const output = callDestination ?? ctx.destination;
+        gain.connect(output);
+        graph = {source, gain, track, output}; callGraphs.set(element, graph);
+      }
+      element.muted = true; // Exactly one audible path; video keeps its A/V stream.
+      graph.gain.gain.setTargetAtTime(callLevels.get(track.id), ctx.currentTime, 0.02);
+      if (ctx.state !== 'running') await ctx.resume();
+    }
+    if (outputElement && callGraphs.size && outputElement.paused) await outputElement.play();
+  }
+  async function selectOutput(id) {
+    if (typeof id !== 'string' || id.length > 1024) throw new Error('Invalid output');
+    const ctx = audioContext();
+    if (typeof ctx.setSinkId === 'function') {
+      await ctx.setSinkId(id);
+      if (ctx.sinkId !== id) throw new Error('Output selection was not applied');
+    } else {
+      if (typeof window.HTMLMediaElement?.prototype.setSinkId !== 'function') {
+        throw new Error('Browser does not expose output selection');
+      }
+      // Some Safari versions route media elements, but not AudioContext.
+      // A generated stream preserves participant gain and avoids routing the
+      // raw single-track WebRTC stream through Safari's affected sink path.
+      if (!outputElement) {
+        const destination = ctx.createMediaStreamDestination();
+        const element = document.createElement('audio');
+        element.id = 'voicechat_call_output';
+        element.autoplay = true;
+        element.srcObject = destination.stream;
+        document.body.append(element);
+        try {
+          await element.setSinkId(id);
+          if (element.sinkId !== id) throw new Error('Output selection was not applied');
+          await element.play();
+        } catch (error) {
+          element.srcObject = null; element.remove();
+          for (const track of destination.stream.getTracks()) track.stop();
+          throw error;
+        }
+        outputElement = element;
+        callDestination = destination;
+      } else {
+        await outputElement.setSinkId(id);
+        if (outputElement.sinkId !== id) throw new Error('Output selection was not applied');
+        await outputElement.play();
+      }
+      for (const graph of callGraphs.values()) {
+        if (graph.output === callDestination) continue;
+        graph.gain.disconnect(graph.output);
+        graph.gain.connect(callDestination);
+        graph.output = callDestination;
+      }
+    }
+    outputId = id;
+  }
+  async function outputDevices() {
+    const ctx = audioContext();
+    const supported = typeof ctx.setSinkId === 'function' ||
+        typeof window.HTMLMediaElement?.prototype.setSinkId === 'function';
+    const devices = supported ? await window.navigator.mediaDevices.enumerateDevices() : [];
+    return JSON.stringify({supported,
+      systemPicker: supported && typeof window.navigator.mediaDevices.selectAudioOutput === 'function',
+      devices: devices.filter(d => d.kind === 'audiooutput').map((d, i) => ({
+        id: d.deviceId, label: d.label || `Аудиовыход ${i + 1}`,
+        selected: d.deviceId === outputId || (!outputId && d.deviceId === 'default'),
+      })),
+    });
   }
   async function resumeCalls() {
     const results = await Promise.allSettled(callElements().filter(e => e.paused !== false).map(e => e.play()));
@@ -106,6 +185,12 @@
     void resumeCalls();
   }
   window.VoiceChatAudio = {
+    outputDevices,
+    selectOutput,
+    async chooseSystemOutput() {
+      const device = await window.navigator.mediaDevices.selectAudioOutput();
+      await selectOutput(device.deviceId);
+    },
     prepare() { for (const name of ['sent', 'received', 'ringtone', 'ringback', 'ended', 'deleted']) void load(name).catch(() => {}); },
     async play(channel, name, loop) {
       const ok = await play(channel, name, loop);
@@ -119,7 +204,12 @@
       callLevels.set(id, level);
       await syncCallVolumes();
     },
-    forgetCallVolume(id) { callLevels.delete(id); },
+    forgetCallVolume(id) {
+      callLevels.delete(id);
+      for (const [element, graph] of callGraphs) {
+        if (graph.track.id === id) releaseCallGraph(element, graph);
+      }
+    },
     async resume() { unlock(); return resumeCalls(); },
     close() { stop('ring'); stop('effect'); },
   };
@@ -128,8 +218,14 @@
   document.addEventListener('pointerup', unlock, true);
   document.addEventListener('click', unlock, true);
   document.addEventListener('keydown', unlock, true);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && callLevels.size) {
+      unlock();
+      void syncCallVolumes().catch(() => {});
+    }
+  });
   document.addEventListener('loadedmetadata', event => {
-    if (['AUDIO', 'VIDEO'].includes(event.target.tagName) && event.target.srcObject && !event.target.muted) {
+    if (['AUDIO', 'VIDEO'].includes(event.target.tagName) && event.target.srcObject && (!event.target.muted || callGraphs.has(event.target))) {
       void resumeCalls();
       void syncCallVolumes().catch(() => {});
     }

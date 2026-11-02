@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'call_probe.dart';
 import 'direct_call.dart';
 import 'route_coordinator.dart';
@@ -23,6 +22,10 @@ Future<Map<String, Object?>> connectionDiagnostics(
             'camera_enabled': call.cameraEnabled,
           },
   };
+  if (call is DirectCall && call.qualitySamples.isNotEmpty) {
+    (result['call'] as Map<String, Object?>)['recent_quality'] =
+        call.qualitySamples;
+  }
   if (call != null && !call.isClosed) {
     final media = result['call'] as Map<String, Object?>;
     try {
@@ -33,11 +36,9 @@ Future<Map<String, Object?>> connectionDiagnostics(
         media['secure_turn_relay'] = await call.hasSecureRelay().timeout(
           const Duration(seconds: 2),
         );
-        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-          media['video_receiver'] = await call
-              .receivedVideoStatistics()
-              .timeout(const Duration(seconds: 2));
-        }
+        media['video_receiver'] = await call.receivedVideoStatistics().timeout(
+          const Duration(seconds: 2),
+        );
       } else if (call is CallProbe) {
         media['connection'] = call.media?.connectionState.name;
       }
