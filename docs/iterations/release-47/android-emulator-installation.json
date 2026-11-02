@@ -1,0 +1,8 @@
+{
+  "build": 47,
+  "version": "1.18.0",
+  "release_package_installed": true,
+  "native_media_test_source": "2254b1d",
+  "profile_preservation_test": false,
+  "physical_device": false
+}

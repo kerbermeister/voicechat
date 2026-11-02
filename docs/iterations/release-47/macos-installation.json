@@ -1,0 +1,13 @@
+{
+  "build": 47,
+  "previous_build": 46,
+  "source": "2254b1d0b5500f576b9366d7376799101eb5d71e",
+  "update_offered_in_previous_app": true,
+  "download_install_button_used": true,
+  "installed_exact_zip_entries": 285,
+  "installed_hashes_match": true,
+  "candidate_account_and_device_preserved": true,
+  "post_install_ui": "PASS: saved account and exact same device in Settings; pre-existing encrypted voice played 0:00 to 0:09",
+  "keychain_deleted_or_reset": false,
+  "post_install_device_id_same": true
+}

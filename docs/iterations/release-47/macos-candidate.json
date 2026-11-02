@@ -1,0 +1,10 @@
+{
+  "build": 47,
+  "source": "2254b1d0b5500f576b9366d7376799101eb5d71e",
+  "zip_dmg_app_entries_equal": 285,
+  "signature_verified": true,
+  "saved_account_same": true,
+  "device_id_same": true,
+  "keychain_reset": false,
+  "history_playback": "PASS: pre-existing encrypted QA voice played 0:00 to 0:09"
+}

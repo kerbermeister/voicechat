@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "build": 47,
+  "source": "2254b1d0b5500f576b9366d7376799101eb5d71e",
+  "zip_sha256": "14bde1ef30f7c94ca5d876e72ffc59547deca0da4fb1bd6d9c37e443674ef696",
+  "published": true,
+  "services_unchanged": true,
+  "profile_acceptance_pending": true,
+  "cache_control": "no-cache",
+  "published_at_unix": 1793606963
+}

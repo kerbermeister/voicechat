@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "build": 47,
+  "source": "2254b1d0b5500f576b9366d7376799101eb5d71e",
+  "sha256": "afad22fe49754caced5d41a56e4ee8331c2585221da218dde112d5a97da2d744",
+  "published": true,
+  "physical_acceptance": false,
+  "emulator_installation": false,
+  "previous_build": 46,
+  "services_unchanged": true,
+  "managed_release_pointer_unchanged": true,
+  "manifest_cache_control": "no-cache",
+  "published_at_unix": 1793606974
+}

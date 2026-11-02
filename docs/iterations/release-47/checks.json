@@ -1,0 +1,64 @@
+{
+  "source": "2254b1d0b5500f576b9366d7376799101eb5d71e",
+  "date": "2026-11-02",
+  "python_full": {
+    "tests": 838,
+    "skipped": 3,
+    "result": "PASS"
+  },
+  "flutter_full": {
+    "passed": 550,
+    "skipped": 4,
+    "result": "PASS"
+  },
+  "focused_final": {
+    "passed": 13,
+    "result": "PASS"
+  },
+  "flutter_analyze": "PASS",
+  "native_android": {
+    "api": 35,
+    "physical": false,
+    "result": "PASS",
+    "local_preview_sizes": [
+      "320x240",
+      "1280x720"
+    ],
+    "without_explicit_track_id": "FAIL at first camera replacement while remote decode continued",
+    "bitrate_readback_bps": [
+      510000,
+      16000,
+      32000,
+      64000
+    ],
+    "verified_audio_outputs": [
+      "speaker"
+    ],
+    "earpiece_proximity_audibility": false,
+    "h264": "not advertised by emulator",
+    "sdk_teardown": "existing nonfatal ConcurrentModificationException from streamDispose"
+  },
+  "synapse_push": "PASS actual local server: three silent suppressed, ordinary events delivered, revoke enforced",
+  "macos_xctest": {
+    "passed": 6,
+    "result": "PASS"
+  },
+  "macos_screen": {
+    "system": "macOS 15.3.1 arm64",
+    "before_recovery": "Independent ScreenCaptureKit entire-display probe received zero callbacks; ControlCenter picker later stopped responding",
+    "recovery": "Restarted replayd and ControlCenter, then selected the same entire display again; independent probe received 104 callbacks",
+    "permissions_or_signatures_changed_for_recovery": false,
+    "reboot_required": false,
+    "native_client_integration": "PASS: full display produced rendered frames; audio excluded; publication ownership and stop verified",
+    "integration_passed": 1,
+    "prior_attempts": "Initial picker blocked; first recovered run passed capture assertions but failed Flutter SemanticsHandle end-of-test check after UI inspection; final run without inspecting Flutter UI passed",
+    "permanent_system_fix_proven": false,
+    "cross_device_call": false
+  },
+  "ci_full_deploy": "PASS run41410036159, managed/full85,13m41s",
+  "android_published": true,
+  "macos_published_and_sparkle_upgrade": true,
+  "physical_xiaomi": false,
+  "physical_iphone": false,
+  "keychain_deleted_or_reset": false
+}
