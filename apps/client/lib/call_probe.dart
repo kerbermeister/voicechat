@@ -9,6 +9,7 @@ import 'matrix_probe.dart';
 import 'transport.dart';
 import 'route_transport.dart';
 import 'media_routes.dart';
+import 'routed_livekit_engine.dart' show RoomMediaStatistics;
 import 'voice_call.dart';
 import 'call_quality.dart';
 import 'camera_capture.dart';
@@ -58,24 +59,8 @@ class CallProbe implements VoiceCall {
   @override
   AudioBitrate audioBitrate = AudioBitrate.auto;
 
-  Future<List<Map<String, Object>>> diagnosticCounters() async {
-    final room = media;
-    if (_closed || room == null) return [];
-    final tracks = [
-      ...?room.localParticipant?.trackPublications.values.map((p) => p.track),
-      for (final participant in room.remoteParticipants.values)
-        ...participant.trackPublications.values.map((p) => p.track),
-    ].whereType<lk.Track>();
-    final counters = <Map<String, Object>>[];
-    for (final track in tracks) {
-      if (_closed || media != room) return [];
-      final reports = track is lk.LocalTrack
-          ? await track.sender?.getStats()
-          : await track.receiver?.getStats();
-      if (reports != null) counters.addAll(mediaCounters(reports));
-    }
-    return _closed || media != room ? [] : counters;
-  }
+  final _mediaStatistics = RoomMediaStatistics();
+  List<Map<String, Object>> get mediaHistory => _mediaStatistics.history;
 
   @override
   Future<void> setAudioBitrate(AudioBitrate value) async {
@@ -336,6 +321,7 @@ class CallProbe implements VoiceCall {
       data['token'] as String,
       connectOptions: connectOptions,
     );
+    _mediaStatistics.start(media!);
     if (media!.e2eeManager == null) {
       throw StateError('E2EE unavailable; refusing microphone');
     }
@@ -863,6 +849,7 @@ class CallProbe implements VoiceCall {
 
   Future<void> _disposeTransport() async {
     _transportSerial++;
+    _mediaStatistics.stop();
     _clock.stop();
     cameraEnabled = false;
     try {

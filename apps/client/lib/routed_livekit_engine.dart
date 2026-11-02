@@ -3,6 +3,7 @@
 // ignore_for_file: implementation_imports, invalid_use_of_internal_member
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:livekit_client/src/core/engine.dart';
 import 'package:livekit_client/src/proto/livekit_models.pb.dart' as model;
@@ -10,6 +11,7 @@ import 'package:livekit_client/src/types/internal.dart';
 import 'package:livekit_client/src/support/region_url_provider.dart';
 import 'package:livekit_client/src/support/websocket.dart';
 import 'route_transport.dart';
+import 'media_statistics.dart';
 import 'route_coordinator.dart';
 
 bool mediaNetworkFailure(Object error) {
@@ -154,5 +156,104 @@ class RoutedLiveKitEngine extends Engine {
     }
     if (!await _prepare(updatePeers: false)) return;
     await super.restartConnection();
+  }
+}
+
+final _statisticsPeerIds = Expando<int>();
+int _nextStatisticsPeerId = 0;
+
+/// Query each transport once, rather than once per publication in a large group.
+Future<List<rtc.StatsReport>> mediaRoomReports(lk.Room room) async {
+  final publisher = room.engine.publisher?.pc;
+  final subscriber = room.engine.subscriber?.pc;
+  final peers = {
+    if (publisher != null) publisher,
+    if (subscriber != null) subscriber,
+  };
+  final snapshots = await Future.wait(
+    peers.map((peer) async {
+      final index = _statisticsPeerIds[peer] ??= _nextStatisticsPeerId++;
+      final reports = await peer.getStats().timeout(const Duration(seconds: 2));
+      Map<String, dynamic> scopedValues(rtc.StatsReport report) => {
+        ...report.values,
+        for (final field in const [
+          'selectedCandidatePairId',
+          'localCandidateId',
+          'remoteCandidateId',
+          'transportId',
+          'codecId',
+          'localId',
+          'remoteId',
+        ])
+          if (report.values[field] is String)
+            field: '$index/${report.values[field]}',
+      };
+      return [
+        for (final report in reports)
+          rtc.StatsReport(
+            '$index/${report.id}',
+            report.type,
+            report.timestamp,
+            scopedValues(report),
+          ),
+      ];
+    }),
+  );
+  if (publisher != room.engine.publisher?.pc ||
+      subscriber != room.engine.subscriber?.pc) {
+    return [];
+  }
+  return snapshots.expand((reports) => reports).toList();
+}
+
+/// A room owns one sampler, independent of admission and renderer visibility.
+class RoomMediaStatistics {
+  final _statistics = MediaStatistics();
+  final _clock = Stopwatch()..start();
+  final _history = <Map<String, Object>>[];
+  lk.Room? _room;
+  Timer? _timer;
+  bool _sampling = false;
+  List<Map<String, Object>> get history => List.unmodifiable(_history);
+
+  void start(lk.Room room) {
+    stop();
+    _room = room;
+    _timer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => unawaited(sample()),
+    );
+  }
+
+  void stop() {
+    _timer?.cancel();
+    _timer = null;
+    _room = null;
+    _statistics.reset();
+  }
+
+  Future<void> sample() async {
+    final room = _room;
+    if (room == null || _sampling) return;
+    _sampling = true;
+    try {
+      final reports = await mediaRoomReports(room);
+      if (!identical(room, _room)) return;
+      _record({'streams': _statistics.read(reports)});
+    } catch (_) {
+      if (identical(room, _room)) {
+        _statistics.reset();
+        _record({'statistics': 'unavailable'});
+      }
+    } finally {
+      _sampling = false;
+    }
+  }
+
+  void _record(Map<String, Object> values) {
+    _history.add(
+      Map.unmodifiable({'elapsed_ms': _clock.elapsedMilliseconds, ...values}),
+    );
+    if (_history.length > 60) _history.removeAt(0);
   }
 }

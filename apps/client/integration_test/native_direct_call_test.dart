@@ -257,6 +257,56 @@ void main() {
               received = await remote.receivedAudioPackets();
             }
             expect(received, greaterThan(0));
+            await remote.sampleMedia();
+            await Future<void>.delayed(const Duration(milliseconds: 900));
+            await remote.sampleMedia();
+            final streams = remote.qualitySamples.last['streams'] as List;
+            expect(
+              streams.any(
+                (stream) =>
+                    stream['kind'] == 'audio' &&
+                    stream['direction'] == 'inbound-rtp' &&
+                    stream['bitrate_bps'] is num &&
+                    stream['bitrate_bps'] > 0,
+              ),
+              true,
+            );
+            debugPrint('PASS: native inbound audio interval counters');
+            final sender = (await caller.pc!.getSenders()).firstWhere(
+              (s) => s.track?.kind == 'audio',
+            );
+            final parameters = sender.parameters;
+            for (final encoding in parameters.encodings!) {
+              encoding.active = false;
+            }
+            expect(await sender.setParameters(parameters), true);
+            await Future<void>.delayed(const Duration(seconds: 2));
+            await remote.sampleMedia();
+            for (final encoding in parameters.encodings!) {
+              encoding.active = true;
+            }
+            expect(await sender.setParameters(parameters), true);
+            await Future<void>.delayed(const Duration(seconds: 1));
+            await remote.sampleMedia();
+            await Future<void>.delayed(const Duration(seconds: 1));
+            await remote.sampleMedia();
+            final recovered = remote.qualitySamples.last['streams'] as List;
+            expect(
+              recovered.any(
+                (stream) =>
+                    stream['kind'] == 'audio' &&
+                    stream['direction'] == 'inbound-rtp' &&
+                    stream['bitrate_bps'] is num &&
+                    stream['bitrate_bps'] > 0,
+              ),
+              true,
+            );
+            expect(caller.state, mx.CallState.kConnected);
+            expect(callee.state, mx.CallState.kConnected);
+            debugPrint(
+              'PASS: native audio RTP resumed after a two-second encoding pause',
+            );
+
             final stats = await caller.pc!.getStats();
             expect(
               stats.any(

@@ -27,6 +27,7 @@ class DirectCall implements VoiceCall {
   final _streams = <mx.WrappedMediaStream, rtc.RTCVideoRenderer>{};
   final _renderedTracks = <rtc.RTCVideoRenderer, List<rtc.MediaStreamTrack>>{};
   final _statistics = CallStatistics();
+  rtc.RTCPeerConnection? _statisticsPeer;
   List<Map<String, Object>> get qualitySamples => _statistics.samples;
   final _stableQuality = StableCallQuality();
   final _stableOutgoingQuality = StableCallQuality();
@@ -274,6 +275,10 @@ class DirectCall implements VoiceCall {
             const Duration(seconds: 2),
           );
       if (_closed || peer != call.pc) return;
+      if (!identical(_statisticsPeer, peer)) {
+        _statistics.resetTransport();
+        _statisticsPeer = peer;
+      }
       audioLevels.read(reports);
       quality = _stableQuality.update(_statistics.read(reports));
       _stableOutgoingQuality.update(outgoingVideoQuality(reports));

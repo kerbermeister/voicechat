@@ -140,6 +140,17 @@ void main() {
       expect(stats.read([report(1, 0)]), CallQuality.unknown);
     },
   );
+  test(
+    'A disappeared RTP stream cannot reuse loss counters when it returns',
+    () {
+      final stats = CallStatistics();
+      stats.read([report(100, 0)]);
+      expect(stats.read([report(200, 0)]), CallQuality.excellent);
+      stats.read([]);
+      expect(stats.read([report(300, 20)]), CallQuality.unknown);
+      expect(stats.read([report(400, 20)]), CallQuality.excellent);
+    },
+  );
   test('Only the selected ICE pair contributes latency', () {
     final stats = CallStatistics();
     List<StatsReport> samples(int count) => [

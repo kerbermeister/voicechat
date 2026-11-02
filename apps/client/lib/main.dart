@@ -2361,6 +2361,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
           final snapshot = await connectionDiagnostics(
             probe?.routes,
             calls?.active,
+            screen: calls?.screen,
           );
           if (mounted) {
             await showAppDialog<void>(

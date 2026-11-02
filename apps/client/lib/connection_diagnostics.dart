@@ -1,3 +1,4 @@
+import 'screen_controller.dart';
 import 'call_probe.dart';
 import 'direct_call.dart';
 import 'route_coordinator.dart';
@@ -6,8 +7,9 @@ import 'voice_call.dart';
 /// Local allowlisted snapshot: never serialize sessions, SDP, keys or peer IDs.
 Future<Map<String, Object?>> connectionDiagnostics(
   RouteCoordinator? routes,
-  VoiceCall? call,
-) async {
+  VoiceCall? call, {
+  ScreenShareController? screen,
+}) async {
   final result = <String, Object?>{
     'schema': 1,
     'routing': routes?.diagnostics() ?? {'state': 'canonical'},
@@ -41,13 +43,17 @@ Future<Map<String, Object?>> connectionDiagnostics(
         );
       } else if (call is CallProbe) {
         media['connection'] = call.media?.connectionState.name;
-        media['streams'] = await call.diagnosticCounters().timeout(
-          const Duration(seconds: 2),
-        );
       }
     } catch (_) {
       media['statistics'] = 'unavailable';
     }
+  }
+  if (call is CallProbe && call.mediaHistory.isNotEmpty) {
+    (result['call'] as Map<String, Object?>)['recent_media'] =
+        call.mediaHistory;
+  }
+  if (screen != null && screen.mediaHistory.isNotEmpty) {
+    result['screen'] = {'recent_media': screen.mediaHistory};
   }
   return result;
 }

@@ -514,3 +514,31 @@ TURN-попытки до исходного15с deadline и новый budget п
 Analyzer чист. Пробы не заменяют живой A/B, физическую слышимость и E2EE-peer.
 Двухсекундное объединение provision сохраняет последующие проверки существования
 комнаты через CreateRoom, не вводит бессрочный кеш готовности SFU.
+
+Следующий этап, кандидат50 (не опубликован): OPT-01 расширен общими interval
+метриками direct/group/screen. Анонимный stream index не склеивает сменившиеся
+SSRC/peer, нулевой знаменатель и reset не дают ложного0. Общая room history60
+samples, каждый из двух SDK transports опрашивается однократно за3с, без
+publication-dependent числа запросов. Ошибки сохраняются как диагностические
+пробелы, без raw exception. Связь с authorization/ключами не меняется.
+Native Mac проверил настоящий входящий audio bitrate за интервал в двух принятых
+звонках (один integration PASS/три цикла всего). Направленный набор sampler/
+interval/privacy/reset/shutdown10 PASS, screen lifecycle и диагностика19 PASS;
+полный прогон выполняется. Общая физическая A/B и profiling телефонов ещё открыты.
+
+Кандидат50 дополнен RTT только выбранной связанной RTP ICE-пары, типом transport/
+relay без адресов, encoder limitation, send-queue delay и encode/decode FPS. Проверка
+совпадающих SDK IDs двух peers подтверждает раздельные20/100мс RTT; поля связей
+переписываются в локальное пространство транспорта. Native audio успешно возобновился
+после2с encoding pause в двух принятых циклах, соединение осталось connected.
+Это не имитация сетевой потери, не A/V и не внешнее устройство. Первый полный
+Flutter580 PASS/4skip, после последних дополнительных counters —12 адресных PASS;
+финальный полный набор и выпуск ещё впереди. OPT-02 выполнен лишь в части
+воспроизводимой RTP pause/resume и RPC-comparison; impairment matrix остаётся открытой.
+
+Финальный кандидат50: Flutter582 PASS/4skip,12 финальных interval/room tests PASS,
+analyzer чист. Настоящий внутренний Chromium проверил production renderer:
+общий A/V stream, один путь аудио,2с pause/resume,320→640, ICE restart и
+положительные video bitrate/decoded FPS после восстановления. Это локальные
+synthetic peers, без аккаунта/микрофона/передачи наружу; physical lip-sync не измерен.
+Скриншот и runtime-результаты сохраняются в свидетельствах выпуска50 после публикации.

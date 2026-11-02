@@ -1,3 +1,4 @@
+import 'routed_livekit_engine.dart' show RoomMediaStatistics;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
@@ -41,6 +42,8 @@ class ScreenShareController extends ChangeNotifier {
   ScreenSnapshot? snapshot;
   String? notice;
   lk.Room? media;
+  final _mediaStatistics = RoomMediaStatistics();
+  List<Map<String, Object>> get mediaHistory => _mediaStatistics.history;
   lk.VideoTrack? remoteTrack;
   bool decoded = false;
   ScreenQuality quality = ScreenQuality.auto;
@@ -575,6 +578,7 @@ class ScreenShareController extends ChangeNotifier {
       canRecover: () => !_closed && !call.isClosed && serial == _serial,
     );
     media = room;
+    _mediaStatistics.start(room);
     _events = room.createListener();
     _events!.on<lk.TrackPublishedEvent>(
       (e) => _subscribe(room, serial, e.participant.identity, e.publication),
@@ -814,6 +818,7 @@ class ScreenShareController extends ChangeNotifier {
   }
 
   Future<void> _disposeMedia() async {
+    _mediaStatistics.stop();
     _reception.reset();
     _receivedKey = false;
     _serial++;

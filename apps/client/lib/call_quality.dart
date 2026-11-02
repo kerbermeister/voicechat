@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
+import 'media_statistics.dart';
+export 'media_statistics.dart';
 
 enum AudioBitrate {
   // Android's SDK ignores null when updating maxBitrate. The Opus ceiling
@@ -89,6 +91,12 @@ class CallStatistics {
   final _samples = <Map<String, Object>>[];
   List<Map<String, Object>> get samples => List.unmodifiable(_samples);
   final _packets = <String, ({num received, num lost})>{};
+  final _streams = MediaStatistics();
+  void resetTransport() {
+    _packets.clear();
+    _streams.reset();
+  }
+
   CallQuality read(List<rtc.StatsReport> reports) {
     double loss = 0, jitter = 0, rtt = 0;
     var measured = false, measuredRtt = false;
@@ -139,6 +147,11 @@ class CallStatistics {
       final current = (values['jitter'] as num? ?? 0).toDouble();
       if (current > jitter) jitter = current;
     }
+    final inbound = {
+      for (final report in reports)
+        if (report.type == 'inbound-rtp') report.id,
+    };
+    _packets.removeWhere((id, _) => !inbound.contains(id));
     final quality = !measured
         ? CallQuality.unknown
         : loss >= .08 || jitter >= .08 || rtt >= .6
@@ -152,7 +165,7 @@ class CallStatistics {
         'elapsed_ms': _clock.elapsedMilliseconds,
         'raw_quality': quality.name,
         'received_packets': receivedPackets,
-        'streams': mediaCounters(reports),
+        'streams': _streams.read(reports),
         if (measured) 'loss_percent': loss * 100,
         if (measured) 'jitter_ms': jitter * 1000,
         if (measuredRtt) 'rtt_ms': rtt * 1000,
@@ -168,58 +181,6 @@ class CallStatistics {
     return quality;
   }
 }
-
-/// Cumulative counters only. The caller computes interval deltas; missing is not zero.
-List<Map<String, Object>> mediaCounters(List<rtc.StatsReport> reports) => [
-  for (final report
-      in reports
-          .where(
-            (r) => const {
-              'inbound-rtp',
-              'outbound-rtp',
-              'remote-inbound-rtp',
-            }.contains(r.type),
-          )
-          .take(64))
-    if (const {
-      'audio',
-      'video',
-    }.contains(report.values['kind'] ?? report.values['mediaType']))
-      {
-        'direction': report.type,
-        'kind': (report.values['kind'] ?? report.values['mediaType']) as String,
-        for (final field in const [
-          'packetsReceived',
-          'packetsSent',
-          'packetsLost',
-          'bytesReceived',
-          'bytesSent',
-          'jitter',
-          'roundTripTime',
-          'fractionLost',
-          'jitterBufferDelay',
-          'jitterBufferEmittedCount',
-          'jitterBufferTargetDelay',
-          'jitterBufferMinimumDelay',
-          'concealedSamples',
-          'silentConcealedSamples',
-          'concealmentEvents',
-          'totalSamplesReceived',
-          'framesDecoded',
-          'framesEncoded',
-          'framesDropped',
-          'freezeCount',
-          'totalFreezesDuration',
-          'totalDecodeTime',
-          'totalEncodeTime',
-          'nackCount',
-          'pliCount',
-        ])
-          if (report.values[field] is num &&
-              (report.values[field] as num).isFinite)
-            field: report.values[field] as num,
-      },
-];
 
 /// Receiver reports describe our outgoing path; inbound loss belongs to the peer.
 CallQuality outgoingVideoQuality(List<rtc.StatsReport> reports) {

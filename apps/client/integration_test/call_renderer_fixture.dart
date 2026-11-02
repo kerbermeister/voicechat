@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:web/web.dart' as web;
 import 'package:voicechat_probe/call_renderer.dart';
+import 'package:voicechat_probe/media_statistics.dart';
 import 'package:voicechat_probe/call_audio_platform.dart';
 
 void main() => runApp(const MaterialApp(home: Fixture()));
@@ -144,9 +145,23 @@ class _FixtureState extends State<Fixture> {
       )) {
         throw StateError('Audio was lost during recovery');
       }
+      final statistics = MediaStatistics();
+      statistics.read(await receiver.getStats());
+      await Future<void>.delayed(const Duration(seconds: 1));
+      final counters = statistics.read(await receiver.getStats());
+      if (!counters.any(
+        (row) =>
+            row['kind'] == 'video' &&
+            row['bitrate_bps'] is num &&
+            (row['bitrate_bps'] as num) > 0 &&
+            row['decoded_fps'] is num &&
+            (row['decoded_fps'] as num) > 0,
+      )) {
+        throw StateError('Recovered video interval counters unavailable');
+      }
       setState(
         () => result =
-            'PASS: combined A/V, one audio path, media pause/resume, 320→640 frames, ICE restart; physical lip-sync not measured',
+            'PASS: combined A/V, one audio path, media pause/resume, 320→640 frames, ICE restart, recovered interval counters; physical lip-sync not measured',
       );
     } catch (error) {
       setState(() => result = 'FAIL: $error');
