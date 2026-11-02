@@ -125,3 +125,44 @@ dart run tool/stream_crypto_probe.dart /absolute/path/to/native/library/director
 Никаких UI/HTTP/media изменений эта проба не включает. Device-envelope delivery,
 доказательство источника исторического ключа при paused owner, реальное SFU-медиа
 и аппаратные interruptions остаются открыты. G1 целиком не закрыт.
+
+## Итерация 4 — клиент, полный API и экспериментальное включение (02.11.2026)
+
+Исторические разделы выше описывают промежуточные результаты, а не текущий остаток.
+Полная реализация клиента/API зафиксирована `7983dab`, объединение с последней
+рабочей веткой release45 (`7bcf26a`) — `80eeff6`. Конфликт main.dart разрешён
+с сохранением новой обработки отзыва сессии/lock и добавлением cleanup стримов.
+Владелец разрешил публикацию и попросил скрыть функцию за локальным opt-in.
+
+Реализованы stream HTTP/Matrix device auth, взаимные friend/block проверки,
+leases/revision, server deadline, volatile history, SFU owner-only publication,
+opaque identities, отзыв доступа с ротацией комнаты/ключей, SQLite cleanup-only
+с версионированной миграцией. Olm-капсулы передаются порциями, без plaintext replay
+cache Matrix SDK; комментарии подписывает устройство автора. Клиент держит ключи
+и чат в RAM, проверяет E2EE status перед рендером. UI включает preview, аудиторию,
+таймер, камеры/микрофон/качество, sound viewer, чат, прогресс, broadcasting badge.
+Принятие звонка сначала отключает локальные источники, затем ставит эфир на паузу;
+продолжение только вручную. Android wake lock отдельным channel, web best effort.
+
+Кандидат46: экспериментальные функции выключены по умолчанию. Discovery/controller
+не создаются при выключенной настройке, все точки входа/значки скрыты. Выключение
+закрывает текущий контроллер до скрытия UI. Выбор в SharedPreferences локальный.
+Серверные flags default on для доступности opt-in; оператор может запретить API
+или media отдельно, максимальная длительность —10800сек.
+
+Проверки объединённого исходного кода:
+- Полный Python unittest discover:837 тестов, OK,3 skipped.
+- Полный Flutter:544 PASS,4 skipped. Дополнительный прогон stream/settings:10 PASS.
+- Два ранних browser↔browser real Matrix/Olm/LiveKit прогона: PASS Chrome156,
+  синтетические canvas/tone, фактические decoded frames+E2EE kOk; поздний чат,
+  viewer reply, camera-off audio, pause chat/manual resume, terminal cleanup.
+  Это свидетельства реализации до объединения; физические устройства ими не закрыты.
+- Android laboratory profile ARM64 APK собран108.1MB; физический Android не проверен,
+  сам факт сборки не доказывает native media.
+- Ранний ordinary web main и control image собирались; для46 нужны новые артефакты.
+
+Неподтверждённое: текущий native Android/macOS media, iPhone PWA и реальные
+OS interruptions, нагрузка10 зрителей,3часовой endurance, Windows. Native iOS,
+screen/both и уведомления остаются целевыми этапами, в MVP не добавлены.
+Состояние выпуска/проверки конечных пакетов будет дописано по факту; пользовательский
+остаток ведётся только в `docs/user-acceptance.md`.

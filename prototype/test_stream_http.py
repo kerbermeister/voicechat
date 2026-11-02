@@ -220,6 +220,23 @@ class StreamMediaTests(unittest.TestCase):
             self.command(self.viewer, 'key_get')
         self.assertNotEqual(epoch, self.core.info(self.identifier, self.owner)['key_epoch'])
 
+    def test_partial_key_bundle_cannot_grant_and_out_of_order_upload_is_ordered(self):
+        self.core.join(self.identifier, self.viewer)
+        self.core_service.tick()
+        epoch = self.core.info(self.identifier, self.owner)['key_epoch']
+        envelopes = [{'algorithm': 'm.olm.v1.curve25519-aes-sha2',
+                      'sender_key': str(i), 'ciphertext': {}} for i in range(2)]
+        for part in (1, 0):
+            self.command(self.owner, 'key_put', epoch=epoch,
+                         user=self.viewer[0], device=self.viewer[1],
+                         part=part, parts=2, envelope=envelopes[part])
+            if part == 1:
+                for operation in ('key_get', 'grant'):
+                    with self.assertRaisesRegex(Exception, 'stream_key_pending'):
+                        self.command(self.viewer, operation, epoch=epoch)
+        self.assertEqual(self.command(self.viewer, 'key_get')['envelopes'], envelopes)
+        self.assertFalse(self.command(self.viewer, 'grant', epoch=epoch)['token']['video']['canPublish'])
+
     def test_paused_owner_cannot_publish_and_old_room_is_deleted(self):
         state = self.core.info(self.identifier, self.owner)
         self.core.transition(self.identifier, self.owner, 'pause', state['revision'])

@@ -124,18 +124,23 @@ class LiveStreamEncryptedComment {
   factory LiveStreamEncryptedComment.parse(Map<String, dynamic> value) {
     String text(String key, int maximum) {
       final raw = value[key];
-      if (raw is! String || raw.isEmpty || raw.length > maximum)
+      if (raw is! String || raw.isEmpty || raw.length > maximum) {
         throw const FormatException('stream message metadata');
+      }
       return raw;
     }
 
     final sequence = value['sequence'];
-    if (sequence is! int || sequence < 1 || sequence > 9007199254740991)
+    if (sequence is! int || sequence < 1 || sequence > 9007199254740991) {
       throw const FormatException('stream sequence');
+    }
     final encoded = text('ciphertext', 10924);
     final bytes = base64Decode(encoded);
-    if (bytes.isEmpty || bytes.length > 8192 || base64Encode(bytes) != encoded)
+    if (bytes.isEmpty ||
+        bytes.length > 8192 ||
+        base64Encode(bytes) != encoded) {
       throw const FormatException('stream ciphertext');
+    }
     return LiveStreamEncryptedComment._(
       sequence,
       text('id', 128),
@@ -148,8 +153,9 @@ class LiveStreamEncryptedComment {
   int? get epoch {
     try {
       final header = jsonDecode(utf8.decode(ciphertext));
-      if (header is Map && header['epoch'] is int && header['epoch'] > 0)
+      if (header is Map && header['epoch'] is int && header['epoch'] > 0) {
         return header['epoch'] as int;
+      }
     } catch (_) {
       /* An invalid ciphertext is shown as an unverified placeholder. */
     }

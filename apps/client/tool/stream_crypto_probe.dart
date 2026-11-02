@@ -2,7 +2,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:vodozemac/vodozemac.dart' as crypto;
-import '../lib/stream_crypto.dart';
+import 'package:voicechat_probe/stream_crypto.dart';
 
 void require(bool condition, String message) {
   if (!condition) throw StateError(message);

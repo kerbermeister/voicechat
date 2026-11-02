@@ -63,8 +63,9 @@ Future<Map<String, dynamic>> barrier(String side, String stage) async {
           v['role'] == 'stream-$side' &&
           v['stage'] == stage,
     );
-    if (matching.isNotEmpty)
+    if (matching.isNotEmpty) {
       found = Map<String, dynamic>.from(matching.last as Map);
+    }
     return found != null;
   }, '$side:$stage');
   return {
@@ -152,8 +153,7 @@ Future<void> exercise() async {
         other['device'] as String,
       );
       require(
-        replayCache == null ||
-            !replayCache.any((v) => v.contains('dev.voicechat.stream.keys')),
+        !replayCache.any((v) => v.contains('dev.voicechat.stream.keys')),
         'plaintext key replay cache',
       );
       await stream.camera(false);

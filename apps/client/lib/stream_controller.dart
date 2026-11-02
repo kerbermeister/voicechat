@@ -339,8 +339,9 @@ class LiveStreamController extends ChangeNotifier with WidgetsBindingObserver {
               persistPayload: false,
             );
             final envelope = encrypted[user.key]?[deviceId];
-            if (envelope == null)
+            if (envelope == null) {
               throw UserActionError('Ожидаем ключ устройства зрителя.');
+            }
             envelopes.add(envelope);
           }
           _outgoing[identity] = envelopes;
@@ -449,16 +450,18 @@ class LiveStreamController extends ChangeNotifier with WidgetsBindingObserver {
       );
       if (_closed) return;
       for (final message in messages) {
-        if (message.sequence != _historySequence + 1)
+        if (message.sequence != _historySequence + 1) {
           throw const FormatException('stream sequence');
+        }
         // A roster change can race the history request. Retry after fetching its
         // new keys rather than consuming an authentic future-epoch message.
         if ((message.epoch ?? 0) > _crypto!.epoch) return;
         final device =
             client.userDeviceKeys[message.author]?.deviceKeys[message.device];
         try {
-          if (device?.ed25519Key == null)
+          if (device?.ed25519Key == null) {
             throw const FormatException('stream author');
+          }
           final text = _crypto!.decryptComment(
             ciphertext: message.ciphertext,
             id: message.id,
@@ -608,8 +611,9 @@ class LiveStreamController extends ChangeNotifier with WidgetsBindingObserver {
         await room.localParticipant!.setMicrophoneEnabled(microphoneOn);
         for (final publication
             in room.localParticipant!.audioTrackPublications) {
-          if (publication.track != null)
+          if (publication.track != null) {
             observeSource(room, publication.track!);
+          }
         }
         if (cameraOn) await publishCamera();
       }
@@ -677,8 +681,9 @@ class LiveStreamController extends ChangeNotifier with WidgetsBindingObserver {
           media != room ||
           !owner ||
           _pauseRequested ||
-          _changingVideo)
+          _changingVideo) {
         return;
+      }
       if (track.source == lk.TrackSource.camera && !cameraOn) return;
       if (track.source == lk.TrackSource.microphone && !microphoneOn) return;
       unawaited(pauseForCall().catchError((Object _) {}));

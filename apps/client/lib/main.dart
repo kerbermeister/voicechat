@@ -243,6 +243,7 @@ class _ProbeScreenState extends State<ProbeScreen> {
   CallController? calls;
   LiveStreamController? streams;
   bool _streamPanelOpen = false;
+  bool streamsEnabled = false;
   AppSounds? sounds;
   NativeNotifications? nativeNotifications;
   bool notificationPermissionNeeded = false;
@@ -511,17 +512,12 @@ class _ProbeScreenState extends State<ProbeScreen> {
     );
     await actions!.open();
     await openP2p(next.client);
-    streams = LiveStreamController(
-      next.client,
-      tokenServer.text.trim(),
-      mediaServer.text.trim(),
-      callActive: () =>
-          calls?.active?.isClosed == false || calls?.starting == true,
-    );
-    streams!.addListener(() {
-      if (mounted) setState(() {});
-    });
-    unawaited(streams!.open());
+    streamsEnabled =
+        (await SharedPreferences.getInstance()).getBool(
+          'experimentalStreamsEnabled',
+        ) ??
+        false;
+    if (streamsEnabled) startStreams(next.client);
     calls = CallController(
       next.client,
       tokenServer.text.trim(),
@@ -1996,6 +1992,8 @@ class _ProbeScreenState extends State<ProbeScreen> {
     final preferences = await SharedPreferences.getInstance();
     var voiceRate = preferredVoiceSampleRate(preferences);
     Future<dynamic>? settingsClosed;
+    var streamsBusy = false;
+    String? streamsError;
     var privacyBusy = false;
     var notificationsBusy = false;
     var notificationsEnabled = NativeNotifications.supported
@@ -2149,6 +2147,44 @@ class _ProbeScreenState extends State<ProbeScreen> {
                       ),
                     ),
                     const Divider(height: 28),
+                    ExpansionTile(
+                      leading: const Icon(Icons.science_outlined),
+                      title: const Text('Экспериментальные функции'),
+                      children: [
+                        SwitchListTile(
+                          title: const Text('Стримы'),
+                          subtitle: const Text(
+                            'Ведение и просмотр эфиров друзей. При выключении текущий эфир завершится, а все элементы стримов будут скрыты. Настройка действует только на этом устройстве.',
+                          ),
+                          value: streamsEnabled,
+                          onChanged: streamsBusy
+                              ? null
+                              : (enabled) async {
+                                  updateSettings(() {
+                                    streamsBusy = true;
+                                    streamsError = null;
+                                  });
+                                  try {
+                                    await setStreamsEnabled(enabled);
+                                  } catch (_) {
+                                    streamsError =
+                                        'Не удалось изменить настройку. Повторите попытку.';
+                                  } finally {
+                                    if (dialogContext.mounted) {
+                                      updateSettings(() => streamsBusy = false);
+                                    }
+                                  }
+                                },
+                        ),
+                        if (streamsError != null)
+                          Text(
+                            streamsError!,
+                            style: TextStyle(
+                              color: Theme.of(dialogContext).colorScheme.error,
+                            ),
+                          ),
+                      ],
+                    ),
                     ListTile(
                       leading: const Icon(Icons.storage_outlined),
                       title: const Text('Локальное хранилище'),
@@ -2423,9 +2459,52 @@ class _ProbeScreenState extends State<ProbeScreen> {
     });
   }
 
+  void startStreams(mx.Client client) {
+    final controller = LiveStreamController(
+      client,
+      tokenServer.text.trim(),
+      mediaServer.text.trim(),
+      callActive: () =>
+          calls?.active?.isClosed == false || calls?.starting == true,
+    );
+    streams = controller;
+    controller.addListener(() {
+      if (mounted && identical(streams, controller)) setState(() {});
+    });
+    unawaited(controller.open());
+  }
+
+  Future<void> setStreamsEnabled(bool enabled) async {
+    if (enabled == streamsEnabled) return;
+    // Finish capture and erase the ephemeral session before hiding its controls.
+    if (!enabled) await streams?.close();
+    final saved = await (await SharedPreferences.getInstance()).setBool(
+      'experimentalStreamsEnabled',
+      enabled,
+    );
+    if (!mounted || probe == null) return;
+    if (!saved) {
+      if (!enabled) {
+        streams = null;
+        startStreams(probe!.client);
+      }
+      throw UserActionError('Не удалось сохранить настройку стримов.');
+    }
+    setState(() {
+      streamsEnabled = enabled;
+      streams = null;
+      if (enabled) startStreams(probe!.client);
+    });
+  }
+
   Future<void> openStreams({String? identifier}) async {
     final controller = streams;
-    if (controller == null || !controller.available || _streamPanelOpen) return;
+    if (!streamsEnabled ||
+        controller == null ||
+        !controller.available ||
+        _streamPanelOpen) {
+      return;
+    }
     if (calls?.active?.isClosed == false) {
       report('Сначала завершите текущий звонок.');
       return;
@@ -2455,11 +2534,11 @@ class _ProbeScreenState extends State<ProbeScreen> {
     onNewPerson: () => run(() => newChat()),
     onNewGroup: () => run(() => newChat(group: true)),
     onSettings: settings,
-    onStreams: streams?.available == true
+    onStreams: streamsEnabled && streams?.available == true
         ? () => run(() => openStreams())
         : null,
     liveStreams: {
-      for (final stream in streams?.directory ?? [])
+      for (final stream in streamsEnabled ? (streams?.directory ?? []) : [])
         stream.owner: () => run(() => openStreams(identifier: stream.id)),
     },
     onP2p: p2p == null

@@ -438,3 +438,17 @@ host callback; не переносите это исключение в producti
 Сквозная проверка на отдельных локальных тестовых аккаунтах:
 `VOICECHAT_PUSH_SYNAPSE_TEST=1 .prototype/python/bin/python -m unittest discover -s prototype -p test_web_push_synapse.py`.
 Она проверяет реальный pusher/callback/revoke, но подменяет внешний push provider.
+
+## Экспериментальные стримы
+
+Начиная с кандидата46 stream API включён сервером, но клиентские элементы
+появляются только после «Настройки → Экспериментальные функции → Стримы».
+Настройка локальная, по умолчанию выключена. Оператор может запретить API через
+`VOICECHAT_STREAMS_ENABLED=0`, media grants через `VOICECHAT_STREAM_MEDIA_ENABLED=0`.
+Максимальная длительность задаётся `STREAM_MAX_DURATION_SECONDS` (по умолчанию10800).
+`GET /api/streams` с Matrix Bearer возвращает capabilities; команды POST используют
+строгий протокол v1. Аудитория и активное доверенное устройство проверяются сервером.
+В control volume сохраняются только opaque IDs поколений SFU для очистки после
+сбоя; видео, аудио, текст чата и ключи не сохраняются. Сессии и шифротекст чата
+живут в RAM; рестарт завершает эфиры. Обычный managed `full` нужен для обновления
+control image, Synapse policy и web вместе. Ограничения/приёмка: `docs/user-acceptance.md`.

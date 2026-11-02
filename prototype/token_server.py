@@ -196,9 +196,9 @@ def stream_service():
             path.mkdir(mode=0o700, parents=True, exist_ok=True)
             service = StreamService(path / 'cleanup.sqlite', contact_store(), stream_pair_allowed,
                 lambda user, device: validate_push_device(user, device, ''), media_api,
-                enabled=os.environ.get('VOICECHAT_STREAMS_ENABLED') == '1',
+                enabled=os.environ.get('VOICECHAT_STREAMS_ENABLED', '1') == '1',
                 limits=stream_limits(os.environ), signer=jwt,
-                media_enabled=os.environ.get('VOICECHAT_STREAM_MEDIA_ENABLED') == '1')
+                media_enabled=os.environ.get('VOICECHAT_STREAM_MEDIA_ENABLED', '1') == '1')
             (path / 'cleanup.sqlite').chmod(0o600)
             _streams = service
             def watch():
@@ -737,6 +737,6 @@ class Handler(BaseHTTPRequestHandler):
 if __name__ == '__main__':
     scheduled_store()
     screen_service()
-    if os.environ.get('VOICECHAT_STREAMS_ENABLED') == '1': stream_service()
+    if os.environ.get('VOICECHAT_STREAMS_ENABLED', '1') == '1': stream_service()
     print('Prototype token issuer: http://127.0.0.1:8090 (local test accounts only)', flush=True)
     ControlServer((os.environ.get('VOICECHAT_BIND', '127.0.0.1'), 8090), Handler).serve_forever()
