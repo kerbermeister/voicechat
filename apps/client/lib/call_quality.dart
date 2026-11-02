@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 
 enum AudioBitrate {
@@ -45,6 +46,30 @@ enum VideoQuality {
     this.fps,
     this.bitrate,
   );
+}
+
+Future<void> applyVideoEncoding(
+  rtc.RTCRtpSender sender,
+  VideoQuality quality,
+) async {
+  final parameters = sender.parameters;
+  final encodings = parameters.encodings;
+  if (encodings == null || encodings.isEmpty) {
+    throw StateError('Video sender is not ready');
+  }
+  final settings = sender.track?.getSettings();
+  final width = settings?['width'] as num? ?? 1280;
+  final height = settings?['height'] as num? ?? 720;
+  for (final encoding in encodings) {
+    encoding.maxBitrate = quality.bitrate;
+    encoding.maxFramerate = quality.fps;
+    encoding.scaleResolutionDownBy = math
+        .max(1, math.max(width / quality.width, height / quality.height))
+        .toDouble();
+  }
+  if (!await sender.setParameters(parameters)) {
+    throw StateError('Video quality was not applied');
+  }
 }
 
 enum CallQuality {
@@ -127,6 +152,7 @@ class CallStatistics {
         'elapsed_ms': _clock.elapsedMilliseconds,
         'raw_quality': quality.name,
         'received_packets': receivedPackets,
+        'streams': mediaCounters(reports),
         if (measured) 'loss_percent': loss * 100,
         if (measured) 'jitter_ms': jitter * 1000,
         if (measuredRtt) 'rtt_ms': rtt * 1000,
@@ -141,6 +167,96 @@ class CallStatistics {
     if (_samples.length > 60) _samples.removeAt(0);
     return quality;
   }
+}
+
+/// Cumulative counters only. The caller computes interval deltas; missing is not zero.
+List<Map<String, Object>> mediaCounters(List<rtc.StatsReport> reports) => [
+  for (final report
+      in reports
+          .where(
+            (r) => const {
+              'inbound-rtp',
+              'outbound-rtp',
+              'remote-inbound-rtp',
+            }.contains(r.type),
+          )
+          .take(64))
+    if (const {
+      'audio',
+      'video',
+    }.contains(report.values['kind'] ?? report.values['mediaType']))
+      {
+        'direction': report.type,
+        'kind': (report.values['kind'] ?? report.values['mediaType']) as String,
+        for (final field in const [
+          'packetsReceived',
+          'packetsSent',
+          'packetsLost',
+          'bytesReceived',
+          'bytesSent',
+          'jitter',
+          'roundTripTime',
+          'fractionLost',
+          'jitterBufferDelay',
+          'jitterBufferEmittedCount',
+          'jitterBufferTargetDelay',
+          'jitterBufferMinimumDelay',
+          'concealedSamples',
+          'silentConcealedSamples',
+          'concealmentEvents',
+          'totalSamplesReceived',
+          'framesDecoded',
+          'framesEncoded',
+          'framesDropped',
+          'freezeCount',
+          'totalFreezesDuration',
+          'totalDecodeTime',
+          'totalEncodeTime',
+          'nackCount',
+          'pliCount',
+        ])
+          if (report.values[field] is num &&
+              (report.values[field] as num).isFinite)
+            field: report.values[field] as num,
+      },
+];
+
+/// Receiver reports describe our outgoing path; inbound loss belongs to the peer.
+CallQuality outgoingVideoQuality(List<rtc.StatsReport> reports) {
+  var measured = false;
+  double loss = 0;
+  for (final sender in reports) {
+    if (sender.type != 'outbound-rtp' ||
+        (sender.values['kind'] ?? sender.values['mediaType']) != 'video' ||
+        sender.values['active'] == false) {
+      continue;
+    }
+    if (sender.values['qualityLimitationReason'] == 'cpu') {
+      return CallQuality.poor;
+    }
+    for (final remote in reports) {
+      if (remote.type != 'remote-inbound-rtp' ||
+          remote.id != sender.values['remoteId']) {
+        continue;
+      }
+      final fraction = remote.values['fractionLost'];
+      if (fraction is! num ||
+          !fraction.isFinite ||
+          fraction < 0 ||
+          fraction > 1) {
+        continue;
+      }
+      measured = true;
+      if (fraction > loss) loss = fraction.toDouble();
+    }
+  }
+  return !measured
+      ? CallQuality.unknown
+      : loss >= .08
+      ? CallQuality.poor
+      : loss >= .02
+      ? CallQuality.good
+      : CallQuality.excellent;
 }
 
 /// Brief spikes must not repeatedly switch video encodings. Recovery needs

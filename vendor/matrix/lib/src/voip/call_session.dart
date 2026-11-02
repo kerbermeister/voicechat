@@ -194,6 +194,7 @@ class CallSession {
   Timer? _connectionTimer;
   bool _answering = false;
   Future<void>? _recoveringConnection;
+  Timer? _recoveryRetry;
   int _iceRestartedCount = 0;
   int _connectionEpoch = 0;
 
@@ -755,6 +756,8 @@ class CallSession {
     } else if (newState == CallState.kConnected ||
         newState == CallState.kEnded ||
         newState == CallState.kEnding) {
+      _recoveryRetry?.cancel();
+      _recoveryRetry = null;
       _connectionTimer?.cancel();
       _connectionTimer = null;
     }
@@ -1246,6 +1249,9 @@ class CallSession {
             break;
           case RTCPeerConnectionState.RTCPeerConnectionStateConnected:
             _connectionEpoch++;
+            _iceRestartedCount = 0;
+            _recoveryRetry?.cancel();
+            _recoveryRetry = null;
             _connectionTimer?.cancel();
             _connectionTimer = null;
             break;
@@ -1357,7 +1363,9 @@ class CallSession {
   Future<void> _recoverConnection() {
     if (callHasEnded) return Future.value();
     _waitForConnection(const Duration(seconds: 15));
+    if (_recoveryRetry != null) return Future.value();
     return _recoveringConnection ??= (() async {
+      final epoch = _connectionEpoch;
       if (_iceRestartedCount >= 3) return;
       _iceRestartedCount++;
       try {
@@ -1366,6 +1374,16 @@ class CallSession {
         // A temporary TURN/signalling failure must not end live media early.
         // The original bounded disconnect timer still owns final termination.
         Logs().w('[VOIP] ICE recovery deferred', error, stack);
+        if (!callHasEnded &&
+            epoch == _connectionEpoch &&
+            _iceRestartedCount < 3) {
+          _recoveryRetry = Timer(Duration(seconds: _iceRestartedCount), () {
+            _recoveryRetry = null;
+            if (!callHasEnded && epoch == _connectionEpoch) {
+              unawaited(_recoverConnection());
+            }
+          });
+        }
       }
     })().whenComplete(() => _recoveringConnection = null);
   }

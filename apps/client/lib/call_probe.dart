@@ -58,6 +58,25 @@ class CallProbe implements VoiceCall {
   @override
   AudioBitrate audioBitrate = AudioBitrate.auto;
 
+  Future<List<Map<String, Object>>> diagnosticCounters() async {
+    final room = media;
+    if (_closed || room == null) return [];
+    final tracks = [
+      ...?room.localParticipant?.trackPublications.values.map((p) => p.track),
+      for (final participant in room.remoteParticipants.values)
+        ...participant.trackPublications.values.map((p) => p.track),
+    ].whereType<lk.Track>();
+    final counters = <Map<String, Object>>[];
+    for (final track in tracks) {
+      if (_closed || media != room) return [];
+      final reports = track is lk.LocalTrack
+          ? await track.sender?.getStats()
+          : await track.receiver?.getStats();
+      if (reports != null) counters.addAll(mediaCounters(reports));
+    }
+    return _closed || media != room ? [] : counters;
+  }
+
   @override
   Future<void> setAudioBitrate(AudioBitrate value) async {
     if (_closed) return;
@@ -763,9 +782,43 @@ class CallProbe implements VoiceCall {
   Future<void> setVideoQuality(VideoQuality value) async {
     if (_closed || !video || value == videoQuality) return;
     final enabled = cameraEnabled;
-    if (enabled) await camera(false);
-    videoQuality = value;
-    if (enabled) await camera(true);
+    final previous = videoQuality;
+    final track =
+        media?.localParticipant?.videoTrackPublications.firstOrNull?.track;
+    final sender = track?.sender;
+    final settings = track?.mediaStreamTrack.getSettings();
+    final width = settings?['width'], height = settings?['height'];
+    if (enabled &&
+        previous != VideoQuality.auto &&
+        value != VideoQuality.auto &&
+        sender != null &&
+        sender.parameters.encodings?.length == 1 &&
+        width is num &&
+        height is num &&
+        width >= value.width &&
+        height >= value.height) {
+      await applyVideoEncoding(sender, value);
+      if (_closed) return;
+      videoQuality = value;
+    } else {
+      if (enabled) await camera(false);
+      videoQuality = value;
+      try {
+        if (enabled) await camera(true);
+      } catch (_) {
+        videoQuality = previous;
+        if (enabled && !_closed) {
+          try {
+            await camera(true);
+          } catch (_) {
+            status(
+              'Камера выключена. Проверьте разрешение и включите её снова.',
+            );
+          }
+        }
+        rethrow;
+      }
+    }
     changed?.call();
   }
 

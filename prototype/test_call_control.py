@@ -29,6 +29,36 @@ class CallControlTests(unittest.TestCase):
         self.now += 1
         return self.admit(peer)
 
+    def test_provision_coalesces_but_access_rotation_and_missing_room_recovery_do_not(self):
+        first = self.join(0)
+        self.operations.clear()
+        for _ in range(10): self.admit(0, lease=first['lease_id'])
+        self.assertEqual(self.operations, [])
+        # The cache cannot let a foreign device renew someone else's lease.
+        with self.assertRaisesRegex(CallError, 'lease_expired'):
+            self.admit(1, lease=first['lease_id'])
+        self.rooms.clear()
+        self.now += 3
+        self.admit(0, lease=first['lease_id'])
+        self.assertIn(first['generation'], self.rooms)
+        self.assertEqual([op for op, _ in self.operations], ['CreateRoom'])
+        second = self.join(1)
+        self.assertNotEqual(second['generation'], first['generation'])
+        self.assertNotIn(first['generation'], self.rooms)
+        self.assertIn(second['generation'], self.rooms)
+
+    def test_failed_room_creation_is_not_cached_and_backward_clock_does_not_extend_cache(self):
+        first = self.join(0)
+        self.now += 3
+        self.fail = True
+        with self.assertRaises(OSError): self.admit(0, lease=first['lease_id'])
+        self.fail = False
+        self.admit(0, lease=first['lease_id'])
+        self.operations.clear()
+        self.now -= 1
+        self.admit(0, lease=first['lease_id'])
+        self.assertEqual([op for op, _ in self.operations], ['CreateRoom'])
+
     def test_discovery_survives_one_departure_and_rejoins_the_same_session(self):
         grants = [self.join(peer) for peer in range(3)]
         self.store.leave({'user_id': '@u0:local', 'device_id': 'D'}, grants[0]['lease_id'])

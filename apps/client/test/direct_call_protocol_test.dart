@@ -438,6 +438,84 @@ void main() {
       },
     );
   }
+  for (final outcome in ['retry', 'connected', 'hangup']) {
+    testWidgets('TURN lookup retry is bounded and cancelled on $outcome', (
+      tester,
+    ) async {
+      await incoming();
+      session.nativeRestart = true;
+      session.setCallState(CallState.kConnected);
+      voip.servers = Completer<List<Map<String, dynamic>>>();
+      final peer = voip.delegate.peer;
+      peer.onConnectionState!(
+        rtc.RTCPeerConnectionState.RTCPeerConnectionStateFailed,
+      );
+      await tester.pump();
+      voip.servers!.completeError(StateError('Temporary TURN failure'));
+      await tester.pump();
+      expect(peer.nativeRestarts, 0);
+      voip.servers = null;
+      if (outcome == 'connected') {
+        peer.onConnectionState!(
+          rtc.RTCPeerConnectionState.RTCPeerConnectionStateConnected,
+        );
+      } else if (outcome == 'hangup') {
+        await session.hangup(reason: CallErrorCode.userHangup);
+      }
+      await tester.pump(const Duration(seconds: 2));
+      expect(peer.nativeRestarts, outcome == 'retry' ? 1 : 0);
+      expect(session.restarts, outcome == 'retry' ? 2 : 1);
+      if (outcome == 'retry') {
+        await tester.pump(const Duration(seconds: 13));
+        expect(
+          session.hangups,
+          1,
+          reason: 'Retry must not extend the original 15s budget',
+        );
+      } else if (outcome == 'connected') {
+        await session.hangup(reason: CallErrorCode.userHangup);
+      }
+    });
+  }
+  testWidgets(
+    'Permanent TURN failure exhausts three attempts within the same deadline',
+    (tester) async {
+      await incoming();
+      session.nativeRestart = true;
+      session.setCallState(CallState.kConnected);
+      voip.servers = Completer<List<Map<String, dynamic>>>();
+      voip.delegate.peer.onConnectionState!(
+        rtc.RTCPeerConnectionState.RTCPeerConnectionStateFailed,
+      );
+      await tester.pump();
+      voip.servers!.completeError(StateError('TURN remains unavailable'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 2));
+      expect(session.restarts, 3);
+      await tester.pump(const Duration(seconds: 11));
+      expect(session.hangups, 0);
+      await tester.pump(const Duration(seconds: 1));
+      expect(session.hangups, 1);
+    },
+  );
+  testWidgets(
+    'A recovered transport has a fresh retry budget for later outages',
+    (tester) async {
+      await incoming();
+      session.setCallState(CallState.kConnected);
+      final state = voip.delegate.peer.onConnectionState!;
+      for (var i = 0; i < 4; i++) {
+        state(rtc.RTCPeerConnectionState.RTCPeerConnectionStateFailed);
+        await tester.pump();
+        expect(session.restarts, i + 1);
+        state(rtc.RTCPeerConnectionState.RTCPeerConnectionStateConnected);
+      }
+      await tester.pump(const Duration(seconds: 20));
+      expect(session.hangups, 0);
+      await session.hangup(reason: CallErrorCode.userHangup);
+    },
+  );
   testWidgets('Recovered DTLS transport cancels disconnect deadline', (
     tester,
   ) async {

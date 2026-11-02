@@ -6,6 +6,56 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 
 void main() {
   test(
+    'Media counters retain buffer/concealment evidence without private identifiers',
+    () {
+      final counters = mediaCounters([
+        StatsReport('secret-track', 'inbound-rtp', 0, {
+          'kind': 'audio',
+          'jitterBufferDelay': 3.0,
+          'jitterBufferEmittedCount': 100,
+          'concealedSamples': 20,
+          'ip': 'secret-ip',
+          'ssrc': 42,
+          'bytesReceived': double.infinity,
+        }),
+      ]);
+      expect(counters, [
+        {
+          'direction': 'inbound-rtp',
+          'kind': 'audio',
+          'jitterBufferDelay': 3.0,
+          'jitterBufferEmittedCount': 100,
+          'concealedSamples': 20,
+        },
+      ]);
+      expect(mediaCounters([]), isEmpty);
+    },
+  );
+  test('Outgoing adaptation uses only associated video receiver feedback', () {
+    List<StatsReport> reports(double? fraction, {String limit = 'none'}) => [
+      StatsReport('bad-incoming', 'inbound-rtp', 0, {
+        'packetsLost': 1000,
+        'jitter': 2,
+      }),
+      StatsReport('sender', 'outbound-rtp', 0, {
+        'kind': 'video',
+        'remoteId': 'feedback',
+        'qualityLimitationReason': limit,
+      }),
+      if (fraction != null)
+        StatsReport('feedback', 'remote-inbound-rtp', 0, {
+          'fractionLost': fraction,
+        }),
+      StatsReport('unrelated', 'remote-inbound-rtp', 0, {'fractionLost': 1}),
+    ];
+    expect(outgoingVideoQuality(reports(0)), CallQuality.excellent);
+    expect(outgoingVideoQuality(reports(.03)), CallQuality.good);
+    expect(outgoingVideoQuality(reports(.1)), CallQuality.poor);
+    expect(outgoingVideoQuality(reports(null)), CallQuality.unknown);
+    expect(outgoingVideoQuality(reports(double.nan)), CallQuality.unknown);
+    expect(outgoingVideoQuality(reports(0, limit: 'cpu')), CallQuality.poor);
+  });
+  test(
     'Media admission rejects clear tracks, unsupported cryptors and unsolicited camera',
     () {
       bool allowed(

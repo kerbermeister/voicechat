@@ -20,6 +20,7 @@ class CallStore:
     def __init__(self, path, media_api, clock=time.time):
         self.path, self.media_api, self.clock = Path(path), media_api, clock
         self.lock = threading.RLock()
+        self._room_created_at = {}
         self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         with self.db() as db:
             db.executescript('''
@@ -59,6 +60,7 @@ class CallStore:
         for name in old:
             self.media_api('DeleteRoom', {'room': name})
             with self.db() as db: db.execute('DELETE FROM retired WHERE name=?', (name,))
+            self._room_created_at.pop(name, None)
 
     def recover(self):
         with self.lock:
@@ -153,8 +155,15 @@ class CallStore:
                     (call['id'],)).fetchone()
             # A short settling window coalesces simultaneous joins into one transport rebuild.
             if self.clock() < call['ready_at']: raise CallError('generation_settling', 409)
-            self.media_api('CreateRoom', {'name': call['generation'], 'max_participants': self.limit,
-                                         'empty_timeout': 60, 'departure_timeout': 30})
+            # Coalesce the same group's concurrent renewals, never cache admission.
+            # The window is shorter than one client heartbeat and room expiry.
+            now = self.clock()
+            self._room_created_at = {name: at for name, at in self._room_created_at.items()
+                                     if 0 <= now - at < 2}
+            if call['generation'] not in self._room_created_at:
+                self.media_api('CreateRoom', {'name': call['generation'], 'max_participants': self.limit,
+                                             'empty_timeout': 60, 'departure_timeout': 30})
+                self._room_created_at[call['generation']] = now
             return {'lease_id': lease, 'generation': call['generation'], 'roster': roster,
                     'lease_seconds': self.lease_seconds, 'identity': identity, 'camera_allowed': camera_allowed}
 

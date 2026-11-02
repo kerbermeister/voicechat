@@ -41,6 +41,9 @@ Future<Map<String, Object?>> connectionDiagnostics(
         );
       } else if (call is CallProbe) {
         media['connection'] = call.media?.connectionState.name;
+        media['streams'] = await call.diagnosticCounters().timeout(
+          const Duration(seconds: 2),
+        );
       }
     } catch (_) {
       media['statistics'] = 'unavailable';

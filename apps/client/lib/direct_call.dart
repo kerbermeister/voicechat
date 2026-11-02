@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:matrix/matrix.dart' as mx;
@@ -30,6 +29,7 @@ class DirectCall implements VoiceCall {
   final _statistics = CallStatistics();
   List<Map<String, Object>> get qualitySamples => _statistics.samples;
   final _stableQuality = StableCallQuality();
+  final _stableOutgoingQuality = StableCallQuality();
   VideoQuality? _appliedVideoQuality;
   final audioLevels = AudioLevels();
   bool _readingLevels = false;
@@ -47,9 +47,11 @@ class DirectCall implements VoiceCall {
     _readingLevels = true;
     _levelsReadAt = DateTime.now();
     try {
+      final peer = call.pc;
       final reports =
-          await (call.pc?.getStats() ?? Future.value(<rtc.StatsReport>[]))
-              .timeout(const Duration(milliseconds: 800));
+          await (peer?.getStats() ?? Future.value(<rtc.StatsReport>[])).timeout(
+            const Duration(milliseconds: 800),
+          );
       audioLevels.read(isClosed ? [] : reports);
     } catch (_) {
       audioLevels.read([]);
@@ -97,6 +99,8 @@ class DirectCall implements VoiceCall {
           false);
   final _subscriptions = <StreamSubscription<dynamic>>[];
   Timer? _authorizationTimer;
+  Timer? _statisticsTimer;
+  bool _samplingMedia = false;
   Set<String>? _devices;
   bool _checking = false;
   bool _closed = false;
@@ -260,30 +264,45 @@ class DirectCall implements VoiceCall {
     _authorized.reset();
   }
 
+  Future<void> sampleMedia() async {
+    if (_closed || _samplingMedia) return;
+    _samplingMedia = true;
+    try {
+      final peer = call.pc;
+      final reports =
+          await (peer?.getStats() ?? Future.value(<rtc.StatsReport>[])).timeout(
+            const Duration(seconds: 2),
+          );
+      if (_closed || peer != call.pc) return;
+      audioLevels.read(reports);
+      quality = _stableQuality.update(_statistics.read(reports));
+      _stableOutgoingQuality.update(outgoingVideoQuality(reports));
+      if (cameraEnabled && videoQuality == VideoQuality.auto) {
+        final effective = adaptiveVideoQuality(
+          videoQuality,
+          _stableOutgoingQuality.value,
+        );
+        if (effective != _appliedVideoQuality) {
+          await setVideoQuality(videoQuality);
+        }
+      }
+    } catch (_) {
+      if (!_closed) quality = CallQuality.unknown;
+    } finally {
+      _samplingMedia = false;
+      if (!_closed) changed();
+    }
+  }
+
   void monitor() {
+    _statisticsTimer ??= Timer.periodic(const Duration(seconds: 3), (_) {
+      unawaited(sampleMedia());
+    });
     _authorizationTimer ??= Timer.periodic(const Duration(seconds: 3), (_) {
       if (_checking || _closed) return;
       _checking = true;
       unawaited(
         authorize()
-            .then((_) async {
-              try {
-                quality = _stableQuality.update(
-                  _statistics.read(await call.pc?.getStats() ?? []),
-                );
-                if (cameraEnabled &&
-                    videoQuality == VideoQuality.auto &&
-                    quality != CallQuality.unknown) {
-                  final effective = adaptiveVideoQuality(videoQuality, quality);
-                  if (effective != _appliedVideoQuality) {
-                    await setVideoQuality(videoQuality);
-                  }
-                }
-              } catch (_) {
-                quality = CallQuality.unknown;
-              }
-              changed();
-            })
             .timeout(const Duration(seconds: 5))
             .catchError((Object error) async {
               if ({
@@ -508,26 +527,13 @@ class DirectCall implements VoiceCall {
   @override
   Future<void> setVideoQuality(VideoQuality value) async {
     if (!video || isClosed) return;
-    final effective = adaptiveVideoQuality(value, quality);
+    final effective = adaptiveVideoQuality(value, _stableOutgoingQuality.value);
     for (final sender in await call.pc?.getSenders() ?? <rtc.RTCRtpSender>[]) {
+      if (isClosed) return;
       if (sender.track?.kind != 'video') continue;
-      final parameters = sender.parameters;
-      for (final encoding in parameters.encodings ?? <rtc.RTCRtpEncoding>[]) {
-        encoding.maxBitrate = effective.bitrate;
-        encoding.maxFramerate = effective.fps;
-        final width = sender.track!.getSettings()['width'] as num? ?? 1280;
-        final height = sender.track!.getSettings()['height'] as num? ?? 720;
-        encoding.scaleResolutionDownBy = math
-            .max(
-              1,
-              math.max(width / effective.width, height / effective.height),
-            )
-            .toDouble();
-      }
-      if (!await sender.setParameters(parameters)) {
-        throw StateError('Video quality was not applied');
-      }
+      await applyVideoEncoding(sender, effective);
     }
+    if (isClosed) return;
     videoQuality = value;
     _appliedVideoQuality = effective;
     changed();
@@ -649,6 +655,7 @@ class DirectCall implements VoiceCall {
       );
     }
     _authorizationTimer?.cancel();
+    _statisticsTimer?.cancel();
     for (final subscription in _subscriptions) {
       await subscription.cancel();
     }
