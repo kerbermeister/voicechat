@@ -1,0 +1,64 @@
+{
+  "date": "2026-11-02",
+  "status": "REGRESSION_FAIL_EXPECTED",
+  "runtime_at_observation": "1.19.3+51",
+  "sdk": "unmodified hosted livekit_client 2.13.2",
+  "upstream_archive_sha256": "c63211bd5073b308417de2b048809c156f50cb5bda02713150478742be2a1bc1",
+  "platform": "physical Mac/macOS15.3.1; local camera; loopback-only SFU",
+  "expected_camera_frames_before_native_encryptor": 0,
+  "observation": {
+    "require_frame_encryption": false,
+    "sender_constructor_delay_ms": 1000,
+    "samples_before_native_constructor_forwarded": 51,
+    "max_decoded_before_native_sender_encryptor": 9,
+    "decoded_sizes_before_constructor": [
+      "640x480"
+    ]
+  },
+  "fixture_sha256": "7d2977acbd3800fea29557813c6c501b8238cbe379398da08f0606f352e64233",
+  "private_log_sha256": "a803610378a4cc697a9f16755420f16887fb978b8ad28e873e338fcb7d57a105",
+  "scope": {
+    "real_native_rpc_forwarding": true,
+    "sender_native_constructor_forwarded_only_after_delay": true,
+    "observer_has_no_key_or_decryptor": true,
+    "sfuframe_8x8_not_counted_as_camera_observation": true,
+    "camera_dimensions_before_native_constructor": "640x480",
+    "all_participants_disposable_local_qa": true,
+    "camera_frames_saved": false,
+    "matrix_app_call_ui_tested": false,
+    "iphone_or_xiaomi_tested": false,
+    "cause_of_historical_quality_spikes_established": false
+  },
+  "native_configuration_candidate": {
+    "requireFrameEncryption_configured": true,
+    "observation_decoded_before_constructor": 9,
+    "successful_fix": false,
+    "native_enforcement_not_assumed": true
+  },
+  "earlier_sdk_pinned_provider_feasibility": {
+    "pinned_provider": true,
+    "require_frame_encryption": false,
+    "sender_constructor_delay_ms": 1000,
+    "pre_native_sender_cryptor_samples": 50,
+    "pre_native_sender_cryptor_decoded_frames": 9,
+    "exposes_unprotected_startup_negative_control": true,
+    "initial_missing_key_blocked": true,
+    "initial_frames_after_key": 7,
+    "old_camera_frames_while_prepared": 14,
+    "new_publication_key_index": 0,
+    "new_camera_frames_before_future_key_delivery": 43,
+    "new_camera_decoded_delta_before_future_key_delivery": 29,
+    "new_camera_frames_after_commit": 50,
+    "observer_decoded_counter_after_startup": 0,
+    "post_startup_counter_alone_is_not_content_proof": true,
+    "observer_received_rtp": true,
+    "same_sfu_transport_and_participant": true,
+    "publication_recreated_intentionally": true,
+    "sdk_forked": false,
+    "ratchet_defaults_changed": false,
+    "matrix_epoch_protocol_tested": false,
+    "physical_lip_sync_measured": false,
+    "media_saved": false
+  },
+  "fix_required_before_group_epoch_protocol": true
+}
