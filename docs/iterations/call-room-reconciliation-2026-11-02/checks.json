@@ -1,0 +1,17 @@
+{
+  "state": "candidate_not_deployed",
+  "python": {
+    "total": 847,
+    "passed": 843,
+    "skipped": 4,
+    "runtime": ".prototype/python"
+  },
+  "final_call_control_tests": 15,
+  "real_pinned_sfu_room_management_tests": 1,
+  "media_decryption_tested_by_room_probe": false,
+  "client_runtime_changed": false,
+  "macos_android_version": "1.19.2+50 unchanged",
+  "existing_call_network_fixture_ci": "https://github.com/kerbermeister/voicechat/actions/runs/41449492803",
+  "native_artifacts_required": false,
+  "active_group_leases_before_release": 0
+}

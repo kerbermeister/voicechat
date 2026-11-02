@@ -2209,3 +2209,11 @@ lip-sync и не установленная причина разговора в
 key ACK/reordering/reuse и физические iPhone/Xiaomi остаются обязательны.
 [Измерения/границы](iterations/call-network-lab-2026-11-02/summary.json),
 [ход OPT](research/call-optimization-2026-11-02.md).
+
+OPT-06/UA-05,02.11, серверный кандидат после50: heartbeat не делает повторный
+CreateRoom; общий фоновый ListRooms восстанавливает пропавшие комнаты. Expiry/
+revocation worker отдельный, поздний ответ не воскрешает отозванное поколение.
+Python843 PASS/4skip и real pinned-SFU room-management1 PASS; model RPC200→20
+для10 групп, не измерение качества медиа. Ещё не опубликовано; установленный
+macOS/Android и runtime web остаются50. Физические/групповые сценарии UA-05 не
+закрыты. [Проверки](iterations/call-room-reconciliation-2026-11-02/checks.json).

@@ -1,5 +1,6 @@
 """Transactional cap, retired tokens, expiry and crash recovery; no real secrets."""
 import tempfile
+import threading
 import unittest
 from call_control import CallStore, CallError
 
@@ -18,6 +19,7 @@ class CallControlTests(unittest.TestCase):
         self.operations.append((method, body.copy()))
         if self.fail: raise OSError('SFU unavailable')
         if method == 'DeleteRoom': self.rooms.discard(body['room'])
+        elif method == 'ListRooms': return {'rooms': [{'name': name} for name in self.rooms & set(body['names'])]}
         else: self.rooms.add(body['name'])
 
     def admit(self, peer, **kwargs):
@@ -29,7 +31,7 @@ class CallControlTests(unittest.TestCase):
         self.now += 1
         return self.admit(peer)
 
-    def test_provision_coalesces_but_access_rotation_and_missing_room_recovery_do_not(self):
+    def test_heartbeat_does_not_provision_but_background_repairs_missing_room(self):
         first = self.join(0)
         self.operations.clear()
         for _ in range(10): self.admit(0, lease=first['lease_id'])
@@ -39,25 +41,124 @@ class CallControlTests(unittest.TestCase):
             self.admit(1, lease=first['lease_id'])
         self.rooms.clear()
         self.now += 3
+        self.store.reconcile()
         self.admit(0, lease=first['lease_id'])
         self.assertIn(first['generation'], self.rooms)
-        self.assertEqual([op for op, _ in self.operations], ['CreateRoom'])
+        self.assertEqual([op for op, _ in self.operations], ['ListRooms', 'CreateRoom'])
         second = self.join(1)
         self.assertNotEqual(second['generation'], first['generation'])
         self.assertNotIn(first['generation'], self.rooms)
         self.assertIn(second['generation'], self.rooms)
 
-    def test_failed_room_creation_is_not_cached_and_backward_clock_does_not_extend_cache(self):
+    def test_read_outage_does_not_break_heartbeat_and_backward_clock_rechecks(self):
         first = self.join(0)
         self.now += 3
         self.fail = True
-        with self.assertRaises(OSError): self.admit(0, lease=first['lease_id'])
+        self.store.reconcile()
+        self.assertEqual(self.admit(0, lease=first['lease_id'])['generation'], first['generation'])
         self.fail = False
-        self.admit(0, lease=first['lease_id'])
+        self.rooms.clear()
         self.operations.clear()
         self.now -= 1
+        self.store.reconcile()
         self.admit(0, lease=first['lease_id'])
-        self.assertEqual([op for op, _ in self.operations], ['CreateRoom'])
+        self.assertEqual([op for op, _ in self.operations], ['ListRooms', 'CreateRoom'])
+
+    def test_failed_provision_is_retried_and_never_cached(self):
+        with self.assertRaisesRegex(CallError, 'generation_settling'): self.admit(0)
+        self.now += 1
+        self.fail = True
+        with self.assertRaises(OSError): self.admit(0)
+        self.fail = False
+        first = self.admit(0)
+        self.assertIn(first['generation'], self.rooms)
+        self.operations.clear()
+        self.admit(0, lease=first['lease_id'])
+        self.assertEqual(self.operations, [])
+
+    def test_presence_reads_are_batched_and_expired_leases_are_not_recreated(self):
+        first = self.join(0)
+        other = {'user_id': '@other:local', 'device_id': 'D'}
+        with self.assertRaisesRegex(CallError, 'generation_settling'):
+            self.store.admission('!other:local', 'other', False, other, 'curve', 'ed')
+        self.now += 1
+        second = self.store.admission('!other:local', 'other', False, other, 'curve', 'ed')
+        self.operations.clear()
+        self.store.reconcile()
+        self.store.reconcile()
+        self.assertEqual(self.operations, [('ListRooms', {'names': sorted([first['generation'], second['generation']])})])
+        self.now += 31
+        self.rooms.clear()
+        self.operations.clear()
+        self.store.reconcile()
+        self.assertEqual(self.operations, [])
+
+    def test_inflight_presence_read_cannot_resurrect_retired_generation(self):
+        first = self.join(0)
+        original = self.store.media_api
+        entered, release = threading.Event(), threading.Event()
+        def response(method, body):
+            if method == 'ListRooms':
+                entered.set()
+                if not release.wait(3): raise AssertionError('Blocked presence probe')
+                return {}
+            return original(method, body)
+        self.store.media_api = response
+        self.operations.clear()
+        failures = []
+        def reconcile():
+            try: self.store.reconcile()
+            except Exception as error: failures.append(error)
+        worker = threading.Thread(target=reconcile)
+        worker.start()
+        try:
+            self.assertTrue(entered.wait(2))
+            # A slow SFU presence read holds neither the lease lock nor expiry worker.
+            self.admit(0, lease=first['lease_id'])
+            self.store.leave({'user_id': '@u0:local', 'device_id': 'D'}, first['lease_id'])
+        finally:
+            release.set()
+            worker.join(3)
+        self.assertFalse(worker.is_alive())
+        self.assertEqual(failures, [])
+        self.assertNotIn(first['generation'], self.rooms)
+        self.assertEqual([op for op, _ in self.operations], ['DeleteRoom'])
+
+    def test_malformed_presence_is_not_missing_room_and_failed_repair_retries(self):
+        first = self.join(0)
+        original = self.store.media_api
+        for invalid in [None, [], {'rooms': {}}, {'rooms': [{'name': []}]},
+                        {'rooms': [{'name': 'unknown'}]}, {'rooms': [{}, {}]}]:
+            self.store.media_api = lambda *_: invalid
+            self.store.reconcile()
+            self.now += 3
+            self.assertEqual(self.admit(0, lease=first['lease_id'])['generation'], first['generation'])
+        def failed_repair(method, body):
+            if method == 'ListRooms': return {}
+            raise OSError('CreateRoom unavailable')
+        self.store.media_api = failed_repair
+        self.store.reconcile()
+        with self.assertRaises(OSError): self.admit(0, lease=first['lease_id'])
+        self.store.media_api = original
+        self.rooms.clear()
+        self.admit(0, lease=first['lease_id'])
+        self.assertIn(first['generation'], self.rooms)
+
+    def test_missing_room_with_pending_expired_member_is_not_recreated(self):
+        first = self.join(0)
+        second = self.join(1)
+        with self.store.db() as db:
+            db.execute('UPDATE leases SET expires=? WHERE id=?', (self.now - 1, first['lease_id']))
+        self.rooms.clear()
+        self.operations.clear()
+        self.store.reconcile()
+        self.assertEqual([op for op, _ in self.operations], ['ListRooms'])
+        self.assertNotIn(second['generation'], self.rooms)
+        self.store.sweep()
+        self.now += 1
+        current = self.admit(1, lease=second['lease_id'])
+        self.assertNotEqual(current['generation'], second['generation'])
+        self.assertIn(current['generation'], self.rooms)
 
     def test_discovery_survives_one_departure_and_rejoins_the_same_session(self):
         grants = [self.join(peer) for peer in range(3)]

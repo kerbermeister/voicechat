@@ -1,0 +1,16 @@
+{
+  "baseline": "app-v1.19.2+50",
+  "groups": 10,
+  "participants_per_group": 10,
+  "heartbeat_rounds": 20,
+  "interval_seconds": 3,
+  "before": {
+    "CreateRoom": 200
+  },
+  "after": {
+    "ListRooms": 20
+  },
+  "candidate_call_control_sha256": "816e780cd60b67e76a4f73dbf6f0cf97b7dc493b541f742a0e59d93586aa3441",
+  "scope": "management RPC counts on temporary SQLite/fake SFU, not wire/CPU/media",
+  "generations_and_roster_unchanged": true
+}

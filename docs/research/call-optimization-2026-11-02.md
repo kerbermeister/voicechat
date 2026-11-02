@@ -609,3 +609,35 @@ RemoveParticipant удаляет сеанс; сервер также выдаё�
 5. Проверить совместимость старых клиентов, concurrent join/leave, crash между
    prepare/commit, refresh/reconnect, reuse/ring exhaustion и все три платформы.
    До этих отрицательных проверок общая ротация не удаляется.
+
+### OPT-06: кандидат фоновой сверки SFU-комнат
+
+После50 heartbeat больше не вызывает CreateRoom для неизменного поколения.
+Новый общий presence worker делает ListRooms раз в3с для всех активных calls и
+восстанавливает только отсутствующие комнаты. Начальное provision синхронно,
+успех кешируется только после RPC. Продление допуска по-прежнему проверяет lease,
+identity, membership и ключи; создание комнаты не становится кешем авторизации.
+
+Presence read выполняется вне lease lock и в отдельном worker от expiry/deletion.
+Ошибка/неполный ответ чтения не считается пропажей комнаты и не завершает исправное
+медиа. Перед repair под блокировкой повторно проверяются живой lease и generation:
+отозванное за время ListRooms поколение не воскрешается. Неудавшийся CreateRoom
+не кешируется, admission также повторяет его. Прежний DeleteRoom/recover/watchdog
+не ослаблен. Это ещё не разделение HTTP heartbeat и обновления JWT.
+
+Кандидат: Python843 PASS/4skip (847 total),15 финальных call-control PASS,
+отдельный реальный pinned-SFU тест PASS: roomList grant, отсутствие heartbeat RPC,
+repair после удаления и очистка при leave. [Проверки/сравнение](../iterations/call-room-reconciliation-2026-11-02/checks.json).
+На временной SQLite/fake SFU,10 групп×10 участников×20 раундов по3с, относительно50:
+200 CreateRoom →20 общих ListRooms, поколения/roster прежние. Это−90% числа
+управляющих RPC этого сценария, не−90% media traffic/CPU. При одной группе число
+RPC может остаться прежним; заменяются изменяющие запросы чтением. Клиентский
+runtime/версия50 не меняется; необходим штатный full backend/web release,
+**публикация этого серверного кандидата ещё не выполнена**.
+
+Повторить технические проверки этого шага из корня:
+`python3 prototype/check_call_provision.py --baseline app-v1.19.2+50` и
+`VOICECHAT_DOCKER_TESTS=1 .prototype/python/bin/python -m unittest discover -s prototype -p test_call_rooms_sfu.py`.
+Последний тест запускает только собственный pinned-SFU container на случайном
+loopback-порту, без медиа/аккаунта. Дополнительно проверено, что repair не создаёт
+старую комнату при ещё не обработанном expiry одного из участников.

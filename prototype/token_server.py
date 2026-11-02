@@ -117,7 +117,8 @@ def scheduled_store():
 
 def media_api(method, body):
     now = int(time.time())
-    grant = {'roomAdmin': True, 'room': body['room']} if method == 'ListParticipants' else {'roomCreate': True}
+    grant = ({'roomAdmin': True, 'room': body['room']} if method == 'ListParticipants' else
+             {'roomList': True} if method == 'ListRooms' else {'roomCreate': True})
     token = jwt({'iss': 'prototype', 'nbf': now - 5, 'exp': now + 30,
                  'video': grant})
     request = urllib.request.Request('http://127.0.0.1:7880/twirp/livekit.RoomService/' + method,
@@ -147,6 +148,15 @@ def call_store():
                             print('call sweep: ' + type(error).__name__, file=sys.stderr, flush=True)
                         _call_failure.set()
             threading.Thread(target=watch, daemon=True, name='call-leases').start()
+            def repair():
+                while True:
+                    time.sleep(1)
+                    try:
+                        store.reconcile()
+                    except (OSError, ValueError, sqlite3.Error, http.client.HTTPException):
+                        # Advisory presence reads must not delay expiry/deletion.
+                        pass
+            threading.Thread(target=repair, daemon=True, name='call-presence').start()
     return _calls
 
 def screen_enabled():

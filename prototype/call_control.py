@@ -5,6 +5,7 @@ import secrets
 import sqlite3
 import threading
 import time
+from http.client import HTTPException
 
 
 class CallError(ValueError):
@@ -20,7 +21,8 @@ class CallStore:
     def __init__(self, path, media_api, clock=time.time):
         self.path, self.media_api, self.clock = Path(path), media_api, clock
         self.lock = threading.RLock()
-        self._room_created_at = {}
+        self._provisioned = set()
+        self._rooms_checked_at = None
         self.path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         with self.db() as db:
             db.executescript('''
@@ -60,7 +62,59 @@ class CallStore:
         for name in old:
             self.media_api('DeleteRoom', {'room': name})
             with self.db() as db: db.execute('DELETE FROM retired WHERE name=?', (name,))
-            self._room_created_at.pop(name, None)
+            self._provisioned.discard(name)
+
+    def _ensure_room(self, name):
+        if name not in self._provisioned:
+            self.media_api('CreateRoom', {'name': name, 'max_participants': self.limit,
+                                         'empty_timeout': 60, 'departure_timeout': 30})
+            self._provisioned.add(name)
+
+    def reconcile(self):
+        """One background presence read for all calls; never caches authorization."""
+        with self.lock:
+            now = self.clock()
+            if self._rooms_checked_at is not None and 0 <= now - self._rooms_checked_at < 3:
+                return
+            self._rooms_checked_at = now
+            with self.db() as db:
+                active = {row[0] for row in db.execute('''SELECT DISTINCT c.generation
+                    FROM calls c JOIN leases l ON l.call_id=c.id WHERE l.expires>?''', (now,))}
+            self._provisioned.intersection_update(active)
+        if not active:
+            return
+        try:
+            response = self.media_api('ListRooms', {'names': sorted(active)})
+            rooms = response.get('rooms', []) if isinstance(response, dict) else None
+            if (not isinstance(rooms, list) or len(rooms) > len(active) or
+                    any(not isinstance(room, dict) or not isinstance(room.get('name'), str)
+                        or room['name'] not in active for room in rooms)):
+                return
+            present = {room['name'] for room in rooms}
+            if len(present) != len(rooms):
+                return
+        except (OSError, ValueError, HTTPException):
+            # Presence is advisory. The existing expiry/deletion watchdog remains
+            # authoritative; a read failure must not terminate healthy media.
+            return
+        for name in active - present:
+            with self.lock:
+                # A leave/revoke can retire this generation while ListRooms is in flight.
+                with self.db() as db:
+                    checked_at = self.clock()
+                    current = db.execute('''SELECT 1 FROM calls c JOIN leases l ON l.call_id=c.id
+                        WHERE c.generation=? AND l.expires>?
+                        AND NOT EXISTS(SELECT 1 FROM leases expired
+                            WHERE expired.call_id=c.id AND expired.expires<=?) LIMIT 1''',
+                        (name, checked_at, checked_at)).fetchone()
+                if current is None:
+                    continue
+                self._provisioned.discard(name)
+                try:
+                    self._ensure_room(name)
+                except (OSError, ValueError, HTTPException):
+                    # Leave it uncached so admission also retries provisioning.
+                    continue
 
     def recover(self):
         with self.lock:
@@ -155,15 +209,7 @@ class CallStore:
                     (call['id'],)).fetchone()
             # A short settling window coalesces simultaneous joins into one transport rebuild.
             if self.clock() < call['ready_at']: raise CallError('generation_settling', 409)
-            # Coalesce the same group's concurrent renewals, never cache admission.
-            # The window is shorter than one client heartbeat and room expiry.
-            now = self.clock()
-            self._room_created_at = {name: at for name, at in self._room_created_at.items()
-                                     if 0 <= now - at < 2}
-            if call['generation'] not in self._room_created_at:
-                self.media_api('CreateRoom', {'name': call['generation'], 'max_participants': self.limit,
-                                             'empty_timeout': 60, 'departure_timeout': 30})
-                self._room_created_at[call['generation']] = now
+            self._ensure_room(call['generation'])
             return {'lease_id': lease, 'generation': call['generation'], 'roster': roster,
                     'lease_seconds': self.lease_seconds, 'identity': identity, 'camera_allowed': camera_allowed}
 
