@@ -1,0 +1,8 @@
+{
+  "build": 50,
+  "codesign_deep_strict": "PASS",
+  "zip_dmg_installed_manifest_equal": true,
+  "file_and_symlink_entries": 285,
+  "personal_permanent_sparkle_key": true,
+  "signature_checks_disabled": false
+}

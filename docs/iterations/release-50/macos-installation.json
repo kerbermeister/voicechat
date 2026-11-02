@@ -1,0 +1,17 @@
+{
+  "build": 50,
+  "previous_build": 49,
+  "update_offered_in_previous_version": true,
+  "download_and_install_button_used": true,
+  "exact_zip_dmg_installed_entries_match": 285,
+  "backup_app_and_profile_verified": true,
+  "backup_refreshed_after_owner_history_changes": true,
+  "keychain_deleted_or_reset": false,
+  "post_install_device_id_same": true,
+  "post_install_current_history_marker_preserved": true,
+  "post_install_owner_deletions_preserved": true,
+  "ui_version_verified": true,
+  "already_latest_check_passed": true,
+  "previous_encrypted_audio_played_to_end": false,
+  "audio_retest_limitation": "Owner removed old QA audio before playback completion; release49 had verified playback before removal."
+}

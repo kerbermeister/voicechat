@@ -1,0 +1,33 @@
+{
+  "source": "51ab9775d2a5ac3228283a62873ef2a64765d487",
+  "flutter": {
+    "passed": 582,
+    "skipped": 4
+  },
+  "final_interval_room_tests": 12,
+  "analyzer": "PASS",
+  "native_macos": {
+    "integration_passed": 1,
+    "call_cycles": 3,
+    "accepted_audio_cycles": 2,
+    "encoding_pause_resume_seconds": 2,
+    "recovered_incoming_bitrate_verified": true,
+    "external_turn": false,
+    "audible_lip_sync_measured": false
+  },
+  "internal_browser": {
+    "engine": "Chromium156",
+    "fixture": "call_renderer_fixture.dart",
+    "combined_av": true,
+    "single_audio_path": true,
+    "pause_resume_seconds": 2,
+    "resize": "320\u2192640",
+    "ice_restart": true,
+    "recovered_video_bitrate_and_fps": true,
+    "synthetic_media": true,
+    "physical_lip_sync_measured": false
+  },
+  "physical_xiaomi": false,
+  "physical_iphone_safari_pwa": false,
+  "group_key_epoch_acceptance": false
+}

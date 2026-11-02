@@ -515,30 +515,26 @@ Analyzer чист. Пробы не заменяют живой A/B, физиче
 Двухсекундное объединение provision сохраняет последующие проверки существования
 комнаты через CreateRoom, не вводит бессрочный кеш готовности SFU.
 
-Следующий этап, кандидат50 (не опубликован): OPT-01 расширен общими interval
-метриками direct/group/screen. Анонимный stream index не склеивает сменившиеся
-SSRC/peer, нулевой знаменатель и reset не дают ложного0. Общая room history60
-samples, каждый из двух SDK transports опрашивается однократно за3с, без
-publication-dependent числа запросов. Ошибки сохраняются как диагностические
-пробелы, без raw exception. Связь с authorization/ключами не меняется.
-Native Mac проверил настоящий входящий audio bitrate за интервал в двух принятых
-звонках (один integration PASS/три цикла всего). Направленный набор sampler/
-interval/privacy/reset/shutdown10 PASS, screen lifecycle и диагностика19 PASS;
-полный прогон выполняется. Общая физическая A/B и profiling телефонов ещё открыты.
+Выпуск50 **опубликован web/macOS/Android**, source`51ab977`, web88 SUCCESS.
+OPT-01 расширен общими interval-метриками direct/group/screen: история60,
+анонимные stream epochs, reset при смене транспорта/исчезновении потока/сбросе
+счётчиков. Bitrate, buffer/concealment, encode/decode FPS/time и send-queue delay
+вычисляются за последний интервал. RTT берётся только у выбранной ICE-пары
+связанного RTP транспорта; типы transport/relay экспортируются без адресов.
+Каждый SDK transport опрашивается однократно за3с независимо от числа публикаций;
+отбой останавливает sampler, поздний результат прежнего peer отбрасывается.
+Неизвестные значения не превращаются в нули, authorization/ключи не меняются.
 
-Кандидат50 дополнен RTT только выбранной связанной RTP ICE-пары, типом transport/
-relay без адресов, encoder limitation, send-queue delay и encode/decode FPS. Проверка
-совпадающих SDK IDs двух peers подтверждает раздельные20/100мс RTT; поля связей
-переписываются в локальное пространство транспорта. Native audio успешно возобновился
-после2с encoding pause в двух принятых циклах, соединение осталось connected.
-Это не имитация сетевой потери, не A/V и не внешнее устройство. Первый полный
-Flutter580 PASS/4skip, после последних дополнительных counters —12 адресных PASS;
-финальный полный набор и выпуск ещё впереди. OPT-02 выполнен лишь в части
-воспроизводимой RTP pause/resume и RPC-comparison; impairment matrix остаётся открытой.
+Flutter582 PASS/4skip,12 финальных interval/room tests PASS, analyzer чист.
+Native Mac:1 integration PASS/3 цикла; два принятых звонка восстановили входящий
+RTP bitrate после2с encoding pause, сохранив connected. Внутренний Chromium156:
+общий A/V stream/один audio path,2с pause/resume,320→640,ICE restart и положительные
+video bitrate/decoded FPS после восстановления. Это synthetic local peers;
+не измерены акустический lip-sync, внешний TURN и физические телефоны.
 
-Финальный кандидат50: Flutter582 PASS/4skip,12 финальных interval/room tests PASS,
-analyzer чист. Настоящий внутренний Chromium проверил production renderer:
-общий A/V stream, один путь аудио,2с pause/resume,320→640, ICE restart и
-положительные video bitrate/decoded FPS после восстановления. Это локальные
-synthetic peers, без аккаунта/микрофона/передачи наружу; physical lip-sync не измерен.
-Скриншот и runtime-результаты сохраняются в свидетельствах выпуска50 после публикации.
+OPT-02 выполнен частично: RTP pause/resume, renderer/ICE fixture и RPC comparison.
+Изолированный локальный TURN/netem прототип подтвердил применение задержки в
+собственном namespace (UDP echo median0.03→86.34мс при netem40мс); это **не**
+WebRTC A/B и не доказательство улучшения медиасвязи. Полная impairment matrix,
+асимметрия, длительный A/V-marker, нагрузка iPhone/Xiaomi и групповые key epochs
+остаются открытыми. [Свидетельства выпуска50](../iterations/call-media-measurements-50.md).

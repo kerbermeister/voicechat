@@ -1,0 +1,9 @@
+{
+  "build": 50,
+  "version": "1.19.2",
+  "emulator": "API35 arm64",
+  "install_replace_passed": true,
+  "installed_base_apk_sha256": "664aabb2fdff4f04aabca914ec41cfa194645ccf07a4f3c8716a7ec7ab34cf9b",
+  "exact_published_apk_match": true,
+  "physical_device_acceptance": false
+}
