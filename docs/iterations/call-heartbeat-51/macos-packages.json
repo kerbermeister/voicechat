@@ -1,0 +1,14 @@
+{
+  "source": "e44a726b403762acba7f01533c875e521b222b13",
+  "build": 51,
+  "zip_dmg_files_identical": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "bundle_id_feed_sparkle_key_match_installed50": true,
+  "physical_candidate_ui_pending": false,
+  "installed50_to51_pending": true,
+  "physical_candidate_ui": true,
+  "same_account_device_as_installed50": true,
+  "old_own_audio_played_to_end": true,
+  "old_history_and_tombstone_visible": true
+}

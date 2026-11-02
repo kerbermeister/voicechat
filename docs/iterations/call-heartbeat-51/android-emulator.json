@@ -1,0 +1,12 @@
+{
+  "source": "e44a726b403762acba7f01533c875e521b222b13",
+  "build": 51,
+  "previous_build": 50,
+  "emulator": "API35 arm64 GMS",
+  "install_r_preserving_data": true,
+  "installed_base_apk_matches_candidate": true,
+  "sha256": "80cef32a4eb1c71ed7767a51abb72758e845413f6dc3af4012f83e06e002b096",
+  "physical_acceptance": false,
+  "ui_verified": false,
+  "scope": "Package installation/version/hash only, no physical device or call UI acceptance"
+}

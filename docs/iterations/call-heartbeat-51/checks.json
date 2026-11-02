@@ -1,5 +1,5 @@
 {
-  "state": "candidate_validated_not_published",
+  "state": "published_full91_and_native51_verified",
   "version": "1.19.3+51",
   "python": {
     "total": 848,
@@ -18,5 +18,24 @@
   "authorization_deadline_seconds": 25,
   "matrix_checks_cached": false,
   "native_artifacts_required": true,
-  "physical_iphone_xiaomi_tested": false
+  "physical_iphone_xiaomi_tested": false,
+  "source": "e44a726b403762acba7f01533c875e521b222b13",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41464697477",
+  "workflow_result": "SUCCESS",
+  "candidate_ci": "https://github.com/kerbermeister/voicechat/actions/runs/41464255108",
+  "candidate_ci_result": "SUCCESS",
+  "macos_button_update": "50→51 verified, same account/device/history; old own audio reached end",
+  "macos_zip_dmg_installed_entries_equal": 285,
+  "macos_channel_signature_and_https": "PASS",
+  "android_preview_published": true,
+  "android_emulator_installation": "50→51 -r, installed APK hash equals candidate",
+  "android_physical_acceptance": false,
+  "native_direct_call": {
+    "tests_passed": 1,
+    "cycles": 3,
+    "accepted": 2,
+    "canceled": 1
+  },
+  "production_independent_verification": "PASS",
+  "active_group_leases_before_release": 0
 }

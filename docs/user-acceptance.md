@@ -2237,13 +2237,18 @@ analyzer чистый. [Свидетельство](iterations/call-network-lab-
 Первоначальный локальный startup failure до помех остаётся с неустановленной причиной;
 он отдельно указан в исследовании и не засчитан как успешная проверка.
 
-OPT-06, кандидат51/02.11: реализован отдельный `/call/heartbeat` без выдачи JWT,
-с сохранением тех же membership/device/roster/lease проверок. Первичный вход и rebuild требуют свежий `/token`; новое поколение получает
-свежий JWT в том же heartbeat-ответе; старый JWT не переносится
-между identity/lease/generation. Старые клиенты/откат сервера совместимы.
-Python844 PASS/4skip, адресные Flutter admission/key-sharing/cleanup7 PASS,
-analyzer чистый; модель20 запросов JWT20→0/JSON−50.06%, не экономия медиатрафика.
-Это ещё не опубликованный51: текущие пользовательские артефакты50/full89,
-физическая готовность UA-05 не повышена. Ход выпуска — в
-[исследовании](research/call-optimization-2026-11-02.md),
-[модель](iterations/call-heartbeat-51/response-comparison.json).
+OPT-06/UA-05,51/02.11: отдельный `/call/heartbeat` выпущен без лишней выдачи JWT
+при неизменном поколении; те же membership/device/roster/lease проверки сохранены.
+Первичный вход/rebuild требуют `/token`, новое поколение получает свежий JWT в том
+же heartbeat-ответе. Прежний JWT не переносится между identity/lease/generation;
+старые клиенты/откат сервера совместимы. Full91/sourcee44a726 опубликован и независимо
+проверен; CI208 SUCCESS. Python844 PASS/4skip, Flutter585 PASS/4skip, analyzer чистый,
+native DirectCall1 PASS/3цикла. Модель20 запросов JWT20→0/JSON−50.06% не является
+экономией медиатрафика. Mac50→51 установлен штатной кнопкой,285 entries ZIP=DMG=
+installed, прежние account/device/history и старое собственное аудио до конца
+сохранены; Keychain/профиль не очищались, резервная копия сверена. Android51 с прежним
+сертификатом установлен поверх50 в эмуляторе и опубликован как preview. Физические
+UA-02/04/05/08/09/14 на iPhone Safari/PWA и Xiaomi этим не закрыты; конечный A/V-marker,
+полная fault matrix и остальные OPT остаются обязательными. [Проверки51](iterations/call-heartbeat-51/checks.json),
+[production](iterations/call-heartbeat-51/production-verified.json),
+[ход OPT](research/call-optimization-2026-11-02.md).

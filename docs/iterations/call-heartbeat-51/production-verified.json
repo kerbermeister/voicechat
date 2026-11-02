@@ -1,0 +1,113 @@
+{
+  "source": "e44a726b403762acba7f01533c875e521b222b13",
+  "mode": "full",
+  "backend_unchanged": false,
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41464697477",
+  "baseline": "8912ef0aaff8282d6931899289b188d400266bc62014f6b4236f8352a6be4b15",
+  "previous_baseline": "b2b54ca94759849a18606a757d2eaca924f46ece36fa79d14e1c3c83238c4de8",
+  "previous_points_to_prior_release": true,
+  "data_identity_unchanged": true,
+  "digests_match": true,
+  "screen_flag": "1",
+  "core": {
+    "commit": "e44a726b403762acba7f01533c875e521b222b13",
+    "images": {
+      "configure": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+      "control": "ghcr.io/kerbermeister/voicechat/control@sha256:93b46877e4aff937ee973812663e1a34eda72b8c652c18574c02458a7e8cb65a",
+      "postgres": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "synapse": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0"
+    }
+  },
+  "edges": {
+    "a": {
+      "commit": "e44a726b403762acba7f01533c875e521b222b13",
+      "images": {
+        "configure": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+        "route-health": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+        "turn": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+        "web": "ghcr.io/kerbermeister/voicechat/web@sha256:37fcdf0d8f2d6ecccf234364ee74fd50905524f95dc75dc09e5d11e09d5bde42"
+      }
+    }
+  },
+  "containers": {
+    "voicechat-control-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/control@sha256:93b46877e4aff937ee973812663e1a34eda72b8c652c18574c02458a7e8cb65a",
+      "id": "8d7b80d3be84ba3cfba896b1f3b7dcdaddba31797f2ead68cf1e94eb3dd47fbd",
+      "status": "running",
+      "health": "healthy",
+      "restarts": 0,
+      "started_at": "2026-11-02T14:58:39.068116168Z"
+    },
+    "voicechat-synapse-1": {
+      "image": "matrixdotorg/synapse@sha256:97665cd4539dcf107c69fb6afdb720e1d1c9c09fb2b5701fb13d6c33b22cd8f0",
+      "id": "0e0023f51372a1d1b1128a2bd3fcf37399bc51230bacb2915b55764088454eb5",
+      "status": "running",
+      "health": "healthy",
+      "restarts": 0,
+      "started_at": "2026-11-02T14:58:40.820981659Z"
+    },
+    "voicechat-postgres-1": {
+      "image": "postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "id": "6d7c22a7b842deca70b16c0869dffb420788785931e864a6169dc5b37c243e25",
+      "status": "running",
+      "health": "healthy",
+      "restarts": 0,
+      "started_at": "2026-10-29T19:08:39.014458927Z"
+    },
+    "voicechat-edge-a-web-1": {
+      "image": "ghcr.io/kerbermeister/voicechat/web@sha256:37fcdf0d8f2d6ecccf234364ee74fd50905524f95dc75dc09e5d11e09d5bde42",
+      "id": "eb4c85de8a13843efc0ae159cb57b86669ffb6eb793fe21efbbd361a479b3b20",
+      "status": "running",
+      "health": "healthy",
+      "restarts": 0,
+      "started_at": "2026-11-02T14:59:30.206398956Z"
+    },
+    "voicechat-edge-a-turn-1": {
+      "image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+      "id": "aed3f403151fe86ab46dd905142b511a175e71d83e44ed3b9667103ccf1529c6",
+      "status": "running",
+      "health": null,
+      "restarts": 0,
+      "started_at": "2026-11-02T14:59:27.274929484Z"
+    },
+    "voicechat-edge-a-route-health-1": {
+      "image": "python:3.13-slim-bookworm@sha256:a881a81282cca8c57f97014867fa651def1b3799030cc6b1cff45ed55ba8ef36",
+      "id": "551bd0b2554676dae81c2be3c4b1baa9f09ac2520c5a8a0bd45153dc2f44f1b7",
+      "status": "running",
+      "health": null,
+      "restarts": 0,
+      "started_at": "2026-11-02T14:59:29.941159385Z"
+    },
+    "voicechat-shared-front-ingress-1": {
+      "image": "haproxy:3.2.26-alpine@sha256:5893840576071e6217cd52ebdcc14f454c6f7a631056fa6f4e0f40d3cac4215b",
+      "id": "368088048bca475b5b66aa31d51990627aafbcf5726355d2ccbca8d9fb30903a",
+      "status": "running",
+      "health": null,
+      "restarts": 0,
+      "started_at": "2026-10-29T19:09:15.200049297Z"
+    }
+  },
+  "call_control_sha256": "816e780cd60b67e76a4f73dbf6f0cf97b7dc493b541f742a0e59d93586aa3441",
+  "token_server_sha256": "f43365b746bdeeed063da60063966759f472c5cbd00eea3a75eb41845e471152",
+  "native_channels_51_verified": true,
+  "main_js_sha256": "5b8fea23402c3b53e86d0df606268df981ac787b5e138d121612f2449f2fb85f",
+  "version": {
+    "app_name": "voicechat_probe",
+    "version": "1.19.3",
+    "build_number": "51",
+    "package_name": "voicechat_probe"
+  },
+  "routes": {
+    "/": 200,
+    "/version.json": 200,
+    "/api/health": 200,
+    "/_matrix/client/versions": 200,
+    "/main.dart.js": 200,
+    "/e2ee.worker.dart.js": 200,
+    "/pkg/vodozemac_bindings_dart_bg.wasm": 200,
+    "/_synapse/admin/v1/server_version": 404,
+    "/api/internal/test": 404,
+    "POST /api/token": 401,
+    "POST /api/call/heartbeat": 401
+  }
+}

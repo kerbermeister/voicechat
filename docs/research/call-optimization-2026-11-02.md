@@ -727,7 +727,7 @@ HTTP/asset/nonce/size и запрет неподдержанного directional
 analyzer и release-сборка тестового web-entrypoint PASS. Поскольку изменились только
 integration_test/tool/docs, установленный клиент50 и full89 не требуют переиздания.
 
-## OPT-06: отдельный heartbeat без выдачи JWT — кандидат51
+## OPT-06: отдельный heartbeat без лишней выдачи JWT — выпущен51/full91
 
 Новый `/call/heartbeat` требует уже существующий lease и запрещает `reconnect`.
 Он проходит те же whoami, membership/encryption, keys/query, roster/lease/device
@@ -754,11 +754,28 @@ server_time. При том же поколении JWT отсутствует; �
 медиаполосы, не p95/CPU production и не устранение всех повторных Matrix-запросов.
 [Модель](../iterations/call-heartbeat-51/response-comparison.json).
 
-Пока это кандидат: Python848 tests,844 PASS/4skip; адресные Flutter admission/
-key-sharing/cleanup7 PASS, analyzer чистый. Полные клиентские проверки585 PASS/4skip; выпуск51
-ещё выполняется; опубликованные артефакты пока50/full89. OPT-06 не объявляется
-выпущенным до проверки согласованного server/web и нативных каналов.
+Выпуск51/source`e44a726` опубликован: full91 SUCCESS и независимые source/
+digests/health/rollback/data identity/HTTPS проверки PASS; CI208 SUCCESS.
+Python848 tests,844 PASS/4skip; Flutter585 PASS/4skip, полный analyzer чистый.
+Финальные admission/clock6 PASS; native DirectCall1 PASS/3цикла.
+Mac50→51 установлен штатно,285 entries ZIP=DMG=installed, прежние account/device/
+history и old own audio to end подтверждены. Android51 с прежним сертификатом
+установлен поверх50 в API35arm64 и опубликован как физический-QA preview;
+телефон этим не проверен. [Проверки](../iterations/call-heartbeat-51/checks.json),
+[production](../iterations/call-heartbeat-51/production-verified.json).
 
 Перед публикацией51 устранили лишний HTTP-проход при ротации: heartbeat передаёт
 текущую generation и при её изменении получает новый JWT в том же ответе. Первый
-запуск full90/source0ea925a отменён до deployment; окончательный source будет другим.
+запуск full90/source0ea925a отменён до deployment; окончательный source —e44a726.
+
+
+### Текущая точка продолжения после выпуска51
+
+Работа возобновлена, пауза снята. Реализация OPT-06 выпущена; это не закрывает
+физические UA-05 или обязательную общую матрицу. OPT-02 расширен directional UDP,
+OPT-03 имеет независимый browser feedback probe, но долгий A/B/seed/A/V-marker и
+физические iPhone/Xiaomi не выполнены. Метрики не объявляют причину прежнего
+рассинхрона или скачков доказанной. Следующий безопасный этап OPT-07 — проверить
+связь server admission gate с original/refreshed SFU JWT и sender-key ACK/epochs;
+обычная room rotation остаётся до доказанного отзыва/совместимости. Новую таймерную
+систему переключения аудиопресетов по вопросу владельца не добавлять.

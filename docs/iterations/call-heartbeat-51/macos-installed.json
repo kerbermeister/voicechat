@@ -1,0 +1,18 @@
+{
+  "source": "e44a726b403762acba7f01533c875e521b222b13",
+  "build": 51,
+  "previous_build": 50,
+  "actual_button_update": true,
+  "installed_equals_verified_zip_and_dmg": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "same_account": true,
+  "same_device": true,
+  "old_history_visible": true,
+  "old_audio_played_to_end_after_installation": true,
+  "keychain_reset": false,
+  "profile_cleared": false,
+  "backup_verified": true,
+  "update_channel_latest_pending": false,
+  "update_channel_reports_no_compatible_newer_version": true
+}

@@ -5,7 +5,7 @@
 сохранены в [статусе реализации](implementation-status.md) и `iterations/`.
 `1.0.0+1` было техническим номером прототипа, без подтверждённого production-выпуска.
 
-## 1.19.3 (сборка 51) — кандидат, 2026-11-02
+## 1.19.3 (сборка 51) — web/macOS и Android preview опубликованы, 2026-11-02
 
 ### Что нового
 
@@ -19,10 +19,19 @@
 
 ### Проверка и ограничения
 
-Кандидат ещё не опубликован. Python844 PASS/4skip; Flutter585 PASS/4skip, analyzer
-адресного допуска чистый. Synthetic directional UDP и симметричный обрыв RTP PASS;
-физические iPhone/Xiaomi и конечный A/V-marker остаются открыты в
+Full91 и независимая проверка production PASS; CI208 SUCCESS.
+Python844 PASS/4skip, Flutter585 PASS/4skip и полный analyzer чистый;
+native DirectCall1 PASS/3цикла. Synthetic directional UDP и симметричный обрыв RTP PASS.
+Mac50→51 установлен штатной кнопкой:285 entries ZIP=DMG=installed, прежние
+account/device/history и воспроизведение старого собственного аудио сохранены.
+APK51 проверен по прежнему сертификату, установлен поверх50 в эмуляторе и
+опубликован как preview для удалённого Xiaomi. Это не аппаратная приёмка телефона.
+Физические iPhone/Xiaomi, конечный A/V-marker и оставшиеся OPT открыты в
 [реестре приёмки](user-acceptance.md).
+
+Source: `e44a726b403762acba7f01533c875e521b222b13`; тег: `app-v1.19.3+51`.
+[Проверки](iterations/call-heartbeat-51/checks.json),
+[production](iterations/call-heartbeat-51/production-verified.json).
 
 ## 1.19.2 (сборка 50) — web/macOS/Android опубликованы, 2026-11-02
 
