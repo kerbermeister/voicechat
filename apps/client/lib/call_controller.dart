@@ -68,6 +68,7 @@ class CallController extends ChangeNotifier
   bool starting = false;
   bool _dialPending = false;
   Completer<void>? _dialCancellation;
+  CallInvitation? _joiningInvitation;
   int _dialGeneration = 0;
   final _recordedEnds = <({String room, String session})>{};
   late final VoIP voip;
@@ -142,11 +143,24 @@ class CallController extends ChangeNotifier
     });
     _expiry = Timer.periodic(const Duration(seconds: 5), (_) {
       unawaited(groups.refresh());
-      invitations.removeWhere(
-        (_, call) =>
-            DateTime.now().difference(call.created) >=
-            const Duration(seconds: 45),
-      );
+      for (final call in invitations.values.toList()) {
+        if (DateTime.now().difference(call.created) >=
+            const Duration(seconds: 45)) {
+          invitations.remove(call.session);
+          final current = active;
+          if (current is! CallProbe ||
+              current.isClosed ||
+              current.chat.id != call.room.id ||
+              current.session != call.session ||
+              current.duration == Duration.zero) {
+            _cancelJoiningInvitation(
+              call.room.id,
+              call.session,
+              sender: call.sender,
+            );
+          }
+        }
+      }
       _refresh();
     });
     if (initialEvents.isNotEmpty) {
@@ -219,6 +233,12 @@ class CallController extends ChangeNotifier
           invitation.room.membership != Membership.join ||
           devices.answered(invitation.room.id, id),
     );
+    final joining = _joiningInvitation;
+    if (joining != null &&
+        (joining.room.membership != Membership.join ||
+            devices.answered(joining.room.id, joining.session))) {
+      _cancelJoiningInvitation(joining.room.id, joining.session);
+    }
     directInvitations.removeWhere(
       (call) => call.isClosed || devices.answered(call.chat.id, call.session),
     );
@@ -438,6 +458,7 @@ class CallController extends ChangeNotifier
           invitations[id]?.room.id == event.room.id) {
         invitations.remove(id);
       }
+      _cancelJoiningInvitation(event.room.id, id, sender: event.senderId);
       if (active?.session == id &&
           active?.chat.id == event.room.id &&
           event.room.isDirectChat &&
@@ -561,6 +582,17 @@ class CallController extends ChangeNotifier
     CallInvitation? invitation,
     bool video = false,
   }) async {
+    if (_closed) return;
+    if (invitation != null &&
+        (invitation.room.id != room.id ||
+            room.membership != Membership.join ||
+            devices.answered(room.id, invitation.session) ||
+            DateTime.now().difference(invitation.created) >=
+                const Duration(seconds: 45) ||
+            invitations[invitation.session]?.room.id != room.id ||
+            invitations[invitation.session]?.sender != invitation.sender)) {
+      return;
+    }
     if (isPersonalRoom(room)) {
       throw UserActionError('В личной комнате звонки недоступны.');
     }
@@ -574,11 +606,27 @@ class CallController extends ChangeNotifier
       throw UserActionError('Сначала завершите текущий звонок.');
     }
     final cancellation = _dialCancellation = Completer<void>();
+    _joiningInvitation = invitation;
     _dialPending = true;
     starting = true;
     dialingRoom = room;
     dialError = null;
     final generation = ++_dialGeneration;
+    bool current() {
+      if (generation != _dialGeneration || _closed) return false;
+      if (invitation == null ||
+          DateTime.now().difference(invitation.created) <
+              const Duration(seconds: 45)) {
+        return true;
+      }
+      final call = active;
+      return call is CallProbe &&
+          call.chat.id == room.id &&
+          call.session == invitation.session &&
+          !call.isClosed &&
+          call.duration > Duration.zero;
+    }
+
     String? existingSession;
     var rejoining = invitation != null;
     _refresh();
@@ -601,18 +649,15 @@ class CallController extends ChangeNotifier
     });
     Future<void> connect() async {
       if (invitation != null &&
-          !await _answerPush(
-            invitation.session,
-            isCurrent: () => generation == _dialGeneration && !_closed,
-          )) {
+          !await _answerPush(invitation.session, isCurrent: current)) {
         return;
       }
-      if (generation != _dialGeneration || _closed) return;
+      if (!current()) return;
       await beforeMedia?.call();
-      if (generation != _dialGeneration || _closed) return;
+      if (!current()) return;
       if (!room.isDirectChat && invitation == null) {
         final ongoing = await groups.find(room);
-        if (generation != _dialGeneration || _closed) return;
+        if (!current()) return;
         if (ongoing != null) {
           existingSession = ongoing.session;
           video = ongoing.video;
@@ -630,27 +675,27 @@ class CallController extends ChangeNotifier
             'Для личного звонка нужен один собеседник, вступивший в чат.',
           );
         }
-        if (generation != _dialGeneration || _closed) return;
+        if (!current()) return;
         final session = await voip.inviteToCall(
           room,
           video ? CallType.kVideo : CallType.kVoice,
           userId: users.single,
-          isCancelled: () => generation != _dialGeneration || _closed,
+          isCancelled: () => !current(),
         );
         final call = _directCalls[session]!;
-        if (generation != _dialGeneration || _closed || call.isClosed) {
+        if (!current() || call.isClosed) {
           await call.close();
           return;
         }
         active = call;
         await call.authorize();
-        if (generation != _dialGeneration || _closed || call.isClosed) {
+        if (!current() || call.isClosed) {
           await call.close();
           return;
         }
         call.monitor();
         if (video) await call.setVideoQuality(call.videoQuality);
-        if (generation != _dialGeneration || _closed || call.isClosed) return;
+        if (!current() || call.isClosed) return;
         _ringTimeout?.cancel();
         _ringTimeout = Timer(const Duration(seconds: 45), () {
           if (active == call &&
@@ -676,7 +721,7 @@ class CallController extends ChangeNotifier
         session: id,
         tokenUrl: tokenUrl,
         livekitUrl: mediaUrl,
-        joinExisting: existingSession != null,
+        joinExisting: rejoining,
         status: report,
         changed: _refresh,
         video: video,
@@ -687,13 +732,13 @@ class CallController extends ChangeNotifier
       _refresh();
       try {
         await call.connect();
-        if (generation != _dialGeneration || _closed) {
+        if (!current()) {
           await call.close();
           return;
         }
         if (!rejoining) {
           await _signal(room, id, 'invite', video: video);
-          if (generation != _dialGeneration || _closed || call.isClosed) return;
+          if (!current() || call.isClosed) return;
           unawaited(_invitePush(call));
           _ringTimeout?.cancel();
           _ringTimeout = Timer(const Duration(seconds: 45), () {
@@ -721,9 +766,9 @@ class CallController extends ChangeNotifier
       // generation guards still own cleanup, while the UI can finish immediately.
       await Future.any<void>([connect(), cancellation.future]);
     } catch (error) {
-      if (generation != _dialGeneration || _closed) return;
+      if (!current()) return;
       await active?.close();
-      if (generation != _dialGeneration || _closed) return;
+      if (!current()) return;
       dialError = error is UserActionError
           ? error.message
           : 'Не удалось начать звонок. Проверьте сеть, микрофон и проверку устройств.';
@@ -732,6 +777,7 @@ class CallController extends ChangeNotifier
       preparationTimeout.cancel();
       if (identical(_dialCancellation, cancellation)) {
         _dialCancellation = null;
+        _joiningInvitation = null;
         _dialPending = false;
         starting = false;
       }
@@ -743,6 +789,29 @@ class CallController extends ChangeNotifier
     declined.add((room: room, session: session));
     if (declined.length > 128) declined.remove(declined.first);
     if (invitations[session]?.room.id == room) invitations.remove(session);
+    _cancelJoiningInvitation(room, session);
+  }
+
+  void _cancelJoiningInvitation(String room, String session, {String? sender}) {
+    final joining = _joiningInvitation;
+    if (joining?.room.id == room &&
+        joining?.session == session &&
+        (sender == null || joining?.sender == sender)) {
+      _joiningInvitation = null;
+      _dialGeneration++;
+      if (_dialCancellation?.isCompleted == false) {
+        _dialCancellation!.complete();
+      }
+      starting = false;
+      dialingRoom = null;
+      // Stop only this pending join, without broadcasting a group end/leave.
+      final call = active;
+      if (call is CallProbe &&
+          call.chat.id == room &&
+          call.session == session) {
+        unawaited(call.close().catchError((Object _) {}));
+      }
+    }
   }
 
   Future<void> decline(CallInvitation invitation) async {

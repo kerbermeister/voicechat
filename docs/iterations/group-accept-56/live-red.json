@@ -1,0 +1,32 @@
+{
+  "baseline": "1.19.7+55",
+  "source": "1813484e4f73895b20392f1b4cb06b729e589054",
+  "main_sha256": "a08a1d8496fad95088272492bf619fdee2339ec623ae97a898ed17d3500f9027",
+  "fault": "Eight-second delay before normal push accept handler; no authorization bypass",
+  "accept_at_ms": 1793660765232,
+  "cancel_returned_ms": 1793660766204,
+  "accept_to_cancel_ms": 972,
+  "observed_at_ms": 1793660793429,
+  "initiator_ended": true,
+  "acceptor_restarted_ended_invitation": true,
+  "alice": {
+    "mode": "synthetic",
+    "requests": 2,
+    "pending": 0,
+    "hold_next": false,
+    "sources": 2,
+    "ended": 2,
+    "audio": "running"
+  },
+  "bob": {
+    "mode": "synthetic",
+    "requests": 1,
+    "pending": 0,
+    "hold_next": false,
+    "sources": 1,
+    "ended": 0,
+    "audio": "running"
+  },
+  "physical_device": false,
+  "synthetic_silence": true
+}

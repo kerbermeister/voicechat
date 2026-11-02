@@ -1,0 +1,53 @@
+{
+  "caller_build": 55,
+  "acceptor_build": 56,
+  "both_protected_audio": true,
+  "both_conversation_timer": true,
+  "security_evidence": "Protected-audio label and timer are driven by remote TrackE2EEState kOk; no acoustic/PCM measurement",
+  "synthetic_silence": true,
+  "physical_device": false,
+  "alice": {
+    "mode": "synthetic",
+    "requests": 5,
+    "pending": 0,
+    "hold_next": false,
+    "sources": 5,
+    "ended": 4,
+    "audio": "running"
+  },
+  "bob": {
+    "mode": "synthetic",
+    "requests": 1,
+    "pending": 0,
+    "hold_next": false,
+    "sources": 1,
+    "ended": 0,
+    "audio": "running"
+  },
+  "join_existing_source_contract_verified": true,
+  "wire_body_recorded": false,
+  "remaining_participant_not_ended": true,
+  "remaining_call_connection_label": [
+    "- generic: E2EE включено · ждём медиапотоки"
+  ],
+  "final_alice": {
+    "mode": "synthetic",
+    "requests": 6,
+    "pending": 0,
+    "hold_next": false,
+    "sources": 6,
+    "ended": 6,
+    "audio": "running"
+  },
+  "final_bob": {
+    "mode": "synthetic",
+    "requests": 1,
+    "pending": 0,
+    "hold_next": false,
+    "sources": 1,
+    "ended": 1,
+    "audio": "running"
+  },
+  "all_sources_stopped": true,
+  "legacy_full_rotation_restarted_remaining_capture": true
+}

@@ -1,0 +1,44 @@
+from pathlib import Path
+import os,runpy,sys
+root=Path(__file__).resolve().parents[1]
+fixture=root/'.prototype/scenario-audit'
+os.environ.update(VOICECHAT_MATRIX_INTERNAL='http://127.0.0.1:18008',VOICECHAT_ORIGINS='http://localhost:17361,http://localhost:17362',VOICECHAT_FCM_CREDENTIALS='')
+sys.path.insert(0,str(root/'prototype'))
+s=runpy.run_path(str(fixture/'prototype/token_server.py'))
+s['scheduled_store']();s['screen_service']()
+import threading,time,json,io
+lock=threading.Lock()
+armed=root/'.prototype/group56-hold-accept'
+state=root/'.prototype/group56-gate-state.json'
+class GatedHandler(s['Handler']):
+ def do_POST(self):
+  original=self.rfile
+  action=None
+  if self.path=='/push/call':
+   try:length=int(self.headers.get('Content-Length','0'))
+   except ValueError:length=-1
+   if 0 < length <= 8192:
+    raw=original.read(length)
+    self.rfile=io.BytesIO(raw)
+    try:
+     body=json.loads(raw)
+     if isinstance(body,dict):action=body.get('action')
+    except (ValueError,UnicodeDecodeError):pass
+  try:
+   delay=0
+   if action=='accept':
+    with lock:
+     if armed.exists():
+      delay=float(armed.read_text());assert 0 < delay <= 9
+      armed.unlink()
+   if not delay:return super().do_POST()
+   started=time.monotonic();started_ms=round(time.time()*1000)
+   state.write_text(json.dumps({'held':True,'started_ms':started_ms,'delay_seconds':delay,'endpoint':'/push/call','action':action}))
+   state.chmod(0o600)
+   try:
+    time.sleep(delay)
+    return super().do_POST()
+   finally:
+    state.write_text(json.dumps({'held':False,'started_ms':started_ms,'ended_ms':round(time.time()*1000),'duration_ms':round((time.monotonic()-started)*1000),'endpoint':'/push/call','action':action,'normal_handler_returned':True}))
+  finally:self.rfile=original
+s['ControlServer'](('127.0.0.1',18090),GatedHandler).serve_forever()

@@ -1,0 +1,35 @@
+{
+  "baseline_caller": "1.19.7+55",
+  "fixed_acceptor": "1.19.8+56",
+  "candidate_main_sha256": "66a126b100b814488d4cc52444d140dafdc750e246dd91fe64168d0669028a80",
+  "fault": "Eight-second delay before normal push accept handler; same fixture as red",
+  "accept_at_ms": 1793661768778,
+  "cancel_returned_ms": 1793661769676,
+  "accept_to_cancel_ms": 898,
+  "ended_first_observed_ms": 1793661776005,
+  "ended_observed_before_gate_due": true,
+  "observed_at_ms": 1793661806330,
+  "initiator_ended": true,
+  "acceptor_ended": true,
+  "old_call_not_restarted": true,
+  "alice": {
+    "mode": "synthetic",
+    "requests": 3,
+    "pending": 0,
+    "hold_next": false,
+    "sources": 3,
+    "ended": 3,
+    "audio": "running"
+  },
+  "bob": {
+    "mode": "synthetic",
+    "requests": 0,
+    "pending": 0,
+    "hold_next": false,
+    "sources": 0,
+    "ended": 0,
+    "audio": "running"
+  },
+  "synthetic_silence": true,
+  "physical_device": false
+}

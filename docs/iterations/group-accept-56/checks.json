@@ -1,0 +1,43 @@
+{
+  "version": "1.19.8+56",
+  "source_hashes": {
+    "apps/client/lib/call_controller.dart": "0886ed78f5cfac7894d9d2e53ed33635f150dd3ba33420669b891f2a20ab0d37",
+    "apps/client/lib/app_version.dart": "4a378351482b02e0c4a7dacdc8b4b0d65d1fc3a95829d6a9c5d5e4db2706cd8d",
+    "apps/client/pubspec.yaml": "e6eedf0eefb41ca057a6a0392fe32b9153be3b31c5270b220c05682f5293c981",
+    "apps/client/test/group_invitation_cancellation_test.dart": "a03fddb132b1f42c35361a4798953695a3bde81e8f7907805b642183295c2db2",
+    "apps/client/test/call_devices_test.dart": "8d1f13155c2447088028bc7ba2086f02be6b8da9f8fac9345cb0b2ba74bbf434"
+  },
+  "controller_regressions": {
+    "passed": 26,
+    "synthetic_platform_and_http": true
+  },
+  "server_existing_admission_contract": {
+    "passed": 1,
+    "synthetic_sfu": true
+  },
+  "android_version_package_tests": {
+    "passed": 8
+  },
+  "flutter_full_before_expiry_guard": {
+    "passed": 669,
+    "skipped": 4,
+    "concurrency": 1
+  },
+  "flutter_final": {
+    "passed": 673,
+    "skipped": 4,
+    "concurrency": 4,
+    "elapsed": "2m03s"
+  },
+  "interrupted_final_attempt": "Dart compiler could not write temporary output: no space left on device; stopped and removed only own regenerable build outputs before rerun",
+  "analyzer": "pass",
+  "ui_green": {
+    "cancelled_accept_did_not_restart": true,
+    "late_capture_count": 0,
+    "mixed_versions": "caller55/acceptor56",
+    "normal_group_after_cancel": "both protected audio and timers",
+    "leave": "remaining participant stayed active with legacy full rebuild",
+    "all_sources_stopped": true
+  },
+  "physical_iphone_xiaomi": false
+}

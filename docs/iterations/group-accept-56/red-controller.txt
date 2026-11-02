@@ -1,0 +1,31 @@
+ /Users/anton/IdeaProjects/VoiceChat/apps/client/test/group_invitation_cancellation_test.dart
+00:00 +0: Initiator cancellation releases group acceptance during push
+00:00 +0 -1: Initiator cancellation releases group acceptance during push [E]
+  Expected: true
+    Actual: <false>
+  A cancelled invitation must release the slot before platform/network completion
+
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/group_invitation_cancellation_test.dart 74:9   main.<fn>
+
+Warning: At least one test in this suite creates an HttpClient. When running a test suite that uses
+TestWidgetsFlutterBinding, all HTTP requests will return status code 400, and no network request
+will actually be made. Any test expecting a real network connection and status code will fail.
+To test code that needs an HttpClient, provide your own HttpClient implementation to the code under
+test, so that your test can consistently provide a testable response to the code under test.
+00:00 +0 -1: Initiator cancellation releases group acceptance during media
+00:00 +0 -2: Initiator cancellation releases group acceptance during media [E]
+  Expected: true
+    Actual: <false>
+  A cancelled invitation must release the slot before platform/network completion
+
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/group_invitation_cancellation_test.dart 74:9   main.<fn>
+
+00:00 +0 -2: Some tests failed.
+
+Failing tests:
+  /Users/anton/IdeaProjects/VoiceChat/apps/client/test/group_invitation_cancellation_test.dart: Initiator cancellation releases group acceptance during media
+  /Users/anton/IdeaProjects/VoiceChat/apps/client/test/group_invitation_cancellation_test.dart: Initiator cancellation releases group acceptance during push

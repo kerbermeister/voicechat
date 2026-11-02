@@ -1,0 +1,24 @@
+{
+  "source": "1813484e4f73895b20392f1b4cb06b729e589054",
+  "version": "1.19.7+55",
+  "web_workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41540147071",
+  "mode": "web",
+  "web_status": "success",
+  "ci": {
+    "main": "https://github.com/kerbermeister/voicechat/actions/runs/41538977923",
+    "tag": "https://github.com/kerbermeister/voicechat/actions/runs/41538977681",
+    "branch": "https://github.com/kerbermeister/voicechat/actions/runs/41538977638"
+  },
+  "macos_published": false,
+  "macos_candidate_waits_saved_login": false,
+  "macos_previous_public_build": 53,
+  "macos_update_53_to55_pending": false,
+  "android_published": true,
+  "physical_iphone_xiaomi_tested": false,
+  "web_duration": "12m35s",
+  "ci_status": "all_success",
+  "backend_unchanged": true,
+  "macos55_closed_unpublished": true,
+  "macos_superseded_by_build": 56,
+  "macos_update_53_to56_pending": true
+}

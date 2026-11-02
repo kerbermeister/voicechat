@@ -1,0 +1,9 @@
+{
+  "held": false,
+  "started_ms": 1793660765517,
+  "ended_ms": 1793660773529,
+  "duration_ms": 8012,
+  "endpoint": "/push/call",
+  "action": "accept",
+  "normal_handler_returned": true
+}

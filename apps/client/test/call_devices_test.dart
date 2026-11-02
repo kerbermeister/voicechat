@@ -8,7 +8,8 @@ import 'package:voicechat_probe/direct_call.dart';
 import 'message_test.dart' show TestDevice;
 
 class DeviceClient extends Client {
-  DeviceClient() : super('devices', database: WindowDatabase());
+  DeviceClient({super.httpClient})
+    : super('devices', database: WindowDatabase());
   @override
   String get userID => '@user:local';
   @override
