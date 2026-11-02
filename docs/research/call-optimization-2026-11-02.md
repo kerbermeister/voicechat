@@ -610,7 +610,7 @@ RemoveParticipant удаляет сеанс; сервер также выдаё�
    prepare/commit, refresh/reconnect, reuse/ring exhaustion и все три платформы.
    До этих отрицательных проверок общая ротация не удаляется.
 
-### OPT-06: кандидат фоновой сверки SFU-комнат
+### OPT-06: опубликованная фоновая сверка SFU-комнат
 
 После50 heartbeat больше не вызывает CreateRoom для неизменного поколения.
 Новый общий presence worker делает ListRooms раз в3с для всех активных calls и
@@ -625,15 +625,17 @@ Presence read выполняется вне lease lock и в отдельном 
 не кешируется, admission также повторяет его. Прежний DeleteRoom/recover/watchdog
 не ослаблен. Это ещё не разделение HTTP heartbeat и обновления JWT.
 
-Кандидат: Python843 PASS/4skip (847 total),15 финальных call-control PASS,
+Проверки: Python843 PASS/4skip (847 total),15 финальных call-control PASS,
 отдельный реальный pinned-SFU тест PASS: roomList grant, отсутствие heartbeat RPC,
 repair после удаления и очистка при leave. [Проверки/сравнение](../iterations/call-room-reconciliation-2026-11-02/checks.json).
 На временной SQLite/fake SFU,10 групп×10 участников×20 раундов по3с, относительно50:
 200 CreateRoom →20 общих ListRooms, поколения/roster прежние. Это−90% числа
 управляющих RPC этого сценария, не−90% media traffic/CPU. При одной группе число
 RPC может остаться прежним; заменяются изменяющие запросы чтением. Клиентский
-runtime/версия50 не меняется; необходим штатный full backend/web release,
-**публикация этого серверного кандидата ещё не выполнена**.
+runtime/версия50 не меняется. Штатный [full89](https://github.com/kerbermeister/voicechat/actions/runs/41452179181)
+**опубликован**, source`29e3127`; независимые source/digests/code hash/health/HTTPS,
+data identity и rollback pointer PASS. Подписанный Mac feed и Android manifest
+остались точными50. [Production receipt](../iterations/call-room-reconciliation-2026-11-02/production-verified.json).
 
 Повторить технические проверки этого шага из корня:
 `python3 prototype/check_call_provision.py --baseline app-v1.19.2+50` и
@@ -641,3 +643,52 @@ runtime/версия50 не меняется; необходим штатный 
 Последний тест запускает только собственный pinned-SFU container на случайном
 loopback-порту, без медиа/аккаунта. Дополнительно проверено, что repair не создаёт
 старую комнату при ещё не обработанном expiry одного из участников.
+
+## Точка продолжения — пауза по просьбе владельца, 02.11.2026
+
+Владелец попросил закончить текущий выпуск и приостановиться для обновления Codex.
+Full89/source`29e3127e9c9a95e4449e7da1deed7f0bfcb15c2f` успешно опубликован и независимо
+проверен; текущий установленный/опубликованный клиент1.19.2+50, его source`51ab977`.
+Все одноразовые локальные TURN/netem/SFU/HTTP-стенды и Android-эмулятор остановлены.
+Профиль владельца и Keychain не очищались. Пауза не означает завершения OPT-01–16.
+Единственный список пользовательской приёмки — [реестр](../user-acceptance.md).
+
+Перед паузой завершён первый directional experiment OPT-02/03 на внутреннем
+Chromium156: два TURN listeners в одном изолированном namespace, u32 filter по
+исходному UDP-порту3478; loss15% только в направлении к peerA. Двусторонние A/V
+synthetic peers используют production renderer, CallStatistics,
+outgoingVideoQuality, StableCallQuality и applyVideoEncoding. Из18 samples под
+помехами16 имеют incoming=poor, все18 outgoing=excellent/effective=auto;
+исходящая ширина640 сохранена. Проверены assertions, оба RTP потока восстановились.
+Это подтверждает разделение направлений данного browser probe, не настоящий
+Matrix DirectCall/LiveKit group, не физический A/V и не полная автоадаптация.
+[Краткое свидетельство](../iterations/call-network-lab-2026-11-02/directional-incoming-summary.json).
+
+Экспериментальные исходники пока **не интегрированы в общий тестовый runner**;
+на Mac сохранены `.prototype/directional-fixture.dart`,
+`.prototype/call-directional-lab.py`, `.prototype/prepare-directional-fixture.py`,
+скомпилированный `.prototype/call-directional-web` и полный
+`.prototype/directional-incoming.json`. Их SHA256 зафиксированы в свидетельстве.
+Не удалять эти локальные файлы до интеграции. Production их не использует.
+
+Первое действие после возобновления — противоположный directional case:
+
+```sh
+python3 .prototype/call-directional-lab.py --web-root .prototype/call-directional-web --output .prototype/directional-outgoing.json --shaped-peer receiver --port 7393
+```
+
+Открыть напечатанный localhost URL во **внутреннем браузере**, нажать Run renderer
+checks. Нужна проверка настоящего remote-inbound feedback: исходящий cap снижается
+при плохом исходящем пути и восстанавливается; исправный входящий не подменяет
+эту оценку. Затем объединить проверенный эксперимент с существующими
+`call_renderer_fixture.dart`/`call_network_lab.py`, убрать дублирование и повторить
+оба направления с assertions. Chromium Google Chrome/headless не запускать.
+
+Далее продолжать оставшиеся OPT по приоритетам исходной таблицы. Для OPT-07
+fresh sender-key slots проверены на Mac, но ACK/membership/reuse/compatibility и
+серверный запрет старых/refreshed JWT ещё не реализованы; room rotation сохраняется.
+OPT-08 требует конечного A/V-marker и проверки Web Audio, а не предположения по
+buffer counters. Для iPhone Safari/PWA и физического Xiaomi аппаратная приёмка
+остаётся условной; Xiaomi у другого человека, ADB подключить невозможно.
+Дополнительную таймерную систему переключения аудиопресетов16/32/64 по последнему
+вопросу владельца не добавлять: он просил только объяснить существующий Auto.

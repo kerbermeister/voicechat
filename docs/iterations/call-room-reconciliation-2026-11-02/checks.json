@@ -1,5 +1,5 @@
 {
-  "state": "candidate_not_deployed",
+  "state": "published_full89_independently_verified",
   "python": {
     "total": 847,
     "passed": 843,
@@ -13,5 +13,10 @@
   "macos_android_version": "1.19.2+50 unchanged",
   "existing_call_network_fixture_ci": "https://github.com/kerbermeister/voicechat/actions/runs/41449492803",
   "native_artifacts_required": false,
-  "active_group_leases_before_release": 0
+  "active_group_leases_before_release": 0,
+  "source": "29e3127e9c9a95e4449e7da1deed7f0bfcb15c2f",
+  "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41452179181",
+  "candidate_ci": "https://github.com/kerbermeister/voicechat/actions/runs/41452070337",
+  "candidate_ci_result": "SUCCESS",
+  "paused_after_verified_release_at_owner_request": true
 }

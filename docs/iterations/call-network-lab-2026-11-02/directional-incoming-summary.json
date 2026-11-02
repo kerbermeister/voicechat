@@ -1,0 +1,19 @@
+{
+  "state": "one_direction_passed; counterpart and reusable integration pending",
+  "synthetic_media": true,
+  "physical_lip_sync_measured": false,
+  "shaped_peer": "sender",
+  "loss_percent": 15,
+  "loss_samples": 18,
+  "incoming_poor_samples": 16,
+  "outgoing_excellent_samples": 18,
+  "effective_video_preserved": "auto",
+  "outbound_frame_width_preserved": 640,
+  "raw_proof_sha256": "f020b53bbbfc9b93eeaa53132093a21626d0435deb9740f0714b8d5e1200dde2",
+  "experimental_sources": {
+    ".prototype/directional-fixture.dart": "4c680f151be736e6a3731d128642ac7ecf5576a2dd110f741a39bb175f44e5e5",
+    ".prototype/call-directional-lab.py": "185050f1535e6ee3420980c31857e9a15f5e440b5425e77e3625429cbdb872fa"
+  },
+  "production_runtime_changed": false,
+  "nominal_loss_duration_seconds": 18
+}
