@@ -1,0 +1,129 @@
+{
+  "pinned_sfu": "livekit/livekit-server@sha256:89ca9ce0791e18d6e03bf6e2c49ceb27e1c754eae8bd50c989386c1a5963791a",
+  "loopback_only": true,
+  "platform": "native macOS",
+  "local_camera": true,
+  "emulated_camera": false,
+  "case": "baseline",
+  "local_sdk_patch": true,
+  "sdk_e2ee_manager_sha256": "ceedc8c5cca76ddb63a8c579a9e8e8def84f94388c00d174601b83380c289172",
+  "require_frame_encryption": false,
+  "repeat_receiver_key": true,
+  "production_modified": false,
+  "fixture_sha256": "98fe292544cea28b5a3292403c258e29405aeeceecce4850b947395d6631f220",
+  "private_log_sha256": "72a79e43bf79297bc72837d64bb927c7499aa79b9b7182a5a9a014fa47fe6ac3",
+  "runs": [
+    {
+      "pinned_provider": false,
+      "require_frame_encryption": false,
+      "sender_constructor_delay_ms": 1000,
+      "competing_negotiation_during_constructor": true,
+      "pre_native_sender_cryptor_samples": 50,
+      "pre_native_sender_cryptor_decoded_frames": 0,
+      "no_media_before_native_sender_encryptor": true,
+      "initial_missing_key_blocked": true,
+      "initial_frames_after_key": 9,
+      "repeated_receiver_key_installs": 20,
+      "repeat_receiver_key_interval_seconds": 9,
+      "frames_before_after_repeated_install": [
+        [
+          241,
+          247
+        ],
+        [
+          480,
+          491
+        ],
+        [
+          724,
+          730
+        ],
+        [
+          964,
+          970
+        ],
+        [
+          1203,
+          1209
+        ],
+        [
+          1442,
+          1448
+        ],
+        [
+          1682,
+          1693
+        ],
+        [
+          1925,
+          1931
+        ],
+        [
+          2165,
+          2171
+        ],
+        [
+          2404,
+          2415
+        ],
+        [
+          2649,
+          2660
+        ],
+        [
+          2893,
+          2899
+        ],
+        [
+          3132,
+          3138
+        ],
+        [
+          3371,
+          3377
+        ],
+        [
+          3611,
+          3622
+        ],
+        [
+          3855,
+          3861
+        ],
+        [
+          4094,
+          4100
+        ],
+        [
+          4333,
+          4339
+        ],
+        [
+          4572,
+          4578
+        ],
+        [
+          4812,
+          4823
+        ]
+      ],
+      "old_camera_frames_while_prepared": 4833,
+      "new_publication_key_index": 1,
+      "new_camera_frames_before_future_key_delivery": 0,
+      "new_camera_decoded_delta_before_future_key_delivery": 0,
+      "new_camera_frames_after_commit": 10,
+      "observer_decoded_counter_after_startup": 0,
+      "full_reconnect_republished_encrypted_frames": 8,
+      "full_reconnect_recreated_sender_transport": true,
+      "post_startup_counter_alone_is_not_content_proof": true,
+      "observer_received_rtp": true,
+      "same_sfu_transport_and_participant": true,
+      "publication_recreated_intentionally": true,
+      "local_sdk_patch": true,
+      "ratchet_defaults_changed": false,
+      "matrix_epoch_protocol_tested": false,
+      "physical_lip_sync_measured": false,
+      "media_saved": false
+    }
+  ]
+}

@@ -27,10 +27,13 @@ def main():
     parser.add_argument('--adb', type=Path)
     parser.add_argument('--case', choices=('both', 'baseline', 'pinned'), default='both')
     parser.add_argument('--require-frame-encryption', action='store_true')
+    parser.add_argument('--repeat-receiver-key', action='store_true', help='Repeat the same receiver key every 9s, 20 times; baseline native case only')
     parser.add_argument('--web-root', type=Path, help='Serve a built synthetic browser probe instead of running native tests')
     parser.add_argument('--web-port', type=int, default=7395)
     parser.add_argument('--failures', action='store_true', help='Exercise native capture/cryptor rollback')
     args = parser.parse_args()
+    if args.repeat_receiver_key and (args.case != 'baseline' or args.failures or args.web_root):
+        parser.error('Receiver-key repetition requires --case baseline and the native publication probe')
     if args.device != 'macos':
         if not args.android_emulator or args.adb is None or args.web_root:
             parser.error('Non-Mac native probes require the disposable Android emulator and --adb')
@@ -100,6 +103,7 @@ def main():
                 'GROUP_TEST_CASE': args.case,
                 'GROUP_TEST_LOCAL_SDK_PATCH': (sdk / 'VOICECHAT_PATCH.md').is_file(),
                 'GROUP_TEST_REQUIRE_FRAME_ENCRYPTION': args.require_frame_encryption,
+                'GROUP_TEST_REPEAT_RECEIVER_KEY': args.repeat_receiver_key,
                 'GROUP_TEST_ALICE': token('alice', api_key, secret),
                 'GROUP_TEST_BOB': token('bob', api_key, secret),
                 'GROUP_TEST_OBSERVER': token('observer', api_key, secret),
@@ -121,6 +125,7 @@ def main():
             env = {**os.environ, 'LANG': 'en_US.UTF-8',
                    'LC_ALL': 'en_US.UTF-8', 'LC_CTYPE': 'en_US.UTF-8'}
             print('Local SDK/SFU private log: ' + str(log), flush=True)
+            timeout = (900 if args.android_emulator else 600) if args.repeat_receiver_key else (600 if args.android_emulator else 360)
             with log.open('w') as output:
                 log.chmod(0o600)
                 result = subprocess.run([
@@ -128,7 +133,7 @@ def main():
                     '--dart-define-from-file=' + str(defines),
                     'integration_test/' + target.name,
                 ], cwd=ROOT / 'apps/client', env=env, stdout=output,
-                    stderr=subprocess.STDOUT, timeout=600 if args.android_emulator else 360)
+                    stderr=subprocess.STDOUT, timeout=timeout)
             text = log.read_text()
             if result.returncode or 'All tests passed!' not in text:
                 raise RuntimeError('SDK assertions failed; inspect private log ' + str(log))
@@ -140,6 +145,9 @@ def main():
                 assert len(proofs) == 12
             else:
                 assert [proof['pinned_provider'] for proof in proofs] == expected[args.case]
+                if args.repeat_receiver_key:
+                    assert len(proofs) == 1 and proofs[0]['repeated_receiver_key_installs'] == 20
+                    assert all(after > before + 5 for before, after in proofs[0]['frames_before_after_repeated_install'])
             args.output.parent.mkdir(parents=True, exist_ok=True)
             args.output.write_text(json.dumps({
                 'pinned_sfu': image, 'loopback_only': True,
@@ -150,6 +158,7 @@ def main():
                 'sdk_e2ee_manager_sha256': hashlib.sha256(
                     (sdk / 'lib/src/e2ee/e2ee_manager.dart').read_bytes()).hexdigest(),
                 'require_frame_encryption': args.require_frame_encryption,
+                'repeat_receiver_key': args.repeat_receiver_key,
                 'production_modified': False,
                 'fixture_sha256': hashlib.sha256(target.read_bytes()).hexdigest(),
                 'private_log_sha256': hashlib.sha256(log.read_bytes()).hexdigest(),

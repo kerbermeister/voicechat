@@ -248,7 +248,19 @@ Future<Map<String, Object>> probePublication({required bool pinned}) async {
     );
     await receivingKeys.setRawKey(initialKey, participantId: 'alice');
     final initialFrames = await decodedAfter(firstRemote, missingKeyBaseline);
-
+    final repeatedKeyFrames = <List<int>>[];
+    if (const bool.fromEnvironment('GROUP_TEST_REPEAT_RECEIVER_KEY')) {
+      for (var attempt = 0; attempt < 20; attempt++) {
+        await Future<void>.delayed(const Duration(seconds: 9));
+        final before = await decoded(firstRemote);
+        await receivingKeys.setRawKey(initialKey, participantId: 'alice');
+        // Compare with the count immediately before installation, not before
+        // the wait: frames received during those nine seconds prove nothing.
+        final after = await decodedAfter(firstRemote, before);
+        repeatedKeyFrames.add([before, after]);
+      }
+    }
+    final beforePrepare = await decoded(firstRemote);
     final preparedKey = key();
     await sendingKeys.setRawKey(
       preparedKey,
@@ -260,7 +272,7 @@ Future<Map<String, Object>> probePublication({required bool pinned}) async {
     if (sendingKeys is _PinnedKeyProvider) {
       expect(sendingKeys.preparedSlot, 1);
     }
-    final preparedFrames = await decodedAfter(firstRemote, initialFrames);
+    final preparedFrames = await decodedAfter(firstRemote, beforePrepare);
 
     await participant.removePublishedTrack(first.sid);
     final second = (await participant.setCameraEnabled(true))!;
@@ -329,6 +341,9 @@ Future<Map<String, Object>> probePublication({required bool pinned}) async {
       'no_media_before_native_sender_encryptor': preCryptorFrames == 0,
       'initial_missing_key_blocked': true,
       'initial_frames_after_key': initialFrames,
+      'repeated_receiver_key_installs': repeatedKeyFrames.length,
+      'repeat_receiver_key_interval_seconds': 9,
+      'frames_before_after_repeated_install': repeatedKeyFrames,
       'old_camera_frames_while_prepared': preparedFrames,
       'new_publication_key_index': newIndex,
       'new_camera_frames_before_future_key_delivery': framesBeforeKeyDelivery,
@@ -391,7 +406,13 @@ void main() {
       skip:
           !(Platform.isMacOS || Platform.isAndroid) ||
           !const bool.fromEnvironment('HARDWARE_CALL_TEST'),
-      timeout: const Timeout(Duration(minutes: 2)),
+      timeout: const Timeout(
+        Duration(
+          minutes: bool.fromEnvironment('GROUP_TEST_REPEAT_RECEIVER_KEY')
+              ? 6
+              : 2,
+        ),
+      ),
     );
   }
 }

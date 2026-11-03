@@ -1128,3 +1128,17 @@ MediaElementAudioSource не распознал markers (0), непригоде�
 Дальнейшая очередь остаётся H01/H06/UA-08/09, включая физический marker и E2EE;
 никакой fixed компенсацией или ослаблением критерия их не закрываем.
 [Протокол/свидетельства](../iterations/call-av-markers-2026-11-03/#rtp-корреляция-после-выпуска59).
+
+
+### OPT-07/10, после59: повтор того же receiver key
+
+Реальный SDK/SFU default sender-specific GCM на Mac и Android35-эмуляторе:
+20 повторов setRawKey в slot0 с паузой9с, в каждом >5 новых decoded после
+самой установки. Контроли missing key/pre-native sender gate, prepared publication
+и full reconnect PASS. Быстрый stall от одних повторов не воспроизведён;
+wrong-key/ratchet recovery и физические устройства не закрыты. Android helper
+выдал PASS, внешний wrapper завершился1 на40с teardown wait; owned QEMU/ADB/SFU
+затем проверены завершёнными, локальный bounded fallback добавлен. Владелец
+получил обратно канонический59 с теми же account/device/history. Продуктовый
+key cache или ratchet по этому отрицательному результату не менялись.
+[Свидетельства](../iterations/repeated-group-keys-59/).

@@ -1,0 +1,129 @@
+{
+  "pinned_sfu": "livekit/livekit-server@sha256:89ca9ce0791e18d6e03bf6e2c49ceb27e1c754eae8bd50c989386c1a5963791a",
+  "loopback_only": true,
+  "platform": "Android emulator API35",
+  "local_camera": false,
+  "emulated_camera": true,
+  "case": "baseline",
+  "local_sdk_patch": true,
+  "sdk_e2ee_manager_sha256": "ceedc8c5cca76ddb63a8c579a9e8e8def84f94388c00d174601b83380c289172",
+  "require_frame_encryption": false,
+  "repeat_receiver_key": true,
+  "production_modified": false,
+  "fixture_sha256": "98fe292544cea28b5a3292403c258e29405aeeceecce4850b947395d6631f220",
+  "private_log_sha256": "17871770226d1a36f2d18e023d91581e29b236a4e42cac032dd221bd46011aa2",
+  "runs": [
+    {
+      "pinned_provider": false,
+      "require_frame_encryption": false,
+      "sender_constructor_delay_ms": 1000,
+      "competing_negotiation_during_constructor": true,
+      "pre_native_sender_cryptor_samples": 43,
+      "pre_native_sender_cryptor_decoded_frames": 0,
+      "no_media_before_native_sender_encryptor": true,
+      "initial_missing_key_blocked": true,
+      "initial_frames_after_key": 6,
+      "repeated_receiver_key_installs": 20,
+      "repeat_receiver_key_interval_seconds": 9,
+      "frames_before_after_repeated_install": [
+        [
+          82,
+          88
+        ],
+        [
+          159,
+          165
+        ],
+        [
+          236,
+          243
+        ],
+        [
+          318,
+          325
+        ],
+        [
+          400,
+          407
+        ],
+        [
+          481,
+          488
+        ],
+        [
+          562,
+          569
+        ],
+        [
+          641,
+          647
+        ],
+        [
+          723,
+          730
+        ],
+        [
+          806,
+          813
+        ],
+        [
+          884,
+          890
+        ],
+        [
+          961,
+          968
+        ],
+        [
+          1040,
+          1047
+        ],
+        [
+          1122,
+          1129
+        ],
+        [
+          1202,
+          1209
+        ],
+        [
+          1280,
+          1287
+        ],
+        [
+          1355,
+          1361
+        ],
+        [
+          1430,
+          1436
+        ],
+        [
+          1511,
+          1518
+        ],
+        [
+          1592,
+          1599
+        ]
+      ],
+      "old_camera_frames_while_prepared": 1606,
+      "new_publication_key_index": 1,
+      "new_camera_frames_before_future_key_delivery": 0,
+      "new_camera_decoded_delta_before_future_key_delivery": 0,
+      "new_camera_frames_after_commit": 7,
+      "observer_decoded_counter_after_startup": 0,
+      "full_reconnect_republished_encrypted_frames": 8,
+      "full_reconnect_recreated_sender_transport": true,
+      "post_startup_counter_alone_is_not_content_proof": true,
+      "observer_received_rtp": true,
+      "same_sfu_transport_and_participant": true,
+      "publication_recreated_intentionally": true,
+      "local_sdk_patch": true,
+      "ratchet_defaults_changed": false,
+      "matrix_epoch_protocol_tested": false,
+      "physical_lip_sync_measured": false,
+      "media_saved": false
+    }
+  ]
+}

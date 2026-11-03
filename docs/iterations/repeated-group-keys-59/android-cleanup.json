@@ -1,0 +1,8 @@
+{
+  "sdk_assertions_passed": true,
+  "wrapper_exit": 1,
+  "emulator_wait_timeout_seconds": 40,
+  "owned_qemu_absent_verified": true,
+  "adb_empty_verified": true,
+  "bounded_shutdown_fallback_added_to_local_wrapper": true
+}
