@@ -162,6 +162,8 @@ def main():
     parser.add_argument('--direction', choices=('both', 'incoming', 'outgoing'), default='both')
     parser.add_argument('--marker-seconds', type=int, help='Run synthetic A/V playout markers for 60–3600 seconds')
     parser.add_argument('--clean-only', action='store_true', help='A/V control without network impairment')
+    parser.add_argument('--delay-then-pause', action='store_true',
+                        help='Single-stream sync control: delay immediately followed by outage, without random loss')
     media = parser.add_mutually_exclusive_group()
     media.add_argument('--video-payload-types', type=media_payload_types,
                        help='Video-only UDP/TURN marker impairment, e.g. 96,97 (VP8 and RTX)')
@@ -175,6 +177,8 @@ def main():
     marker = args.marker_seconds is not None
     payload_types = args.video_payload_types or args.audio_payload_types
     impaired_media = 'video' if args.video_payload_types else 'audio' if args.audio_payload_types else None
+    if args.delay_then_pause and not payload_types:
+        parser.error('--delay-then-pause requires a single-stream payload classifier')
     if payload_types and (not marker or args.direction != 'outgoing' or
                           not 90 <= args.marker_seconds <= 300):
         parser.error('Single-stream impairment requires 90–300 second A/V markers and direction outgoing')
@@ -349,6 +353,7 @@ def main():
                             'lab_key': nonce, 'profile': current,
                             **({'marker_seconds': args.marker_seconds,
                                 'network_clean_only': args.clean_only,
+                                'delay_then_pause': args.delay_then_pause,
                                 'media_payload_types': payload_types,
                                 'impaired_media': impaired_media} if marker else {}),
                         })

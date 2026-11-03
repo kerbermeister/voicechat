@@ -32,6 +32,12 @@ export function mediaScopeSample(reports, phase, time) {
     ...['jitterBufferDelay', 'jitterBufferTargetDelay', 'jitterBufferEmittedCount'].map(field => number(video?.[field]))];
 }
 
+export function videoPlayoutSample(id, frame) {
+  if (!Number.isInteger(id) || id < 0 || id >= 150) throw Error('Synthetic marker required');
+  return [id, ...['sourceMs', 'captureTime', 'receiveTime', 'displayMs', 'callbackMs'].map(field => number(frame[field])),
+    number(Number.isFinite(frame.processingDuration) ? frame.processingDuration * 1000 : null)];
+}
+
 export function singleStreamOutageProof(samples, cleanOnly, kind) {
   // Skip the first second: packets already in flight are not evidence of bypass.
   const offline = samples.filter(row => row[1] === 'offline');

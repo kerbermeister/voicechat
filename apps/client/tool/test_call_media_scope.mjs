@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const source = await readFile(new URL('../integration_test/call_media_scope.js', import.meta.url), 'utf8');
-const {mediaScopeCodecs, mediaScopeSample, singleStreamOutageProof} = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+const {mediaScopeCodecs, mediaScopeSample, singleStreamOutageProof, videoPlayoutSample} = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
 const codecs = [{mimeType:'video/VP8', payloadType:96},
   {mimeType:'video/rtx', payloadType:97, sdpFmtpLine:'apt=96'},
   {mimeType:'video/H264', payloadType:98}];
@@ -48,4 +48,13 @@ test('audio scope accepts only Opus and requires stopped audio with live video',
   assert.equal(singleStreamOutageProof(rows, false, 'audio').valid, true);
   assert.equal(singleStreamOutageProof(rows, false, 'video').valid, false);
   assert.equal(singleStreamOutageProof(rows, true, 'audio').valid, false);
+});
+
+test('video playout records browser timing without RTP identity or media', () => {
+  assert.deepEqual(videoPlayoutSample(2, {sourceMs:1000, captureTime:1020, receiveTime:1030,
+    displayMs:1100, callbackMs:1090, processingDuration:.003,
+    rtpTimestamp:'private', ssrc:'private', body:'private'}), [2, 1000, 1020, 1030, 1100, 1090, 3]);
+  assert.deepEqual(videoPlayoutSample(0, {sourceMs:0, captureTime:Infinity, receiveTime:-1,
+    displayMs:NaN, processingDuration:'private'}), [0, 0, null, null, null, null, null]);
+  for (const id of [-1, 150, 1.5, 'private']) assert.throws(() => videoPlayoutSample(id, {}));
 });

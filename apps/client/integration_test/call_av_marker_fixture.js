@@ -1,6 +1,6 @@
 import {lowTones, highTones, markerDigits, stampBits, readStamp} from './call_av_marker.js';
 import {transportDiagnostics} from './call_transport_diagnostics.js';
-import {mediaScopeCodecs, mediaScopeSample, singleStreamOutageProof} from './call_media_scope.js';
+import {mediaScopeCodecs, mediaScopeSample, singleStreamOutageProof, videoPlayoutSample} from './call_media_scope.js';
 
 const result = document.querySelector('#result'), button = document.querySelector('#run');
 const elementBaseline = new URLSearchParams(location.search).get('playout') === 'element';
@@ -22,6 +22,7 @@ async function bounded(promise, stage) {
 }
 let receivingContext, sink, sinkReady;
 const graphs = new Set();
+let rebindSource, sourceCount = 0;
 
 // Only the final destination is instrumented. The product source/gain and its
 // clock run unchanged; no test tone can reach the speaker through this graph.
@@ -47,6 +48,34 @@ window.AudioContext = class extends NativeAudioContext {
     };
     gain.disconnect = (...args) => { graphs.delete(gain); return disconnect(...args); };
     return gain;
+  }
+  createMediaStreamSource(stream) {
+    const original = super.createMediaStreamSource(stream);
+    const connect = original.connect.bind(original), disconnect = original.disconnect.bind(original);
+    let current = original, output;
+    sourceCount++;
+    original.connect = (target, ...args) => {
+      output = target;
+      return current === original ? connect(target, ...args) : current.connect(target, ...args);
+    };
+    original.disconnect = (...args) => current === original ? disconnect(...args) : current.disconnect(...args);
+    rebindSource = () => {
+      check(sourceCount === 1 && output && graphs.size === 1, 'Expected one product source');
+      const next = NativeAudioContext.prototype.createMediaStreamSource.call(this, stream);
+      original.disconnect();
+      try { next.connect(output); }
+      catch (error) {
+        if (current === original) connect(output); else current.connect(output);
+        next.disconnect();
+        throw error;
+      }
+      current = next;
+      // The product still owns the original handle; its disconnect now releases
+      // the replacement too. No element unmute, new gain or extra audible path.
+      return {performed:true, same_audio_track:next.mediaStream.getAudioTracks()[0] === stream.getAudioTracks()[0],
+        graph_count:graphs.size, at_ms:performance.now()};
+    };
+    return original;
   }
 };
 await import('./media_audio.js');
@@ -83,15 +112,21 @@ button.onclick = async () => {
   let outcome = 'setup_failed', setupFailure = '';
   let recordRtp = false, rtpBusy = false, rtpErrors = 0;
   const mediaSamples = [];
+  const videoPlayout = [];
   let mediaCodecs, mediaErrors = 0;
+  let sourceRebindProof = {performed:false};
+  const receiverStreamIds = new Set();
   const iceExchange = {sender:{added:0, rejected:0, errors:[]}, receiver:{added:0, rejected:0, errors:[]}};
   const control = new URLSearchParams(location.search).get('control') ?? 'none';
   const audioFault = new URLSearchParams(location.search).get('audio_fault') ?? 'none';
+  const sourceRebind = new URLSearchParams(location.search).get('source_rebind') ?? '0';
+  const splitSync = new URLSearchParams(location.search).get('split_sync') === '1';
   const round = value => Math.round(value * 10) / 10;
   const phaseAt = time => phaseChanges.findLast(phase => phase[1] <= time)?.[0] ?? 'clean';
   try {
     check(location.hostname === '127.0.0.1', 'Loopback fixture required');
     check(['none', 'audio200', 'video200'].includes(control), 'Unknown calibration control');
+    check(['0', '1'].includes(sourceRebind) && !(elementBaseline && sourceRebind === '1'), 'Unknown source rebind control');
     check(['none', 'encrypt', 'decrypt'].includes(audioFault) &&
       (encrypted || audioFault === 'none'), 'Unknown audio crypto fault');
     result.textContent = 'Preparing real WebRTC and the product audio graph';
@@ -99,9 +134,13 @@ button.onclick = async () => {
     check(response.ok, 'Lab configuration rejected');
     config = await response.json();
     check(Number.isInteger(config.marker_seconds), 'Marker lab required');
+    check(sourceRebind !== '1' || config.media_payload_types, 'Source rebind requires single-stream counters');
+    check(!splitSync || (config.impaired_media === 'video' && sourceRebind === '0' && !elementBaseline),
+      'Split sync requires the video-only gain control');
     if (config.media_payload_types) document.querySelector('#media-scope-summary').textContent =
       `Network scope: ${config.impaired_media}; payload types: ${config.media_payload_types.join(',')}; ` +
-      (config.network_clean_only ? 'clean control' : '150 ms delay / 2% loss / 12 s outage');
+      (config.network_clean_only ? 'clean control' : config.delay_then_pause
+        ? '150 ms delay / immediate 12 s outage' : '150 ms delay / 2% loss / 12 s outage');
     const requestedRtp = new URLSearchParams(location.search).get('rtp') === '1';
     check(!requestedRtp || config.marker_seconds <= 300, 'RTP diagnostics require at most 300 seconds');
     recordRtp = requestedRtp;
@@ -163,9 +202,17 @@ button.onclick = async () => {
       if (sender.remoteDescription) void addCandidate('sender', sender, event.candidate);
       else candidatesForSender.push(event.candidate);
     };
-    receiver.ontrack = event => { remote = event.streams[0]; };
+    if (splitSync) remote = new MediaStream();
+    receiver.ontrack = event => {
+      if (splitSync) {
+        remote.addTrack(event.track);
+        for (const stream of event.streams) receiverStreamIds.add(stream.id);
+      } else {
+        remote = event.streams[0];
+      }
+    };
     for (const track of source.getTracks()) {
-      const rtpSender = sender.addTrack(track, source);
+      const rtpSender = sender.addTrack(track, splitSync ? new MediaStream([track]) : source);
       if (encrypted || config.media_payload_types) {
         if (track.kind === 'video') {
           const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(row =>
@@ -203,6 +250,7 @@ button.onclick = async () => {
     await bounded(sender.setRemoteDescription(receiver.localDescription), 'sender answer');
     for (const candidate of candidatesForSender) await addCandidate('sender', sender, candidate);
     await waitFor(() => remote?.getAudioTracks().length === 1 && remote?.getVideoTracks().length === 1);
+    check(!splitSync || receiverStreamIds.size === 2, 'Expected separate receiver sync groups');
     video = document.createElement('video'); video.playsInline = true;
     video.srcObject = remote; document.querySelector('#view').append(video);
     if (elementBaseline) {
@@ -280,6 +328,7 @@ button.onclick = async () => {
             const videoTime = closest.displayMs + marker.sourceMs - closest.sourceMs;
             markers.push([marker.id, phaseAt(marker.audioMs), round(marker.audioMs - videoTime),
               round(marker.audioMs), round(videoTime), round(marker.sourceMs), marker.level]);
+            if (recordRtp && videoPlayout.length < 150) videoPlayout.push(videoPlayoutSample(marker.id, closest));
             void sampleRtp(marker.id, closest.sourceMs - marker.sourceMs);
             pending.splice(i, 1);
             continue;
@@ -297,7 +346,8 @@ button.onclick = async () => {
       const sourceMs = readStamp(bits);
       if (sourceMs === null || sourceMs > sourceContext.currentTime * 1000 + 100) invalidFrames++;
       else if (sourceMs !== frames.at(-1)?.sourceMs) {
-        frames.push({sourceMs, displayMs:metadata.expectedDisplayTime});
+        frames.push({sourceMs, displayMs:metadata.expectedDisplayTime, callbackMs:now,
+          captureTime:metadata.captureTime, receiveTime:metadata.receiveTime, processingDuration:metadata.processingDuration});
         while (frames.length > 600) frames.shift();
       }
       matchMarkers();
@@ -349,13 +399,19 @@ button.onclick = async () => {
       config.marker_seconds >= 90 ? 20 : 15;
     const impaired = config.marker_seconds >= 90 ? 15 : 10;
     const offlineSeconds = config.media_payload_types ? 12 : 3;
-    const phases = [['clean', first, 1], ['delay', impaired, .5], ['loss', impaired, 2],
+    const phases = [['clean', first, 1],
+      ...(config.delay_then_pause ? [['delay', impaired * 2, .5]] : [['delay', impaired, .5], ['loss', impaired, 2]]),
       ['offline', offlineSeconds, 1], ['clean', config.marker_seconds - first - impaired * 2 - offlineSeconds, 1]];
     for (const [name, seconds, gain] of phases) {
       await profile(name, gain);
       result.textContent = `RUNNING: ${config.network_clean_only ? 'clean network / ' : ''}${name}, gain ${gain * 100}%, ${markers.length} decoded markers`;
       if (config.media_payload_types) {
         for (let second = 0; second < seconds; second++) {
+          if (name === 'clean' && phaseChanges.length > 1 && second === 20 && sourceRebind === '1') {
+            check(rebindSource && !sourceRebindProof.performed && video.muted, 'Source rebind unavailable');
+            sourceRebindProof = rebindSource();
+            check(sourceRebindProof.same_audio_track && video.muted && graphs.size === 1, 'Source rebind changed media ownership');
+          }
           const started = performance.now();
           try {
             const reports = await bounded(receiver.getStats(), 'media scope counters');
@@ -391,6 +447,22 @@ button.onclick = async () => {
       sender:await transportDiagnostics(sender), receiver:await transportDiagnostics(receiver),
     });
     document.body.append(transportResult);
+    const sourceResult = document.createElement('pre');
+    sourceResult.id = 'source-rebind-result';
+    sourceResult.textContent = 'SOURCE_REBIND_PROOF ' + JSON.stringify(sourceRebindProof);
+    document.body.append(sourceResult);
+    const syncResult = document.createElement('pre');
+    syncResult.textContent = 'SYNC_GROUP_PROOF ' + JSON.stringify({
+      split_requested:splitSync, distinct_received_streams:splitSync ? receiverStreamIds.size : null,
+    });
+    document.body.append(syncResult);
+    if (recordRtp) {
+      const playoutResult = document.createElement('pre');
+      playoutResult.id = 'video-playout-result';
+      playoutResult.textContent = 'VIDEO_PLAYOUT_PROOF ' + JSON.stringify({schema:1,
+        physical_latency_measured:false, samples:videoPlayout.sort((a, b) => a[0] - b[0])});
+      document.body.append(playoutResult);
+    }
     if (config?.media_payload_types) {
       const outage = singleStreamOutageProof(mediaSamples, config.network_clean_only, config.impaired_media);
       document.querySelector('#media-scope-summary').textContent +=

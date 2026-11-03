@@ -16,6 +16,14 @@ from call_network_lab import (asset_path, require_local_docker, valid_marker_res
 
 
 class AssetBoundaryTest(unittest.TestCase):
+    def test_delay_pause_control_requires_single_stream_scope(self):
+        result = subprocess.run([
+            sys.executable, str(Path(__file__).with_name('call_network_lab.py')),
+            '--web-root', '/unused', '--output', '/unused', '--delay-then-pause',
+        ], capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('--delay-then-pause requires', result.stderr)
+
     def test_video_classifier_requires_canonical_distinct_dynamic_types(self):
         self.assertEqual(media_payload_types('96,97'), [96, 97])
         for value in ('', '95', '128', '96,96', '096', '96, 97', '96,',
