@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:matrix/matrix.dart' as mx;
+
 import 'matrix_probe.dart';
 import 'transport.dart';
 import 'route_transport.dart';
@@ -12,6 +14,7 @@ import 'media_routes.dart';
 import 'routed_livekit_engine.dart' show RoomMediaStatistics;
 import 'voice_call.dart';
 import 'call_quality.dart';
+import 'call_video_playout.dart';
 import 'call_admission.dart';
 import 'camera_capture.dart';
 import 'media_key_clock.dart';
@@ -255,6 +258,11 @@ class CallProbe implements VoiceCall {
         unawaited(close());
         status('Поток без поддерживаемой E2EE-защиты отклонён');
       } else {
+        final track = event.track;
+        if (event.publication.source == lk.TrackSource.camera &&
+            track is lk.RemoteVideoTrack) {
+          tuneCallVideoPlayout(track.receiver);
+        }
         changed?.call();
       }
     });

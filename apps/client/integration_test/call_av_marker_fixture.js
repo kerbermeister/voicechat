@@ -143,6 +143,8 @@ button.onclick = async () => {
   let outcome = 'setup_failed', setupFailure = '';
   let recordRtp = false, rtpBusy = false, rtpErrors = 0;
   const mediaSamples = [];
+  const estimatedSkew = [];
+  const requestedVideoBuffer = Number(new URLSearchParams(location.search).get('video_buffer'));
   const videoPlayout = [];
   let mediaCodecs, mediaErrors = 0;
   let sourceRebindProof = {performed:false};
@@ -285,6 +287,13 @@ button.onclick = async () => {
       for (const candidate of candidatesForSender) await addCandidate('sender', sender, candidate);
       await waitFor(() => remote?.getAudioTracks().length === 1 && remote?.getVideoTracks().length === 1);
       check(!splitSync || receiverStreamIds.size === 2, 'Expected separate receiver sync groups');
+    }
+    if (sfu && [60, 100, 130].includes(requestedVideoBuffer)) {
+      const videoReceiver = receiver.getReceivers().find(row => row.track.kind === 'video');
+      check(videoReceiver && 'jitterBufferTarget' in videoReceiver, 'Video playout target unsupported');
+      if (requestedVideoBuffer === 130) sfu.applyVideoTarget(videoReceiver);
+      else videoReceiver.jitterBufferTarget = requestedVideoBuffer;
+      check(videoReceiver.jitterBufferTarget === requestedVideoBuffer, 'Video playout target rejected');
     }
     video = document.createElement('video'); video.playsInline = true;
     video.srcObject = remote; document.querySelector('#view').append(video);
@@ -463,6 +472,14 @@ button.onclick = async () => {
           try {
             const reports = await bounded(receiver.getStats(), 'media scope counters');
             mediaSamples.push(mediaScopeSample(reports, name, round(performance.now())));
+            if (sfu && recordRtp && estimatedSkew.length < 300) {
+              const inbound = [...reports.values()].filter(row => row.type === 'inbound-rtp');
+              const audio = inbound.find(row => row.kind === 'audio')?.estimatedPlayoutTimestamp;
+              const video = inbound.find(row => row.kind === 'video')?.estimatedPlayoutTimestamp;
+              if (Number.isFinite(audio) && Number.isFinite(video)) {
+                estimatedSkew.push([round(performance.now()), name, round(video - audio)]);
+              }
+            }
           } catch (_) { mediaErrors++; }
           await delay(Math.max(0, 1000 - (performance.now() - started)));
         }
@@ -541,7 +558,8 @@ button.onclick = async () => {
       const proof = document.createElement('pre');
       proof.textContent = 'SFU_E2EE_PROOF ' + JSON.stringify({
         missing_key_blocked:sfu.missingKeyBlocked(), split_sync:splitSync, ...sfu.diagnostics(),
-        decrypted_audio_video_markers:markers.length,
+        decrypted_audio_video_markers:markers.length, requested_video_buffer_ms:requestedVideoBuffer,
+        estimated_skew:estimatedSkew,
       });
       document.body.append(proof);
       await sfu.dispose();

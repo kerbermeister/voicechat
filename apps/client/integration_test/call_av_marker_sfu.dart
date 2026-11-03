@@ -11,6 +11,8 @@ import 'package:dart_webrtc/dart_webrtc.dart' show MediaStreamWeb;
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:web/web.dart' as web;
 
+import 'package:voicechat_probe/call_video_playout_web.dart';
+
 lk.Room? publisher, subscriber;
 lk.BaseKeyProvider? sendKeys, receiveKeys;
 String stage = "idle";
@@ -52,7 +54,10 @@ Future<web.MediaStream> connect(web.MediaStream input, bool split) async {
       stream.getAudioTracks().single,
       const lk.AudioCaptureOptions(),
     ),
-    publishOptions: const lk.AudioPublishOptions(stream: 'marker-av'),
+    publishOptions: lk.AudioPublishOptions(
+      stream: 'marker-av',
+      dtx: !Uri.base.queryParameters.containsKey('continuous_opus'),
+    ),
   );
   stage = 'publish video';
   await participant.publishVideoTrack(
@@ -141,6 +146,9 @@ void main() {
         'shared_stream_group': sharedSyncGroup,
         'without_key': missingKeyStats,
       }.jsify()).toJS,
+      'applyVideoTarget': ((
+        web.RTCRtpReceiver receiver,
+      ) => applyCallVideoPlayoutTarget(receiver)).toJS,
       'missingKeyBlocked': (() => missingKeyBlocked.toJS).toJS,
       'dispose': (() => dispose().toJS).toJS,
     }.jsify(),
