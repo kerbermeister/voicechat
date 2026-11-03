@@ -16,8 +16,7 @@ class PinnedTurnBuildTest(unittest.TestCase):
         self.folder = tempfile.TemporaryDirectory()
         self.addCleanup(self.folder.cleanup)
         self.root = Path(self.folder.name)
-        self.inputs = self.root / 'turn'
-        self.inputs.mkdir()
+        self.inputs = self.root
         self.archive = b'public source fixture'
         self.patch = b'reviewed patch fixture'
         self.manifest = {
@@ -27,14 +26,14 @@ class PinnedTurnBuildTest(unittest.TestCase):
             'patch_sha256': hashlib.sha256(self.patch).hexdigest(),
             'base_image': 'coturn/coturn@sha256:' + '2' * 64,
         }
-        (self.inputs / 'udp-eperm.patch').write_bytes(self.patch)
+        (self.inputs / 'turn-udp-eperm.patch').write_bytes(self.patch)
         self.context = self.root / 'context'
         self.location = patch.object(prepare_turn_build, '__file__', str(self.root / 'prepare_turn_build.py'))
         self.location.start()
         self.addCleanup(self.location.stop)
 
     def save(self):
-        (self.inputs / 'source.json').write_text(json.dumps(self.manifest))
+        (self.inputs / 'turn-source.json').write_text(json.dumps(self.manifest))
 
     def test_verified_source_cache_and_patch_are_reused(self):
         self.save()
@@ -69,7 +68,7 @@ class PinnedTurnBuildTest(unittest.TestCase):
 
     def test_modified_patch_never_reaches_build_context(self):
         self.save()
-        (self.inputs / 'udp-eperm.patch').write_bytes(b'changed')
+        (self.inputs / 'turn-udp-eperm.patch').write_bytes(b'changed')
         with patch.object(prepare_turn_build, 'urlopen', return_value=io.BytesIO(self.archive)):
             with self.assertRaisesRegex(ValueError, 'patch checksum'):
                 prepare_turn_build.prepare(self.context)

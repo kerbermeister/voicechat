@@ -9,8 +9,8 @@ from urllib.request import urlopen
 
 
 def prepare(context):
-    source = Path(__file__).with_name('turn')
-    manifest = json.loads((source / 'source.json').read_text())
+    source = Path(__file__).parent
+    manifest = json.loads((source / 'turn-source.json').read_text())
     revision = manifest['source_revision']
     if (not re.fullmatch(r'[0-9a-f]{40}', revision) or
             manifest['source_archive_url'] != 'https://codeload.github.com/coturn/coturn/tar.gz/' + revision or
@@ -25,10 +25,10 @@ def prepare(context):
         if len(data) > 5_000_000 or hashlib.sha256(data).hexdigest() != manifest['source_sha256']:
             raise ValueError('Coturn archive checksum mismatch')
         archive.write_bytes(data)
-    patch = source / 'udp-eperm.patch'
+    patch = source / 'turn-udp-eperm.patch'
     if hashlib.sha256(patch.read_bytes()).hexdigest() != manifest['patch_sha256']:
         raise ValueError('Coturn patch checksum mismatch')
-    shutil.copyfile(patch, context / patch.name)
+    shutil.copyfile(patch, context / 'udp-eperm.patch')
     (context / 'checksums.txt').write_text(
         manifest['source_sha256'] + '  source.tar.gz\n' + manifest['patch_sha256'] + '  udp-eperm.patch\n')
     return manifest
