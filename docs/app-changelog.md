@@ -5,7 +5,7 @@
 сохранены в [статусе реализации](implementation-status.md) и `iterations/`.
 `1.0.0+1` было техническим номером прототипа, без подтверждённого production-выпуска.
 
-## 1.19.10 (сборка 58) — кандидат
+## 1.19.10 (сборка 58) — web опубликован; Mac/Android готовы к публикации
 
 ### Что нового
 
@@ -24,7 +24,11 @@
 provider отклоняются, кеш сохраняется, новый provider работает.13 адресных PASS.
 Финальный759 Flutter/4skip, app analyzer и8 version/package PASS. Mac/Android
 SDK/SFU по2 media cases и browser SDK/worker/SFU PASS: поздний ключ, новая
-публикация, full reconnect. Выпуск выполняется. Физические
+публикация, full reconnect. FULL98/CI230–232 SUCCESS, production web проверен.
+Mac-кандидат58:285 exact ZIP/DMG, подпись, account/device/history и About PASS.
+Android57→58 exact signed APK emulator PASS без очистки. Нативные каналы и
+установленный Mac пока57; публикация/штатный Mac57→58 отложены по просьбе
+пользователя о паузе перед перезагрузкой03.11. Физические
 телефоны, A/V sync, новые group epochs и непрерывность backup пока не приняты.
 
 ## 1.19.9 (сборка 57) — опубликован03.11.2026

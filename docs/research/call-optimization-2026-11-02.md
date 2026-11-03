@@ -1059,6 +1059,9 @@ Mac и Android emulator по3 real-native key-provider cases PASS, без captur
 Версия зависимости не повышена, архив сверён по старому lock;13 адресных PASS.
 Финальные759 Flutter/4skip/analyzer,8 version/package PASS. Mac и Android SDK/SFU
 по2 media cases и browser SDK/worker/SFU PASS: поздний ключ, публикация, reconnect.
-Физический телефон/A-V sync не проверены; выпуск58 выполняется. Это отдельная предпосылка
+Физический телефон/A-V sync не проверены. Web58/FULL98 и CI230–232 SUCCESS;
+Mac/Android58 собраны и проверены, нативная публикация и штатное обновление
+Mac57→58 отложены по просьбе пользователя о паузе перед reboot03.11.
+Это отдельная предпосылка
 корректного prepare/ACK, не новый epoch protocol и не доказанная причина iPhone.
 [Свидетельство](../iterations/key-install-58/), пользовательская приёмка UA-05.C40.
