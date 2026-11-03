@@ -1291,3 +1291,16 @@ periodic reset и SDK upgrade не вводились; UA-08.C06/общий A/V 
 audio+501/video+0, initial/recovery105.8/211.5мс, снова budget_exceeded.
 RTP вернулся, остаточный offset воспроизведён; причина engine против конечного
 playout пока открыта. Финальные19 Python(live)/10 Node/4 summary PASS.
+
+
+### OPT-14: найден отказ TURN allocation после единичного EPERM,03.11
+
+Локальная пакетная диагностика выявила отказ до DTLS/RTP: после одной UDP send
+EPERM coturn4.18.0 прекращает пересылку ICE checks. Exact official image такой же
+на production, но в доступных58 строках после старта61 EPERM0; историческая
+причина пользовательского звонка не доказана. Accepted upstream2110/31.10
+сохраняет allocation при EPERM, отбрасывая одну datagram; старые peer permissions
+и firewall остаются действующими. Source1986df2+patch1208eba закреплены SHA256,
+patch применяется без fuzz. Build, deterministic fault regression, auth/private
+policy и полный production release остаются обязательными, пока не выполнены.
+[Технические свидетельства](../iterations/turn-eperm-after61/).

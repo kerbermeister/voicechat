@@ -1,0 +1,59 @@
+name: Build TURN candidate
+on: workflow_dispatch
+permissions:
+  contents: read
+  packages: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Prepare pinned sources
+        id: sources
+        run: python3 infra/prepare_turn_build.py --context "$RUNNER_TEMP/turn" --github-output "$GITHUB_OUTPUT"
+      - name: Build and verify the production architecture
+        env:
+          TURN_BASE_IMAGE: ${{ steps.sources.outputs.base_image }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          docker build --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" --build-arg "TURN_BASE_IMAGE=$TURN_BASE_IMAGE" -f infra/turn.Dockerfile -t voicechat-turn:candidate "$RUNNER_TEMP/turn"
+          docker build --target build --build-arg "TURN_BASE_IMAGE=$TURN_BASE_IMAGE" -f infra/turn.Dockerfile -t voicechat-turn:builder "$RUNNER_TEMP/turn"
+          mkdir -p "$RUNNER_TEMP/turn-fault" "$RUNNER_TEMP/turn-results"
+          cp prototype/turn_eperm_fault.c "$RUNNER_TEMP/turn-fault/"
+          for variant in stock candidate; do
+            image="voicechat-turn:candidate"
+            if [ "$variant" = stock ]; then image="$TURN_BASE_IMAGE"; fi
+            docker build --build-arg TURN_BUILD_IMAGE=voicechat-turn:builder --build-arg "TURN_IMAGE=$image" -f prototype/turn-eperm-fixture.Dockerfile -t "voicechat-turn:fault-$variant" "$RUNNER_TEMP/turn-fault"
+          done
+          python3 prototype/check_turn_eperm.py --image voicechat-turn:fault-stock --expect-closed --output "$RUNNER_TEMP/turn-results/stock.json"
+          python3 prototype/check_turn_eperm.py --image voicechat-turn:fault-candidate --output "$RUNNER_TEMP/turn-results/candidate.json"
+          python3 prototype/check_turn_eperm.py --image voicechat-turn:fault-candidate --persistent --output "$RUNNER_TEMP/turn-results/persistent.json"
+          docker run --rm --cap-drop ALL --cap-add NET_BIND_SERVICE --user 10001:10001 --entrypoint /usr/bin/turnserver voicechat-turn:candidate --version
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: Publish the tested amd64 image and arm64 companion
+        env:
+          TURN_BASE_IMAGE: ${{ steps.sources.outputs.base_image }}
+          REGISTRY_TOKEN: ${{ github.token }}
+          REGISTRY_USER: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          repository="ghcr.io/${REPOSITORY,,}/turn"
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io -u "$REGISTRY_USER" --password-stdin
+          docker tag voicechat-turn:candidate "$repository:$GITHUB_SHA-amd64"
+          docker push "$repository:$GITHUB_SHA-amd64"
+          docker buildx build --platform linux/arm64 --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" --label "org.opencontainers.image.revision=$GITHUB_SHA" --build-arg "TURN_BASE_IMAGE=$TURN_BASE_IMAGE" -f infra/turn.Dockerfile -t "$repository:$GITHUB_SHA-arm64" --push "$RUNNER_TEMP/turn"
+          docker buildx imagetools create -t "$repository:$GITHUB_SHA" "$repository:$GITHUB_SHA-amd64" "$repository:$GITHUB_SHA-arm64"
+          docker buildx imagetools inspect "$repository:$GITHUB_SHA" | tee "$RUNNER_TEMP/turn-results/manifest.txt"
+          digest="$(awk '$1 == "Digest:" {print $2; exit}' "$RUNNER_TEMP/turn-results/manifest.txt")"
+          [[ "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]
+          docker pull --platform linux/amd64 "$repository@$digest"
+          test "$(docker image inspect --format '{{.Id}}' voicechat-turn:candidate)" = "$(docker image inspect --format '{{.Id}}' "$repository@$digest")"
+          printf '%s@%s\n' "$repository" "$digest" | tee "$RUNNER_TEMP/turn-results/pin.txt" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: turn-verification
+          path: ${{ runner.temp }}/turn-results/

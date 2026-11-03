@@ -1,0 +1,18 @@
+{
+  "survived": false,
+  "refresh": "connection_closed_or_timed_out",
+  "healthy_peer_echoes": 0,
+  "private_peer_policy_verified": true,
+  "watchdog_observed_seconds": 67.2,
+  "schema": 1,
+  "image": "voicechat-turn:eperm-stock-fault",
+  "binary_sha256": "25bd7874d5b655ba5dff52eef8905627e8305898e0d10e67abd01f87d6d70e92",
+  "tls_verified": true,
+  "expired_credential_rejected": true,
+  "syscall_fault": "sendto:EPERM",
+  "persistent": false,
+  "expected_closed": true,
+  "rate_limited_warnings": 0,
+  "namespace_only": true,
+  "media_saved": false
+}

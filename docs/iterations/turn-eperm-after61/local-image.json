@@ -1,0 +1,14 @@
+{
+  "image_id": "sha256:7f9bbdeb906a0cdea6cc996ba78e9a02fb168643b66e7972a3154085d1abacea",
+  "architecture": "arm64",
+  "version": "4.18.0",
+  "uid": 10001,
+  "runtime_package_names_unchanged": true,
+  "runtime_package_version_changes": {
+    "libcap2:arm64": [
+      "1:2.75-10+deb13u1+b1",
+      "1:2.75-10+deb13u1+b3"
+    ]
+  },
+  "requires_preserved_net_bind_service": true
+}

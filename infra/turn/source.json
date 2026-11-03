@@ -1,0 +1,9 @@
+{
+  "base_image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3",
+  "base_version": "4.18.0-r0",
+  "source_revision": "1986df21e4b4152b5e0216989f649e20ff76aced",
+  "source_archive_url": "https://codeload.github.com/coturn/coturn/tar.gz/1986df21e4b4152b5e0216989f649e20ff76aced",
+  "source_sha256": "d0b39a0fb3aca9b2b985ea1008b65ee0ee59a90d1710ecd979dcfd075f177386",
+  "patch_commit": "1208eba162dfba2380d84463eb64955a59028aae",
+  "patch_sha256": "ddd7abf73d6aff209e3f51d7376e600afd4cb7d33406ebdaa071f78740ee664b"
+}

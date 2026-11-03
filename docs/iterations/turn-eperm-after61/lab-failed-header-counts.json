@@ -1,0 +1,21 @@
+{
+  "namespace_only": true,
+  "payload_saved": false,
+  "duration_seconds": 10,
+  "counts": {
+    "eth0/in/client->listener-other/allocate": 2,
+    "eth0/in/client->listener-other/binding-request": 1,
+    "eth0/in/client->listener-other/permission": 1,
+    "eth0/in/client->listener-other/stun-other": 104,
+    "eth0/in/client->listener-primary/allocate": 2,
+    "eth0/in/client->listener-primary/binding-request": 2,
+    "eth0/in/client->listener-primary/permission": 1,
+    "eth0/in/client->listener-primary/stun-other": 103,
+    "eth0/out/listener-other->client/binding-response": 1,
+    "eth0/out/listener-other->client/stun-other": 3,
+    "eth0/out/listener-primary->client/binding-response": 2,
+    "eth0/out/listener-primary->client/stun-other": 3,
+    "lo/in/relay-other->relay-primary/binding-request": 103,
+    "lo/out/relay-other->relay-primary/binding-request": 103
+  }
+}

@@ -29,7 +29,11 @@ def exchange(stream, kind, attributes, key=None):
     if key is not None:
         body += attribute(8, hmac.new(key, header + body, hashlib.sha1).digest())
     stream.sendall(header + body)
-    deadline = time.monotonic() + 15
+    return receive_message(stream, transaction=transaction, key=key)
+
+
+def receive_message(stream, *, transaction=None, key=None, timeout=15):
+    deadline = time.monotonic() + timeout
     def receive(count):
         result = b''
         while len(result) < count:
@@ -42,7 +46,8 @@ def exchange(stream, kind, attributes, key=None):
         return result
     response = receive(20)
     response_kind, length, cookie = struct.unpack('!HHI', response[:8])
-    if cookie != COOKIE or response[8:] != transaction or length > 8192 or length % 4:
+    if (cookie != COOKIE or (transaction is not None and response[8:] != transaction) or
+            length > 8192 or length % 4):
         raise ValueError('Invalid TURN response header')
     payload = receive(length); result = {}; offset = 0; verified = False
     while offset < length:
@@ -51,7 +56,7 @@ def exchange(stream, kind, attributes, key=None):
         if offset + 4 + size > length or attr in result: raise ValueError('Invalid or duplicate TURN attribute')
         value = payload[offset + 4:offset + 4 + size]; result[attr] = value
         if attr == 8 and key is not None:
-            signed_header = struct.pack('!HHI', response_kind, offset + 24, COOKIE) + transaction
+            signed_header = struct.pack('!HHI', response_kind, offset + 24, COOKIE) + response[8:]
             verified = size == 20 and hmac.compare_digest(value,
                 hmac.new(key, signed_header + payload[:offset], hashlib.sha1).digest())
         offset += 4 + size + (-size) % 4

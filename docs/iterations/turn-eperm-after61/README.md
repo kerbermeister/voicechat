@@ -1,0 +1,39 @@
+# OPT-14: сохранение TURN allocation после единичного EPERM
+
+03.11.2026. Статус: исправление готовится, production пока не менялся.
+
+Закреплённый official coturn4.18.0-r0 (исходники из OCI revision1986df21e4b4152b5e0216989f649e20ff76aced)
+при UDP send EPERM помечает socket tobeclosed и теряет allocation целиком.
+[Принятый31.10 upstream fix2110](https://github.com/coturn/coturn/pull/2110),
+commit1208eba162dfba2380d84463eb64955a59028aae, сохраняет socket и отбрасывает
+только ошибочную datagram с ограниченным aggregate warning. Последний stable
+4.18.0 опубликован08.09 и ещё не содержит этот commit.
+
+В собственной локальной двухсерверной UDP/TURN пробе: permissions/relay
+candidates созданы, оба addIceCandidate приняты; после EPERM нет ICE responses.
+Header-only capture видит requests в одном направлении loopback, обратных
+ответов нет. Контрольный успешный capture имеет двусторонние requests/responses,
+DTLS и RTP. Содержимое пакетов, адреса и ключи не сохранялись. Происхождение
+конкретного EPERM в kernel conntrack ещё не доказано; upstream описывает такую
+возможность, но firewall/LSM также могут возвращать этот errno.
+
+Read-only production audit: тот же image/version4.18.0,0 restarts. В58 строках
+логов после старта03.11 13:12UTC EPERM0. Это не доказывает причину исторических
+звонков или отсутствие дефекта за пределами доступного лога.
+
+Собирается ровно закреплённый stable source с одним upstream patch, а не весь
+master. Архив и patch закреплены SHA256, git apply --check проходит на exact
+исходниках. Новый образ/регрессионный EPERM fault test/проверка прежней auth и
+private-peer policy, публикация digest и штатный FULL release ещё не выполнены.
+
+Связанная приёмка: UA-04.C02 и OPT-14 общего исследования; до реального выпуска
+и проверки socket/Refresh после fault исправление не считается готовым.
+
+Локальная сборка arm64 и три регрессионные пробы прошли. Исходный образ
+потерял allocation после одного отказа. Кандидат восстановил обмен с тем же
+peer и вернул Refresh 200 после 67 секунд. При постоянном отказе второй
+порт получил 67 ответов. Проверки TLS, просроченного секрета и private-peer
+policy прошли. Начальные три прогона остановились на TLS EOF во время
+старта контейнера. Повтор ограничен периодом готовности TLS, проверка
+сертификата сохраняется. RFC 5769 и запуск от UID 10001 с прежней file
+capability проверены. Из версий пакетов runtime изменился libcap2 с b1 на b3.
