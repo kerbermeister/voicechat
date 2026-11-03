@@ -1,0 +1,50 @@
+{
+  "result": {
+    "schema": 2,
+    "outcome": "insufficient_markers",
+    "control": "none",
+    "duration_seconds": 120,
+    "playout_path": "element_source_baseline",
+    "rtp_diagnostics_requested": true,
+    "rtp_diagnostics": [],
+    "rtp_diagnostics_errors": 0,
+    "markers": [],
+    "phase_changes": [
+      [
+        "clean",
+        6095.780000001192
+      ],
+      [
+        "delay",
+        26399.565000005066
+      ],
+      [
+        "offline",
+        56700.91500000656
+      ],
+      [
+        "clean",
+        68911.64500000328
+      ]
+    ],
+    "unmatched_markers": 0,
+    "invalid_video_frames": 0,
+    "audio_base_latency_ms": 5.3,
+    "audio_output_latency_ms": 24,
+    "max_video_callback_lateness_ms": 0,
+    "baseline_p95_abs_ms": null,
+    "recovered_p95_abs_ms": null,
+    "physical_lip_sync_measured": false,
+    "media_saved": false,
+    "microphone_used": false,
+    "test_sink_silent": true
+  },
+  "sfu_image": "livekit/livekit-server@sha256:89ca9ce0791e18d6e03bf6e2c49ceb27e1c754eae8bd50c989386c1a5963791a",
+  "filters": {
+    "clean": "qdisc prio 1: root refcnt 5 bands 2 priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n Sent 9935482 bytes 13136 pkt (dropped 874, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\nqdisc netem 20: parent 1:2 limit 1000\n Sent 8846393 bytes 8228 pkt (dropped 874, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0",
+    "delay": "qdisc prio 1: root refcnt 5 bands 2 priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n Sent 2074699 bytes 2693 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\nqdisc netem 20: parent 1:2 limit 1000\n Sent 1544894 bytes 1438 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0",
+    "offline": "qdisc prio 1: root refcnt 5 bands 2 priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n Sent 4543736 bytes 5925 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 14545b 14p requeues 0\nqdisc netem 20: parent 1:2 limit 1000 delay 150ms\n Sent 3846910 bytes 3573 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 14545b 14p requeues 0"
+  },
+  "isolated_sfu": true,
+  "shared_group_requested": false
+}

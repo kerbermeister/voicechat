@@ -83,6 +83,37 @@ await import('./media_audio.js');
 const encrypted = new URLSearchParams(location.search).get('e2ee') === '1';
 if (encrypted) await import('./call_av_marker_e2ee.dart.js');
 const e2ee = encrypted ? window.VoiceChatMarkerE2EE : null;
+const useSfu = new URLSearchParams(location.search).get('sfu') === '1';
+if (useSfu) {
+  await import('./main.dart.js');
+  await waitFor(() => window.VoiceChatMarkerSfu);
+  document.querySelector('#description').textContent =
+    'Local LiveKit SFU and SDK E2EE with synthetic audio and video. The audio sink is silent.';
+}
+const sfu = useSfu ? window.VoiceChatMarkerSfu : null;
+
+async function connectSfu(source, splitSync) {
+  const connections = [];
+  const NativeConnection = window.RTCPeerConnection;
+  window.RTCPeerConnection = class extends NativeConnection {
+    constructor(config) {
+      super(config);
+      connections.push(this);
+    }
+  };
+  try {
+    const remote = await bounded(sfu.connect(source, splitSync), 'LiveKit E2EE subscriptions');
+    const sender = connections.find(pc => pc.getSenders().some(sender =>
+      sender.track === source.getVideoTracks()[0]));
+    const receiver = connections.find(pc => pc.getReceivers().some(receiver =>
+      receiver.track === remote.getVideoTracks()[0]));
+    check(sender && receiver && sender !== receiver && sfu.missingKeyBlocked(),
+      'Expected distinct LiveKit transports and missing-key proof');
+    return {sender, receiver, remote};
+  } finally {
+    window.RTCPeerConnection = NativeConnection;
+  }
+}
 
 async function waitFor(condition) {
   const deadline = performance.now() + 15000;
@@ -177,83 +208,92 @@ button.onclick = async () => {
     paint(); painter = setInterval(paint, 50);
     source = canvas.captureStream(20);
     source.addTrack(destination.stream.getAudioTracks()[0]);
-    const rtcConfig = {iceTransportPolicy:'relay', iceServers:config.iceServers,
-      ...(encrypted ? {encodedInsertableStreams:true} : {})};
-    sender = new RTCPeerConnection(rtcConfig);
-    receiver = new RTCPeerConnection({...rtcConfig, iceServers:config.peer_ice_servers ?? config.iceServers});
-    for (const [name, peer] of [['sender', sender], ['receiver', receiver]]) {
-      peer.onicecandidateerror = event => {
-        if (iceExchange[name].errors.length < 8 && Number.isInteger(event.errorCode) && event.errorCode >= 300 && event.errorCode <= 799)
-          iceExchange[name].errors.push(event.errorCode);
+    if (sfu) {
+      ({sender, receiver, remote} = await connectSfu(source, splitSync));
+    } else {
+      const rtcConfig = {iceTransportPolicy:'relay', iceServers:config.iceServers,
+        ...(encrypted ? {encodedInsertableStreams:true} : {})};
+      sender = new RTCPeerConnection(rtcConfig);
+      receiver = new RTCPeerConnection({...rtcConfig, iceServers:config.peer_ice_servers ?? config.iceServers});
+      for (const [name, peer] of [['sender', sender], ['receiver', receiver]]) {
+        peer.onicecandidateerror = event => {
+          if (iceExchange[name].errors.length < 8 && Number.isInteger(event.errorCode) && event.errorCode >= 300 && event.errorCode <= 799)
+            iceExchange[name].errors.push(event.errorCode);
+        };
+      }
+      async function addCandidate(name, peer, candidate) {
+        try { await peer.addIceCandidate(candidate); iceExchange[name].added++; }
+        catch (_) { iceExchange[name].rejected++; }
+      }
+      const candidatesForSender = [], candidatesForReceiver = [];
+      sender.onicecandidate = event => {
+        if (stopped || !event.candidate) return;
+        if (receiver.remoteDescription) void addCandidate('receiver', receiver, event.candidate);
+        else candidatesForReceiver.push(event.candidate);
       };
-    }
-    async function addCandidate(name, peer, candidate) {
-      try { await peer.addIceCandidate(candidate); iceExchange[name].added++; }
-      catch (_) { iceExchange[name].rejected++; }
-    }
-    const candidatesForSender = [], candidatesForReceiver = [];
-    sender.onicecandidate = event => {
-      if (stopped || !event.candidate) return;
-      if (receiver.remoteDescription) void addCandidate('receiver', receiver, event.candidate);
-      else candidatesForReceiver.push(event.candidate);
-    };
-    receiver.onicecandidate = event => {
-      if (stopped || !event.candidate) return;
-      if (sender.remoteDescription) void addCandidate('sender', sender, event.candidate);
-      else candidatesForSender.push(event.candidate);
-    };
-    if (splitSync) remote = new MediaStream();
-    receiver.ontrack = event => {
-      if (splitSync) {
-        remote.addTrack(event.track);
-        for (const stream of event.streams) receiverStreamIds.add(stream.id);
-      } else {
-        remote = event.streams[0];
-      }
-    };
-    for (const track of source.getTracks()) {
-      const rtpSender = sender.addTrack(track, splitSync ? new MediaStream([track]) : source);
-      if (encrypted || config.media_payload_types) {
-        if (track.kind === 'video') {
-          const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(row =>
-            row.mimeType === 'video/VP8' || (config.media_payload_types && row.mimeType === 'video/rtx'));
-          check(codecs.length > 0, 'VP8 control unavailable');
-          sender.getTransceivers().find(row => row.sender === rtpSender).setCodecPreferences(codecs);
+      receiver.onicecandidate = event => {
+        if (stopped || !event.candidate) return;
+        if (sender.remoteDescription) void addCandidate('sender', sender, event.candidate);
+        else candidatesForSender.push(event.candidate);
+      };
+      if (splitSync) remote = new MediaStream();
+      receiver.ontrack = event => {
+        if (splitSync) {
+          remote.addTrack(event.track);
+          for (const stream of event.streams) receiverStreamIds.add(stream.id);
+        } else {
+          remote = event.streams[0];
         }
-        if (encrypted) await bounded(e2ee.prepareSender(rtpSender), 'SDK sender encryption');
-      }
-    }
-    await bounded(sender.setLocalDescription(await sender.createOffer()), 'sender description');
-    let offer = sender.localDescription;
-    if (encrypted) {
-      // The worker indexes cryptors by track ID; emulate a separate receiver.
-      let sdp = offer.sdp;
+      };
       for (const track of source.getTracks()) {
-        check(/^[a-zA-Z0-9-]+$/.test(track.id), 'Unexpected synthetic track identifier');
-        const next = sdp.replaceAll(new RegExp(` ${track.id}(?=\\r?\\n)`, 'g'), ` receiver-${track.id}`);
-        check(next !== sdp, 'Offer track msid missing');
-        sdp = next;
+        const rtpSender = sender.addTrack(track, splitSync ? new MediaStream([track]) : source);
+        if (encrypted || config.media_payload_types) {
+          if (track.kind === 'video') {
+            const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(row =>
+              row.mimeType === 'video/VP8' || (config.media_payload_types && row.mimeType === 'video/rtx'));
+            check(codecs.length > 0, 'VP8 control unavailable');
+            sender.getTransceivers().find(row => row.sender === rtpSender).setCodecPreferences(codecs);
+          }
+          if (encrypted) await bounded(e2ee.prepareSender(rtpSender), 'SDK sender encryption');
+        }
       }
-      offer = {type:offer.type, sdp};
-    }
-    await bounded(receiver.setRemoteDescription(offer), 'receiver description');
-    if (encrypted) {
-      const receivers = receiver.getReceivers();
-      check(receivers.length === 2, 'Expected audio and video receivers');
-      for (const rtpReceiver of receivers) {
-        check(!source.getTracks().some(track => track.id === rtpReceiver.track.id), 'Cryptor track collision');
-        await bounded(e2ee.prepareReceiver(rtpReceiver), 'SDK receiver encryption');
+      await bounded(sender.setLocalDescription(await sender.createOffer()), 'sender description');
+      let offer = sender.localDescription;
+      if (encrypted) {
+        // The worker indexes cryptors by track ID; emulate a separate receiver.
+        let sdp = offer.sdp;
+        for (const track of source.getTracks()) {
+          check(/^[a-zA-Z0-9-]+$/.test(track.id), 'Unexpected synthetic track identifier');
+          const next = sdp.replaceAll(new RegExp(` ${track.id}(?=\\r?\\n)`, 'g'), ` receiver-${track.id}`);
+          check(next !== sdp, 'Offer track msid missing');
+          sdp = next;
+        }
+        offer = {type:offer.type, sdp};
       }
+      await bounded(receiver.setRemoteDescription(offer), 'receiver description');
+      if (encrypted) {
+        const receivers = receiver.getReceivers();
+        check(receivers.length === 2, 'Expected audio and video receivers');
+        for (const rtpReceiver of receivers) {
+          check(!source.getTracks().some(track => track.id === rtpReceiver.track.id), 'Cryptor track collision');
+          await bounded(e2ee.prepareReceiver(rtpReceiver), 'SDK receiver encryption');
+        }
+      }
+      for (const candidate of candidatesForReceiver) await addCandidate('receiver', receiver, candidate);
+      await bounded(receiver.setLocalDescription(await receiver.createAnswer()), 'receiver answer');
+      await bounded(sender.setRemoteDescription(receiver.localDescription), 'sender answer');
+      for (const candidate of candidatesForSender) await addCandidate('sender', sender, candidate);
+      await waitFor(() => remote?.getAudioTracks().length === 1 && remote?.getVideoTracks().length === 1);
+      check(!splitSync || receiverStreamIds.size === 2, 'Expected separate receiver sync groups');
     }
-    for (const candidate of candidatesForReceiver) await addCandidate('receiver', receiver, candidate);
-    await bounded(receiver.setLocalDescription(await receiver.createAnswer()), 'receiver answer');
-    await bounded(sender.setRemoteDescription(receiver.localDescription), 'sender answer');
-    for (const candidate of candidatesForSender) await addCandidate('sender', sender, candidate);
-    await waitFor(() => remote?.getAudioTracks().length === 1 && remote?.getVideoTracks().length === 1);
-    check(!splitSync || receiverStreamIds.size === 2, 'Expected separate receiver sync groups');
     video = document.createElement('video'); video.playsInline = true;
     video.srcObject = remote; document.querySelector('#view').append(video);
     if (elementBaseline) {
+      if (sfu) {
+        for (const element of document.querySelectorAll('audio[id^="livekit_audio_"]')) {
+          element.muted = true;
+        }
+      }
       // Redirect element audio before play() so the control cannot reach hardware.
       baselineSource = receivingContext.createMediaElementSource(video);
       baselineGain = receivingContext.createGain();
@@ -275,11 +315,18 @@ button.onclick = async () => {
       if (pair || performance.now() >= statsDeadline) break;
       await delay(50);
     } while (true);
-    check(pair && reports.get(pair.localCandidateId)?.candidateType === 'relay', 'Expected selected TURN relay');
+    check(pair && (sfu || reports.get(pair.localCandidateId)?.candidateType === 'relay'),
+      'Expected selected media route');
     if (config.media_payload_types) {
       const codecs = receiver.getReceivers().find(row => row.track.kind === 'video').getParameters().codecs;
       const deadline = performance.now() + 15000;
       do {
+        if (sfu) {
+          const vp8 = codecs.find(row => row.mimeType?.toLowerCase() === 'video/vp8');
+          config.media_payload_types = [vp8.payloadType, ...codecs.filter(row =>
+            row.mimeType?.toLowerCase() === 'video/rtx' &&
+            row.sdpFmtpLine === 'apt=' + vp8.payloadType).map(row => row.payloadType)];
+        }
         mediaCodecs = mediaScopeCodecs(reports, codecs, config.media_payload_types, config.impaired_media);
         if (mediaCodecs.audio_payload_type !== null && mediaCodecs.video_payload_type !== null) break;
         await delay(50);
@@ -384,7 +431,7 @@ button.onclick = async () => {
     }
     async function profile(name, gain) {
       const response = await fetch('/profile', {method:'POST',
-        headers:{'Content-Type':'application/json','X-Lab-Key':config.lab_key}, body:JSON.stringify({profile:name})});
+        headers:{'Content-Type':'application/json','X-Lab-Key':config.lab_key}, body:JSON.stringify({profile:name, ...(sfu ? {payload_types:config.media_payload_types} : {})})});
       check(response.ok, 'Network profile rejected');
       if (name === 'delay' && audioFault !== 'none') {
         await bounded(e2ee.armAudioFault(audioFault), 'audio crypto fault');
@@ -490,7 +537,17 @@ button.onclick = async () => {
     for (const oscillator of oscillators) oscillator.stop();
     for (const track of source?.getTracks() ?? []) track.stop();
     for (const track of remote?.getTracks() ?? []) track.stop();
-    sender?.close(); receiver?.close();
+    if (sfu) {
+      const proof = document.createElement('pre');
+      proof.textContent = 'SFU_E2EE_PROOF ' + JSON.stringify({
+        missing_key_blocked:sfu.missingKeyBlocked(), split_sync:splitSync, ...sfu.diagnostics(),
+        decrypted_audio_video_markers:markers.length,
+      });
+      document.body.append(proof);
+      await sfu.dispose();
+    } else {
+      sender?.close(); receiver?.close();
+    }
     if (encrypted && e2ee) {
       try { await e2ee.dispose(); }
       catch (_) { outcome = 'setup_failed'; setupFailure ||= 'SDK encryption cleanup'; }
@@ -515,7 +572,7 @@ button.onclick = async () => {
         recovered_p95_abs_ms:percentile95(recovered.map(row => row[2])),
         physical_lip_sync_measured:false, media_saved:false, microphone_used:false, test_sink_silent:true};
       try {
-        await fetch('/profile', {method:'POST', headers:{'Content-Type':'application/json','X-Lab-Key':config.lab_key}, body:'{"profile":"clean"}'});
+        await fetch('/profile', {method:'POST', headers:{'Content-Type':'application/json','X-Lab-Key':config.lab_key}, body:JSON.stringify({profile:'clean', ...(sfu ? {payload_types:config.media_payload_types} : {})})});
         const response = await fetch('/marker-result', {method:'POST',
           headers:{'Content-Type':'application/json','X-Lab-Key':config.lab_key}, body:JSON.stringify(proof)});
         check(response.ok, 'Marker report rejected');
