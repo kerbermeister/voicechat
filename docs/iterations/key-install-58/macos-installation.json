@@ -1,0 +1,20 @@
+{
+  "old_history_visible": true,
+  "account_matches_installed57": true,
+  "device_matches_installed57": true,
+  "auto_relaunch_observed_before_manual_open": true,
+  "download_install_button_used": true,
+  "version_58_visible": true,
+  "source": "78a748bf8a8df0868711fb9d1ed97c5c14ee122d",
+  "build": 58,
+  "previous_build": 57,
+  "installed_entries": 285,
+  "installed_equals_verified_zip_and_dmg": true,
+  "codesign_strict": true,
+  "zip_sha256": "01b1a195f74cf58c38d29a4955cc0d4a53dfb44dfebd442526eae8e6868943a1",
+  "dmg_sha256": "a680fcbdd8bce1f8b38dea1f095c36a06f51cdf06d7cd927b0de0e5be527a36c",
+  "old_audio_played": false,
+  "physical_phone_tested": false,
+  "installed_by_in_app_update": true,
+  "no_newer_compatible_update": true
+}
