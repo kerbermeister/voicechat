@@ -1,0 +1,19 @@
+{
+  "hypothesis": "H01 combined stream identity vs newly constructed audio-only stream",
+  "runtime_modified": false,
+  "same_track_required": true,
+  "e2ee": false,
+  "network": "clean-only",
+  "files": {
+    "e2ee.worker.dart.js": "8f7fd4aea48f3879520be5510a58450cc0b8195f2f81a1e81da92344abb17d02",
+    "call_av_marker_worklet.js": "41f90390e85eb2c122df9d8d09282f8995cc6b5f060dd472b368bf2226bebc2b",
+    "media_audio.js": "ae152bc3e5dc8c69e089b8d0d175562a0a8fca84a17133c391786d6c247c640d",
+    "call_av_marker.js": "726a0d7a60f54b4d6e0523c17b70efaed166e1ac6947b6aa1cc3cb283273b110",
+    "call_av_marker_e2ee.dart.js": "4804dde71da68f9a252b2d7e44d80388888dcd207ee04af7bd95e64f4eab8540",
+    "call_av_marker_fixture.html": "46e95ae07bcb74ab83aa976de26bc8d2f2a8412fba29c32bc345b5884665b4a9",
+    "call_av_marker_fixture.js": "7c00a6810eeec20e612d58325527546ae8ac2f374032a887640f90c97301b44b",
+    "cryptor_order_worker.js": "5fc3690a5ea0baacdcdd492cba91d3b246570cdacf042b9e0bc5aad822d4f85c",
+    "call_transport_diagnostics.js": "2c650e9af2fa38ac2bb3b3cc2a8669411112e577fc05898de708cdf031c004be",
+    "worker-av/e2ee.worker.dart.js": "c019088fd76c9a0e337522fac45f7c3d0ff98e2350f5b5712e8ed275de2496d2"
+  }
+}

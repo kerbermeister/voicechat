@@ -1,0 +1,12 @@
+{
+  "origin": "https://univc.duckdns.org",
+  "version": "1.19.13",
+  "build": 61,
+  "regular_app_startup": true,
+  "about_ui_version_verified": true,
+  "saved_session_restored_without_login": true,
+  "previous_synthetic_history_visible": true,
+  "account_device_identity_comparison_performed": false,
+  "private_identifiers_saved": false,
+  "physical_call_media_verified": false
+}

@@ -1,0 +1,86 @@
+Browser tab: 50, Title: "Build and deploy · kerbermeister/voicechat@2ce2666", URL: "https://github.com/kerbermeister/voicechat/actions/runs/41639694125".
+1 AXWebArea Build and deploy · kerbermeister/voicechat@2ce2666, URL: github.com/kerbermeister/voicechat/actions/runs/41639694125
+	2 container
+		3 link Description: Skip to content, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125#start-of-content
+		4 container Global navigation menu
+			5 pop up button Open menu
+			6 link Description: Homepage ( g then d ), Value: github.com/
+			7 container Breadcrumbs
+				8 content list
+					9 container
+						10 link Description: kerbermeister, Value: github.com/kerbermeister
+					11 container
+						12 link Description: voicechat, Value: github.com/kerbermeister/voicechat
+						13 pop up button (collapsed) Switch repository ( option shift r ), Secondary Actions: Expand
+			14 button Open quick search dialog, type / to search
+				15 text Type
+				16 text /
+				17 text  to search
+			18 link Description: Chat with Copilot, Value: github.com/copilot
+			19 pop up button (collapsed) Description: Open Copilot…, Secondary Actions: Expand
+			20 pop up button (collapsed) Create new..., Secondary Actions: Expand
+			21 link Description: All issues, Value: github.com/issues
+			22 link Description: All pull requests, Value: github.com/pulls
+			23 link Description: All repositories, Value: github.com/repos
+			24 pop up button Open user navigation menu
+				25 image User avatar
+			26 heading Repository navigation, Value: 2
+				27 text Repository navigation
+			28 container Repository
+				29 content list
+					30 link Description: Code, Value: github.com/kerbermeister/voicechat
+					31 link Description: Issues, Value: github.com/kerbermeister/voicechat/issues
+					32 link Description: Pull requests, Value: github.com/kerbermeister/voicechat/pulls
+					33 link Description: Actions, Value: github.com/kerbermeister/voicechat/actions
+					34 link Description: Projects, Value: github.com/kerbermeister/voicechat/projects
+					35 link Description: Security and quality, Value: github.com/kerbermeister/voicechat/security
+					36 link Description: Insights, Value: github.com/kerbermeister/voicechat/pulse
+					37 link Description: Settings, Value: github.com/kerbermeister/voicechat/settings
+	38 container repo-content-turbo-frame
+		82 link Description: Build and deploy, Value: github.com/kerbermeister/voicechat/actions/workflows/deploy.yml
+		83 image currently running:
+		84 heading Build and deploy #101, Value: 1
+			85 text Build and deploy  #101
+		86 button Cancel workflow
+		87 pop up button (collapsed) Workflow run options, ID: action-menu-7e251852-e5dc-418e-a06d-be54805b638a-button, Secondary Actions: Expand
+		45 container Workflow run
+			46 content list
+				88 link Description: Summary, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125
+				48 heading All jobs, Value: 4
+					49 text All jobs
+				50 pop up button (collapsed) Filter by job status, Secondary Actions: Expand
+				51 content list
+					89 link Description: release, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/job/125929761941
+				53 container
+					54 heading Run details, Value: 3
+						55 text Run details
+					56 content list Run details
+						90 link Description: Usage, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/usage
+						91 link Description: Workflow file, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/workflow
+						92 link Description: Lockfile, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/lockfile
+		93 container Workflow run summary
+			94 text Manually triggered
+			95 container Nov 3, 2026, 13:54 GMT+1
+				96 text now
+			97 link Description: @kerbermeister kerbermeister, Value: github.com/kerbermeister
+			98 text ⁠
+			99 link Description:  2ce2666, Value: github.com/kerbermeister/voicechat/commit/2ce2666685614f343a7772d4c9f85f5b4f4bb8bf
+			100 link Description: main, Value: github.com/kerbermeister/voicechat/tree/refs/heads/main
+			101 text Status In progress Total duration
+			102 link Description: –, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/usage
+			103 text Artifacts –
+		71 container Workflow run graph
+			72 container
+				73 container
+					74 heading deploy.yml, Value: 2
+						75 link Description: deploy.yml, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/workflow
+					76 text on: workflow_dispatch
+				104 container
+					105 link Description: currently running: release 26s, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/job/125929761941, ID: workflow-job-name-release
+					106 text Deploying to production
+				79 button (disabled) Fit to window, ID: icon-button-df34294c-f4a8-4b98-be0d-4ff13489893c
+				80 button (disabled) Zoom out, ID: icon-button-a3d78015-f05c-46f5-9e73-05234c29e3b6
+				81 button (disabled) Zoom in, ID: icon-button-e8e0c44d-8170-4294-bc28-e6e54f03fa5d
+		107 container Annotations
+
+The focused UI element is 1 AXWebArea Build and deploy · kerbermeister/voicechat@2ce2666, URL: github.com/kerbermeister/voicechat/actions/runs/41639694125

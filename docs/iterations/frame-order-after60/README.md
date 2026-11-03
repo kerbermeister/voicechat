@@ -2,7 +2,10 @@
 
 03.11.2026; задача OPT-02/08, единая очередь [UA-05.C42](../../user-acceptance.md#ua-05).
 Baseline — exact published60 SDK/adapter `a6fd29d2c064da9772544f4ca28f8e2747050733`.
-Кандидат1.19.13(61), только web; ещё не опубликован. Native клиент60 и production не менялись.
+Выпущен1.19.13(61), только web, source2ce2666. FULL101/CI239–241 и независимый
+production/HTTPS/UI PASS. Нативные каналы Mac/Android60 прежние. Ниже сохранены
+промежуточные пробы, включая отклонённый последовательный прототип; текущий
+worker — Green2. Общий A/V guard80мс и physical acceptance остаются открытыми.
 
 Настоящие GCM peers, synthetic canvas,16 slots/late key/default ratchet. Только
 первый результат настоящей WebCrypto операции задержан500мс, bytes не изменены.
@@ -167,3 +170,23 @@ No issues found,8 version/package +check-version CLI PASS.15 lab unit(1skip
 acceptance. После измерений в Dart fixture добавлены только braces для lint;
 compiled A/B fixture main остаётся точной исходной парой. Worker/core checks
 относятся к текущему production patch; никаких зависимостей не обновлено.
+
+## Выпуск61 завершён03.11.2026
+
+[FULL101](https://github.com/kerbermeister/voicechat/actions/runs/41639694125)
+SUCCESS19м03с, CI239/240/241 SUCCESS (tag/branch/main, одинsource2ce2666).
+[Независимый production receipt](production61-verified.json): commit/digests/
+backend fingerprint42b5a057…/health0 restarts/data identity/previous60, actual
+main+worker bytes/patch markers, HTTPS200/401/404/headers PASS. Screen default
+off прежний, существующий admin flag1 сохранён. FULL может перезапускать core;
+до подготовки было0 активных leases, непрерывность активного звонка не заявляется.
+
+[Обычный web UI](web61-ui-verified.json), не lab target: About1.19.13(61),
+сохранённая сессия открыта без нового входа, прежняя QA история видима. Account/
+device IDs отдельно не сравнивались и не сохранялись; screenshot содержит только
+About, без переписки. Нативные feed/manifest60 совпали с прежними подписанными
+кандидатами, новой установки native не требуется. Старые native60 проверки не
+выдаются за физическую приёмку iPhone/Xiaomi или свежую нативную установку61.
+
+H01 source-identity control выполнен независимо во время remote build: оба
+варианта не прошли80мс, изменение не принято в runtime. [Результаты](../call-av-markers-2026-11-03/stream-source/).

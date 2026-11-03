@@ -5,7 +5,7 @@
 сохранены в [статусе реализации](implementation-status.md) и `iterations/`.
 `1.0.0+1` было техническим номером прототипа, без подтверждённого production-выпуска.
 
-## 1.19.13 (сборка 61) — кандидат03.11.2026, только web
+## 1.19.13 (сборка 61) — опубликован03.11.2026, только web
 
 ### Что нового
 
@@ -25,8 +25,9 @@ Cipher/keys/ratchet/codec/bitrate и native SDK прежние. Общий A/V b
 не пройден: даже при p9577.3/75мс отдельный recovery sample97.8мс. Физические
 iPhone Safari/PWA/Xiaomi не проверены; причина исторического личного звонка не
 объявляется установленной. 774 Flutter PASS/4skip, общий analyzer чистый,8 version/package PASS,15 lab
-boundary(1skip),3 diagnostic privacy и3 marker Node PASS. Публикация кандидата
-ещё не завершена.
+boundary(1skip),3 diagnostic privacy и3 marker Node PASS. FULL101 и CI239–241 SUCCESS. Независимая проверка commit/digests/health/
+rollback/HTTPS PASS; в обычном приложении About61, сохранённый вход и прежняя
+тестовая история доступны. Source/tag `app-v1.19.13+61`: `2ce2666685614f343a7772d4c9f85f5b4f4bb8bf`.
 
 Функциональный diff относительно Mac/Android60 затрагивает только web worker;
 общий код изменён лишь для номера web-версии. Нативные каналы остаются1.19.12(60),

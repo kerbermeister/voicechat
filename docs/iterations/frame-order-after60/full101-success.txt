@@ -1,0 +1,117 @@
+Browser tab: 50, Title: "Build and deploy · kerbermeister/voicechat@2ce2666", URL: "https://github.com/kerbermeister/voicechat/actions/runs/41639694125".
+1 AXWebArea Build and deploy · kerbermeister/voicechat@2ce2666, URL: github.com/kerbermeister/voicechat/actions/runs/41639694125
+	2 container
+		3 link Description: Skip to content, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125#start-of-content
+		4 container Global navigation menu
+			5 pop up button Open menu
+			6 link Description: Homepage ( g then d ), Value: github.com/
+			7 container Breadcrumbs
+				8 content list
+					9 container
+						10 link Description: kerbermeister, Value: github.com/kerbermeister
+					11 container
+						12 link Description: voicechat, Value: github.com/kerbermeister/voicechat
+						13 pop up button (collapsed) Switch repository ( option shift r ), Secondary Actions: Expand
+			14 button Open quick search dialog, type / to search
+				15 text Type
+				16 text /
+				17 text  to search
+			18 link Description: Chat with Copilot, Value: github.com/copilot
+			19 pop up button (collapsed) Description: Open Copilot…, Secondary Actions: Expand
+			20 pop up button (collapsed) Create new..., Secondary Actions: Expand
+			21 link Description: All issues, Value: github.com/issues
+			22 link Description: All pull requests, Value: github.com/pulls
+			23 link Description: All repositories, Value: github.com/repos
+			24 pop up button Open user navigation menu
+				25 image User avatar
+			26 heading Repository navigation, Value: 2
+				27 text Repository navigation
+			28 container Repository
+				29 content list
+					30 link Description: Code, Value: github.com/kerbermeister/voicechat
+					31 link Description: Issues, Value: github.com/kerbermeister/voicechat/issues
+					32 link Description: Pull requests, Value: github.com/kerbermeister/voicechat/pulls
+					33 link Description: Actions, Value: github.com/kerbermeister/voicechat/actions
+					34 link Description: Projects, Value: github.com/kerbermeister/voicechat/projects
+					35 link Description: Security and quality, Value: github.com/kerbermeister/voicechat/security
+					36 link Description: Insights, Value: github.com/kerbermeister/voicechat/pulse
+					37 link Description: Settings, Value: github.com/kerbermeister/voicechat/settings
+	38 container repo-content-turbo-frame
+		39 link Description: Build and deploy, Value: github.com/kerbermeister/voicechat/actions/workflows/deploy.yml
+		40 image completed successfully:
+		41 heading Build and deploy #101, Value: 1
+			42 text Build and deploy  #101
+		43 button Re-run all jobs
+		44 pop up button (collapsed) Workflow run options, ID: action-menu-37e34808-31a3-4fbb-8a9b-f24d3d19ba09-button, Secondary Actions: Expand
+		45 container Workflow run
+			46 content list
+				47 link Description: Summary, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125
+				48 heading All jobs, Value: 4
+					49 text All jobs
+				50 pop up button (collapsed) Filter by job status, Secondary Actions: Expand
+				51 container
+					52 heading Run details, Value: 3
+						53 text Run details
+					54 content list Run details
+						55 link Description: Usage, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/usage
+						56 link Description: Workflow file, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/workflow
+						57 link Description: Lockfile, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/lockfile
+		58 container Workflow run summary
+			59 text Manually triggered
+			60 container Nov 3, 2026, 13:54 GMT+1
+				61 text 20 minutes ago
+			62 link Description: @kerbermeister kerbermeister, Value: github.com/kerbermeister
+			63 text ⁠
+			64 link Description:  2ce2666, Value: github.com/kerbermeister/voicechat/commit/2ce2666685614f343a7772d4c9f85f5b4f4bb8bf
+			65 link Description: main, Value: github.com/kerbermeister/voicechat/tree/refs/heads/main
+			66 text Status Success Total duration
+			67 link Description: 19m 3s, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/usage
+			68 text Artifacts
+			69 link Description: 1, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125#artifacts
+		70 container Workflow run graph
+			71 container
+				72 container
+					73 heading deploy.yml, Value: 2
+						74 link Description: deploy.yml, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/workflow
+					75 text on: workflow_dispatch
+				76 link Description: completed successfully: release 18m 58s, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/job/125929761941, ID: workflow-job-name-release
+				77 button (disabled) Fit to window, ID: icon-button-6685a15d-46d1-4bad-ab94-41d98fb9b3fc
+				78 button (disabled) Zoom out, ID: icon-button-77a5a869-09cc-436b-865f-d27d7135484a
+				79 button (disabled) Zoom in, ID: icon-button-ac89ab53-d202-48b8-bbbd-dfd681a3c12a
+		80 container Annotations
+			81 heading Annotations, Value: 2
+				82 text Annotations
+			83 text 1 warning
+			84 row
+				85 cell
+					86 link Description: release, Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/job/125929761941#step:55:2
+					87 container
+						88 text Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f, docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130. For more information see:
+						89 link Description: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/, Value: github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+					90 button Show more
+		91 container Description: Artifacts, ID: artifacts
+			92 heading Artifacts, Value: 2
+				93 text Artifacts
+			94 text Produced during runtime
+			95 table
+				96 row
+					97 cell
+						98 text Name
+					99 cell
+						100 text Size
+					101 cell
+						102 text Digest
+				103 row
+					104 cell
+						105 link Description: Download release-2ce2666685614f343a7772d4c9f85f5b4f4bb8bf (opens in a new tab), Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/artifacts/13233810861
+						106 link Description: Download release-2ce2666685614f343a7772d4c9f85f5b4f4bb8bf (opens in a new tab), Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/artifacts/13233810861
+					107 cell
+						108 text 317 KB
+					109 cell
+						110 text sha256:1ade3f015e59ff966d23b18e64ccbeb60c1dc1c8d7a9cc171939e6faca67c2ab
+						111 button Copy artifact digest
+					112 cell
+						113 link Description: Download release-2ce2666685614f343a7772d4c9f85f5b4f4bb8bf (opens in a new tab), Value: github.com/kerbermeister/voicechat/actions/runs/41639694125/artifacts/13233810861, ID: icon-button-5473132b-59d0-4578-8b0a-c2df44ef34fb
+						114 button Delete release-2ce2666685614f343a7772d4c9f85f5b4f4bb8bf, ID: icon-button-62d7afc5-b4a4-40d0-90c7-3e1f6f39341d
+
+The focused UI element is 1 AXWebArea Build and deploy · kerbermeister/voicechat@2ce2666, URL: github.com/kerbermeister/voicechat/actions/runs/41639694125

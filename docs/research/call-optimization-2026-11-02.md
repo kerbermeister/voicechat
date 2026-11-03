@@ -1233,3 +1233,24 @@ audio frame dropped; возле fault43.6→152→56.2→18→11.6мс, без50
 Initial/recovery p95 abs89.5/88.6мс, бюджет80 всё ещё не пройден. Red2 и
 приёмная сторона проверяются, публикации нет. Ключи/cipher/ratchet/битрейт
 прежние; это не новый adaptive audio preset и не закрытие общего lip-sync.
+
+### Состояние после опубликованного61,03.11
+
+Web61/source2ce2666 выпущен штатным FULL101(19м03с), CI239–241 SUCCESS.
+[Независимая сверка](../iterations/frame-order-after60/production61-verified.json)
+подтвердила commits/digests/health/rollback/actual JS/HTTPS; обычный About61 и
+прежняя QA история доступны без очистки данных. Mac/Android каналы60 прежние;
+функциональный diff нативного кода отсутствует, новый native пакет не нужен.
+C42 имеет опубликованное исправление с прошедшими программными проверками порядка; общий80мс A/V guard и
+physical acceptance не закрыты.
+
+H01 source identity: одинаковая аудиодорожка в новом audio-only stream или
+исходном A/V stream,60/60 markers на чистой сети. P95 initial/recovery88.4/86.5
+и80.6/73мс, оба budget_exceeded. Разница одной пары ниже допуска±50мс, runtime
+не меняется. [Отчёт/первичные ссылки](../iterations/call-av-markers-2026-11-03/stream-source/).
+Новый обязательный этап UA-08.C06 — раздельная остановка audio/video RTP после
+jitter и возобновление той же дорожки; прежний whole-link outage его не проверял.
+[WebRTC report489157997](https://issues.webrtc.org/issues/489157997) описывает
+потенциально сохранённую extra delay при остановке одного потока в Chrome145.
+Статус New, accepted code changes нет. Это внешний отчёт/гипотеза: проверить
+первичный код и версии SDK, затем воспроизвести у нас до выбора исправления.

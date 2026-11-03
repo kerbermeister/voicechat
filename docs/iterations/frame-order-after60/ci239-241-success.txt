@@ -1,0 +1,531 @@
+Browser tab: 51, Title: "Prototype checks", URL: "https://github.com/kerbermeister/voicechat/actions/workflows/prototype.yml".
+0 AXWebArea Prototype checks, URL: github.com/kerbermeister/voicechat/actions/workflows/prototype.yml
+	1 container
+		2 link Description: Skip to content, Value: github.com/kerbermeister/voicechat/actions/workflows/prototype.yml#start-of-content
+		3 container Global navigation menu
+			4 pop up button Open menu
+			5 link Description: Homepage ( g then d ), Value: github.com/
+			6 container Breadcrumbs
+				7 content list
+					8 container
+						9 link Description: kerbermeister, Value: github.com/kerbermeister
+					10 container
+						11 link Description: voicechat, Value: github.com/kerbermeister/voicechat
+						12 pop up button (collapsed) Switch repository ( option shift r ), Secondary Actions: Expand
+			13 button Open quick search dialog, type / to search
+				14 text Type
+				15 text /
+				16 text  to search
+			17 link Description: Chat with Copilot, Value: github.com/copilot
+			18 pop up button (collapsed) Description: Open Copilot…, Secondary Actions: Expand
+			19 pop up button (collapsed) Create new..., Secondary Actions: Expand
+			20 link Description: All issues, Value: github.com/issues
+			21 link Description: All pull requests, Value: github.com/pulls
+			22 link Description: All repositories, Value: github.com/repos
+			23 pop up button Open user navigation menu
+				24 image User avatar
+			25 heading Repository navigation, Value: 2
+				26 text Repository navigation
+			27 container Repository
+				28 content list
+					29 link Description: Code, Value: github.com/kerbermeister/voicechat
+					30 link Description: Issues, Value: github.com/kerbermeister/voicechat/issues
+					31 link Description: Pull requests, Value: github.com/kerbermeister/voicechat/pulls
+					32 link Description: Actions, Value: github.com/kerbermeister/voicechat/actions
+					33 link Description: Projects, Value: github.com/kerbermeister/voicechat/projects
+					34 link Description: Security and quality, Value: github.com/kerbermeister/voicechat/security
+					35 link Description: Insights, Value: github.com/kerbermeister/voicechat/pulse
+					36 link Description: Settings, Value: github.com/kerbermeister/voicechat/settings
+	37 container
+		38 container Actions
+			39 container Workflows
+				40 link Description: All workflows, Value: github.com/kerbermeister/voicechat/actions
+				41 heading Workflows, Value: 2
+					42 text Workflows
+				43 container disclosure-panel-_R_5bao5_
+					44 container
+						45 link Description: Prototype checks, Value: github.com/kerbermeister/voicechat/actions/workflows/prototype.yml
+						46 button Pin Prototype checks
+					47 container
+						48 link Description: Android release, Value: github.com/kerbermeister/voicechat/actions/workflows/android-release.yml
+						49 button Pin Android release
+					50 container
+						51 link Description: Build and deploy, Value: github.com/kerbermeister/voicechat/actions/workflows/deploy.yml
+						52 button Pin Build and deploy
+					53 container
+						54 link Description: Check VPS SSH, Value: github.com/kerbermeister/voicechat/actions/workflows/ssh-check.yml
+						55 button Pin Check VPS SSH
+					56 container
+						57 link Description: macOS checks and candidate, Value: github.com/kerbermeister/voicechat/actions/workflows/macos.yml
+						58 button Pin macOS checks and candidate
+					59 container
+						60 link Description: VoiceChat health monitor, Value: github.com/kerbermeister/voicechat/actions/workflows/monitor.yml
+						61 button Pin VoiceChat health monitor
+			62 container
+				63 container Management
+					64 heading Management, Value: 2
+						65 button (collapsed) Management, ID: disclosure-trigger-_R_1lao5_, Secondary Actions: Expand
+				66 button (expanded) Description: Collapse sidebar, Secondary Actions: Collapse
+		67 container
+			68 container Help us improve GitHub Actions, ID: actions-survey
+				69 heading Help us improve GitHub Actions, Value: 2
+					70 text Help us improve GitHub Actions
+				71 text Tell us how to make GitHub Actions work better for you with three quick questions.
+				72 button Give feedback
+				73 button Dismiss banner
+			74 heading Prototype checks, Value: 1
+				75 text Prototype checks
+			76 link Description: prototype.yml, Value: github.com/kerbermeister/voicechat/blob/main/.github/workflows/prototype.yml
+			77 pop up button (collapsed) Workflow options, Secondary Actions: Expand
+		78 container Filter workflow runs
+			79 container Filter workflow runs
+				80 text Filter workflow runs
+				81 container
+					82 combo box (collapsed, settable) Filter workflow runs, Secondary Actions: Expand
+					83 button Search
+		84 container Workflow runs for Prototype checks
+			85 container Workflow runs for Prototype checks results
+				86 container
+					87 heading Workflow runs for Prototype checks, Value: 2
+						88 text Workflow runs for Prototype checks
+					89 heading 241 workflow runs, Value: 3
+						90 text 241 workflow runs
+					91 pop up button (collapsed) Auto-refresh: 30s, Secondary Actions: Expand
+					92 toolbar Workflow run filters
+						93 pop up button (collapsed) Event, Secondary Actions: Expand
+						94 pop up button (collapsed) Status, Secondary Actions: Expand
+						95 pop up button (collapsed) Branch, Secondary Actions: Expand
+						96 pop up button (collapsed) Actor, Secondary Actions: Expand
+					97 content list Workflow runs for Prototype checks
+						98 container completed successfully: Run 241 of Prototype checks. Preserve browser crypto frame order without delaying later audio packets
+							99 heading Preserve browser crypto frame order without delaying later audio packets, Value: 4
+								100 link Description: Preserve browser crypto frame order without delaying later audio packets, Value: github.com/kerbermeister/voicechat/actions/runs/41639613450
+							101 text completed successfully:
+							102 text Prototype checks
+							103 text #241:
+							104 text Commit
+							105 link Description: 2ce2666, Value: github.com/kerbermeister/voicechat/commit/2ce2666685614f343a7772d4c9f85f5b4f4bb8bf
+							106 text pushed
+							107 text by
+							108 link Description: kerbermeister, Value: github.com/kerbermeister
+							109 link Description: main, Value: github.com/kerbermeister/voicechat/tree/refs/heads/main
+							110 container Nov 3, 2026, 13:54 GMT+1
+								528 text 15 minutes ago
+							112 text 16m 17s
+							113 pop up button (collapsed) More actions for workflow run 241, Secondary Actions: Expand
+						114 container completed successfully: Run 240 of Prototype checks. Preserve browser crypto frame order without delaying later audio packets
+							115 heading Preserve browser crypto frame order without delaying later audio packets, Value: 4
+								116 link Description: Preserve browser crypto frame order without delaying later audio packets, Value: github.com/kerbermeister/voicechat/actions/runs/41639612976
+							117 text completed successfully:
+							118 text Prototype checks
+							119 text #240:
+							120 text Commit
+							121 link Description: 2ce2666, Value: github.com/kerbermeister/voicechat/commit/2ce2666685614f343a7772d4c9f85f5b4f4bb8bf
+							122 text pushed
+							123 text by
+							124 link Description: kerbermeister, Value: github.com/kerbermeister
+							125 link Description: codex/call-room-reconciliation, Value: github.com/kerbermeister/voicechat/tree/refs/heads/codex/call-room-reconciliation
+							126 container Nov 3, 2026, 13:54 GMT+1
+								529 text 15 minutes ago
+							128 text 16m 43s
+							129 pop up button (collapsed) More actions for workflow run 240, Secondary Actions: Expand
+						130 container completed successfully: Run 239 of Prototype checks. Preserve browser crypto frame order without delaying later audio packets
+							131 heading Preserve browser crypto frame order without delaying later audio packets, Value: 4
+								132 link Description: Preserve browser crypto frame order without delaying later audio packets, Value: github.com/kerbermeister/voicechat/actions/runs/41639612595
+							133 text completed successfully:
+							134 text Prototype checks
+							135 text #239:
+							136 text Commit
+							137 link Description: 2ce2666, Value: github.com/kerbermeister/voicechat/commit/2ce2666685614f343a7772d4c9f85f5b4f4bb8bf
+							138 text pushed
+							139 text by
+							140 link Description: kerbermeister, Value: github.com/kerbermeister
+							141 link Description: app-v1.19.13+61, Value: github.com/kerbermeister/voicechat/tree/refs/tags/app-v1.19.13%2B61
+							142 container Nov 3, 2026, 13:54 GMT+1
+								530 text 15 minutes ago
+							144 text 16m 32s
+							145 pop up button (collapsed) More actions for workflow run 239, Secondary Actions: Expand
+						146 container completed successfully: Run 238 of Prototype checks. Await cryptor setup and state confirmation before reporting success
+							147 heading Await cryptor setup and state confirmation before reporting success, Value: 4
+								148 link Description: Await cryptor setup and state confirmation before reporting success, Value: github.com/kerbermeister/voicechat/actions/runs/41619467692
+							149 text completed successfully:
+							150 text Prototype checks
+							151 text #238:
+							152 text Commit
+							153 link Description: a6fd29d, Value: github.com/kerbermeister/voicechat/commit/a6fd29d2c064da9772544f4ca28f8e2747050733
+							154 text pushed
+							155 text by
+							156 link Description: kerbermeister, Value: github.com/kerbermeister
+							157 link Description: main, Value: github.com/kerbermeister/voicechat/tree/refs/heads/main
+							158 container Nov 3, 2026, 11:27 GMT+1
+								159 text Today at 11:27
+							160 text 15m 54s
+							161 pop up button (collapsed) More actions for workflow run 238, Secondary Actions: Expand
+						162 container completed successfully: Run 237 of Prototype checks. Await cryptor setup and state confirmation before reporting success
+							163 heading Await cryptor setup and state confirmation before reporting success, Value: 4
+								164 link Description: Await cryptor setup and state confirmation before reporting success, Value: github.com/kerbermeister/voicechat/actions/runs/41619467627
+							165 text completed successfully:
+							166 text Prototype checks
+							167 text #237:
+							168 text Commit
+							169 link Description: a6fd29d, Value: github.com/kerbermeister/voicechat/commit/a6fd29d2c064da9772544f4ca28f8e2747050733
+							170 text pushed
+							171 text by
+							172 link Description: kerbermeister, Value: github.com/kerbermeister
+							173 link Description: codex/call-room-reconciliation, Value: github.com/kerbermeister/voicechat/tree/refs/heads/codex/call-room-reconciliation
+							174 container Nov 3, 2026, 11:27 GMT+1
+								175 text Today at 11:27
+							176 text 13m 6s
+							177 pop up button (collapsed) More actions for workflow run 237, Secondary Actions: Expand
+						178 container completed successfully: Run 236 of Prototype checks. Await cryptor setup and state confirmation before reporting success
+							179 heading Await cryptor setup and state confirmation before reporting success, Value: 4
+								180 link Description: Await cryptor setup and state confirmation before reporting success, Value: github.com/kerbermeister/voicechat/actions/runs/41619467186
+							181 text completed successfully:
+							182 text Prototype checks
+							183 text #236:
+							184 text Commit
+							185 link Description: a6fd29d, Value: github.com/kerbermeister/voicechat/commit/a6fd29d2c064da9772544f4ca28f8e2747050733
+							186 text pushed
+							187 text by
+							188 link Description: kerbermeister, Value: github.com/kerbermeister
+							189 link Description: app-v1.19.12+60, Value: github.com/kerbermeister/voicechat/tree/refs/tags/app-v1.19.12%2B60
+							190 container Nov 3, 2026, 11:27 GMT+1
+								191 text Today at 11:27
+							192 text 16m 25s
+							193 pop up button (collapsed) More actions for workflow run 236, Secondary Actions: Expand
+						194 container completed successfully: Run 235 of Prototype checks. Fix sustained call-quality recovery and release browser renderer sources
+							195 heading Fix sustained call-quality recovery and release browser renderer sources, Value: 4
+								196 link Description: Fix sustained call-quality recovery and release browser renderer sources, Value: github.com/kerbermeister/voicechat/actions/runs/41605175715
+							197 text completed successfully:
+							198 text Prototype checks
+							199 text #235:
+							200 text Commit
+							201 link Description: b7b3519, Value: github.com/kerbermeister/voicechat/commit/b7b351928a5d54433869904ac5eab1ad19910449
+							202 text pushed
+							203 text by
+							204 link Description: kerbermeister, Value: github.com/kerbermeister
+							205 link Description: app-v1.19.11+59, Value: github.com/kerbermeister/voicechat/tree/refs/tags/app-v1.19.11%2B59
+							206 container Nov 3, 2026, 09:41 GMT+1
+								207 text Today at 09:41
+							208 text 12m 59s
+							209 pop up button (collapsed) More actions for workflow run 235, Secondary Actions: Expand
+						210 container completed successfully: Run 234 of Prototype checks. Fix sustained call-quality recovery and release browser renderer sources
+							211 heading Fix sustained call-quality recovery and release browser renderer sources, Value: 4
+								212 link Description: Fix sustained call-quality recovery and release browser renderer sources, Value: github.com/kerbermeister/voicechat/actions/runs/41605175531
+							213 text completed successfully:
+							214 text Prototype checks
+							215 text #234:
+							216 text Commit
+							217 link Description: b7b3519, Value: github.com/kerbermeister/voicechat/commit/b7b351928a5d54433869904ac5eab1ad19910449
+							218 text pushed
+							219 text by
+							220 link Description: kerbermeister, Value: github.com/kerbermeister
+							221 link Description: main, Value: github.com/kerbermeister/voicechat/tree/refs/heads/main
+							222 container Nov 3, 2026, 09:41 GMT+1
+								223 text Today at 09:41
+							224 text 13m 6s
+							225 pop up button (collapsed) More actions for workflow run 234, Secondary Actions: Expand
+						226 container completed successfully: Run 233 of Prototype checks. Fix sustained call-quality recovery and release browser renderer sources
+							227 heading Fix sustained call-quality recovery and release browser renderer sources, Value: 4
+								228 link Description: Fix sustained call-quality recovery and release browser renderer sources, Value: github.com/kerbermeister/voicechat/actions/runs/41602753478
+							229 text completed successfully:
+							230 text Prototype checks
+							231 text #233:
+							232 text Commit
+							233 link Description: b7b3519, Value: github.com/kerbermeister/voicechat/commit/b7b351928a5d54433869904ac5eab1ad19910449
+							234 text pushed
+							235 text by
+							236 link Description: kerbermeister, Value: github.com/kerbermeister
+							237 link Description: codex/call-room-reconciliation, Value: github.com/kerbermeister/voicechat/tree/refs/heads/codex/call-room-reconciliation
+							238 container Nov 3, 2026, 09:22 GMT+1
+								239 text Today at 09:22
+							240 text 15m 45s
+							241 pop up button (collapsed) More actions for workflow run 233, Secondary Actions: Expand
+						242 container completed successfully: Run 232 of Prototype checks. Confirm native and browser media key installation before advertising …
+							243 heading Confirm native and browser media key installation before advertising …, Value: 4
+								244 link Description: Confirm native and browser media key installation before advertising …, Value: github.com/kerbermeister/voicechat/actions/runs/41587087498
+							245 text completed successfully:
+							246 text Prototype checks
+							247 text #232:
+							248 text Commit
+							249 link Description: 78a748b, Value: github.com/kerbermeister/voicechat/commit/78a748bf8a8df0868711fb9d1ed97c5c14ee122d
+							250 text pushed
+							251 text by
+							252 link Description: kerbermeister, Value: github.com/kerbermeister
+							253 link Description: app-v1.19.10+58, Value: github.com/kerbermeister/voicechat/tree/refs/tags/app-v1.19.10%2B58
+							254 container Nov 3, 2026, 06:59 GMT+1
+								255 text Today at 06:59
+							256 text 16m 22s
+							257 pop up button (collapsed) More actions for workflow run 232, Secondary Actions: Expand
+						258 container completed successfully: Run 231 of Prototype checks. Confirm native and browser media key installation before advertising …
+							259 heading Confirm native and browser media key installation before advertising …, Value: 4
+								260 link Description: Confirm native and browser media key installation before advertising …, Value: github.com/kerbermeister/voicechat/actions/runs/41587032357
+							261 text completed successfully:
+							262 text Prototype checks
+							263 text #231:
+							264 text Commit
+							265 link Description: 78a748b, Value: github.com/kerbermeister/voicechat/commit/78a748bf8a8df0868711fb9d1ed97c5c14ee122d
+							266 text pushed
+							267 text by
+							268 link Description: kerbermeister, Value: github.com/kerbermeister
+							269 link Description: main, Value: github.com/kerbermeister/voicechat/tree/refs/heads/main
+							270 container Nov 3, 2026, 06:58 GMT+1
+								271 text Today at 06:58
+							272 text 13m 44s
+							273 pop up button (collapsed) More actions for workflow run 231, Secondary Actions: Expand
+						274 container completed successfully: Run 230 of Prototype checks. Confirm native and browser media key installation before advertising …
+							275 heading Confirm native and browser media key installation before advertising …, Value: 4
+								276 link Description: Confirm native and browser media key installation before advertising …, Value: github.com/kerbermeister/voicechat/actions/runs/41587032180
+							277 text completed successfully:
+							278 text Prototype checks
+							279 text #230:
+							280 text Commit
+							281 link Description: 78a748b, Value: github.com/kerbermeister/voicechat/commit/78a748bf8a8df0868711fb9d1ed97c5c14ee122d
+							282 text pushed
+							283 text by
+							284 link Description: kerbermeister, Value: github.com/kerbermeister
+							285 link Description: codex/call-room-reconciliation, Value: github.com/kerbermeister/voicechat/tree/refs/heads/codex/call-room-reconciliation
+							286 container Nov 3, 2026, 06:58 GMT+1
+								287 text Today at 06:58
+							288 text 17m 42s
+							289 pop up button (collapsed) More actions for workflow run 230, Secondary Actions: Expand
+						290 container completed successfully: Run 229 of Prototype checks. Release pending incoming acceptance after verified own-device actions
+							291 heading Release pending incoming acceptance after verified own-device actions, Value: 4
+								292 link Description: Release pending incoming acceptance after verified own-device actions, Value: github.com/kerbermeister/voicechat/actions/runs/41554542621
+							293 text completed successfully:
+							294 text Prototype checks
+							295 text #229:
+							296 text Commit
+							297 link Description: bcf92e2, Value: github.com/kerbermeister/voicechat/commit/bcf92e2b983b1d12bf4162960bc1ca205874f2e7
+							298 text pushed
+							299 text by
+							300 link Description: kerbermeister, Value: …
+							301 link Description: app-v1.19.9+57, Value: …
+							302 container Nov 3, 2026, 01:40 GMT+1
+								303 text Today at 01:40
+							304 text 16m 59s
+							305 pop up button (collapsed) More actions for workflow run 229, Secondary Actions: Expand
+						306 container completed successfully: Run 228 of Prototype checks. Release pending incoming acceptance after verified own-device actions
+							307 heading Release pending incoming acceptance after verified own-device actions, Value: 4
+								308 link Description: Release pending incoming acceptance after verified own-device actions, Value: …
+							309 text completed successfully:
+							310 text Prototype checks
+							311 text #228:
+							312 text Commit
+							313 link Description: bcf92e2, Value: …
+							314 text pushed
+							315 text by
+							316 link Description: kerbermeister, Value: …
+							317 link Description: codex/call-room-reconciliation, Value: …
+							318 container Nov 3, 2026, 01:40 GMT+1
+								319 text Today at 01:40
+							320 text 15m 21s
+							321 pop up button (collapsed) More actions for workflow run 228, Secondary Actions: Expand
+						322 container completed successfully: Run 227 of Prototype checks. Release pending incoming acceptance after verified own-device actions
+							323 heading Release pending incoming acceptance after verified own-device actions, Value: 4
+								324 link Description: Release pending incoming acceptance after verified own-device actions, Value: …
+							325 text completed successfully:
+							326 text Prototype checks
+							327 text #227:
+							328 text Commit
+							329 link Description: bcf92e2, Value: …
+							330 text pushed
+							331 text by
+							332 link Description: kerbermeister, Value: …
+							333 link Description: main, Value: …
+							334 container Nov 3, 2026, 01:40 GMT+1
+								335 text Today at 01:40
+							336 text 15m 47s
+							337 pop up button (collapsed) More actions for workflow run 227, Secondary Actions: Expand
+						338 container completed successfully: Run 226 of Prototype checks. Cancel stale group invitation setup without restarting ended calls
+							339 heading Cancel stale group invitation setup without restarting ended calls, Value: 4
+								340 link Description: Cancel stale group invitation setup without restarting ended calls, Value: …
+							341 text completed successfully:
+							342 text Prototype checks
+							343 text #226:
+							344 text Commit
+							345 link Description: c430542, Value: …
+							346 text pushed
+							347 text by
+							348 link Description: kerbermeister, Value: …
+							349 link Description: app-v1.19.8+56, Value: …
+							350 container Nov 3, 2026, 00:29 GMT+1
+								351 text Today at 00:29
+							352 text 17m 23s
+							353 pop up button (collapsed) More actions for workflow run 226, Secondary Actions: Expand
+						354 container completed successfully: Run 225 of Prototype checks. Cancel stale group invitation setup without restarting ended calls
+							355 heading Cancel stale group invitation setup without restarting ended calls, Value: 4
+								356 link Description: Cancel stale group invitation setup without restarting ended calls, Value: …
+							357 text completed successfully:
+							358 text Prototype checks
+							359 text #225:
+							360 text Commit
+							361 link Description: c430542, Value: …
+							362 text pushed
+							363 text by
+							364 link Description: kerbermeister, Value: …
+							365 link Description: codex/call-room-reconciliation, Value: …
+							366 container Nov 3, 2026, 00:29 GMT+1
+								367 text Today at 00:29
+							368 text 18m 49s
+							369 pop up button (collapsed) More actions for workflow run 225, Secondary Actions: Expand
+						370 container completed successfully: Run 224 of Prototype checks. Cancel stale group invitation setup without restarting ended calls
+							371 heading Cancel stale group invitation setup without restarting ended calls, Value: 4
+								372 link Description: Cancel stale group invitation setup without restarting ended calls, Value: …
+							373 text completed successfully:
+							374 text Prototype checks
+							375 text #224:
+							376 text Commit
+							377 link Description: c430542, Value: …
+							378 text pushed
+							379 text by
+							380 link Description: kerbermeister, Value: …
+							381 link Description: main, Value: …
+							382 container Nov 3, 2026, 00:29 GMT+1
+								383 text Today at 00:29
+							384 text 13m 32s
+							385 pop up button (collapsed) More actions for workflow run 224, Secondary Actions: Expand
+						386 container completed successfully: Run 223 of Prototype checks. Normalize archived call acceptance fixture
+							387 heading Normalize archived call acceptance fixture, Value: 4
+								388 link Description: Normalize archived call acceptance fixture, Value: …
+							389 text completed successfully:
+							390 text Prototype checks
+							391 text #223:
+							392 text Commit
+							393 link Description: 1813484, Value: …
+							394 text pushed
+							395 text by
+							396 link Description: kerbermeister, Value: …
+							397 link Description: main, Value: …
+							398 container Nov 2, 2026, 23:38 GMT+1
+								399 text Nov 2, 23:38 GMT+1
+							400 text 16m 41s
+							401 pop up button (collapsed) More actions for workflow run 223, Secondary Actions: Expand
+						402 container completed successfully: Run 221 of Prototype checks. Normalize archived call acceptance fixture
+							403 heading Normalize archived call acceptance fixture, Value: 4
+								404 link Description: Normalize archived call acceptance fixture, Value: …
+							405 text completed successfully:
+							406 text Prototype checks
+							407 text #221:
+							408 text Commit
+							409 link Description: 1813484, Value: …
+							410 text pushed
+							411 text by
+							412 link Description: kerbermeister, Value: …
+							413 link Description: app-v1.19.7+55, Value: …
+							414 container Nov 2, 2026, 23:38 GMT+1
+								415 text Nov 2, 23:38 GMT+1
+							416 text 16m 19s
+							417 pop up button (collapsed) More actions for workflow run 221, Secondary Actions: Expand
+						418 container completed successfully: Run 222 of Prototype checks. Normalize archived call acceptance fixture
+							419 heading Normalize archived call acceptance fixture, Value: 4
+								420 link Description: Normalize archived call acceptance fixture, Value: …
+							421 text completed successfully:
+							422 text Prototype checks
+							423 text #222:
+							424 text Commit
+							425 link Description: 1813484, Value: …
+							426 text pushed
+							427 text by
+							428 link Description: kerbermeister, Value: …
+							429 link Description: codex/call-room-reconciliation, Value: …
+							430 container Nov 2, 2026, 23:38 GMT+1
+								431 text Nov 2, 23:38 GMT+1
+							432 text 12m 50s
+							433 pop up button (collapsed) More actions for workflow run 222, Secondary Actions: Expand
+						434 container completed successfully: Run 220 of Prototype checks. Fix cancelled call startup and rate-limited signalling
+							435 heading Fix cancelled call startup and rate-limited signalling, Value: 4
+								436 link Description: Fix cancelled call startup and rate-limited signalling, Value: …
+							437 text completed successfully:
+							438 text Prototype checks
+							439 text #220:
+							440 text Commit
+							441 link Description: c456c62, Value: …
+							442 text pushed
+							443 text by
+							444 link Description: kerbermeister, Value: …
+							445 link Description: app-v1.19.6+54, Value: …
+							446 container Nov 2, 2026, 22:30 GMT+1
+								447 text Nov 2, 22:30 GMT+1
+							448 text 17m 42s
+							449 pop up button (collapsed) More actions for workflow run 220, Secondary Actions: Expand
+						450 container completed successfully: Run 219 of Prototype checks. Fix cancelled call startup and rate-limited signalling
+							451 heading Fix cancelled call startup and rate-limited signalling, Value: 4
+								452 link Description: Fix cancelled call startup and rate-limited signalling, Value: …
+							453 text completed successfully:
+							454 text Prototype checks
+							455 text #219:
+							456 text Commit
+							457 link Description: c456c62, Value: …
+							458 text pushed
+							459 text by
+							460 link Description: kerbermeister, Value: …
+							461 link Description: codex/call-room-reconciliation, Value: …
+							462 container Nov 2, 2026, 22:30 GMT+1
+								463 text Nov 2, 22:30 GMT+1
+							464 text 16m 53s
+							465 pop up button (collapsed) More actions for workflow run 219, Secondary Actions: Expand
+						466 container completed successfully: Run 218 of Prototype checks. Fix cancelled call startup and rate-limited signalling
+							467 heading Fix cancelled call startup and rate-limited signalling, Value: 4
+								468 link Description: Fix cancelled call startup and rate-limited signalling, Value: …
+							469 text completed successfully:
+							470 text Prototype checks
+							471 text #218:
+							472 text Commit
+							473 link Description: c456c62, Value: …
+							474 text pushed
+							475 text by
+							476 link Description: kerbermeister, Value: …
+							477 link Description: main, Value: …
+							478 container Nov 2, 2026, 22:30 GMT+1
+								479 text Nov 2, 22:30 GMT+1
+							480 text 17m 4s
+							481 pop up button (collapsed) More actions for workflow run 218, Secondary Actions: Expand
+						482 container completed successfully: Run 217 of Prototype checks. Fix missed-call retries and isolate ended call sessions
+							483 heading Fix missed-call retries and isolate ended call sessions, Value: 4
+								484 link Description: Fix missed-call retries and isolate ended call sessions, Value: …
+							485 text completed successfully:
+							486 text Prototype checks
+							487 text #217:
+							488 text Commit
+							489 link Description: 915d0e9, Value: …
+							490 text pushed
+							491 text by
+							492 link Description: kerbermeister, Value: …
+							493 link Description: main, Value: …
+							494 container Nov 2, 2026, 20:46 GMT+1
+								495 text Nov 2, 20:46 GMT+1
+							496 text 17m 13s
+							497 pop up button (collapsed) More actions for workflow run 217, Secondary Actions: Expand
+				498 container Pagination
+					499 container
+						500 link Description: Page 1, Value: …
+						501 link Description: Page 2, Value: …
+						502 link Description: Page 3, Value: …
+						503 link Description: Page 4, Value: …
+						504 link Description: Page 5, Value: …
+						505 link Description: Page 6, Value: …
+						506 link Description: Page 7..., Value: …
+						507 text …
+						508 link Description: Page 10, Value: …
+						509 link Description: Next Page, Value: …
+	510 container
+		511 heading Footer, Value: 2
+			512 text Footer
+		513 link Description: GitHub Homepage, Value: …
+		514 text © 2026 GitHub, Inc.
+		515 container Footer
+			516 heading Footer navigation, Value: 3, ID: sr-footer-heading
+				517 text Footer navigation
+			518 content list Footer navigation
+				519 link Description: Terms, Value: …
+				520 link Description: Privacy, Value: …
+				521 link Description: Security, Value: …
+				522 link Description: Status, Value: …
+				523 link Description: Community, Value: …
+				524 link Description: Docs, Value: …
+				525 link Description: Contact, Value: …
+				526 button Manage cookies
+				527 button Do not share my personal information
+
+The focused UI element is 0 AXWebArea Prototype checks, URL: github.com/kerbermeister/voicechat/actions/workflows/prototype.yml
