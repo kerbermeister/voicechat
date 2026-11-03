@@ -1142,3 +1142,27 @@ wrong-key/ratchet recovery и физические устройства не з�
 получил обратно канонический59 с теми же account/device/history. Продуктовый
 key cache или ratchet по этому отрицательному результату не менялись.
 [Свидетельства](../iterations/repeated-group-keys-59/).
+
+
+### OPT-07, подготовка60: подтверждение состояния криптора
+
+Public E2EEManager setKeyIndex/setEnabled игнорировали false; enabled cache
+менялся до RPC. Четыре unit red и один прежний positive control подтверждены.
+Локально false теперь ошибка, enable cache подтверждается после всех живых
+bindings, включая пришедшие во время ожидания; параллельные toggle сериализованы.
+Семь адресных PASS, включая отказ, pending reply, concurrent publication и toggle.
+Это не атомарный rollback частично применённого batch: вызывающий должен считать
+ошибку неудачей операции, а не доказательством общего безопасного состояния.
+
+В реальном browser SDK wrapper возвращал true после dispose и портил cache;
+16-слотовая GCM-проба дошла до нового отрицательного assert и дала RED. Adapter
+теперь ждёт matched ACK с проверкой type/целевого значения, запрещает команды
+после начала dispose, дожидается cryptorSetup для обеих платформенных ветвей.
+Worker дополняет ScriptTransform setup ACK/error, отклоняет unknown-track
+commands и не проглатывает ошибку запуска pipe. Обе ветви GCM ScriptTransform16 slots и encoded-streams11 slots5–15 PASS,
+по8 реальных worker rejection controls. SDK/SFU Mac/Android по2 media cases и
+browser publication/reconnect PASS;770 Flutter/4skip, анализ PASS. Первый full
+с wall-clock route FAIL сохранён, isolated12 и повтор полного PASS без правок
+порога/кода. Выпуск продолжается. Epoch/membership протокол и
+отзыв/ротация не менялись. Исторический телефонный дефект этим не доказан.
+[Свидетельства](../iterations/cryptor-ack-60/).

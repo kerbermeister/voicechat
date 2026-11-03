@@ -1,0 +1,11 @@
+Browser tab: 19, Title: "127.0.0.1:17378/index.html", URL: "http://127.0.0.1:17378/index.html".
+0 AXWebArea 127.0.0.1:17378/index.html
+	1 container
+		3 container flt-semantic-node-3
+			4 heading Encrypted key epoch fixture, Value: 2, ID: flt-semantic-node-11
+				5 text Encrypted key epoch fixture
+			6 container flt-semantic-node-9
+				7 button Run encrypted probe, ID: flt-semantic-node-6
+				8 text FAIL: Bad state: Disposed cryptor reported successful state changes: {index_rejected: false, index_cache_preserved: false, enable_rejected: false, enable_cache_preserved: false}
+
+The focused UI element is 7 button Run encrypted probe, ID: flt-semantic-node-6

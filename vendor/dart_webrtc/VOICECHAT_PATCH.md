@@ -13,10 +13,18 @@ before reporting success or updating state. Filters, five-second deadlines,
 keys/ratchets/algorithms and the worker protocol are unchanged. WorkerResponse
 is re-exported from its original internal module for existing consumers.
 The actual worker remains the source from the pinned local LiveKit SDK.
-Cryptor enable/index fire-and-forget behavior is not changed by this patch.
+Cryptor setup, enable, index, codec and disposal now await a matched successful
+worker response with the same five-second deadline. State caches advance only
+after confirmation; pending/finished disposal rejects subsequent commands.
+Both ScriptTransform and encoded-stream constructors wait for setup ACK.
+The LiveKit worker supplies ScriptTransform setup ACK/errors and rejects
+commands for unknown tracks. It no longer acknowledges a failed stream setup.
 
 Regression: apps/client/integration_test/key_provider_browser_fixture.dart
 uses a real worker and deliberately removed providers; errors must propagate
 for individual/shared keys, confirmed cache must remain, a fresh provider works.
 This has no account, capture, SFU or media; separate media regressions remain
 necessary before a release.
+`key_epoch_browser_fixture.dart` additionally exercises real GCM slot changes,
+late keys, disposed/unknown cryptor commands and removed-provider constructors.
+Its loopback-only encoded-stream control does not affect production detection.

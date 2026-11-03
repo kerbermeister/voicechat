@@ -1,0 +1,11 @@
+Browser tab: 20, Title: "127.0.0.1:17380/index.html", URL: "http://127.0.0.1:17380/index.html".
+0 AXWebArea 127.0.0.1:17380/index.html
+	1 container
+		3 container flt-semantic-node-3
+			4 heading SDK encrypted publication fixture, Value: 2, ID: flt-semantic-node-11
+				5 text SDK encrypted publication fixture
+			6 container flt-semantic-node-9
+				7 button Run SDK publication probe, ID: flt-semantic-node-6
+				8 text PASS SDK_BROWSER_PUBLICATION {"platform":"real browser SDK/worker and local SFU","synthetic_canvas":true,"initial_missing_key_blocked":true,"initial_decoded_after_key":9,"old_sender_decoded_while_prepared":15,"new_sender_key_index":1,"new_publication_missing_key_blocked":true,"new_decoded_after_key":6,"same_sender_transport":true,"observer_has_decryptor":false,"observer_initial_decoded_counter":0,"observer_final_decoded_counter":0,"full_reconnect_encrypted_frames":7,"full_reconnect_recreated_sender_transport":true,"counter_alone_is_not_content_proof":true,"ratchet_defaults_changed":false,"physical_phone_tested":false,"media_saved":false}
+
+The focused UI element is 7 button Run SDK publication probe, ID: flt-semantic-node-6

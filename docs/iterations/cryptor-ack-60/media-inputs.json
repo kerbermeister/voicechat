@@ -1,0 +1,17 @@
+{
+  "source_baseline": "b7b351928a5d54433869904ac5eab1ad19910449",
+  "development_patch_after_baseline": true,
+  "worker_source": "vendor/livekit_client/web/e2ee.worker.dart",
+  "files": {
+    "vendor/dart_webrtc/lib/src/frame_cryptor_impl.dart": "cafffffa34ab2b5dd55bd96f8e8aaf7927df77fcbb6e24aa3f4b5084b25c854a",
+    "vendor/livekit_client/lib/src/e2ee/e2ee_manager.dart": "f003ed089a010eb6071b2c1bb759b04a011cd9442d2c04331a6250a49ace3b4e",
+    "vendor/livekit_client/web/e2ee.worker.dart": "f71b0c865187d066fd8678e3b5e61163402a737ac52c633379e7c847e633d76f",
+    "vendor/livekit_client/web/e2ee.frame_cryptor.dart": "2ad64011ff2d758cc1356219c651302c39ab4cd5df8e835910b086130150e1b1",
+    "apps/client/integration_test/key_epoch_probe.dart": "a5c1b9b0be1c5ca49edd7bfcd2313e6ab309cb4429f3af42d3ac2e385fc78be9",
+    "apps/client/integration_test/key_epoch_browser_fixture.dart": "44488894b8484de7486c8dad37f03d51ac77860da820a38f7290f6d38228e7a7",
+    "apps/client/integration_test/sdk_publication_browser_fixture.dart": "28dd03180a4dba499693178645bbc3590ec481de1d475e062f2ec5be247bb271",
+    "apps/client/integration_test/native_group_key_publication_test.dart": "98fe292544cea28b5a3292403c258e29405aeeceecce4850b947395d6631f220"
+  },
+  "generated_worker_sha256": "923db9f8e7c9098e8f4c1eca0ecb030328f860275aa42b21f593e2a2c1253e7d",
+  "physical_phone_tested": false
+}

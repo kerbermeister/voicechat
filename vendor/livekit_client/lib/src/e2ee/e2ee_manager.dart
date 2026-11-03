@@ -17,6 +17,7 @@ import 'dart:typed_data' show Uint8List;
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 
 import 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:synchronized/synchronized.dart';
 
 import '../core/room.dart';
 import '../events.dart';
@@ -71,6 +72,7 @@ class E2EEManager {
   Room? _room;
   final _frameCryptors = <_CryptorId, _ManagedFrameCryptor>{};
   final BaseKeyProvider _keyProvider;
+  final _stateLock = Lock();
   final Algorithm _algorithm = Algorithm.kAesGcm;
   DataPacketCryptor? _dataPacketCryptor;
   bool _enabled = true;
@@ -277,12 +279,26 @@ class E2EEManager {
   /// @param enabled true to enable, false to disable
   /// if false, the frame cryptor will pass through frames and
   /// without encryption/decryption
-  Future<void> setEnabled(bool enabled) async {
-    _enabled = enabled;
-    for (var frameCryptor in _frameCryptors.entries.toList()) {
-      if (!frameCryptor.value.isClosing) await (await frameCryptor.value.ready).setEnabled(enabled);
+  Future<void> setEnabled(bool enabled) => _stateLock.synchronized(() async {
+    final updated = <_ManagedFrameCryptor>{};
+    // A publication may arrive while a native/worker reply is pending. Include
+    // it before committing the state used to initialize subsequent cryptors.
+    while (true) {
+      final pending = _frameCryptors.values
+          .where((binding) => !binding.isClosing && !updated.contains(binding))
+          .toList();
+      if (pending.isEmpty) break;
+      for (final binding in pending) {
+        final cryptor = await binding.ready;
+        if (binding.isClosing) continue;
+        if (!await cryptor.setEnabled(enabled)) {
+          throw StateError('Frame cryptor rejected its enabled state');
+        }
+        updated.add(binding);
+      }
     }
-  }
+    _enabled = enabled;
+  });
 
   /// Sets the key index for the encryptors of the participant.
   /// @param keyIndex the key index to set
@@ -292,7 +308,11 @@ class E2EEManager {
     participantIdentity ??= _room?.localParticipant?.identity;
     for (var item in _frameCryptors.entries.toList()) {
       if (item.key.identity == participantIdentity && !item.value.isClosing) {
-        await (await item.value.ready).setKeyIndex(keyIndex);
+        final cryptor = await item.value.ready;
+        if (item.value.isClosing) continue;
+        if (!await cryptor.setKeyIndex(keyIndex)) {
+          throw StateError('Frame cryptor rejected its key index');
+        }
       }
     }
   }

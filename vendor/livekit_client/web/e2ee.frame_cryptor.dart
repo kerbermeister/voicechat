@@ -154,6 +154,9 @@ class FrameCryptor {
       logger.info('setupTransform: transform already active, skipping setup');
       return;
     }
+    if (readable.locked || writable.locked) {
+      throw StateError('Frame encryption streams are already locked');
+    }
     final transformer = web.TransformStream(
       {'transform': (operation == 'encode' ? encodeFunction.toJS : decodeFunction.toJS)}.jsify() as JSObject,
     );
@@ -171,6 +174,7 @@ class FrameCryptor {
           'error': 'Internal error: ${e.toString()}',
         });
       }
+      rethrow;
     }
     _transformIsActive = true;
     this.trackId = trackId;

@@ -71,6 +71,16 @@ void unsetDataPacketCryptorParticipant(String dataCryptorId) {
   participantDataCryptors.firstWhereOrNull((c) => c.dataCryptorId == dataCryptorId)?.unsetParticipant();
 }
 
+void rejectRequest(String? msgId) {
+  self.postMessage(
+    {
+      'msgType': 'response',
+      'msgId': msgId,
+      'error': 'Frame encryption command failed',
+    }.jsify(),
+  );
+}
+
 void main() async {
   // configure logs for debugging
   Logger.root.level = Level.WARNING;
@@ -82,7 +92,7 @@ void main() async {
 
   if (self.hasProperty('RTCTransformEvent'.toJS).toDart) {
     logger.info('setup RTCTransformEvent event handler');
-    self.onrtctransform = (web.RTCTransformEvent event) {
+    Future<void> setupScriptTransform(web.RTCTransformEvent event) async {
       logger.info('Got onrtctransform event');
       final transformer = event.transformer;
 
@@ -95,18 +105,12 @@ void main() async {
       final codec = options.getProperty('codec'.toJS) as JSString?;
       final msgType = options.getProperty('msgType'.toJS) as JSString;
       final keyProviderId = options.getProperty('keyProviderId'.toJS) as JSString;
-
-      final keyProvider = keyProviders[keyProviderId.toDart];
-
-      if (keyProvider == null) {
-        logger.warning('KeyProvider not found for $keyProviderId');
-        return;
-      }
-
-      final cryptor = getTrackCryptor(participantId.toDart, trackId.toDart, keyProvider);
-
-      unawaited(
-        cryptor.setupTransform(
+      final msgId = (options.getProperty('msgId'.toJS) as JSString).toDart;
+      try {
+        final keyProvider = keyProviders[keyProviderId.toDart];
+        if (keyProvider == null) throw StateError('Key provider is unavailable');
+        final cryptor = getTrackCryptor(participantId.toDart, trackId.toDart, keyProvider);
+        await cryptor.setupTransform(
           operation: msgType.toDart,
           readable: transformer.readable,
           writable: transformer.writable,
@@ -114,8 +118,21 @@ void main() async {
           kind: kind.toDart,
           codec: codec?.toDart,
           isReuse: false,
-        ),
-      );
+        );
+        self.postMessage(
+          {
+            'type': 'cryptorSetup',
+            'msgType': 'response',
+            'msgId': msgId,
+          }.jsify(),
+        );
+      } catch (_) {
+        rejectRequest(msgId);
+      }
+    }
+
+    self.onrtctransform = (web.RTCTransformEvent event) {
+      unawaited(setupScriptTransform(event));
     }.toJS;
   }
 
@@ -175,6 +192,7 @@ void main() async {
           final trackId = msg['trackId'] as String;
 
           final cryptors = participantCryptors.where((c) => c.trackId == trackId).toList();
+          if (cryptors.isEmpty) throw StateError('Frame cryptor is unavailable');
           for (var cryptor in cryptors) {
             logger.config('Set enable $enabled for trackId ${cryptor.trackId}');
             cryptor.setEnabled(enabled);
@@ -351,6 +369,7 @@ void main() async {
           final trackId = msg['trackId'] as String;
           logger.config('Setup key index for track $trackId');
           final cryptors = participantCryptors.where((c) => c.trackId == trackId).toList();
+          if (cryptors.isEmpty) throw StateError('Frame cryptor is unavailable');
           for (var c in cryptors) {
             logger.config('Set keyIndex for trackId ${c.trackId}');
             c.setKeyIndex(keyIndex);
@@ -444,7 +463,8 @@ void main() async {
           final trackId = msg['trackId'] as String;
           logger.config('Update codec for trackId $trackId, codec $codec');
           final cryptor = participantCryptors.firstWhereOrNull((c) => c.trackId == trackId);
-          cryptor?.updateCodec(codec);
+          if (cryptor == null) throw StateError('Frame cryptor is unavailable');
+          cryptor.updateCodec(codec);
 
           self.postMessage(
             {
@@ -638,6 +658,11 @@ void main() async {
   };
 
   self.onmessage = (web.MessageEvent e) {
-    unawaited(handleMessage(e));
+    unawaited(
+      handleMessage(e).catchError((Object _) {
+        final msg = e.data.dartify() as Map;
+        rejectRequest(msg['msgId'] as String?);
+      }),
+    );
   }.toJS;
 }

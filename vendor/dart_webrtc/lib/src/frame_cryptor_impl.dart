@@ -36,7 +36,6 @@ JSObject _transferList(JSAny? first, JSAny? second) {
   return transfer;
 }
 
-
 class FrameCryptorImpl extends FrameCryptor {
   FrameCryptorImpl(
     this._factory,
@@ -56,16 +55,26 @@ class FrameCryptorImpl extends FrameCryptor {
   final web.RTCRtpReceiver? jsReceiver;
   final FrameCryptorFactoryImpl _factory;
   final KeyProviderImpl keyProvider;
+  Future<void>? _disposing;
+
+  void _checkOpen() {
+    if (_disposing != null) throw StateError('Frame cryptor is disposed');
+  }
 
   @override
-  Future<void> dispose() async {
-    var msgId = randomString(12);
-    worker.postMessage(
-      {'msgType': 'dispose', 'msgId': msgId, 'trackId': _trackId}.jsify(),
-    );
+  Future<void> dispose() => _disposing ??= _dispose();
+
+  Future<void> _dispose() async {
     _enabled = false;
-    _factory.removeFrameCryptor(_trackId);
-    return;
+    var msgId = randomString(12);
+    try {
+      worker.postMessage(
+        {'msgType': 'dispose', 'msgId': msgId, 'trackId': _trackId}.jsify(),
+      );
+      await _factory._waitForResponse(msgId, 'cryptorDispose');
+    } finally {
+      _factory.removeFrameCryptor(this);
+    }
   }
 
   @override
@@ -81,6 +90,7 @@ class FrameCryptorImpl extends FrameCryptor {
 
   @override
   Future<bool> setEnabled(bool enabled) async {
+    _checkOpen();
     var msgId = randomString(12);
     worker.postMessage(
       {
@@ -90,12 +100,18 @@ class FrameCryptorImpl extends FrameCryptor {
         'enabled': enabled,
       }.jsify(),
     );
+    final response = await _factory._waitForResponse(msgId, 'cryptorEnabled');
+    if (response.data['enable'] != enabled) {
+      throw StateError('Frame cryptor did not confirm its enabled state');
+    }
+    _checkOpen();
     _enabled = enabled;
     return true;
   }
 
   @override
   Future<bool> setKeyIndex(int index) async {
+    _checkOpen();
     var msgId = randomString(12);
     worker.postMessage(
       {
@@ -105,12 +121,18 @@ class FrameCryptorImpl extends FrameCryptor {
         'index': index,
       }.jsify(),
     );
+    final response = await _factory._waitForResponse(msgId, 'setKeyIndex');
+    if (response.data['keyIndex'] != index) {
+      throw StateError('Frame cryptor did not confirm its key index');
+    }
+    _checkOpen();
     _keyIndex = index;
     return true;
   }
 
   @override
   Future<void> updateCodec(String codec) async {
+    _checkOpen();
     var msgId = randomString(12);
     worker.postMessage(
       {
@@ -120,6 +142,8 @@ class FrameCryptorImpl extends FrameCryptor {
         'codec': codec,
       }.jsify(),
     );
+    await _factory._waitForResponse(msgId, 'updateCodec');
+    _checkOpen();
   }
 }
 
@@ -458,6 +482,18 @@ class FrameCryptorFactoryImpl implements FrameCryptorFactory {
   final Map<String, FrameCryptor> _frameCryptors = {};
   final EventsEmitter<WorkerResponse> events = EventsEmitter<WorkerResponse>();
 
+  Future<WorkerResponse> _waitForResponse(String msgId, String type) async {
+    final response = await events.waitFor<WorkerResponse>(
+      filter: (event) => event.msgId == msgId,
+      duration: const Duration(seconds: 5),
+    );
+    response.ensureSuccess();
+    if (response.data['type'] != type) {
+      throw StateError('Unexpected frame encryption worker response');
+    }
+    return response;
+  }
+
   @override
   Future<KeyProvider> createDefaultKeyProvider(
     KeyProviderOptions options,
@@ -483,10 +519,10 @@ class FrameCryptorFactoryImpl implements FrameCryptorFactory {
 
     var trackId = jsReceiver.track.id;
     var kind = jsReceiver.track.kind;
+    final msgId = randomString(12);
 
     if (web.window.hasProperty('RTCRtpScriptTransform'.toJS).toDart) {
       print('support RTCRtpScriptTransform');
-      var msgId = randomString(12);
       var options = {
         'msgType': 'decode',
         'msgId': msgId,
@@ -512,8 +548,6 @@ class FrameCryptorFactoryImpl implements FrameCryptorFactory {
 
       var readable = insertableStreams.readable;
       var writable = insertableStreams.writable;
-      var msgId = randomString(12);
-
       try {
         worker.postMessage(
           {
@@ -535,6 +569,7 @@ class FrameCryptorFactoryImpl implements FrameCryptorFactory {
         rethrow;
       }
     }
+    await _waitForResponse(msgId, 'cryptorSetup');
     FrameCryptor cryptor = FrameCryptorImpl(
       this,
       worker,
@@ -553,14 +588,14 @@ class FrameCryptorFactoryImpl implements FrameCryptorFactory {
     required RTCRtpSender sender,
     required Algorithm algorithm,
     required KeyProvider keyProvider,
-  }) {
+  }) async {
     var jsSender = (sender as RTCRtpSenderWeb).jsRtpSender;
     var trackId = jsSender.track?.id ?? sender.senderId;
     var kind = jsSender.track!.kind;
+    final msgId = randomString(12);
 
     if (web.window.hasProperty('RTCRtpScriptTransform'.toJS).toDart) {
       print('support RTCRtpScriptTransform');
-      var msgId = randomString(12);
       var options = {
         'msgType': 'encode',
         'msgId': msgId,
@@ -588,7 +623,6 @@ class FrameCryptorFactoryImpl implements FrameCryptorFactory {
       var readable = insertableStreams.readable;
       var writable = insertableStreams.writable;
 
-      var msgId = randomString(12);
       try {
         worker.postMessage(
           {
@@ -610,6 +644,7 @@ class FrameCryptorFactoryImpl implements FrameCryptorFactory {
         rethrow;
       }
     }
+    await _waitForResponse(msgId, 'cryptorSetup');
     FrameCryptor cryptor = FrameCryptorImpl(
       this,
       worker,
@@ -623,7 +658,9 @@ class FrameCryptorFactoryImpl implements FrameCryptorFactory {
     return Future.value(cryptor);
   }
 
-  void removeFrameCryptor(String trackId) {
-    _frameCryptors.remove(trackId);
+  void removeFrameCryptor(FrameCryptorImpl cryptor) {
+    if (identical(_frameCryptors[cryptor.trackId], cryptor)) {
+      _frameCryptors.remove(cryptor.trackId);
+    }
   }
 }

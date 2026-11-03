@@ -1,0 +1,13 @@
+{
+  "result": "failed",
+  "passed": 769,
+  "skipped": 4,
+  "failed": 1,
+  "failed_test": "route_coordinator_test.dart: two hanging edges finish within the 3.5 second selection budget",
+  "expected_less_than": "0:00:03.500000",
+  "observed": "0:00:04.116092",
+  "file_unchanged_from_published59": true,
+  "full_log_sha256": "f24554c0b0e8a42abbfa14f131e51a3416f49bb06817ceff6ed9c8dbfb4bb831",
+  "threshold_relaxed": false,
+  "cause_confirmed": false
+}

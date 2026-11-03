@@ -1,0 +1,11 @@
+Browser tab: 19, Title: "127.0.0.1:17379/index.html?initial_slot=5&transform=encoded_streams", URL: "http://127.0.0.1:17379/index.html?initial_slot=5&transform=encoded_streams".
+1 AXWebArea 127.0.0.1:17379/index.html?initial_slot=5&transform=encoded_streams
+	2 container
+		4 container flt-semantic-node-3
+			5 heading Encrypted key epoch fixture, Value: 2, ID: flt-semantic-node-11
+				6 text Encrypted key epoch fixture
+			7 container flt-semantic-node-9
+				8 button Run encrypted probe, ID: flt-semantic-node-6
+				9 text PASS KEY_EPOCH_PROOF {"disposed_commands":{"index_rejected":true,"index_cache_preserved":true,"enable_rejected":true,"enable_cache_preserved":true},"initial_frames":8,"frames_while_future_key_prepared":14,"old_frames_after_receiver_index_advanced":21,"frames_after_prepared_key_activation":28,"sdk_latest_index_ahead_of_active_sender":true,"old_key_blocked":true,"frames_after_late_epoch":38,"frames_after_preinstalled_epoch":44,"last_frames":90,"initial_slot":5,"distinct_slots_activated":11,"key_slots_reused":false,"receiver_recreated":false,"ratchet_defaults_changed":false,"matrix_membership_protocol_tested":false,"worker_rejections":{"missing_index_rejected":true,"missing_index_cache_preserved":true,"missing_enable_rejected":true,"missing_enable_cache_preserved":true,"missing_codec_rejected":true,"missing_dispose_rejected":true,"missing_provider_setup_rejected":true,"missing_provider_receiver_setup_rejected":true},"transform_api":"encoded_streams"}
+
+The focused UI element is 8 button Run encrypted probe, ID: flt-semantic-node-6

@@ -28,9 +28,17 @@ published handler reuses the cryptor instead of creating another disabled one.
 - `lib/src/e2ee/key_provider.dart`: reject a false native key-installation result;
   expose a new sender slot/shared key only after successful installation. A
   rejected or delayed operation retains the last confirmed cache state.
+- Public E2EEManager state/index setters also reject a false platform result.
+  Enable changes are serialized and include publications arriving while a reply
+  is pending, before committing the state used by subsequent cryptors. A failed
+  batch is reported, not presented as an atomic rollback of already applied RPCs.
+- `web/e2ee.worker.dart`, `web/e2ee.frame_cryptor.dart`: acknowledge actual
+  ScriptTransform setup, propagate setup failures, and reject unknown-track
+  state/index/codec commands. The existing encoded-stream setup response is
+  preserved. Frame processing and key/ratchet algorithms are unchanged.
 
 AES-GCM, ratchet/failure/discard settings, media keys, leases, trust checks,
-server room rotation, codecs and protocol messages are unchanged. The AV1 guard
+server room rotation, codecs and membership protocol messages are unchanged. The AV1 guard
 is preserved. No unencrypted recovery path is added.
 
 Regression: `apps/client/integration_test/native_group_key_publication_test.dart`

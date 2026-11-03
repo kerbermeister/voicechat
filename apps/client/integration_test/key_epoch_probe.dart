@@ -245,8 +245,36 @@ Future<Map<String, Object>> runKeyEpochProbe({
           rtc.RTCPeerConnectionState.RTCPeerConnectionStateConnected,
       'Peer disconnected during key rotation',
     );
+    final disposedCommands = <String, bool>{};
+    if (kIsWeb) {
+      final previousIndex = await decryptor.keyIndex;
+      await decryptor.dispose();
+      cryptors.remove(decryptor);
+      var indexRejected = false, enableRejected = false;
+      try {
+        indexRejected = !(await decryptor.setKeyIndex(initialSlot));
+      } catch (_) {
+        indexRejected = true;
+      }
+      try {
+        enableRejected = !(await decryptor.setEnabled(true));
+      } catch (_) {
+        enableRejected = true;
+      }
+      disposedCommands.addAll({
+        'index_rejected': indexRejected,
+        'index_cache_preserved': await decryptor.keyIndex == previousIndex,
+        'enable_rejected': enableRejected,
+        'enable_cache_preserved': !(await decryptor.enabled),
+      });
+      check(
+        disposedCommands.values.every((value) => value),
+        'Disposed cryptor reported successful state changes: $disposedCommands',
+      );
+    }
     // No SDP/ICE restart, new track, cryptor or receiver was created above.
     return {
+      if (disposedCommands.isNotEmpty) 'disposed_commands': disposedCommands,
       'initial_frames': initialFrames,
       'frames_while_future_key_prepared': preparedFrames,
       'old_frames_after_receiver_index_advanced': olderFrames,

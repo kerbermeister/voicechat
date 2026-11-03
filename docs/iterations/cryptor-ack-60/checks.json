@@ -1,0 +1,31 @@
+{
+  "flutter_full": {
+    "passed": 770,
+    "skipped": 4,
+    "failed": 0,
+    "concurrency": 1,
+    "elapsed": "5m49s",
+    "log_sha256": "53c9c5932845458c106a2972c864b6381a94cbc08a6147e8908293851b7b050e"
+  },
+  "initial_full_failure_retained": "initial-suite-failure.json",
+  "isolated_route_file": {
+    "passed": 12,
+    "threshold_relaxed": false
+  },
+  "native_sdk_unit_passed": 7,
+  "version_package_python_tests_passed": 7,
+  "version_cli_passed": true,
+  "app_analyzer": "No issues found",
+  "sdk_analyzer": "No issues found",
+  "adapter_analyzer": {
+    "errors": 0,
+    "warnings": 0,
+    "preexisting_info": 9
+  },
+  "android_media_pending": false,
+  "release_pending": true,
+  "android_media_sdk_passed": true,
+  "android_cases": 2,
+  "android_runner_exit": 0,
+  "owned_media_fixture_cleanup_verified": true
+}

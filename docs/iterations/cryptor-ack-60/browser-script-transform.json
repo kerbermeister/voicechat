@@ -1,0 +1,35 @@
+{
+  "disposed_commands": {
+    "index_rejected": true,
+    "index_cache_preserved": true,
+    "enable_rejected": true,
+    "enable_cache_preserved": true
+  },
+  "initial_frames": 8,
+  "frames_while_future_key_prepared": 14,
+  "old_frames_after_receiver_index_advanced": 20,
+  "frames_after_prepared_key_activation": 26,
+  "sdk_latest_index_ahead_of_active_sender": true,
+  "old_key_blocked": true,
+  "frames_after_late_epoch": 35,
+  "frames_after_preinstalled_epoch": 42,
+  "last_frames": 124,
+  "initial_slot": 0,
+  "distinct_slots_activated": 16,
+  "frames_after_16_distinct_slots": 124,
+  "key_slots_reused": false,
+  "receiver_recreated": false,
+  "ratchet_defaults_changed": false,
+  "matrix_membership_protocol_tested": false,
+  "worker_rejections": {
+    "missing_index_rejected": true,
+    "missing_index_cache_preserved": true,
+    "missing_enable_rejected": true,
+    "missing_enable_cache_preserved": true,
+    "missing_codec_rejected": true,
+    "missing_dispose_rejected": true,
+    "missing_provider_setup_rejected": true,
+    "missing_provider_receiver_setup_rejected": true
+  },
+  "transform_api": "script_transform"
+}

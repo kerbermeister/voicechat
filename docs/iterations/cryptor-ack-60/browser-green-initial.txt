@@ -1,0 +1,11 @@
+Browser tab: 19, Title: "127.0.0.1:17379/index.html", URL: "http://127.0.0.1:17379/index.html".
+1 AXWebArea 127.0.0.1:17379/index.html
+	2 container
+		4 container flt-semantic-node-3
+			5 heading Encrypted key epoch fixture, Value: 2, ID: flt-semantic-node-11
+				6 text Encrypted key epoch fixture
+			7 container flt-semantic-node-9
+				8 button Run encrypted probe, ID: flt-semantic-node-6
+				9 text PASS KEY_EPOCH_PROOF {"disposed_commands":{"index_rejected":true,"index_cache_preserved":true,"enable_rejected":true,"enable_cache_preserved":true},"initial_frames":6,"frames_while_future_key_prepared":12,"old_frames_after_receiver_index_advanced":18,"frames_after_prepared_key_activation":25,"sdk_latest_index_ahead_of_active_sender":true,"old_key_blocked":true,"frames_after_late_epoch":36,"frames_after_preinstalled_epoch":43,"last_frames":122,"initial_slot":0,"distinct_slots_activated":16,"frames_after_16_distinct_slots":122,"key_slots_reused":false,"receiver_recreated":false,"ratchet_defaults_changed":false,"matrix_membership_protocol_tested":false}
+
+The focused UI element is 8 button Run encrypted probe, ID: flt-semantic-node-6
