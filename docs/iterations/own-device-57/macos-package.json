@@ -1,0 +1,22 @@
+{
+  "source": "bcf92e2b983b1d12bf4162960bc1ca205874f2e7",
+  "build": 57,
+  "zip_dmg_files_identical": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "bundle_id_feed_sparkle_key_match_installed56": true,
+  "physical_candidate_ui_pending": false,
+  "installed56_to57_pending": true,
+  "candidate_launched": true,
+  "keychain_copy_matching_block_confirmed": true,
+  "published": false,
+  "keychain_reset": false,
+  "profile_cleared": false,
+  "physical_candidate_ui": true,
+  "native_ui_version": "1.19.9+57",
+  "same_account_device_as_installed56": true,
+  "identity_verified_against": "Installed56 account/device individually; combined private hash also matches pre52 reference",
+  "old_history_visible": true,
+  "old_audio_played_to_end_after_candidate_launch": null,
+  "keychain_block_resolved": true
+}

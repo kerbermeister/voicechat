@@ -1,7 +1,7 @@
 # Приём на нескольких своих устройствах — кандидат57
 
-1.19.9(57), ещё не опубликован. Последний production и установленный Mac —56,
-source`c430542`. Единственная очередь пользовательской приёмки остаётся
+1.19.9(57) опубликован03.11.2026, source`bcf92e2`. Web97, Mac56→57 и Android57
+owner-preview опубликованы; проверены в описанных ниже пределах. Единственная очередь пользовательской приёмки остаётся
 [UA-04.C22/C23 и C14](../../user-acceptance.md#ua-04).
 
 Два controller red-теста на неизменном runtime56: после `acceptDirect` приглашение
@@ -50,8 +50,8 @@ push/media ×9 вариантов trust/scope/ownership), API/direct/group и SD
 8 version/package PASS. Прогон параллельно web build был остановлен при
 давлении на память/диск без результата; после удаления только восстанавливаемых
 intermediates финальный прогон выполнен отдельно с concurrency2.
-Живой трёхклиентный повтор описан ниже; подпись, публикация57 и физические
-iPhone/Xiaomi ещё не выполнены.
+Живой трёхклиентный повтор и выпуск описаны ниже. Физические iPhone/Xiaomi
+ещё не проверены.
 
 
 ## Живой повтор:56 →57
@@ -76,3 +76,44 @@ Synapse и TURN. Caller и второе устройство Bob —56, перв
 [green57](green57-callback.png). Это не акустическая оценка тишины, не аппаратный
 iPhone/Xiaomi и не потеря сети/WAN. FCM в fixture недоступен; race push claim
 answered_elsewhere отдельно проверен controller-тестом, живой claim не доказан.
+
+
+## Выпуск и установка
+
+- [Прогресс/CI](release-progress.json): CI227/228/229 SUCCESS на точном source.
+  [Web97](https://github.com/kerbermeister/voicechat/actions/runs/41579464915)
+  SUCCESS, release job16м27с. Protected backend fingerprint прежний, режим web.
+- [Production](production-verified.json): immutable digests/source, HTTPS,
+  no-cache/COOP/COEP, health, rollback pointer и401/404 границы PASS. Feed и APK
+  совпали с кандидатами. Default screen policy не менялась; существующее
+  администраторское включение на production сохранено.
+- [Mac package](macos-package.json): точный личный подписанный ZIP=DMG285 entries,
+  постоянный Sparkle key/feed/bundle ID, strict codesign.
+  [Публикация](macos-publication.json) штатным publish_macos.py и HTTPS hashes PASS.
+  [Backup56/profile](backup-before.json) до замены сверены, Keychain не менялся.
+  [Настоящий56→57](macos-installation.json): агент нажал кнопку в установленной56,
+  автоматический перезапуск57 наблюдён до любого ручного запуска. Installed285
+  entries равны пакету, account/device по отдельности прежние, приватный hash
+  совпал с pre52. Прежняя plaintext history видна; новое обновление не предлагается.
+  Старое аудио после установки57 отдельно не проигрывалось. macOS15.3.1.
+- [Android56→57](android-install.json): прежний сертификат, API35 emulator без
+  wipe, установленный APK byte-exact. [Публикация preview](android-publication.json)
+  для удалённого Xiaomi; physical_acceptance=false. Аккаунт/медиа на этом APK не
+  проверялись. Нативный RTC54 не повторён57; loopback browser57 описан выше.
+
+### Расхождение длинной baseline: ежедневный backup
+
+Первая локальная серверная baseline была снята00:40 UTC, workflow97 начался
+после04:40 UTC. Между ними systemd voicechat-core-backup.service успешно прошёл
+03:30:03→03:30:33 UTC: он остановил и поднял control/Synapse; их IDs/images/
+RestartCount прежние, StartedAt изменились. Исходная локальная baseline не
+переписывалась. Fencing/verifying proofs самого web97 в защищённом rollout journal
+совпали по всем трём core-процессам и совпадают с текущими; restart предшествовал
+fencing. Поэтому подтверждено отсутствие рестарта **во время web-выпуска**, а не
+за все четыре часа между локальными наблюдениями.
+
+Этот плановый30с перерыв — отдельный риск устойчивости (OPT-16): backup останавливает
+авторизующий control и Matrix; startup CallStore.recover ротирует комнаты.
+Активного пользовательского звонка в этот момент не наблюдалось, влияние на
+конкретный сообщённый случай не доказано. Нельзя просто отключить backup или
+ротацию/recovery: дальнейшее решение должно сохранять согласованную копию и отзыв.

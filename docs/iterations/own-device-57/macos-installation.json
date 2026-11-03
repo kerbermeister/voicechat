@@ -1,0 +1,23 @@
+{
+  "source": "bcf92e2b983b1d12bf4162960bc1ca205874f2e7",
+  "build": 57,
+  "previous_build": 56,
+  "actual_button_update": true,
+  "installed_equals_verified_zip_and_dmg": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "installed57_running_without_manual_launch": true,
+  "identity_history_latest_check_pending": false,
+  "keychain_reset": false,
+  "profile_cleared": false,
+  "backup_verified": true,
+  "installation_performed_by": "Agent clicked Check Updates and Download/Install in installed56; installed57 running observed before any manual launch",
+  "same_account": true,
+  "same_device": true,
+  "old_history_visible": true,
+  "old_audio_played_to_end_after_installation": null,
+  "installed57_version_ui": "1.19.9+57",
+  "installed57_check_updates": "No compatible updates",
+  "identity_verified_by": "Read-only native settings comparison before/after actual update; private hash also matches pre52 reference; identifiers not exported",
+  "update_channel_latest_pending": false
+}

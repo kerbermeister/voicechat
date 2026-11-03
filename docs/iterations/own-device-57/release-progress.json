@@ -1,0 +1,59 @@
+{
+  "source": "bcf92e2b983b1d12bf4162960bc1ca205874f2e7",
+  "version": "1.19.9+57",
+  "local": {
+    "flutter_pass": 746,
+    "flutter_skip": 4,
+    "analyzer": "pass",
+    "version_package_pass": 8,
+    "live_red56_green57": "pass",
+    "live_scope": "local Chromium Matrix/TURN synthetic zero audio; decline on own second device while first accepting, callback before late capture"
+  },
+  "ci": {
+    "main227": {
+      "result": "success",
+      "url": "https://github.com/kerbermeister/voicechat/actions/runs/41554514584"
+    },
+    "branch228": {
+      "result": "success",
+      "url": "https://github.com/kerbermeister/voicechat/actions/runs/41554514643"
+    },
+    "tag229": {
+      "result": "success",
+      "url": "https://github.com/kerbermeister/voicechat/actions/runs/41554542621"
+    }
+  },
+  "web": {
+    "workflow97": "https://github.com/kerbermeister/voicechat/actions/runs/41579464915",
+    "mode": "web",
+    "deploy": true,
+    "state": "success",
+    "independent_production_verification": true
+  },
+  "macos": {
+    "state": "published_and_actual56_to57_button_update_verified",
+    "zip_dmg_entries": 285,
+    "installed_previous_build": 56,
+    "candidate_ui_and_button_update_pending": false,
+    "backup_app_and_profile_hash_match": true,
+    "installed_button_update_pending": false,
+    "profile_account_device_history_preserved": true,
+    "installed_equals_zip_dmg_entries": 285
+  },
+  "android": {
+    "state": "published_owner_preview",
+    "physical_xiaomi_available": false,
+    "apk_sha256": "2fd3e87bbe8e1a147961ba97da34f8df16d692025a84177f7e225a3f46bac6fd",
+    "emulator56_to57_exact_apk": true,
+    "physical_acceptance": false
+  },
+  "hardware_media_acceptance": false,
+  "updated_unix": 1793680954,
+  "backend_observation": {
+    "unchanged_during_web_release": true,
+    "earlier_scheduled_backup_restarted_control_synapse": true,
+    "backup_start_utc": "2026-11-03 03:30:03",
+    "backup_end_utc": "2026-11-03 03:30:33",
+    "initial_local_observation": "2026-11-03 00:40 UTC"
+  }
+}
