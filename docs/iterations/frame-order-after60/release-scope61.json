@@ -1,0 +1,17 @@
+{
+  "baseline_source": "a6fd29d2c064da9772544f4ca28f8e2747050733",
+  "candidate": "1.19.13+61",
+  "functional_runtime_changes": [
+    "vendor/livekit_client/web/e2ee.frame_cryptor.dart",
+    "vendor/livekit_client/web/e2ee.audio_frame_queue.dart"
+  ],
+  "native_input_diff": [
+    "apps/client/lib/app_version.dart: version metadata only",
+    "apps/client/pubspec.yaml: version metadata only"
+  ],
+  "dependencies_and_lock_unchanged": true,
+  "native_channels_kept": "1.19.12+60",
+  "macos_android_artifacts_required": false,
+  "production_mode_required": "full",
+  "reason": "protected vendor input changes release fingerprint; no native functional change"
+}

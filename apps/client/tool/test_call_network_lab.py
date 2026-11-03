@@ -14,6 +14,14 @@ from call_network_lab import asset_path, require_local_docker, valid_marker_resu
 
 
 class AssetBoundaryTest(unittest.TestCase):
+    def test_clean_network_control_requires_markers_before_docker(self):
+        result = subprocess.run([
+            sys.executable, str(Path(__file__).with_name('call_network_lab.py')),
+            '--web-root', '/unused', '--output', '/unused', '--clean-only',
+        ], capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('--clean-only requires A/V markers', result.stderr)
+
     def test_missing_marker_modules_rejected_before_docker(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -1,0 +1,11 @@
+Browser tab: 27, Title: "127.0.0.1:17381/index.html?operation=encrypt", URL: "http://127.0.0.1:17381/index.html?operation=encrypt".
+0 AXWebArea 127.0.0.1:17381/index.html?operation=encrypt
+	1 container
+		3 container flt-semantic-node-3
+			4 heading Encrypted frame ordering fixture, Value: 2, ID: flt-semantic-node-10
+				5 text Encrypted frame ordering fixture
+			6 container flt-semantic-node-8
+				7 button (disabled) Reload to repeat, ID: flt-semantic-node-6
+				8 text FAIL FRAME_ORDER_PROOF {"fresh_worker_per_page":true,"invalid_delay_rejected":true,"transform_api":"script_transform","cases":[{"operation":"encrypt","instrumentation_valid":true,"media_probe_completed":true,"worker":{"operation":"encrypt","delayMs":500,"delayed":true,"calls":{"encrypt":214,"decrypt":140},"controllers":[{"reads":214,"writes":214,"backwardSteps":1,"largestBackwardOrdinal":8,"backwardInputTimestamps":0,"backwardOutputTimestamps":1,"returnedPromises":0,"returnedNonPromises":214},{"reads":214,"writes":140,"backwardSteps":0,"largestBackwardOrdinal":0,"backwardInputTimestamps":0,"backwardOutputTimestamps":0,"returnedPromises":0,"returnedNonPromises":214}]},"media":{"disposed_commands":{"index_rejected":true,"index_cache_preserved":true,"enable_rejected":true,"enable_cache_preserved":true},"initial_frames":8,"frames_while_future_key_prepared":15,"old_frames_after_receiver_index_advanced":21,"frames_after_prepared_key_activation":27,"sdk_latest_index_ahead_of_active_sender":true,"old_key_blocked":true,"frames_after_late_epoch":34,"frames_after_preinstalled_epoch":41,"last_frames":118,"initial_slot":0,"distinct_slots_activated":16,"frames_after_16_distinct_slots":118,"key_slots_reused":false,"receiver_recreated":false,"ratchet_defaults_changed":false,"matrix_membership_protocol_tested":false}}]}
+
+The focused UI element is 7 button (disabled) Reload to repeat, ID: flt-semantic-node-6

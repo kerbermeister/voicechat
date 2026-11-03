@@ -1,0 +1,19 @@
+{
+  "runtime_base": "a6fd29d2c064da9772544f4ca28f8e2747050733",
+  "mode": "green",
+  "input_order_instrumented": true,
+  "files": {
+    "vendor/livekit_client/web/e2ee.worker.dart": "f71b0c865187d066fd8678e3b5e61163402a737ac52c633379e7c847e633d76f",
+    "vendor/livekit_client/web/e2ee.frame_cryptor.dart": "ebed7e365cf6b33baba6e7f31689e539f12faf3d70e17eb95a58433f80397a1a",
+    "vendor/dart_webrtc/lib/src/frame_cryptor_impl.dart": "cafffffa34ab2b5dd55bd96f8e8aaf7927df77fcbb6e24aa3f4b5084b25c854a",
+    "apps/client/integration_test/cryptor_order_browser_fixture.dart": "e4633dfae915e09727009f02127468048b6dbaf1d0f5a94a62cd95abeeaf3a71",
+    "apps/client/integration_test/cryptor_order_worker.js": "5fc3690a5ea0baacdcdd492cba91d3b246570cdacf042b9e0bc5aad822d4f85c",
+    "apps/client/integration_test/key_epoch_probe.dart": "a5c1b9b0be1c5ca49edd7bfcd2313e6ab309cb4429f3af42d3ac2e385fc78be9"
+  },
+  "compiled_worker_sha256": "95434bb4c2342b247160ace55b57ff079a33cde32c418428780d8cc8a79e0290",
+  "production_modified": false,
+  "fresh_worker_per_page": true,
+  "return_value_observed_without_await_or_conversion": true,
+  "fixture_main_identical_to_red": true,
+  "fixture_main_sha256": "9da2c314e21da517014cdc13a9350518e2a5472fd4ff115a0907fd699fbbe4e8"
+}

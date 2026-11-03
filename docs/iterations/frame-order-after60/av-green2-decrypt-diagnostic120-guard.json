@@ -1,0 +1,43 @@
+{
+  "baseline_max_abs_ms": 77.3,
+  "recovery_max_abs_ms": 97.8,
+  "baseline_over80": 0,
+  "recovery_over80": 1,
+  "around_fault": [
+    [
+      8,
+      "clean",
+      43.9
+    ],
+    [
+      9,
+      "clean",
+      49.1
+    ],
+    [
+      10,
+      "clean",
+      33.3
+    ],
+    [
+      11,
+      "clean",
+      38.6
+    ],
+    [
+      12,
+      "clean",
+      44.8
+    ],
+    [
+      13,
+      "clean",
+      27.9
+    ],
+    [
+      14,
+      "clean",
+      42
+    ]
+  ]
+}

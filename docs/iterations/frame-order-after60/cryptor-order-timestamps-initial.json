@@ -1,0 +1,155 @@
+{
+  "invalid_delay_rejected": true,
+  "cases": [
+    {
+      "operation": "none",
+      "instrumentation_valid": true,
+      "media_probe_completed": true,
+      "worker": {
+        "operation": "none",
+        "delayMs": 0,
+        "delayed": false,
+        "calls": {
+          "encrypt": 219,
+          "decrypt": 374
+        },
+        "controllers": [
+          {
+            "writes": 219,
+            "backwardSteps": 0,
+            "largestBackwardStep": 0
+          },
+          {
+            "writes": 374,
+            "backwardSteps": 7,
+            "largestBackwardStep": 18180
+          }
+        ]
+      },
+      "media": {
+        "disposed_commands": {
+          "index_rejected": true,
+          "index_cache_preserved": true,
+          "enable_rejected": true,
+          "enable_cache_preserved": true
+        },
+        "initial_frames": 7,
+        "frames_while_future_key_prepared": 14,
+        "old_frames_after_receiver_index_advanced": 23,
+        "frames_after_prepared_key_activation": 30,
+        "sdk_latest_index_ahead_of_active_sender": true,
+        "old_key_blocked": true,
+        "frames_after_late_epoch": 43,
+        "frames_after_preinstalled_epoch": 49,
+        "last_frames": 125,
+        "initial_slot": 0,
+        "distinct_slots_activated": 16,
+        "frames_after_16_distinct_slots": 125,
+        "key_slots_reused": false,
+        "receiver_recreated": false,
+        "ratchet_defaults_changed": false,
+        "matrix_membership_protocol_tested": false
+      }
+    },
+    {
+      "operation": "encrypt",
+      "instrumentation_valid": true,
+      "media_probe_completed": true,
+      "worker": {
+        "operation": "encrypt",
+        "delayMs": 500,
+        "delayed": true,
+        "calls": {
+          "encrypt": 216,
+          "decrypt": 145
+        },
+        "controllers": [
+          {
+            "writes": 216,
+            "backwardSteps": 1,
+            "largestBackwardStep": 44730
+          },
+          {
+            "writes": 145,
+            "backwardSteps": 7,
+            "largestBackwardStep": 13590
+          }
+        ]
+      },
+      "media": {
+        "disposed_commands": {
+          "index_rejected": true,
+          "index_cache_preserved": true,
+          "enable_rejected": true,
+          "enable_cache_preserved": true
+        },
+        "initial_frames": 7,
+        "frames_while_future_key_prepared": 14,
+        "old_frames_after_receiver_index_advanced": 20,
+        "frames_after_prepared_key_activation": 26,
+        "sdk_latest_index_ahead_of_active_sender": true,
+        "old_key_blocked": true,
+        "frames_after_late_epoch": 35,
+        "frames_after_preinstalled_epoch": 41,
+        "last_frames": 119,
+        "initial_slot": 0,
+        "distinct_slots_activated": 16,
+        "frames_after_16_distinct_slots": 119,
+        "key_slots_reused": false,
+        "receiver_recreated": false,
+        "ratchet_defaults_changed": false,
+        "matrix_membership_protocol_tested": false
+      }
+    },
+    {
+      "operation": "decrypt",
+      "instrumentation_valid": true,
+      "media_probe_completed": true,
+      "worker": {
+        "operation": "decrypt",
+        "delayMs": 500,
+        "delayed": true,
+        "calls": {
+          "encrypt": 211,
+          "decrypt": 446
+        },
+        "controllers": [
+          {
+            "writes": 211,
+            "backwardSteps": 0,
+            "largestBackwardStep": 0
+          },
+          {
+            "writes": 446,
+            "backwardSteps": 4,
+            "largestBackwardStep": 53100
+          }
+        ]
+      },
+      "media": {
+        "disposed_commands": {
+          "index_rejected": true,
+          "index_cache_preserved": true,
+          "enable_rejected": true,
+          "enable_cache_preserved": true
+        },
+        "initial_frames": 7,
+        "frames_while_future_key_prepared": 13,
+        "old_frames_after_receiver_index_advanced": 19,
+        "frames_after_prepared_key_activation": 25,
+        "sdk_latest_index_ahead_of_active_sender": true,
+        "old_key_blocked": true,
+        "frames_after_late_epoch": 33,
+        "frames_after_preinstalled_epoch": 39,
+        "last_frames": 118,
+        "initial_slot": 0,
+        "distinct_slots_activated": 16,
+        "frames_after_16_distinct_slots": 118,
+        "key_slots_reused": false,
+        "receiver_recreated": false,
+        "ratchet_defaults_changed": false,
+        "matrix_membership_protocol_tested": false
+      }
+    }
+  ]
+}

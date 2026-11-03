@@ -1,0 +1,16 @@
+{
+  "tests": 4,
+  "passed": 4,
+  "checks": [
+    "slow_packet_does_not_hold_later_packets_and_flush_waits",
+    "normal_packets_retained",
+    "32_jobs_bound_before_start",
+    "error_reports_and_releases_job"
+  ],
+  "analyzer": "No issues found",
+  "compiled_worker": true,
+  "new_browser_variant_tested": true,
+  "video_order_gcm_cases_passed": 6,
+  "audio_encrypt_real_gcm_order_passed": true,
+  "a_v_budget_passed": false
+}

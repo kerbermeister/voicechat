@@ -1,0 +1,16 @@
+{
+  "command": "flutter test --no-pub --concurrency=1 --reporter=expanded",
+  "exit_code": 0,
+  "elapsed_seconds": 370.2,
+  "log": ".prototype/frame-order61-full-flutter.log",
+  "passed": 774,
+  "skipped": 4,
+  "log_sha256": "10e09dbd1c516280209281cf9641f73285c40a24b4b1bd037114688365b1d63e",
+  "app_analyzer": "No issues found",
+  "version_package_tests_passed": 8,
+  "version_cli": "1.19.13+61",
+  "network_lab_tests": 15,
+  "network_lab_tests_skipped": 1,
+  "transport_privacy_tests": 3,
+  "marker_decoder_tests": 3
+}

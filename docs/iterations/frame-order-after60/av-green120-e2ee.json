@@ -1,0 +1,54 @@
+{
+  "cryptors": 4,
+  "worker": {
+    "operation": "none",
+    "delayMs": 0,
+    "delayed": false,
+    "calls": {
+      "encrypt": 8692,
+      "decrypt": 8466
+    },
+    "controllers": [
+      {
+        "reads": 2458,
+        "writes": 2458,
+        "backwardSteps": 0,
+        "largestBackwardOrdinal": 0,
+        "backwardInputTimestamps": 0,
+        "backwardOutputTimestamps": 0,
+        "returnedPromises": 2458,
+        "returnedNonPromises": 0
+      },
+      {
+        "reads": 6234,
+        "writes": 6234,
+        "backwardSteps": 0,
+        "largestBackwardOrdinal": 0,
+        "backwardInputTimestamps": 0,
+        "backwardOutputTimestamps": 0,
+        "returnedPromises": 6234,
+        "returnedNonPromises": 0
+      },
+      {
+        "reads": 2448,
+        "writes": 2448,
+        "backwardSteps": 0,
+        "largestBackwardOrdinal": 0,
+        "backwardInputTimestamps": 5,
+        "backwardOutputTimestamps": 5,
+        "returnedPromises": 2448,
+        "returnedNonPromises": 0
+      },
+      {
+        "reads": 6018,
+        "writes": 6018,
+        "backwardSteps": 0,
+        "largestBackwardOrdinal": 0,
+        "backwardInputTimestamps": 2,
+        "backwardOutputTimestamps": 2,
+        "returnedPromises": 6018,
+        "returnedNonPromises": 0
+      }
+    ]
+  }
+}

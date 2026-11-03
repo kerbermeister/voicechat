@@ -1,0 +1,16 @@
+Browser tab: 48, Title: "VoiceChat synthetic A/V playout markers", URL: "http://127.0.0.1:17384/call_av_marker_fixture.html?e2ee=1&rtp=1&audio_fault=decrypt".
+0 AXWebArea VoiceChat synthetic A/V playout markers, URL: 127.0.0.1:17384/call_av_marker_fixture.html?e2ee=1&rtp=1&audio_fault=decrypt
+	1 heading Synthetic A/V playout markers, Value: 1
+		2 text Synthetic A/V playout markers
+	3 text Local TURN, synthetic canvas and encoded tones through the current product gain graph. The final test sink is silent. No account, microphone, camera or saved media. Browser timing estimates do not measure physical speaker/display latency or iPhone lip-sync.
+	4 container
+		5 text Optional  ?rtp=1 : bounded RTP counter snapshots for probes up to 300 seconds. No identifiers or network addresses are saved.
+	6 container
+		7 text Optional  ?e2ee=1 : actual SDK GCM, Opus/VP8 and individual sender keys. Prepare the Dart bridge and worker assets first. Add  &audio_fault=encrypt  or  decrypt  for one 500 ms audio crypto delay at the network-delay phase. This is a lab fault, not a production setting.
+	8 button (disabled) Run A/V marker probe, ID: run
+	9 text Outcome: setup_failed; path: product_gain; control: none; markers: 0; baseline p95: null ms; recovery p95: null ms; RTP snapshots: 0
+	10 text Setup: Deadline: video playout
+FAIL AV_MARKER_PROOF {"schema":2,"outcome":"setup_failed","control":"none","duration_seconds":120,"playout_path":"product_gain","rtp_diagnostics_requested":true,"rtp_diagnostics":[],"rtp_diagnostics_errors":0,"markers":[],"phase_changes":[],"unmatched_markers":0,"invalid_video_frames":0,"audio_base_latency_ms":5.3,"audio_output_latency_ms":24,"max_video_callback_lateness_ms":0,"baseline_p95_abs_ms":null,"recovered_p95_abs_ms":null,"physical_lip_sync_measured":false,"media_saved":false,"microphone_used":false,"test_sink_silent":true}
+	11 text E2EE_MARKER_PROOF {"cryptors":4,"worker":{"operation":"none","delayMs":0,"delayed":false,"calls":{"encrypt":0,"decrypt":0},"controllers":[]},"audio_fault":{"operation":"none","delayed":false,"matchedCalls":0,"delayMs":0},"invalid_audio_fault_rejected":true,"repeated_audio_fault_rejected":false}
+
+The focused UI element is 0 AXWebArea VoiceChat synthetic A/V playout markers, URL: 127.0.0.1:17384/call_av_marker_fixture.html?e2ee=1&rtp=1&audio_fault=decrypt

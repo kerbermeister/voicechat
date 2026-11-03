@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 import 'e2ee.keyhandler.dart';
+import 'e2ee.audio_frame_queue.dart';
 import 'e2ee.logger.dart';
 import 'e2ee.sfi_guard.dart';
 import 'e2ee.nalu_utils.dart';
@@ -157,9 +158,22 @@ class FrameCryptor {
     if (readable.locked || writable.locked) {
       throw StateError('Frame encryption streams are already locked');
     }
-    final transformer = web.TransformStream(
-      {'transform': (operation == 'encode' ? encodeFunction.toJS : decodeFunction.toJS)}.jsify() as JSObject,
-    );
+    AudioFrameQueue<JSObject>? audioQueue;
+    Future<void> process(JSObject frame, void Function(JSObject) emit) =>
+        operation == 'encode' ? encodeFunction(frame, emit) : decodeFunction(frame, emit);
+    final transform = ((JSObject frame, web.TransformStreamDefaultController controller) {
+      if (kind != 'audio') return process(frame, (output) => controller.enqueue(output)).toJS;
+      audioQueue ??= AudioFrameQueue(
+        emit: (output) => controller.enqueue(output),
+        onError: (_, _) => controller.error('Audio frame processing failed'.toJS),
+      );
+      audioQueue!.add((emit) => process(frame, emit));
+      return Future<void>.value().toJS;
+    }).toJS;
+    // Video retains dependent-frame order; audio drops late completions rather
+    // than accumulating playout delay. Flush keeps pending crypto in stream life.
+    final flush = (() => (audioQueue?.close() ?? Future<void>.value()).toJS).toJS;
+    final transformer = web.TransformStream({'transform': transform, 'flush': flush}.jsify() as JSObject);
     try {
       readable.pipeThrough(transformer as web.ReadableWritablePair).pipeTo(writable);
     } catch (e) {
@@ -272,18 +286,18 @@ class FrameCryptor {
 
   void enqueueFrame(
     JSObject frameObj,
-    web.TransformStreamDefaultController controller,
+    void Function(JSObject) emit,
     BytesBuilder buffer,
   ) {
     final jsBuffer = buffer.toBytes().buffer.toJS;
     // No need for runtime type checks; set the JS 'data' property for both audio/video frames.
     frameObj.setProperty('data'.toJS, jsBuffer);
-    controller.enqueue(frameObj);
+    emit(frameObj);
   }
 
-  void encodeFunction(
+  Future<void> encodeFunction(
     JSObject frameObj,
-    web.TransformStreamDefaultController controller,
+    void Function(JSObject) emit,
   ) async {
     try {
       if (!enabled ||
@@ -296,7 +310,7 @@ class FrameCryptor {
         if (keyOptions.discardFrameWhenCryptorNotReady) {
           return;
         }
-        controller.enqueue(frameObj);
+        emit(frameObj);
         return;
       }
 
@@ -358,7 +372,7 @@ class FrameCryptor {
       finalBuffer.add(iv);
       finalBuffer.add(frameTrailer.buffer.asUint8List());
 
-      enqueueFrame(frameObj, controller, finalBuffer);
+      enqueueFrame(frameObj, emit, finalBuffer);
 
       if (lastError != CryptorError.kOk) {
         lastError = CryptorError.kOk;
@@ -393,9 +407,9 @@ class FrameCryptor {
     }
   }
 
-  void decodeFunction(
+  Future<void> decodeFunction(
     JSObject frameObj,
-    web.TransformStreamDefaultController controller,
+    void Function(JSObject) emit,
   ) async {
     final srcFrame = readFrameInfo(frameObj);
     var ratchetCount = 0;
@@ -412,7 +426,7 @@ class FrameCryptor {
       sifGuard.recordUserFrame();
       if (keyOptions.discardFrameWhenCryptorNotReady) return;
       logger.fine('enqueuing empty dtx frame');
-      controller.enqueue(frameObj);
+      emit(frameObj);
       return;
     }
 
@@ -434,7 +448,7 @@ class FrameCryptor {
               Uint8List.fromList(srcFrame.buffer.sublist(0, srcFrame.buffer.length - (magicBytes.length + 1))),
             );
             logger.fine('decodeFunction: enqueuing silent frame src: ${srcFrame.buffer}');
-            enqueueFrame(frameObj, controller, finalBuffer);
+            enqueueFrame(frameObj, emit, finalBuffer);
             logger.fine('decodeFunction: enqueuing done');
             return;
           } else {
@@ -481,7 +495,6 @@ class FrameCryptor {
             'error': 'Missing key for track $trackId',
           });
         }
-        // controller.enqueue(frame);
         return;
       }
       var currentkeySet = initialKeySet;
@@ -572,7 +585,7 @@ class FrameCryptor {
 
       finalBuffer.add(Uint8List.fromList(srcFrame.buffer.sublist(0, headerLength)));
       finalBuffer.add(decrypted!.asUint8List());
-      enqueueFrame(frameObj, controller, finalBuffer);
+      enqueueFrame(frameObj, emit, finalBuffer);
 
       if (lastError != CryptorError.kOk) {
         lastError = CryptorError.kOk;

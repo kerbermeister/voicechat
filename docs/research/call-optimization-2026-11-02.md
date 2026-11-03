@@ -1169,3 +1169,67 @@ browser publication/reconnect PASS;770 Flutter/4skip, анализ PASS. Пер�
 Android59→60 emulator без wipe; физический телефон/A-V sync не приняты. Epoch/membership протокол и
 отзыв/ротация не менялись. Исторический телефонный дефект этим не доказан.
 [Свидетельства](../iterations/cryptor-ack-60/).
+
+
+### OPT-02/08, после60: порядок завершения frame crypto
+
+Новый UA-05.C42. На exact source60/a6fd29d transform callback объявлен void async
+и отдаётся JS через .toJS без преобразования Future в Promise. Настоящий worker
+с synthetic video/GCM: задержка результата первой encrypt на500мс даёт enqueue
+старого input ordinal после8 новых; независимый fresh-worker decrypt — после11.
+Приёмный случай завершил все16 slots/late-key controls; оба callback вернули0 JS
+Promises (207/208 non-Promise вызовов), с2 настоящими controller и valid instrumentation.
+
+Timestamp-only проба не годится для вывода о receiver: его входные timestamps
+уже могут идти назад. Измеритель теперь нумерует поступление каждого frame в
+TransformStream и отдельно считает порядок завершения; кадры/ключи/SSRC не
+записываются. Смешанный decrypt со старым worker имел3 controller и отклонён
+как invalid; каждая итоговая операция запускается в свежей странице/worker.
+В native direct-call path эта ошибка не доказана, исторический iPhone case не закрыт.
+
+Первый локальный прототип возвращает crypto Future как настоящий JS Promise,
+чтобы TransformStream ждал завершения. Green-проверки описаны ниже; он ещё не
+выпущен. AES-GCM/ключи/ratchet/discard/codec/quality не меняются. Это web worker,
+нативные SDK setters/пакеты60 не изменены.
+
+Обоснование: [WHATWG transform sequencing](https://streams.spec.whatwg.org/#ts-default-controller-perform-transform),
+[W3C encoded frame ordering](https://www.w3.org/TR/webrtc-encoded-transform/),
+[Dart Future/JS Promise conversion](https://dart.dev/interop/js-interop/js-types);
+точный Dart3.13.5 предоставляет FutureOfVoidToJSPromise.toJS.
+[Технические свидетельства](../iterations/frame-order-after60/).
+
+Локальный Promise patch прошёл6 independent Green controls: clean/encrypt/decrypt
+отдельно на ScriptTransform и encoded streams. Все callback возвращают Promise,
+0 backward input ordinal;16 slots/late-key/disposed-command guards сохранены.
+Exact fixture main/bootstrap одинаковы, изменён только SDK worker. Это не
+закрывает A/V latency: следующий контроль использует настоящий SDK GCM для
+Opus+VP8 через TURN/netem и текущий product gain. Нового выпуска пока нет.
+
+Encrypted A/V guard пока не пройден:120с same-assets pair дала57/57 markers,
+initial/recovery p95 abs69.1/51.1мс у60 и79.7/90.7мс у Promise patch (budget80).
+Отдельный audio encrypt500мс RED воспроизвёл backward ordinal24, Green0 на
+всех4 cryptors; decoded markers57/56, initial/recovery83/89.7 и206.9/115.7мс.
+206.9мс возникли до внесения fault. Это два непосеянных A/B, причинного вывода
+о стоимости Promise или причине исторического разговора нет. Fixed80 budget
+сохраняется; production/native60 прежние, новое исправление пока не публикуется.
+
+Для разделения crypto/network добавлен только opt-in lab --clean-only: все
+netem profiles delay0, без потерь/обрыва, marker labels clean. Reverse-order
+Green120с с encrypt500 дал59 markers,0 reorder, p95 initial138.4/recovery100.6мс;
+фактические qdisc drops0 проверены assertions. Соответствующий red выполняется.
+Это не прохождение impairment recovery. Runtime audio graph, codec/bitrate/
+buffer targets не менялись. Закреплённый iproute2 6.1 не поддерживает seed,
+toolchain/kernel обновление для fixed-seed матрицы не выполнено.
+[Подробные исходные отчёты и ограничения](../iterations/frame-order-after60/).
+
+Пересмотр после clean-only контроля: последовательное ожидание audio crypto
+создало около fault offsets502→398→243→100→17мс. Этот прототип отклонён до
+публикации. Green2 сохраняет последовательное video, а audio обрабатывает
+параллельно с максимум32 работами: late completion после нового emitted
+ordinal отбрасывается; flush ждёт pending jobs.4 unit PASS (normal/late/bound/
+error+close), analyzer/actual JS compile PASS. В первом actual GCM clean-only
+encrypt500120с —59 tone/video markers,4 ordered controllers, ровно один late
+audio frame dropped; возле fault43.6→152→56.2→18→11.6мс, без500мс хвоста.
+Initial/recovery p95 abs89.5/88.6мс, бюджет80 всё ещё не пройден. Red2 и
+приёмная сторона проверяются, публикации нет. Ключи/cipher/ratchet/битрейт
+прежние; это не новый adaptive audio preset и не закрытие общего lip-sync.

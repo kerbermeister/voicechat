@@ -6,6 +6,7 @@
 <h1>Synthetic A/V playout markers</h1>
 <p id="description">Local TURN, synthetic canvas and encoded tones through the current product gain graph. The final test sink is silent. No account, microphone, camera or saved media. Browser timing estimates do not measure physical speaker/display latency or iPhone lip-sync.</p>
 <p>Optional <code>?rtp=1</code>: bounded RTP counter snapshots for probes up to 300 seconds. No identifiers or network addresses are saved.</p>
+<p>Optional <code>?e2ee=1</code>: actual SDK GCM, Opus/VP8 and individual sender keys. Prepare the Dart bridge and worker assets first. Add <code>&amp;audio_fault=encrypt</code> or <code>decrypt</code> for one 500 ms audio crypto delay at the network-delay phase. This is a lab fault, not a production setting.</p>
 <button id="run" disabled>Run A/V marker probe</button>
 <div id="view"></div>
 <p id="summary"></p>

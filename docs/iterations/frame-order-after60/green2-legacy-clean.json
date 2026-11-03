@@ -1,0 +1,67 @@
+{
+  "fresh_worker_per_page": true,
+  "invalid_delay_rejected": true,
+  "transform_api": "encoded_streams",
+  "cases": [
+    {
+      "operation": "none",
+      "instrumentation_valid": true,
+      "media_probe_completed": true,
+      "worker": {
+        "operation": "none",
+        "delayMs": 0,
+        "delayed": false,
+        "calls": {
+          "encrypt": 212,
+          "decrypt": 142
+        },
+        "controllers": [
+          {
+            "reads": 212,
+            "writes": 212,
+            "backwardSteps": 0,
+            "largestBackwardOrdinal": 0,
+            "backwardInputTimestamps": 0,
+            "backwardOutputTimestamps": 0,
+            "returnedPromises": 212,
+            "returnedNonPromises": 0
+          },
+          {
+            "reads": 217,
+            "writes": 142,
+            "backwardSteps": 0,
+            "largestBackwardOrdinal": 0,
+            "backwardInputTimestamps": 0,
+            "backwardOutputTimestamps": 0,
+            "returnedPromises": 217,
+            "returnedNonPromises": 0
+          }
+        ]
+      },
+      "media": {
+        "disposed_commands": {
+          "index_rejected": true,
+          "index_cache_preserved": true,
+          "enable_rejected": true,
+          "enable_cache_preserved": true
+        },
+        "initial_frames": 8,
+        "frames_while_future_key_prepared": 14,
+        "old_frames_after_receiver_index_advanced": 20,
+        "frames_after_prepared_key_activation": 26,
+        "sdk_latest_index_ahead_of_active_sender": true,
+        "old_key_blocked": true,
+        "frames_after_late_epoch": 34,
+        "frames_after_preinstalled_epoch": 41,
+        "last_frames": 118,
+        "initial_slot": 0,
+        "distinct_slots_activated": 16,
+        "frames_after_16_distinct_slots": 118,
+        "key_slots_reused": false,
+        "receiver_recreated": false,
+        "ratchet_defaults_changed": false,
+        "matrix_membership_protocol_tested": false
+      }
+    }
+  ]
+}

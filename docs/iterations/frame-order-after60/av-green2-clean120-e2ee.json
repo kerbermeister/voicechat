@@ -1,0 +1,62 @@
+{
+  "cryptors": 4,
+  "worker": {
+    "operation": "none",
+    "delayMs": 0,
+    "delayed": false,
+    "calls": {
+      "encrypt": 8770,
+      "decrypt": 8769
+    },
+    "controllers": [
+      {
+        "reads": 2503,
+        "writes": 2503,
+        "backwardSteps": 0,
+        "largestBackwardOrdinal": 0,
+        "backwardInputTimestamps": 0,
+        "backwardOutputTimestamps": 0,
+        "returnedPromises": 2503,
+        "returnedNonPromises": 0
+      },
+      {
+        "reads": 6267,
+        "writes": 6266,
+        "backwardSteps": 0,
+        "largestBackwardOrdinal": 0,
+        "backwardInputTimestamps": 0,
+        "backwardOutputTimestamps": 0,
+        "returnedPromises": 6267,
+        "returnedNonPromises": 0
+      },
+      {
+        "reads": 6266,
+        "writes": 6266,
+        "backwardSteps": 0,
+        "largestBackwardOrdinal": 0,
+        "backwardInputTimestamps": 0,
+        "backwardOutputTimestamps": 0,
+        "returnedPromises": 6266,
+        "returnedNonPromises": 0
+      },
+      {
+        "reads": 2503,
+        "writes": 2503,
+        "backwardSteps": 0,
+        "largestBackwardOrdinal": 0,
+        "backwardInputTimestamps": 0,
+        "backwardOutputTimestamps": 0,
+        "returnedPromises": 2503,
+        "returnedNonPromises": 0
+      }
+    ]
+  },
+  "audio_fault": {
+    "operation": "encrypt",
+    "delayed": true,
+    "matchedCalls": 5191,
+    "delayMs": 500
+  },
+  "invalid_audio_fault_rejected": true,
+  "repeated_audio_fault_rejected": true
+}

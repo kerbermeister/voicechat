@@ -1,0 +1,181 @@
+{
+  "red": {
+    "audio_base_output_ms": [
+      5.3,
+      32
+    ],
+    "recovery_median_ms": 39.7,
+    "recovery_largest": [
+      [
+        30,
+        "clean",
+        55.7
+      ],
+      [
+        58,
+        "clean",
+        51.1
+      ],
+      [
+        54,
+        "clean",
+        50.7
+      ]
+    ],
+    "associated_intervals": [
+      {
+        "id": 30,
+        "profile": "clean",
+        "offset_ms": 55.7,
+        "snapshot_after_audio_output_ms": 468.4,
+        "get_stats_ms": 0.4,
+        "sender_reason": "none",
+        "video_stamp_delta_ms": 10,
+        "rtt_ms": 3.0,
+        "audio_jb_ms": 49.6,
+        "audio_target_ms": 60.0,
+        "video_jb_ms": 54.5,
+        "video_target_ms": 61.5,
+        "concealed": 0,
+        "deceleration_samples": 0,
+        "acceleration_samples": 0,
+        "lost_audio_packets": 0,
+        "dropped_video_frames": 0,
+        "video_decode_ms": 0.9,
+        "video_encode_ms": 2.4
+      },
+      {
+        "id": 54,
+        "profile": "clean",
+        "offset_ms": 50.7,
+        "snapshot_after_audio_output_ms": 468.6,
+        "get_stats_ms": 0.5,
+        "sender_reason": "none",
+        "video_stamp_delta_ms": 10,
+        "rtt_ms": 5.0,
+        "audio_jb_ms": 49.4,
+        "audio_target_ms": 60.0,
+        "video_jb_ms": 69.0,
+        "video_target_ms": 76.0,
+        "concealed": 0,
+        "deceleration_samples": 0,
+        "acceleration_samples": 0,
+        "lost_audio_packets": 0,
+        "dropped_video_frames": 0,
+        "video_decode_ms": 1.0,
+        "video_encode_ms": 1.9
+      },
+      {
+        "id": 58,
+        "profile": "clean",
+        "offset_ms": 51.1,
+        "snapshot_after_audio_output_ms": 468.6,
+        "get_stats_ms": 0.5,
+        "sender_reason": "none",
+        "video_stamp_delta_ms": 10,
+        "rtt_ms": 6.0,
+        "audio_jb_ms": 49.6,
+        "audio_target_ms": 60.0,
+        "video_jb_ms": 67.6,
+        "video_target_ms": 76.0,
+        "concealed": 0,
+        "deceleration_samples": 0,
+        "acceleration_samples": 0,
+        "lost_audio_packets": 0,
+        "dropped_video_frames": 0,
+        "video_decode_ms": 0.8,
+        "video_encode_ms": 1.9
+      }
+    ]
+  },
+  "green": {
+    "audio_base_output_ms": [
+      5.3,
+      24
+    ],
+    "recovery_median_ms": 47.95,
+    "recovery_largest": [
+      [
+        43,
+        "clean",
+        96.3
+      ],
+      [
+        31,
+        "clean",
+        90.7
+      ],
+      [
+        30,
+        "clean",
+        86.4
+      ]
+    ],
+    "associated_intervals": [
+      {
+        "id": 30,
+        "profile": "clean",
+        "offset_ms": 86.4,
+        "snapshot_after_audio_output_ms": 489.8,
+        "get_stats_ms": 0.7,
+        "sender_reason": "none",
+        "video_stamp_delta_ms": -0.3,
+        "rtt_ms": 4.0,
+        "audio_jb_ms": 124.2,
+        "audio_target_ms": 120.0,
+        "video_jb_ms": 149.6,
+        "video_target_ms": 116.3,
+        "concealed": 0,
+        "deceleration_samples": 0,
+        "acceleration_samples": 0,
+        "lost_audio_packets": 0,
+        "dropped_video_frames": 0,
+        "video_decode_ms": 1.0,
+        "video_encode_ms": 1.8
+      },
+      {
+        "id": 31,
+        "profile": "clean",
+        "offset_ms": 90.7,
+        "snapshot_after_audio_output_ms": 468.5,
+        "get_stats_ms": 0.6,
+        "sender_reason": "none",
+        "video_stamp_delta_ms": -0.3,
+        "rtt_ms": 4.0,
+        "audio_jb_ms": 124.3,
+        "audio_target_ms": 101.6,
+        "video_jb_ms": 121.6,
+        "video_target_ms": 126.0,
+        "concealed": 0,
+        "deceleration_samples": 0,
+        "acceleration_samples": 120,
+        "lost_audio_packets": 0,
+        "dropped_video_frames": 0,
+        "video_decode_ms": 0.9,
+        "video_encode_ms": 1.9
+      },
+      {
+        "id": 43,
+        "profile": "clean",
+        "offset_ms": 96.3,
+        "snapshot_after_audio_output_ms": 468.6,
+        "get_stats_ms": 0.4,
+        "sender_reason": "none",
+        "video_stamp_delta_ms": 4.7,
+        "rtt_ms": 3.0,
+        "audio_jb_ms": 104.8,
+        "audio_target_ms": 74.6,
+        "video_jb_ms": 111.9,
+        "video_target_ms": 126.0,
+        "concealed": 2040,
+        "deceleration_samples": 0,
+        "acceleration_samples": 0,
+        "lost_audio_packets": 0,
+        "dropped_video_frames": 0,
+        "video_decode_ms": 0.8,
+        "video_encode_ms": 1.4
+      }
+    ]
+  },
+  "causal_conclusion": "unknown; single uncontrolled-loss-seed pair; browser estimates, not physical lip-sync"
+}

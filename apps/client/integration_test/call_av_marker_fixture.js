@@ -1,4 +1,5 @@
 import {lowTones, highTones, markerDigits, stampBits, readStamp} from './call_av_marker.js';
+import {transportDiagnostics} from './call_transport_diagnostics.js';
 
 const result = document.querySelector('#result'), button = document.querySelector('#run');
 const elementBaseline = new URLSearchParams(location.search).get('playout') === 'element';
@@ -48,6 +49,10 @@ window.AudioContext = class extends NativeAudioContext {
   }
 };
 await import('./media_audio.js');
+// Optional lab-only encryption uses the SDK factory and exact compiled worker.
+const encrypted = new URLSearchParams(location.search).get('e2ee') === '1';
+if (encrypted) await import('./call_av_marker_e2ee.dart.js');
+const e2ee = encrypted ? window.VoiceChatMarkerE2EE : null;
 
 async function waitFor(condition) {
   const deadline = performance.now() + 15000;
@@ -77,11 +82,14 @@ button.onclick = async () => {
   let outcome = 'setup_failed', setupFailure = '';
   let recordRtp = false, rtpBusy = false, rtpErrors = 0;
   const control = new URLSearchParams(location.search).get('control') ?? 'none';
+  const audioFault = new URLSearchParams(location.search).get('audio_fault') ?? 'none';
   const round = value => Math.round(value * 10) / 10;
   const phaseAt = time => phaseChanges.findLast(phase => phase[1] <= time)?.[0] ?? 'clean';
   try {
     check(location.hostname === '127.0.0.1', 'Loopback fixture required');
     check(['none', 'audio200', 'video200'].includes(control), 'Unknown calibration control');
+    check(['none', 'encrypt', 'decrypt'].includes(audioFault) &&
+      (encrypted || audioFault === 'none'), 'Unknown audio crypto fault');
     result.textContent = 'Preparing real WebRTC and the product audio graph';
     const response = await bounded(fetch('/turn.json'), 'lab configuration');
     check(response.ok, 'Lab configuration rejected');
@@ -92,6 +100,10 @@ button.onclick = async () => {
     recordRtp = requestedRtp;
     await bounded(sourceReady, 'source audio activation');
     await bounded(sinkReady, 'receiver worklet');
+    if (encrypted) {
+      check(e2ee, 'SDK encryption bridge unavailable');
+      await bounded(e2ee.initialize(), 'SDK encryption keys');
+    }
     check(typeof receivingContext.getOutputTimestamp === 'function', 'Output clock unavailable');
     const destination = sourceContext.createMediaStreamDestination();
     const toneGains = [...lowTones, ...highTones].map(frequency => {
@@ -119,7 +131,8 @@ button.onclick = async () => {
     paint(); painter = setInterval(paint, 50);
     source = canvas.captureStream(20);
     source.addTrack(destination.stream.getAudioTracks()[0]);
-    const rtcConfig = {iceTransportPolicy:'relay', iceServers:config.iceServers};
+    const rtcConfig = {iceTransportPolicy:'relay', iceServers:config.iceServers,
+      ...(encrypted ? {encodedInsertableStreams:true} : {})};
     sender = new RTCPeerConnection(rtcConfig); receiver = new RTCPeerConnection(rtcConfig);
     const candidatesForSender = [], candidatesForReceiver = [];
     sender.onicecandidate = event => {
@@ -133,9 +146,39 @@ button.onclick = async () => {
       else candidatesForSender.push(event.candidate);
     };
     receiver.ontrack = event => { remote = event.streams[0]; };
-    for (const track of source.getTracks()) sender.addTrack(track, source);
+    for (const track of source.getTracks()) {
+      const rtpSender = sender.addTrack(track, source);
+      if (encrypted) {
+        if (track.kind === 'video') {
+          const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(row => row.mimeType === 'video/VP8');
+          check(codecs.length > 0, 'VP8 control unavailable');
+          sender.getTransceivers().find(row => row.sender === rtpSender).setCodecPreferences(codecs);
+        }
+        await bounded(e2ee.prepareSender(rtpSender), 'SDK sender encryption');
+      }
+    }
     await bounded(sender.setLocalDescription(await sender.createOffer()), 'sender description');
-    await bounded(receiver.setRemoteDescription(sender.localDescription), 'receiver description');
+    let offer = sender.localDescription;
+    if (encrypted) {
+      // The worker indexes cryptors by track ID; emulate a separate receiver.
+      let sdp = offer.sdp;
+      for (const track of source.getTracks()) {
+        check(/^[a-zA-Z0-9-]+$/.test(track.id), 'Unexpected synthetic track identifier');
+        const next = sdp.replaceAll(new RegExp(` ${track.id}(?=\\r?\\n)`, 'g'), ` receiver-${track.id}`);
+        check(next !== sdp, 'Offer track msid missing');
+        sdp = next;
+      }
+      offer = {type:offer.type, sdp};
+    }
+    await bounded(receiver.setRemoteDescription(offer), 'receiver description');
+    if (encrypted) {
+      const receivers = receiver.getReceivers();
+      check(receivers.length === 2, 'Expected audio and video receivers');
+      for (const rtpReceiver of receivers) {
+        check(!source.getTracks().some(track => track.id === rtpReceiver.track.id), 'Cryptor track collision');
+        await bounded(e2ee.prepareReceiver(rtpReceiver), 'SDK receiver encryption');
+      }
+    }
     for (const candidate of candidatesForReceiver) await receiver.addIceCandidate(candidate);
     await bounded(receiver.setLocalDescription(await receiver.createAnswer()), 'receiver answer');
     await bounded(sender.setRemoteDescription(receiver.localDescription), 'sender answer');
@@ -155,9 +198,15 @@ button.onclick = async () => {
     await bounded(video.play(), 'video playout');
     check(typeof video.requestVideoFrameCallback === 'function', 'Video presentation clock unavailable');
     await waitFor(() => video.videoWidth > 0);
-    const reports = await receiver.getStats();
-    const transport = [...reports.values()].find(report => report.type === 'transport' && report.selectedCandidatePairId);
-    const pair = reports.get(transport?.selectedCandidatePairId);
+    let reports, pair;
+    const statsDeadline = performance.now() + 15000;
+    do {
+      reports = await receiver.getStats();
+      const transport = [...reports.values()].find(report => report.type === 'transport' && report.selectedCandidatePairId);
+      pair = reports.get(transport?.selectedCandidatePairId);
+      if (pair || performance.now() >= statsDeadline) break;
+      await delay(50);
+    } while (true);
     check(pair && reports.get(pair.localCandidateId)?.candidateType === 'relay', 'Expected selected TURN relay');
     const sample = document.createElement('canvas'); sample.width = 640; sample.height = 24;
     const reader = sample.getContext('2d', {willReadFrequently:true});
@@ -256,7 +305,10 @@ button.onclick = async () => {
       const response = await fetch('/profile', {method:'POST',
         headers:{'Content-Type':'application/json','X-Lab-Key':config.lab_key}, body:JSON.stringify({profile:name})});
       check(response.ok, 'Network profile rejected');
-      phaseChanges.push([name, performance.now()]);
+      if (name === 'delay' && audioFault !== 'none') {
+        await bounded(e2ee.armAudioFault(audioFault), 'audio crypto fault');
+      }
+      phaseChanges.push([config.network_clean_only ? 'clean' : name, performance.now()]);
       level = gain;
       if (elementBaseline) baselineGain.gain.setTargetAtTime(gain, receivingContext.currentTime, .02);
       else await VoiceChatAudio.setCallVolume(remote.getAudioTracks()[0].id, gain);
@@ -269,7 +321,7 @@ button.onclick = async () => {
       ['offline', 3, 1], ['clean', config.marker_seconds - first - impaired * 2 - 3, 1]];
     for (const [name, seconds, gain] of phases) {
       await profile(name, gain);
-      result.textContent = `RUNNING: ${name}, gain ${gain * 100}%, ${markers.length} decoded markers`;
+      result.textContent = `RUNNING: ${config.network_clean_only ? 'clean network / ' : ''}${name}, gain ${gain * 100}%, ${markers.length} decoded markers`;
       await delay(seconds * 1000);
     }
     await delay(1000);
@@ -286,6 +338,20 @@ button.onclick = async () => {
     result.textContent = `FAIL: setup (${setupFailure})`;
   } finally {
     stopped = true;
+    const transportResult = document.createElement('pre');
+    transportResult.id = 'transport-result';
+    transportResult.textContent = 'TRANSPORT_SETUP_PROOF ' + JSON.stringify({
+      sender:await transportDiagnostics(sender), receiver:await transportDiagnostics(receiver),
+    });
+    document.body.append(transportResult);
+    if (encrypted && e2ee) {
+      const encryptionResult = document.createElement('pre');
+      encryptionResult.id = 'encryption-result';
+      try {
+        encryptionResult.textContent = 'E2EE_MARKER_PROOF ' + JSON.stringify(await e2ee.summary());
+      } catch (_) { encryptionResult.textContent = 'E2EE_MARKER_PROOF incomplete'; }
+      document.body.append(encryptionResult);
+    }
     clearInterval(painter);
     clearInterval(progress);
     if (frameRequest !== undefined) video?.cancelVideoFrameCallback(frameRequest);
@@ -293,6 +359,10 @@ button.onclick = async () => {
     for (const track of source?.getTracks() ?? []) track.stop();
     for (const track of remote?.getTracks() ?? []) track.stop();
     sender?.close(); receiver?.close();
+    if (encrypted && e2ee) {
+      try { await e2ee.dispose(); }
+      catch (_) { outcome = 'setup_failed'; setupFailure ||= 'SDK encryption cleanup'; }
+    }
     if (remote) VoiceChatAudio.forgetCallVolume(remote.getAudioTracks()[0].id);
     video?.pause(); video?.remove();
     baselineSource?.disconnect(); baselineGain?.disconnect();

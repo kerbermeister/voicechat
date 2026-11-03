@@ -4,6 +4,46 @@ OPT-02/14, только тестовые файлы. Обычный клиент
 профиль владельца и сеть Mac не меняются. Нужны локальный Docker с Unix socket,
 toolchain проекта и внутренний браузер. Стенд сам браузер не запускает.
 
+Для содержимого зашифрованного A/V есть opt-in `?e2ee=1&rtp=1` у
+`call_av_marker_fixture.html`. Перед запуском скопировать стандартные marker assets
+и точный product `media_audio.js` в отдельный web-root; затем из корня репозитория:
+
+```sh
+mkdir -p /tmp/voicechat-av-web/worker-av
+cp apps/client/integration_test/call_av_marker*.js apps/client/integration_test/call_av_marker_fixture.html apps/client/integration_test/call_transport_diagnostics.js apps/client/web/media_audio.js /tmp/voicechat-av-web/
+dart compile js --packages=apps/client/.dart_tool/package_config.json -DDART_WEBRTC_WEB_WORKER_PREFIX=worker-av/ apps/client/integration_test/call_av_marker_e2ee.dart -o /tmp/voicechat-av-web/call_av_marker_e2ee.dart.js -m
+dart compile js --packages=apps/client/.dart_tool/package_config.json vendor/livekit_client/web/e2ee.worker.dart -o /tmp/voicechat-av-web/e2ee.worker.dart.js -m
+cp apps/client/integration_test/cryptor_av_worker.js /tmp/voicechat-av-web/worker-av/e2ee.worker.dart.js
+cp apps/client/integration_test/cryptor_order_worker.js /tmp/voicechat-av-web/cryptor_order_worker.js
+python3 apps/client/tool/call_network_lab.py --web-root /tmp/voicechat-av-web --output /tmp/voicechat-av-result.json --marker-seconds 120
+```
+
+Использовать закреплённый Dart проекта. Bridge подключает настоящую SDK factory,
+4 cryptors, случайные32-byte individual keys и discard-unready; до SDP ждёт ACK.
+Receiver msid различается только внутри loopback fixture. Отчёт A/V на сервере
+сохраняет прежнюю строгую schema2; отдельный `E2EE_MARKER_PROOF` в UI содержит
+только cryptor/crypto/order counters. Сохранить оба отчёта и SHA всех ассетов.
+При A/B main/bridge/bootstrap/контент обязаны совпасть; меняется только compiled
+SDK worker. Нельзя сравнивать только enabled-флаги без decoded tone/video markers.
+`TRANSPORT_SETUP_PROOF` до закрытия peers сохраняет только allowlisted connection/
+ICE states, candidate types и counters. getStats ограничен2с на peer; raw IDs,
+адреса, credentials/SDP и тела media не сериализуются. Три privacy/failure tests:
+`node --test apps/client/tool/test_call_transport_diagnostics.mjs`.
+
+Дополнительный `&audio_fault=encrypt` или `decrypt` задерживает ровно один
+настоящий WebCrypto audio result на500мс в начале delay-фазы, сохраняя bytes.
+`audio_fault.delayed=true` и matchedCalls>0 обязательны для валидной пробы.
+Новый arm не сбрасывает ordinals уже летящих кадров; повторный/неизвестный arm
+отклоняется. Каждый прогон — свежая страница/worker. Синтетический sink остаётся
+беззвучным; это не физический iPhone/Xiaomi lip-sync и не Matrix membership.
+
+`--clean-only` разрешён только для A/V markers: все сетевые этапы используют
+netem delay0 без потерь/обрыва, marker phase labels остаются `clean`. Длительности
+и gain-переходы прежние; audio fault по-прежнему применяется в начале второго
+временного этапа. Это позволяет отделить crypto stall от случайной потери пакетов.
+Фактические profiles и qdisc counters сохраняются; такой прогон не доказывает
+восстановление после настоящего сетевого обрыва.
+
 Из корня репозитория:
 
 ```sh
@@ -184,7 +224,7 @@ PASS, когда netem не действует. Фактические samples �
 
 ```sh
 mkdir -p .prototype/call-av-marker-web
-cp apps/client/integration_test/call_av_marker*.js apps/client/integration_test/call_av_marker_fixture.html apps/client/web/media_audio.js .prototype/call-av-marker-web/
+cp apps/client/integration_test/call_av_marker*.js apps/client/integration_test/call_av_marker_fixture.html apps/client/integration_test/call_transport_diagnostics.js apps/client/web/media_audio.js .prototype/call-av-marker-web/
 python3 apps/client/tool/call_network_lab.py --web-root .prototype/call-av-marker-web --output .prototype/av-marker-short.json --marker-seconds 60
 ```
 

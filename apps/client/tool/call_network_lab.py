@@ -133,23 +133,29 @@ def main():
     parser.add_argument('--transport', choices=('udp', 'tcp'), default='udp')
     parser.add_argument('--direction', choices=('both', 'incoming', 'outgoing'), default='both')
     parser.add_argument('--marker-seconds', type=int, help='Run synthetic A/V playout markers for 60–3600 seconds')
+    parser.add_argument('--clean-only', action='store_true', help='A/V control without network impairment')
     args = parser.parse_args()
     if not 1024 <= args.port <= 65535:
         parser.error('Use an unprivileged port')
     if args.direction != 'both' and args.transport != 'udp':
         parser.error('Directional feedback checks currently require UDP')
     marker = args.marker_seconds is not None
+    if args.clean_only and not marker:
+        parser.error('--clean-only requires A/V markers')
     if marker and (not 60 <= args.marker_seconds <= 3600 or args.direction != 'both'):
         parser.error('A/V markers require 60–3600 seconds and direction both')
     lifetime = args.marker_seconds + 120 if marker else 900
     directional = args.direction != 'both'
     profiles = {**PROFILES, 'loss': ['loss', '15%' if directional else '2%']}
+    if args.clean_only:
+        profiles = {name: ['delay', '0ms'] for name in PROFILES}
     web_root = args.web_root.resolve()
     required = 'call_av_marker_fixture.html' if marker else 'main.dart.js'
     if not (web_root / required).is_file():
         parser.error('Prepare the selected browser fixture first')
     marker_sources = ('call_av_marker_fixture.html', 'call_av_marker_fixture.js',
-                      'call_av_marker.js', 'call_av_marker_worklet.js', 'media_audio.js')
+                      'call_av_marker.js', 'call_av_marker_worklet.js',
+                      'call_transport_diagnostics.js', 'media_audio.js')
     if marker and any(asset_path(web_root, '/' + name) is None for name in marker_sources):
         parser.error('Prepare all A/V marker assets first')
     fixture_hashes = ({name: hashlib.sha256((web_root / name).read_bytes()).hexdigest()
@@ -300,7 +306,8 @@ def main():
                                 'username': username, 'credential': password,
                             }]} if directional else {}),
                             'lab_key': nonce, 'profile': current,
-                            **({'marker_seconds': args.marker_seconds} if marker else {}),
+                            **({'marker_seconds': args.marker_seconds,
+                                'network_clean_only': args.clean_only} if marker else {}),
                         })
                     path = asset_path(web_root, self.path)
                     if path is None:
