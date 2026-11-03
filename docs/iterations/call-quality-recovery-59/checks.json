@@ -1,0 +1,22 @@
+{
+  "source": "b7b351928a5d54433869904ac5eab1ad19910449",
+  "web99": {
+    "run": 41602842372,
+    "success": true
+  },
+  "ci233_branch": {
+    "run": 41602753478,
+    "success": true
+  },
+  "ci234_main": {
+    "run": 41605175531,
+    "success": true
+  },
+  "ci235_tag": {
+    "run": 41605175715,
+    "success": true
+  },
+  "all_channels_published": true,
+  "macos_58_to59_update_verified": true,
+  "physical_phone_tested": false
+}

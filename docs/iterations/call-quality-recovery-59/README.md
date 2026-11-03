@@ -68,7 +68,8 @@ assertions disposal/pause/resize/ICE restart также PASS. [Asset hashes](ren
 [WEB99](https://github.com/kerbermeister/voicechat/actions/runs/41602842372)
 SUCCESS15m12s; [CI233](https://github.com/kerbermeister/voicechat/actions/runs/41602753478)
 SUCCESS15m42s. Main и тег указывают на тот же проверенный source. Автоматические
-CI main/tag ещё выполняются; runtime не пересобирался ради изменения документации.
+[CI234 main](https://github.com/kerbermeister/voicechat/actions/runs/41605175531) и
+[CI235 tag](https://github.com/kerbermeister/voicechat/actions/runs/41605175715) SUCCESS; runtime не пересобирался ради изменения документации.
 [Независимая production-проверка](production-verified.json): core58/fingerprint
 прежние, web59/digests/HTTPS/rollback/data identity PASS. Все nonweb контейнеры,
 включая control/Synapse/PostgreSQL, сохранили ID/StartedAt/RestartCount. Обычный

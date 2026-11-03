@@ -1110,3 +1110,21 @@ entries/account/device/history; Android58→59 emulator exact APK без wipe.
 Независимые HTTPS/digests/rollback PASS, nonweb процессы прежние. Историческая причина
 телефонных spikes не доказана. [Свидетельство](../iterations/call-quality-recovery-59/),
 единственная приёмка — UA-04.C32.
+
+
+### OPT-02/08: RTP-корреляция, после59
+
+Тестовый bounded schema2 sampler и offline summary не меняют приложение.
+Первый60с дал26 markers/RTP snapshots, initial/recovery p95 abs102/65мс;
+повтор27/27 —83.4/159.4мс;120с57/57 —135.2/86мс. Все budget_exceeded при прежнем80мс.
+getStats errors0, max3.1мс. В чистом120с marker3/135.2мс совпал с ростом interval
+audio buffer39.2→84.2мс/target23.6→81.4, concealed2040/deceleration480;
+RTT2мс/packet loss0/video drops0 и encode/decode1.3/0.6мс. Это корреляция,
+не установление исторической причины. Краткий arrival/scheduling jitter не
+исключается малой sampled RTT. Дистанция video stamp≤10.7мс, но output/display
+estimate и позднее чтение counters сохраняют погрешность. CONTROL через общий
+MediaElementAudioSource не распознал markers (0), непригоден для A/B; production
+на него не переключали.14 live guards,14 unit/1skip,4 summary tests/Node3 PASS.
+Дальнейшая очередь остаётся H01/H06/UA-08/09, включая физический marker и E2EE;
+никакой fixed компенсацией или ослаблением критерия их не закрываем.
+[Протокол/свидетельства](../iterations/call-av-markers-2026-11-03/#rtp-корреляция-после-выпуска59).

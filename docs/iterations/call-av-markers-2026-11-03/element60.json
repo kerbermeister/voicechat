@@ -1,0 +1,108 @@
+{
+  "synthetic_media": true,
+  "physical_lip_sync_measured": false,
+  "transport": "TURN UDP",
+  "namespace_only": true,
+  "fixture_sha256": {
+    "call_av_marker_fixture.html": "2325ba516f39dda536117f0edcc917e9ab306cd07b99241d61998eac84c92361",
+    "call_av_marker_fixture.js": "0d55e10f17a203375647576a88b51c3af090e6f1d1e40013e62fb7c6375635d6",
+    "call_av_marker.js": "726a0d7a60f54b4d6e0523c17b70efaed166e1ac6947b6aa1cc3cb283273b110",
+    "call_av_marker_worklet.js": "41f90390e85eb2c122df9d8d09282f8995cc6b5f060dd472b368bf2226bebc2b",
+    "media_audio.js": "ae152bc3e5dc8c69e089b8d0d175562a0a8fca84a17133c391786d6c247c640d",
+    "lab_server": "69e42fd28fe518ec0392c2d2e6d610364bcb74824bba9e37068d6fdc972051e9"
+  },
+  "profiles": {
+    "clean": [
+      "delay",
+      "0ms"
+    ],
+    "delay": [
+      "delay",
+      "40ms"
+    ],
+    "loss": [
+      "loss",
+      "2%"
+    ],
+    "offline": [
+      "loss",
+      "100%"
+    ]
+  },
+  "qdiscs": [
+    {
+      "profile": "clean",
+      "lo": "qdisc netem 800d: root refcnt 2 limit 1000\n Sent 39715 bytes 80 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "eth0": "qdisc netem 800e: root refcnt 5 limit 1000\n Sent 60623 bytes 122 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n"
+    },
+    {
+      "profile": "clean",
+      "lo": "qdisc netem 800d: root refcnt 2 limit 1000\n Sent 1356747 bytes 2375 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "eth0": "qdisc netem 800e: root refcnt 5 limit 1000\n Sent 1380279 bytes 2409 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n"
+    },
+    {
+      "profile": "delay",
+      "lo": "qdisc netem 800d: root refcnt 2 limit 1000 delay 40ms\n Sent 2100450 bytes 3774 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 250b 3p requeues 0\n",
+      "eth0": "qdisc netem 800e: root refcnt 5 limit 1000 delay 40ms\n Sent 2125062 bytes 3805 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 4199b 7p requeues 0\n"
+    },
+    {
+      "profile": "loss",
+      "lo": "qdisc netem 800d: root refcnt 2 limit 1000 loss 2%\n Sent 3115789 bytes 5460 pkt (dropped 39, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "eth0": "qdisc netem 800e: root refcnt 5 limit 1000 loss 2%\n Sent 3155950 bytes 5493 pkt (dropped 23, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n"
+    },
+    {
+      "profile": "offline",
+      "lo": "qdisc netem 800d: root refcnt 2 limit 1000 loss 100%\n Sent 3155287 bytes 5520 pkt (dropped 373, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "eth0": "qdisc netem 800e: root refcnt 5 limit 1000 loss 100%\n Sent 3167262 bytes 5515 pkt (dropped 31, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n"
+    },
+    {
+      "profile": "clean",
+      "lo": "qdisc netem 800d: root refcnt 2 limit 1000\n Sent 5265972 bytes 9141 pkt (dropped 405, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "eth0": "qdisc netem 800e: root refcnt 5 limit 1000\n Sent 5288598 bytes 9129 pkt (dropped 44, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n"
+    }
+  ],
+  "result": {
+    "schema": 2,
+    "outcome": "insufficient_markers",
+    "control": "none",
+    "duration_seconds": 60,
+    "playout_path": "element_source_baseline",
+    "rtp_diagnostics_requested": true,
+    "rtp_diagnostics": [],
+    "rtp_diagnostics_errors": 0,
+    "markers": [],
+    "phase_changes": [
+      [
+        "clean",
+        5479.545000001788
+      ],
+      [
+        "delay",
+        21047.41000000015
+      ],
+      [
+        "loss",
+        31640.31500000134
+      ],
+      [
+        "offline",
+        42564.22500000149
+      ],
+      [
+        "clean",
+        46137.02500000037
+      ]
+    ],
+    "unmatched_markers": 0,
+    "invalid_video_frames": 0,
+    "audio_base_latency_ms": 5.3,
+    "audio_output_latency_ms": 32,
+    "max_video_callback_lateness_ms": 0,
+    "baseline_p95_abs_ms": null,
+    "recovered_p95_abs_ms": null,
+    "physical_lip_sync_measured": false,
+    "media_saved": false,
+    "microphone_used": false,
+    "test_sink_silent": true
+  }
+}

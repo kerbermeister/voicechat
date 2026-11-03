@@ -225,3 +225,61 @@ Python boundary suite выше, в том числе с `CALL_NETWORK_LAB_ORIGIN
 Run. После правки JS скопировать assets и перезагрузить страницу; hot reload нет.
 Ctrl+C удаляет только свой namespace. Стенд не заменяет Matrix/group E2EE,
 физические iPhone/Xiaomi, seeded burst/reorder/rate и внешний lip-sync.
+
+### Корреляция A/V с RTP-счётчиками
+
+Для отдельного короткого прогона (не более300с) добавить к URL `?rtp=1`.
+После сопоставленного маркера читаются настоящие sender/receiver getStats;
+одновременно допускается один запрос, всего не более150 снимков. Никакого
+изменения jitter target, caps, Opus, gain или кадров для этого не выполняется.
+Параллельные тяжёлые задачи на Mac не запускать. Это корреляция с браузерной
+оценкой, а не самостоятельное доказательство причины или физического lip-sync.
+
+Новые отчёты имеют schema2; сервер сохраняет поддержку schema1. Дополнительные
+поля: `rtp_diagnostics_requested`, `rtp_diagnostics_errors`, `rtp_diagnostics`.
+Каждая строка последнего массива содержит:
+
+1. ID маркера, начало getStats в performance clock (мс), длительность запроса (мс).
+2. Массив14 входящих audio counters, затем такой же video-массив: packetsReceived,
+   packetsLost, jitter, jitterBufferDelay, jitterBufferEmittedCount,
+   jitterBufferTargetDelay, concealedSamples, totalSamplesReceived,
+   insertedSamplesForDeceleration, removedSamplesForAcceleration, framesDecoded,
+   framesDropped, totalDecodeTime, totalProcessingDelay. Недоступное — null.
+3. Массив исходящего video: framesEncoded, framesSent, totalEncodeTime,
+   frameWidth, frameHeight, framesPerSecond.
+4. Массив selected pair: currentRoundTripTime, availableOutgoingBitrate;
+   затем фиксированная категория qualityLimitationReason или null.
+
+Строка имеет8 элементов: первые3 числа,4 массива и категория. Новые снимки
+добавляют девятым числом source-time distance ближайшего video stamp от маркера
+в мс (abs≤80); прежние8-элементные строки читаются с distance=null. IDs RTP/SSRC,
+IP, SDP, URL, ключи и содержимое медиа не сохраняются. Общая граница POST500000байт
+не повышена; типы, число/длина строк, уникальность marker ID, конечность чисел
+и категории проверяются сервером. Counter delta вычисляется только при наличии
+обоих значений и неотрицательном росте; при reset интервал пропускается. Средняя
+задержка jitter buffer за интервал —1000 × delta(delay)/delta(emittedCount),
+не lifetime average и не физическая задержка. Определения:
+[W3C RTCStats](https://www.w3.org/TR/webrtc-stats/#dom-rtcinboundrtpstreamstats-jitterbufferdelay).
+
+Контроль `?rtp=1&playout=element` направляет audio общего video element через
+MediaElementAudioSourceNode/Gain в тот же беззвучный worklet sink. Источник
+перехватывается до play(), прямого аппаратного тона нет. Это отдельный baseline,
+не product gain: `playout_path=element_source_baseline`, описание и summary явно
+помечены CONTROL. Обычный режим записывает `playout_path=product_gain`; старые
+schema2 без этого необязательного поля относятся к прежнему product probe.
+Если браузер выдаёт тишину для srcObject/MediaElementSource, результат сохраняется
+как insufficient_markers; такой контроль нельзя считать измеренным lip-sync.
+Нет автоматической смены пути реального приложения. Снимок RTP приходит после
+распознавания всех4 символов: по clock явно сохраняется его фактическое время,
+он не совпадает с первым аудиосимволом (в первом пробном прогоне на450–490мс позже).
+
+Читаемая сводка и проверки её расчётов:
+
+```sh
+python3 apps/client/tool/summarize_av_markers.py .prototype/av-marker-short.json > .prototype/av-marker-summary.json
+python3 -m unittest discover -s apps/client/tool -p test_av_marker_summary.py
+```
+
+Сводка также считает decode/encode time за интервал. Counter reset, missing и
+нулевой denominator дают null. Не сравнивать эти интервальные средние с точным
+моментом первого символа: завершение распознавания и getStats происходят позже.

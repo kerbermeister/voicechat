@@ -1,6 +1,10 @@
 import {lowTones, highTones, markerDigits, stampBits, readStamp} from './call_av_marker.js';
 
 const result = document.querySelector('#result'), button = document.querySelector('#run');
+const elementBaseline = new URLSearchParams(location.search).get('playout') === 'element';
+const playoutPath = elementBaseline ? 'element_source_baseline' : 'product_gain';
+if (elementBaseline) document.querySelector('#description').textContent =
+  'CONTROL: combined media element audio source, bypassing product gain for comparison. Local synthetic media only; the final worklet sink is silent. No physical lip-sync measurement.';
 const NativeAudioContext = window.AudioContext || window.webkitAudioContext;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 class FixtureError extends Error {}
@@ -66,11 +70,12 @@ button.onclick = async () => {
   const sourceContext = new NativeAudioContext();
   const sourceReady = sourceContext.resume(); // Preserve the trusted activation.
   void VoiceChatAudio.resume();
-  let config, source, remote, video, painter, progress, frameRequest, sender, receiver;
-  const oscillators = [], phaseChanges = [], markers = [], pending = [], frames = [];
+  let config, source, remote, video, painter, progress, frameRequest, sender, receiver, baselineSource, baselineGain;
+  const oscillators = [], phaseChanges = [], markers = [], pending = [], frames = [], rtp = [];
   const seen = new Set();
   let invalidFrames = 0, unmatched = 0, stopped = false, level = 1, sourceStart, maxCallbackLateness = 0;
   let outcome = 'setup_failed', setupFailure = '';
+  let recordRtp = false, rtpBusy = false, rtpErrors = 0;
   const control = new URLSearchParams(location.search).get('control') ?? 'none';
   const round = value => Math.round(value * 10) / 10;
   const phaseAt = time => phaseChanges.findLast(phase => phase[1] <= time)?.[0] ?? 'clean';
@@ -82,6 +87,9 @@ button.onclick = async () => {
     check(response.ok, 'Lab configuration rejected');
     config = await response.json();
     check(Number.isInteger(config.marker_seconds), 'Marker lab required');
+    const requestedRtp = new URLSearchParams(location.search).get('rtp') === '1';
+    check(!requestedRtp || config.marker_seconds <= 300, 'RTP diagnostics require at most 300 seconds');
+    recordRtp = requestedRtp;
     await bounded(sourceReady, 'source audio activation');
     await bounded(sinkReady, 'receiver worklet');
     check(typeof receivingContext.getOutputTimestamp === 'function', 'Output clock unavailable');
@@ -135,8 +143,15 @@ button.onclick = async () => {
     await waitFor(() => remote?.getAudioTracks().length === 1 && remote?.getVideoTracks().length === 1);
     video = document.createElement('video'); video.playsInline = true;
     video.srcObject = remote; document.querySelector('#view').append(video);
-    await VoiceChatAudio.setCallVolume(remote.getAudioTracks()[0].id, 1);
-    check(video.muted && graphs.size === 1, 'Expected one silent instrumented gain path');
+    if (elementBaseline) {
+      // Redirect element audio before play() so the control cannot reach hardware.
+      baselineSource = receivingContext.createMediaElementSource(video);
+      baselineGain = receivingContext.createGain();
+      baselineSource.connect(baselineGain); baselineGain.connect(receivingContext.destination);
+    } else {
+      await VoiceChatAudio.setCallVolume(remote.getAudioTracks()[0].id, 1);
+    }
+    check((elementBaseline || video.muted) && graphs.size === 1, 'Expected one silent instrumented gain path');
     await bounded(video.play(), 'video playout');
     check(typeof video.requestVideoFrameCallback === 'function', 'Video presentation clock unavailable');
     await waitFor(() => video.videoWidth > 0);
@@ -146,6 +161,34 @@ button.onclick = async () => {
     check(pair && reports.get(pair.localCandidateId)?.candidateType === 'relay', 'Expected selected TURN relay');
     const sample = document.createElement('canvas'); sample.width = 640; sample.height = 24;
     const reader = sample.getContext('2d', {willReadFrequently:true});
+
+    const inboundFields = ['packetsReceived', 'packetsLost', 'jitter', 'jitterBufferDelay',
+      'jitterBufferEmittedCount', 'jitterBufferTargetDelay', 'concealedSamples', 'totalSamplesReceived',
+      'insertedSamplesForDeceleration', 'removedSamplesForAcceleration', 'framesDecoded', 'framesDropped',
+      'totalDecodeTime', 'totalProcessingDelay'];
+    const outboundFields = ['framesEncoded', 'framesSent', 'totalEncodeTime',
+      'frameWidth', 'frameHeight', 'framesPerSecond'];
+    const values = (report, fields) => fields.map(field =>
+      Number.isFinite(report?.[field]) ? report[field] : null);
+    async function sampleRtp(id, stampDelta) {
+      if (!recordRtp || stopped || rtpBusy || rtp.length >= 150) return;
+      rtpBusy = true;
+      const started = performance.now();
+      try {
+        const [received, sent] = await Promise.all([receiver.getStats(), sender.getStats()]);
+        if (stopped) return;
+        const inbound = kind => [...received.values()].find(row => row.type === 'inbound-rtp' && row.kind === kind);
+        const outbound = [...sent.values()].find(row => row.type === 'outbound-rtp' && row.kind === 'video');
+        const transport = [...sent.values()].find(row => row.type === 'transport' && row.selectedCandidatePairId);
+        const pair = sent.get(transport?.selectedCandidatePairId);
+        const reason = outbound?.qualityLimitationReason;
+        rtp.push([id, round(started), round(performance.now() - started),
+          values(inbound('audio'), inboundFields), values(inbound('video'), inboundFields),
+          values(outbound, outboundFields), values(pair, ['currentRoundTripTime', 'availableOutgoingBitrate']),
+          ['none', 'cpu', 'bandwidth', 'other'].includes(reason) ? reason : null, round(stampDelta)]);
+      } catch (_) { if (!stopped) rtpErrors++; }
+      finally { rtpBusy = false; }
+    }
 
     function matchMarkers() {
       for (let i = pending.length - 1; i >= 0; i--) {
@@ -157,6 +200,7 @@ button.onclick = async () => {
             const videoTime = closest.displayMs + marker.sourceMs - closest.sourceMs;
             markers.push([marker.id, phaseAt(marker.audioMs), round(marker.audioMs - videoTime),
               round(marker.audioMs), round(videoTime), round(marker.sourceMs), marker.level]);
+            void sampleRtp(marker.id, closest.sourceMs - marker.sourceMs);
             pending.splice(i, 1);
             continue;
           }
@@ -214,8 +258,9 @@ button.onclick = async () => {
       check(response.ok, 'Network profile rejected');
       phaseChanges.push([name, performance.now()]);
       level = gain;
-      await VoiceChatAudio.setCallVolume(remote.getAudioTracks()[0].id, gain);
-      check(video.muted && graphs.size === 1, 'Duplicate or missing audio path');
+      if (elementBaseline) baselineGain.gain.setTargetAtTime(gain, receivingContext.currentTime, .02);
+      else await VoiceChatAudio.setCallVolume(remote.getAudioTracks()[0].id, gain);
+      check((elementBaseline || video.muted) && graphs.size === 1, 'Duplicate or missing audio path');
     }
     const first = config.marker_seconds >= 600 ? Math.floor(config.marker_seconds / 6) :
       config.marker_seconds >= 90 ? 20 : 15;
@@ -249,13 +294,16 @@ button.onclick = async () => {
     for (const track of remote?.getTracks() ?? []) track.stop();
     sender?.close(); receiver?.close();
     if (remote) VoiceChatAudio.forgetCallVolume(remote.getAudioTracks()[0].id);
-    video?.remove();
+    video?.pause(); video?.remove();
+    baselineSource?.disconnect(); baselineGain?.disconnect();
     const baseLatency = receivingContext?.baseLatency, outputLatency = receivingContext?.outputLatency;
     await Promise.allSettled([sourceContext.close(), receivingContext?.close()]);
     if (config) {
       const baseline = markers.filter(row => row[3] < (phaseChanges[1]?.[1] ?? 0));
       const recovered = markers.filter(row => row[3] >= (phaseChanges.at(-1)?.[1] ?? Infinity) + 5000);
-      const proof = {schema:1, outcome, control, duration_seconds:config.marker_seconds,
+      const proof = {schema:2, outcome, control, duration_seconds:config.marker_seconds,
+        playout_path:playoutPath,
+        rtp_diagnostics_requested:recordRtp, rtp_diagnostics:rtp, rtp_diagnostics_errors:rtpErrors,
         markers:markers.sort((a, b) => a[0] - b[0]), phase_changes:phaseChanges,
         unmatched_markers:unmatched + pending.length, invalid_video_frames:invalidFrames,
         audio_base_latency_ms:Number.isFinite(baseLatency) ? round(baseLatency * 1000) : null,
@@ -269,9 +317,9 @@ button.onclick = async () => {
         const response = await fetch('/marker-result', {method:'POST',
           headers:{'Content-Type':'application/json','X-Lab-Key':config.lab_key}, body:JSON.stringify(proof)});
         check(response.ok, 'Marker report rejected');
-        document.querySelector('#summary').textContent = `Outcome: ${outcome}; control: ${control}; ` +
+        document.querySelector('#summary').textContent = `Outcome: ${outcome}; path: ${playoutPath}; control: ${control}; ` +
           `markers: ${markers.length}; baseline p95: ${proof.baseline_p95_abs_ms} ms; ` +
-          `recovery p95: ${proof.recovered_p95_abs_ms} ms`;
+          `recovery p95: ${proof.recovered_p95_abs_ms} ms; RTP snapshots: ${rtp.length}`;
         result.textContent = (setupFailure ? `Setup: ${setupFailure}\n` : '') +
           `${outcome === 'pass' ? 'PASS' : 'FAIL'} AV_MARKER_PROOF ` + JSON.stringify(proof);
       } catch (_) { result.textContent = 'FAIL: fixture could not save the marker report'; }

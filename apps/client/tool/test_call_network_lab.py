@@ -111,6 +111,60 @@ class MarkerResultTest(unittest.TestCase):
         data = self.result(); data['markers'][1] = data['markers'][0]
         self.assertFalse(valid_marker_result(data, 60))
 
+    def diagnostics(self):
+        data = self.result()
+        data.update(schema=2, rtp_diagnostics_requested=True, rtp_diagnostics_errors=0,
+                    rtp_diagnostics=[[0, 1000, 2, [0] * 14, [0] * 14, [0] * 6, [None, 1000000], 'none']])
+        return data
+
+    def test_rtp_diagnostics_accept_only_bounded_counter_arrays(self):
+        self.assertTrue(valid_marker_result(self.diagnostics(), 60))
+        for field, value in [('rtp_diagnostics_requested', 1), ('rtp_diagnostics_requested', False),
+                             ('rtp_diagnostics_errors', True), ('rtp_diagnostics_errors', 151),
+                             ('rtp_diagnostics', self.diagnostics()['rtp_diagnostics'] * 151)]:
+            with self.subTest(field=field):
+                data = self.diagnostics(); data[field] = value
+                self.assertFalse(valid_marker_result(data, 60))
+        data = self.diagnostics(); data['duration_seconds'] = 3600
+        self.assertFalse(valid_marker_result(data, 3600))
+        data = self.diagnostics(); data['rtp_diagnostics'].append(data['rtp_diagnostics'][0])
+        self.assertFalse(valid_marker_result(data, 60))
+
+    def test_rtp_diagnostics_reject_identity_media_and_nonfinite_fields(self):
+        for index, value in [(0, True), (0, 30), (0, 29), (1, -1), (2, float('inf')),
+                             (3, ['private'] * 14), (4, [float('nan')] * 14),
+                             (5, [0] * 7), (6, [True, 0]), (7, 'private')]:
+            with self.subTest(index=index):
+                data = self.diagnostics(); data['rtp_diagnostics'][0][index] = value
+                self.assertFalse(valid_marker_result(data, 60))
+        data = self.diagnostics(); data['device_id'] = 'private'
+        self.assertFalse(valid_marker_result(data, 60))
+
+    def test_playout_comparison_is_explicit_and_has_no_arbitrary_metadata(self):
+        for path in ('product_gain', 'element_source_baseline'):
+            data = self.diagnostics(); data['playout_path'] = path
+            self.assertTrue(valid_marker_result(data, 60))
+        for path in ('private', None, True, {}):
+            data = self.diagnostics(); data['playout_path'] = path
+            self.assertFalse(valid_marker_result(data, 60))
+        data = self.result(); data['playout_path'] = 'product_gain'
+        self.assertFalse(valid_marker_result(data, 60))
+
+    def test_optional_video_stamp_distance_stays_inside_the_matching_budget(self):
+        for value in (-80, 12.5, 80):
+            data = self.diagnostics(); data['rtp_diagnostics'][0].append(value)
+            self.assertTrue(valid_marker_result(data, 60))
+        for value in (81, -81, True, float('nan'), 'private'):
+            data = self.diagnostics(); data['rtp_diagnostics'][0].append(value)
+            self.assertFalse(valid_marker_result(data, 60))
+
+    def test_schema2_without_diagnostics_keeps_the_standard_marker_path(self):
+        data = self.diagnostics()
+        data.update(rtp_diagnostics_requested=False, rtp_diagnostics=[], rtp_diagnostics_errors=0)
+        self.assertTrue(valid_marker_result(data, 60))
+        data['schema'] = 3
+        self.assertFalse(valid_marker_result(data, 60))
+
     def test_failed_measurement_can_be_saved_without_claiming_pass(self):
         data = self.result(); data['outcome'] = 'insufficient_markers'; data['markers'] = []
         data['baseline_p95_abs_ms'] = None; data['recovered_p95_abs_ms'] = None
@@ -166,6 +220,11 @@ class LiveApiBoundaryTest(unittest.TestCase):
         for body in (b'{}', b'{"token":"must-not-be-stored"}'):
             with self.subTest(marker_body=body):
                 self.assertEqual(status('/marker-result', headers, body), 400)
+        if config.get('marker_seconds', 301) <= 300:
+            invalid = MarkerResultTest().diagnostics()
+            invalid['duration_seconds'] = config['marker_seconds']
+            invalid['rtp_diagnostics'][0].append(81)
+            self.assertEqual(status('/marker-result', headers, json.dumps(invalid).encode()), 400)
         with urlopen(origin + '/turn.json', timeout=5) as response:
             self.assertEqual(json.load(response)['profile'], config['profile'])
 

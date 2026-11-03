@@ -37,7 +37,14 @@ def valid_marker_result(data, duration):
               'invalid_video_frames', 'baseline_p95_abs_ms', 'recovered_p95_abs_ms', 'phase_changes',
               'audio_base_latency_ms', 'audio_output_latency_ms', 'max_video_callback_lateness_ms',
               'physical_lip_sync_measured', 'media_saved', 'microphone_used', 'test_sink_silent'}
-    if (set(data) != fields or type(data['schema']) is not int or data['schema'] != 1 or
+    schema = data.get('schema')
+    if schema == 2:
+        fields |= {'rtp_diagnostics_requested', 'rtp_diagnostics', 'rtp_diagnostics_errors'}
+        if 'playout_path' in data:
+            fields.add('playout_path')
+            if data['playout_path'] not in ('product_gain', 'element_source_baseline'):
+                return False
+    if (set(data) != fields or type(schema) is not int or schema not in (1, 2) or
             type(data['duration_seconds']) is not int or data['duration_seconds'] != duration or
             data['outcome'] not in ('pass', 'budget_exceeded', 'insufficient_markers', 'setup_failed') or
             data['control'] not in ('none', 'audio200', 'video200') or
@@ -46,6 +53,27 @@ def valid_marker_result(data, duration):
         return False
     def number(value):
         return type(value) in (int, float) and abs(value) <= 1e12 and math.isfinite(value)
+    if schema == 2:
+        rows = data['rtp_diagnostics']
+        requested = data['rtp_diagnostics_requested']
+        errors = data['rtp_diagnostics_errors']
+        if (type(requested) is not bool or not isinstance(rows, list) or len(rows) > 150 or
+                type(errors) is not int or not 0 <= errors <= 150 or
+                (requested and duration > 300) or (not requested and (rows or errors))):
+            return False
+        seen_rtp = set()
+        for row in rows:
+            if (not isinstance(row, list) or len(row) not in (8, 9) or type(row[0]) is not int or
+                    not 0 <= row[0] < math.ceil(duration / 2) or row[0] in seen_rtp or
+                    not number(row[1]) or row[1] < 0 or not number(row[2]) or row[2] < 0 or
+                    row[7] not in (None, 'none', 'cpu', 'bandwidth', 'other') or
+                    (len(row) == 9 and (not number(row[8]) or abs(row[8]) > 80))):
+                return False
+            for counters, size in zip(row[3:7], (14, 14, 6, 2)):
+                if (not isinstance(counters, list) or len(counters) != size or
+                        any(value is not None and not number(value) for value in counters)):
+                    return False
+            seen_rtp.add(row[0])
     if any(type(data[key]) is not int or not 0 <= data[key] <= 1000000
            for key in ('unmatched_markers', 'invalid_video_frames')):
         return False
@@ -65,6 +93,8 @@ def valid_marker_result(data, duration):
                 not all(number(value) for value in row[2:]) or not 0 <= row[6] <= 3):
             return False
         seen.add(row[0])
+    if schema == 2 and not seen_rtp <= seen:
+        return False
     phases = data['phase_changes']
     if (not isinstance(phases, list) or len(phases) > 10 or any(
             not isinstance(row, list) or len(row) != 2 or not isinstance(row[0], str) or
