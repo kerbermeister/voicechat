@@ -1,6 +1,6 @@
 # Подтверждение создания и состояния крипторов
 
-03.11.2026, кандидат1.19.12(60), после опубликованного59. Единственная очередь
+03.11.2026, опубликован1.19.12(60), после опубликованного59. Единственная очередь
 пользовательской приёмки — [UA-05.C40](../../user-acceptance.md#ua-05).
 Новый membership/key-epoch протокол не включён; это его обязательная предпосылка,
 а не установленная причина исторических сбоев на iPhone/Xiaomi.
@@ -68,8 +68,8 @@ Native counters после запуска сами по себе не доказ
 
 App analyzer и SDK worker/manager analyzer чисты; adapter сохраняет9 прежних
 upstream info без ошибок/предупреждений.7 Python version/package unit и
-check-version CLI PASS. Повтор полного Flutter:770 PASS/4skip; Android SDK тоже PASS, выпуск продолжается.
-Ни production web, ни установленный macOS ещё не заменены на60.
+check-version CLI PASS. Повтор полного Flutter:770 PASS/4skip; Android SDK тоже PASS. Выпуск завершён ниже.
+Production web и нативные каналы60 опубликованы, установленный Mac обновлён59→60.
 
 AES-GCM, ключи, ratchet/discard, доверие, отзыв, room rotation, codec и quality
 сохранены. Физические iPhone Safari/PWA/Xiaomi, acoustic lip-sync и membership
@@ -93,3 +93,52 @@ VoiceChat_KeyEpoch35; исходные assertions/deadlines и настройк�
 [Запись отказа](initial-suite-failure.json) сохранена; изолированно тот же файл
 прошёл12/12. Повтор полного набора без изменения runtime/test прошёл770/4skip за5м49с. Причина единственного
 превышения по текущим данным не установлена, автоматически «flake» не объявлена.
+
+
+## Выпуск и независимая проверка
+
+Runtime source `a6fd29d2c064da9772544f4ca28f8e2747050733`, tag
+`app-v1.19.12+60`. Защищённый vendor потребовал штатный full; baseline fingerprint
+`0cdb16638d0f78350d31ab135b7eaf7e66a766fbbe0eccb324361235943bc933`.
+[FULL100](https://github.com/kerbermeister/voicechat/actions/runs/41619538044)
+SUCCESS19м24с; [CI236/tag](https://github.com/kerbermeister/voicechat/actions/runs/41619467186),
+[CI237/branch](https://github.com/kerbermeister/voicechat/actions/runs/41619467627),
+[CI238/main](https://github.com/kerbermeister/voicechat/actions/runs/41619467692) SUCCESS.
+
+[Production](production-verified.json): core/edge commit и digests совпали,
+rollback pointer точно прежний59, data identity сохранена, все службы healthy
+с0 restart count. Актуальный main и worker проверены по HTTPS и реальным
+контейнерам, новые ACK/ошибки присутствуют. no-cache/COOP/COEP, worker/wasm200,
+приватные пути404, неавторизованные call API401. Оба нативных manifest/feed
+совпали с проверенными пакетами. Это full: перезапуск core допустим и не
+выдаётся за неизменность процессов WEB99. Перед подготовкой было0 активных leases.
+
+Mac [пакеты](macos-package.json): строгая подпись, одинаковые285 файлов/ссылок
+ZIP/DMG, bundle ID/feed/постоянный Sparkle key сохранены. Точный кандидат60
+прошёл About и account/device/старую QA-историю без запроса Keychain. До него
+[backup59](macos-backup.json):285 app entries/332 profile entries сверены,
+Keychain не менялся. [Публикация](macos-publication.json) штатным publish_macos:
+HTTPS feed и полные ZIP/DMG hashes совпали; процессы не изменились во время
+публикации. [Установка59→60](macos-installation.json) штатной кнопкой:
+[автоматический relaunch](macos-auto-relaunch.json) увиден по новому PID/plist60
+до getApp. После —285 exact entries/codesign, прежние account/device/history,
+длина прежнего draft и About60/latest-check PASS. Открытие старого аудио после
+обновления отдельно не проверялось. Native UI в фоне иногда требовал Tab,
+чтобы отобразить результат AX-действия; системные подтверждения не обходились.
+Первое120с окно наблюдения закончилось на59% download; установка завершилась
+автоматически за315с от pre-click записи. Это не ошибка/повтор установки.
+
+Android [upgrade59→60](android-upgrade.json): исходный сертификат,
+точный APK установлен без wipe на отдельном VoiceChat_Push_GMS35, аккаунт там
+не сравнивался. [Preview опубликован](android-publication.json) по прежнему
+разрешению владельца для удалённого Xiaomi. HTTPS manifest/полный APK hash
+совпали, процессы и managed pointer при публикации сохранены. Physical acceptance
+остаётся false; APK release media call на физическом телефоне не проводился.
+
+APK SHA256: `3af1101b31af97ed232d24c34521e4120e0a213fa3bc0276bc4a9714fa078669`.
+ZIP SHA256: `830caac38cce79ab4d36deb04a52f56ebf6351e7c12ccf3afec5f8db6f91693b`.
+DMG SHA256: `84c9ab613572be686de26e9ba213b0b72c2d1e7f4475b479e8312aa4185411fd`.
+
+Физические iPhone/Xiaomi, конечная A/V-синхронизация, membership epochs и
+непрерывность daily backup не закрыты этим выпуском. Технические свидетельства
+не образуют новую пользовательскую очередь; актуальные условия — в UA-реестре.

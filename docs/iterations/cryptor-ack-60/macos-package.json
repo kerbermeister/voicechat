@@ -1,0 +1,15 @@
+{
+  "source": "a6fd29d2c064da9772544f4ca28f8e2747050733",
+  "build": 60,
+  "zip_dmg_files_identical": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "bundle_id_feed_sparkle_key_match_installed59": true,
+  "physical_candidate_ui_pending": false,
+  "installed59_to60_pending": true,
+  "physical_candidate_ui": true,
+  "same_account_device_as_installed59": true,
+  "old_history_visible": true,
+  "about_version_60_visible": true,
+  "keychain_prompt_required": false
+}

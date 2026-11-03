@@ -5,7 +5,7 @@
 сохранены в [статусе реализации](implementation-status.md) и `iterations/`.
 `1.0.0+1` было техническим номером прототипа, без подтверждённого production-выпуска.
 
-## 1.19.12 (сборка 60) — кандидат03.11.2026
+## 1.19.12 (сборка 60) — опубликован03.11.2026
 
 ### Что нового
 
@@ -23,7 +23,12 @@ SDK/SFU на Mac/Android (по2 случая) и browser PASS: публикац�
 full reconnect.770 Flutter PASS/4skip, app/SDK analyzer и7 version/package
 unit + check-version CLI PASS. Первый full дал один wall-clock FAIL неизменённого
 route test (4.116с при3.5с); isolated12 PASS и повтор полного набора PASS без
-изменения порога/кода. Сборка и выпуск продолжаются.
+изменения порога/кода. FULL100/CI236–238 SUCCESS; production commits/digests,
+health/data identity/rollback/HTTPS проверены. Оба нативных канала60 опубликованы;
+Mac59→60 кнопкой с автоматическим relaunch,285 exact entries, прежними
+account/device/history и latest-check PASS. Android59→60 emulator без wipe.
+Source/tag `app-v1.19.12+60`: `a6fd29d2c064da9772544f4ca28f8e2747050733`.
+APK SHA256: `3af1101b31af97ed232d24c34521e4120e0a213fa3bc0276bc4a9714fa078669`.
 Версии зависимостей, AES-GCM, ratchet, доверие, room rotation и настройки качества
 сохранены. Новый протокол membership epochs не включён. Это не доказанная причина
 исторических сбоев iPhone; физические устройства и A/V sync остаются открытыми.

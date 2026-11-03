@@ -23,9 +23,30 @@
     "preexisting_info": 9
   },
   "android_media_pending": false,
-  "release_pending": true,
+  "release_pending": false,
   "android_media_sdk_passed": true,
   "android_cases": 2,
   "android_runner_exit": 0,
-  "owned_media_fixture_cleanup_verified": true
+  "owned_media_fixture_cleanup_verified": true,
+  "source": "a6fd29d2c064da9772544f4ca28f8e2747050733",
+  "full100": {
+    "run": 41619538044,
+    "success": true,
+    "duration": "19m24s"
+  },
+  "ci236_tag": {
+    "run": 41619467186,
+    "success": true
+  },
+  "ci237_branch": {
+    "run": 41619467627,
+    "success": true
+  },
+  "ci238_main": {
+    "run": 41619467692,
+    "success": true
+  },
+  "all_channels_60_published": true,
+  "macos_59_to60_in_app_update_verified": true,
+  "physical_phone_tested": false
 }

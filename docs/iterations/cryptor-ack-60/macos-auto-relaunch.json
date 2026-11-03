@@ -1,0 +1,14 @@
+{
+  "before_pid": 45489,
+  "before_build": 59,
+  "expected_build": 60,
+  "recorded_at_unix": 1793702293,
+  "automatic_relaunch_observed": true,
+  "initial_observation_window_seconds": 120,
+  "initial_window_expired_during_download": true,
+  "observed_download_progress_after_window": 59,
+  "after_pid": 48221,
+  "after_build": 60,
+  "observed_at_unix": 1793702608,
+  "automatic_relaunch_observed_before_get_app": true
+}

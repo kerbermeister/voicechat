@@ -1163,6 +1163,9 @@ commands и не проглатывает ошибку запуска pipe. Об
 по8 реальных worker rejection controls. SDK/SFU Mac/Android по2 media cases и
 browser publication/reconnect PASS;770 Flutter/4skip, анализ PASS. Первый full
 с wall-clock route FAIL сохранён, isolated12 и повтор полного PASS без правок
-порога/кода. Выпуск продолжается. Epoch/membership протокол и
+порога/кода. FULL100/CI236–238 SUCCESS, source a6fd29d; web и нативные каналы60
+опубликованы. Независимые production/HTTPS/digests/rollback PASS; Mac59→60
+кнопкой,285 exact entries, прежние account/device/history/latest-check PASS.
+Android59→60 emulator без wipe; физический телефон/A-V sync не приняты. Epoch/membership протокол и
 отзыв/ротация не менялись. Исторический телефонный дефект этим не доказан.
 [Свидетельства](../iterations/cryptor-ack-60/).
