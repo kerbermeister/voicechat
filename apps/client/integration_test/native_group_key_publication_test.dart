@@ -74,6 +74,12 @@ Future<Map<String, Object>> probePublication({required bool pinned}) async {
   final bob = encryptedRoom(
     lk.RoomOptions(encryption: lk.E2EEOptions(keyProvider: receivingKeys)),
   );
+  final receiverCryptoStates = <String>[];
+  final receiverEvents = bob.createListener()
+    ..on<lk.TrackE2EEStateEvent>((event) {
+      receiverCryptoStates.add(event.state.name);
+      if (receiverCryptoStates.length > 16) receiverCryptoStates.removeAt(0);
+    });
   // An observer without a decryptor must never decode plaintext camera frames.
   final observer = lk.Room();
   const channel = MethodChannel('FlutterWebRTC.Method');
@@ -148,6 +154,22 @@ Future<Map<String, Object>> probePublication({required bool pinned}) async {
       if (frames > before + 5) return frames;
       await Future<void>.delayed(const Duration(milliseconds: 200));
     }
+    final reports = await track.receiver!.getStats();
+    // No addresses, keys or SDP: retain enough evidence to separate a key
+    // installation/ratchet failure from a decoder waiting for a keyframe.
+    // ignore: avoid_print
+    print(
+      'SDK_DECODE_STALL_DIAGNOSTIC ${jsonEncode({
+        'crypto_states': receiverCryptoStates,
+        'sender_index': await alice.e2eeManager!.getKeyIndex('alice'),
+        'receiver_index': await bob.e2eeManager!.getKeyIndex('alice'),
+        'native_keys_equal': base64Encode(await sendingKeys.exportKey('alice', 0)) == base64Encode(await receivingKeys.exportKey('alice', 0)),
+        'rtp': reports.where((report) => report.type == 'inbound-rtp' || report.type == 'codec').map((report) => {
+          for (final field in ['framesReceived', 'framesDecoded', 'framesDropped', 'keyFramesDecoded', 'packetsReceived', 'bytesReceived', 'pliCount', 'nackCount', 'decoderImplementation', 'mimeType'])
+            if (report.values[field] != null) field: report.values[field],
+        }).toList(),
+      })}',
+    );
     throw StateError('SDK video did not decode after $before frames');
   }
 
@@ -338,6 +360,7 @@ Future<Map<String, Object>> probePublication({required bool pinned}) async {
     }
     await alice.dispose();
     await bob.dispose();
+    await receiverEvents.dispose();
     await observer.dispose();
     await sendingKeys.keyProvider.dispose();
     await receivingKeys.keyProvider.dispose();

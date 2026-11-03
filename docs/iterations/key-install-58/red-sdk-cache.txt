@@ -1,0 +1,107 @@
+Resolving dependencies...
+Downloading packages...
+  archive 4.5.2 (4.6.0 available)
+  asn1lib 1.6.5 (1.6.8 available)
+  async 2.13.0 (2.13.1 available)
+  camera 0.12.1 (0.12.2 available)
+  camera_android_camerax 0.7.5+1 (0.7.6+1 available)
+  camera_avfoundation 0.10.3+1 (0.11.1 available)
+  camera_web 0.3.5+6 (0.3.5+7 available)
+  clock 1.1.2 (1.1.3 available)
+  cross_file 0.3.5+5 (0.4.0 available)
+! crypto 3.0.7 from path ../../vendor/crypto (overridden)
+  flutter_lints 5.0.0 (6.0.0 available)
+  lints 5.1.1 (6.1.0 available)
+  markdown 7.3.0 (7.3.1 available)
+  material_color_utilities 0.13.0 (0.13.1 available)
+  mobile_scanner 7.4.2 (7.4.3 available)
+  path_provider 2.1.5 (2.1.6 available)
+  path_provider_android 2.2.19 (2.3.1 available)
+  path_provider_foundation 2.4.2 (2.6.0 available)
+  path_provider_linux 2.2.1 (2.2.2 available)
+  path_provider_platform_interface 2.1.2 (2.1.3 available)
+  petitparser 7.0.2 (7.1.0 available)
+  platform 3.1.6 (3.2.0 available)
+  posix 6.5.2 (6.5.4 available)
+  qr 3.0.2 (4.0.1 available)
+  sdp_transform 0.3.2 (0.4.0 available)
+  shared_preferences 2.5.3 (2.5.6 available)
+  shared_preferences_android 2.4.13 (2.5.4 available)
+  shared_preferences_foundation 2.5.4 (2.6.1 available)
+  shared_preferences_platform_interface 2.4.1 (2.4.2 available)
+  source_span 1.10.1 (1.10.2 available)
+  sqflite 2.4.2 (2.4.5 available)
+  sqflite_android 2.4.1 (2.4.5 available)
+  sqflite_darwin 2.4.2 (2.4.4+1 available)
+  sqflite_platform_interface 2.4.0 (2.4.3 available)
+  sqlite3 3.7.1 (3.8.0 available)
+  stack_trace 1.12.1 (1.12.2 available)
+  test_api 0.7.12 (0.7.15 available)
+  vector_math 2.4.3 (2.4.4 available)
+  video_player_avfoundation 2.12.1 (2.12.3 available)
+  vm_service 15.0.0 (15.4.0 available)
+  web 1.1.1 (1.1.2 available)
+  xml 6.6.1 (7.1.0 available)
+Got dependencies!
+41 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading /Users/anton/IdeaProjects/VoiceChat/apps/client/test/key_provider_installation_test.dart
+00:00 +0: Sender index advances only after native key installation succeeds
+00:00 +0 -1: Sender index advances only after native key installation succeeds [E]
+  Expected: <0>
+    Actual: <1>
+
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/key_provider_installation_test.dart 47:7       main.<fn>
+
+00:00 +0 -1: Native key false preserves the last successful sender index
+00:00 +0 -2: Native key false preserves the last successful sender index [E]
+  Expected: throws <Instance of 'StateError'>
+    Actual: <Instance of 'Future<void>'>
+     Which: emitted <null>
+
+  package:matcher                                    expectLater
+  package:flutter_test/src/widget_tester.dart 507:8  expectLater
+  test/key_provider_installation_test.dart 64:13     main.<fn>
+  ===== asynchronous gap ===========================
+  dart:async                                         _CustomZone.registerUnaryCallback
+  test/key_provider_installation_test.dart 59:7      main.<fn>
+
+00:00 +0 -2: Native key exception preserves the last successful sender index
+00:00 +0 -3: Native key exception preserves the last successful sender index [E]
+  Expected: <0>
+    Actual: <1>
+
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/key_provider_installation_test.dart 68:7       main.<fn>
+
+00:00 +0 -3: Raw key installation preserves bytes, participant and slot
+00:00 +1 -3: Pending shared key is not reported as installed
+00:00 +1 -4: Pending shared key is not reported as installed [E]
+  Expected: null
+    Actual: [110, 101, 119, 32, 107, 101, 121]
+
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/key_provider_installation_test.dart 91:7       main.<fn>
+
+00:00 +1 -4: Failed shared key preserves the last successfully installed key
+00:00 +1 -5: Failed shared key preserves the last successfully installed key [E]
+  Expected: [112, 114, 101, 118, 105, 111, 117, 115, 32, 107, 101, 121]
+    Actual: [110, 101, 119, 32, 107, 101, 121]
+     Which: at location [0] is <110> instead of <112>
+
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/key_provider_installation_test.dart 105:5      main.<fn>
+
+00:00 +1 -5: Some tests failed.
+
+Failing tests:
+  /Users/anton/IdeaProjects/VoiceChat/apps/client/test/key_provider_installation_test.dart: Failed shared key preserves the last successfully installed key
+  /Users/anton/IdeaProjects/VoiceChat/apps/client/test/key_provider_installation_test.dart: Native key exception preserves the last successful sender index
+  /Users/anton/IdeaProjects/VoiceChat/apps/client/test/key_provider_installation_test.dart: Native key false preserves the last successful sender index
+  /Users/anton/IdeaProjects/VoiceChat/apps/client/test/key_provider_installation_test.dart: Pending shared key is not reported as installed
+  /Users/anton/IdeaProjects/VoiceChat/apps/client/test/key_provider_installation_test.dart: Sender index advances only after native key installation succeeds

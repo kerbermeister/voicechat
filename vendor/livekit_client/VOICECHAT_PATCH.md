@@ -25,6 +25,9 @@ published handler reuses the cryptor instead of creating another disabled one.
 - `lib/src/core/engine.dart`, `lib/src/utils.dart`: inactive copies of initial
   encodings with all bitrate, frame rate, RID and scalability options preserved.
 - `lib/src/core/room.dart`: release cryptors after RTP transports stop.
+- `lib/src/e2ee/key_provider.dart`: reject a false native key-installation result;
+  expose a new sender slot/shared key only after successful installation. A
+  rejected or delayed operation retains the last confirmed cache state.
 
 AES-GCM, ratchet/failure/discard settings, media keys, leases, trust checks,
 server room rotation, codecs and protocol messages are unchanged. The AV1 guard

@@ -1,0 +1,2 @@
+# Follow the existing client rules without adding upstream dev-only dependencies.
+include: ../../apps/client/analysis_options.yaml

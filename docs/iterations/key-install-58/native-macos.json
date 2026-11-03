@@ -1,0 +1,32 @@
+{
+  "platform": "native macOS15.3.1",
+  "runs": [
+    {
+      "case": "false",
+      "confirmed_slot_preserved": true,
+      "retry_or_delayed_confirmation_succeeded": true,
+      "native_export_matches": true,
+      "media_opened": false
+    },
+    {
+      "case": "exception",
+      "confirmed_slot_preserved": true,
+      "retry_or_delayed_confirmation_succeeded": true,
+      "native_export_matches": true,
+      "media_opened": false
+    },
+    {
+      "case": "pending",
+      "confirmed_slot_preserved": true,
+      "retry_or_delayed_confirmation_succeeded": true,
+      "native_export_matches": true,
+      "media_opened": false
+    }
+  ],
+  "source_base": "bcf92e2",
+  "source_modified": true,
+  "key_provider_sha256": "6f1c1009c6be9840a856ccd1e14cab25ebbbe0ac70bd19e9885358ed4e30f7a3",
+  "fixture_sha256": "0216475896a11ba3e7be07a355077c58ffeb91a5dc3f3c691b8435b14c7491a0",
+  "foreground_warning": true,
+  "hardware_capture_opened": false
+}

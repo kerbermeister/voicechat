@@ -1,0 +1,16 @@
+{
+  "package": "dart_webrtc",
+  "version": "1.8.2",
+  "source": "https://pub.dev/api/archives/dart_webrtc-1.8.2.tar.gz",
+  "archive_sha256": "078e3c431500147e5cc52b3c6ea41ed538f30c7720cc2467d2186c9251e62716",
+  "unchanged_files": 34,
+  "changed_existing_files": [
+    "analysis_options.yaml",
+    "lib/src/frame_cryptor_impl.dart"
+  ],
+  "added_files": [
+    "VOICECHAT_PATCH.md",
+    "lib/src/worker_response.dart"
+  ],
+  "package_version_changed": false
+}

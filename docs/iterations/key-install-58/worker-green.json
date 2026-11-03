@@ -1,0 +1,19 @@
+{
+  "dependency": "dart_webrtc1.8.2 local confirmation patch",
+  "realWorker": true,
+  "passed": true,
+  "cases": [
+    {
+      "shared": false,
+      "worker_rejection_propagated": true,
+      "confirmed_cache_preserved": true
+    },
+    {
+      "shared": true,
+      "worker_rejection_propagated": true,
+      "confirmed_cache_preserved": true
+    }
+  ],
+  "fresh_provider_succeeds": true,
+  "media_opened": false
+}

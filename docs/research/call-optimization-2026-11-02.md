@@ -1047,3 +1047,18 @@ Synapse; startup recover ротирует call rooms. Это отдельная 
 пока не объявляется. Release journal подтвердил неизменность core в самом web97;
 длинная локальная baseline00:40 пересекла backup, её не подменяли.
 [Свидетельство57](../iterations/own-device-57/production-verified.json).
+
+
+Продолжение03.11 / безопасная подготовка OPT-07 после57: найден cache-before-ACK
+в BaseKeyProvider2.13.2. latest slot/shared key объявлялись установленными до await,
+false native setKey терялся.5 red→6 unit green,752 Flutter/4skip/analyzer PASS;
+Mac и Android emulator по3 real-native key-provider cases PASS, без capture.
+Реальный worker также подтвердил проглатывание error ACK в dart_webrtc1.8.2:
+после локальной проверки всех9 key-provider reply sites individual/shared ошибки
+переданы вызывающему, cache сохранён, fresh provider работает (red→green).
+Версия зависимости не повышена, архив сверён по старому lock;13 адресных PASS.
+Финальные759 Flutter/4skip/analyzer,8 version/package PASS. Mac и Android SDK/SFU
+по2 media cases и browser SDK/worker/SFU PASS: поздний ключ, публикация, reconnect.
+Физический телефон/A-V sync не проверены; выпуск58 выполняется. Это отдельная предпосылка
+корректного prepare/ACK, не новый epoch protocol и не доказанная причина iPhone.
+[Свидетельство](../iterations/key-install-58/), пользовательская приёмка UA-05.C40.

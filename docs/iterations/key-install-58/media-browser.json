@@ -1,0 +1,20 @@
+{
+  "platform": "real browser SDK/worker and local SFU",
+  "synthetic_canvas": true,
+  "initial_missing_key_blocked": true,
+  "initial_decoded_after_key": 6,
+  "old_sender_decoded_while_prepared": 13,
+  "new_sender_key_index": 1,
+  "new_publication_missing_key_blocked": true,
+  "new_decoded_after_key": 6,
+  "same_sender_transport": true,
+  "observer_has_decryptor": false,
+  "observer_initial_decoded_counter": 0,
+  "observer_final_decoded_counter": 0,
+  "full_reconnect_encrypted_frames": 6,
+  "full_reconnect_recreated_sender_transport": true,
+  "counter_alone_is_not_content_proof": true,
+  "ratchet_defaults_changed": false,
+  "physical_phone_tested": false,
+  "media_saved": false
+}

@@ -90,8 +90,9 @@ class BaseKeyProvider implements KeyProvider {
 
   @override
   Future<void> setSharedKey(String key, {int? keyIndex}) async {
-    _sharedKey = Uint8List.fromList(key.codeUnits);
-    return _keyProvider.setSharedKey(key: _sharedKey!, index: keyIndex ?? 0);
+    final bytes = Uint8List.fromList(key.codeUnits);
+    await _keyProvider.setSharedKey(key: bytes, index: keyIndex ?? 0);
+    _sharedKey = bytes;
   }
 
   @override
@@ -138,17 +139,20 @@ class BaseKeyProvider implements KeyProvider {
   }
 
   Future<void> _setKey(KeyInfo keyInfo) async {
-    if (!_keys.containsKey(keyInfo.participantId)) {
-      _keys[keyInfo.participantId] = {};
-    }
     logger.info('_setKey for ${keyInfo.participantId}, idx: ${keyInfo.keyIndex}');
-    _keys[keyInfo.participantId]![keyInfo.keyIndex] = keyInfo.key;
-    _latestSetIndex[keyInfo.participantId] = keyInfo.keyIndex;
-    await _keyProvider.setKey(
+    if (!await _keyProvider.setKey(
       participantId: keyInfo.participantId,
       index: keyInfo.keyIndex,
       key: keyInfo.key,
-    );
+    )) {
+      throw StateError('Encryption key installation failed');
+    }
+    // New publications must only select a successfully installed key slot.
+    if (!_keys.containsKey(keyInfo.participantId)) {
+      _keys[keyInfo.participantId] = {};
+    }
+    _keys[keyInfo.participantId]![keyInfo.keyIndex] = keyInfo.key;
+    _latestSetIndex[keyInfo.participantId] = keyInfo.keyIndex;
   }
 
   @override

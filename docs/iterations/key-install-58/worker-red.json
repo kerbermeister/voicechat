@@ -1,0 +1,19 @@
+{
+  "dependency": "dart_webrtc1.8.2 hosted, BaseKeyProvider local confirmation patch",
+  "realWorker": true,
+  "passed": false,
+  "cases": [
+    {
+      "shared": false,
+      "worker_rejection_propagated": false,
+      "confirmed_cache_preserved": false
+    },
+    {
+      "shared": true,
+      "worker_rejection_propagated": false,
+      "confirmed_cache_preserved": false
+    }
+  ],
+  "fresh_provider_succeeds": true,
+  "media_opened": false
+}

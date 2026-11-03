@@ -1,0 +1,16 @@
+{
+  "experiment": "native SDK/SFU with additional requireFrameEncryption=true",
+  "used_by_current_app": false,
+  "product_encryption_settings_changed": false,
+  "patched_provider_failed": true,
+  "published57_provider_also_failed": true,
+  "native_keys_equal_in_diagnostic": true,
+  "receiver_crypto_events": [],
+  "received_rtp_bytes_at_stall": 3563904,
+  "frames_received": 0,
+  "frames_decoded": 0,
+  "source_fixture_assertions_removed": false,
+  "conclusion": "Extra test-only transport flag; repeat with actual product configuration before attributing a product regression",
+  "prior52_native_macos_required_flag": false,
+  "prior52_android_required_flag": false
+}

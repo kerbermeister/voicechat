@@ -1,0 +1,22 @@
+{
+  "candidate": "1.19.10+58",
+  "flutter_tests": 759,
+  "skipped": 4,
+  "targeted_tests": 13,
+  "version_package_tests": 8,
+  "app_analyzer": "pass",
+  "sdk_changed_file_analyzer": "pass",
+  "integration_fixtures_analyzer": "pass",
+  "adapter_analysis": "0 errors, 0 warnings, 9 info on unchanged upstream lines",
+  "log_sha256": {
+    "key-install58-final-flutter.log": "28721c0d25a624836e0eb3e7a6ed8d5f273ce431ad0a9705262891f615d4b770",
+    "key-install58-final-analyze.log": "d2349880fd43791c69d3ade3ce22a679927e70c8ddc4995b81d69f5dde38b808",
+    "key-install58-final-targeted.log": "74d3c56f31bebf0fcf756c562bf2ca9fc3d4cb9099cdc61eb6d631a46538c993",
+    "key-install58-version-tests.log": "d0f1f933d3f8d8de4cd937cb7bc20403ba503562944ddcbba209c74b2a7b86e6",
+    "key-install58-publication-fixture-analyze.log": "491eb7012197430408d23fa76e3e2021fdf2c67f3b52689fbf32bbac4e6ebf7d",
+    "key-install58-sdk-analyze.log": "ebe8ffb4cd22cd590f6c898c6016c417a4c41de1496b4be8a20578489c78a381",
+    "key-install58-native-analyze.log": "40b5269af0ab0a314994940b0fa6639b4434ba86bb03f0d643d0a613c243a818"
+  },
+  "physical_phone_tested": false,
+  "release_package_tested": false
+}
