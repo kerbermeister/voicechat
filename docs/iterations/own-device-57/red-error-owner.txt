@@ -1,0 +1,27 @@
+00:00 +0: loading /Users/anton/IdeaProjects/VoiceChat/apps/client/test/call_own_device_accept_test.dart
+00:00 +0: Own-device cleanup error belongs only to its attempt: next=false
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+00:00 +1: Own-device cleanup error belongs only to its attempt: next=true
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+00:00 +1 -1: Own-device cleanup error belongs only to its attempt: next=true [E]
+  Expected: <0>
+    Actual: <1>
+
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/call_own_device_accept_test.dart 324:9         main.<fn>
+
+00:00 +1 -1: Some tests failed.
+
+Failing tests:
+  /Users/anton/IdeaProjects/VoiceChat/apps/client/test/call_own_device_accept_test.dart: Own-device cleanup error belongs only to its attempt: next=true

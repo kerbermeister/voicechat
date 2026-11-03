@@ -1020,3 +1020,17 @@ account/device/history PASS, Android55→56 emulator exact APK; все кана�
 Нативный RTC54 не повторялся в56; физические iPhone/Xiaomi, WAN/A-V sync и
 вся multi-device/push матрица остаются обязательными и открытыми.
 [Техническое свидетельство](../iterations/group-accept-56/), единая приёмка UA-04.C14.
+
+
+Продолжение03.11 / UA-04.C22/C23 после выпуска56:5 веток получили red-тесты,
+включая active incoming вне invitations, собственные decline/answered, медленный
+SDK cleanup, лишний hangup после проигрыша push claim и оставшуюся group карточку.
+Локальный57 отделяет завершение проигравшей попытки от отмены всего звонка,
+защищает connected/accepted и освобождает public Future на terminal state.
+Финальные746 Flutter/4skip, analyzer,8 version/package PASS. Живой3-client:
+на56 первый Bob завис после decline второго; на57 закончился до capture,
+callback сохранился после позднего source (оба UI0:48), все sources закрыты.
+Синтетическая тишина/loopback, push claim и физические устройства не доказаны.
+Выпуск57 выполняется.
+Это приоритетная диагностика нового замечания перед OPT-07; эпохи пока прежние.
+[Свидетельство](../iterations/own-device-57/), единственная приёмка — UA-04.C22/C23.

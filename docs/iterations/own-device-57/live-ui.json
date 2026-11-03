@@ -1,0 +1,98 @@
+{
+  "version": 57,
+  "callerVersion": 56,
+  "otherOwnDeviceVersion": 56,
+  "ownDevicesIndependentlyVerified": true,
+  "synthetic": true,
+  "red56": {
+    "version": 56,
+    "ownDevicesIndependentlyVerified": true,
+    "synthetic": true,
+    "b1StillWaiting": true,
+    "callerEnded": true,
+    "metrics": {
+      "mode": "synthetic",
+      "requests": 1,
+      "pending": 1,
+      "hold_next": false,
+      "sources": 0,
+      "ended": 0,
+      "audio": "running"
+    },
+    "observed_ms": 7682
+  },
+  "endedBeforeDelayedCapture": true,
+  "firstEndedObservationMs": 2933,
+  "beforeLate": {
+    "bob": {
+      "mode": "synthetic",
+      "requests": 2,
+      "pending": 1,
+      "hold_next": false,
+      "sources": 1,
+      "ended": 0,
+      "audio": "running"
+    },
+    "alice": {
+      "mode": "synthetic",
+      "requests": 3,
+      "pending": 0,
+      "hold_next": false,
+      "sources": 3,
+      "ended": 2,
+      "audio": "running"
+    },
+    "bobConversation": true,
+    "aliceConversation": true
+  },
+  "afterLate": {
+    "bobConversation": true,
+    "aliceConversation": true,
+    "bobTimer": "0:48",
+    "aliceTimer": "0:48",
+    "bob": {
+      "mode": "synthetic",
+      "requests": 2,
+      "pending": 0,
+      "hold_next": false,
+      "sources": 2,
+      "ended": 1,
+      "audio": "running"
+    },
+    "alice": {
+      "mode": "synthetic",
+      "requests": 3,
+      "pending": 0,
+      "hold_next": false,
+      "sources": 3,
+      "ended": 2,
+      "audio": "running"
+    }
+  },
+  "limitations": [
+    "Loopback Chromium; no physical iPhone/Xiaomi",
+    "Synthetic zero audio; no acoustic A/V sync measurement",
+    "FCM unavailable fallback; simultaneous push claim only unit tested"
+  ],
+  "final": {
+    "bob": {
+      "mode": "synthetic",
+      "requests": 2,
+      "pending": 0,
+      "hold_next": false,
+      "sources": 2,
+      "ended": 2,
+      "audio": "running"
+    },
+    "alice": {
+      "mode": "synthetic",
+      "requests": 3,
+      "pending": 0,
+      "hold_next": false,
+      "sources": 3,
+      "ended": 3,
+      "audio": "running"
+    },
+    "allSourcesStopped": true
+  }
+}

@@ -40,12 +40,19 @@ class PendingOwnSession extends IncomingSession {
   @override
   CallState get state => ended ? CallState.kEnded : CallState.kRinging;
   @override
+  void setCallState(CallState state) {
+    expect(state, CallState.kEnded);
+    ended = true;
+  }
+
+  @override
   Future<void> terminate(
     CallParty party,
     CallErrorCode reason,
     bool shouldEmit,
   ) async {
     expect(party, CallParty.kRemote);
+    expect(reason, CallErrorCode.answeredElsewhere);
     terminations++;
     ended = true;
   }

@@ -1,0 +1,43 @@
+00:00 +0: loading /Users/anton/IdeaProjects/VoiceChat/apps/client/test/call_own_device_accept_test.dart
+00:00 +0: A verified own-device hangup cancels an acceptance awaiting media
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+00:00 +0 -1: A verified own-device hangup cancels an acceptance awaiting media [E]
+  Expected: true
+    Actual: <false>
+
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/call_own_device_accept_test.dart 115:11        main.<fn>
+
+Warning: At least one test in this suite creates an HttpClient. When running a test suite that uses
+TestWidgetsFlutterBinding, all HTTP requests will return status code 400, and no network request
+will actually be made. Any test expecting a real network connection and status code will fail.
+To test code that needs an HttpClient, provide your own HttpClient implementation to the code under
+test, so that your test can consistently provide a testable response to the code under test.
+00:00 +0 -1: A verified own-device answered cancels an acceptance awaiting media
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kRinging[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnding[0m
+[Matrix] [32mCallStateChange: CallStateChange.kState[0m
+[Matrix] [32mCallState: CallState.kEnded[0m
+[Matrix] [32mCallStateChange: CallStateChange.kHangup[0m
+00:00 +0 -2: A verified own-device answered cancels an acceptance awaiting media [E]
+  Expected: true
+    Actual: <false>
+
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test/call_own_device_accept_test.dart 115:11        main.<fn>
+
+00:00 +0 -2: Some tests failed.
+
+Failing tests:
+  /Users/anton/IdeaProjects/VoiceChat/apps/client/test/call_own_device_accept_test.dart: A verified own-device answered cancels an acceptance awaiting media
+  /Users/anton/IdeaProjects/VoiceChat/apps/client/test/call_own_device_accept_test.dart: A verified own-device hangup cancels an acceptance awaiting media

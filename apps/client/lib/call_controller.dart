@@ -24,6 +24,8 @@ import 'call_push.dart';
 import 'group_calls.dart';
 import 'call_page_exit.dart';
 
+enum _PushAnswer { accepted, unavailable, answeredElsewhere }
+
 class CallInvitation {
   final Room room;
   final String session;
@@ -239,6 +241,11 @@ class CallController extends ChangeNotifier
             devices.answered(joining.room.id, joining.session))) {
       _cancelJoiningInvitation(joining.room.id, joining.session);
     }
+    final accepting = _acceptingIncoming;
+    if (accepting != null &&
+        devices.answered(accepting.chat.id, accepting.session)) {
+      unawaited(_endIncomingLocally(accepting));
+    }
     directInvitations.removeWhere(
       (call) => call.isClosed || devices.answered(call.chat.id, call.session),
     );
@@ -368,16 +375,50 @@ class CallController extends ChangeNotifier
         devices.verifiedOwnDevice(curve) != null;
   }
 
-  Future<void> _endOwnIncoming(DirectCall call) async {
-    // The SDK's remote-party guard ignores hangup from our other devices.
-    // Terminate locally without echoing a new hangup back into the room.
-    await call.call.terminate(
-      CallParty.kRemote,
-      CallErrorCode.userHangup,
-      true,
-    );
-    await call.close();
-    _refresh();
+  DirectCall? get _acceptingIncoming {
+    final call = active;
+    return call is DirectCall &&
+            call.call.direction == CallDirection.kIncoming &&
+            _dialCancellation?.isCompleted == false &&
+            !call.isClosed &&
+            !devices.isAccepted(call) &&
+            call.call.state != CallState.kConnected
+        ? call
+        : null;
+  }
+
+  Future<void> _endIncomingLocally(DirectCall call) async {
+    // A losing incoming attempt must not cancel another device's answer.
+    if (call.isClosed ||
+        devices.isAccepted(call) ||
+        call.call.state == CallState.kConnected) {
+      return;
+    }
+    final generation = _dialGeneration;
+    if (identical(active, call) && _dialCancellation?.isCompleted == false) {
+      _dialCancellation!.complete();
+    }
+    // Native ringtone/peer disposal may still be pending. Fence late capture
+    // now, before terminate awaits it or can fall back to a connected hangup.
+    try {
+      call.call.setCallState(CallState.kEnded);
+      await call.call.terminate(
+        CallParty.kRemote,
+        CallErrorCode.answeredElsewhere,
+        true,
+      );
+      await call.close();
+    } catch (_) {
+      if (!_closed &&
+          generation == _dialGeneration &&
+          (active == null || identical(active, call))) {
+        report(
+          'Не удалось завершить входящий вызов после действия на другом устройстве.',
+        );
+      }
+    } finally {
+      _refresh();
+    }
   }
 
   void receive(Event event) {
@@ -400,15 +441,14 @@ class CallController extends ChangeNotifier
             (call) => call.chat.id == event.room.id && call.session == session,
           )
           .toList();
+      final accepting = _acceptingIncoming;
+      if (accepting?.chat.id == event.room.id &&
+          accepting?.session == session) {
+        pending.add(accepting!);
+      }
       directInvitations.removeWhere(pending.contains);
       for (final call in pending) {
-        unawaited(
-          _endOwnIncoming(call).catchError((Object _) {
-            report(
-              'Не удалось завершить входящий вызов после отказа на другом устройстве.',
-            );
-          }),
-        );
+        unawaited(_endIncomingLocally(call));
       }
       _refresh();
       return;
@@ -553,27 +593,29 @@ class CallController extends ChangeNotifier
     return session == null ? Future.value() : _push.endOutgoing(session);
   }
 
-  Future<bool> _answerPush(
+  Future<_PushAnswer> _answerPush(
     String session, {
     required bool Function() isCurrent,
   }) async {
     try {
       await _push.request('accept', session);
-      return true;
+      return _PushAnswer.accepted;
     } on CallPushError catch (error) {
       // shortcut: older callers have no push record; remove after their migration.
       if (error.code == 'call_not_found' || error.code == 'fcm_unavailable') {
-        return true;
+        return _PushAnswer.accepted;
       }
       if (isCurrent()) {
         report('Вызов уже завершён или принят на другом устройстве.');
       }
-      return false;
+      return error.code == 'answered_elsewhere'
+          ? _PushAnswer.answeredElsewhere
+          : _PushAnswer.unavailable;
     } catch (_) {
       if (isCurrent()) {
         report('Не удалось проверить актуальность вызова. Попробуйте снова.');
       }
-      return false;
+      return _PushAnswer.unavailable;
     }
   }
 
@@ -648,9 +690,17 @@ class CallController extends ChangeNotifier
       _refresh();
     });
     Future<void> connect() async {
-      if (invitation != null &&
-          !await _answerPush(invitation.session, isCurrent: current)) {
-        return;
+      if (invitation != null) {
+        final result = await _answerPush(
+          invitation.session,
+          isCurrent: current,
+        );
+        if (result != _PushAnswer.accepted) {
+          if (result == _PushAnswer.answeredElsewhere && current()) {
+            _dismissInvitation(room.id, invitation.session);
+          }
+          return;
+        }
       }
       if (!current()) return;
       await beforeMedia?.call();
@@ -976,9 +1026,20 @@ class CallController extends ChangeNotifier
         generation == _dialGeneration &&
         identical(active, call) &&
         !call.isClosed;
+    final ended = call.call.onCallStateChanged.stream.listen((_) {
+      if (call.isClosed && !cancellation.isCompleted) {
+        cancellation.complete();
+      }
+    });
     Future<void> answer() async {
-      if (!await _answerPush(call.session, isCurrent: current)) {
-        await call.close();
+      if (!current()) return;
+      final result = await _answerPush(call.session, isCurrent: current);
+      if (result != _PushAnswer.accepted) {
+        if (result == _PushAnswer.answeredElsewhere) {
+          await _endIncomingLocally(call);
+        } else {
+          await call.close();
+        }
         return;
       }
       if (!current()) return;
@@ -995,6 +1056,7 @@ class CallController extends ChangeNotifier
       await call.close();
       if (!abandoned) rethrow;
     } finally {
+      await ended.cancel();
       if (identical(_dialCancellation, cancellation)) _dialCancellation = null;
       directInvitations.remove(call);
       _refresh();
