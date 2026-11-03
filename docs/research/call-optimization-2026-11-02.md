@@ -1254,3 +1254,40 @@ jitter и возобновление той же дорожки; прежний 
 потенциально сохранённую extra delay при остановке одного потока в Chrome145.
 Статус New, accepted code changes нет. Это внешний отчёт/гипотеза: проверить
 первичный код и версии SDK, затем воспроизвести у нас до выбора исправления.
+
+
+### OPT-02/08: раздельный RTP outage после web61,03.11
+
+[Стенд и все первичные результаты](../iterations/video-only-av-after61/) теперь
+отдельно нарушают video/RTX или Opus на одном направлении TURN; выбранные codec
+PT сверяются, живой/остановленный поток доказываются counters, включая12с без
+контентных маркеров. Это test-only JS/Python, production/native runtime прежний.
+
+Первая точная по всем asset hashes пара120с: video outage audio+501/video+0,
+53 markers, initial/recovery p95 abs142.1/242.1мс, budget_exceeded; same-wire
+clean control audio+501/video+695,57 markers,78.4/48.5мс, strict guard PASS.
+Но начальные offsets уже различались; unfixed loss seed и одна пара не
+устанавливают причину. Audio buffer target рос до906мс на video помехах,
+при video outage интервальная медиана80мс. Его спад не исключает сохранения
+внутреннего sync minimum, которое getStats непосредственно не раскрывает.
+
+Зеркальный Opus outage: audio+0/video+693,54 markers,82.9/70.5мс,
+recovery max102.7мс — общий strict guard не пройден. Video target медиана
+13.8→208 (audio stopped)→120мс (recovery). Это основание продолжить исследование
+механизма, а не доказательство применения upstream bug. Clean audio control:
+60 markers,86.8/37мс, budget_exceeded; промежуточные большие offsets сохранены.
+В эту последнюю пару между запусками добавлялась только ICE-диагностика,
+поэтому она не объявляется точной A/B-парой с одинаковыми hashes.
+
+Три неудачных setup с0 markers сохранены отдельно: relay candidate exchange
+прошёл, но в06a обе стороны отправили239/240 ICE checks без входящих ответов.
+Локальная явная relay loopback binding не решила все intermittent failures.
+Production TURN не менялся. Применимость native SDK150.7871.04 к внешнему
+report489157997 не доказана: прочитан family m150 source с matching early-return
+предпосылкой, но точный commit двоичного SDK не установлен. Fixed buffers,
+periodic reset и SDK upgrade не вводились; UA-08.C06/общий A/V остаются открытыми.
+
+Повтор video-only на окончательном JS (диагностический verbose TURN):52 markers,
+audio+501/video+0, initial/recovery105.8/211.5мс, снова budget_exceeded.
+RTP вернулся, остаточный offset воспроизведён; причина engine против конечного
+playout пока открыта. Финальные19 Python(live)/10 Node/4 summary PASS.

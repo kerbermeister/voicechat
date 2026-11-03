@@ -10,7 +10,7 @@ toolchain проекта и внутренний браузер. Стенд са
 
 ```sh
 mkdir -p /tmp/voicechat-av-web/worker-av
-cp apps/client/integration_test/call_av_marker*.js apps/client/integration_test/call_av_marker_fixture.html apps/client/integration_test/call_transport_diagnostics.js apps/client/web/media_audio.js /tmp/voicechat-av-web/
+cp apps/client/integration_test/call_av_marker*.js apps/client/integration_test/call_av_marker_fixture.html apps/client/integration_test/call_transport_diagnostics.js apps/client/integration_test/call_media_scope.js apps/client/web/media_audio.js /tmp/voicechat-av-web/
 dart compile js --packages=apps/client/.dart_tool/package_config.json -DDART_WEBRTC_WEB_WORKER_PREFIX=worker-av/ apps/client/integration_test/call_av_marker_e2ee.dart -o /tmp/voicechat-av-web/call_av_marker_e2ee.dart.js -m
 dart compile js --packages=apps/client/.dart_tool/package_config.json vendor/livekit_client/web/e2ee.worker.dart -o /tmp/voicechat-av-web/e2ee.worker.dart.js -m
 cp apps/client/integration_test/cryptor_av_worker.js /tmp/voicechat-av-web/worker-av/e2ee.worker.dart.js
@@ -224,7 +224,7 @@ PASS, когда netem не действует. Фактические samples �
 
 ```sh
 mkdir -p .prototype/call-av-marker-web
-cp apps/client/integration_test/call_av_marker*.js apps/client/integration_test/call_av_marker_fixture.html apps/client/integration_test/call_transport_diagnostics.js apps/client/web/media_audio.js .prototype/call-av-marker-web/
+cp apps/client/integration_test/call_av_marker*.js apps/client/integration_test/call_av_marker_fixture.html apps/client/integration_test/call_transport_diagnostics.js apps/client/integration_test/call_media_scope.js apps/client/web/media_audio.js .prototype/call-av-marker-web/
 python3 apps/client/tool/call_network_lab.py --web-root .prototype/call-av-marker-web --output .prototype/av-marker-short.json --marker-seconds 60
 ```
 
@@ -323,3 +323,65 @@ python3 -m unittest discover -s apps/client/tool -p test_av_marker_summary.py
 Сводка также считает decode/encode time за интервал. Counter reset, missing и
 нулевой denominator дают null. Не сравнивать эти интервальные средние с точным
 моментом первого символа: завершение распознавания и getStats происходят позже.
+
+
+### Остановка одного потока при работающем втором
+
+Для OPT-08/UA-08.C06 есть раздельные UDP/TURN сценарии (90–300с):
+
+```sh
+python3 apps/client/tool/call_network_lab.py --web-root /tmp/voicechat-av-web --output /tmp/voicechat-video-only.json --marker-seconds 120 --direction outgoing --video-payload-types 96,97
+```
+
+Это VP8 плюс связанный RTX. Фактические negotiated codec payload types обязаны
+совпасть с параметром; иначе setup_failed, а не молчаливый запуск без воздействия.
+Числа могут отличаться в другом браузере. Sender использует первый TURN listener,
+receiver — второй; netem только на ответах второго listener. Фильтр проверяет
+IPv4 без options, UDP, 4-byte TURN ChannelData, RTPv2 и payload type без marker bit.
+При video scope audio, RTCP, DTLS и STUN не попадают под воздействие. Основание формата:
+[RFC8656 §12.4](https://www.rfc-editor.org/rfc/rfc8656.html#section-12.4).
+
+Профили: clean → video delay150мс → video loss2% → video loss100%12с → clean.
+Длительности clean/delay/loss и gain такие же, как в обычной120с пробе;
+заключительный clean сокращён на9с. Для того же wire/classifier без воздействия
+добавить --clean-only. Это не новый режим реального клиента.
+
+Дополнительный DOM-блок MEDIA_SCOPE_PROOF сохраняют отдельно от строгой schema2.
+Он содержит выбранные codec PT и не более300 снимков: время performance clock,
+этап, audio packetsReceived/jitterBufferDelay/jitterBufferTargetDelay/
+jitterBufferEmittedCount, video packetsReceived. Снимки идут раз в секунду,
+включая период без video markers. Недоступные counters — null, raw RTP IDs,
+SSRC, SDP, адреса и медиа не сохраняются. Два codec counters могут появляться
+не одновременно; readiness ограничен15с, ошибочное соответствие не принимается.
+
+Проверка outage пропускает первую секунду и требует минимум8с измеренного
+интервала: audio packets растут, video packets увеличиваются максимум на2.
+В clean-only наоборот должны расти оба. Если проверка не проходит, весь прогон
+setup_failed независимо от результата A/V. Qdisc и tc filter counters сохраняются;
+без доказанного video-only outage гипотеза engine sync не проверена. Даже при
+валидном outage требуется отдельно установить, что до остановки выросла именно
+относительная video/audio задержка; отсутствие роста не доказывает исправление
+upstream issue. Публичный похожий отчёт:
+[WebRTC489157997](https://issues.webrtc.org/issues/489157997).
+
+```sh
+node --test apps/client/tool/test_call_media_scope.mjs
+```
+
+
+Зеркальная проверка: заменить `--video-payload-types 96,97` на
+`--audio-payload-types 111`. Опции взаимно
+исключаются. Тогда impairment затрагивает только Opus, а VP8/RTX и служебные
+пакеты проходят. Codec validation проверяет, что выбран именно audio PT111,
+который не совпадает с video/RTX. Outage требует audio delta≤2 и video delta>0.
+Новая MEDIA_SCOPE_PROOF строка содержит10 полей: время, этап, audio
+packets/delay/target/emitted, video packets/delay/target/emitted. Первые7 полей
+совместимы с первоначальной video-only пробой; дополнительные3 позволяют
+наблюдать video jitter target, когда аудиомаркеров нет. Это отдельный технический
+DOM-отчёт, а не изменение marker schema2 или production telemetry.
+
+В directional-режиме оба TURN процесса разделяют namespace и рекламируют
+loopback relay IP; allocations теперь явно bind127.0.0.1, чтобы не зависеть от
+выбора NIC по клиентскому socket. Host ports по-прежнему только loopback.
+Обычный single-listener режим не менялся. Это уточнение топологии локального
+стенда; оно не доказывает причину прежнего ICE failure или production звонка.

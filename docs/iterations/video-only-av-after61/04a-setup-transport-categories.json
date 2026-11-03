@@ -1,0 +1,31 @@
+{
+  "turn": {
+    "401": 0,
+    "438": 0,
+    "437": 0,
+    "ERROR": 1,
+    "allocation timeout": 0,
+    "allocation watchdog": 0,
+    "peer usage": 0,
+    "session usage": 0,
+    "CREATE_PERMISSION processed, success": 0,
+    "CHANNEL_BIND processed, success": 0,
+    "ALLOCATE processed, success": 0
+  },
+  "other": {
+    "401": 0,
+    "438": 0,
+    "437": 0,
+    "ERROR": 0,
+    "allocation timeout": 0,
+    "allocation watchdog": 0,
+    "peer usage": 0,
+    "session usage": 0,
+    "CREATE_PERMISSION processed, success": 0,
+    "CHANNEL_BIND processed, success": 0,
+    "ALLOCATE processed, success": 0
+  },
+  "remaining_turn_ttl_seconds": 138,
+  "impaired_media": "audio",
+  "profile": "clean"
+}

@@ -1,0 +1,15 @@
+{
+  "scope": "test-only; no production or native source changes",
+  "case": "video-only TURN UDP impairment, 120 seconds",
+  "payload_types": [
+    96,
+    97
+  ],
+  "sources": {
+    "apps/client/tool/call_network_lab.py": "fde9020cbd5d4359d000fb55faa08f7f3ed4ddf182fc6a9d0a94c023d90309ab",
+    "apps/client/integration_test/call_av_marker_fixture.js": "874d96990fba863cc56b623335e4b4ad4add2e7aab22de348c5f79e8d8c66dc5",
+    "apps/client/integration_test/call_media_scope.js": "8cb7c99fa32c42861aee221a93b32f938da57c761a2340ad1c7f261b49fa8a3d",
+    "apps/client/web/media_audio.js": "ae152bc3e5dc8c69e089b8d0d175562a0a8fca84a17133c391786d6c247c640d"
+  },
+  "physical_devices_verified": false
+}

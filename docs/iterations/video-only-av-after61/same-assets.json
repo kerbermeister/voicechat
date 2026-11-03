@@ -1,0 +1,14 @@
+{
+  "verified": true,
+  "fixture_sha256": {
+    "call_av_marker_fixture.html": "46e95ae07bcb74ab83aa976de26bc8d2f2a8412fba29c32bc345b5884665b4a9",
+    "call_av_marker_fixture.js": "874d96990fba863cc56b623335e4b4ad4add2e7aab22de348c5f79e8d8c66dc5",
+    "call_av_marker.js": "726a0d7a60f54b4d6e0523c17b70efaed166e1ac6947b6aa1cc3cb283273b110",
+    "call_av_marker_worklet.js": "41f90390e85eb2c122df9d8d09282f8995cc6b5f060dd472b368bf2226bebc2b",
+    "call_transport_diagnostics.js": "2c650e9af2fa38ac2bb3b3cc2a8669411112e577fc05898de708cdf031c004be",
+    "call_media_scope.js": "8cb7c99fa32c42861aee221a93b32f938da57c761a2340ad1c7f261b49fa8a3d",
+    "media_audio.js": "ae152bc3e5dc8c69e089b8d0d175562a0a8fca84a17133c391786d6c247c640d",
+    "lab_server": "fde9020cbd5d4359d000fb55faa08f7f3ed4ddf182fc6a9d0a94c023d90309ab"
+  },
+  "scope": "all marker modules, production audio and lab server match; only profiles/clean flag differ"
+}

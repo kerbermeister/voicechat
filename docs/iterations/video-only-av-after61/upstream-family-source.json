@@ -1,0 +1,7 @@
+{
+  "url": "https://raw.githubusercontent.com/webrtc-sdk/webrtc/55d456ce20b4a91abedda543cf305b3938de9edc/video/rtp_streams_synchronizer2.cc",
+  "revision": "55d456ce20b4a91abedda543cf305b3938de9edc",
+  "sdk_family_branch": "m150_release",
+  "exact_binary_source_proven": false,
+  "sha256": "799d1e6332def3d7d7a8560294e53f86447df6f3261f0a1ac1216f9392962a1a"
+}

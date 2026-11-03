@@ -31,6 +31,34 @@ PROFILES = {
 }
 
 
+def media_payload_types(value):
+    try:
+        parts = value.split(',')
+        types = [int(part) for part in parts]
+        if (not 1 <= len(types) <= 4 or len(set(types)) != len(types) or
+                any(str(number) != part or not 96 <= number <= 127
+                    for number, part in zip(types, parts))):
+            raise ValueError()
+        return types
+    except ValueError:
+        raise argparse.ArgumentTypeError('Use 1–4 distinct dynamic RTP payload types (96–127)')
+
+
+def directional_filters(direction, payload_types):
+    base = ['filter', 'add', 'dev', 'eth0', 'protocol', 'ip', 'parent', '1:',
+            'prio', '1', 'u32', 'match', 'ip', 'protocol', '17', '0xff',
+            'match', 'ip', 'sport', '3478' if direction == 'incoming' else '3480', '0xffff']
+    if not payload_types:
+        return [[*base, 'flowid', '1:2']]
+    # IPv4 (no options), UDP, TURN ChannelData (RFC 8656 §12.4), RTP v2.
+    # The RTP marker bit is independent of payload type. RTCP/STUN stay clean.
+    return [[*base, 'match', 'u8', '0x45', '0xff', 'at', '0',
+             'match', 'u8', '0x40', '0xc0', 'at', '28',
+             'match', 'u8', '0x80', '0xc0', 'at', '32',
+             'match', 'u8', hex(payload), '0x7f', 'at', '33', 'flowid', '1:2']
+            for payload in payload_types]
+
+
 def valid_marker_result(data, duration):
     """Only synthetic timing evidence may leave the browser; no media/credentials."""
     fields = {'schema', 'outcome', 'control', 'duration_seconds', 'markers', 'unmatched_markers',
@@ -134,19 +162,32 @@ def main():
     parser.add_argument('--direction', choices=('both', 'incoming', 'outgoing'), default='both')
     parser.add_argument('--marker-seconds', type=int, help='Run synthetic A/V playout markers for 60–3600 seconds')
     parser.add_argument('--clean-only', action='store_true', help='A/V control without network impairment')
+    media = parser.add_mutually_exclusive_group()
+    media.add_argument('--video-payload-types', type=media_payload_types,
+                       help='Video-only UDP/TURN marker impairment, e.g. 96,97 (VP8 and RTX)')
+    media.add_argument('--audio-payload-types', type=media_payload_types,
+                       help='Audio-only UDP/TURN marker impairment, e.g. 111 (Opus)')
     args = parser.parse_args()
     if not 1024 <= args.port <= 65535:
         parser.error('Use an unprivileged port')
     if args.direction != 'both' and args.transport != 'udp':
         parser.error('Directional feedback checks currently require UDP')
     marker = args.marker_seconds is not None
+    payload_types = args.video_payload_types or args.audio_payload_types
+    impaired_media = 'video' if args.video_payload_types else 'audio' if args.audio_payload_types else None
+    if payload_types and (not marker or args.direction != 'outgoing' or
+                          not 90 <= args.marker_seconds <= 300):
+        parser.error('Single-stream impairment requires 90–300 second A/V markers and direction outgoing')
     if args.clean_only and not marker:
         parser.error('--clean-only requires A/V markers')
-    if marker and (not 60 <= args.marker_seconds <= 3600 or args.direction != 'both'):
+    if marker and (not 60 <= args.marker_seconds <= 3600 or
+                   (args.direction != 'both' and not payload_types)):
         parser.error('A/V markers require 60–3600 seconds and direction both')
     lifetime = args.marker_seconds + 120 if marker else 900
     directional = args.direction != 'both'
     profiles = {**PROFILES, 'loss': ['loss', '15%' if directional else '2%']}
+    if payload_types:
+        profiles.update(delay=['delay', '150ms'], loss=['loss', '2%'])
     if args.clean_only:
         profiles = {name: ['delay', '0ms'] for name in PROFILES}
     web_root = args.web_root.resolve()
@@ -155,7 +196,7 @@ def main():
         parser.error('Prepare the selected browser fixture first')
     marker_sources = ('call_av_marker_fixture.html', 'call_av_marker_fixture.js',
                       'call_av_marker.js', 'call_av_marker_worklet.js',
-                      'call_transport_diagnostics.js', 'media_audio.js')
+                      'call_transport_diagnostics.js', 'call_media_scope.js', 'media_audio.js')
     if marker and any(asset_path(web_root, '/' + name) is None for name in marker_sources):
         parser.error('Prepare all A/V marker assets first')
     fixture_hashes = ({name: hashlib.sha256((web_root / name).read_bytes()).hexdigest()
@@ -186,6 +227,10 @@ def main():
             'external-ip=127.0.0.1', 'user-quota=8', 'total-quota=16',
             'log-file=stdout',
         ]) + '\n'
+        if directional:
+            # Both peers' advertised relay addresses are loopback in this shared
+            # namespace; bind allocations there instead of inferring the NIC.
+            config += 'relay-ip=127.0.0.1\n'
         (folder / 'turn.conf').write_text(config)
         (folder / 'turn.conf').chmod(0o600)
         if directional:
@@ -264,12 +309,8 @@ def main():
                     'prio', 'bands', '2', 'priomap', *(['0'] * 16),
                 ], check=True, capture_output=True, timeout=10)
                 # Only listener responses to one peer enter netem; relay hairpin stays clean.
-                subprocess.run([
-                    *tc, 'filter', 'add', 'dev', 'eth0', 'protocol', 'ip', 'parent',
-                    '1:', 'prio', '1', 'u32', 'match', 'ip', 'protocol', '17', '0xff',
-                    'match', 'ip', 'sport', '3478' if args.direction == 'incoming' else '3480',
-                    '0xffff', 'flowid', '1:2',
-                ], check=True, capture_output=True, timeout=10)
+                for filter_args in directional_filters(args.direction, payload_types):
+                    subprocess.run([*tc, *filter_args], check=True, capture_output=True, timeout=10)
             username = f'{int(time.time()) + lifetime}:call-lab'
             password = base64.b64encode(hmac.digest(
                 secret.encode(), username.encode(), hashlib.sha1)).decode()
@@ -307,7 +348,9 @@ def main():
                             }]} if directional else {}),
                             'lab_key': nonce, 'profile': current,
                             **({'marker_seconds': args.marker_seconds,
-                                'network_clean_only': args.clean_only} if marker else {}),
+                                'network_clean_only': args.clean_only,
+                                'media_payload_types': payload_types,
+                                'impaired_media': impaired_media} if marker else {}),
                         })
                     path = asset_path(web_root, self.path)
                     if path is None:
@@ -337,6 +380,11 @@ def main():
                                 ], text=True, timeout=10)
                                 for device in ('lo', 'eth0')
                             }})
+                            if payload_types:
+                                qdiscs[-1]['filters'] = subprocess.check_output([
+                                    *command, 'exec', '-T', 'netem', 'tc', '-s',
+                                    'filter', 'show', 'dev', 'eth0', 'parent', '1:',
+                                ], text=True, timeout=10)
                             profile(data['profile'])
                             return self.reply(200, {'profile': current})
                         if self.path == '/result':
@@ -361,6 +409,9 @@ def main():
                                 'synthetic_media': True, 'physical_lip_sync_measured': False,
                                 'transport': 'TURN ' + args.transport.upper(), 'namespace_only': True,
                                 'fixture_sha256': fixture_hashes,
+                                'direction': args.direction,
+                                'media_payload_types': payload_types,
+                                'impaired_media': impaired_media,
                                 'profiles': profiles, 'qdiscs': qdiscs, 'result': data,
                             }, indent=2) + '\n')
                             return self.reply(200, {'saved': True})

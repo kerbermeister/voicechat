@@ -1,0 +1,70 @@
+{
+  "synthetic_media": true,
+  "physical_lip_sync_measured": false,
+  "transport": "TURN UDP",
+  "namespace_only": true,
+  "fixture_sha256": {
+    "call_av_marker_fixture.html": "46e95ae07bcb74ab83aa976de26bc8d2f2a8412fba29c32bc345b5884665b4a9",
+    "call_av_marker_fixture.js": "b2358ef5826e38676d11c61c9792736848c159e0e9ac515fc4578ff204e7cdac",
+    "call_av_marker.js": "726a0d7a60f54b4d6e0523c17b70efaed166e1ac6947b6aa1cc3cb283273b110",
+    "call_av_marker_worklet.js": "41f90390e85eb2c122df9d8d09282f8995cc6b5f060dd472b368bf2226bebc2b",
+    "call_transport_diagnostics.js": "2c650e9af2fa38ac2bb3b3cc2a8669411112e577fc05898de708cdf031c004be",
+    "call_media_scope.js": "611d858a87c7740bd6b9d44172cf5f5e2e9a2ea58d77f0672a2818da59387dd5",
+    "media_audio.js": "ae152bc3e5dc8c69e089b8d0d175562a0a8fca84a17133c391786d6c247c640d",
+    "lab_server": "fde9020cbd5d4359d000fb55faa08f7f3ed4ddf182fc6a9d0a94c023d90309ab"
+  },
+  "direction": "outgoing",
+  "video_payload_types": [
+    96,
+    97
+  ],
+  "profiles": {
+    "clean": [
+      "delay",
+      "0ms"
+    ],
+    "delay": [
+      "delay",
+      "150ms"
+    ],
+    "loss": [
+      "loss",
+      "2%"
+    ],
+    "offline": [
+      "loss",
+      "100%"
+    ]
+  },
+  "qdiscs": [
+    {
+      "profile": "clean",
+      "lo": "qdisc noqueue 0: root refcnt 2 \n Sent 0 bytes 0 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "eth0": "qdisc prio 1: root refcnt 5 bands 2 priomap 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0\n Sent 8631 bytes 30 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\nqdisc netem 30: parent 1:2 limit 1000\n Sent 2422 bytes 4 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "filters": "filter protocol ip pref 1 u32 chain 0 \nfilter protocol ip pref 1 u32 chain 0 fh 800: ht divisor 1 \nfilter protocol ip pref 1 u32 chain 0 fh 800::800 order 2048 key ht 800 bkt 0 *flowid 1:2 not_in_hw (rule hit 29 success 2)\n  match 00110000/00ff0000 at 8 (success 29 ) \n  match 0d980000/ffff0000 at 20 (success 16 ) \n  match 45000000/ff000000 at 0 (success 16 ) \n  match 40000000/c0000000 at 28 (success 8 ) \n  match 80600000/c07f0000 at 32 (success 2 ) \nfilter protocol ip pref 1 u32 chain 0 fh 800::801 order 2049 key ht 800 bkt 0 *flowid 1:2 not_in_hw (rule hit 27 success 2)\n  match 00110000/00ff0000 at 8 (success 27 ) \n  match 0d980000/ffff0000 at 20 (success 14 ) \n  match 45000000/ff000000 at 0 (success 14 ) \n  match 40000000/c0000000 at 28 (success 6 ) \n  match 80610000/c07f0000 at 32 (success 2 ) \n"
+    }
+  ],
+  "result": {
+    "schema": 2,
+    "outcome": "setup_failed",
+    "control": "none",
+    "duration_seconds": 120,
+    "playout_path": "product_gain",
+    "rtp_diagnostics_requested": true,
+    "rtp_diagnostics": [],
+    "rtp_diagnostics_errors": 0,
+    "markers": [],
+    "phase_changes": [],
+    "unmatched_markers": 0,
+    "invalid_video_frames": 0,
+    "audio_base_latency_ms": 5.3,
+    "audio_output_latency_ms": 32,
+    "max_video_callback_lateness_ms": 0,
+    "baseline_p95_abs_ms": null,
+    "recovered_p95_abs_ms": null,
+    "physical_lip_sync_measured": false,
+    "media_saved": false,
+    "microphone_used": false,
+    "test_sink_silent": true
+  }
+}

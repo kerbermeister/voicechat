@@ -1,5 +1,6 @@
 import {lowTones, highTones, markerDigits, stampBits, readStamp} from './call_av_marker.js';
 import {transportDiagnostics} from './call_transport_diagnostics.js';
+import {mediaScopeCodecs, mediaScopeSample, singleStreamOutageProof} from './call_media_scope.js';
 
 const result = document.querySelector('#result'), button = document.querySelector('#run');
 const elementBaseline = new URLSearchParams(location.search).get('playout') === 'element';
@@ -81,6 +82,9 @@ button.onclick = async () => {
   let invalidFrames = 0, unmatched = 0, stopped = false, level = 1, sourceStart, maxCallbackLateness = 0;
   let outcome = 'setup_failed', setupFailure = '';
   let recordRtp = false, rtpBusy = false, rtpErrors = 0;
+  const mediaSamples = [];
+  let mediaCodecs, mediaErrors = 0;
+  const iceExchange = {sender:{added:0, rejected:0, errors:[]}, receiver:{added:0, rejected:0, errors:[]}};
   const control = new URLSearchParams(location.search).get('control') ?? 'none';
   const audioFault = new URLSearchParams(location.search).get('audio_fault') ?? 'none';
   const round = value => Math.round(value * 10) / 10;
@@ -95,6 +99,9 @@ button.onclick = async () => {
     check(response.ok, 'Lab configuration rejected');
     config = await response.json();
     check(Number.isInteger(config.marker_seconds), 'Marker lab required');
+    if (config.media_payload_types) document.querySelector('#media-scope-summary').textContent =
+      `Network scope: ${config.impaired_media}; payload types: ${config.media_payload_types.join(',')}; ` +
+      (config.network_clean_only ? 'clean control' : '150 ms delay / 2% loss / 12 s outage');
     const requestedRtp = new URLSearchParams(location.search).get('rtp') === '1';
     check(!requestedRtp || config.marker_seconds <= 300, 'RTP diagnostics require at most 300 seconds');
     recordRtp = requestedRtp;
@@ -133,28 +140,40 @@ button.onclick = async () => {
     source.addTrack(destination.stream.getAudioTracks()[0]);
     const rtcConfig = {iceTransportPolicy:'relay', iceServers:config.iceServers,
       ...(encrypted ? {encodedInsertableStreams:true} : {})};
-    sender = new RTCPeerConnection(rtcConfig); receiver = new RTCPeerConnection(rtcConfig);
+    sender = new RTCPeerConnection(rtcConfig);
+    receiver = new RTCPeerConnection({...rtcConfig, iceServers:config.peer_ice_servers ?? config.iceServers});
+    for (const [name, peer] of [['sender', sender], ['receiver', receiver]]) {
+      peer.onicecandidateerror = event => {
+        if (iceExchange[name].errors.length < 8 && Number.isInteger(event.errorCode) && event.errorCode >= 300 && event.errorCode <= 799)
+          iceExchange[name].errors.push(event.errorCode);
+      };
+    }
+    async function addCandidate(name, peer, candidate) {
+      try { await peer.addIceCandidate(candidate); iceExchange[name].added++; }
+      catch (_) { iceExchange[name].rejected++; }
+    }
     const candidatesForSender = [], candidatesForReceiver = [];
     sender.onicecandidate = event => {
       if (stopped || !event.candidate) return;
-      if (receiver.remoteDescription) void receiver.addIceCandidate(event.candidate);
+      if (receiver.remoteDescription) void addCandidate('receiver', receiver, event.candidate);
       else candidatesForReceiver.push(event.candidate);
     };
     receiver.onicecandidate = event => {
       if (stopped || !event.candidate) return;
-      if (sender.remoteDescription) void sender.addIceCandidate(event.candidate);
+      if (sender.remoteDescription) void addCandidate('sender', sender, event.candidate);
       else candidatesForSender.push(event.candidate);
     };
     receiver.ontrack = event => { remote = event.streams[0]; };
     for (const track of source.getTracks()) {
       const rtpSender = sender.addTrack(track, source);
-      if (encrypted) {
+      if (encrypted || config.media_payload_types) {
         if (track.kind === 'video') {
-          const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(row => row.mimeType === 'video/VP8');
+          const codecs = RTCRtpSender.getCapabilities('video').codecs.filter(row =>
+            row.mimeType === 'video/VP8' || (config.media_payload_types && row.mimeType === 'video/rtx'));
           check(codecs.length > 0, 'VP8 control unavailable');
           sender.getTransceivers().find(row => row.sender === rtpSender).setCodecPreferences(codecs);
         }
-        await bounded(e2ee.prepareSender(rtpSender), 'SDK sender encryption');
+        if (encrypted) await bounded(e2ee.prepareSender(rtpSender), 'SDK sender encryption');
       }
     }
     await bounded(sender.setLocalDescription(await sender.createOffer()), 'sender description');
@@ -179,10 +198,10 @@ button.onclick = async () => {
         await bounded(e2ee.prepareReceiver(rtpReceiver), 'SDK receiver encryption');
       }
     }
-    for (const candidate of candidatesForReceiver) await receiver.addIceCandidate(candidate);
+    for (const candidate of candidatesForReceiver) await addCandidate('receiver', receiver, candidate);
     await bounded(receiver.setLocalDescription(await receiver.createAnswer()), 'receiver answer');
     await bounded(sender.setRemoteDescription(receiver.localDescription), 'sender answer');
-    for (const candidate of candidatesForSender) await sender.addIceCandidate(candidate);
+    for (const candidate of candidatesForSender) await addCandidate('sender', sender, candidate);
     await waitFor(() => remote?.getAudioTracks().length === 1 && remote?.getVideoTracks().length === 1);
     video = document.createElement('video'); video.playsInline = true;
     video.srcObject = remote; document.querySelector('#view').append(video);
@@ -196,6 +215,7 @@ button.onclick = async () => {
     }
     check((elementBaseline || video.muted) && graphs.size === 1, 'Expected one silent instrumented gain path');
     await bounded(video.play(), 'video playout');
+    check(iceExchange.sender.rejected === 0 && iceExchange.receiver.rejected === 0, 'ICE candidate rejected');
     check(typeof video.requestVideoFrameCallback === 'function', 'Video presentation clock unavailable');
     await waitFor(() => video.videoWidth > 0);
     let reports, pair;
@@ -208,6 +228,17 @@ button.onclick = async () => {
       await delay(50);
     } while (true);
     check(pair && reports.get(pair.localCandidateId)?.candidateType === 'relay', 'Expected selected TURN relay');
+    if (config.media_payload_types) {
+      const codecs = receiver.getReceivers().find(row => row.track.kind === 'video').getParameters().codecs;
+      const deadline = performance.now() + 15000;
+      do {
+        mediaCodecs = mediaScopeCodecs(reports, codecs, config.media_payload_types, config.impaired_media);
+        if (mediaCodecs.audio_payload_type !== null && mediaCodecs.video_payload_type !== null) break;
+        await delay(50);
+        reports = await receiver.getStats();
+      } while (performance.now() < deadline);
+      check(mediaCodecs.valid, 'Media payload classifier does not match negotiated codecs');
+    }
     const sample = document.createElement('canvas'); sample.width = 640; sample.height = 24;
     const reader = sample.getContext('2d', {willReadFrequently:true});
 
@@ -317,12 +348,22 @@ button.onclick = async () => {
     const first = config.marker_seconds >= 600 ? Math.floor(config.marker_seconds / 6) :
       config.marker_seconds >= 90 ? 20 : 15;
     const impaired = config.marker_seconds >= 90 ? 15 : 10;
+    const offlineSeconds = config.media_payload_types ? 12 : 3;
     const phases = [['clean', first, 1], ['delay', impaired, .5], ['loss', impaired, 2],
-      ['offline', 3, 1], ['clean', config.marker_seconds - first - impaired * 2 - 3, 1]];
+      ['offline', offlineSeconds, 1], ['clean', config.marker_seconds - first - impaired * 2 - offlineSeconds, 1]];
     for (const [name, seconds, gain] of phases) {
       await profile(name, gain);
       result.textContent = `RUNNING: ${config.network_clean_only ? 'clean network / ' : ''}${name}, gain ${gain * 100}%, ${markers.length} decoded markers`;
-      await delay(seconds * 1000);
+      if (config.media_payload_types) {
+        for (let second = 0; second < seconds; second++) {
+          const started = performance.now();
+          try {
+            const reports = await bounded(receiver.getStats(), 'media scope counters');
+            mediaSamples.push(mediaScopeSample(reports, name, round(performance.now())));
+          } catch (_) { mediaErrors++; }
+          await delay(Math.max(0, 1000 - (performance.now() - started)));
+        }
+      } else await delay(seconds * 1000);
     }
     await delay(1000);
     matchMarkers();
@@ -332,7 +373,12 @@ button.onclick = async () => {
     const enough = baseline.length >= 5 && recovered.length >= Math.max(5, expectedRecovered * .7);
     outcome = !enough ? 'insufficient_markers' :
       [...baseline, ...recovered].every(row => Math.abs(row[2]) <= 80) ? 'pass' : 'budget_exceeded';
+    if (config.media_payload_types) {
+      check(mediaErrors === 0 && singleStreamOutageProof(mediaSamples, config.network_clean_only, config.impaired_media).valid,
+        'Single-stream outage not proven while other media remains live');
+    }
   } catch (error) {
+    outcome = 'setup_failed';
     // Browser errors can contain credential-bearing URLs; retain only the category.
     setupFailure = error instanceof FixtureError ? error.message : error.name;
     result.textContent = `FAIL: setup (${setupFailure})`;
@@ -341,9 +387,23 @@ button.onclick = async () => {
     const transportResult = document.createElement('pre');
     transportResult.id = 'transport-result';
     transportResult.textContent = 'TRANSPORT_SETUP_PROOF ' + JSON.stringify({
+      candidate_exchange:iceExchange,
       sender:await transportDiagnostics(sender), receiver:await transportDiagnostics(receiver),
     });
     document.body.append(transportResult);
+    if (config?.media_payload_types) {
+      const outage = singleStreamOutageProof(mediaSamples, config.network_clean_only, config.impaired_media);
+      document.querySelector('#media-scope-summary').textContent +=
+        `; scope proof: ${outage.valid ? 'PASS' : 'FAIL'}; audio packets +${outage.audio_packets}, ` +
+        `video packets +${outage.video_packets}; sample errors: ${mediaErrors}`;
+      const mediaResult = document.createElement('pre');
+      mediaResult.id = 'media-scope-result';
+      mediaResult.textContent = 'MEDIA_SCOPE_PROOF ' + JSON.stringify({codecs:mediaCodecs ?? null,
+        outage, errors:mediaErrors,
+        // time, phase, audio then video packets/delay/target/emitted count.
+        samples:mediaSamples});
+      document.body.append(mediaResult);
+    }
     if (encrypted && e2ee) {
       const encryptionResult = document.createElement('pre');
       encryptionResult.id = 'encryption-result';

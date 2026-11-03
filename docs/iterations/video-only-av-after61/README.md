@@ -1,0 +1,130 @@
+# OPT-08: остановка одного медиапотока после сетевых помех
+
+03.11.2026, после web61/source2ce2666. Только локальный тестовый стенд,
+без изменения production media_audio.js, SDK, codec bitrate или buffer targets.
+Пользовательская приёмка остаётся в UA-08.C06 единого реестра.
+
+## Основание и граница гипотезы
+
+Публичный [WebRTC489157997](https://issues.webrtc.org/issues/489157997)
+описывает сохранение дополнительной задержки при прекращении одного из RTP
+потоков после jitter. Статус при чтении New; принятого code change нет.
+Это сообщение автора отчёта, а не доказанный дефект наших звонков.
+Его Chrome145 не равен браузеру этого стенда или native SDK приложения.
+
+flutter_webrtc1.6.3 разрешает native WebRTC-SDK150.7871.04 на Android/macOS;
+Podfile.lock подтверждает macOS версию. В проверенном первичном
+[коде семейства m150](https://github.com/webrtc-sdk/webrtc/blob/55d456ce20b4a91abedda543cf305b3938de9edc/video/rtp_streams_synchronizer2.cc#L90)
+UpdateDelay прекращает расчёт, если receive time любой стороны не обновился.
+До пересчёта/применения новых playout delays выполнение тогда не доходит.
+Это соответствует описанной предпосылке. **Точное соответствие данного commit
+двоичному SDK150.7871.04 не доказано**, как не доказана применимость к историческому
+звонку. Метаданные первичного source сохранены без копирования всего файла.
+
+## Воспроизведение
+
+Синтетические tones/canvas → настоящие Opus/VP8/RTX, две RTCPeerConnection,
+TURN relay→relay через разные listeners, текущий product gain и беззвучный
+worklet sink. Нет microphone/camera/account/Matrix/SFU/E2EE; это проверка
+медиапути браузера, а не физического Safari/Xiaomi или полного приложения.
+
+Классификатор tc в собственном контейнере отличает видеоPT96/RTX97 от audio111,
+RTCP, DTLS/STUN. Не изменяет сеть Mac или production. Формат ChannelData:
+[RFC8656 §12.4](https://www.rfc-editor.org/rfc/rfc8656.html#section-12.4).
+Перед проверкой сверяются реальные negotiated/selected codec PT; один и тот же
+фильтр действует в impairment и clean-only контроле. Сохраняются qdisc/filter
+counters, markers и раз в секунду allowlisted RTP counters без идентификаторов.
+
+Первая попытка `01-*` завершилась setup_failed: video codec stats уже появились,
+audio codec stats ещё отсутствовали. Исключена из выводов. Добавлено ограниченное
+ожидание обоих codec counters; неверные PT по-прежнему отклоняются.
+
+`02-video-only.*`:120с, clean20 → video delay150мс15 → loss2%15 → video
+outage12 → recovery58с. Outage доказан: после первой секунды за10с audio+501,
+video+0 пакетов.53 markers/snapshots, budget_exceeded: initial/recovery p95
+abs142.1/242.1мс. Qdisc: loss2%39 drops, конец offline285 cumulative drops.
+Audio buffer target за интервалы поднимался до906мс в loss-фазе; во время
+video outage медиана80мс, а не неизменные906мс. Следовательно этот прогон
+**не подтверждает простую гипотезу о постоянном замораживании прежнего target**.
+Статистика jitterBufferTargetDelay не раскрывает внутренний minimum sync delay,
+поэтому частичное сохранение внутреннего минимума также не исключено.
+Общий A/V guard80мс не пройден, offset до помех уже был высоким.
+
+`03-clean-control.*`:120с, те же все assets/lab server (same-assets.json),
+но netem delay0 во всех этапах.57 markers/snapshots, строгий guard PASS:
+initial/recovery p95 abs78.4/48.5мс. В условном offline-интервале audio+501,
+video+695; все netem profiles clean. Это показывает отличие данной пары,
+но начальный разброс между прогонами уже был существенным, seed не фиксирован,
+а одна пара не устанавливает корневую причину.
+
+Исходники именно этой пары сохранены как video-stage-*.txt; дальнейшая
+поддержка зеркального audio outage будет иметь отдельные hashes/отчёты.
+Ни SDK upgrade, ни сбросы буферов на основании одной пробы не вводятся.
+
+## Проверки
+
+18 Python tests PASS, включая реальные Host/Origin/nonce/POST boundary до
+первого Run;9 Node tests PASS (marker decoder, diagnostics privacy/failures,
+codec selection/single-stream outage). Обычная schema2 marker result не расширена:
+дополнительный MEDIA_SCOPE_PROOF читается из DOM и сохраняется отдельно.
+Общий Flutter/analyzer774/4skip относится к опубликованному61; для test-only JS/
+Python изменения новый production/native build не выполнялся.
+
+
+## Зеркальный audio outage и ограничения контроля
+
+`04-audio-only.*`:120с, Opus111 под теми же150мс/2%/12с этапами; VP8/RTX
+проходит. Audio+0, video+693 за10с — scope PASS.54 markers/snapshots,
+initial/recovery p95 abs82.9/70.5мс; recovery max102.7мс (один >80).
+Общий guard budget_exceeded. Video buffer target: начальная медиана13.8мс,
+при audio outage208мс, после восстановления120мс. Это наблюдение соответствует
+предпосылке для дальнейшего исследования sync delay, но getStats не раскрывает
+внутренний minimum playout delay и единственный upstream механизм не доказан.
+
+`05-audio-clean.*`:60 markers, initial/recovery p95 abs86.8/37мс,
+budget_exceeded. В контрольном интервале audio+501, video+699, scope PASS.
+Во время этого clean run встречались большие промежуточные offsets; хороший
+конечный p95 не скрывает их и не означает отсутствие артефактов во всём звонке.
+Между04/05 добавлена ICE-диагностика без смены product graph/codec; это **не**
+строго идентичная по всем asset hashes A/B-пара. Точная пара02/03 остаётся отдельно.
+
+### Неуспешные ICE-запуски не являются A/V-данными
+
+`04a`, `05a`, `06a`: video.play deadline15с,0 markers. Две стороны получили
+relay candidates, но соединение не установилось. В04a до истечения TTL было138с;
+coturn зарегистрировал UDP send EPERM. После явной loopback relay binding
+успешный04 прошёл, но05a/06a снова не соединились: binding не объявляется
+исправлением всей причины. В06a оба addIceCandidate успешно приняты,
+239/240 checks отправлены, requestsReceived/responsesReceived0, selected pair нет.
+Это локализует данную попытку до прохождения ICE, до codec/crypto/playout.
+
+Добавлены ограниченные счётчики приёма/отклонения ICE candidates, числовые
+candidate-error codes, remote candidate types и pair-state/check counters.
+SDP, адреса, usernames/credentials и идентификаторы не сохраняются.
+Отдельный повтор с временным verbose только в disposable TURN подтвердил
+ALLOCATE/CREATE_PERMISSION/CHANNEL_BIND success; raw TURN log в репозиторий
+не копируется. Прежний EPERM и общая причина intermittent ICE остаются
+неустановленными, успешный повтор их не закрывает.
+
+Топология loopback allocations проверена по двум настоящим UDP sockets
+(04-relay-binding.json). Настройка соответствует назначению relay-ip в
+[первичной документации coturn](https://github.com/coturn/coturn/blob/master/examples/etc/turnserver.conf#L98).
+Она меняет только локальный двухсерверный стенд. Производственный TURN не менялся.
+
+
+`06-video-repeat.*`: окончательный общий JS с ICE-диагностикой и временным
+verbose в сервере (после пробы убран).52 markers, initial/recovery p95
+abs105.8/211.5мс; scope audio+501/video+0, errors0, оба peers connected
+relay→relay. Снова budget_exceeded. Это повтор эффекта, не same-assets контроль
+относительно02: метаданные показывают разные hashes. Во всех пробах product
+media_audio.js неизменен. Временный verbose не переносится в production.
+
+Итог текущего шага: раздельные media outages измерены, восстановление RTP
+доказано; общий A/V80мс и intermittent local ICE не закрыты. Следующий анализ —
+разделить накопление задержки в приёмном engine и конечном product playout;
+затем проверять исправление на калиброванном содержимом и физических устройствах.
+Сбросы PeerConnection/буфера/SDK по таймеру не добавлены.
+
+Финальные проверки:19 Python tests (обычно18 PASS/1skip; live19 PASS на port7395
+до Run),10 Node PASS,4 прежних interval-summary tests PASS, JS syntax/diff check.
+Повторно собирать Flutter/macOS/Android для test-only изменения не требуется.

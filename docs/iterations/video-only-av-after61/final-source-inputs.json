@@ -1,0 +1,13 @@
+{
+  "production_runtime_changed": false,
+  "debug_verbose_removed": true,
+  "sha256": {
+    "apps/client/tool/call_network_lab.py": "da067f0a55184a43d5b080b285ce51cf8bbd34ba73fa9f2c9f2797bfc6e63af9",
+    "apps/client/integration_test/call_av_marker_fixture.html": "3faf2310ad2b7b703131d089635c79ca68287bdb96e5d6eb0d4e212304390c57",
+    "apps/client/integration_test/call_av_marker_fixture.js": "f3019d4e982d1ef4149712967996f60ea6a192c8d631f83bdf3a8b9075929272",
+    "apps/client/integration_test/call_media_scope.js": "b9f95dec76fa34cc6e1bb36481e6646020e40ad013f8954ce12e432ea1f71f3a",
+    "apps/client/integration_test/call_transport_diagnostics.js": "7490789254f1bd25acb624f64e14ab836baa87ca46823ada8af0380a6877932c",
+    "apps/client/web/media_audio.js": "ae152bc3e5dc8c69e089b8d0d175562a0a8fca84a17133c391786d6c247c640d"
+  },
+  "native_or_physical_devices_tested": false
+}

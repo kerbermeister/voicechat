@@ -1,0 +1,14 @@
+{
+  "turn": {
+    "ALLOCATE processed, success": 1,
+    "CREATE_PERMISSION processed, success": 1,
+    "CHANNEL_BIND processed, success": 1,
+    "ERROR udp send: Operation not permitted": 0
+  },
+  "other": {
+    "ALLOCATE processed, success": 1,
+    "CREATE_PERMISSION processed, success": 1,
+    "CHANNEL_BIND processed, success": 1,
+    "ERROR udp send: Operation not permitted": 0
+  }
+}

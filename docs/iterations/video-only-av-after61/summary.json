@@ -1,0 +1,6386 @@
+{
+  "02-video-only": {
+    "outcome": "budget_exceeded",
+    "markers": 53,
+    "p95_initial_recovery_ms": [
+      142.1,
+      242.1
+    ],
+    "codecs": {
+      "valid": true,
+      "configured_payload_types": [
+        96,
+        97
+      ],
+      "negotiated_video_payload_types": [
+        96,
+        97
+      ],
+      "video_payload_type": 96,
+      "audio_payload_type": 111
+    },
+    "outage": {
+      "valid": true,
+      "clean_control": false,
+      "audio_packets": 501,
+      "video_packets": 0
+    },
+    "phase_intervals": {
+      "clean": {
+        "audio_buffer_ms": {
+          "min": 29.8,
+          "max": 138.7,
+          "median": 51.6
+        },
+        "audio_buffer_target_ms": {
+          "min": 20.0,
+          "max": 140.0,
+          "median": 42.0
+        },
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      "delay": {
+        "audio_buffer_ms": {
+          "min": 99.0,
+          "max": 485.9,
+          "median": 133.95
+        },
+        "audio_buffer_target_ms": {
+          "min": 80.0,
+          "max": 690.4,
+          "median": 170.05
+        },
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      "loss": {
+        "audio_buffer_ms": {
+          "min": 307.2,
+          "max": 756.7,
+          "median": 602.7
+        },
+        "audio_buffer_target_ms": {
+          "min": 141.5,
+          "max": 906.2,
+          "median": 475.25
+        },
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      "offline": {
+        "audio_buffer_ms": {
+          "min": 97.8,
+          "max": 160.8,
+          "median": 99.2
+        },
+        "audio_buffer_target_ms": {
+          "min": 65.8,
+          "max": 80.0,
+          "median": 80.0
+        },
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      "recovery": {
+        "audio_buffer_ms": {
+          "min": 48.2,
+          "max": 189.6,
+          "median": 79.6
+        },
+        "audio_buffer_target_ms": {
+          "min": 40.0,
+          "max": 184.3,
+          "median": 80.0
+        },
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      }
+    },
+    "intervals": [
+      {
+        "time_ms": 4473.6,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 29.8,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 73,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 5474.7,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 33.5,
+        "audio_buffer_target_ms": 25.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 6475.3,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 58.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 7475.8,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 58.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 8476.3,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 58.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 9477.5,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 59.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 10478.9,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.6,
+        "audio_buffer_target_ms": 42.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 11480.7,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 39.4,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 12481.5,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 40.0,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 65,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 13483.2,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 39.6,
+        "audio_buffer_target_ms": 26.5,
+        "video_packets": 73,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 14483.8,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 39.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 15484.6,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 39.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 16485.4,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 38.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 17485.4,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 39.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 18487.5,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 91.3,
+        "audio_buffer_target_ms": 113.3,
+        "video_packets": 64,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 19487.7,
+        "phase": "clean",
+        "audio_packets": 48,
+        "audio_buffer_ms": 138.7,
+        "audio_buffer_target_ms": 140.0,
+        "video_packets": 56,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 20487.9,
+        "phase": "clean",
+        "audio_packets": 52,
+        "audio_buffer_ms": 137.7,
+        "audio_buffer_target_ms": 136.2,
+        "video_packets": 74,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 21488.4,
+        "phase": "clean",
+        "audio_packets": 51,
+        "audio_buffer_ms": 125.9,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 22489.7,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 130.0,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 25229.8,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 110.0,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 166,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 26229.3,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 110.0,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 186,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 27230,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 110.0,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 171,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 28230.3,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 109.6,
+        "audio_buffer_target_ms": 99.2,
+        "video_packets": 167,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 29231.7,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 100.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 161,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 30232.5,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 99.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 156,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 31233.5,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 109.6,
+        "audio_buffer_target_ms": 129.0,
+        "video_packets": 136,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 32235.3,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 157.9,
+        "audio_buffer_target_ms": 211.1,
+        "video_packets": 130,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 33234.5,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 199.4,
+        "audio_buffer_target_ms": 290.0,
+        "video_packets": 127,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 34236.2,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 275.9,
+        "audio_buffer_target_ms": 372.2,
+        "video_packets": 139,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 35238.5,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 324.8,
+        "audio_buffer_target_ms": 450.0,
+        "video_packets": 153,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 36235.9,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 379.8,
+        "audio_buffer_target_ms": 531.1,
+        "video_packets": 150,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 37236.5,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 423.5,
+        "audio_buffer_target_ms": 610.0,
+        "video_packets": 159,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 38236.3,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 485.9,
+        "audio_buffer_target_ms": 690.4,
+        "video_packets": 179,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 40755.9,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 634.7,
+        "audio_buffer_target_ms": 885.4,
+        "video_packets": 202,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 41756.9,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 677.2,
+        "audio_buffer_target_ms": 906.2,
+        "video_packets": 101,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 42756.2,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 742.7,
+        "audio_buffer_target_ms": 827.3,
+        "video_packets": 74,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 43756.6,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 756.7,
+        "audio_buffer_target_ms": 746.5,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 44757.8,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 715.3,
+        "audio_buffer_target_ms": 666.9,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 45757.9,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 676.0,
+        "audio_buffer_target_ms": 587.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 46761,
+        "phase": "loss",
+        "audio_packets": 49,
+        "audio_buffer_ms": 622.3,
+        "audio_buffer_target_ms": 510.3,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 47757.6,
+        "phase": "loss",
+        "audio_packets": 51,
+        "audio_buffer_ms": 583.1,
+        "audio_buffer_target_ms": 440.2,
+        "video_packets": 73,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 48760.2,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 535.2,
+        "audio_buffer_target_ms": 376.5,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 49757.8,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 494.0,
+        "audio_buffer_target_ms": 315.2,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 50759.2,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 446.3,
+        "audio_buffer_target_ms": 264.6,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 51759.7,
+        "phase": "loss",
+        "audio_packets": 49,
+        "audio_buffer_ms": 403.3,
+        "audio_buffer_target_ms": 219.2,
+        "video_packets": 159,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 52759.3,
+        "phase": "loss",
+        "audio_packets": 51,
+        "audio_buffer_ms": 349.8,
+        "audio_buffer_target_ms": 176.5,
+        "video_packets": 225,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 53760,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 307.2,
+        "audio_buffer_target_ms": 141.5,
+        "video_packets": 215,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 56880.2,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 160.8,
+        "audio_buffer_target_ms": 65.8,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 57881.1,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 120.8,
+        "audio_buffer_target_ms": 69.4,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 58882.9,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 119.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 59886,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 111.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 60886.3,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 97.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 61885.7,
+        "phase": "offline",
+        "audio_packets": 51,
+        "audio_buffer_ms": 98.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 62890.9,
+        "phase": "offline",
+        "audio_packets": 49,
+        "audio_buffer_ms": 99.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 63890.6,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 98.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 64889.3,
+        "phase": "offline",
+        "audio_packets": 51,
+        "audio_buffer_ms": 98.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 65889.6,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 99.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 66889.8,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 99.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 69425.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 112.4,
+        "audio_buffer_target_ms": 112.7,
+        "video_packets": 7,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 70425.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 119.0,
+        "audio_buffer_target_ms": 120.0,
+        "video_packets": 18,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 71426.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 134.6,
+        "audio_buffer_target_ms": 184.3,
+        "video_packets": 21,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 72426.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 189.6,
+        "audio_buffer_target_ms": 176.2,
+        "video_packets": 43,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 73427,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 188.6,
+        "audio_buffer_target_ms": 171.0,
+        "video_packets": 53,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 74428.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 180.0,
+        "audio_buffer_target_ms": 155.7,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 75429,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 179.2,
+        "audio_buffer_target_ms": 152.0,
+        "video_packets": 79,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 76428.8,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 163.1,
+        "audio_buffer_target_ms": 138.8,
+        "video_packets": 84,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 77429.2,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 158.4,
+        "audio_buffer_target_ms": 136.0,
+        "video_packets": 85,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 78429.4,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 147.6,
+        "audio_buffer_target_ms": 122.0,
+        "video_packets": 120,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 79430.8,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 137.4,
+        "audio_buffer_target_ms": 119.0,
+        "video_packets": 157,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 80432.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 139.6,
+        "audio_buffer_target_ms": 119.0,
+        "video_packets": 214,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 81432.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 125.9,
+        "audio_buffer_target_ms": 105.0,
+        "video_packets": 274,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 82432.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 119.0,
+        "audio_buffer_target_ms": 102.0,
+        "video_packets": 171,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 83434.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 118.0,
+        "audio_buffer_target_ms": 102.0,
+        "video_packets": 42,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 84435.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 109.8,
+        "audio_buffer_target_ms": 88.0,
+        "video_packets": 42,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 85436.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 107.8,
+        "audio_buffer_target_ms": 85.0,
+        "video_packets": 43,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 86436.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 109.2,
+        "audio_buffer_target_ms": 85.0,
+        "video_packets": 44,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 87437.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 109.2,
+        "audio_buffer_target_ms": 85.0,
+        "video_packets": 45,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 88438.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 109.2,
+        "audio_buffer_target_ms": 80.8,
+        "video_packets": 42,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 89439.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 92.5,
+        "audio_buffer_target_ms": 68.5,
+        "video_packets": 42,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 90439.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 89.8,
+        "audio_buffer_target_ms": 68.0,
+        "video_packets": 42,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 91442.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 89.2,
+        "audio_buffer_target_ms": 68.0,
+        "video_packets": 48,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 92441.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 77.4,
+        "audio_buffer_target_ms": 63.5,
+        "video_packets": 78,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 93442.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 80.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 78,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 94444.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 79.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 77,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 95448.2,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 78.5,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 74,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 96448,
+        "phase": "recovery",
+        "audio_packets": 52,
+        "audio_buffer_ms": 78.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 82,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 97448.5,
+        "phase": "recovery",
+        "audio_packets": 48,
+        "audio_buffer_ms": 79.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 74,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 98450.4,
+        "phase": "recovery",
+        "audio_packets": 52,
+        "audio_buffer_ms": 72.3,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 99451.6,
+        "phase": "recovery",
+        "audio_packets": 48,
+        "audio_buffer_ms": 79.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 73,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 100453.3,
+        "phase": "recovery",
+        "audio_packets": 52,
+        "audio_buffer_ms": 77.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 73,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 101453.9,
+        "phase": "recovery",
+        "audio_packets": 48,
+        "audio_buffer_ms": 78.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 102454.9,
+        "phase": "recovery",
+        "audio_packets": 52,
+        "audio_buffer_ms": 78.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 103457.6,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 79.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 104456.1,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 78.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 105458.1,
+        "phase": "recovery",
+        "audio_packets": 48,
+        "audio_buffer_ms": 79.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 106457,
+        "phase": "recovery",
+        "audio_packets": 52,
+        "audio_buffer_ms": 79.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 107457.6,
+        "phase": "recovery",
+        "audio_packets": 48,
+        "audio_buffer_ms": 78.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 75,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 108458.3,
+        "phase": "recovery",
+        "audio_packets": 52,
+        "audio_buffer_ms": 79.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 109457.8,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 79.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 74,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 110458.4,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 78.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 111459.3,
+        "phase": "recovery",
+        "audio_packets": 48,
+        "audio_buffer_ms": 80.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 112459.3,
+        "phase": "recovery",
+        "audio_packets": 52,
+        "audio_buffer_ms": 79.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 75,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 113459.1,
+        "phase": "recovery",
+        "audio_packets": 48,
+        "audio_buffer_ms": 76.3,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 114460,
+        "phase": "recovery",
+        "audio_packets": 52,
+        "audio_buffer_ms": 78.7,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 73,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 115460.2,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 79.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 66,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 116462,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 78.3,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 74,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 117461.5,
+        "phase": "recovery",
+        "audio_packets": 48,
+        "audio_buffer_ms": 78.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 118462.2,
+        "phase": "recovery",
+        "audio_packets": 52,
+        "audio_buffer_ms": 79.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 119462.9,
+        "phase": "recovery",
+        "audio_packets": 48,
+        "audio_buffer_ms": 79.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 120463.4,
+        "phase": "recovery",
+        "audio_packets": 52,
+        "audio_buffer_ms": 79.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 121463.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 79.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 74,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 122464.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 79.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 73,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 123465.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 59.4,
+        "audio_buffer_target_ms": 50.2,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 124469.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 49.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 125467.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 48.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      }
+    ],
+    "physical_lip_sync_proven": false
+  },
+  "03-clean-control": {
+    "outcome": "pass",
+    "markers": 57,
+    "p95_initial_recovery_ms": [
+      78.4,
+      48.5
+    ],
+    "codecs": {
+      "valid": true,
+      "configured_payload_types": [
+        96,
+        97
+      ],
+      "negotiated_video_payload_types": [
+        96,
+        97
+      ],
+      "video_payload_type": 96,
+      "audio_payload_type": 111
+    },
+    "outage": {
+      "valid": true,
+      "clean_control": true,
+      "audio_packets": 501,
+      "video_packets": 695
+    },
+    "phase_intervals": {
+      "clean": {
+        "audio_buffer_ms": {
+          "min": 31.4,
+          "max": 52.6,
+          "median": 32.4
+        },
+        "audio_buffer_target_ms": {
+          "min": 38.4,
+          "max": 60.0,
+          "median": 40.0
+        },
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      "delay": {
+        "audio_buffer_ms": {
+          "min": 52.4,
+          "max": 92.5,
+          "median": 82.0
+        },
+        "audio_buffer_target_ms": {
+          "min": 40.0,
+          "max": 60.0,
+          "median": 60.0
+        },
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      "loss": {
+        "audio_buffer_ms": {
+          "min": 92.2,
+          "max": 162.2,
+          "median": 105.45
+        },
+        "audio_buffer_target_ms": {
+          "min": 79.6,
+          "max": 100.0,
+          "median": 80.0
+        },
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      "offline": {
+        "audio_buffer_ms": {
+          "min": 81.4,
+          "max": 92.6,
+          "median": 91.4
+        },
+        "audio_buffer_target_ms": {
+          "min": 60.0,
+          "max": 80.0,
+          "median": 80.0
+        },
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      "recovery": {
+        "audio_buffer_ms": {
+          "min": 58.2,
+          "max": 151.8,
+          "median": 72.4
+        },
+        "audio_buffer_target_ms": {
+          "min": 60.0,
+          "max": 100.0,
+          "median": 60.0
+        },
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      }
+    },
+    "intervals": [
+      {
+        "time_ms": 5128.8,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 32.4,
+        "audio_buffer_target_ms": 38.4,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 6129.7,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 32.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 7134.6,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 32.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 8131.8,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 32.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 9131.5,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 31.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 66,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 10131.9,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 31.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 11136.7,
+        "phase": "clean",
+        "audio_packets": 51,
+        "audio_buffer_ms": 31.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 73,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 12135.3,
+        "phase": "clean",
+        "audio_packets": 49,
+        "audio_buffer_ms": 31.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 13135.7,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 31.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 14136.8,
+        "phase": "clean",
+        "audio_packets": 51,
+        "audio_buffer_ms": 31.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 15138.2,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 33.9,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 16139.4,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 17140,
+        "phase": "clean",
+        "audio_packets": 49,
+        "audio_buffer_ms": 51.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 18140,
+        "phase": "clean",
+        "audio_packets": 51,
+        "audio_buffer_ms": 50.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 19142.3,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 20142.4,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 21142.9,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 22144.5,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 23145.7,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 28420.9,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 29420.6,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 78.3,
+        "audio_buffer_target_ms": 55.4,
+        "video_packets": 73,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 30421,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 90.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 31422.8,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 92.5,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 32423.9,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 84.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 64,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 33425.4,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 34427.2,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 78.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 35428.7,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 62,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 36430.3,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 64,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 37430.7,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 79.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 63,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 38430.8,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 64,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 39433.1,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 40438.1,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 76.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 41431.2,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 77.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 65,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 44794.3,
+        "phase": "loss",
+        "audio_packets": 51,
+        "audio_buffer_ms": 157.3,
+        "audio_buffer_target_ms": 79.6,
+        "video_packets": 66,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 45794.8,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 156.7,
+        "audio_buffer_target_ms": 99.6,
+        "video_packets": 60,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 46796.7,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 160.2,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 48,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 47797.5,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 162.2,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 50,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 48800.9,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 146.3,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 56,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 49800.4,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 119.4,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 64,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 50802.4,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 108.7,
+        "audio_buffer_target_ms": 94.2,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 51801.4,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 101.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 52803.3,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 53802.1,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 54805.1,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 100.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 55807,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 92.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 56810.4,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 92.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 57806.3,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 92.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 60532.6,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 92.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 61531.6,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 92.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 62533.1,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 92.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 63534.4,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 92.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 66,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 64534.3,
+        "phase": "offline",
+        "audio_packets": 51,
+        "audio_buffer_ms": 91.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 65537.7,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 92.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 66540.9,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 88.0,
+        "audio_buffer_target_ms": 71.8,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 67539.3,
+        "phase": "offline",
+        "audio_packets": 49,
+        "audio_buffer_ms": 82.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 68540.6,
+        "phase": "offline",
+        "audio_packets": 51,
+        "audio_buffer_ms": 81.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 69541.6,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 70543,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 73398.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 80.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 74400.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 75401.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 80.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 76403,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 77404.8,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 82.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 78405.2,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 120.2,
+        "audio_buffer_target_ms": 83.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 79405.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 151.8,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 80406.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 133.8,
+        "audio_buffer_target_ms": 95.8,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 81407.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 105.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 73,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 82408.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 101.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 83408.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 101.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 84409.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 99.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 85412,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 86409.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 65,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 87411.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 73,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 88410.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 76.9,
+        "audio_buffer_target_ms": 61.9,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 89410.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 90409.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 91410.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 92410.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 93410.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 94410.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 95410.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 66,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 96409.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 97410.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 98410.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 99411.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 100410.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 101410.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 69.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 102411,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 103411.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 75,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 104412.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 75,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 105412.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 65,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 106412.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 107413.3,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 58.2,
+        "audio_buffer_target_ms": 62.8,
+        "video_packets": 76,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 108413.3,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 70.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 63,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 109413.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 64,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 110415.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 74,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 111414.4,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 112415.1,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 113414.4,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 72.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 114414.9,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 68,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 115415.3,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 72.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 116415.7,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 70.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 117416.2,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 70,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 118416.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 65,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 119417.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.0,
+        "audio_buffer_target_ms": 76.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 120419.1,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 121419.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 69.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 122421.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 68.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 61,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 123421.8,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 71.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 66,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 124423.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 63,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 125424.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 60,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 126425,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 61,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 127428.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 70.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 67,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 128427.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 69.0,
+        "audio_buffer_target_ms": 77.6,
+        "video_packets": 69,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 129425.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 69.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      }
+    ],
+    "physical_lip_sync_proven": false
+  },
+  "04-audio-only": {
+    "outcome": "budget_exceeded",
+    "markers": 54,
+    "p95_initial_recovery_ms": [
+      82.9,
+      70.5
+    ],
+    "codecs": {
+      "valid": true,
+      "impaired_media": "audio",
+      "configured_payload_types": [
+        111
+      ],
+      "negotiated_video_payload_types": [
+        96,
+        97
+      ],
+      "video_payload_type": 96,
+      "audio_payload_type": 111
+    },
+    "outage": {
+      "valid": true,
+      "impaired_media": "audio",
+      "clean_control": false,
+      "audio_packets": 0,
+      "video_packets": 693
+    },
+    "phase_intervals": {
+      "clean": {
+        "audio_buffer_ms": {
+          "min": 35.6,
+          "max": 39.8,
+          "median": 37.0
+        },
+        "audio_buffer_target_ms": {
+          "min": 20.0,
+          "max": 40.0,
+          "median": 20.0
+        },
+        "video_buffer_ms": {
+          "min": 5.4,
+          "max": 31.9,
+          "median": 8.6
+        },
+        "video_buffer_target_ms": {
+          "min": 11.8,
+          "max": 39.0,
+          "median": 13.8
+        }
+      },
+      "delay": {
+        "audio_buffer_ms": {
+          "min": 23.1,
+          "max": 176.4,
+          "median": 174.60000000000002
+        },
+        "audio_buffer_target_ms": {
+          "min": 46.7,
+          "max": 180.0,
+          "median": 180.0
+        },
+        "video_buffer_ms": {
+          "min": 54.4,
+          "max": 288.1,
+          "median": 199.75
+        },
+        "video_buffer_target_ms": {
+          "min": 62.0,
+          "max": 295.6,
+          "median": 208.05
+        }
+      },
+      "loss": {
+        "audio_buffer_ms": {
+          "min": 72.8,
+          "max": 315.4,
+          "median": 174.64999999999998
+        },
+        "audio_buffer_target_ms": {
+          "min": 40.0,
+          "max": 180.0,
+          "median": 180.0
+        },
+        "video_buffer_ms": {
+          "min": 241.6,
+          "max": 315.4,
+          "median": 287.5
+        },
+        "video_buffer_target_ms": {
+          "min": 248.8,
+          "max": 322.0,
+          "median": 295.4
+        }
+      },
+      "offline": {
+        "audio_buffer_ms": {
+          "min": 60.0,
+          "max": 60.0,
+          "median": 60.0
+        },
+        "audio_buffer_target_ms": {
+          "min": 40.0,
+          "max": 40.0,
+          "median": 40.0
+        },
+        "video_buffer_ms": {
+          "min": 198.5,
+          "max": 206.9,
+          "median": 200.7
+        },
+        "video_buffer_target_ms": {
+          "min": 208.0,
+          "max": 212.0,
+          "median": 208.0
+        }
+      },
+      "recovery": {
+        "audio_buffer_ms": {
+          "min": 45.6,
+          "max": 105.4,
+          "median": 66.0
+        },
+        "audio_buffer_target_ms": {
+          "min": 40.0,
+          "max": 80.0,
+          "median": 40.0
+        },
+        "video_buffer_ms": {
+          "min": 104.7,
+          "max": 202.9,
+          "median": 113.4
+        },
+        "video_buffer_target_ms": {
+          "min": 119.0,
+          "max": 209.0,
+          "median": 120.0
+        }
+      }
+    },
+    "intervals": [
+      {
+        "time_ms": 4719.2,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 39.8,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 91,
+        "video_buffer_ms": 5.4,
+        "video_buffer_target_ms": 11.8
+      },
+      {
+        "time_ms": 5719.5,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 37.0,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 72,
+        "video_buffer_ms": 7.5,
+        "video_buffer_target_ms": 12.2
+      },
+      {
+        "time_ms": 6720.1,
+        "phase": "clean",
+        "audio_packets": 51,
+        "audio_buffer_ms": 36.8,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 71,
+        "video_buffer_ms": 9.2,
+        "video_buffer_target_ms": 13.8
+      },
+      {
+        "time_ms": 7720.9,
+        "phase": "clean",
+        "audio_packets": 49,
+        "audio_buffer_ms": 37.2,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 68,
+        "video_buffer_ms": 9.1,
+        "video_buffer_target_ms": 13.8
+      },
+      {
+        "time_ms": 8722.6,
+        "phase": "clean",
+        "audio_packets": 51,
+        "audio_buffer_ms": 36.2,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 65,
+        "video_buffer_ms": 8.1,
+        "video_buffer_target_ms": 13.3
+      },
+      {
+        "time_ms": 9723.3,
+        "phase": "clean",
+        "audio_packets": 49,
+        "audio_buffer_ms": 35.6,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 72,
+        "video_buffer_ms": 6.5,
+        "video_buffer_target_ms": 14.1
+      },
+      {
+        "time_ms": 10723.5,
+        "phase": "clean",
+        "audio_packets": 51,
+        "audio_buffer_ms": 37.4,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 72,
+        "video_buffer_ms": 8.5,
+        "video_buffer_target_ms": 13.5
+      },
+      {
+        "time_ms": 11726.1,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 37.2,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 69,
+        "video_buffer_ms": 7.5,
+        "video_buffer_target_ms": 12.7
+      },
+      {
+        "time_ms": 12726.9,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 37.2,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 69,
+        "video_buffer_ms": 7.8,
+        "video_buffer_target_ms": 12.3
+      },
+      {
+        "time_ms": 13730.4,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 35.6,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 72,
+        "video_buffer_ms": 7.2,
+        "video_buffer_target_ms": 12.2
+      },
+      {
+        "time_ms": 14728.4,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 37.0,
+        "audio_buffer_target_ms": 34.0,
+        "video_packets": 70,
+        "video_buffer_ms": 8.6,
+        "video_buffer_target_ms": 12.3
+      },
+      {
+        "time_ms": 15729.8,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 37.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 8.1,
+        "video_buffer_target_ms": 12.4
+      },
+      {
+        "time_ms": 16734.7,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 35.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": 14.1,
+        "video_buffer_target_ms": 20.1
+      },
+      {
+        "time_ms": 17732.1,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 37.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 16.2,
+        "video_buffer_target_ms": 24.0
+      },
+      {
+        "time_ms": 18734.8,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 35.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 14.0,
+        "video_buffer_target_ms": 24.0
+      },
+      {
+        "time_ms": 19731.4,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 36.3,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 22.9,
+        "video_buffer_target_ms": 33.7
+      },
+      {
+        "time_ms": 20732.1,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 36.7,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 31.9,
+        "video_buffer_target_ms": 39.0
+      },
+      {
+        "time_ms": 21732.6,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 37.3,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": 31.9,
+        "video_buffer_target_ms": 39.0
+      },
+      {
+        "time_ms": 22733.9,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 36.3,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": 30.9,
+        "video_buffer_target_ms": 39.0
+      },
+      {
+        "time_ms": 25453.8,
+        "phase": "delay",
+        "audio_packets": 42,
+        "audio_buffer_ms": 23.1,
+        "audio_buffer_target_ms": 46.7,
+        "video_packets": 69,
+        "video_buffer_ms": 54.4,
+        "video_buffer_target_ms": 62.0
+      },
+      {
+        "time_ms": 26455.4,
+        "phase": "delay",
+        "audio_packets": 51,
+        "audio_buffer_ms": 24.5,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 71,
+        "video_buffer_ms": 73.7,
+        "video_buffer_target_ms": 81.2
+      },
+      {
+        "time_ms": 27455,
+        "phase": "delay",
+        "audio_packets": 49,
+        "audio_buffer_ms": 36.2,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 72,
+        "video_buffer_ms": 91.3,
+        "video_buffer_target_ms": 99.2
+      },
+      {
+        "time_ms": 28454.2,
+        "phase": "delay",
+        "audio_packets": 51,
+        "audio_buffer_ms": 96.5,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 70,
+        "video_buffer_ms": 111.7,
+        "video_buffer_target_ms": 120.2
+      },
+      {
+        "time_ms": 29456.5,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 152.1,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 70,
+        "video_buffer_ms": 139.2,
+        "video_buffer_target_ms": 146.9
+      },
+      {
+        "time_ms": 30454.9,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 175.8,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 70,
+        "video_buffer_ms": 166.4,
+        "video_buffer_target_ms": 174.0
+      },
+      {
+        "time_ms": 31457.6,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 174.8,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 69,
+        "video_buffer_ms": 187.7,
+        "video_buffer_target_ms": 197.1
+      },
+      {
+        "time_ms": 32457.6,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 175.8,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 69,
+        "video_buffer_ms": 211.8,
+        "video_buffer_target_ms": 219.0
+      },
+      {
+        "time_ms": 33463.3,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 175.6,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 74,
+        "video_buffer_ms": 231.2,
+        "video_buffer_target_ms": 237.6
+      },
+      {
+        "time_ms": 34459.3,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 174.8,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 70,
+        "video_buffer_ms": 247.0,
+        "video_buffer_target_ms": 255.4
+      },
+      {
+        "time_ms": 35459,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 175.6,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 69,
+        "video_buffer_ms": 258.2,
+        "video_buffer_target_ms": 265.0
+      },
+      {
+        "time_ms": 36459.6,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 176.4,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 69,
+        "video_buffer_ms": 268.3,
+        "video_buffer_target_ms": 274.6
+      },
+      {
+        "time_ms": 37463.1,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 173.2,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 71,
+        "video_buffer_ms": 281.0,
+        "video_buffer_target_ms": 289.0
+      },
+      {
+        "time_ms": 38463,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 174.4,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 68,
+        "video_buffer_ms": 288.1,
+        "video_buffer_target_ms": 295.6
+      },
+      {
+        "time_ms": 41237.1,
+        "phase": "loss",
+        "audio_packets": 57,
+        "audio_buffer_ms": 279.6,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 70,
+        "video_buffer_ms": 315.4,
+        "video_buffer_target_ms": 322.0
+      },
+      {
+        "time_ms": 42238.2,
+        "phase": "loss",
+        "audio_packets": 47,
+        "audio_buffer_ms": 315.4,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 71,
+        "video_buffer_ms": 314.6,
+        "video_buffer_target_ms": 322.0
+      },
+      {
+        "time_ms": 43238.3,
+        "phase": "loss",
+        "audio_packets": 47,
+        "audio_buffer_ms": 253.4,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 71,
+        "video_buffer_ms": 313.7,
+        "video_buffer_target_ms": 322.0
+      },
+      {
+        "time_ms": 44238.9,
+        "phase": "loss",
+        "audio_packets": 48,
+        "audio_buffer_ms": 192.8,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 67,
+        "video_buffer_ms": 314.6,
+        "video_buffer_target_ms": 322.0
+      },
+      {
+        "time_ms": 45237.8,
+        "phase": "loss",
+        "audio_packets": 49,
+        "audio_buffer_ms": 175.7,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 70,
+        "video_buffer_ms": 312.2,
+        "video_buffer_target_ms": 318.6
+      },
+      {
+        "time_ms": 46237.8,
+        "phase": "loss",
+        "audio_packets": 49,
+        "audio_buffer_ms": 168.8,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 72,
+        "video_buffer_ms": 297.0,
+        "video_buffer_target_ms": 305.0
+      },
+      {
+        "time_ms": 47238.9,
+        "phase": "loss",
+        "audio_packets": 49,
+        "audio_buffer_ms": 173.1,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 68,
+        "video_buffer_ms": 293.8,
+        "video_buffer_target_ms": 301.8
+      },
+      {
+        "time_ms": 48240.7,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 173.1,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 66,
+        "video_buffer_ms": 281.0,
+        "video_buffer_target_ms": 289.0
+      },
+      {
+        "time_ms": 49241.6,
+        "phase": "loss",
+        "audio_packets": 49,
+        "audio_buffer_ms": 177.2,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 72,
+        "video_buffer_ms": 281.2,
+        "video_buffer_target_ms": 289.0
+      },
+      {
+        "time_ms": 50244,
+        "phase": "loss",
+        "audio_packets": 51,
+        "audio_buffer_ms": 175.2,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 70,
+        "video_buffer_ms": 276.4,
+        "video_buffer_target_ms": 285.8
+      },
+      {
+        "time_ms": 51243.7,
+        "phase": "loss",
+        "audio_packets": 48,
+        "audio_buffer_ms": 174.1,
+        "audio_buffer_target_ms": 180.0,
+        "video_packets": 68,
+        "video_buffer_ms": 263.5,
+        "video_buffer_target_ms": 272.0
+      },
+      {
+        "time_ms": 52244.2,
+        "phase": "loss",
+        "audio_packets": 49,
+        "audio_buffer_ms": 165.6,
+        "audio_buffer_target_ms": 121.2,
+        "video_packets": 71,
+        "video_buffer_ms": 264.9,
+        "video_buffer_target_ms": 272.0
+      },
+      {
+        "time_ms": 53246.3,
+        "phase": "loss",
+        "audio_packets": 48,
+        "audio_buffer_ms": 120.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 260.9,
+        "video_buffer_target_ms": 268.0
+      },
+      {
+        "time_ms": 54245.9,
+        "phase": "loss",
+        "audio_packets": 48,
+        "audio_buffer_ms": 72.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": 241.6,
+        "video_buffer_target_ms": 248.8
+      },
+      {
+        "time_ms": 56940.1,
+        "phase": "offline",
+        "audio_packets": 0,
+        "audio_buffer_ms": 60.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 206.9,
+        "video_buffer_target_ms": 212.0
+      },
+      {
+        "time_ms": 57941.3,
+        "phase": "offline",
+        "audio_packets": 0,
+        "audio_buffer_ms": null,
+        "audio_buffer_target_ms": null,
+        "video_packets": 68,
+        "video_buffer_ms": 199.6,
+        "video_buffer_target_ms": 208.0
+      },
+      {
+        "time_ms": 58942.3,
+        "phase": "offline",
+        "audio_packets": 0,
+        "audio_buffer_ms": null,
+        "audio_buffer_target_ms": null,
+        "video_packets": 73,
+        "video_buffer_ms": 198.6,
+        "video_buffer_target_ms": 208.0
+      },
+      {
+        "time_ms": 59943.3,
+        "phase": "offline",
+        "audio_packets": 0,
+        "audio_buffer_ms": null,
+        "audio_buffer_target_ms": null,
+        "video_packets": 70,
+        "video_buffer_ms": 200.0,
+        "video_buffer_target_ms": 208.0
+      },
+      {
+        "time_ms": 60943.8,
+        "phase": "offline",
+        "audio_packets": 0,
+        "audio_buffer_ms": null,
+        "audio_buffer_target_ms": null,
+        "video_packets": 67,
+        "video_buffer_ms": 201.0,
+        "video_buffer_target_ms": 208.0
+      },
+      {
+        "time_ms": 61945.3,
+        "phase": "offline",
+        "audio_packets": 0,
+        "audio_buffer_ms": null,
+        "audio_buffer_target_ms": null,
+        "video_packets": 71,
+        "video_buffer_ms": 201.4,
+        "video_buffer_target_ms": 208.0
+      },
+      {
+        "time_ms": 62946.4,
+        "phase": "offline",
+        "audio_packets": 0,
+        "audio_buffer_ms": null,
+        "audio_buffer_target_ms": null,
+        "video_packets": 69,
+        "video_buffer_ms": 201.7,
+        "video_buffer_target_ms": 208.0
+      },
+      {
+        "time_ms": 63947.8,
+        "phase": "offline",
+        "audio_packets": 0,
+        "audio_buffer_ms": null,
+        "audio_buffer_target_ms": null,
+        "video_packets": 68,
+        "video_buffer_ms": 200.7,
+        "video_buffer_target_ms": 208.8
+      },
+      {
+        "time_ms": 64948.3,
+        "phase": "offline",
+        "audio_packets": 0,
+        "audio_buffer_ms": null,
+        "audio_buffer_target_ms": null,
+        "video_packets": 70,
+        "video_buffer_ms": 200.7,
+        "video_buffer_target_ms": 209.0
+      },
+      {
+        "time_ms": 65950,
+        "phase": "offline",
+        "audio_packets": 0,
+        "audio_buffer_ms": null,
+        "audio_buffer_target_ms": null,
+        "video_packets": 71,
+        "video_buffer_ms": 198.5,
+        "video_buffer_target_ms": 209.0
+      },
+      {
+        "time_ms": 66950.2,
+        "phase": "offline",
+        "audio_packets": 0,
+        "audio_buffer_ms": null,
+        "audio_buffer_target_ms": null,
+        "video_packets": 66,
+        "video_buffer_ms": 199.8,
+        "video_buffer_target_ms": 209.0
+      },
+      {
+        "time_ms": 69600,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 46.9,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 202.9,
+        "video_buffer_target_ms": 209.0
+      },
+      {
+        "time_ms": 70600,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": 189.4,
+        "video_buffer_target_ms": 196.4
+      },
+      {
+        "time_ms": 71599.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 46.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 73,
+        "video_buffer_ms": 179.3,
+        "video_buffer_target_ms": 187.0
+      },
+      {
+        "time_ms": 72600.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 167.6,
+        "video_buffer_target_ms": 176.3
+      },
+      {
+        "time_ms": 73603.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 46.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 161.5,
+        "video_buffer_target_ms": 168.1
+      },
+      {
+        "time_ms": 74605.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 46.7,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 160.6,
+        "video_buffer_target_ms": 168.0
+      },
+      {
+        "time_ms": 75604.5,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 45.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": 150.9,
+        "video_buffer_target_ms": 157.6
+      },
+      {
+        "time_ms": 76605.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 142.5,
+        "video_buffer_target_ms": 149.0
+      },
+      {
+        "time_ms": 77606.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 73,
+        "video_buffer_ms": 141.6,
+        "video_buffer_target_ms": 149.0
+      },
+      {
+        "time_ms": 78610.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 142.0,
+        "video_buffer_target_ms": 149.0
+      },
+      {
+        "time_ms": 79608.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 46.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 132.0,
+        "video_buffer_target_ms": 140.0
+      },
+      {
+        "time_ms": 80608.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 126.6,
+        "video_buffer_target_ms": 134.0
+      },
+      {
+        "time_ms": 81607.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": 127.1,
+        "video_buffer_target_ms": 134.0
+      },
+      {
+        "time_ms": 82611.1,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 46.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 125.9,
+        "video_buffer_target_ms": 134.0
+      },
+      {
+        "time_ms": 83612.3,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 45.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": 124.5,
+        "video_buffer_target_ms": 134.0
+      },
+      {
+        "time_ms": 84612.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 46.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 124.8,
+        "video_buffer_target_ms": 134.0
+      },
+      {
+        "time_ms": 85614.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 126.9,
+        "video_buffer_target_ms": 134.0
+      },
+      {
+        "time_ms": 86614.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 46.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 123.6,
+        "video_buffer_target_ms": 134.0
+      },
+      {
+        "time_ms": 87615.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 45.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 117.0,
+        "video_buffer_target_ms": 125.7
+      },
+      {
+        "time_ms": 88616.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": 113.9,
+        "video_buffer_target_ms": 119.0
+      },
+      {
+        "time_ms": 89615.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 46.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 112.2,
+        "video_buffer_target_ms": 119.0
+      },
+      {
+        "time_ms": 90614.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 46.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": 113.9,
+        "video_buffer_target_ms": 119.0
+      },
+      {
+        "time_ms": 91616,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 112.4,
+        "video_buffer_target_ms": 119.0
+      },
+      {
+        "time_ms": 92615.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": 110.6,
+        "video_buffer_target_ms": 119.0
+      },
+      {
+        "time_ms": 93615.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 112.3,
+        "video_buffer_target_ms": 119.0
+      },
+      {
+        "time_ms": 94615.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 78,
+        "video_buffer_ms": 112.3,
+        "video_buffer_target_ms": 119.0
+      },
+      {
+        "time_ms": 95615.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 47.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 65,
+        "video_buffer_ms": 111.9,
+        "video_buffer_target_ms": 119.0
+      },
+      {
+        "time_ms": 96616,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 65.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 75,
+        "video_buffer_ms": 110.6,
+        "video_buffer_target_ms": 119.0
+      },
+      {
+        "time_ms": 97617.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 66.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 106.4,
+        "video_buffer_target_ms": 119.0
+      },
+      {
+        "time_ms": 98617.7,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 104.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": 107.6,
+        "video_buffer_target_ms": 119.0
+      },
+      {
+        "time_ms": 99618.6,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 105.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 112.1,
+        "video_buffer_target_ms": 119.1
+      },
+      {
+        "time_ms": 100620,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 78.3,
+        "audio_buffer_target_ms": 45.8,
+        "video_packets": 67,
+        "video_buffer_ms": 112.3,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 101620.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 77.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": 112.3,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 102620.7,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 67.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 104.7,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 103621.1,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 75.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 56,
+        "video_buffer_ms": 112.5,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 104622.3,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 77.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 75,
+        "video_buffer_ms": 114.2,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 105622.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 76.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": 113.9,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 106624,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 75.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": 112.6,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 107625.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 73.2,
+        "audio_buffer_target_ms": 60.4,
+        "video_packets": 69,
+        "video_buffer_ms": 110.5,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 108626.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 76.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 67,
+        "video_buffer_ms": 115.0,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 109627.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 75.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 73,
+        "video_buffer_ms": 114.1,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 110627.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 76.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 70,
+        "video_buffer_ms": 114.6,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 111630.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 76.4,
+        "audio_buffer_target_ms": 62.0,
+        "video_packets": 67,
+        "video_buffer_ms": 113.0,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 112630.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 75.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 73,
+        "video_buffer_ms": 112.6,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 113631.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 75.9,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 73,
+        "video_buffer_ms": 112.9,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 114632.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 77.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 69,
+        "video_buffer_ms": 114.2,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 115634.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 76.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 67,
+        "video_buffer_ms": 112.7,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 116637.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 77.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 113.1,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 117636.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 75.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 69,
+        "video_buffer_ms": 111.3,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 118642.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 77.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 67,
+        "video_buffer_ms": 113.4,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 119642.8,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 77.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 112.5,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 120639.4,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 77.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": 111.4,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 121644.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 76.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": 110.9,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 122640.9,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 76.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": 111.8,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 123642,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 76.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": 112.1,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 124642.2,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 76.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 66,
+        "video_buffer_ms": 113.3,
+        "video_buffer_target_ms": 120.0
+      },
+      {
+        "time_ms": 125644,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 76.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": 113.7,
+        "video_buffer_target_ms": 120.0
+      }
+    ],
+    "physical_lip_sync_proven": false
+  },
+  "05-audio-clean": {
+    "outcome": "budget_exceeded",
+    "markers": 60,
+    "p95_initial_recovery_ms": [
+      86.8,
+      37
+    ],
+    "codecs": {
+      "valid": true,
+      "impaired_media": "audio",
+      "configured_payload_types": [
+        111
+      ],
+      "negotiated_video_payload_types": [
+        96,
+        97
+      ],
+      "video_payload_type": 96,
+      "audio_payload_type": 111
+    },
+    "outage": {
+      "valid": true,
+      "impaired_media": "audio",
+      "clean_control": true,
+      "audio_packets": 501,
+      "video_packets": 699
+    },
+    "phase_intervals": {
+      "clean": {
+        "audio_buffer_ms": {
+          "min": 32.2,
+          "max": 72.4,
+          "median": 71.6
+        },
+        "audio_buffer_target_ms": {
+          "min": 20.0,
+          "max": 80.0,
+          "median": 60.0
+        },
+        "video_buffer_ms": {
+          "min": 5.6,
+          "max": 60.1,
+          "median": 8.6
+        },
+        "video_buffer_target_ms": {
+          "min": 11.9,
+          "max": 68.6,
+          "median": 12.6
+        }
+      },
+      "delay": {
+        "audio_buffer_ms": {
+          "min": 51.6,
+          "max": 62.4,
+          "median": 61.7
+        },
+        "audio_buffer_target_ms": {
+          "min": 40.0,
+          "max": 40.0,
+          "median": 40.0
+        },
+        "video_buffer_ms": {
+          "min": 68.6,
+          "max": 78.1,
+          "median": 75.85
+        },
+        "video_buffer_target_ms": {
+          "min": 76.8,
+          "max": 84.0,
+          "median": 84.0
+        }
+      },
+      "loss": {
+        "audio_buffer_ms": {
+          "min": 44.1,
+          "max": 537.8,
+          "median": 301.8
+        },
+        "audio_buffer_target_ms": {
+          "min": 40.0,
+          "max": 200.0,
+          "median": 171.25
+        },
+        "video_buffer_ms": {
+          "min": 48.4,
+          "max": 300.3,
+          "median": 216.45
+        },
+        "video_buffer_target_ms": {
+          "min": 84.0,
+          "max": 306.0,
+          "median": 234.85000000000002
+        }
+      },
+      "offline": {
+        "audio_buffer_ms": {
+          "min": 96.7,
+          "max": 142.3,
+          "median": 131.6
+        },
+        "audio_buffer_target_ms": {
+          "min": 80.0,
+          "max": 120.0,
+          "median": 120.0
+        },
+        "video_buffer_ms": {
+          "min": 203.1,
+          "max": 279.2,
+          "median": 240.1
+        },
+        "video_buffer_target_ms": {
+          "min": 212.0,
+          "max": 283.4,
+          "median": 246.0
+        }
+      },
+      "recovery": {
+        "audio_buffer_ms": {
+          "min": 71.0,
+          "max": 120.4,
+          "median": 81.2
+        },
+        "audio_buffer_target_ms": {
+          "min": 60.0,
+          "max": 80.0,
+          "median": 60.0
+        },
+        "video_buffer_ms": {
+          "min": 130.6,
+          "max": 189.1,
+          "median": 138.0
+        },
+        "video_buffer_target_ms": {
+          "min": 145.0,
+          "max": 196.0,
+          "median": 145.0
+        }
+      }
+    },
+    "intervals": [
+      {
+        "time_ms": 5218,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 32.6,
+        "audio_buffer_target_ms": 20.0,
+        "video_packets": 79,
+        "video_buffer_ms": 7.4,
+        "video_buffer_target_ms": 13.7
+      },
+      {
+        "time_ms": 6218.4,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 32.2,
+        "audio_buffer_target_ms": 22.0,
+        "video_packets": 71,
+        "video_buffer_ms": 8.5,
+        "video_buffer_target_ms": 13.0
+      },
+      {
+        "time_ms": 7220.1,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 41.0,
+        "audio_buffer_target_ms": 51.4,
+        "video_packets": 69,
+        "video_buffer_ms": 7.4,
+        "video_buffer_target_ms": 12.6
+      },
+      {
+        "time_ms": 8217.3,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": 8.1,
+        "video_buffer_target_ms": 12.5
+      },
+      {
+        "time_ms": 9218.2,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": 8.1,
+        "video_buffer_target_ms": 12.3
+      },
+      {
+        "time_ms": 10218.1,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 53.1,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": 5.6,
+        "video_buffer_target_ms": 12.2
+      },
+      {
+        "time_ms": 11220.1,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 78.8,
+        "video_packets": 70,
+        "video_buffer_ms": 9.3,
+        "video_buffer_target_ms": 12.1
+      },
+      {
+        "time_ms": 12220.4,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 70,
+        "video_buffer_ms": 6.6,
+        "video_buffer_target_ms": 11.9
+      },
+      {
+        "time_ms": 13221.5,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 68,
+        "video_buffer_ms": 7.2,
+        "video_buffer_target_ms": 12.1
+      },
+      {
+        "time_ms": 14224.3,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": 9.1,
+        "video_buffer_target_ms": 12.4
+      },
+      {
+        "time_ms": 15225.6,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 70,
+        "video_buffer_ms": 8.6,
+        "video_buffer_target_ms": 12.4
+      },
+      {
+        "time_ms": 16225.2,
+        "phase": "clean",
+        "audio_packets": 51,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 65.2,
+        "video_packets": 65,
+        "video_buffer_ms": 7.0,
+        "video_buffer_target_ms": 12.5
+      },
+      {
+        "time_ms": 17224.6,
+        "phase": "clean",
+        "audio_packets": 49,
+        "audio_buffer_ms": 71.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 74,
+        "video_buffer_ms": 23.1,
+        "video_buffer_target_ms": 29.8
+      },
+      {
+        "time_ms": 18228.1,
+        "phase": "clean",
+        "audio_packets": 51,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 25.4,
+        "video_buffer_target_ms": 33.0
+      },
+      {
+        "time_ms": 19227.6,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 66,
+        "video_buffer_ms": 40.1,
+        "video_buffer_target_ms": 47.4
+      },
+      {
+        "time_ms": 20227.6,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 69,
+        "video_buffer_ms": 43.0,
+        "video_buffer_target_ms": 51.0
+      },
+      {
+        "time_ms": 21228.2,
+        "phase": "clean",
+        "audio_packets": 49,
+        "audio_buffer_ms": 71.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": 42.9,
+        "video_buffer_target_ms": 51.0
+      },
+      {
+        "time_ms": 22229.3,
+        "phase": "clean",
+        "audio_packets": 51,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": 59.9,
+        "video_buffer_target_ms": 66.3
+      },
+      {
+        "time_ms": 23230,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 60.1,
+        "video_buffer_target_ms": 68.6
+      },
+      {
+        "time_ms": 25942.2,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 61.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 68.6,
+        "video_buffer_target_ms": 76.8
+      },
+      {
+        "time_ms": 26944.7,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 62.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 74.5,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 27944.9,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 61.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": 75.2,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 28944.3,
+        "phase": "delay",
+        "audio_packets": 51,
+        "audio_buffer_ms": 62.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": 74.7,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 29946.1,
+        "phase": "delay",
+        "audio_packets": 49,
+        "audio_buffer_ms": 61.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 75.7,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 30947.6,
+        "phase": "delay",
+        "audio_packets": 51,
+        "audio_buffer_ms": 62.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 76.4,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 31947.1,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 61.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 75.0,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 32949.1,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 62.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 76.0,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 33948.3,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 61.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 78.1,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 34951.4,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 62.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 77.7,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 35950.8,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 60.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 76.5,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 36952.4,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": 77.2,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 37953.8,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 78.0,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 38955,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": 74.9,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 41612.3,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 77.7,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 42612.3,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 50.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 76.0,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 43618.9,
+        "phase": "loss",
+        "audio_packets": 31,
+        "audio_buffer_ms": 44.1,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 42,
+        "video_buffer_ms": 66.8,
+        "video_buffer_target_ms": 84.0
+      },
+      {
+        "time_ms": 44615.6,
+        "phase": "loss",
+        "audio_packets": 69,
+        "audio_buffer_ms": 294.0,
+        "audio_buffer_target_ms": 166.7,
+        "video_packets": 80,
+        "video_buffer_ms": 48.4,
+        "video_buffer_target_ms": 88.4
+      },
+      {
+        "time_ms": 45617.5,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 537.8,
+        "audio_buffer_target_ms": 131.0,
+        "video_packets": 48,
+        "video_buffer_ms": 120.0,
+        "video_buffer_target_ms": 128.7
+      },
+      {
+        "time_ms": 46619.3,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 491.1,
+        "audio_buffer_target_ms": 110.9,
+        "video_packets": 74,
+        "video_buffer_ms": 153.3,
+        "video_buffer_target_ms": 175.8
+      },
+      {
+        "time_ms": 47621.1,
+        "phase": "loss",
+        "audio_packets": 43,
+        "audio_buffer_ms": 452.7,
+        "audio_buffer_target_ms": 120.0,
+        "video_packets": 62,
+        "video_buffer_ms": 208.0,
+        "video_buffer_target_ms": 218.4
+      },
+      {
+        "time_ms": 48621,
+        "phase": "loss",
+        "audio_packets": 57,
+        "audio_buffer_ms": 392.5,
+        "audio_buffer_target_ms": 175.8,
+        "video_packets": 78,
+        "video_buffer_ms": 224.9,
+        "video_buffer_target_ms": 251.3
+      },
+      {
+        "time_ms": 49622.3,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 380.8,
+        "audio_buffer_target_ms": 200.0,
+        "video_packets": 73,
+        "video_buffer_ms": 269.9,
+        "video_buffer_target_ms": 274.8
+      },
+      {
+        "time_ms": 50622,
+        "phase": "loss",
+        "audio_packets": 51,
+        "audio_buffer_ms": 348.1,
+        "audio_buffer_target_ms": 200.0,
+        "video_packets": 70,
+        "video_buffer_ms": 284.0,
+        "video_buffer_target_ms": 290.0
+      },
+      {
+        "time_ms": 51622,
+        "phase": "loss",
+        "audio_packets": 49,
+        "audio_buffer_ms": 309.6,
+        "audio_buffer_target_ms": 200.0,
+        "video_packets": 71,
+        "video_buffer_ms": 288.1,
+        "video_buffer_target_ms": 293.2
+      },
+      {
+        "time_ms": 52622.2,
+        "phase": "loss",
+        "audio_packets": 51,
+        "audio_buffer_ms": 265.2,
+        "audio_buffer_target_ms": 200.0,
+        "video_packets": 71,
+        "video_buffer_ms": 300.3,
+        "video_buffer_target_ms": 306.0
+      },
+      {
+        "time_ms": 53623.6,
+        "phase": "loss",
+        "audio_packets": 49,
+        "audio_buffer_ms": 224.1,
+        "audio_buffer_target_ms": 200.0,
+        "video_packets": 73,
+        "video_buffer_ms": 298.5,
+        "video_buffer_target_ms": 306.0
+      },
+      {
+        "time_ms": 54627.3,
+        "phase": "loss",
+        "audio_packets": 51,
+        "audio_buffer_ms": 222.4,
+        "audio_buffer_target_ms": 200.0,
+        "video_packets": 73,
+        "video_buffer_ms": 300.0,
+        "video_buffer_target_ms": 306.0
+      },
+      {
+        "time_ms": 57329.1,
+        "phase": "offline",
+        "audio_packets": 52,
+        "audio_buffer_ms": 142.3,
+        "audio_buffer_target_ms": 120.0,
+        "video_packets": 71,
+        "video_buffer_ms": 279.2,
+        "video_buffer_target_ms": 283.4
+      },
+      {
+        "time_ms": 58329.6,
+        "phase": "offline",
+        "audio_packets": 51,
+        "audio_buffer_ms": 135.4,
+        "audio_buffer_target_ms": 120.0,
+        "video_packets": 71,
+        "video_buffer_ms": 274.7,
+        "video_buffer_target_ms": 281.0
+      },
+      {
+        "time_ms": 59330.4,
+        "phase": "offline",
+        "audio_packets": 49,
+        "audio_buffer_ms": 131.6,
+        "audio_buffer_target_ms": 120.0,
+        "video_packets": 74,
+        "video_buffer_ms": 254.7,
+        "video_buffer_target_ms": 263.9
+      },
+      {
+        "time_ms": 60330.9,
+        "phase": "offline",
+        "audio_packets": 51,
+        "audio_buffer_ms": 132.2,
+        "audio_buffer_target_ms": 120.0,
+        "video_packets": 69,
+        "video_buffer_ms": 257.7,
+        "video_buffer_target_ms": 263.0
+      },
+      {
+        "time_ms": 61332.3,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 131.8,
+        "audio_buffer_target_ms": 120.0,
+        "video_packets": 66,
+        "video_buffer_ms": 240.3,
+        "video_buffer_target_ms": 246.8
+      },
+      {
+        "time_ms": 62332.8,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 132.0,
+        "audio_buffer_target_ms": 120.0,
+        "video_packets": 72,
+        "video_buffer_ms": 240.1,
+        "video_buffer_target_ms": 246.0
+      },
+      {
+        "time_ms": 63334.5,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 128.6,
+        "audio_buffer_target_ms": 104.8,
+        "video_packets": 70,
+        "video_buffer_ms": 238.6,
+        "video_buffer_target_ms": 246.0
+      },
+      {
+        "time_ms": 64335.6,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 105.1,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 68,
+        "video_buffer_ms": 222.4,
+        "video_buffer_target_ms": 229.7
+      },
+      {
+        "time_ms": 65337.1,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 101.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": 220.5,
+        "video_buffer_target_ms": 228.0
+      },
+      {
+        "time_ms": 66338.1,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": 206.3,
+        "video_buffer_target_ms": 212.8
+      },
+      {
+        "time_ms": 67339.9,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 96.7,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 67,
+        "video_buffer_ms": 203.1,
+        "video_buffer_target_ms": 212.0
+      },
+      {
+        "time_ms": 69962.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 91.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": 189.1,
+        "video_buffer_target_ms": 196.0
+      },
+      {
+        "time_ms": 70962.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 90.0,
+        "audio_buffer_target_ms": 75.7,
+        "video_packets": 69,
+        "video_buffer_ms": 187.7,
+        "video_buffer_target_ms": 196.0
+      },
+      {
+        "time_ms": 71963.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": 177.4,
+        "video_buffer_target_ms": 186.1
+      },
+      {
+        "time_ms": 72965.1,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 81.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": 170.1,
+        "video_buffer_target_ms": 178.0
+      },
+      {
+        "time_ms": 73966.8,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 80.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": 167.9,
+        "video_buffer_target_ms": 178.0
+      },
+      {
+        "time_ms": 74969,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 79.2,
+        "audio_buffer_target_ms": 71.2,
+        "video_packets": 72,
+        "video_buffer_ms": 158.3,
+        "video_buffer_target_ms": 168.6
+      },
+      {
+        "time_ms": 75969.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.8,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 74,
+        "video_buffer_ms": 153.7,
+        "video_buffer_target_ms": 161.0
+      },
+      {
+        "time_ms": 76970.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 69,
+        "video_buffer_ms": 152.3,
+        "video_buffer_target_ms": 161.0
+      },
+      {
+        "time_ms": 77972.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 73,
+        "video_buffer_ms": 151.0,
+        "video_buffer_target_ms": 161.0
+      },
+      {
+        "time_ms": 78972.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.6,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 70,
+        "video_buffer_ms": 151.5,
+        "video_buffer_target_ms": 161.0
+      },
+      {
+        "time_ms": 79973.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 68,
+        "video_buffer_ms": 142.0,
+        "video_buffer_target_ms": 152.0
+      },
+      {
+        "time_ms": 80975.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 80.6,
+        "audio_buffer_target_ms": 73.6,
+        "video_packets": 71,
+        "video_buffer_ms": 136.9,
+        "video_buffer_target_ms": 146.0
+      },
+      {
+        "time_ms": 81975.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 73,
+        "video_buffer_ms": 137.8,
+        "video_buffer_target_ms": 146.0
+      },
+      {
+        "time_ms": 82977.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": 138.5,
+        "video_buffer_target_ms": 146.0
+      },
+      {
+        "time_ms": 83977.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": 138.0,
+        "video_buffer_target_ms": 146.0
+      },
+      {
+        "time_ms": 84979,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 73,
+        "video_buffer_ms": 138.3,
+        "video_buffer_target_ms": 146.0
+      },
+      {
+        "time_ms": 85981.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 138.2,
+        "video_buffer_target_ms": 146.0
+      },
+      {
+        "time_ms": 86981.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": 137.2,
+        "video_buffer_target_ms": 145.7
+      },
+      {
+        "time_ms": 87981.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 73,
+        "video_buffer_ms": 137.2,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 88982.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.8,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 73,
+        "video_buffer_ms": 138.0,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 89983.7,
+        "phase": "recovery",
+        "audio_packets": 48,
+        "audio_buffer_ms": 77.4,
+        "audio_buffer_target_ms": 69.6,
+        "video_packets": 63,
+        "video_buffer_ms": 133.8,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 90985.1,
+        "phase": "recovery",
+        "audio_packets": 52,
+        "audio_buffer_ms": 79.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 75,
+        "video_buffer_ms": 135.9,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 91984.4,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 79.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": 134.7,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 92985.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.5,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 69,
+        "video_buffer_ms": 139.3,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 93988.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 69,
+        "video_buffer_ms": 136.6,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 94988.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.0,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 73,
+        "video_buffer_ms": 136.4,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 95989.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 67,
+        "video_buffer_ms": 136.5,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 96990.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": 138.0,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 97993.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 72,
+        "video_buffer_ms": 137.5,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 98994.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.2,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 71,
+        "video_buffer_ms": 138.2,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 99994,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.4,
+        "audio_buffer_target_ms": 80.0,
+        "video_packets": 67,
+        "video_buffer_ms": 137.4,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 100995.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.4,
+        "audio_buffer_target_ms": 78.8,
+        "video_packets": 70,
+        "video_buffer_ms": 139.7,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 101999.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 67,
+        "video_buffer_ms": 137.2,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 102997.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": 135.7,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 103998.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 74,
+        "video_buffer_ms": 136.1,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 105000.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 82.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": 139.1,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 106001.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 79.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 138.0,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 107000.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 137.2,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 108000.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": 137.2,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 109002.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 71.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 73,
+        "video_buffer_ms": 136.5,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 110001.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": 138.6,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 111002.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 73,
+        "video_buffer_ms": 137.5,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 112003.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 135.2,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 113004.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 73,
+        "video_buffer_ms": 139.6,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 114004.6,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 138.9,
+        "video_buffer_target_ms": 145.7
+      },
+      {
+        "time_ms": 115006.9,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 69,
+        "video_buffer_ms": 138.6,
+        "video_buffer_target_ms": 145.3
+      },
+      {
+        "time_ms": 116005.3,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 72.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 138.2,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 117007,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 72,
+        "video_buffer_ms": 137.7,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 118008.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.2,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 70,
+        "video_buffer_ms": 136.8,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 119007.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 68,
+        "video_buffer_ms": 138.2,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 120006.1,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 72.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 74,
+        "video_buffer_ms": 137.6,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 121006.9,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 71,
+        "video_buffer_ms": 138.3,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 122007.8,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 69,
+        "video_buffer_ms": 139.0,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 123008,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 72.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 75,
+        "video_buffer_ms": 139.7,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 124008.8,
+        "phase": "recovery",
+        "audio_packets": 46,
+        "audio_buffer_ms": 71.6,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 64,
+        "video_buffer_ms": 135.4,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 125009,
+        "phase": "recovery",
+        "audio_packets": 54,
+        "audio_buffer_ms": 113.3,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 76,
+        "video_buffer_ms": 130.6,
+        "video_buffer_target_ms": 145.0
+      },
+      {
+        "time_ms": 126009.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 120.4,
+        "audio_buffer_target_ms": 60.0,
+        "video_packets": 69,
+        "video_buffer_ms": 137.6,
+        "video_buffer_target_ms": 145.0
+      }
+    ],
+    "physical_lip_sync_proven": false
+  },
+  "06-video-repeat": {
+    "outcome": "budget_exceeded",
+    "markers": 52,
+    "p95_initial_recovery_ms": [
+      105.8,
+      211.5
+    ],
+    "codecs": {
+      "valid": true,
+      "impaired_media": "video",
+      "configured_payload_types": [
+        96,
+        97
+      ],
+      "negotiated_video_payload_types": [
+        96,
+        97
+      ],
+      "video_payload_type": 96,
+      "audio_payload_type": 111
+    },
+    "outage": {
+      "valid": true,
+      "impaired_media": "video",
+      "clean_control": false,
+      "audio_packets": 501,
+      "video_packets": 0
+    },
+    "phase_intervals": {
+      "clean": {
+        "audio_buffer_ms": {
+          "min": 51.4,
+          "max": 72.0,
+          "median": 52.2
+        },
+        "audio_buffer_target_ms": {
+          "min": 24.3,
+          "max": 40.0,
+          "median": 40.0
+        },
+        "video_buffer_ms": {
+          "min": 0.2,
+          "max": 248.4,
+          "median": 0.8
+        },
+        "video_buffer_target_ms": {
+          "min": 12.7,
+          "max": 82.2,
+          "median": 25.0
+        }
+      },
+      "delay": {
+        "audio_buffer_ms": {
+          "min": 50.0,
+          "max": 605.3,
+          "median": 213.65
+        },
+        "audio_buffer_target_ms": {
+          "min": 40.0,
+          "max": 845.1,
+          "median": 325.1
+        },
+        "video_buffer_ms": {
+          "min": 0.7,
+          "max": 88.9,
+          "median": 60.05
+        },
+        "video_buffer_target_ms": {
+          "min": 28.0,
+          "max": 88.2,
+          "median": 52.15
+        }
+      },
+      "loss": {
+        "audio_buffer_ms": {
+          "min": 473.2,
+          "max": 922.5,
+          "median": 767.9
+        },
+        "audio_buffer_target_ms": {
+          "min": 160.6,
+          "max": 1072.1,
+          "median": 628.25
+        },
+        "video_buffer_ms": {
+          "min": 54.8,
+          "max": 2642.5,
+          "median": 81.35
+        },
+        "video_buffer_target_ms": {
+          "min": 70.1,
+          "max": 103.9,
+          "median": 88.5
+        }
+      },
+      "offline": {
+        "audio_buffer_ms": {
+          "min": 60.6,
+          "max": 276.3,
+          "median": 62.4
+        },
+        "audio_buffer_target_ms": {
+          "min": 40.0,
+          "max": 41.4,
+          "median": 40.0
+        },
+        "video_buffer_ms": {
+          "min": 51.6,
+          "max": 51.6,
+          "median": 51.6
+        },
+        "video_buffer_target_ms": {
+          "min": 64.2,
+          "max": 64.2,
+          "median": 64.2
+        }
+      },
+      "recovery": {
+        "audio_buffer_ms": {
+          "min": 49.6,
+          "max": 121.8,
+          "median": 62.2
+        },
+        "audio_buffer_target_ms": {
+          "min": 40.0,
+          "max": 116.0,
+          "median": 40.0
+        },
+        "video_buffer_ms": {
+          "min": 0.1,
+          "max": 388.2,
+          "median": 1.0
+        },
+        "video_buffer_target_ms": {
+          "min": 28.0,
+          "max": 147.4,
+          "median": 65.15
+        }
+      }
+    },
+    "intervals": [
+      {
+        "time_ms": 4648.7,
+        "phase": "clean",
+        "audio_packets": 49,
+        "audio_buffer_ms": 72.0,
+        "audio_buffer_target_ms": 34.4,
+        "video_packets": 30,
+        "video_buffer_ms": 248.4,
+        "video_buffer_target_ms": 82.2
+      },
+      {
+        "time_ms": 5649.4,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 60.2,
+        "audio_buffer_target_ms": 24.3,
+        "video_packets": 31,
+        "video_buffer_ms": 87.1,
+        "video_buffer_target_ms": 71.1
+      },
+      {
+        "time_ms": 6651.2,
+        "phase": "clean",
+        "audio_packets": 51,
+        "audio_buffer_ms": 51.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 66,
+        "video_buffer_ms": 6.7,
+        "video_buffer_target_ms": 40.3
+      },
+      {
+        "time_ms": 7653.1,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 77,
+        "video_buffer_ms": 0.8,
+        "video_buffer_target_ms": 18.7
+      },
+      {
+        "time_ms": 8653.5,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 0.6,
+        "video_buffer_target_ms": 13.4
+      },
+      {
+        "time_ms": 9654.8,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 0.5,
+        "video_buffer_target_ms": 13.2
+      },
+      {
+        "time_ms": 10656.6,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 0.8,
+        "video_buffer_target_ms": 13.3
+      },
+      {
+        "time_ms": 11657.6,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": 0.4,
+        "video_buffer_target_ms": 12.7
+      },
+      {
+        "time_ms": 12658,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 0.5,
+        "video_buffer_target_ms": 12.7
+      },
+      {
+        "time_ms": 13658,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 0.2,
+        "video_buffer_target_ms": 12.8
+      },
+      {
+        "time_ms": 14658.8,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 0.6,
+        "video_buffer_target_ms": 12.7
+      },
+      {
+        "time_ms": 15659.4,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 0.3,
+        "video_buffer_target_ms": 24.4
+      },
+      {
+        "time_ms": 16659.3,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 0.2,
+        "video_buffer_target_ms": 25.0
+      },
+      {
+        "time_ms": 17660,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 7.3,
+        "video_buffer_target_ms": 39.3
+      },
+      {
+        "time_ms": 18660.2,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 8.4,
+        "video_buffer_target_ms": 40.0
+      },
+      {
+        "time_ms": 19661.8,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 66,
+        "video_buffer_ms": 7.8,
+        "video_buffer_target_ms": 40.0
+      },
+      {
+        "time_ms": 20666.8,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 21.9,
+        "video_buffer_target_ms": 56.1
+      },
+      {
+        "time_ms": 21666,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 24.2,
+        "video_buffer_target_ms": 57.0
+      },
+      {
+        "time_ms": 22665.6,
+        "phase": "clean",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 66,
+        "video_buffer_ms": 25.7,
+        "video_buffer_target_ms": 57.0
+      },
+      {
+        "time_ms": 25360.9,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 160,
+        "video_buffer_ms": 0.7,
+        "video_buffer_target_ms": 57.0
+      },
+      {
+        "time_ms": 26361.1,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 173,
+        "video_buffer_ms": 34.1,
+        "video_buffer_target_ms": 37.1
+      },
+      {
+        "time_ms": 27363.6,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 50.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 166,
+        "video_buffer_ms": 47.3,
+        "video_buffer_target_ms": 28.0
+      },
+      {
+        "time_ms": 28363.8,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 56.9,
+        "audio_buffer_target_ms": 60.2,
+        "video_packets": 172,
+        "video_buffer_ms": 20.1,
+        "video_buffer_target_ms": 28.0
+      },
+      {
+        "time_ms": 29365.6,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 70.8,
+        "audio_buffer_target_ms": 123.3,
+        "video_packets": 152,
+        "video_buffer_ms": 68.7,
+        "video_buffer_target_ms": 28.0
+      },
+      {
+        "time_ms": 30366.3,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 130.4,
+        "audio_buffer_target_ms": 205.0,
+        "video_packets": 146,
+        "video_buffer_ms": 71.7,
+        "video_buffer_target_ms": 28.2
+      },
+      {
+        "time_ms": 31370.1,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 174.0,
+        "audio_buffer_target_ms": 284.5,
+        "video_packets": 136,
+        "video_buffer_ms": 60.9,
+        "video_buffer_target_ms": 36.4
+      },
+      {
+        "time_ms": 32368.2,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 253.3,
+        "audio_buffer_target_ms": 365.7,
+        "video_packets": 123,
+        "video_buffer_ms": 52.1,
+        "video_buffer_target_ms": 47.3
+      },
+      {
+        "time_ms": 33369.1,
+        "phase": "delay",
+        "audio_packets": 49,
+        "audio_buffer_ms": 299.8,
+        "audio_buffer_target_ms": 442.2,
+        "video_packets": 139,
+        "video_buffer_ms": 59.2,
+        "video_buffer_target_ms": 60.0
+      },
+      {
+        "time_ms": 34369.5,
+        "phase": "delay",
+        "audio_packets": 52,
+        "audio_buffer_ms": 375.2,
+        "audio_buffer_target_ms": 523.3,
+        "video_packets": 149,
+        "video_buffer_ms": 40.7,
+        "video_buffer_target_ms": 70.6
+      },
+      {
+        "time_ms": 35372.9,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 429.0,
+        "audio_buffer_target_ms": 605.0,
+        "video_packets": 172,
+        "video_buffer_ms": 76.3,
+        "video_buffer_target_ms": 78.6
+      },
+      {
+        "time_ms": 36370.4,
+        "phase": "delay",
+        "audio_packets": 50,
+        "audio_buffer_ms": 486.0,
+        "audio_buffer_target_ms": 686.2,
+        "video_packets": 176,
+        "video_buffer_ms": 68.4,
+        "video_buffer_target_ms": 82.0
+      },
+      {
+        "time_ms": 37370.3,
+        "phase": "delay",
+        "audio_packets": 49,
+        "audio_buffer_ms": 532.1,
+        "audio_buffer_target_ms": 765.0,
+        "video_packets": 179,
+        "video_buffer_ms": 79.2,
+        "video_buffer_target_ms": 83.6
+      },
+      {
+        "time_ms": 38376.4,
+        "phase": "delay",
+        "audio_packets": 51,
+        "audio_buffer_ms": 605.3,
+        "audio_buffer_target_ms": 845.1,
+        "video_packets": 192,
+        "video_buffer_ms": 88.9,
+        "video_buffer_target_ms": 88.2
+      },
+      {
+        "time_ms": 41064,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 781.3,
+        "audio_buffer_target_ms": 1057.2,
+        "video_packets": 246,
+        "video_buffer_ms": 353.9,
+        "video_buffer_target_ms": 100.5
+      },
+      {
+        "time_ms": 42069,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 825.5,
+        "audio_buffer_target_ms": 1072.1,
+        "video_packets": 95,
+        "video_buffer_ms": 1031.5,
+        "video_buffer_target_ms": 103.9
+      },
+      {
+        "time_ms": 43066.2,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 901.1,
+        "audio_buffer_target_ms": 988.7,
+        "video_packets": 72,
+        "video_buffer_ms": 1730.1,
+        "video_buffer_target_ms": 102.5
+      },
+      {
+        "time_ms": 44071.4,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 922.5,
+        "audio_buffer_target_ms": 907.8,
+        "video_packets": 67,
+        "video_buffer_ms": 2431.7,
+        "video_buffer_target_ms": 100.8
+      },
+      {
+        "time_ms": 45072.5,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 877.5,
+        "audio_buffer_target_ms": 828.1,
+        "video_packets": 70,
+        "video_buffer_ms": 2642.5,
+        "video_buffer_target_ms": 97.6
+      },
+      {
+        "time_ms": 46068,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 842.3,
+        "audio_buffer_target_ms": 748.7,
+        "video_packets": 70,
+        "video_buffer_ms": 1573.2,
+        "video_buffer_target_ms": 92.0
+      },
+      {
+        "time_ms": 47068.3,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 792.5,
+        "audio_buffer_target_ms": 668.7,
+        "video_packets": 72,
+        "video_buffer_ms": 81.8,
+        "video_buffer_target_ms": 89.7
+      },
+      {
+        "time_ms": 48071.2,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 754.5,
+        "audio_buffer_target_ms": 587.8,
+        "video_packets": 70,
+        "video_buffer_ms": 80.9,
+        "video_buffer_target_ms": 87.3
+      },
+      {
+        "time_ms": 49071.4,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 701.0,
+        "audio_buffer_target_ms": 508.7,
+        "video_packets": 74,
+        "video_buffer_ms": 75.7,
+        "video_buffer_target_ms": 83.7
+      },
+      {
+        "time_ms": 50072,
+        "phase": "loss",
+        "audio_packets": 50,
+        "audio_buffer_ms": 659.6,
+        "audio_buffer_target_ms": 428.6,
+        "video_packets": 68,
+        "video_buffer_ms": 70.0,
+        "video_buffer_target_ms": 80.9
+      },
+      {
+        "time_ms": 51071.9,
+        "phase": "loss",
+        "audio_packets": 51,
+        "audio_buffer_ms": 610.2,
+        "audio_buffer_target_ms": 354.4,
+        "video_packets": 79,
+        "video_buffer_ms": 66.8,
+        "video_buffer_target_ms": 79.0
+      },
+      {
+        "time_ms": 52072,
+        "phase": "loss",
+        "audio_packets": 48,
+        "audio_buffer_ms": 571.8,
+        "audio_buffer_target_ms": 285.4,
+        "video_packets": 192,
+        "video_buffer_ms": 64.2,
+        "video_buffer_target_ms": 76.2
+      },
+      {
+        "time_ms": 53073.4,
+        "phase": "loss",
+        "audio_packets": 51,
+        "audio_buffer_ms": 521.1,
+        "audio_buffer_target_ms": 221.0,
+        "video_packets": 246,
+        "video_buffer_ms": 60.1,
+        "video_buffer_target_ms": 72.9
+      },
+      {
+        "time_ms": 54073,
+        "phase": "loss",
+        "audio_packets": 51,
+        "audio_buffer_ms": 473.2,
+        "audio_buffer_target_ms": 160.6,
+        "video_packets": 299,
+        "video_buffer_ms": 54.8,
+        "video_buffer_target_ms": 70.1
+      },
+      {
+        "time_ms": 56640.4,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 276.3,
+        "audio_buffer_target_ms": 41.4,
+        "video_packets": 0,
+        "video_buffer_ms": 51.6,
+        "video_buffer_target_ms": 64.2
+      },
+      {
+        "time_ms": 57641.2,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 220.9,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 58643.6,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 172.7,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 59645,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 130.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 60647.3,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 75.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 61658.6,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 60.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 62655.9,
+        "phase": "offline",
+        "audio_packets": 51,
+        "audio_buffer_ms": 60.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 63656.2,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 62.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 64661.9,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 61.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 65660,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 61.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 66661.6,
+        "phase": "offline",
+        "audio_packets": 50,
+        "audio_buffer_ms": 62.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 0,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 69233.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 6,
+        "video_buffer_ms": 60.3,
+        "video_buffer_target_ms": 28.0
+      },
+      {
+        "time_ms": 70233.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 11,
+        "video_buffer_ms": null,
+        "video_buffer_target_ms": null
+      },
+      {
+        "time_ms": 71233.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 59.2,
+        "audio_buffer_target_ms": 81.2,
+        "video_packets": 21,
+        "video_buffer_ms": 388.2,
+        "video_buffer_target_ms": 29.0
+      },
+      {
+        "time_ms": 72235.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.4,
+        "audio_buffer_target_ms": 116.0,
+        "video_packets": 43,
+        "video_buffer_ms": 206.7,
+        "video_buffer_target_ms": 83.6
+      },
+      {
+        "time_ms": 73235.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.0,
+        "audio_buffer_target_ms": 116.0,
+        "video_packets": 55,
+        "video_buffer_ms": 0.4,
+        "video_buffer_target_ms": 147.4
+      },
+      {
+        "time_ms": 74235.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.0,
+        "audio_buffer_target_ms": 116.0,
+        "video_packets": 73,
+        "video_buffer_ms": 0.9,
+        "video_buffer_target_ms": 143.8
+      },
+      {
+        "time_ms": 75237,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 101.6,
+        "audio_buffer_target_ms": 116.0,
+        "video_packets": 85,
+        "video_buffer_ms": 0.6,
+        "video_buffer_target_ms": 139.5
+      },
+      {
+        "time_ms": 76238.7,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 101.8,
+        "audio_buffer_target_ms": 116.0,
+        "video_packets": 79,
+        "video_buffer_ms": 0.6,
+        "video_buffer_target_ms": 134.7
+      },
+      {
+        "time_ms": 77238.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.4,
+        "audio_buffer_target_ms": 116.0,
+        "video_packets": 99,
+        "video_buffer_ms": 0.2,
+        "video_buffer_target_ms": 130.1
+      },
+      {
+        "time_ms": 78238.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 101.8,
+        "audio_buffer_target_ms": 116.0,
+        "video_packets": 128,
+        "video_buffer_ms": 0.6,
+        "video_buffer_target_ms": 126.1
+      },
+      {
+        "time_ms": 79239.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.0,
+        "audio_buffer_target_ms": 116.0,
+        "video_packets": 180,
+        "video_buffer_ms": 0.9,
+        "video_buffer_target_ms": 122.2
+      },
+      {
+        "time_ms": 80239.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.4,
+        "audio_buffer_target_ms": 116.0,
+        "video_packets": 240,
+        "video_buffer_ms": 63.2,
+        "video_buffer_target_ms": 118.1
+      },
+      {
+        "time_ms": 81242.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 101.8,
+        "audio_buffer_target_ms": 116.0,
+        "video_packets": 269,
+        "video_buffer_ms": 78.9,
+        "video_buffer_target_ms": 113.9
+      },
+      {
+        "time_ms": 82243.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.2,
+        "audio_buffer_target_ms": 116.0,
+        "video_packets": 43,
+        "video_buffer_ms": 48.4,
+        "video_buffer_target_ms": 106.7
+      },
+      {
+        "time_ms": 83247.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 101.8,
+        "audio_buffer_target_ms": 107.0,
+        "video_packets": 42,
+        "video_buffer_ms": 9.6,
+        "video_buffer_target_ms": 103.3
+      },
+      {
+        "time_ms": 84249.6,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 102.0,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 45,
+        "video_buffer_ms": 1.0,
+        "video_buffer_target_ms": 102.0
+      },
+      {
+        "time_ms": 85251.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.2,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 42,
+        "video_buffer_ms": 0.1,
+        "video_buffer_target_ms": 98.3
+      },
+      {
+        "time_ms": 86252.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.0,
+        "audio_buffer_target_ms": 100.0,
+        "video_packets": 45,
+        "video_buffer_ms": 0.2,
+        "video_buffer_target_ms": 94.7
+      },
+      {
+        "time_ms": 87254,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 102.0,
+        "audio_buffer_target_ms": 89.6,
+        "video_packets": 46,
+        "video_buffer_ms": 0.2,
+        "video_buffer_target_ms": 91.1
+      },
+      {
+        "time_ms": 88256.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 101.2,
+        "audio_buffer_target_ms": 82.0,
+        "video_packets": 44,
+        "video_buffer_ms": 0.2,
+        "video_buffer_target_ms": 87.6
+      },
+      {
+        "time_ms": 89259.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 91.8,
+        "audio_buffer_target_ms": 82.0,
+        "video_packets": 87,
+        "video_buffer_ms": 0.8,
+        "video_buffer_target_ms": 85.4
+      },
+      {
+        "time_ms": 90261.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 91.0,
+        "audio_buffer_target_ms": 72.9,
+        "video_packets": 80,
+        "video_buffer_ms": 53.2,
+        "video_buffer_target_ms": 84.5
+      },
+      {
+        "time_ms": 91260,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 91.2,
+        "audio_buffer_target_ms": 66.0,
+        "video_packets": 78,
+        "video_buffer_ms": 59.1,
+        "video_buffer_target_ms": 81.4
+      },
+      {
+        "time_ms": 92262.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.0,
+        "audio_buffer_target_ms": 66.0,
+        "video_packets": 77,
+        "video_buffer_ms": 40.7,
+        "video_buffer_target_ms": 78.0
+      },
+      {
+        "time_ms": 93265.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.8,
+        "audio_buffer_target_ms": 66.0,
+        "video_packets": 78,
+        "video_buffer_ms": 23.8,
+        "video_buffer_target_ms": 74.8
+      },
+      {
+        "time_ms": 94265.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 75.9,
+        "audio_buffer_target_ms": 56.0,
+        "video_packets": 81,
+        "video_buffer_ms": 11.3,
+        "video_buffer_target_ms": 71.8
+      },
+      {
+        "time_ms": 95267,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 70.8,
+        "audio_buffer_target_ms": 49.0,
+        "video_packets": 70,
+        "video_buffer_ms": 1.9,
+        "video_buffer_target_ms": 69.1
+      },
+      {
+        "time_ms": 96268.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 62.2,
+        "audio_buffer_target_ms": 49.0,
+        "video_packets": 71,
+        "video_buffer_ms": 0.2,
+        "video_buffer_target_ms": 66.6
+      },
+      {
+        "time_ms": 97271.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 81.1,
+        "audio_buffer_target_ms": 49.0,
+        "video_packets": 74,
+        "video_buffer_ms": 1.0,
+        "video_buffer_target_ms": 67.5
+      },
+      {
+        "time_ms": 98273.3,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 121.8,
+        "audio_buffer_target_ms": 43.6,
+        "video_packets": 67,
+        "video_buffer_ms": 0.2,
+        "video_buffer_target_ms": 67.8
+      },
+      {
+        "time_ms": 99272.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 115.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 0.4,
+        "video_buffer_target_ms": 65.3
+      },
+      {
+        "time_ms": 100272.8,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 68.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 73,
+        "video_buffer_ms": 0.6,
+        "video_buffer_target_ms": 62.8
+      },
+      {
+        "time_ms": 101272.6,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 55.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 0.6,
+        "video_buffer_target_ms": 60.4
+      },
+      {
+        "time_ms": 102275.5,
+        "phase": "recovery",
+        "audio_packets": 49,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 0.3,
+        "video_buffer_target_ms": 55.1
+      },
+      {
+        "time_ms": 103277,
+        "phase": "recovery",
+        "audio_packets": 51,
+        "audio_buffer_ms": 51.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 73,
+        "video_buffer_ms": 17.3,
+        "video_buffer_target_ms": 50.4
+      },
+      {
+        "time_ms": 104273.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": 36.5,
+        "video_buffer_target_ms": 48.1
+      },
+      {
+        "time_ms": 105273.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 31.2,
+        "video_buffer_target_ms": 46.0
+      },
+      {
+        "time_ms": 106275.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 20.9,
+        "video_buffer_target_ms": 43.9
+      },
+      {
+        "time_ms": 107273.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 73,
+        "video_buffer_ms": 12.2,
+        "video_buffer_target_ms": 45.1
+      },
+      {
+        "time_ms": 108273.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 6.6,
+        "video_buffer_target_ms": 45.4
+      },
+      {
+        "time_ms": 109273.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 49.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 5.2,
+        "video_buffer_target_ms": 43.7
+      },
+      {
+        "time_ms": 110274.9,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 75,
+        "video_buffer_ms": 1.7,
+        "video_buffer_target_ms": 41.9
+      },
+      {
+        "time_ms": 111275,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 1.0,
+        "video_buffer_target_ms": 40.2
+      },
+      {
+        "time_ms": 112274.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 73,
+        "video_buffer_ms": 0.3,
+        "video_buffer_target_ms": 38.5
+      },
+      {
+        "time_ms": 113278.8,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 0.2,
+        "video_buffer_target_ms": 37.0
+      },
+      {
+        "time_ms": 114275.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 0.8,
+        "video_buffer_target_ms": 35.6
+      },
+      {
+        "time_ms": 115275.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 0.5,
+        "video_buffer_target_ms": 32.7
+      },
+      {
+        "time_ms": 116275.4,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 0.1,
+        "video_buffer_target_ms": 29.9
+      },
+      {
+        "time_ms": 117281,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": 0.8,
+        "video_buffer_target_ms": 35.6
+      },
+      {
+        "time_ms": 118275.6,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 68,
+        "video_buffer_ms": 0.4,
+        "video_buffer_target_ms": 40.0
+      },
+      {
+        "time_ms": 119275.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 0.2,
+        "video_buffer_target_ms": 40.0
+      },
+      {
+        "time_ms": 120276.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.6,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 72,
+        "video_buffer_ms": 3.2,
+        "video_buffer_target_ms": 49.6
+      },
+      {
+        "time_ms": 121277.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.8,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 67,
+        "video_buffer_ms": 5.5,
+        "video_buffer_target_ms": 56.0
+      },
+      {
+        "time_ms": 122279.5,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.2,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 70,
+        "video_buffer_ms": 6.1,
+        "video_buffer_target_ms": 56.0
+      },
+      {
+        "time_ms": 123278.2,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 76,
+        "video_buffer_ms": 7.4,
+        "video_buffer_target_ms": 56.0
+      },
+      {
+        "time_ms": 124279.1,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 51.4,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 69,
+        "video_buffer_ms": 6.9,
+        "video_buffer_target_ms": 56.0
+      },
+      {
+        "time_ms": 125280.3,
+        "phase": "recovery",
+        "audio_packets": 50,
+        "audio_buffer_ms": 52.0,
+        "audio_buffer_target_ms": 40.0,
+        "video_packets": 71,
+        "video_buffer_ms": 17.4,
+        "video_buffer_target_ms": 65.0
+      }
+    ],
+    "physical_lip_sync_proven": false
+  }
+}

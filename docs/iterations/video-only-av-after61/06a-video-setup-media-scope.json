@@ -1,0 +1,12 @@
+{
+  "codecs": null,
+  "outage": {
+    "valid": false,
+    "impaired_media": "video",
+    "clean_control": false,
+    "audio_packets": null,
+    "video_packets": null
+  },
+  "errors": 0,
+  "samples": []
+}

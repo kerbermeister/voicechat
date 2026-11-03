@@ -1,0 +1,86 @@
+{
+  "candidate_exchange": {
+    "sender": {
+      "added": 1,
+      "rejected": 0,
+      "errors": []
+    },
+    "receiver": {
+      "added": 1,
+      "rejected": 0,
+      "errors": []
+    }
+  },
+  "sender": {
+    "created": true,
+    "connection": "connecting",
+    "ice": "checking",
+    "gathering": "complete",
+    "signaling": "stable",
+    "stats_available": true,
+    "local_candidates": {
+      "host": 0,
+      "srflx": 0,
+      "prflx": 0,
+      "relay": 1
+    },
+    "remote_candidates": {
+      "host": 0,
+      "srflx": 0,
+      "prflx": 0,
+      "relay": 1
+    },
+    "pair_states": {
+      "frozen": 0,
+      "waiting": 0,
+      "in-progress": 1,
+      "failed": 0,
+      "succeeded": 0
+    },
+    "pair_checks": {
+      "requestsSent": 239,
+      "requestsReceived": 0,
+      "responsesSent": 0,
+      "responsesReceived": 0
+    },
+    "selected_pair": null,
+    "encoded_video": 0,
+    "decoded_video": null
+  },
+  "receiver": {
+    "created": true,
+    "connection": "connecting",
+    "ice": "checking",
+    "gathering": "complete",
+    "signaling": "stable",
+    "stats_available": true,
+    "local_candidates": {
+      "host": 0,
+      "srflx": 0,
+      "prflx": 0,
+      "relay": 1
+    },
+    "remote_candidates": {
+      "host": 0,
+      "srflx": 0,
+      "prflx": 0,
+      "relay": 1
+    },
+    "pair_states": {
+      "frozen": 0,
+      "waiting": 0,
+      "in-progress": 1,
+      "failed": 0,
+      "succeeded": 0
+    },
+    "pair_checks": {
+      "requestsSent": 240,
+      "requestsReceived": 0,
+      "responsesSent": 0,
+      "responsesReceived": 0
+    },
+    "selected_pair": null,
+    "encoded_video": null,
+    "decoded_video": null
+  }
+}

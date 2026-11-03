@@ -23,6 +23,15 @@ export async function transportDiagnostics(peer) {
     result.stats_available = true;
     result.local_candidates = Object.fromEntries(['host', 'srflx', 'prflx', 'relay'].map(type =>
       [type, rows.filter(row => row.type === 'local-candidate' && row.candidateType === type).length]));
+    result.remote_candidates = Object.fromEntries(['host', 'srflx', 'prflx', 'relay'].map(type =>
+      [type, rows.filter(row => row.type === 'remote-candidate' && row.candidateType === type).length]));
+    const pairs = rows.filter(row => row.type === 'candidate-pair');
+    result.pair_states = Object.fromEntries(['frozen', 'waiting', 'in-progress', 'failed', 'succeeded'].map(state =>
+      [state, pairs.filter(row => row.state === state).length]));
+    result.pair_checks = Object.fromEntries(['requestsSent', 'requestsReceived', 'responsesSent', 'responsesReceived'].map(field => {
+      const values = pairs.map(row => number(row[field]));
+      return [field, values.length && values.every(value => value !== null) ? number(values.reduce((a, b) => a + b, 0)) : null];
+    }));
     result.selected_pair = pair ? {
       state:known(pair.state, ['frozen', 'waiting', 'in-progress', 'failed', 'succeeded']),
       local_type:candidate(reports.get(pair.localCandidateId)?.candidateType),

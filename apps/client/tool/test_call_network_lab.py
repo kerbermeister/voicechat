@@ -1,3 +1,4 @@
+import argparse
 import tempfile
 import subprocess
 import sys
@@ -10,10 +11,43 @@ from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 from unittest.mock import patch
 
-from call_network_lab import asset_path, require_local_docker, valid_marker_result
+from call_network_lab import (asset_path, require_local_docker, valid_marker_result,
+                              media_payload_types, directional_filters)
 
 
 class AssetBoundaryTest(unittest.TestCase):
+    def test_video_classifier_requires_canonical_distinct_dynamic_types(self):
+        self.assertEqual(media_payload_types('96,97'), [96, 97])
+        for value in ('', '95', '128', '96,96', '096', '96, 97', '96,',
+                      '96,97,98,99,100', 'private'):
+            with self.subTest(value=value), self.assertRaises(argparse.ArgumentTypeError):
+                media_payload_types(value)
+
+    def test_video_classifier_excludes_marker_bit_and_other_turn_packets(self):
+        filters = directional_filters('outgoing', [96, 97])
+        self.assertEqual(len(filters), 2)
+        for payload, command in zip([96, 97], filters):
+            text = ' '.join(command)
+            self.assertIn('sport 3480 0xffff', text)
+            self.assertIn('u8 0x45 0xff at 0', text)
+            self.assertIn('u8 0x40 0xc0 at 28', text)
+            self.assertIn('u8 0x80 0xc0 at 32', text)
+            self.assertIn(f'u8 {hex(payload)} 0x7f at 33', text)
+        self.assertNotIn('at 33', ' '.join(directional_filters('incoming', None)[0]))
+
+    def test_single_stream_scope_is_bounded_and_requires_directional_markers(self):
+        for option, payload in (('--video-payload-types', '96,97'), ('--audio-payload-types', '111')):
+            for extra in ([], ['--marker-seconds', '60', '--direction', 'outgoing'],
+                          ['--marker-seconds', '120'],
+                          ['--marker-seconds', '301', '--direction', 'outgoing']):
+                with self.subTest(option=option, extra=extra):
+                    result = subprocess.run([
+                        sys.executable, str(Path(__file__).with_name('call_network_lab.py')),
+                        '--web-root', '/unused', '--output', '/unused', option, payload, *extra,
+                    ], capture_output=True, text=True, timeout=5)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertIn('Single-stream impairment requires', result.stderr)
+
     def test_clean_network_control_requires_markers_before_docker(self):
         result = subprocess.run([
             sys.executable, str(Path(__file__).with_name('call_network_lab.py')),
@@ -59,6 +93,15 @@ class AssetBoundaryTest(unittest.TestCase):
                        return_value=context('ssh://remote')):
                 with self.assertRaises(ValueError):
                     require_local_docker()
+
+    def test_audio_and_video_scope_cannot_be_combined(self):
+        result = subprocess.run([
+            sys.executable, str(Path(__file__).with_name('call_network_lab.py')),
+            '--web-root', '/unused', '--output', '/unused',
+            '--video-payload-types', '96,97', '--audio-payload-types', '111',
+        ], capture_output=True, text=True, timeout=5)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('not allowed with argument', result.stderr)
 
     def test_directional_tcp_is_rejected_before_creating_a_lab(self):
         result = subprocess.run([

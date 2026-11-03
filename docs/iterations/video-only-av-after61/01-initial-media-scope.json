@@ -1,0 +1,19 @@
+{
+  "codecs": {
+    "valid": false,
+    "configured_payload_types": [
+      96,
+      97
+    ],
+    "video_payload_type": 96,
+    "audio_payload_type": null
+  },
+  "outage": {
+    "valid": false,
+    "clean_control": false,
+    "audio_packets": null,
+    "video_packets": null
+  },
+  "errors": 0,
+  "samples": []
+}

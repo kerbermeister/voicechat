@@ -9,7 +9,8 @@ test('only allowlisted transport states and counters leave raw RTC stats', async
   const reports = new Map([
     ['secret-transport', {type:'transport', selectedCandidatePairId:'secret-pair'}],
     ['secret-pair', {type:'candidate-pair', state:'succeeded', localCandidateId:'secret-local',
-      remoteCandidateId:'secret-remote', bytesSent:10, bytesReceived:20, private:'secret-body'}],
+      remoteCandidateId:'secret-remote', bytesSent:10, bytesReceived:20,
+      requestsSent:4, requestsReceived:3, responsesSent:3, responsesReceived:4, private:'secret-body'}],
     ['secret-local', {type:'local-candidate', candidateType:'relay', address:'secret-address', url:'secret-url'}],
     ['secret-remote', {type:'remote-candidate', candidateType:'relay'}],
     ['secret-rtp', {type:'outbound-rtp', kind:'video', framesEncoded:12, ssrc:'secret-ssrc'}],
@@ -19,6 +20,9 @@ test('only allowlisted transport states and counters leave raw RTC stats', async
   assert.equal(result.connection, 'connected');
   assert.deepEqual(result.selected_pair, {state:'succeeded', local_type:'relay', remote_type:'relay', bytes_sent:10, bytes_received:20});
   assert.deepEqual(result.local_candidates, {host:0, srflx:0, prflx:0, relay:1});
+  assert.deepEqual(result.remote_candidates, {host:0, srflx:0, prflx:0, relay:1});
+  assert.equal(result.pair_states.succeeded, 1);
+  assert.deepEqual(result.pair_checks, {requestsSent:4, requestsReceived:3, responsesSent:3, responsesReceived:4});
   assert.equal(result.encoded_video, 12);
   assert.ok(!JSON.stringify(result).includes('secret'));
 });
