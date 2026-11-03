@@ -1,7 +1,7 @@
 # Устойчивое восстановление оценки личного звонка
 
-03.11.2026, production1.19.10(58). Локальное исправление, ещё не выпущено;
-кандидат1.19.11(59). Единственная очередь —
+03.11.2026: web/Mac/Android1.19.11(59) опубликованы.
+Source `b7b351928a5d54433869904ac5eab1ad19910449`, тег `app-v1.19.11+59`. Единственная очередь —
 [UA-04.C32](../../user-acceptance.md#ua-04), связь с OPT-03 исходного исследования.
 
 Подтверждено3 [red-регрессиями](red.txt): StableCallQuality считал только точные
@@ -19,7 +19,7 @@ ICE lost остаётся немедленным, expiry3 missing и ручно�
 [изменённые Dart-файлы/fixture analyzer](targeted-analyze.txt) чистые. Форматирование
 после теста не меняло семантику. [763 full Flutter PASS/4skip](full-tests.txt), [app analyzer](full-analyze.txt)
 и [8 version/package PASS](package-tests.txt). Кандидат1.19.11(59); настоящий
-directional browser probe PASS; обязательный native/web выпуск ещё выполняется.
+directional browser probe и обязательный native/web выпуск PASS.
 
 Это доказанное залипание оценщика, не установленная причина прежних кратких
 просадок пользователя или физического рассинхрона. Связь/Opus/шифрование/доверие,
@@ -62,3 +62,33 @@ DirectCall/Matrix не менялся. Это устранение риска г
 assertions disposal/pause/resize/ICE restart также PASS. [Asset hashes](renderer-final-assets.json)
 и [финальный fixture analyzer](fixture-final-analyze.txt). Первые попытки до
 очереди ICE сохранены как ограничение диагностики, не как успешное прохождение.
+
+## Выпуск
+
+[WEB99](https://github.com/kerbermeister/voicechat/actions/runs/41602842372)
+SUCCESS15m12s; [CI233](https://github.com/kerbermeister/voicechat/actions/runs/41602753478)
+SUCCESS15m42s. Main и тег указывают на тот же проверенный source. Автоматические
+CI main/tag ещё выполняются; runtime не пересобирался ради изменения документации.
+[Независимая production-проверка](production-verified.json): core58/fingerprint
+прежние, web59/digests/HTTPS/rollback/data identity PASS. Все nonweb контейнеры,
+включая control/Synapse/PostgreSQL, сохранили ID/StartedAt/RestartCount. Обычный
+клиент no-cache, worker/WASM доступны; unauthenticated API401, private routes404.
+Администраторский screen flag сохранён, default off не менялся.
+
+[Mac-кандидат](macos-candidate.json): ZIP/DMG285 одинаковых entries, strict codesign,
+постоянный Sparkle key/feed как у58. Проверенная app/profile backup58 сохранена
+вне репозитория; Keychain не менялся. [Публикация](macos-publication.json) штатным
+publish_macos.py; публичные SHA/feed сверены. [Установка58→59](macos-installation.json)
+через кнопку: автоматический [новый PID](macos-auto-relaunch.json) наблюдался до
+getApp,285 exact entries, прежние account/device, выбранная старая QA-история,
+About59/latest-check PASS. Старое аудио отдельно не проигрывалось.
+
+[Android58→59](android-installation.json): отдельный API35 эмулятор, без wipe,
+точный подписанный APK/постоянный сертификат, эмулятор завершён. Аккаунт на нём
+не сравнивался; физический Xiaomi не проверен. [Публикация preview](android-publication.json)
+по ранее запрошенному владельцем каналу; сервисы и managed pointer не менялись.
+APK SHA256 `39af31a9c416d579ef61826acbfff5d2837b32cb246eaffd77a63a7a381c805d`.
+
+Единственная очередь приёмки — [общий реестр](../../user-acceptance.md).
+Остаются UA-08/09 (физический A/V/route/gain), UA-05.C39/OPT-07 (group epochs)
+и UA-05.C41/OPT-16 (backup continuity). Этот выпуск их не закрывает.

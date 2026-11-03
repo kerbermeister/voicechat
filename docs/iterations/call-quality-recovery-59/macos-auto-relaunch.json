@@ -1,0 +1,7 @@
+{
+  "old_pid": 22376,
+  "new_pid": 22475,
+  "installed_build": 59,
+  "observed_before_getApp_on_new_install": true,
+  "observed_at_unix": 1793694638
+}

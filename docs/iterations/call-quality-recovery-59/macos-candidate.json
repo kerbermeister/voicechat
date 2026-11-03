@@ -1,0 +1,15 @@
+{
+  "source": "b7b351928a5d54433869904ac5eab1ad19910449",
+  "build": 59,
+  "zip_dmg_files_identical": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "bundle_id_feed_sparkle_key_match_installed58": true,
+  "physical_candidate_ui_pending": false,
+  "installed58_to59_pending": true,
+  "physical_candidate_ui": true,
+  "same_account_device_as_installed58": true,
+  "old_history_visible": true,
+  "old_audio_played": false,
+  "version_59_visible": true
+}

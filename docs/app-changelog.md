@@ -5,7 +5,7 @@
 сохранены в [статусе реализации](implementation-status.md) и `iterations/`.
 `1.0.0+1` было техническим номером прототипа, без подтверждённого production-выпуска.
 
-## 1.19.11 (сборка 59) — кандидат03.11.2026
+## 1.19.11 (сборка 59) — опубликован03.11.2026
 
 ### Что нового
 
@@ -23,7 +23,11 @@
 остановился раньше новой проверки на ожидании начальных кадров; причина не установлена.
 763 full Flutter PASS/4skip, app analyzer и8 version/package PASS.
 Финальные incoming/outgoing TURN по42 samples PASS; первая попытка обоих
-направлений после очереди ранних ICE в test fixture успешна. Выпуск ещё выполняется.
+направлений после очереди ранних ICE в test fixture успешна. WEB99/CI233 SUCCESS; Mac58→59 кнопкой,285 exact entries и
+прежние account/device/history/latest-check PASS; Android58→59 emulator exact
+APK без wipe, preview опубликован. HTTPS/digests/rollback PASS, nonweb процессы
+не изменились. Main/tag `app-v1.19.11+59`: `b7b351928a5d54433869904ac5eab1ad19910449`.
+APK SHA256: `39af31a9c416d579ef61826acbfff5d2837b32cb246eaffd77a63a7a381c805d`.
 Отдельный30-минутный browser/TURN замер на точном media_audio.js58 дал893 markers:
 восстановленный p95 abs89.2мс, max220.1мс, предварительный бюджет80мс не пройден.
 Нарастающий дрейф не наблюдался; физический lip-sync, iPhone/Xiaomi и причина

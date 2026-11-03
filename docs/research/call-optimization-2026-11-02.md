@@ -1105,6 +1105,8 @@ analysis отмечены как host activity; однозначной сете�
 Это не новый адаптивный audio protocol; кандидат59 прошёл763 full Flutter/4skip,
 app analyzer/8 version-package и настоящий incoming/outgoing TURN по42 samples.
 Отдельная web disposal-регрессия red→green, shared track live; очередь ранних ICE
-в test fixture не меняет production signaling. Обязательный клиентский release ещё выполняется. Историческая причина
+в test fixture не меняет production signaling. Web/Mac/Android59 опубликованы: WEB99/CI233 SUCCESS, Mac58→59 штатно с285
+entries/account/device/history; Android58→59 emulator exact APK без wipe.
+Независимые HTTPS/digests/rollback PASS, nonweb процессы прежние. Историческая причина
 телефонных spikes не доказана. [Свидетельство](../iterations/call-quality-recovery-59/),
 единственная приёмка — UA-04.C32.

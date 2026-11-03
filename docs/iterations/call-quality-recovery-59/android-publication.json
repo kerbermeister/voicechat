@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "build": 59,
+  "source": "b7b351928a5d54433869904ac5eab1ad19910449",
+  "sha256": "39af31a9c416d579ef61826acbfff5d2837b32cb246eaffd77a63a7a381c805d",
+  "published": true,
+  "physical_acceptance": false,
+  "emulator_installation": true,
+  "authorization": "Owner requested this complete call-fix release; physical Xiaomi is remote and unavailable, as confirmed on 2026-11-02",
+  "previous_build": 58,
+  "services_unchanged": true,
+  "managed_release_pointer_unchanged": true,
+  "manifest_cache_control": "no-cache",
+  "published_at_unix": 1793694820
+}

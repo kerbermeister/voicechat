@@ -1,0 +1,18 @@
+{
+  "version_59_visible": true,
+  "old_history_visible": true,
+  "account_matches_installed58": true,
+  "device_matches_installed58": true,
+  "latest_check_no_update": true,
+  "source": "b7b351928a5d54433869904ac5eab1ad19910449",
+  "build": 59,
+  "previous_build": 58,
+  "installed_entries": 285,
+  "installed_equals_verified_zip_and_dmg": true,
+  "codesign_strict": true,
+  "zip_sha256": "6ac80c56ac126b8d8dae84b91c119bfb01c3f1bf2615c03ac7cb7a6f3ca14c08",
+  "dmg_sha256": "9a2e433e0ed734f334f05b172539b78fbd022fc2c11c9415703cd6f62d9a9c9e",
+  "old_audio_played": false,
+  "physical_phone_tested": false,
+  "installed_by_in_app_update": true
+}
