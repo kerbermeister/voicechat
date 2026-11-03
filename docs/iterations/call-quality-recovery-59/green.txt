@@ -1,0 +1,15 @@
+00:00 +0: loading /Users/anton/IdeaProjects/VoiceChat/apps/client/test/call_quality_test.dart
+00:00 +0: Media counters retain buffer/concealment evidence without private identifiers
+00:00 +1: Outgoing adaptation uses only associated video receiver feedback
+00:00 +2: Media admission rejects clear tracks, unsupported cryptors and unsolicited camera
+00:00 +3: Quality uses interval loss, recovers, and never invents missing statistics
+00:00 +4: A disappeared RTP stream cannot reuse loss counters when it returns
+00:00 +5: Only the selected ICE pair contributes latency
+00:00 +6: Quality evidence retains real spikes, bounds history and excludes private stats
+00:00 +7: Adjacent improved grades recover to their sustained common quality
+00:00 +8: Mixed degradation does not hide a sustained weaker path or overreact
+00:00 +9: Missing and unchanged samples interrupt mixed quality recovery
+00:00 +10: Opposite quality trends restart their confirmation window
+00:00 +11: Transient quality spikes do not oscillate encodings; stale measurements expire
+00:00 +12: Video caps increase predictably and Auto uses the adaptive 720p ceiling
+00:00 +13: All tests passed!

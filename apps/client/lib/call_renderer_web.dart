@@ -14,6 +14,13 @@ renderer.RTCVideoRenderer createCallRenderer() => _CallRenderer();
 class _CallRenderer extends renderer.RTCVideoRenderer {
   bool _local = false;
 
+  @override
+  Future<void> dispose() async {
+    // SDK disposal removes the player but retains its live srcObject.
+    await super.setSrcObject();
+    await super.dispose();
+  }
+
   void _bindPlayback() {
     final video = findHtmlView();
     final stream = srcObject;

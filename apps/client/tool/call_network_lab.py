@@ -4,6 +4,7 @@ import base64
 import hashlib
 import hmac
 import json
+import math
 import mimetypes
 import os
 from pathlib import Path
@@ -28,6 +29,52 @@ PROFILES = {
     'loss': ['loss', '2%'],
     'offline': ['loss', '100%'],
 }
+
+
+def valid_marker_result(data, duration):
+    """Only synthetic timing evidence may leave the browser; no media/credentials."""
+    fields = {'schema', 'outcome', 'control', 'duration_seconds', 'markers', 'unmatched_markers',
+              'invalid_video_frames', 'baseline_p95_abs_ms', 'recovered_p95_abs_ms', 'phase_changes',
+              'audio_base_latency_ms', 'audio_output_latency_ms', 'max_video_callback_lateness_ms',
+              'physical_lip_sync_measured', 'media_saved', 'microphone_used', 'test_sink_silent'}
+    if (set(data) != fields or type(data['schema']) is not int or data['schema'] != 1 or
+            type(data['duration_seconds']) is not int or data['duration_seconds'] != duration or
+            data['outcome'] not in ('pass', 'budget_exceeded', 'insufficient_markers', 'setup_failed') or
+            data['control'] not in ('none', 'audio200', 'video200') or
+            any(data[key] is not False for key in ('physical_lip_sync_measured', 'media_saved', 'microphone_used')) or
+            data['test_sink_silent'] is not True):
+        return False
+    def number(value):
+        return type(value) in (int, float) and abs(value) <= 1e12 and math.isfinite(value)
+    if any(type(data[key]) is not int or not 0 <= data[key] <= 1000000
+           for key in ('unmatched_markers', 'invalid_video_frames')):
+        return False
+    if any(data[key] is not None and (not number(data[key]) or data[key] < 0)
+           for key in ('baseline_p95_abs_ms', 'recovered_p95_abs_ms',
+                       'audio_base_latency_ms', 'audio_output_latency_ms', 'max_video_callback_lateness_ms')):
+        return False
+    markers = data['markers']
+    if not isinstance(markers, list) or len(markers) > 2000:
+        return False
+    seen = set()
+    for row in markers:
+        # id, profile, offset, audio output, video display, source time, gain.
+        if (not isinstance(row, list) or len(row) != 7 or type(row[0]) is not int or
+                not 0 <= row[0] < math.ceil(duration / 2) or row[0] in seen or
+                not isinstance(row[1], str) or row[1] not in PROFILES or
+                not all(number(value) for value in row[2:]) or not 0 <= row[6] <= 3):
+            return False
+        seen.add(row[0])
+    phases = data['phase_changes']
+    if (not isinstance(phases, list) or len(phases) > 10 or any(
+            not isinstance(row, list) or len(row) != 2 or not isinstance(row[0], str) or
+            row[0] not in PROFILES or not number(row[1]) or row[1] < 0 for row in phases)):
+        return False
+    if data['outcome'] == 'pass' and (len(markers) < 10 or any(
+            data[key] is None or data[key] > 80
+            for key in ('baseline_p95_abs_ms', 'recovered_p95_abs_ms'))):
+        return False
+    return True
 
 
 def asset_path(root, request_path):
@@ -55,16 +102,29 @@ def main():
     parser.add_argument('--port', type=int, default=7390)
     parser.add_argument('--transport', choices=('udp', 'tcp'), default='udp')
     parser.add_argument('--direction', choices=('both', 'incoming', 'outgoing'), default='both')
+    parser.add_argument('--marker-seconds', type=int, help='Run synthetic A/V playout markers for 60–3600 seconds')
     args = parser.parse_args()
     if not 1024 <= args.port <= 65535:
         parser.error('Use an unprivileged port')
     if args.direction != 'both' and args.transport != 'udp':
         parser.error('Directional feedback checks currently require UDP')
+    marker = args.marker_seconds is not None
+    if marker and (not 60 <= args.marker_seconds <= 3600 or args.direction != 'both'):
+        parser.error('A/V markers require 60–3600 seconds and direction both')
+    lifetime = args.marker_seconds + 120 if marker else 900
     directional = args.direction != 'both'
     profiles = {**PROFILES, 'loss': ['loss', '15%' if directional else '2%']}
     web_root = args.web_root.resolve()
-    if not (web_root / 'main.dart.js').is_file():
-        parser.error('Build call_renderer_fixture.dart first')
+    required = 'call_av_marker_fixture.html' if marker else 'main.dart.js'
+    if not (web_root / required).is_file():
+        parser.error('Prepare the selected browser fixture first')
+    marker_sources = ('call_av_marker_fixture.html', 'call_av_marker_fixture.js',
+                      'call_av_marker.js', 'call_av_marker_worklet.js', 'media_audio.js')
+    if marker and any(asset_path(web_root, '/' + name) is None for name in marker_sources):
+        parser.error('Prepare all A/V marker assets first')
+    fixture_hashes = ({name: hashlib.sha256((web_root / name).read_bytes()).hexdigest()
+                       for name in marker_sources} if marker else {})
+    fixture_hashes['lab_server'] = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
     # No implicit remote Docker target: namespace capabilities belong only to this lab.
     try:
         require_local_docker()
@@ -174,7 +234,7 @@ def main():
                     'match', 'ip', 'sport', '3478' if args.direction == 'incoming' else '3480',
                     '0xffff', 'flowid', '1:2',
                 ], check=True, capture_output=True, timeout=10)
-            username = f'{int(time.time()) + 900}:call-lab'
+            username = f'{int(time.time()) + lifetime}:call-lab'
             password = base64.b64encode(hmac.digest(
                 secret.encode(), username.encode(), hashlib.sha1)).decode()
             profile('clean')
@@ -210,6 +270,7 @@ def main():
                                 'username': username, 'credential': password,
                             }]} if directional else {}),
                             'lab_key': nonce, 'profile': current,
+                            **({'marker_seconds': args.marker_seconds} if marker else {}),
                         })
                     path = asset_path(web_root, self.path)
                     if path is None:
@@ -255,6 +316,17 @@ def main():
                                 'profiles': profiles, 'qdiscs': qdiscs, 'result': data,
                             }, indent=2) + '\n')
                             return self.reply(200, {'saved': True})
+                        if self.path == '/marker-result':
+                            if not marker or not valid_marker_result(data, args.marker_seconds):
+                                return self.reply(400, {'error': 'invalid_result'})
+                            args.output.parent.mkdir(parents=True, exist_ok=True)
+                            args.output.write_text(json.dumps({
+                                'synthetic_media': True, 'physical_lip_sync_measured': False,
+                                'transport': 'TURN ' + args.transport.upper(), 'namespace_only': True,
+                                'fixture_sha256': fixture_hashes,
+                                'profiles': profiles, 'qdiscs': qdiscs, 'result': data,
+                            }, indent=2) + '\n')
+                            return self.reply(200, {'saved': True})
                         return self.reply(404, {'error': 'not_found'})
                     except (ValueError, KeyError):
                         return self.reply(400, {'error': 'invalid_request'})
@@ -262,12 +334,12 @@ def main():
                         return self.reply(500, {'error': 'fixture_operation_failed'})
 
             server = ThreadingHTTPServer(('127.0.0.1', args.port), Handler)
-            expiry = threading.Timer(900, server.shutdown)
+            expiry = threading.Timer(lifetime, server.shutdown)
             expiry.daemon = True
             expiry.start()
             print(json.dumps({'ready': True, 'project': project,
                               'compose': str(compose),
-                              'url': origin + '/index.html?network_lab=1'}), flush=True)
+                              'url': origin + ('/call_av_marker_fixture.html' if marker else '/index.html?network_lab=1')}), flush=True)
             server.serve_forever()
         finally:
             if expiry:

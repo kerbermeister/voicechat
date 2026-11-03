@@ -124,11 +124,27 @@ class _FixtureState extends State<Fixture> {
       otherRemote = event.streams.firstOrNull;
     };
     rtc.MediaStream? remote;
+    final candidatesForSender = <rtc.RTCIceCandidate>[];
+    final candidatesForReceiver = <rtc.RTCIceCandidate>[];
+    var senderReady = false;
+    var receiverReady = false;
+    var stopped = false;
+    // addIceCandidate requires a remote description, even in local loopback.
     sender.onIceCandidate = (c) {
-      if (c.candidate?.isNotEmpty == true) unawaited(receiver.addCandidate(c));
+      if (stopped || c.candidate?.isNotEmpty != true) return;
+      if (receiverReady) {
+        unawaited(receiver.addCandidate(c));
+      } else {
+        candidatesForReceiver.add(c);
+      }
     };
     receiver.onIceCandidate = (c) {
-      if (c.candidate?.isNotEmpty == true) unawaited(sender.addCandidate(c));
+      if (stopped || c.candidate?.isNotEmpty != true) return;
+      if (senderReady) {
+        unawaited(sender.addCandidate(c));
+      } else {
+        candidatesForSender.add(c);
+      }
     };
     receiver.onTrack = (event) {
       remote = event.streams.firstOrNull;
@@ -138,10 +154,20 @@ class _FixtureState extends State<Fixture> {
       await receiver.setRemoteDescription(
         (await sender.getLocalDescription())!,
       );
+      receiverReady = true;
+      for (final candidate in candidatesForReceiver) {
+        await receiver.addCandidate(candidate);
+      }
+      candidatesForReceiver.clear();
       await receiver.setLocalDescription(await receiver.createAnswer());
       await sender.setRemoteDescription(
         (await receiver.getLocalDescription())!,
       );
+      senderReady = true;
+      for (final candidate in candidatesForSender) {
+        await sender.addCandidate(candidate);
+      }
+      candidatesForSender.clear();
     }
 
     try {
@@ -240,6 +266,41 @@ class _FixtureState extends State<Fixture> {
             (row['decoded_fps'] as num) > 0,
       )) {
         throw StateError('Recovered video interval counters unavailable');
+      }
+      final retired = createCallRenderer();
+      web.HTMLAudioElement? retiredAudio;
+      var retiredDisposed = false;
+      try {
+        await retired.initialize();
+        await retired.setSrcObject(
+          stream: remote,
+          trackId: remote!.getVideoTracks().single.id,
+        );
+        retiredAudio =
+            web.document.getElementById(
+                  'audio_RTCVideoRenderer-${retired.textureId}',
+                )
+                as web.HTMLAudioElement?;
+        if (retiredAudio == null || retiredAudio.srcObject == null) {
+          throw StateError('Retired renderer control did not attach audio');
+        }
+        await retired.dispose();
+        retiredDisposed = true;
+        if (retiredAudio.srcObject != null) {
+          throw StateError(
+            'Disposed renderer retained its remote audio source',
+          );
+        }
+        if (combined.getAudioTracks().toDart.single.readyState != 'live') {
+          throw StateError('Renderer disposal stopped a shared remote track');
+        }
+      } finally {
+        retiredAudio?.pause();
+        retiredAudio?.srcObject = null;
+        if (!retiredDisposed) {
+          retired.srcObject = null;
+          await retired.dispose();
+        }
       }
       if (networkLab) {
         Future<void> profile(String name) async {
@@ -400,7 +461,7 @@ class _FixtureState extends State<Fixture> {
       }
       setState(
         () => result =
-            'PASS: combined A/V, one audio path, media pause/resume, 320→640 frames, ICE restart, recovered interval counters${networkLab ? ', TURN network recovery ($direction)' : ''}; physical lip-sync not measured',
+            'PASS: combined A/V, one audio path, disposed source released/shared track live, media pause/resume, 320→640 frames, ICE restart, recovered interval counters${networkLab ? ', TURN network recovery ($direction)' : ''}; physical lip-sync not measured',
       );
     } catch (error) {
       setState(
@@ -408,6 +469,7 @@ class _FixtureState extends State<Fixture> {
             'FAIL: $error; ICE ${sender.iceConnectionState?.name}/${receiver.iceConnectionState?.name}',
       );
     } finally {
+      stopped = true;
       timer.cancel();
       if (otherLocal != null) otherView.srcObject = null;
       for (final t

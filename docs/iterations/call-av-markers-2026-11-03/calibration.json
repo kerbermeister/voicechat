@@ -1,0 +1,14 @@
+{
+  "baseline_clean_median_ms": 73.3,
+  "audio200_clean_median_ms": 251.4,
+  "video200_clean_median_ms": -127.3,
+  "audio_delta_ms": 178.1,
+  "video_delta_ms": -200.6,
+  "expected_deltas_ms": [
+    200,
+    -200
+  ],
+  "calibration_tolerance_ms": 50,
+  "both_sign_and_magnitude_verified": true,
+  "physical_lip_sync_measured": false
+}

@@ -221,7 +221,8 @@ CallQuality outgoingVideoQuality(List<rtc.StatsReport> reports) {
 }
 
 /// Brief spikes must not repeatedly switch video encodings. Recovery needs
-/// three good samples; sustained degradation takes two. Loss of ICE is immediate.
+/// three improved samples; sustained degradation takes two. Adjacent grades
+/// confirm their common bound rather than resetting recovery. ICE loss is immediate.
 class StableCallQuality {
   CallQuality value = CallQuality.unknown;
   CallQuality? _candidate;
@@ -244,11 +245,22 @@ class StableCallQuality {
       _samples = 0;
       return value;
     }
-    _samples = _candidate == next ? _samples + 1 : 1;
-    _candidate = next;
     final recovering = next.index < value.index;
+    final candidate = _candidate;
+    if (candidate == null || (candidate.index < value.index) != recovering) {
+      _candidate = next;
+      _samples = 1;
+    } else {
+      _samples++;
+      // Confirm only the grade sustained by every sample in this direction.
+      if (recovering
+          ? next.index > candidate.index
+          : next.index < candidate.index) {
+        _candidate = next;
+      }
+    }
     if (_samples >= (recovering ? 3 : 2)) {
-      value = next;
+      value = _candidate!;
       _candidate = null;
       _samples = 0;
     }

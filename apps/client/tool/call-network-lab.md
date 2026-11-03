@@ -176,3 +176,52 @@ PASS, когда netem не действует. Фактические samples �
 планировщика увеличивают реальное время. Synthetic canvas сжимается гораздо проще
 камеры. Результат не доказывает экономию канала, физический lip-sync, отсутствие
 долгого дрейфа, работу Matrix DirectCall или E2EE-группы на iPhone/Xiaomi.
+
+## A/V-маркеры после product Web Audio gain
+
+Только тестовые файлы, без Flutter-сборки. Перед сравнением сверить SHA256
+копируемого `media_audio.js` с исследуемым опубликованным клиентом.
+
+```sh
+mkdir -p .prototype/call-av-marker-web
+cp apps/client/integration_test/call_av_marker*.js apps/client/integration_test/call_av_marker_fixture.html apps/client/web/media_audio.js .prototype/call-av-marker-web/
+python3 apps/client/tool/call_network_lab.py --web-root .prototype/call-av-marker-web --output .prototype/av-marker-short.json --marker-seconds 60
+```
+
+Открыть напечатанный URL во внутреннем браузере, нажать `Run A/V marker probe`.
+60с: clean15с → delay10с → loss10с → offline3с → clean22с. Для120с начальный
+clean20с, помехи по15с; при≥600с первый clean занимает1/6 всего времени.
+`--marker-seconds 1800` —30мин, максимум3600. Credentials/аварийное завершение
+namespace ограничены длительностью+120с; обычный renderer сохраняет предел15мин.
+
+Каждые2с передаётся уникальный DTMF marker с checksum; изображение содержит
+32-битный clock stamp с header/CRC8. Приёмник читает декодированные PCM после
+текущего product gain и пиксели представленного кадра. Worklet инструментирует
+только destination и выдаёт нули; raw element muted, второй audio path запрещён.
+В памяти —1024 PCM samples и до600 временных видеометок; медиа не записываются.
+
+`getOutputTimestamp()` переводит PCM sample time в performance clock;
+`requestVideoFrameCallback().expectedDisplayTime` оценивает представление кадра.
+Положительный offset означает более поздний звук. Это браузерная оценка, а не
+внешний замер динамика/экрана. Ограничения:
+[Web Audio](https://www.w3.org/TR/webaudio/#dom-audiocontext-getoutputtimestamp),
+[video-rvfc](https://wicg.github.io/video-rvfc/#dom-videoframecallbackmetadata-expecteddisplaytime).
+
+Предварительный порог80мс из исследования не подстраивается под результат:
+`pass` требует достаточного числа markers и отсутствия превышения в initial
+clean и после5с последнего clean. P95 сохраняется отдельно; максимумы доступны
+из marker rows. Отрицательный результат тоже записывается. Колонки `markers`:
+id, профиль, offset_ms, audio_output_ms, video_display_ms, source_ms, gain;
+`phase_changes` содержит завершённые смены профиля. Нет подходящего video stamp —
+marker учитывается unmatched.
+
+Калибровка в отдельных свежих сеансах: `?control=audio200` и `?control=video200`
+задерживают соответствующее содержимое на200мс. Измерение должно измениться
+примерно на+200/−200мс относительно initial clean. Это явно помеченные отрицательные
+контроли, не улучшение продукта. Потери пока без фиксированного seed.
+
+Проверки: `node --test apps/client/tool/test_av_marker.mjs`, затем существующий
+Python boundary suite выше, в том числе с `CALL_NETWORK_LAB_ORIGIN` до нажатия
+Run. После правки JS скопировать assets и перезагрузить страницу; hot reload нет.
+Ctrl+C удаляет только свой namespace. Стенд не заменяет Matrix/group E2EE,
+физические iPhone/Xiaomi, seeded burst/reorder/rate и внешний lip-sync.

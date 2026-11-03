@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>VoiceChat synthetic A/V playout markers</title>
+<style>body{font:16px system-ui;max-width:1000px;margin:24px auto;padding:16px}button{padding:12px}video{width:640px;max-width:100%;background:#111}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>
+<h1>Synthetic A/V playout markers</h1>
+<p>Local TURN, synthetic canvas and encoded tones through the current product gain graph. The final test sink is silent. No account, microphone, camera or saved media. Browser timing estimates do not measure physical speaker/display latency or iPhone lip-sync.</p>
+<button id="run" disabled>Run A/V marker probe</button>
+<div id="view"></div>
+<p id="summary"></p>
+<pre id="result" role="status">Loading fixture</pre>
+<script type="module" src="call_av_marker_fixture.js"></script>
+</html>

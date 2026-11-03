@@ -1,0 +1,337 @@
+{
+  "synthetic_media": true,
+  "physical_lip_sync_measured": false,
+  "transport": "TURN UDP",
+  "namespace_only": true,
+  "profiles": {
+    "clean": [
+      "delay",
+      "0ms"
+    ],
+    "delay": [
+      "delay",
+      "40ms"
+    ],
+    "loss": [
+      "loss",
+      "2%"
+    ],
+    "offline": [
+      "loss",
+      "100%"
+    ]
+  },
+  "qdiscs": [
+    {
+      "profile": "clean",
+      "lo": "qdisc netem 8003: root refcnt 2 limit 1000\n Sent 36184 bytes 74 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "eth0": "qdisc netem 8004: root refcnt 5 limit 1000\n Sent 51566 bytes 107 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n"
+    },
+    {
+      "profile": "clean",
+      "lo": "qdisc netem 8003: root refcnt 2 limit 1000\n Sent 1352026 bytes 2346 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "eth0": "qdisc netem 8004: root refcnt 5 limit 1000\n Sent 1374033 bytes 2380 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n"
+    },
+    {
+      "profile": "delay",
+      "lo": "qdisc netem 8003: root refcnt 2 limit 1000 delay 40ms\n Sent 2053118 bytes 3698 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 4339b 7p requeues 0\n",
+      "eth0": "qdisc netem 8004: root refcnt 5 limit 1000 delay 40ms\n Sent 2077906 bytes 3728 pkt (dropped 0, overlimits 0 requeues 0) \n backlog 4026b 6p requeues 0\n"
+    },
+    {
+      "profile": "loss",
+      "lo": "qdisc netem 8003: root refcnt 2 limit 1000 loss 2%\n Sent 2937586 bytes 5255 pkt (dropped 22, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "eth0": "qdisc netem 8004: root refcnt 5 limit 1000 loss 2%\n Sent 2949585 bytes 5257 pkt (dropped 42, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n"
+    },
+    {
+      "profile": "offline",
+      "lo": "qdisc netem 8003: root refcnt 2 limit 1000 loss 100%\n Sent 2966228 bytes 5301 pkt (dropped 354, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "eth0": "qdisc netem 8004: root refcnt 5 limit 1000 loss 100%\n Sent 2964254 bytes 5279 pkt (dropped 49, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n"
+    },
+    {
+      "profile": "clean",
+      "lo": "qdisc netem 8003: root refcnt 2 limit 1000\n Sent 4988737 bytes 8849 pkt (dropped 386, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n",
+      "eth0": "qdisc netem 8004: root refcnt 5 limit 1000\n Sent 4997328 bytes 8819 pkt (dropped 62, overlimits 0 requeues 0) \n backlog 0b 0p requeues 0\n"
+    }
+  ],
+  "result": {
+    "schema": 1,
+    "outcome": "budget_exceeded",
+    "control": "audio200",
+    "duration_seconds": 60,
+    "markers": [
+      [
+        0,
+        "clean",
+        249.1,
+        7224,
+        6974.9,
+        2064,
+        1
+      ],
+      [
+        1,
+        "clean",
+        254.5,
+        9229.4,
+        8974.9,
+        4064,
+        1
+      ],
+      [
+        2,
+        "clean",
+        251.4,
+        11234.7,
+        10983.3,
+        6064,
+        1
+      ],
+      [
+        3,
+        "clean",
+        256.8,
+        13240,
+        12983.2,
+        8064,
+        1
+      ],
+      [
+        4,
+        "clean",
+        241.5,
+        15224,
+        14982.6,
+        10064,
+        1
+      ],
+      [
+        5,
+        "clean",
+        246.2,
+        17229.3,
+        16983.2,
+        12064,
+        1
+      ],
+      [
+        6,
+        "clean",
+        316.5,
+        19298.7,
+        18982.2,
+        14064,
+        1
+      ],
+      [
+        7,
+        "delay",
+        278.4,
+        21282.7,
+        21004.3,
+        16064,
+        0.5
+      ],
+      [
+        8,
+        "delay",
+        159.7,
+        23288,
+        23128.3,
+        18064,
+        0.5
+      ],
+      [
+        9,
+        "delay",
+        341.4,
+        25378.7,
+        25037.2,
+        20064,
+        0.5
+      ],
+      [
+        10,
+        "delay",
+        325.4,
+        27362.7,
+        27037.3,
+        22064,
+        0.5
+      ],
+      [
+        11,
+        "delay",
+        247.4,
+        29368,
+        29120.6,
+        24064,
+        0.5
+      ],
+      [
+        12,
+        "delay",
+        244.4,
+        31373.3,
+        31128.9,
+        26064,
+        2
+      ],
+      [
+        13,
+        "loss",
+        177.8,
+        33314.7,
+        33136.9,
+        28064,
+        2
+      ],
+      [
+        14,
+        "loss",
+        157.4,
+        35293.8,
+        35136.3,
+        30064,
+        2
+      ],
+      [
+        15,
+        "loss",
+        162.7,
+        37299.9,
+        37137.2,
+        32064,
+        2
+      ],
+      [
+        16,
+        "loss",
+        146.9,
+        39284.1,
+        39137.2,
+        34064,
+        2
+      ],
+      [
+        17,
+        "loss",
+        152.4,
+        41288.8,
+        41136.4,
+        36064,
+        2
+      ],
+      [
+        21,
+        "clean",
+        203.5,
+        49310.5,
+        49107,
+        44064,
+        1
+      ],
+      [
+        22,
+        "clean",
+        187,
+        51294.2,
+        51107.2,
+        46064,
+        1
+      ],
+      [
+        23,
+        "clean",
+        193.2,
+        53283.7,
+        53090.4,
+        48064,
+        1
+      ],
+      [
+        24,
+        "clean",
+        203.3,
+        55294.5,
+        55091.2,
+        50064,
+        1
+      ],
+      [
+        25,
+        "clean",
+        268.4,
+        57305.1,
+        57036.7,
+        52064,
+        1
+      ],
+      [
+        26,
+        "clean",
+        283.1,
+        59315.9,
+        59032.8,
+        54064,
+        1
+      ],
+      [
+        27,
+        "clean",
+        278.7,
+        61310.9,
+        61032.2,
+        56064,
+        1
+      ],
+      [
+        28,
+        "clean",
+        284.3,
+        63320.5,
+        63036.2,
+        58064,
+        1
+      ],
+      [
+        29,
+        "clean",
+        261.1,
+        65306.4,
+        65045.3,
+        60064,
+        1
+      ]
+    ],
+    "phase_changes": [
+      [
+        "clean",
+        5681.709999999963
+      ],
+      [
+        "delay",
+        21259.780000000028
+      ],
+      [
+        "loss",
+        31829.969999999972
+      ],
+      [
+        "offline",
+        42437.3600000001
+      ],
+      [
+        "clean",
+        46013.29500000016
+      ]
+    ],
+    "unmatched_markers": 1,
+    "invalid_video_frames": 0,
+    "baseline_p95_abs_ms": 316.5,
+    "recovered_p95_abs_ms": 284.3,
+    "physical_lip_sync_measured": false,
+    "media_saved": false,
+    "microphone_used": false,
+    "test_sink_silent": true
+  }
+}

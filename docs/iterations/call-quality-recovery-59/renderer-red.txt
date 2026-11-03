@@ -1,0 +1,9 @@
+Browser tab: 7, Title: "127.0.0.1:17368/index.html", URL: "http://127.0.0.1:17368/index.html".
+0 AXWebArea 127.0.0.1:17368/index.html
+	1 container
+		2 container Run renderer checks FAIL: Bad state: Disposed renderer retained its remote audio source; ICE RTCIceConnectionStateConnected/RTCIceConnectionStateConnected
+			3 container flt-semantic-node-3
+				4 button Run renderer checks, ID: flt-semantic-node-4
+				5 text entry area (disabled) FAIL: Bad state: Disposed renderer retained its remote audio source; ICE RTCIceConnectionStateConnected/RTCIceConnectionStateConnected
+
+The focused UI element is 2 container Run renderer checks FAIL: Bad state: Disposed renderer retained its remote audio source; ICE RTCIceConnectionStateConnected/RTCIceConnectionStateConnected

@@ -1,0 +1,9 @@
+Browser tab: 8, Title: "127.0.0.1:17369/index.html", URL: "http://127.0.0.1:17369/index.html".
+0 AXWebArea 127.0.0.1:17369/index.html
+	1 container
+		2 container Run renderer checks PASS: combined A/V, one audio path, media pause/resume, 320→640 frames, ICE restart, recovered interval counters; physical lip-sync not measured
+			3 container flt-semantic-node-3
+				4 button Run renderer checks, ID: flt-semantic-node-4
+				5 text entry area (disabled) PASS: combined A/V, one audio path, media pause/resume, 320→640 frames, ICE restart, recovered interval counters; physical lip-sync not measured
+
+The focused UI element is 2 container Run renderer checks PASS: combined A/V, one audio path, media pause/resume, 320→640 frames, ICE restart, recovered interval counters; physical lip-sync not measured

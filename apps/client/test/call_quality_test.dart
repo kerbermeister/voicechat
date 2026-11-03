@@ -200,6 +200,65 @@ void main() {
     },
   );
   test(
+    'Adjacent improved grades recover to their sustained common quality',
+    () {
+      final stable = StableCallQuality();
+      stable.update(CallQuality.poor);
+      expect(stable.update(CallQuality.excellent), CallQuality.poor);
+      expect(stable.update(CallQuality.good), CallQuality.poor);
+      expect(stable.update(CallQuality.excellent), CallQuality.good);
+      expect(
+        adaptiveVideoQuality(VideoQuality.auto, stable.value),
+        VideoQuality.medium,
+      );
+      expect(
+        adaptiveVideoQuality(VideoQuality.high, stable.value),
+        VideoQuality.high,
+      );
+      stable.update(CallQuality.excellent);
+      stable.update(CallQuality.excellent);
+      expect(stable.update(CallQuality.excellent), CallQuality.excellent);
+    },
+  );
+  test(
+    'Mixed degradation does not hide a sustained weaker path or overreact',
+    () {
+      final stable = StableCallQuality();
+      stable.update(CallQuality.excellent);
+      expect(stable.update(CallQuality.poor), CallQuality.excellent);
+      expect(stable.update(CallQuality.good), CallQuality.good);
+      expect(stable.update(CallQuality.poor), CallQuality.good);
+      expect(stable.update(CallQuality.poor), CallQuality.poor);
+    },
+  );
+  test('Missing and unchanged samples interrupt mixed quality recovery', () {
+    for (final interruption in [CallQuality.unknown, CallQuality.poor]) {
+      final stable = StableCallQuality();
+      stable.update(CallQuality.poor);
+      stable.update(CallQuality.excellent);
+      stable.update(CallQuality.good);
+      expect(stable.update(interruption), CallQuality.poor);
+      expect(stable.update(CallQuality.good), CallQuality.poor);
+      expect(stable.update(CallQuality.excellent), CallQuality.poor);
+      expect(stable.update(CallQuality.good), CallQuality.good);
+    }
+  });
+  test('Opposite quality trends restart their confirmation window', () {
+    final stable = StableCallQuality();
+    stable.update(CallQuality.good);
+    for (final next in [
+      CallQuality.poor,
+      CallQuality.excellent,
+      CallQuality.poor,
+      CallQuality.excellent,
+      CallQuality.excellent,
+    ]) {
+      expect(stable.update(next), CallQuality.good);
+    }
+    expect(stable.update(CallQuality.excellent), CallQuality.excellent);
+    expect(stable.update(CallQuality.lost), CallQuality.lost);
+  });
+  test(
     'Transient quality spikes do not oscillate encodings; stale measurements expire',
     () {
       final stable = StableCallQuality();

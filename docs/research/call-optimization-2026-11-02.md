@@ -1066,3 +1066,45 @@ Mac57→58 кнопкой с285 exact entries/account/device/history/About PASS.
 Это отдельная предпосылка
 корректного prepare/ACK, не новый epoch protocol и не доказанная причина iPhone.
 [Свидетельство](../iterations/key-install-58/), пользовательская приёмка UA-05.C40.
+
+
+### OPT-02/08, 03.11: содержимое A/V после product gain
+
+Добавлен test-only browser/TURN стенд без Flutter-build: точный опубликованный58
+media_audio.js (SHA сверён по HTTPS), синтетические DTMF IDs/checksum и CRC video
+clock. PCM наблюдается после product gain, только конечный sink заменён на нули.
+getOutputTimestamp и expectedDisplayTime сопоставляют содержимое по performance
+clock; это browser estimate, не физический динамик/экран. Микрофон/камера/аккаунт
+не используются, медиа не сохраняются. Исходные производственные настройки прежние.
+
+Короткий60с clean→delay→loss→3с offline→clean дал27 markers; initial p95 abs89.4мс,
+recovery78мс. Предварительный бюджет80мс не пройден и не подогнан под данные.
+Известные source-content offsets200мс сдвинули initial median на+178.1/−200.6мс;
+оба направления укладываются в калибровочный допуск50мс. Первый video-control
+завис на setup и не считается замером; ожидания стенда ограничены, повтор измерен.
+Node3 теста (включая42 tone/rate/gain combinations), Python9 тестов с1skip без
+сервера и9PASS на живом lab. Завершён1800с soak: normal5мин, затем помехи и длительный
+clean.893 markers, initial p95 abs71.5мс/recovery89.2мс, max220.1мс;
+69 recovered samples>80мс. Итог budget_exceeded, без ослабления порога.
+Медианы5-минутных окон55.0→42.2→40.2→36.8→59.1→23.9мс не показали нарастающего
+дрейфа, короткие выбросы остаются. Локальные low-priority Flutter tests/static
+analysis отмечены как host activity; однозначной сетевой причины это не даёт.
+Физические Safari/PWA/Xiaomi, Matrix/group E2EE, seeded burst/reorder/rate и
+историческая причина разговора по-прежнему открыты. Пользовательская очередь
+остаётся UA-08/09 в едином реестре. [Свидетельства](../iterations/call-av-markers-2026-11-03/),
+[команды и границы](../../apps/client/tool/call-network-lab.md#a-v-маркеры-после-product-web-audio-gain).
+
+
+### OPT-03, 03.11: залипание hysteresis на соседних оценках
+
+Три red-теста подтвердили: StableCallQuality58 не выходит из poor при бесконечном
+чередовании excellent/good; зеркально poor/good не понижает excellent. Учитывались
+только одинаковые подряд grades. Локальный fix подтверждает общий устойчивый
+предел consecutive samples одного направления; минимум3 при recovery/2 при
+ухудшении, lost/missing/manual прежние.13 адресных и targeted analyzer PASS.
+Это не новый адаптивный audio protocol; кандидат59 прошёл763 full Flutter/4skip,
+app analyzer/8 version-package и настоящий incoming/outgoing TURN по42 samples.
+Отдельная web disposal-регрессия red→green, shared track live; очередь ранних ICE
+в test fixture не меняет production signaling. Обязательный клиентский release ещё выполняется. Историческая причина
+телефонных spikes не доказана. [Свидетельство](../iterations/call-quality-recovery-59/),
+единственная приёмка — UA-04.C32.
