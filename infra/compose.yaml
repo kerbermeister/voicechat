@@ -72,7 +72,7 @@ services:
       timeout: 3s
       retries: 5
   turn:
-    image: coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3
+    image: ghcr.io/kerbermeister/voicechat/turn@sha256:6ad0ed1ccd26cc7272f82a68b06ba231827b8d1e51ed88278dd312dcbc15e01c
     user: '10001:10001'
     command: [-c, /config/turnserver.conf]
     volumes: [turn-config:/config:ro]
