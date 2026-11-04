@@ -1,0 +1,85 @@
+name: Build bounded A/V WebRTC SDK
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/native-sdk-av-sync]
+    paths:
+      - infra/webrtc_sdk/**
+      - .github/workflows/webrtc-sdk.yml
+permissions:
+  contents: read
+concurrency:
+  group: webrtc-sdk-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: webrtc-sdk/webrtc-build
+          ref: 717ec1dc5a94389d691e09cccaf3d7b3364fb4b7
+          path: sdk-builder
+          persist-credentials: false
+      - name: Prepare isolated runner
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential ninja-build python3-setuptools rsync libx11-6 libxcomposite1 libxdamage1 libxext6 libxfixes3 libxrandr2 libxtst6 libgbm1
+          df -h
+      - name: Prove regression and run timing tests
+        run: python3 infra/webrtc_sdk/build.py test --builder sdk-builder/build --work "$RUNNER_TEMP/sdk" --output "$RUNNER_TEMP/results"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
+        with:
+          name: webrtc-timing-tests
+          path: ${{ runner.temp }}/results/
+          if-no-files-found: error
+  sdk:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos
+            os: macos-26
+          - platform: android
+            os: ubuntu-24.04
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          repository: webrtc-sdk/webrtc-build
+          ref: 717ec1dc5a94389d691e09cccaf3d7b3364fb4b7
+          path: sdk-builder
+          persist-credentials: false
+      - name: Prepare isolated Linux runner
+        if: runner.os == 'Linux'
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get update
+          sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential ninja-build python3-setuptools rsync
+          df -h
+      - name: Select official builder Xcode
+        if: runner.os == 'macOS'
+        run: |
+          sudo xcode-select --switch /Applications/Xcode_26.0.app/Contents/Developer
+          xcodebuild -version
+          df -h
+      - name: Build pinned SDK
+        env:
+          SDK_PLATFORM: ${{ matrix.platform }}
+        run: python3 infra/webrtc_sdk/build.py "$SDK_PLATFORM" --builder sdk-builder/build --work "$RUNNER_TEMP/sdk" --output "$RUNNER_TEMP/results"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: webrtc-${{ matrix.platform }}-150.7871.04-vc1
+          path: ${{ runner.temp }}/results/
+          if-no-files-found: error
