@@ -13460,8 +13460,34 @@
   "sdk_vc2": {
     "status": "source prepared; C++ CI pending; not released",
     "commit": "46c02096f0c5b333f26fe3b9504db81dc10aeea1",
-    "workflow_run": 41914825766,
+    "workflow_run": 41917176968,
     "native_tests_expected": 43,
-    "negative_regressions_expected": 8
+    "negative_regressions_expected": 8,
+    "build_revision": "e3c4875c91eadf233a7aff178b08ba4b2e2116ab",
+    "cpp_runs": [
+      {
+        "id": 41914825766,
+        "outcome": "failed before C++ compilation",
+        "reason": "GN allow_poison assigned in rtc_test; target does not support it"
+      },
+      {
+        "id": 41917128745,
+        "outcome": "cancelled before C++ compilation",
+        "reason": "Superseded test-library configuration; no test evidence"
+      },
+      {
+        "id": 41917176968,
+        "outcome": "pending",
+        "reason": "Upstream testonly exemption; real C++ gate required"
+      }
+    ]
+  },
+  "native_recovery_scoring": {
+    "tests_passed": 4,
+    "red_control": "Original SFU scorer incorrectly PASS when video decoder freezes after valid early recovery markers",
+    "fixed_outcome": "stalled_transport",
+    "retained_native_sfu130": "PASS, final10s audio+407/video+651 packets,201 frames",
+    "retained_android_vc1": "budget_exceeded416.472ms, final transport live",
+    "new_vc2_media": false
   }
 }

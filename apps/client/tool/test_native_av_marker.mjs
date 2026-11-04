@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {analyzeP2P, decodeAudioChunks, recoveryTransport} from './score_native_av_marker.mjs';
+import {analyze, analyzeP2P, decodeAudioChunks, recoveryTransport} from './score_native_av_marker.mjs';
 import {markerDigits, lowTones, highTones} from '../integration_test/call_av_marker.js';
 
 test('native markers keep exact PCM positions when callback times arrive in batches', () => {
@@ -60,4 +60,38 @@ test('native P2P recovery requires both live streams at capture end', () => {
   assert.equal(recoveryTransport({stats: undecodable}).pass, false);
   const missingVideo = stats.map(rows => rows.slice(0, 1));
   assert.equal(recoveryTransport({stats: missingVideo}).pass, false);
+});
+
+test('both native SFU and P2P reject good early timing followed by a frozen decoder', () => {
+  const rate = 48000, times = [6, 8, 10, 12, ...Array.from({length: 12}, (_, i) => 68 + 2 * i)];
+  const audio = times.map((time, id) => {
+    const pcm = new Float32Array(rate);
+    for (const [index, digit] of markerDigits(id).entries()) {
+      // Omitted silence separates chunks; keep each tone window inside its chunk.
+      const first = Math.round((.1 + index * .15) * rate);
+      for (let i = 0; i < Math.round(.105 * rate); i++) {
+        const t = (first + i) / rate;
+        pcm[first + i] = .14 * (Math.sin(2 * Math.PI * lowTones[digit >> 2] * t) +
+          Math.sin(2 * Math.PI * highTones[digit & 3] * t));
+      }
+    }
+    return {time, frames: rate, rate, pcm: Buffer.from(pcm.buffer).toString('base64')};
+  });
+  const points = times.map((time, id) => [id, time + .1]);
+  const stats = Array.from({length: 120}, (_, i) => [
+    {kind: 'audio', packetsReceived: i * 50},
+    {kind: 'video', packetsReceived: i * 20, framesDecoded: i * 20}]);
+  const data = {synthetic_media_only: true, p2p: true,
+    missing_key_gate: {content: {video_markers: 0, audio_peak: 0}},
+    crypto_control: {protocol: 'DTLS-SRTP', negative_dtls_failed: true,
+      negative_received_media_packets: 0, positive_dtls_connected: true,
+      srtp_cipher: 'AES_CM_128_HMAC_SHA1_80'},
+    markers: {audio, video: points, source_audio: points, source_video: points},
+    phases: [['clean', 0], ['delay', 20], ['offline', 50], ['clean', 62]], stats};
+  const frozen = stats.map((rows, i) => [rows[0], {...rows[1], framesDecoded: Math.min(i, 100) * 20}]);
+  for (const score of [analyze, analyzeP2P]) {
+    const result = score(data);
+    assert.equal(result.outcome, 'pass', JSON.stringify({clean: result.clean, recovery: result.recovery, first: result.pairs[0]}));
+    assert.equal(score({...data, stats: frozen}).outcome, 'stalled_transport');
+  }
 });

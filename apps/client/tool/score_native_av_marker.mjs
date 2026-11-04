@@ -38,7 +38,7 @@ export function analyze(data) {
 
 export function recoveryTransport(data) {
   const samples = data.stats;
-  const kinds = data.audio_only ? ['audio'] : ['audio', 'video'];
+  const kinds = data.audio_only === true ? ['audio'] : ['audio', 'video'];
   const counts = {};
   for (const kind of kinds) {
     const first = samples?.at(-11)?.find(row => row.kind === kind)?.packetsReceived;
@@ -48,7 +48,7 @@ export function recoveryTransport(data) {
   const decodedFirst = samples?.at(-11)?.find(row => row.kind === 'video')?.framesDecoded;
   const decodedLast = samples?.at(-1)?.find(row => row.kind === 'video')?.framesDecoded;
   const decoded = Number.isFinite(decodedFirst) && Number.isFinite(decodedLast) ? decodedLast - decodedFirst : 0;
-  return {pass: Object.values(counts).every(count => count > 30) && (data.audio_only || decoded > 0),
+  return {pass: Object.values(counts).every(count => count > 30) && (data.audio_only === true || decoded > 0),
     packet_deltas: counts, decoded_video_frames: decoded};
 }
 
@@ -64,8 +64,6 @@ export function analyzeP2P(data) {
     'AEAD_AES_128_GCM', 'AEAD_AES_256_GCM', 'SRTP_AEAD_AES_128_GCM', 'SRTP_AEAD_AES_256_GCM'])
     .has(control.srtp_cipher));
   const report = analyzeTiming(data);
-  report.recovery_transport = recoveryTransport(data);
-  if (report.outcome === 'pass' && !report.recovery_transport.pass) report.outcome = 'stalled_transport';
   if (data.coherent_source && report.max_all_source_offset_ms > 20) report.outcome = 'invalid_source_timing';
   return report;
 }
@@ -99,8 +97,11 @@ function analyzeTiming(data) {
   const enough = clean.count >= 4 && recovered.count >= 12;
   const withinBudget = [clean, recovered].every(phase =>
     phase.max_abs_ms <= 80 && phase.max_source_corrected_abs_ms <= 80);
-  return {schema: 1, outcome: enough && withinBudget && sourceMax <= 75 ? 'pass' :
-    !enough ? 'insufficient_markers' : sourceMax > 75 ? 'invalid_source_timing' : 'budget_exceeded',
+  const transport = recoveryTransport(data);
+  const outcome = enough && withinBudget && sourceMax <= 75 ? 'pass' :
+    !enough ? 'insufficient_markers' : sourceMax > 75 ? 'invalid_source_timing' : 'budget_exceeded';
+  return {schema: 1, outcome: outcome === 'pass' && !transport.pass ? 'stalled_transport' : outcome,
+    recovery_transport: transport,
     audio_checksum_markers: audio.length, matched_pairs: pairs.length,
     shared_group: data.shared_group, clean, recovery: recovered,
     max_source_offset_ms: sourceMax, max_all_source_offset_ms: allSourceMax, physical_latency_measured: false,
