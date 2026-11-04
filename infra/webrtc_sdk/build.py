@@ -88,6 +88,16 @@ rtc_test("timing_sync_unittests") {
   deps = [ "//modules/video_coding/timing:timing_unittests" ]
 }
 ''')
+    # GN only loads BUILD.gn files reachable from the root build file.
+    root_build = source / 'BUILD.gn'
+    root_build.write_text(root_build.read_text() + '''
+if (rtc_include_tests) {
+  group("voicechat_av_sync_tests") {
+    testonly = true
+    deps = [ "//voicechat_av_sync_tests:timing_sync_unittests" ]
+  }
+}
+''')
     build = work / 'unit'
     args = '''is_debug=false dcheck_always_on=true symbol_level=0
 rtc_include_tests=true rtc_build_examples=false rtc_enable_protobuf=true
@@ -101,7 +111,7 @@ rtc_use_h264=false is_component_build=false use_rtti=true'''
     try:
         # Same new API/test, old unbounded behavior: regression must fail first.
         timing.write_bytes(patched.replace(bounded, b'return timings_.TargetDelay();'))
-        run(['autoninja', '-C', build, 'voicechat_av_sync_tests:timing_sync_unittests', '-j2'], cwd=source)
+        run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
         before = subprocess.run([str(build / 'timing_sync_unittests'),
             '--gtest_filter=' + MANIFEST['regression_filter']], capture_output=True, text=True)
         (output / 'before-fix.log').write_text(before.stdout + before.stderr)
@@ -113,7 +123,7 @@ rtc_use_h264=false is_component_build=false use_rtti=true'''
     finally:
         timing.write_bytes(patched)
     verify_files(source, MANIFEST['patched_files_sha256'])
-    run(['autoninja', '-C', build, 'voicechat_av_sync_tests:timing_sync_unittests', '-j2'], cwd=source)
+    run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
     after = subprocess.run([str(build / 'timing_sync_unittests'),
         '--gtest_filter=' + MANIFEST['unit_filter'],
         '--gtest_output=xml:' + str(output / 'timing-tests.xml')], capture_output=True, text=True)
