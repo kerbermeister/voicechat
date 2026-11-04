@@ -13458,7 +13458,7 @@
     "raw_private_evidence": ".prototype/native-p2p-android-cross-current-v1-sync-diagnostic2.media.json.gz"
   },
   "sdk_vc2": {
-    "status": "Final C++43/8 PASS; Mac SDKbuilt/HTTPS SHAverified, dependency prerelease only; Androidbuilding; actual vc2 media pending",
+    "status": "REJECTED: Mac paired pilot added voice1165.610ms during video pause, audio queue~2s; A/Vpass~52ms; speech3/4 pause clips insufficient",
     "commit": "46c02096f0c5b333f26fe3b9504db81dc10aeea1",
     "workflow_run": 41920380791,
     "native_tests_expected": 43,
@@ -13500,7 +13500,53 @@
       "binary_sha256": "a0928558ca897e1a6e6b362d2477d64d9dbda761f1ba29796345715704515291",
       "build_workflow_run": 41920380791,
       "build_revision": "ae0c3178848d41397680da3e21f952d48a100127"
-    }
+    },
+    "native_pilot": {
+      "records": [
+        {
+          "trial": "current-c0b4230d-pilot-1",
+          "timing": "pass",
+          "clean": {
+            "count": 8,
+            "max_abs_ms": 50.41637500107754,
+            "max_source_corrected_abs_ms": 51.274708326673135
+          },
+          "recovery": {
+            "count": 27,
+            "max_abs_ms": 49.28966666921042,
+            "max_source_corrected_abs_ms": 51.68570834212005
+          },
+          "voice_latency": {
+            "pass": false,
+            "clean": {
+              "count": 8,
+              "max_added_voice_delay_ms": -0.26233332755509764
+            },
+            "video_paused": {
+              "count": 4,
+              "max_added_voice_delay_ms": 1165.6100833206438
+            },
+            "recovery": {
+              "count": 27,
+              "max_added_voice_delay_ms": 23.05687499756459
+            }
+          },
+          "speech": "insufficient_paired_speech",
+          "speech_paired_pause_clips": 3,
+          "speech_required_minimum": 4,
+          "identity": {
+            "arm64_uuid": "f11b61e7-1a79-31d6-9eaf-90c8904e8f8e",
+            "sdk_binary_sha256": "d0c32fbcbe31f4692394c6383615ff48229934789e0c609a103c2e1dedd5210d",
+            "patch_sha256": "c0b4230d0be350aadf13de44a01686dcc920cfcc9718c2c371b89bbe4f1ca136"
+          },
+          "pass": false,
+          "reason": "Audio delay exceeds80ms during video pause; failed voice gate. Insufficient phase-matched speech is not a pass."
+        }
+      ],
+      "complete": true,
+      "all_pass": false
+    },
+    "android_status": "SDK job stopped after Mac voice gate rejected common candidate; no Android vc2 media qualification"
   },
   "native_recovery_scoring": {
     "tests_passed": 4,
@@ -13509,5 +13555,14 @@
     "retained_native_sfu130": "PASS, final10s audio+407/video+651 packets,201 frames",
     "retained_android_vc1": "budget_exceeded416.472ms, final transport live",
     "new_vc2_media": false
+  },
+  "sdk_vc3": {
+    "status": "source prepared, C++/SDK/media pending",
+    "manifest_patch_sha256": "aaea8cebf7c6dba477ac7185bcd0ca9ec496a2fca098b69b13c5d7086e25bf8c",
+    "native_tests_expected": 45,
+    "negative_regressions_expected": 9,
+    "policy": "Bound retained controller state and added audio minimum to80ms beyond explicit base; natural NetEq and device/video delay remain independent",
+    "gates": "Unchanged80ms A/V and added voice, STOI0.005/level0.15dB, minimum4 matched clips per phase; actual E2EE required",
+    "interim_dependency": "Complete verified but rejected vc1 retained for ordinaryCI until vc3 artifacts exist; no application update authorized by this metadata"
   }
 }

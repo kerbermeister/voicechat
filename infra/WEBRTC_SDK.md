@@ -1,25 +1,34 @@
 # Bounded A/V synchronization SDK
 
-This candidate retains WebRTC SDK 150.7871.04 and its security fixes. The eight-file
-patch makes rendering and A/V synchronization use the same effective current
-video delay, including the low-latency path and negotiated bounds. The unbounded
-jitter estimate remains available to the video frame-buffer reset guard. Native
-factory defaults and adaptive/audio-device buffering are preserved. Audio
-DSP, codecs, cryptors and certificate validation are unchanged.
+The candidate retains WebRTC SDK150.7871.04 and its native factory defaults.
+`webrtc-sdk.json` pins the SDK source, official builder, depot_tools, ten-file
+patch and every modified file before/after patching. The unbounded video jitter
+estimate remains available to the frame-buffer reset guard. Rendering and A/V
+synchronization use the effective current video delay, including negotiated
+bounds and the low-latency path.
 
-`webrtc-sdk.json` pins the SDK source, official builder, depot_tools, patch and all
-eight source files before/after patching. `build_webrtc_sdk.py` rejects unexpected inputs.
-The CI workflow first proves that eight regression tests fail with the original
-getter/synchronizer behavior, then runs all 43 timing and synchronization tests.
-The synchronizer releases only its minimum-delay floors when either RTP stream
-has been absent for two seconds, when stream information disappears, or when
-the pair changes. Destruction releases the audio floor. Receive buffers are not
-flushed; device/base latency and negotiated video bounds remain intact. Only after that gate can
-it build the published macOS client’s arm64 framework and an Android AAR with the three supported
-application ABIs. Each artifact includes a SHA-256 build receipt.
+The receiver releases stale synchronization minimum-delay floors after two
+seconds without either RTP stream, when stream information disappears, and on
+pair changes. Network pauses retain RTP/NTP estimates; reassignment recreates
+them. Destruction releases only the audio floor because the video's playout
+state may already have ended its lifetime. Receive packets are never flushed.
 
-Run on an isolated machine with at least 18 GB free (more may be required by the
-Chromium dependency checkout), Python 3.11+, and the official platform toolchain:
+vc3 also limits synchronization-added audio buffering to80ms beyond the explicit
+base target. It bounds the controller's retained state and output together.
+Natural NetEq adaptation, device/base latency and the video delay needed for a
+slow audio device remain independent. The optional internal constructor limit
+leaves existing standalone StreamSynchronization callers unchanged; the real
+RtpStreamsSynchronizer supplies the voice budget on configuration and reset.
+Codecs, audio DSP, cryptors and certificate validation are unchanged.
+
+The CI gate requires45 real C++ timing/synchronization tests, no skips, and nine
+negative regressions against the original getter/synchronizer behavior. The
+upstream GN test target declares the added dependencies as well as the small
+isolated harness. The macOS arm64 framework and all three Android application
+ABIs build only after that gate. Each archive includes a source/hash receipt.
+
+Use an isolated runner with at least18GB free (the dependency checkout can need
+more), Python3.11+ and the official platform toolchain:
 
 ```sh
 git clone https://github.com/webrtc-sdk/webrtc-build.git sdk-builder
@@ -27,56 +36,35 @@ git -C sdk-builder checkout 717ec1dc5a94389d691e09cccaf3d7b3364fb4b7
 python3 infra/build_webrtc_sdk.py test --builder sdk-builder/build --work /tmp/vc-sdk-test --output /tmp/vc-sdk-test-results
 ```
 
-Use fresh work/output paths for each invocation. Substitute `macos` or `android`
-for `test` on the appropriate CI runner. The workflow installs Linux build
-prerequisites and selects Xcode 26.0 for macOS; the pinned WebRTC DEPS supplies
-its remaining toolchain. The workflow has read-only repository permissions and
-neither accesses release secrets nor publishes an application update.
+Use fresh work/output paths. Substitute `macos` or `android` for `test` on the
+appropriate runner. The workflow installs Linux prerequisites and selects
+Xcode26.0 on macOS; the pinned WebRTC DEPS supplies the remaining toolchain.
+Only the build script, SDK manifest and C++ patch trigger automatic SDK builds.
+A manual packaging retry can select `macos_only:true` and `timing_tests_run`;
+reused evidence must match every SDK/toolchain/source pin and test requirement.
+Changed source rejects reuse. Raw compiled frameworks and receipts are uploaded
+even if packaging fails. The workflow uses read-only permissions and no release
+secrets; SDK binaries are dependencies, not application updates.
 
-A successful SDK build is not release qualification. The application must still
-pass actual native shared-stream P2P and LiveKit encrypted-media calls, speech
-comparisons with an ordinary call, loss/recovery and lifecycle tests. Both raw
-and source-corrected A/V offsets must remain within 80 ms. See the existing
-[acceptance entry UA-08.C06](../docs/user-acceptance.md) for the open scope.
+Binary URLs/checksums belong in `webrtc-sdk-artifacts.json`. The Android helper
+verifies the AAR before creating a local Maven repository and on reuse. Gradle
+resolves both dependents to the same pinned module. CocoaPods overrides only
+WebRTC-SDK using the checksum-pinned archive. flutter_webrtc remains the hosted
+package from the unchanged pubspec.lock; no copied wrapper or fixed90 factory.
+The existing `enable-swift-package-manager:false` setting remains required for
+this macOS delivery path.
 
-Source pins in `webrtc-sdk.json` are build inputs; checksums and URLs of accepted
-SDK binaries belong in `webrtc-sdk-artifacts.json`. The Android helper verifies
-the AAR before publishing it into the local Maven cache, and verifies cached
-bytes on reuse. The macOS Podfile overrides only the WebRTC-SDK pod with the checksum-pinned
-archive; Android uses Gradle's module resolution to select the same custom SDK
-for both existing dependents. flutter_webrtc remains the hosted package from the
-unchanged pubspec.lock, without a copied wrapper or native-factory changes.
-The application's existing enable-swift-package-manager:false setting is required
-for this macOS delivery path; an unconfigured SwiftPM switch is not supported.
-The SDK workflow automatically runs only when its build script, source manifest
-or C++ patch changes. Documentation, artifact delivery and app-only changes use
-the existing SDK bytes; workflow/job changes can be checked with a manual run.
+Native P2P/SFU calls, actual encrypted-content controls, ordinary-voice latency
+and matched speech comparisons must pass before an application release. Raw
+and source-corrected A/V offsets and added voice delay must stay within80ms;
+STOI margin0.005, level tolerance0.15dB and minimum four matched speech clips per
+phase remain unchanged. Missing evidence is a failure to qualify. The single
+user acceptance entry is [UA-08.C06](../docs/user-acceptance.md).
 
-
-When only packaging/build orchestration changes, a manual `macos_only:true` run
-can reuse `webrtc-timing-tests` from an explicitly chosen prior run through
-`timing_tests_run`. The verifier requires the exact SDK/toolchain/source hashes,
-all manifest-pinned passing test cases with no skips and every before-fix failure.
-A changed source pin rejects reuse and requires a fresh C++ test run. The default
-push path still runs native tests first. Compiled arm64 framework bytes and their
-source/hash receipt are archived before packaging and uploaded even if a later
-packaging step fails; application release qualification remains separate.
-
-The vc1 dependency prerelease is rejected for application promotion: its first
-Android P2P pilot reached 385.652 ms corrected recovery skew. vc2 adds stale-floor
-recovery; its final 43-test/eight-negative C++ gate passed (41920380791), while native
-macOS SDK built and passed source/archive identity checks; Android SDK and
-actual-call qualification remain pending. The artifact manifest
-still describes vc1 until new immutable vc2 binaries have been built and verified.
-Do not publish client updates from this intermediate branch.
-
-The upstream stream_synchronization_unittest GN target also declares the two
-new test dependencies, in addition to the small isolated CI harness. This
-keeps the ordinary upstream test target buildable when using the patch.
-
-A network pause resets the delay controller once and keeps its RTP/NTP clock
-estimates for recovery. Reassigning the audio/video pair recreates the
-measurements as well, so a previous sender clock cannot affect the new pair.
-The destructor clears only the surviving audio floor: the video stream's
-playout-delay state can already have ended its lifetime when the synchronizer
-member is destroyed.
+Rejected dependencies remain immutable evidence: vc1 reached385.652/416.472ms
+Android P2P recovery skew. vc2's Mac paired pilot passed A/V(~52ms), but voice
+was1165.610ms later than ordinary voice during video pause; the audio queue had
+built up to2s before reset. It also lacked enough matched pause speech clips.
+Do not promote either dependency into application update feeds. vc3 is prepared
+for fresh C++ and media qualification. The artifact manifest can describe the
+last built rejected dependency until vc3 binaries are built and verified.

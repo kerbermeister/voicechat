@@ -443,3 +443,26 @@ arm64 UUID f11b61e7-1a79-31d6-9eaf-90c8904e8f8e; прямой HTTPS GET совп
 по SHA/размеру. Нативный медиапилот ещё не выполнен, Android ещё собирается.
 Mac-only интеграция для внутренних испытаний остаётся локальным коммитом до
 полного Android manifest; клиентские каналы62 не менялись.
+
+## vc2 paired pilot: A/V pass, voice fail; vc3 prepared (05.11 local)
+
+Exact SDK UUID f11b61e7-1a79-31d6-9eaf-90c8904e8f8e was verified inside the
+running native Mac app, with the original hosted wrapper and no fixed90.
+The actual P2P/DTLS-SRTP paired call passed transport and final decoded-content
+liveness; clean51.275/recovery51.686ms source-corrected A/V, source3.887ms.
+It failed the ordinary-voice gate: clean-0.262ms, video-pause1165.610ms,
+recovery23.057ms added delay. Candidate audio queue reached1992ms while its
+ordinary simultaneous control stayed~51ms. The target reached2412ms, then the
+stale reset lowered it to40ms; already queued speech took time to drain.
+Only3 paired pause speech clips remained (required4), so quality is unqualified.
+This is a failed pilot, not an accepted improvement. Lossless synthetic media,
+voice/queue diagnostics and binary identity are retained; SDK vc2 release notes
+explicitly prohibit application promotion. Public client channels remain62.
+
+vc3 bounds both the audio delay controller state and output to80ms beyond its
+explicit base, preventing the buildup before a video outage. Natural adaptive
+NetEq/device delay and video synchronization for slow audio hardware remain
+independent. The existing stale/reset cleanup remains. A new real-controller
+cap regression and explicit-base test extend the gate to45 C++ tests/9 negative
+regressions. Fresh compiled SDKs and all native media gates are still required;
+none of the latency, speech or encryption criteria were relaxed.

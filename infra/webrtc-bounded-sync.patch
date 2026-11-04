@@ -129,7 +129,16 @@
  };
 --- a/video/rtp_streams_synchronizer2.cc
 +++ b/video/rtp_streams_synchronizer2.cc
-@@ -58,6 +58,8 @@
+@@ -33,6 +33,8 @@
+ // Time interval for logging stats.
+ constexpr int64_t kStatsLogIntervalMs = 10000;
+ constexpr TimeDelta kSyncInterval = TimeDelta::Millis(1000);
++// A slow video path must not add seconds to an otherwise healthy voice call.
++constexpr int kMaximumExtraAudioSyncDelayMs = 80;
+
+ bool UpdateMeasurements(StreamSynchronization::Measurements* stream,
+                         const Syncable::Info& info) {
+@@ -58,6 +60,8 @@
  RtpStreamsSynchronizer::~RtpStreamsSynchronizer() {
    RTC_DCHECK_RUN_ON(&main_checker_);
    repeating_task_.Stop();
@@ -138,7 +147,7 @@
  }
 
  void RtpStreamsSynchronizer::ConfigureSync(Syncable* syncable_audio) {
-@@ -67,6 +69,12 @@
+@@ -67,6 +71,12 @@
    if (syncable_audio == syncable_audio_)
      return;
 
@@ -151,7 +160,17 @@
    syncable_audio_ = syncable_audio;
    sync_.reset(nullptr);
    if (!syncable_audio_) {
-@@ -87,6 +95,15 @@
+@@ -75,7 +85,8 @@
+   }
+
+   sync_.reset(
+-      new StreamSynchronization(syncable_video_->id(), syncable_audio_->id()));
++      new StreamSynchronization(syncable_video_->id(), syncable_audio_->id(),
++                                kMaximumExtraAudioSyncDelayMs));
+
+   if (repeating_task_.Running())
+     return;
+@@ -87,6 +98,16 @@
        });
  }
 
@@ -160,14 +179,15 @@
 +  // negotiated video playout bounds remain owned by their receive streams.
 +  syncable_audio_->SetMinimumPlayoutDelay(TimeDelta::Zero());
 +  syncable_video_->SetMinimumPlayoutDelay(TimeDelta::Zero());
-+  sync_ = std::make_unique<StreamSynchronization>(syncable_video_->id(),
-+                                                  syncable_audio_->id());
++  sync_ = std::make_unique<StreamSynchronization>(
++      syncable_video_->id(), syncable_audio_->id(),
++      kMaximumExtraAudioSyncDelayMs);
 +}
 +
  void RtpStreamsSynchronizer::UpdateDelay() {
    RTC_DCHECK_RUN_ON(&main_checker_);
 
-@@ -102,33 +119,35 @@
+@@ -102,33 +123,35 @@
      log_stats = true;
    }
 
@@ -222,7 +242,7 @@
      return;
    }
 
-@@ -195,7 +214,7 @@
+@@ -195,7 +218,7 @@
    }
 
    NtpTime latest_audio_ntp =
@@ -231,7 +251,7 @@
    if (!latest_audio_ntp.Valid()) {
      return false;
    }
-@@ -205,7 +224,7 @@
+@@ -205,7 +228,7 @@
                                                     audio->time);
 
    NtpTime latest_video_ntp =
@@ -240,7 +260,7 @@
    if (!latest_video_ntp.Valid()) {
      return false;
    }
-@@ -223,7 +242,7 @@
+@@ -223,7 +246,7 @@
 
    *video_playout_ntp_ms = latest_video_ntp_ms;
    *stream_offset_ms = latest_audio_ntp_ms - latest_video_ntp_ms;
@@ -265,7 +285,7 @@
 
  #include "rtc_base/rtp_to_ntp_estimator.h"
  #include "system_wrappers/include/clock.h"
-@@ -531,4 +538,131 @@
+@@ -531,4 +538,155 @@
    BothDelayedVideoLaterTest(kBaseTargetDelayMs);
  }
 
@@ -325,7 +345,7 @@
 +            env_, time_.GetMainThread(), &video_)) {
 +    sync_->ConfigureSync(&audio_);
 +    time_.AdvanceTime(TimeDelta::Seconds(12));
-+    EXPECT_GT(audio_.floor, TimeDelta::Millis(200));
++    EXPECT_GT(audio_.floor, TimeDelta::Zero());
 +  }
 +  GlobalSimulatedTimeController time_;
 +  Environment env_;
@@ -334,6 +354,29 @@
 +  // Destroy the synchronizer before its streams, matching Call ownership.
 +  std::unique_ptr<internal::RtpStreamsSynchronizer> sync_;
 +};
++
++TEST_F(RtpStreamsSynchronizerTest, CapsOnlyAddedAudioSynchronizationDelay) {
++  for (int second = 0; second < 30; ++second) {
++    time_.AdvanceTime(TimeDelta::Seconds(1));
++    EXPECT_GE(audio_.floor, TimeDelta::Zero());
++    EXPECT_LE(audio_.floor, TimeDelta::Millis(80));
++  }
++  EXPECT_GT(audio_.floor, TimeDelta::Zero());
++}
++
++TEST(StreamSynchronizationTest, AudioSyncBudgetPreservesExplicitBase) {
++  StreamSynchronization sync(0, 0, 80);
++  sync.SetTargetBufferingDelay(500);
++  int audio_delay_ms = 500;
++  for (int second = 0; second < 30; ++second) {
++    int video_delay_ms = 1000;
++    sync.ComputeDelays(200, audio_delay_ms, &audio_delay_ms, &video_delay_ms);
++    EXPECT_GE(audio_delay_ms, 500);
++    EXPECT_LE(audio_delay_ms, 580);
++    EXPECT_GE(video_delay_ms, 500);
++  }
++  EXPECT_EQ(audio_delay_ms, 580);
++}
 +
 +TEST_F(RtpStreamsSynchronizerTest, ReleasesFloorsWhenVideoStopsAndResumes) {
 +  const TimeDelta previous = audio_.floor;
@@ -349,7 +392,8 @@
 +  EXPECT_EQ(audio_.GetInfo()->current_delay, TimeDelta::Millis(40));
 +  video_.receiving = true;
 +  time_.AdvanceTime(TimeDelta::Seconds(12));
-+  EXPECT_GT(audio_.floor, TimeDelta::Millis(200));
++  EXPECT_GT(audio_.floor, TimeDelta::Zero());
++  EXPECT_LE(audio_.floor, TimeDelta::Millis(80));
 +}
 +
 +TEST_F(RtpStreamsSynchronizerTest, ReleasesFloorsWhenAudioStops) {
@@ -381,7 +425,7 @@
 +  EXPECT_EQ(video_.floor, TimeDelta::Zero());
 +  sync_->ConfigureSync(&audio_);
 +  time_.AdvanceTime(TimeDelta::Seconds(12));
-+  EXPECT_GT(audio_.floor, TimeDelta::Millis(200));
++  EXPECT_GT(audio_.floor, TimeDelta::Zero());
 +  SyncTestStream other(time_.GetClock(), 3, 8000, 250);
 +  sync_->ConfigureSync(&other);
 +  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
@@ -411,3 +455,86 @@
        "//call",
        "//call:call_interfaces",
      ]
+--- a/video/stream_synchronization.h
++++ b/video/stream_synchronization.h
+@@ -13,6 +13,8 @@
+
+ #include <stdint.h>
+
++#include <optional>
++
+ #include "rtc_base/rtp_to_ntp_estimator.h"
+
+ namespace webrtc {
+@@ -26,7 +28,11 @@
+     uint32_t latest_timestamp;
+   };
+
+-  StreamSynchronization(uint32_t video_stream_id, uint32_t audio_stream_id);
++  // Limits only synchronization-added audio buffering beyond the explicit base.
++  // Natural audio-device and adaptive receive delay remain outside this limit.
++  StreamSynchronization(uint32_t video_stream_id,
++                        uint32_t audio_stream_id,
++                        std::optional<int> max_extra_audio_delay_ms = std::nullopt);
+
+   bool ComputeDelays(int relative_delay_ms,
+                      int current_audio_delay_ms,
+@@ -61,6 +67,7 @@
+
+   const uint32_t video_stream_id_;
+   const uint32_t audio_stream_id_;
++  const std::optional<int> max_extra_audio_delay_ms_;
+   SynchronizationDelays audio_delay_;
+   SynchronizationDelays video_delay_;
+   int base_target_delay_ms_;
+--- a/video/stream_synchronization.cc
++++ b/video/stream_synchronization.cc
+@@ -13,6 +13,9 @@
+ #include <algorithm>
+ #include <cstdint>
+ #include <cstdlib>
++#include <optional>
++
++#include "rtc_base/checks.h"
+
+ #include "rtc_base/logging.h"
+ #include "system_wrappers/include/ntp_time.h"
+@@ -25,12 +28,17 @@
+ // Minimum difference between audio and video to warrant a change.
+ static const int kMinDeltaMs = 30;
+
+-StreamSynchronization::StreamSynchronization(uint32_t video_stream_id,
+-                                             uint32_t audio_stream_id)
++StreamSynchronization::StreamSynchronization(
++    uint32_t video_stream_id,
++    uint32_t audio_stream_id,
++    std::optional<int> max_extra_audio_delay_ms)
+     : video_stream_id_(video_stream_id),
+       audio_stream_id_(audio_stream_id),
++      max_extra_audio_delay_ms_(max_extra_audio_delay_ms),
+       base_target_delay_ms_(0),
+-      avg_diff_ms_(0) {}
++      avg_diff_ms_(0) {
++  RTC_CHECK_GE(max_extra_audio_delay_ms_.value_or(0), 0);
++}
+
+ bool StreamSynchronization::ComputeRelativeDelay(
+     const Measurements& audio_measurement,
+@@ -122,6 +130,17 @@
+     }
+   }
+
++  if (max_extra_audio_delay_ms_) {
++    // Bound the controller state as well as its output. Otherwise a saturated
++    // audio target can keep the pair out of sync while the old state drains.
++    const int64_t maximum_audio_delay_ms =
++        static_cast<int64_t>(base_target_delay_ms_) + *max_extra_audio_delay_ms_;
++    audio_delay_.extra_ms = static_cast<int>(
++        std::min<int64_t>(audio_delay_.extra_ms, maximum_audio_delay_ms));
++    audio_delay_.last_ms = static_cast<int>(
++        std::min<int64_t>(audio_delay_.last_ms, maximum_audio_delay_ms));
++  }
++
+   // Make sure that video is never below our target.
+   video_delay_.extra_ms =
+       std::max(video_delay_.extra_ms, base_target_delay_ms_);
