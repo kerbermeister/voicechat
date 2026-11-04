@@ -4,7 +4,8 @@ on:
   push:
     branches: [codex/native-sdk-av-sync]
     paths:
-      - infra/webrtc_sdk/**
+      - infra/*webrtc*
+      - infra/WEBRTC_SDK.md
       - .github/workflows/webrtc-sdk.yml
 permissions:
   contents: read
@@ -32,7 +33,7 @@ jobs:
           sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential ninja-build python3-setuptools rsync libx11-6 libxcomposite1 libxdamage1 libxext6 libxfixes3 libxrandr2 libxtst6 libgbm1
           df -h
       - name: Prove regression and run timing tests
-        run: python3 infra/webrtc_sdk/build.py test --builder sdk-builder/build --work "$RUNNER_TEMP/sdk" --output "$RUNNER_TEMP/results"
+        run: python3 infra/build_webrtc_sdk.py test --builder sdk-builder/build --work "$RUNNER_TEMP/sdk" --output "$RUNNER_TEMP/results"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
@@ -77,7 +78,7 @@ jobs:
       - name: Build pinned SDK
         env:
           SDK_PLATFORM: ${{ matrix.platform }}
-        run: python3 infra/webrtc_sdk/build.py "$SDK_PLATFORM" --builder sdk-builder/build --work "$RUNNER_TEMP/sdk" --output "$RUNNER_TEMP/results"
+        run: python3 infra/build_webrtc_sdk.py "$SDK_PLATFORM" --builder sdk-builder/build --work "$RUNNER_TEMP/sdk" --output "$RUNNER_TEMP/results"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: webrtc-${{ matrix.platform }}-150.7871.04-vc1
