@@ -36,6 +36,18 @@ export function analyze(data) {
   return report;
 }
 
+export function recoveryTransport(data) {
+  const samples = data.stats;
+  const kinds = data.audio_only ? ['audio'] : ['audio', 'video'];
+  const counts = {};
+  for (const kind of kinds) {
+    const first = samples?.at(-11)?.find(row => row.kind === kind)?.packetsReceived;
+    const last = samples?.at(-1)?.find(row => row.kind === kind)?.packetsReceived;
+    counts[kind] = Number.isFinite(first) && Number.isFinite(last) ? last - first : 0;
+  }
+  return {pass: Object.values(counts).every(count => count > 30), packet_deltas: counts};
+}
+
 export function analyzeP2P(data) {
   assert.equal(data.synthetic_media_only, true);
   assert.equal(data.p2p, true);
@@ -48,6 +60,8 @@ export function analyzeP2P(data) {
     'AEAD_AES_128_GCM', 'AEAD_AES_256_GCM', 'SRTP_AEAD_AES_128_GCM', 'SRTP_AEAD_AES_256_GCM'])
     .has(control.srtp_cipher));
   const report = analyzeTiming(data);
+  report.recovery_transport = recoveryTransport(data);
+  if (report.outcome === 'pass' && !report.recovery_transport.pass) report.outcome = 'stalled_transport';
   if (data.coherent_source && report.max_all_source_offset_ms > 20) report.outcome = 'invalid_source_timing';
   return report;
 }

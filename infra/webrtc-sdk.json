@@ -2,21 +2,38 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "8f9c5903638c6117f68269fed254defa5fbf44e9fa1ae07c2cfc5664bb1df9f7",
+  "patch_sha256": "3b9ee8e55c9d6ddc05c373214ba88e99c4289d922f3c57b9ec05cec8ebb63e16",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
     "modules/video_coding/timing/timing_unittest.cc": "a09139d9e981cb3523d308c4a37264aff8b9a50e5aae38c71017af52e509754e",
-    "video/video_receive_stream2.cc": "77744fe47b8d84cfc85ee5fa37e7ad34ca9c846e2308d7dddf2d6992afd5dc4c"
+    "video/video_receive_stream2.cc": "77744fe47b8d84cfc85ee5fa37e7ad34ca9c846e2308d7dddf2d6992afd5dc4c",
+    "video/rtp_streams_synchronizer2.h": "4f3315c09063158d8dd0ba5a907c358d594b24b35d783feb9f571d9b703b7a52",
+    "video/rtp_streams_synchronizer2.cc": "799d1e6332def3d7d7a8560294e53f86447df6f3261f0a1ac1216f9392962a1a",
+    "video/stream_synchronization_unittest.cc": "90f76dd87602c8c8a43b895dc62d36f3911704c5038426ab1fd7786c33b7e308"
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "ea88070498b2aca81a4ca2934a9a905527da1fdfb6dcd0ce122656bbdd69c95f",
     "modules/video_coding/timing/timing.cc": "30bd3ae51a98a2b49ab627a35ae834da9b492224632443107c30c906a9e70931",
     "modules/video_coding/timing/timing_unittest.cc": "30fe773ff7e9bd68d809dbf3f86d39344b536f541a8cf9759b7823986743561c",
-    "video/video_receive_stream2.cc": "b3456a386ebf9ba46b976d4b9d3a8dfb334723f20d0915aa8debfda013ff287f"
+    "video/video_receive_stream2.cc": "b3456a386ebf9ba46b976d4b9d3a8dfb334723f20d0915aa8debfda013ff287f",
+    "video/rtp_streams_synchronizer2.h": "9447bc9392b92cf68db9a52cd8303b4320c265b2d7a36512eb26a4dc7c66346d",
+    "video/rtp_streams_synchronizer2.cc": "30c5c3f7764a4c9f04a1f1783b5628fb52472c8c27f7863b41cc6402e7230e0e",
+    "video/stream_synchronization_unittest.cc": "d60ed8e1719cfc9b3bf1f8df98796e6c8e5b668833dcfbd46a1ceb3a6c8b461b"
   },
-  "unit_filter": "VCMTimingTest.*",
-  "regression_filter": "VCMTimingTest.SyncDelay*",
-  "release_artifact_version": "150.7871.04-vc1",
-  "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3"
+  "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*",
+  "regression_filter": "VCMTimingTest.SyncDelay*:RtpStreamsSynchronizerTest.*",
+  "release_artifact_version": "150.7871.04-vc2",
+  "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
+  "unit_test_count": 43,
+  "regressions": [
+    "VCMTimingTest.SyncDelayUsesCurrentDelayAfterVideoJitter",
+    "VCMTimingTest.SyncDelayRespectsBoundsAndAudioDeviceMinimum",
+    "VCMTimingTest.SyncDelayUsesLowLatencyRenderingPath",
+    "RtpStreamsSynchronizerTest.ReleasesFloorsWhenVideoStopsAndResumes",
+    "RtpStreamsSynchronizerTest.ReleasesFloorsWhenAudioStops",
+    "RtpStreamsSynchronizerTest.ReleasesFloorsWhenInfoDisappears",
+    "RtpStreamsSynchronizerTest.DetachAndReassignReleaseOldFloors",
+    "RtpStreamsSynchronizerTest.DestructionReleasesAudioFloor"
+  ]
 }

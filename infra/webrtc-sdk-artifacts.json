@@ -4,8 +4,20 @@
   "release_artifact_version": "150.7871.04-vc1",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "patch_sha256": "8f9c5903638c6117f68269fed254defa5fbf44e9fa1ae07c2cfc5664bb1df9f7",
-  "qualification_status": "Android SDK build verified; actual media pending; Mac artifact pending; not an application update",
   "artifacts": {
+    "macos": {
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc1/WebRTC.xcframework.zip",
+      "sha256": "8a2c23229796332ea4a7705bed750f26d34e8c54b7507f6481f4a81bdda28f6e",
+      "size_bytes": 6341452,
+      "arm64_uuid": "9500e56c-d0aa-3368-84ad-e969ab0bc23e",
+      "binary_sha256": "e234c97c7a444aa07f18016d5aef6cd58ecb239f99c240e6fadecfcf463a76be",
+      "build_workflow_run": 41899866524,
+      "build_revision": "f5d9a5868bf374dff441eba468bd010279d40caa",
+      "architectures": [
+        "arm64"
+      ],
+      "packaging": "local recovery, compiled bytes unchanged"
+    },
     "android": {
       "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc1/libwebrtc.aar",
       "sha256": "9a76a5562f7e59bd5eda8d3f200642f3d0da270a6c97b5d004fee5d1255eaa35",
@@ -18,5 +30,6 @@
       "build_workflow_run": 41890363278,
       "build_revision": "6004dfe084c382d563afd0e9dc08ae9893ae9800"
     }
-  }
+  },
+  "qualification_status": "REJECTED for application promotion: Android P2P vc1 recovery385.652ms >80ms. Retained immutable baseline; vc2 source/binary qualification pending."
 }

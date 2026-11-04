@@ -20,7 +20,7 @@ is_component_build=false is_debug=false rtc_build_examples=false
 rtc_enable_protobuf=false rtc_enable_symbol_export=true
 rtc_include_dav1d_in_internal_decoder_factory=true rtc_include_tests=false
 rtc_libvpx_build_vp9=true rtc_use_h264=false
-strip_absolute_paths_from_debug_symbols=true treat_warnings_as_errors=true
+treat_warnings_as_errors=true
 use_rtti=true enable_dsyms=false'''
 ANDROID_ARGS = '''is_debug=false is_java_debug=false treat_warnings_as_errors=false
 rtc_use_h264=false is_component_build=false rtc_build_examples=false
@@ -106,10 +106,42 @@ def unit_tests(source, work, output):
     harness = source / 'voicechat_av_sync_tests'
     harness.mkdir()
     (harness / 'BUILD.gn').write_text('''import("//webrtc.gni")
+rtc_library("sync_production") {
+  sources = [
+    "//video/rtp_streams_synchronizer2.cc",
+    "//video/rtp_streams_synchronizer2.h",
+    "//video/stream_synchronization.cc",
+    "//video/stream_synchronization.h",
+    "//call/syncable.cc",
+    "//call/syncable.h",
+  ]
+  deps = [
+    "//api/environment",
+    "//api:sequence_checker",
+    "//api/task_queue",
+    "//api/units:time_delta",
+    "//api/units:timestamp",
+    "//rtc_base:checks",
+    "//rtc_base:logging",
+    "//rtc_base:rtp_to_ntp_estimator",
+    "//rtc_base:macromagic",
+    "//rtc_base:event_tracer",
+    "//rtc_base/system:no_unique_address",
+    "//rtc_base/task_utils:repeating_task",
+    "//system_wrappers",
+  ]
+}
 rtc_test("timing_sync_unittests") {
   testonly = true
-  sources = []
-  deps = [ "//modules/video_coding/timing:timing_unittests" ]
+  allow_poison = [ "environment_construction" ]
+  sources = [ "//video/stream_synchronization_unittest.cc" ]
+  deps = [
+    ":sync_production",
+    "//modules/video_coding/timing:timing_unittests",
+    "//api/environment:environment_factory",
+    "//test:test_support",
+    "//test/time_controller:time_controller",
+  ]
 }
 ''')
     # GN only loads BUILD.gn files reachable from the root build file.
@@ -129,24 +161,31 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     run(['gn', 'gen', build, '--args=' + args], cwd=source)
     timing = source / 'modules/video_coding/timing/timing.cc'
     patched = timing.read_bytes()
+    synchronizer = source / 'video/rtp_streams_synchronizer2.cc'
+    patched_sync = synchronizer.read_bytes()
+    sync_header = synchronizer.with_suffix('.h')
+    patched_header = sync_header.read_bytes()
     bounded = b'  if (UseLowLatencyRendering()) {\n    return TimeDelta::Zero();\n  }\n  return std::clamp(current_delay, min_playout_delay, max_playout_delay);'
     if patched.count(bounded) != 1:
         raise RuntimeError('Expected exactly one effective render-delay calculation')
     try:
         # Same new API/test, old unbounded behavior: regression must fail first.
         timing.write_bytes(patched.replace(bounded, b'  return TargetDelay();'))
+        for path in [synchronizer, sync_header]:
+            path.write_bytes(subprocess.check_output(
+                ['git', 'show', MANIFEST['webrtc_commit'] + ':' + path.relative_to(source).as_posix()],
+                cwd=source))
         run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
         before = subprocess.run([str(build / 'timing_sync_unittests'),
             '--gtest_filter=' + MANIFEST['regression_filter']], capture_output=True, text=True)
         (output / 'before-fix.log').write_text(before.stdout + before.stderr)
-        failures = ['SyncDelayUsesCurrentDelayAfterVideoJitter',
-                    'SyncDelayRespectsBoundsAndAudioDeviceMinimum',
-                    'SyncDelayUsesLowLatencyRenderingPath']
         if before.returncode != 1 or not all(
-                '[  FAILED  ] VCMTimingTest.' + name in before.stdout for name in failures):
-            raise RuntimeError('Regression test must detect the old unbounded behavior')
+                '[  FAILED  ] ' + name in before.stdout for name in MANIFEST['regressions']):
+            raise RuntimeError('Each regression must detect the original timing/sync behavior')
     finally:
         timing.write_bytes(patched)
+        synchronizer.write_bytes(patched_sync)
+        sync_header.write_bytes(patched_header)
     verify_files(source, MANIFEST['patched_files_sha256'])
     run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
     after = subprocess.run([str(build / 'timing_sync_unittests'),
@@ -155,6 +194,10 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     (output / 'after-fix.log').write_text(after.stdout + after.stderr)
     if after.returncode or '[  PASSED  ]' not in after.stdout:
         raise RuntimeError('All timing unit tests must pass after the fix')
+    spec = importlib.util.spec_from_file_location('timing_evidence', HERE / 'verify_webrtc_timing.py')
+    evidence = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(evidence)
+    evidence.verify_tests(output, MANIFEST)
 
 
 def macos(source, work, output):

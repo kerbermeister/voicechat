@@ -92,3 +92,308 @@
    return info;
  }
 
+--- a/video/rtp_streams_synchronizer2.h
++++ b/video/rtp_streams_synchronizer2.h
+@@ -13,6 +13,8 @@
+
+ #include <cstdint>
+ #include <memory>
++#include <optional>
++#include <utility>
+
+ #include "api/environment/environment.h"
+ #include "api/sequence_checker.h"
+@@ -52,6 +54,7 @@
+
+  private:
+   void UpdateDelay();
++  void ResetSyncDelays() RTC_RUN_ON(main_checker_);
+
+   const Environment env_;
+   TaskQueueBase* const task_queue_;
+@@ -67,10 +70,11 @@
+
+   Syncable* syncable_audio_ RTC_GUARDED_BY(main_checker_) = nullptr;
+   std::unique_ptr<StreamSynchronization> sync_ RTC_GUARDED_BY(main_checker_);
+-  StreamSynchronization::Measurements audio_measurement_
+-      RTC_GUARDED_BY(main_checker_);
+-  StreamSynchronization::Measurements video_measurement_
+-      RTC_GUARDED_BY(main_checker_);
++  std::optional<StreamSynchronization::Measurements> audio_measurement_
++      RTC_GUARDED_BY(main_checker_) {std::in_place};
++  std::optional<StreamSynchronization::Measurements> video_measurement_
++      RTC_GUARDED_BY(main_checker_) {std::in_place};
++  bool sync_suspended_ RTC_GUARDED_BY(main_checker_) = false;
+   RepeatingTaskHandle repeating_task_ RTC_GUARDED_BY(main_checker_);
+   int64_t last_stats_log_ms_ RTC_GUARDED_BY(&main_checker_);
+ };
+--- a/video/rtp_streams_synchronizer2.cc
++++ b/video/rtp_streams_synchronizer2.cc
+@@ -58,6 +58,8 @@
+ RtpStreamsSynchronizer::~RtpStreamsSynchronizer() {
+   RTC_DCHECK_RUN_ON(&main_checker_);
+   repeating_task_.Stop();
++  if (syncable_audio_)
++    syncable_audio_->SetMinimumPlayoutDelay(TimeDelta::Zero());
+ }
+
+ void RtpStreamsSynchronizer::ConfigureSync(Syncable* syncable_audio) {
+@@ -67,6 +69,12 @@
+   if (syncable_audio == syncable_audio_)
+     return;
+
++  if (syncable_audio_)
++    syncable_audio_->SetMinimumPlayoutDelay(TimeDelta::Zero());
++  syncable_video_->SetMinimumPlayoutDelay(TimeDelta::Zero());
++  audio_measurement_.emplace();
++  video_measurement_.emplace();
++  sync_suspended_ = false;
+   syncable_audio_ = syncable_audio;
+   sync_.reset(nullptr);
+   if (!syncable_audio_) {
+@@ -87,6 +95,15 @@
+       });
+ }
+
++void RtpStreamsSynchronizer::ResetSyncDelays() {
++  // Release only A/V synchronization floors. NetEq packets, device latency and
++  // negotiated video playout bounds remain owned by their receive streams.
++  syncable_audio_->SetMinimumPlayoutDelay(TimeDelta::Zero());
++  syncable_video_->SetMinimumPlayoutDelay(TimeDelta::Zero());
++  sync_ = std::make_unique<StreamSynchronization>(syncable_video_->id(),
++                                                  syncable_audio_->id());
++}
++
+ void RtpStreamsSynchronizer::UpdateDelay() {
+   RTC_DCHECK_RUN_ON(&main_checker_);
+
+@@ -102,33 +119,35 @@
+     log_stats = true;
+   }
+
+-  int64_t last_audio_receive_time_ms =
+-      audio_measurement_.latest_receive_time_ms;
+   std::optional<Syncable::Info> audio_info = syncable_audio_->GetInfo();
+-  if (!audio_info || !UpdateMeasurements(&audio_measurement_, *audio_info)) {
+-    return;
+-  }
+-
+-  if (last_audio_receive_time_ms == audio_measurement_.latest_receive_time_ms) {
+-    // No new audio packet has been received since last update.
+-    return;
+-  }
+-
+-  int64_t last_video_receive_ms = video_measurement_.latest_receive_time_ms;
+   std::optional<Syncable::Info> video_info = syncable_video_->GetInfo();
+-  if (!video_info || !UpdateMeasurements(&video_measurement_, *video_info)) {
+-    return;
+-  }
+-
+-  if (last_video_receive_ms == video_measurement_.latest_receive_time_ms) {
+-    // No new video packet has been received since last update.
++  const Timestamp now = env_.clock().CurrentTime();
++  // A transient gap shorter than two sync intervals keeps normal adaptation.
++  // A stopped stream must not hold its peer's old synchronization delay.
++  if (!audio_info || !video_info ||
++      now - audio_info->latest_receive_time >= 2 * kSyncInterval ||
++      now - video_info->latest_receive_time >= 2 * kSyncInterval) {
++    if (!sync_suspended_) {
++      ResetSyncDelays();
++      sync_suspended_ = true;
++    }
++    return;
++  }
++  sync_suspended_ = false;
++
++  const int64_t last_audio_receive_ms = audio_measurement_->latest_receive_time_ms;
++  const int64_t last_video_receive_ms = video_measurement_->latest_receive_time_ms;
++  if (!UpdateMeasurements(&*audio_measurement_, *audio_info) ||
++      !UpdateMeasurements(&*video_measurement_, *video_info) ||
++      last_audio_receive_ms == audio_measurement_->latest_receive_time_ms ||
++      last_video_receive_ms == video_measurement_->latest_receive_time_ms) {
+     return;
+   }
+
+   int relative_delay_ms;
+   // Calculate how much later or earlier the audio stream is compared to video.
+   if (!StreamSynchronization::ComputeRelativeDelay(
+-          audio_measurement_, video_measurement_, &relative_delay_ms)) {
++          *audio_measurement_, *video_measurement_, &relative_delay_ms)) {
+     return;
+   }
+
+@@ -195,7 +214,7 @@
+   }
+
+   NtpTime latest_audio_ntp =
+-      audio_measurement_.rtp_to_ntp.Estimate(audio->rtp_timestamp);
++      audio_measurement_->rtp_to_ntp.Estimate(audio->rtp_timestamp);
+   if (!latest_audio_ntp.Valid()) {
+     return false;
+   }
+@@ -205,7 +224,7 @@
+                                                    audio->time);
+
+   NtpTime latest_video_ntp =
+-      video_measurement_.rtp_to_ntp.Estimate(rtp_timestamp);
++      video_measurement_->rtp_to_ntp.Estimate(rtp_timestamp);
+   if (!latest_video_ntp.Valid()) {
+     return false;
+   }
+@@ -223,7 +242,7 @@
+
+   *video_playout_ntp_ms = latest_video_ntp_ms;
+   *stream_offset_ms = latest_audio_ntp_ms - latest_video_ntp_ms;
+-  *estimated_freq_khz = video_measurement_.rtp_to_ntp.EstimatedFrequencyKhz();
++  *estimated_freq_khz = video_measurement_->rtp_to_ntp.EstimatedFrequencyKhz();
+   return true;
+ }
+
+--- a/video/stream_synchronization_unittest.cc
++++ b/video/stream_synchronization_unittest.cc
+@@ -12,6 +12,13 @@
+
+ #include <algorithm>
+ #include <cstdint>
++#include <memory>
++#include <optional>
++
++#include "api/environment/environment_factory.h"
++#include "call/syncable.h"
++#include "test/time_controller/simulated_time_controller.h"
++#include "video/rtp_streams_synchronizer2.h"
+
+ #include "rtc_base/rtp_to_ntp_estimator.h"
+ #include "system_wrappers/include/clock.h"
+@@ -531,4 +538,131 @@
+   BothDelayedVideoLaterTest(kBaseTargetDelayMs);
+ }
+
++
++namespace {
++// Receive delay and sync floor are independent, just as device/base delay and
++// NetEq's synchronization minimum are independent in the real audio stream.
++class SyncTestStream : public Syncable {
++ public:
++  SyncTestStream(Clock* clock, uint32_t id, int frequency, int delay_ms)
++      : clock_(clock), id_(id), frequency_(frequency), delay_ms_(delay_ms),
++        last_receive_(clock->CurrentTime()) {}
++  uint32_t id() const override { return id_; }
++  std::optional<Info> GetInfo() const override {
++    if (!has_info) return std::nullopt;
++    if (receiving) last_receive_ = clock_->CurrentTime();
++    const uint32_t timestamp = last_receive_.ms() * frequency_ / 1000;
++    const int64_t ntp_ms = last_receive_.ms() + 100000;
++    Info info;
++    info.latest_receive_time = last_receive_;
++    info.latest_received_capture_rtp_timestamp = timestamp;
++    info.capture_time_rtp = timestamp;
++    info.capture_time_ntp = NtpTime(ntp_ms / 1000,
++        static_cast<uint32_t>((ntp_ms % 1000) * (uint64_t{1} << 32) / 1000));
++    info.current_delay = std::max(TimeDelta::Millis(delay_ms_), floor);
++    return info;
++  }
++  std::optional<PlayoutInfo> GetPlayoutRtpTimestamp() const override {
++    return std::nullopt;
++  }
++  bool SetMinimumPlayoutDelay(TimeDelta delay) override {
++    floor = delay;
++    ++updates;
++    return true;
++  }
++  void SetEstimatedPlayoutNtpTimestamp(NtpTime, Timestamp) override {}
++  bool receiving = true;
++  bool has_info = true;
++  TimeDelta floor = TimeDelta::Zero();
++  int updates = 0;
++ private:
++  Clock* const clock_;
++  const uint32_t id_;
++  const int frequency_;
++  const int delay_ms_;
++  mutable Timestamp last_receive_;
++};
++
++class RtpStreamsSynchronizerTest : public ::testing::Test {
++ protected:
++  RtpStreamsSynchronizerTest()
++      : time_(Timestamp::Millis(1337)),
++        env_(CreateEnvironment(time_.GetClock(), time_.GetTaskQueueFactory())),
++        audio_(time_.GetClock(), 1, 8000, 40),
++        video_(time_.GetClock(), 2, 90000, 500),
++        sync_(std::make_unique<internal::RtpStreamsSynchronizer>(
++            env_, time_.GetMainThread(), &video_)) {
++    sync_->ConfigureSync(&audio_);
++    time_.AdvanceTime(TimeDelta::Seconds(12));
++    EXPECT_GT(audio_.floor, TimeDelta::Millis(200));
++  }
++  GlobalSimulatedTimeController time_;
++  Environment env_;
++  SyncTestStream audio_;
++  SyncTestStream video_;
++  // Destroy the synchronizer before its streams, matching Call ownership.
++  std::unique_ptr<internal::RtpStreamsSynchronizer> sync_;
++};
++
++TEST_F(RtpStreamsSynchronizerTest, ReleasesFloorsWhenVideoStopsAndResumes) {
++  const TimeDelta previous = audio_.floor;
++  video_.receiving = false;
++  time_.AdvanceTime(TimeDelta::Seconds(1));
++  EXPECT_EQ(audio_.floor, previous);
++  time_.AdvanceTime(TimeDelta::Seconds(1));
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++  EXPECT_EQ(video_.floor, TimeDelta::Zero());
++  const int updates = audio_.updates;
++  time_.AdvanceTime(TimeDelta::Seconds(5));
++  EXPECT_EQ(audio_.updates, updates);
++  EXPECT_EQ(audio_.GetInfo()->current_delay, TimeDelta::Millis(40));
++  video_.receiving = true;
++  time_.AdvanceTime(TimeDelta::Seconds(12));
++  EXPECT_GT(audio_.floor, TimeDelta::Millis(200));
++}
++
++TEST_F(RtpStreamsSynchronizerTest, ReleasesFloorsWhenAudioStops) {
++  sync_.reset();
++  SyncTestStream delayed_audio(time_.GetClock(), 3, 8000, 500);
++  SyncTestStream low_delay_video(time_.GetClock(), 4, 90000, 40);
++  internal::RtpStreamsSynchronizer sync(env_, time_.GetMainThread(),
++                                        &low_delay_video);
++  sync.ConfigureSync(&delayed_audio);
++  time_.AdvanceTime(TimeDelta::Seconds(12));
++  EXPECT_GT(low_delay_video.floor, TimeDelta::Millis(200));
++  delayed_audio.receiving = false;
++  time_.AdvanceTime(TimeDelta::Seconds(2));
++  EXPECT_EQ(delayed_audio.floor, TimeDelta::Zero());
++  EXPECT_EQ(low_delay_video.floor, TimeDelta::Zero());
++  EXPECT_EQ(delayed_audio.GetInfo()->current_delay, TimeDelta::Millis(500));
++}
++
++TEST_F(RtpStreamsSynchronizerTest, ReleasesFloorsWhenInfoDisappears) {
++  video_.has_info = false;
++  time_.AdvanceTime(TimeDelta::Seconds(1));
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++  EXPECT_EQ(video_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest, DetachAndReassignReleaseOldFloors) {
++  sync_->ConfigureSync(nullptr);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++  EXPECT_EQ(video_.floor, TimeDelta::Zero());
++  sync_->ConfigureSync(&audio_);
++  time_.AdvanceTime(TimeDelta::Seconds(12));
++  EXPECT_GT(audio_.floor, TimeDelta::Millis(200));
++  SyncTestStream other(time_.GetClock(), 3, 8000, 250);
++  sync_->ConfigureSync(&other);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++  time_.AdvanceTime(TimeDelta::Seconds(1));
++  EXPECT_EQ(other.GetInfo()->current_delay, TimeDelta::Millis(250));
++  sync_->ConfigureSync(nullptr);
++}
++
++TEST_F(RtpStreamsSynchronizerTest, DestructionReleasesAudioFloor) {
++  sync_.reset();
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++}  // namespace
++
+ }  // namespace webrtc
