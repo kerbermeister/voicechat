@@ -60,7 +60,10 @@ def prepare(builder, work, target):
     run(['git', '-C', tools, 'fetch', '--depth=1', 'origin', MANIFEST['depot_tools_commit']])
     run(['git', '-C', tools, 'checkout', '--detach', 'FETCH_HEAD'])
     os.environ['DEPOT_TOOLS_UPDATE'] = '0'
+    os.environ['PYTHONUNBUFFERED'] = '1'
     os.environ['PATH'] = str(tools) + os.pathsep + os.environ['PATH']
+    run([tools / 'ensure_bootstrap'], cwd=tools)
+    run([tools / 'python-bin/python3', '--version'], cwd=tools)
     source = work / 'source/webrtc/src'
     source.parent.mkdir()
     configuration = (builder / '.gclient').read_text()
@@ -122,7 +125,7 @@ if (rtc_include_tests) {
     build = work / 'unit'
     args = '''is_debug=false dcheck_always_on=true symbol_level=0
 rtc_include_tests=true rtc_build_examples=false rtc_enable_protobuf=true
-rtc_use_h264=false is_component_build=false use_rtti=true'''
+rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true'''
     run(['gn', 'gen', build, '--args=' + args], cwd=source)
     timing = source / 'modules/video_coding/timing/timing.cc'
     patched = timing.read_bytes()
