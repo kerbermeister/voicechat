@@ -205,6 +205,7 @@ Future<Map<String, dynamic>> measureP2PReceiver(
     ])}',
   );
   final samples = <List<Map<String, dynamic>>>[], phases = <List<Object?>>[];
+  final sampleTimes = <double>[];
   final controlSamples = <List<Map<String, dynamic>>>[];
   for (var i = 0; i < 120; i++) {
     final next = {0: 'clean', 20: 'delay', 50: 'offline', 62: 'clean'}[i];
@@ -214,6 +215,7 @@ Future<Map<String, dynamic>> measureP2PReceiver(
     }
     await Future<void>.delayed(const Duration(seconds: 1));
     final stats = await receiver.getStats();
+    sampleTimes.add((await _channel.invokeMethod<double>('clock'))!);
     samples.add([
       for (final s in stats)
         if (s.type == 'inbound-rtp')
@@ -289,6 +291,7 @@ Future<Map<String, dynamic>> measureP2PReceiver(
     'audio_only': audioOnly,
     'markers': markers,
     'stats': samples,
+    'stats_times': sampleTimes,
     if (audioControl != null) 'control_stats': controlSamples,
     'phases': phases,
     'shared_group': !split,

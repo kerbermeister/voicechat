@@ -34,6 +34,7 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   testWidgets('separate native P2P sender and receiver', (tester) async {
     const sender = bool.fromEnvironment('P2P_SENDER');
+    const audioOnly = bool.fromEnvironment('P2P_AUDIO_ONLY');
     const split = bool.fromEnvironment('P2P_SEPARATE_STREAMS');
     const productSync = bool.fromEnvironment('P2P_PRODUCT_SYNC');
     const playout = int.fromEnvironment('P2P_VIDEO_PLAYOUT_MS');
@@ -78,6 +79,7 @@ void main() {
         peers.add(pc);
         if (sender) {
           for (final track in stream!.getTracks()) {
+            if (audioOnly && track.kind == 'video') continue;
             await pc.addTrack(
               track,
               track.kind == 'video' && !productSync ? videoStream! : stream,
@@ -203,11 +205,15 @@ void main() {
         final remoteAudio = await audio.future.timeout(
           const Duration(seconds: 20),
         );
-        final remoteVideo = await video.future.timeout(
-          const Duration(seconds: 20),
-        );
-        expect(ids['audio'] == ids['video'], !split);
-        if (productSync) {
+        final remoteVideo = audioOnly
+            ? null
+            : await video.future.timeout(const Duration(seconds: 20));
+        if (audioOnly) {
+          expect(ids['video'], isNull);
+        } else {
+          expect(ids['audio'] == ids['video'], !split);
+        }
+        if (!audioOnly && productSync) {
           expect(originalVideoStream!.id, ids['audio']);
           // ignore: deprecated_member_use
           await originalVideoStream!.getMediaTracks();
