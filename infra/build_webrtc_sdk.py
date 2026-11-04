@@ -1,6 +1,7 @@
 """Build the pinned WebRTC SDK and test the bounded A/V sync target in CI."""
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -50,6 +51,7 @@ def prepare(builder, work, target):
         raise RuntimeError('SDK builder or patch does not match the reviewed pin')
     if shutil.disk_usage(work).free < 18_000_000_000:
         raise RuntimeError('Use an isolated SDK runner with at least 18 GB free')
+    run(['git', 'diff', '--exit-code', 'HEAD', '--', 'build'], cwd=builder.parent)
     tools = work / 'source/depot_tools'
     tools.parent.mkdir(parents=True, exist_ok=True)
     run(['git', 'init', tools])
@@ -59,6 +61,26 @@ def prepare(builder, work, target):
     run(['git', '-C', tools, 'checkout', '--detach', 'FETCH_HEAD'])
     os.environ['DEPOT_TOOLS_UPDATE'] = '0'
     os.environ['PATH'] = str(tools) + os.pathsep + os.environ['PATH']
+    source = work / 'source/webrtc/src'
+    source.parent.mkdir()
+    configuration = (builder / '.gclient').read_text()
+    if target == 'android':
+        configuration += "target_os = [ 'android' ]\n"
+    (source.parent / '.gclient').write_text(configuration)
+    run(['git', 'init', source])
+    run(['git', '-C', source, 'remote', 'add', 'origin',
+         'https://github.com/webrtc-sdk/webrtc.git'])
+    run(['git', '-C', source, 'fetch', '--depth=1', 'origin', MANIFEST['webrtc_commit']])
+    run(['git', '-C', source, 'checkout', '--detach', 'FETCH_HEAD'])
+    # Standard WebRTC CI mode: exact DEPS revisions without Chromium's full history.
+    run(['gclient', 'sync', '--no-history', '-D', '--force', '--reset', '--jobs=8'], cwd=source)
+    spec = importlib.util.spec_from_file_location('webrtc_builder', builder / 'run.py')
+    official = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(official)
+    patches = official.PATCHES[target] + (official.TEST_PATCHES if target == 'ubuntu-24.04_x86_64' else [])
+    for patch in patches:
+        depth, directories = official.PATCH_INFO.get(patch, (1, ['.']))
+        official.apply_patch(str(builder / 'patches' / patch), str(source.joinpath(*directories)), depth)
     args = [sys.executable, builder / 'run.py', 'build', target,
             '--source-dir', work / 'source', '--build-dir', work / 'unused',
             '--commit', MANIFEST['webrtc_commit'], '--webrtc-nobuild']
@@ -67,7 +89,6 @@ def prepare(builder, work, target):
     elif target == 'ubuntu-24.04_x86_64':
         args.append('--test')
     run(args, cwd=builder)
-    source = work / 'source/webrtc/src'
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=source, text=True).strip()
     if head != MANIFEST['webrtc_commit']:
         raise RuntimeError('Unexpected WebRTC source revision')
@@ -201,7 +222,7 @@ def main():
     receipt = {**MANIFEST, 'platform': args.platform,
                'artifact': artifact.name if artifact else None,
                'artifact_sha256': sha(artifact) if artifact else None,
-               'source_files_verified': True}
+               'source_files_verified': True, 'shallow_checkout': True}
     (output / 'build-receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
 
 
