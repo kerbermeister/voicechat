@@ -11,7 +11,7 @@ DSP, codecs, cryptors and certificate validation are unchanged.
 four source files before/after patching. `build_webrtc_sdk.py` rejects unexpected inputs.
 The CI workflow first proves that all three regression tests fail with the old getter
 behavior, then runs every `VCMTimingTest` with the fix. Only after that gate can
-it build a universal macOS framework and an Android AAR with the three supported
+it build the published macOS client’s arm64 framework and an Android AAR with the three supported
 application ABIs. Each artifact includes a SHA-256 build receipt.
 
 Run on an isolated machine with at least 18 GB free (more may be required by the
@@ -38,7 +38,22 @@ and source-corrected A/V offsets must remain within 80 ms. See the existing
 Source pins in `webrtc-sdk.json` are build inputs; checksums and URLs of accepted
 SDK binaries belong in `webrtc-sdk-artifacts.json`. The Android helper verifies
 the AAR before publishing it into the local Maven cache, and verifies cached
-bytes on reuse. CocoaPods and SwiftPM must use the same accepted macOS archive.
+bytes on reuse. The macOS Podfile overrides only the WebRTC-SDK pod with the checksum-pinned
+archive; Android uses Gradle's module resolution to select the same custom SDK
+for both existing dependents. flutter_webrtc remains the hosted package from the
+unchanged pubspec.lock, without a copied wrapper or native-factory changes.
+The application's existing enable-swift-package-manager:false setting is required
+for this macOS delivery path; an unconfigured SwiftPM switch is not supported.
 The SDK workflow automatically runs only when its build script, source manifest
 or C++ patch changes. Documentation, artifact delivery and app-only changes use
 the existing SDK bytes; workflow/job changes can be checked with a manual run.
+
+
+When only packaging/build orchestration changes, a manual `macos_only:true` run
+can reuse `webrtc-timing-tests` from an explicitly chosen prior run through
+`timing_tests_run`. The verifier requires the exact SDK/toolchain/source hashes,
+all 21 passing test cases with no skips and all three before-fix failures.
+A changed source pin rejects reuse and requires a fresh C++ test run. The default
+push path still runs native tests first. Compiled arm64 framework bytes and their
+source/hash receipt are archived before packaging and uploaded even if a later
+packaging step fails; application release qualification remains separate.
