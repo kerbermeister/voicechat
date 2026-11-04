@@ -133,7 +133,6 @@ rtc_library("sync_production") {
 }
 rtc_library("sync_unittests") {
   testonly = true
-  allow_poison = [ "environment_construction" ]
   sources = [ "//video/stream_synchronization_unittest.cc" ]
   deps = [
     ":sync_production",
