@@ -100,6 +100,6 @@ jobs:
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
-          name: webrtc-${{ matrix.platform }}-150.7871.04-vc1
+          name: webrtc-${{ matrix.platform }}-150.7871.04-vc2
           path: ${{ runner.temp }}/results/
           if-no-files-found: error
