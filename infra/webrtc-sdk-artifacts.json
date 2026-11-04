@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "sdk_version": "150.7871.04",
+  "release_artifact_version": "150.7871.04-vc1",
+  "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
+  "patch_sha256": "8f9c5903638c6117f68269fed254defa5fbf44e9fa1ae07c2cfc5664bb1df9f7",
+  "qualification_status": "Android SDK build verified; actual media pending; Mac artifact pending; not an application update",
+  "artifacts": {
+    "android": {
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc1/libwebrtc.aar",
+      "sha256": "9a76a5562f7e59bd5eda8d3f200642f3d0da270a6c97b5d004fee5d1255eaa35",
+      "size_bytes": 36270403,
+      "jni_sha256": {
+        "armeabi-v7a": "899e0da29bdb17b703e1baca8bc215ba82d1b4658d4356a385aa11fc0744f0b6",
+        "arm64-v8a": "f948d0ca844dc6e0992a1a3775029e09ec0adc1d80274fb2bdb0d9a031749ef8",
+        "x86_64": "362a67131647cf3c685dc8c6836b290611888de92a298ad373f41ed0a108781d"
+      },
+      "build_workflow_run": 41890363278,
+      "build_revision": "6004dfe084c382d563afd0e9dc08ae9893ae9800"
+    }
+  }
+}

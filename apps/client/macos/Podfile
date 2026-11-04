@@ -28,6 +28,7 @@ flutter_macos_podfile_setup
 
 target 'Runner' do
   use_frameworks!
+  pod 'WebRTC-SDK', :podspec => '../../../vendor/webrtc-sdk/WebRTC-SDK.podspec'
 
   flutter_install_all_macos_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
