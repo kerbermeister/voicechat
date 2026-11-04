@@ -131,16 +131,23 @@ rtc_library("sync_production") {
     "//system_wrappers",
   ]
 }
-rtc_test("timing_sync_unittests") {
+rtc_library("sync_unittests") {
   testonly = true
   allow_poison = [ "environment_construction" ]
   sources = [ "//video/stream_synchronization_unittest.cc" ]
   deps = [
     ":sync_production",
-    "//modules/video_coding/timing:timing_unittests",
     "//api/environment:environment_factory",
     "//test:test_support",
     "//test/time_controller:time_controller",
+  ]
+}
+rtc_test("timing_sync_unittests") {
+  testonly = true
+  sources = []
+  deps = [
+    ":sync_unittests",
+    "//modules/video_coding/timing:timing_unittests",
   ]
 }
 ''')
