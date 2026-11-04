@@ -50,10 +50,14 @@ test('P2P timing requires authenticated encrypted media controls', () => {
 
 test('native P2P recovery requires both live streams at capture end', () => {
   const stats = Array.from({length: 120}, (_, i) => [
-    {kind: 'audio', packetsReceived: i * 50}, {kind: 'video', packetsReceived: i * 20}]);
+    {kind: 'audio', packetsReceived: i * 50}, {kind: 'video', packetsReceived: i * 20, framesDecoded: i * 20}]);
   assert.equal(recoveryTransport({stats}).pass, true);
   const stopped = stats.map((rows, i) => i < 109 ? rows : stats[108]);
   assert.equal(recoveryTransport({stats: stopped}).pass, false);
   assert.equal(recoveryTransport({stats: stats.map(rows => rows.slice(0, 1)), audio_only: true}).pass, true);
   assert.equal(recoveryTransport({}).pass, false);
+  const undecodable = stats.map(rows => [rows[0], {...rows[1], framesDecoded: 0}]);
+  assert.equal(recoveryTransport({stats: undecodable}).pass, false);
+  const missingVideo = stats.map(rows => rows.slice(0, 1));
+  assert.equal(recoveryTransport({stats: missingVideo}).pass, false);
 });

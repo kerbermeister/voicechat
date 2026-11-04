@@ -45,7 +45,11 @@ export function recoveryTransport(data) {
     const last = samples?.at(-1)?.find(row => row.kind === kind)?.packetsReceived;
     counts[kind] = Number.isFinite(first) && Number.isFinite(last) ? last - first : 0;
   }
-  return {pass: Object.values(counts).every(count => count > 30), packet_deltas: counts};
+  const decodedFirst = samples?.at(-11)?.find(row => row.kind === 'video')?.framesDecoded;
+  const decodedLast = samples?.at(-1)?.find(row => row.kind === 'video')?.framesDecoded;
+  const decoded = Number.isFinite(decodedFirst) && Number.isFinite(decodedLast) ? decodedLast - decodedFirst : 0;
+  return {pass: Object.values(counts).every(count => count > 30) && (data.audio_only || decoded > 0),
+    packet_deltas: counts, decoded_video_frames: decoded};
 }
 
 export function analyzeP2P(data) {

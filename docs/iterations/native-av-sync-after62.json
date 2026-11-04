@@ -13360,5 +13360,108 @@
     "delivery_tests": "5 checksum/download/cache guard tests pass",
     "mirror_audio_stall": "fixture prepared;2 Mac +2 Android runs required; actual media checks not yet run",
     "patch_sha256": "8f9c5903638c6117f68269fed254defa5fbf44e9fa1ae07c2cfc5664bb1df9f7"
+  },
+  "sdk_vc1_full_length_diagnostic": {
+    "date_utc": "2026-11-04",
+    "sdk": "150.7871.04-vc1",
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 68.52779166665357,
+      "max_source_corrected_abs_ms": 67.62741666470617
+    },
+    "recovery": {
+      "count": 27,
+      "max_abs_ms": 415.58633333332295,
+      "max_source_corrected_abs_ms": 416.4723749898087
+    },
+    "source_max_ms": 1.3095833273837343,
+    "recovery_transport": {
+      "pass": true,
+      "packet_deltas": {
+        "audio": 503,
+        "video": 1366
+      },
+      "decoded_video_frames": 206
+    },
+    "crypto": {
+      "protocol": "DTLS-SRTP",
+      "negative_dtls_failed": true,
+      "negative_received_media_packets": 0,
+      "positive_dtls_connected": true,
+      "srtp_cipher": "AES_CM_128_HMAC_SHA1_80"
+    },
+    "native_sync_logs": [
+      {
+        "time": 113.731862887,
+        "message": "(line 136): Sync info stats: 113731, {ssrc: 3325134286, cur_delay: 162 ms} {ssrc: 1291649998, cur_delay: 166725 us} {relative_delay_ms: -11} \n"
+      },
+      {
+        "time": 124.730119642,
+        "message": "(line 136): Sync info stats: 124729, {ssrc: 3325134286, cur_delay: 171 ms} {ssrc: 1291649998, cur_delay: 143497 us} {relative_delay_ms: -4} \n"
+      },
+      {
+        "time": 135.731693814,
+        "message": "(line 136): Sync info stats: 135730, {ssrc: 3325134286, cur_delay: 163 ms} {ssrc: 1291649998, cur_delay: 153307 us} {relative_delay_ms: 194} \n"
+      },
+      {
+        "time": 135.732519231,
+        "message": "(line 160): Sync delay stats: 135730, {ssrc: 3325134286, target_delay_ms: 23} {ssrc: 1291649998, target_delay_ms: 31} \n"
+      },
+      {
+        "time": 146.731630528,
+        "message": "(line 136): Sync info stats: 146730, {ssrc: 3325134286, cur_delay: 481 ms} {ssrc: 1291649998, cur_delay: 240790 us} {relative_delay_ms: 685} \n"
+      },
+      {
+        "time": 146.732273778,
+        "message": "(line 160): Sync delay stats: 146730, {ssrc: 3325134286, target_delay_ms: 473} {ssrc: 1291649998, target_delay_ms: 31} \n"
+      },
+      {
+        "time": 157.731170866,
+        "message": "(line 136): Sync info stats: 157730, {ssrc: 3325134286, cur_delay: 906 ms} {ssrc: 1291649998, cur_delay: 292827 us} {relative_delay_ms: 722} \n"
+      },
+      {
+        "time": 178.731027376,
+        "message": "(line 136): Sync info stats: 178730, {ssrc: 3325134286, cur_delay: 814 ms} {ssrc: 1291649998, cur_delay: 306105 us} {relative_delay_ms: -11} \n"
+      },
+      {
+        "time": 178.731494043,
+        "message": "(line 160): Sync delay stats: 178730, {ssrc: 3325134286, target_delay_ms: 630} {ssrc: 1291649998, target_delay_ms: 31} \n"
+      },
+      {
+        "time": 189.731386673,
+        "message": "(line 136): Sync info stats: 189730, {ssrc: 3325134286, cur_delay: 342 ms} {ssrc: 1291649998, cur_delay: 243798 us} {relative_delay_ms: -16} \n"
+      },
+      {
+        "time": 189.732323007,
+        "message": "(line 160): Sync delay stats: 189730, {ssrc: 3325134286, target_delay_ms: 204} {ssrc: 1291649998, target_delay_ms: 31} \n"
+      },
+      {
+        "time": 200.730838929,
+        "message": "(line 136): Sync info stats: 200728, {ssrc: 3325134286, cur_delay: 229 ms} {ssrc: 1291649998, cur_delay: 177871 us} {relative_delay_ms: -9} \n"
+      },
+      {
+        "time": 210.730182058,
+        "message": "(line 136): Sync info stats: 210729, {ssrc: 3325134286, cur_delay: 180 ms} {ssrc: 1291649998, cur_delay: 143578 us} {relative_delay_ms: -9} \n"
+      },
+      {
+        "time": 221.731211689,
+        "message": "(line 136): Sync info stats: 221728, {ssrc: 3325134286, cur_delay: 158 ms} {ssrc: 1291649998, cur_delay: 113788 us} {relative_delay_ms: -7} \n"
+      },
+      {
+        "time": 231.730573527,
+        "message": "(line 136): Sync info stats: 231730, {ssrc: 3325134286, cur_delay: 160 ms} {ssrc: 1291649998, cur_delay: 92158 us} {relative_delay_ms: -8} \n"
+      }
+    ],
+    "physical_device": false,
+    "platform": "Android API35 arm64 owned emulator; separate stock native macOS sender",
+    "raw_private_evidence": ".prototype/native-p2p-android-cross-current-v1-sync-diagnostic2.media.json.gz"
+  },
+  "sdk_vc2": {
+    "status": "source prepared; C++ CI pending; not released",
+    "commit": "46c02096f0c5b333f26fe3b9504db81dc10aeea1",
+    "workflow_run": 41914825766,
+    "native_tests_expected": 43,
+    "negative_regressions_expected": 8
   }
 }
