@@ -158,34 +158,27 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
 
 
 def macos(source, work, output):
-    frameworks = []
-    for cpu in ['arm64', 'x64']:
-        build = work / ('macos-' + cpu)
-        args = MAC_ARGS + f' target_os="mac" target_cpu="{cpu}" mac_deployment_target="10.15"'
-        run(['gn', 'gen', build, '--args=' + args], cwd=source)
-        run(['autoninja', '-C', build, 'mac_framework_bundle', '-j2'], cwd=source)
-        frameworks.append(build / 'WebRTC.framework')
+    # The published macOS application is arm64; build its actual SDK architecture.
+    build = work / 'macos-arm64'
+    args = MAC_ARGS + ' target_os="mac" target_cpu="arm64" mac_deployment_target="10.15"'
+    run(['gn', 'gen', build, '--args=' + args], cwd=source)
+    run(['autoninja', '-C', build, 'mac_framework_bundle', '-j2'], cwd=source)
     verify_files(source, MANIFEST['patched_files_sha256'])
-    compiled = output / 'macos-compiled-slices.zip'
-    run(['zip', '--symlinks', '-r', compiled,
-         'macos-arm64/WebRTC.framework', 'macos-x64/WebRTC.framework'], cwd=work)
-    (output / 'compiled-slices-receipt.json').write_text(json.dumps({
-        **MANIFEST, 'platform': 'macos', 'artifact': compiled.name,
-        'artifact_sha256': sha(compiled), 'source_files_verified': True,
-        'shallow_checkout': True}, indent=2) + '\n')
+    framework = build / 'WebRTC.framework'
+    run(['lipo', framework / 'WebRTC', '-verify_arch', 'arm64'])
+    compiled = output / 'macos-compiled-framework.zip'
+    run(['zip', '--symlinks', '-r', compiled, 'WebRTC.framework'], cwd=build)
+    (output / 'compiled-framework-receipt.json').write_text(json.dumps({
+        **MANIFEST, 'platform': 'macos', 'architectures': ['arm64'],
+        'artifact': compiled.name, 'artifact_sha256': sha(compiled),
+        'source_files_verified': True, 'shallow_checkout': True}, indent=2) + '\n')
     run([sys.executable, source / 'tools_webrtc/libs/generate_licenses.py',
-         '--target', 'sdk:mac_framework_objc', output,
-         work / 'macos-arm64', work / 'macos-x64'], cwd=source)
-    universal = work / 'universal/WebRTC.framework'
-    shutil.copytree(frameworks[1], universal, symlinks=True)
-    run(['lipo', '-create', frameworks[0] / 'WebRTC', frameworks[1] / 'WebRTC',
-         '-output', (universal / 'WebRTC').resolve(strict=True)])
-    run(['lipo', universal / 'WebRTC', '-verify_arch', 'arm64', 'x86_64'])
+         '--target', 'sdk:mac_framework_objc', output, build], cwd=source)
     package = output / 'WebRTC.xcframework'
-    run(['xcodebuild', '-create-xcframework', '-framework', universal, '-output', package])
+    run(['xcodebuild', '-create-xcframework', '-framework', framework, '-output', package])
     shutil.copy2(source / 'LICENSE', package / 'LICENSE')
     shutil.copy2(output / 'LICENSE.md', package / 'THIRD-PARTY-NOTICES.md')
-    framework = package / 'macos-arm64_x86_64/WebRTC.framework'
+    framework = package / 'macos-arm64/WebRTC.framework'
     binary = framework / 'WebRTC'
     versioned = framework / 'Versions/A/WebRTC'
     if not binary.is_symlink():
@@ -195,6 +188,7 @@ def macos(source, work, output):
         binary.symlink_to('Versions/Current/WebRTC')
     if not binary.is_file():
         raise RuntimeError('macOS framework binary link is broken')
+    run(['lipo', binary, '-verify_arch', 'arm64'])
     run(['zip', '--symlinks', '-r', output / 'WebRTC.xcframework.zip', 'WebRTC.xcframework'], cwd=output)
     return output / 'WebRTC.xcframework.zip'
 
