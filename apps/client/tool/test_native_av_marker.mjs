@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {decodeAudioChunks} from './score_native_av_marker.mjs';
+import {analyzeP2P, decodeAudioChunks} from './score_native_av_marker.mjs';
 import {markerDigits, lowTones, highTones} from '../integration_test/call_av_marker.js';
 
 test('native markers keep exact PCM positions when callback times arrive in batches', () => {
@@ -24,4 +24,25 @@ test('native markers keep exact PCM positions when callback times arrive in batc
   assert.deepEqual(normal.map(marker => marker.id), [0, 1, 2]);
   assert.deepEqual(batched.map(marker => [marker.id, marker.pcm_frame]), normal.map(marker => [marker.id, marker.pcm_frame]));
   assert.throws(() => decodeAudioChunks([{rate: 16000, frames: 0, pcm: '', time: 0}]));
+});
+
+
+test('P2P timing requires authenticated encrypted media controls', () => {
+  const control = {protocol: 'DTLS-SRTP', negative_dtls_failed: true,
+    negative_received_media_packets: 0, positive_dtls_connected: true,
+    srtp_cipher: 'AES_CM_128_HMAC_SHA1_80'};
+  const data = {synthetic_media_only: true, p2p: true, crypto_control: control,
+    markers: {audio: [], video: [], source_audio: [], source_video: []},
+    phases: [['clean', 0], ['delay', 20], ['offline', 50], ['clean', 62]]};
+  assert.equal(analyzeP2P(data).outcome, 'insufficient_markers');
+  for (const changed of [{protocol: 'RTP'}, {negative_dtls_failed: false},
+    {negative_received_media_packets: 1}, {positive_dtls_connected: false},
+    {srtp_cipher: 'NULL'}]) {
+    assert.throws(() => analyzeP2P({...data, crypto_control: {...control, ...changed}}));
+  }
+  assert.throws(() => analyzeP2P({...data, synthetic_media_only: false}));
+  const unseenSource = {...data, coherent_source: true, markers: {...data.markers,
+    source_audio: [[9, 0]], source_video: [[9, .03]]}};
+  assert.equal(analyzeP2P(unseenSource).max_all_source_offset_ms, 30);
+  assert.equal(analyzeP2P(unseenSource).outcome, 'invalid_source_timing');
 });

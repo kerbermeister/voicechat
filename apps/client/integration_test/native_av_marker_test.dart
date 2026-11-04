@@ -55,6 +55,16 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   testWidgets('native encrypted audio/video marker playout', (tester) async {
     const channel = MethodChannel('voicechat/native-av-lab');
+    const nativePlayout = int.fromEnvironment('AV_NATIVE_VIDEO_PLAYOUT_MS');
+    if (nativePlayout != 0) {
+      await channel.invokeMethod<void>('playout', {
+        'milliseconds': nativePlayout,
+        'minimum': const int.fromEnvironment(
+          'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS',
+          defaultValue: nativePlayout,
+        ),
+      });
+    }
     final random = Random.secure();
     const role = String.fromEnvironment('AV_MARKER_ROLE', defaultValue: 'both');
     const encodedKey = String.fromEnvironment('AV_MARKER_KEY');
@@ -97,6 +107,7 @@ void main() {
         });
         await channel.invokeMethod<void>('create', {
           'stream': stream.id,
+          'coherent': const bool.fromEnvironment('AV_COHERENT_MARKERS'),
           'speech': base64Decode(
             const String.fromEnvironment('AV_SPEECH_BASE64'),
           ),
@@ -143,6 +154,14 @@ void main() {
             'source_video': markers['source_video'],
             'encrypted_publications': true,
             'synthetic_media_only': true,
+            'coherent_source': const bool.fromEnvironment(
+              'AV_COHERENT_MARKERS',
+            ),
+            'native_video_playout_ms': nativePlayout,
+            'native_video_min_playout_ms': const int.fromEnvironment(
+              'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS',
+              defaultValue: nativePlayout,
+            ),
           });
           return;
         }
@@ -311,6 +330,12 @@ void main() {
         'shared_group': audio.mediaStream.id == video.mediaStream.id,
         'encrypted_publications': true,
         'synthetic_media_only': true,
+        'coherent_source': const bool.fromEnvironment('AV_COHERENT_MARKERS'),
+        'native_video_playout_ms': nativePlayout,
+        'native_video_min_playout_ms': const int.fromEnvironment(
+          'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS',
+          defaultValue: nativePlayout,
+        ),
         'separate_native_sender': role == 'receiver',
       };
       await labPost('', result);

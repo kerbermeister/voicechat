@@ -35,6 +35,16 @@ def native_av_fixture(root, device, android_abi=None):
         assert gradle_before.decode().count('dependencies {') == 1
         gradle_after = gradle_before.decode().replace('dependencies {', f'dependencies {{\n    debugImplementation("io.github.webrtc-sdk:android:{version}")')
         gradle_after += '\nandroid { buildTypes.getByName("debug") { ndk { abiFilters.clear(); abiFilters.add("' + android_abi + '") } } }\n'
+        other_abis = {'arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'} - {android_abi}
+        excluded = ', '.join('"lib/' + abi + '/**"' for abi in sorted(other_abis))
+        gradle_after += '\nandroid { packaging { jniLibs { excludes += setOf(' + excluded + ') } } }\n'
+        # Cargokit otherwise adds x86 and x64 to every debug build, even on
+        # an arm64-only fixture. Keep the same crypto sources for the owned ABI.
+        cargo_platform = {'arm64-v8a': 'android-arm64', 'x86_64': 'android-x64'}[android_abi]
+        gradle_after += ('\ngradle.projectsEvaluated {\n'
+                         '    project(":flutter_vodozemac").tasks.named("cargokitCargoBuildFlutter_vodozemacDebug").configure {\n'
+                         '        withGroovyBuilder { setProperty("targetPlatforms", listOf("' + cargo_platform + '")) }\n'
+                         '    }\n}\n')
         native = client / 'android/app/src/debug/kotlin/dev/voicechat/voicechat_probe/NativeAVMarker.kt'
         assert not native.exists()
         patches = {main: (before, after.encode()), gradle: (gradle_before, gradle_after.encode()),

@@ -24,12 +24,17 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
   private let highTones: [Double] = [1209, 1336, 1477, 1633]
   private var frameCounter = 0
   private var backgrounds = [Data]()
+  private let videoQueue = DispatchQueue(label: "voicechat.native-av-marker", qos: .userInteractive)
+  private var coherentMarkers = false
   private var timer: DispatchSourceTimer?
   private var source: RTCVideoSource?
   private var capturer: RTCVideoCapturer?
   private var audio: RTCAudioTrack?
   private var video: RTCVideoTrack?
   private var audioChunks = [[String: Any]]()
+  private var controlChunks = [[String: Any]]()
+  private var controlAudio: RTCAudioTrack?
+  private lazy var controlSink = MarkerControlAudioSink(owner: self)
   private var audioPeak: Float = 0
   private var videoMarkers = [[Double]]()
   private var lastMarker = -1
@@ -42,6 +47,32 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
       guard let self, let plugin = FlutterWebRTCPlugin.sharedSingleton() else { return }
       let args = call.arguments as? [String: Any] ?? [:]
       switch call.method {
+      case "playout":
+        guard plugin.peerConnectionFactory == nil, let delay = args["milliseconds"] as? Int,
+          [90, 100, 130].contains(delay) else {
+          result(FlutterError(code: "fixture", message: "Configure playout before native factory", details: nil)); return
+        }
+        let minimum = args["minimum"] as? Int ?? delay
+        guard minimum >= 0, minimum <= delay else {
+          result(FlutterError(code: "fixture", message: "Invalid video playout bounds", details: nil)); return
+        }
+        RTCPeerConnectionFactory.configureFieldTrials("WebRTC-Network-UseNWPathMonitor/Enabled/WebRTC-ForcePlayoutDelay/min_ms:\(minimum),max_ms:\(delay)/")
+        result(nil)
+      case "preferVP8":
+        guard let factory = plugin.peerConnectionFactory,
+          let peers = plugin.peerConnections?.allValues as? [RTCPeerConnection] else {
+          result(FlutterError(code: "fixture", message: "Missing native peers", details: nil)); return
+        }
+        let codecs = factory.rtpSenderCapabilities(forKind: "video").codecs
+        let ordered = codecs.filter { $0.name == "VP8" } + codecs.filter { $0.name != "VP8" }
+        do {
+          for peer in peers { for transceiver in peer.transceivers {
+            if transceiver.sender.track?.kind == "video" { try transceiver.setCodecPreferences(ordered, error: ()) }
+          }}
+          result(nil)
+        } catch {
+          result(FlutterError(code: "fixture", message: String(describing: (error as NSError).userInfo), details: nil))
+        }
       case "clock": result(CACurrentMediaTime())
       case "receive": running = true; result(nil)
       case "create":
@@ -50,6 +81,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
           let stream = plugin.localStreams?[id] as? RTCMediaStream else {
           result(FlutterError(code: "fixture", message: "Missing native stream", details: nil)); return
         }
+        coherentMarkers = args["coherent"] as? Bool ?? false
         let source = factory.videoSource()
         backgrounds = Self.makeBackgrounds()
         if let data = args["speech"] as? FlutterStandardTypedData {
@@ -63,7 +95,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
         plugin.audioManager?.capturePostProcessingAdapter.addProcessing(self)
         origin = CACurrentMediaTime()
         running = true
-        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "voicechat.native-av-marker"))
+        let timer = DispatchSource.makeTimerSource(queue: videoQueue)
         timer.schedule(deadline: .now(), repeating: 1.0 / 20)
         timer.setEventHandler { [weak self] in self?.emitVideo() }
         self.timer = timer
@@ -72,15 +104,24 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
       case "observe":
         audio = plugin.remoteTrack(forId: args["audio"] as? String ?? "") as? RTCAudioTrack
         video = plugin.remoteTrack(forId: args["video"] as? String ?? "") as? RTCVideoTrack
-        guard let audio, let video else {
+        guard let audio, (args["video"] == nil || video != nil) else {
           result(FlutterError(code: "fixture", message: "Missing remote media", details: nil)); return
         }
         audio.add(self)
-        video.add(self)
+        video?.add(self)
+        result(nil)
+      case "observeControl":
+        guard let id = args["audio"] as? String,
+          let track = plugin.remoteTrack(forId: id) as? RTCAudioTrack else {
+          result(FlutterError(code: "fixture", message: "Missing control audio", details: nil)); return
+        }
+        controlAudio = track
+        track.add(controlSink)
         result(nil)
       case "result":
         lock.lock()
         var value: [String: Any] = ["audio": audioChunks, "video": videoMarkers, "origin": origin]
+        if controlAudio != nil { value["control_audio"] = controlChunks }
         lock.unlock()
         sourceLock.lock()
         value["source_audio"] = sourceAudioMarkers
@@ -97,6 +138,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
         running = false
         timer?.cancel(); timer = nil
         audio?.remove(self); video?.remove(self)
+        controlAudio?.remove(controlSink)
         plugin.audioManager?.capturePostProcessingAdapter.removeProcessing(self)
         result(nil)
       default: result(FlutterMethodNotImplemented)
@@ -129,11 +171,17 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
     sourceLock.lock()
     sourceMarker = Int(sourceTime / 2)
     sourceVisible = sourceTime - Double(sourceMarker * 2) < 0.12
-    if sourceMarker != lastSourceAudio {
+    let markerChanged = sourceMarker != lastSourceAudio
+    if markerChanged {
       lastSourceAudio = sourceMarker
       sourceAudioMarkers.append([Double(sourceMarker), CACurrentMediaTime()])
     }
     sourceLock.unlock()
+    // A controlled source must not add up to one camera-frame period to the
+    // visual onset itself. Queue work outside the realtime audio callback.
+    if coherentMarkers && markerChanged {
+      videoQueue.async { [weak self] in self?.emitVideo() }
+    }
     for ch in 0..<buffer.channels {
       let samples = buffer.rawBuffer(forChannel: ch)
       for index in 0..<buffer.frames {
@@ -160,6 +208,9 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
     sampleCursor += Int64(buffer.frames)
   }
   func render(pcmBuffer buffer: AVAudioPCMBuffer) {
+    recordAudio(buffer, control: false)
+  }
+  fileprivate func recordAudio(_ buffer: AVAudioPCMBuffer, control: Bool) {
     guard running else { return }
     let count = Int(buffer.frameLength)
     let samples: [Float]
@@ -170,10 +221,13 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
     } else { return }
     let data = samples.withUnsafeBytes { Data($0) }
     lock.lock()
-    audioPeak = max(audioPeak, samples.map { abs($0) }.max() ?? 0)
-    if audioChunks.count < 14000 {
-      audioChunks.append(["time": CACurrentMediaTime(), "rate": buffer.format.sampleRate,
-                          "frames": count, "pcm": FlutterStandardTypedData(bytes: data)])
+    let chunk: [String: Any] = ["time": CACurrentMediaTime(), "rate": buffer.format.sampleRate,
+                                "frames": count, "pcm": FlutterStandardTypedData(bytes: data)]
+    if control {
+      if controlChunks.count < 14000 { controlChunks.append(chunk) }
+    } else {
+      audioPeak = max(audioPeak, samples.map { abs($0) }.max() ?? 0)
+      if audioChunks.count < 14000 { audioChunks.append(chunk) }
     }
     lock.unlock()
   }
@@ -184,7 +238,8 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
     guard pixels.width >= 256, pixels.height >= 90 else { return }
     var word: UInt32 = 0
     for bit in 0..<32 {
-      let x = (bit % 16) * 16 + 8, y = (bit / 16) * 40 + 20
+      let x = ((bit % 16) * 16 + 8) * Int(pixels.width) / 640
+      let y = ((bit / 16) * 40 + 20) * Int(pixels.height) / 360
       if pixels.dataY[y * Int(pixels.strideY) + x] > 128 { word |= 1 << bit }
     }
     let id = Int(word & 0xffff)
@@ -225,4 +280,10 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
     sourceLock.unlock()
     source.capturer(capturer, didCapture: RTCVideoFrame(buffer: pixels, rotation: ._0, timeStampNs: Int64(captured * 1e9)))
   }
+}
+
+private final class MarkerControlAudioSink: NSObject, RTCAudioRenderer {
+  private weak var owner: NativeAVMarker?
+  init(owner: NativeAVMarker) { self.owner = owner; super.init() }
+  func render(pcmBuffer buffer: AVAudioPCMBuffer) { owner?.recordAudio(buffer, control: true) }
 }

@@ -277,3 +277,19 @@ LiveKit AES-GCM и Android. Патч пока не считается доказ
 GitHub CLI авторизован пользователем, вход завершён; scopes repo/read:org/gist,
 хранение keyring. SDK source branch `codex/native-sdk-av-sync`, полный журнал
 запуска и хеши будут добавлены после CI. Новая версия63 не опубликована.
+
+SDK build inputs сохранены плоскими файлами `infra/build_webrtc_sdk.py`,
+`infra/webrtc-sdk.json`, `infra/webrtc-bounded-sync.patch`, `infra/WEBRTC_SDK.md`.
+Это сохраняет существующий контракт frozen migration sources;19 migration
+тестов PASS. Первые CI-прогоны с вложенным каталогом отклонены, код
+миграции/проверки безопасности не ослаблялся. Изолированный GN test target
+зарегистрирован в корневом графе; исправленный SDK workflow:
+https://github.com/kerbermeister/voicechat/actions/runs/41873429695.
+
+Подготовлен shared-stream paired-speech fixture: обычный аудиозвонок и
+видеозвонок имеют отдельные дорожки/приёмники, единые часы источника и
+одинаковые Opus SDP; аудио/видео основного звонка теперь явно должны иметь
+один общий stream ID.4 Python и2 Node проверки стенда PASS, targeted Dart
+analyze PASS. Полная локальная серверная проверка до setup нового worktree
+невалидна (нет локальных test secrets, а путь .prototype нарушает существующую
+assertion стенда); чистый CI выполняет штатный setup и полный набор.

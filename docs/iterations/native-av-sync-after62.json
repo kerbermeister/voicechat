@@ -13329,5 +13329,20 @@
     },
     "sequential_speech_calibration": "Same-binary A/A fails STOI clean -.00852 or pause -.02418; all results retained. Fresh3 simultaneous paired trials running, unchanged margins.",
     "native_binary_update_required": true
+  },
+  "sdk_bounded_sync_candidate": {
+    "status": "build_pending_not_qualified",
+    "branch": "codex/native-sdk-av-sync",
+    "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
+    "patch": "infra/webrtc-bounded-sync.patch",
+    "source_manifest": "infra/webrtc-sdk.json",
+    "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41873429695",
+    "paired_fixed90_series": "rejected: 2/3 pass, raw97.99/corrected100.80ms and speech regression",
+    "shared_fixed90": "reproduced recovery2105.44ms; audio latency up to2240.07ms",
+    "change": "bounded synchronization getter; raw jitter estimate retained for frame-buffer reset",
+    "unit_tests": "pending native C++ red/green and all VCMTimingTest",
+    "fixture_checks": "4 Python +2 Node tests and targeted Dart analyzer pass",
+    "native_release": 62,
+    "published": false
   }
 }

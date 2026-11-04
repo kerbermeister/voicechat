@@ -92,8 +92,8 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
                 "observe" -> {
                     audio = plugin.getRemoteTrack(call.argument<String>("audio")) as? AudioTrack
                     video = plugin.getRemoteTrack(call.argument<String>("video")) as? VideoTrack
-                    if (audio == null || video == null) result.error("fixture", "Missing remote media", null)
-                    else { audio!!.addSink(this); video!!.addSink(this); result.success(null) }
+                    if (audio == null || (call.hasArgument("video") && video == null)) result.error("fixture", "Missing remote media", null)
+                    else { audio!!.addSink(this); video?.addSink(this); result.success(null) }
                 }
                 "gate" -> synchronized(lock) {
                     result.success(mapOf("audio_peak" to peak, "video_markers" to videoMarkers.size,
@@ -172,7 +172,8 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
             if (pixels.width < 256 || pixels.height < 90) return
             var word = 0L
             for (bit in 0 until 32) {
-                val x = bit % 16 * 16 + 8; val y = bit / 16 * 40 + 20
+                val x = (bit % 16 * 16 + 8) * pixels.width / 640
+                val y = (bit / 16 * 40 + 20) * pixels.height / 360
                 if ((pixels.dataY.get(y * pixels.strideY + x).toInt() and 255) > 128) word = word or (1L shl bit)
             }
             val id = (word and 65535).toInt()

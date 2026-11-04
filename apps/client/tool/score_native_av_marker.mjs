@@ -1,6 +1,7 @@
 // Uses the same checksum-protected audio decoder as the browser qualification.
 import assert from 'node:assert/strict';
 import {readFileSync, writeFileSync} from 'node:fs';
+import {gunzipSync} from 'node:zlib';
 import {pathToFileURL} from 'node:url';
 import {ToneDecoder} from '../integration_test/call_av_marker.js';
 
@@ -30,6 +31,28 @@ export function analyze(data) {
   assert.equal(data.synthetic_media_only, true);
   assert.equal(data.missing_key_gate.content.video_markers, 0);
   assert.ok(data.missing_key_gate.content.audio_peak < .001);
+  const report = analyzeTiming(data);
+  if (data.coherent_source && report.max_all_source_offset_ms > 20) report.outcome = 'invalid_source_timing';
+  return report;
+}
+
+export function analyzeP2P(data) {
+  assert.equal(data.synthetic_media_only, true);
+  assert.equal(data.p2p, true);
+  const control = data.crypto_control;
+  assert.equal(control.protocol, 'DTLS-SRTP');
+  assert.equal(control.negative_dtls_failed, true);
+  assert.equal(control.negative_received_media_packets, 0);
+  assert.equal(control.positive_dtls_connected, true);
+  assert.ok(new Set(['AES_CM_128_HMAC_SHA1_80', 'SRTP_AES128_CM_SHA1_80',
+    'AEAD_AES_128_GCM', 'AEAD_AES_256_GCM', 'SRTP_AEAD_AES_128_GCM', 'SRTP_AEAD_AES_256_GCM'])
+    .has(control.srtp_cipher));
+  const report = analyzeTiming(data);
+  if (data.coherent_source && report.max_all_source_offset_ms > 20) report.outcome = 'invalid_source_timing';
+  return report;
+}
+
+function analyzeTiming(data) {
   const markers = data.markers, rate = 48000;
   const audio = decodeAudioChunks(markers.audio);
   const received = new Map(audio.map(marker => [marker.id, marker.time]));
@@ -53,6 +76,8 @@ export function analyze(data) {
   const clean = phase(initial[1] + 5, delay[1]);
   const recovered = phase(recovery[1] + 5, Infinity);
   const sourceMax = Math.max(...pairs.map(pair => Math.abs(pair.source_skew_ms)));
+  const allSourceMax = Math.max(...[...sentVideo].filter(([id]) => sentAudio.has(id))
+    .map(([id, time]) => Math.abs(time - sentAudio.get(id)) * 1000));
   const enough = clean.count >= 4 && recovered.count >= 12;
   const withinBudget = [clean, recovered].every(phase =>
     phase.max_abs_ms <= 80 && phase.max_source_corrected_abs_ms <= 80);
@@ -60,12 +85,12 @@ export function analyze(data) {
     !enough ? 'insufficient_markers' : sourceMax > 75 ? 'invalid_source_timing' : 'budget_exceeded',
     audio_checksum_markers: audio.length, matched_pairs: pairs.length,
     shared_group: data.shared_group, clean, recovery: recovered,
-    max_source_offset_ms: sourceMax, physical_latency_measured: false,
+    max_source_offset_ms: sourceMax, max_all_source_offset_ms: allSourceMax, physical_latency_measured: false,
     decoder_window_ms: 1024 / rate * 1000, recovery_guard_after_seconds: 5, audio_markers: audio, pairs};
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const result = analyze(JSON.parse(readFileSync(process.argv[2], 'utf8')));
+  const result = analyze(JSON.parse(process.argv[2].endsWith('.gz') ? gunzipSync(readFileSync(process.argv[2])).toString('utf8') : readFileSync(process.argv[2], 'utf8')));
   if (process.argv[3]) writeFileSync(process.argv[3], JSON.stringify(result, null, 2) + '\n');
   const {pairs, audio_markers, ...summary} = result;
   console.log(JSON.stringify(summary, null, 2));

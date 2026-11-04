@@ -2,6 +2,7 @@
 import argparse
 import base64
 import json
+import gzip
 from pathlib import Path
 
 import numpy as np
@@ -49,8 +50,9 @@ def main():
     assert rate == 48000 and wav.dtype == np.int16 and wav.ndim == 1
     reference = wav.astype(float) / 32768
     def read(path):
-        media = json.loads(path.read_text())
-        report = json.loads(path.with_name(path.name.replace('.media.json', '.analysis.json')).read_text())
+        media = json.loads(gzip.decompress(path.read_bytes()) if path.suffix == '.gz' else path.read_bytes())
+        name = path.name.removesuffix('.gz').replace('.media.json', '.analysis.json')
+        report = json.loads(path.with_name(name).read_text())
         return excerpts(media, report, reference)
     control = {(trial, index): value for trial, path in enumerate(args.control) for index, value in read(path).items()}
     candidate = {(trial, index): value for trial, path in enumerate(args.candidate) for index, value in read(path).items()}
