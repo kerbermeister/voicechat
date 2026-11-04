@@ -31,6 +31,14 @@ class CallControlTests(unittest.TestCase):
         self.now += 1
         return self.admit(peer)
 
+    def test_new_room_bounds_native_video_playout_and_preserves_admission_limits(self):
+        first = self.join(0)
+        self.assertEqual(self.operations[-1], ('CreateRoom', {
+            'name': first['generation'], 'max_participants': self.store.limit,
+            'empty_timeout': 60, 'departure_timeout': 30,
+            'min_playout_delay': 130, 'max_playout_delay': 130,
+        }))
+
     def test_heartbeat_does_not_provision_but_background_repairs_missing_room(self):
         first = self.join(0)
         self.operations.clear()
