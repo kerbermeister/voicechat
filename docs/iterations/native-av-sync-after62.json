@@ -13331,20 +13331,24 @@
     "native_binary_update_required": true
   },
   "sdk_bounded_sync_candidate": {
-    "status": "build_pending_not_qualified",
+    "status": "cpp_proven_native_sdk_building_not_media_qualified",
     "branch": "codex/native-sdk-av-sync",
     "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
     "patch": "infra/webrtc-bounded-sync.patch",
     "source_manifest": "infra/webrtc-sdk.json",
-    "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41875798369",
+    "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41884712502",
     "paired_fixed90_series": "rejected: 2/3 pass, raw97.99/corrected100.80ms and speech regression",
     "shared_fixed90": "reproduced recovery2105.44ms; audio latency up to2240.07ms",
     "change": "RenderTime and GetInfo share effective CurrentDelay; preserve adaptive factory defaults, audio device minimum and raw jitter reset guard",
-    "unit_tests": "pending3 regressions old/new and all VCMTimingTest",
+    "unit_tests": {
+      "before_fix": "all3 named SyncDelay regressions fail",
+      "after_fix": "21/21 VCMTimingTest pass,0 skipped/failures/errors",
+      "patch_sha256": "8f9c5903638c6117f68269fed254defa5fbf44e9fa1ae07c2cfc5664bb1df9f7"
+    },
     "fixture_checks": "4 Python +2 Node tests and targeted Dart analyzer pass",
     "native_release": 62,
     "published": false,
-    "source_commit": "4631d2f3eb7e99bac91ee2ec251f147af51598d3",
+    "source_commit": "1c848bb9d05a6cdaa9c3891e584c24ccb11e73b8",
     "prototype_ci": {
       "run": "https://github.com/kerbermeister/voicechat/actions/runs/41873429392",
       "status": "success",

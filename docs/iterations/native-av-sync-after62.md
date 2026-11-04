@@ -329,3 +329,14 @@ C++ теста охватывают jitter target2s при current20ms, гран
 адаптивный буфер и учёт гарнитур сохранены. Матрица и допуски проверок прежние;
 ни одного медиапрогона этого SDK ещё нет. Альтернативный bounded-target SDK
 остаётся историческим кандидатом и не предназначен к выпуску.
+
+CurrentDelay C++ gate в1c848bb пройден:
+https://github.com/kerbermeister/voicechat/actions/runs/41884712502.
+На старом TargetDelay поведении все3 SyncDelay regression tests падают;
+с исправлением21/21 VCMTimingTest PASS,0 failures/errors/skips.
+XML и receipt сверены с patch SHA8f9c5903638c6117f68269fed254defa5fbf44e9fa1ae07c2cfc5664bb1df9f7.
+Это доказательство расчёта в C++, не медиаприёмка. Собираются native SDK
+Mac/Android; новых нативных звонков/обновлений пока нет.
+Дополнительный P2P gate: excess voice delay относительно одновременного обычного
+аудиозвонка <=80мс в clean, после5с video pause и после5с recovery.
+Так исключаем исправление lip-sync искусственным накоплением обоих потоков.
