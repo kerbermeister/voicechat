@@ -364,7 +364,7 @@
 +  EXPECT_GT(audio_.floor, TimeDelta::Zero());
 +}
 +
-+TEST(StreamSynchronizationTest, AudioSyncBudgetPreservesExplicitBase) {
++TEST_F(StreamSynchronizationTest, AudioSyncBudgetPreservesExplicitBase) {
 +  StreamSynchronization sync(0, 0, 80);
 +  sync.SetTargetBufferingDelay(500);
 +  int audio_delay_ms = 500;

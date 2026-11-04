@@ -13558,7 +13558,7 @@
   },
   "sdk_vc3": {
     "status": "source prepared, C++/SDK/media pending",
-    "manifest_patch_sha256": "aaea8cebf7c6dba477ac7185bcd0ca9ec496a2fca098b69b13c5d7086e25bf8c",
+    "manifest_patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0",
     "native_tests_expected": 45,
     "negative_regressions_expected": 9,
     "policy": "Bound retained controller state and added audio minimum to80ms beyond explicit base; natural NetEq and device/video delay remain independent",
