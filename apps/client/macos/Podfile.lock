@@ -67,12 +67,12 @@ DEPENDENCIES:
   - sqflite_darwin (from `Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/darwin`)
   - sqflite_sqlcipher (from `Flutter/ephemeral/.symlinks/plugins/sqflite_sqlcipher/macos`)
   - video_player_avfoundation (from `Flutter/ephemeral/.symlinks/plugins/video_player_avfoundation/darwin`)
+  - WebRTC-SDK (from `../../../vendor/webrtc-sdk/WebRTC-SDK.podspec`)
 
 SPEC REPOS:
   trunk:
     - FMDB
     - SQLCipher
-    - WebRTC-SDK
 
 EXTERNAL SOURCES:
   audioplayers_darwin:
@@ -105,6 +105,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/sqflite_sqlcipher/macos
   video_player_avfoundation:
     :path: Flutter/ephemeral/.symlinks/plugins/video_player_avfoundation/darwin
+  WebRTC-SDK:
+    :podspec: "../../../vendor/webrtc-sdk/WebRTC-SDK.podspec"
 
 SPEC CHECKSUMS:
   audioplayers_darwin: 835ced6edd4c9fc8ebb0a7cc9e294a91d99917d5
@@ -124,8 +126,8 @@ SPEC CHECKSUMS:
   sqflite_sqlcipher: a4c2f17db76d2f86dfe044937d3a851d8880cbb9
   SQLCipher: eb79c64049cb002b4e9fcb30edb7979bf4706dfc
   video_player_avfoundation: 3453f792138786248960ca029747fcd9f318ef52
-  WebRTC-SDK: 71bce2be85c3082d24bbfd1a9930ea07d0c494c1
+  WebRTC-SDK: b9a4fed36c63acd6d70779029683ab38a4538eec
 
-PODFILE CHECKSUM: 36083dc1acae4b346d3000d86f074df24633055b
+PODFILE CHECKSUM: 7195d10c0081975d763b7e71be08985ecf053265
 
 COCOAPODS: 1.16.2
