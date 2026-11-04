@@ -101,6 +101,13 @@ Future<Map<String, dynamic>> measureP2PReceiver(
     'payload_types': payloads.toList(),
   });
   final audioOnly = video == null;
+  const impairAudio = bool.fromEnvironment('P2P_IMPAIR_AUDIO');
+  expect(
+    impairAudio && (audioOnly || audioControl != null),
+    isFalse,
+    reason:
+        'Audio-stall recovery uses one video call; the paired voice reference must remain intact',
+  );
   await _channel.invokeMethod<void>('observe', {
     'audio': audio.track!.id,
     if (video != null) 'video': video.track!.id,
@@ -187,6 +194,8 @@ Future<Map<String, dynamic>> measureP2PReceiver(
             (i) => i + 96,
           ).firstWhere((pt) => !mediaPayloads('audio').contains(pt)),
         }
+      : impairAudio
+      ? mediaPayloads('audio')
       : payloads;
   // ignore: avoid_print
   print(
@@ -239,8 +248,14 @@ Future<Map<String, dynamic>> measureP2PReceiver(
   num packets(int sample, String kind) =>
       samples[sample].firstWhere((s) => s['kind'] == kind)['packetsReceived']
           as num;
-  if (!audioOnly) expect(packets(60, 'video') - packets(52, 'video'), 0);
-  expect(packets(60, 'audio') - packets(52, 'audio'), greaterThan(30));
+  if (!audioOnly) {
+    final blocked = impairAudio ? 'audio' : 'video';
+    final continuing = impairAudio ? 'video' : 'audio';
+    expect(packets(60, blocked) - packets(52, blocked), 0);
+    expect(packets(60, continuing) - packets(52, continuing), greaterThan(30));
+  } else {
+    expect(packets(60, 'audio') - packets(52, 'audio'), greaterThan(30));
+  }
   if (audioControl != null) {
     num controlPackets(int sample) =>
         controlSamples[sample].singleWhere(
@@ -278,6 +293,7 @@ Future<Map<String, dynamic>> measureP2PReceiver(
     'phases': phases,
     'shared_group': !split,
     'video_payload_types': payloads.toList(),
+    'impaired_media_kind': impairAudio ? 'audio' : 'video',
     'p2p': true,
     'video_playout_ms': playout,
     'separate_streams': split,

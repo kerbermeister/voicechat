@@ -13336,13 +13336,24 @@
     "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
     "patch": "infra/webrtc-bounded-sync.patch",
     "source_manifest": "infra/webrtc-sdk.json",
-    "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41873429695",
+    "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41875798369",
     "paired_fixed90_series": "rejected: 2/3 pass, raw97.99/corrected100.80ms and speech regression",
     "shared_fixed90": "reproduced recovery2105.44ms; audio latency up to2240.07ms",
     "change": "bounded synchronization getter; raw jitter estimate retained for frame-buffer reset",
     "unit_tests": "pending native C++ red/green and all VCMTimingTest",
     "fixture_checks": "4 Python +2 Node tests and targeted Dart analyzer pass",
     "native_release": 62,
-    "published": false
+    "published": false,
+    "source_commit": "4631d2f3eb7e99bac91ee2ec251f147af51598d3",
+    "prototype_ci": {
+      "run": "https://github.com/kerbermeister/voicechat/actions/runs/41873429392",
+      "status": "success",
+      "server_tests": 854,
+      "flutter_analyze": "pass",
+      "flutter_tests": "pass",
+      "ordinary_android_preview": "built"
+    },
+    "delivery_tests": "5 checksum/download/cache guard tests pass",
+    "mirror_audio_stall": "fixture prepared;2 Mac +2 Android runs required; actual media checks not yet run"
   }
 }

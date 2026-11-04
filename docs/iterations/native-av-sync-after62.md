@@ -293,3 +293,21 @@ https://github.com/kerbermeister/voicechat/actions/runs/41873429695.
 analyze PASS. Полная локальная серверная проверка до setup нового worktree
 невалидна (нет локальных test secrets, а путь .prototype нарушает существующую
 assertion стенда); чистый CI выполняет штатный setup и полный набор.
+
+Текущий SDK CI4631d2f:
+https://github.com/kerbermeister/voicechat/actions/runs/41875798369.
+Исправлен обязательный путь Android build_aar внутри source checkout.
+Общий Prototype CI54ca593 завершён успешно:854 серверных теста, analyze,
+Flutter tests и обычный Android preview.5 проверок доставки SDK SHA/размеров,
+кеша, Maven metadata и границ источника PASS. Подготовлены отдельные source
+и artifact manifests, чтобы публикация хешей не запускала сборку SDK заново.
+
+До результатов новых SDK-звонков закреплены3 shared-stream simultaneous
+Mac P2P пары,3 native LiveKit,3 Android P2P и3 Android LiveKit с речевыми
+контролями. Все валидные прогоны должны пройти прежние source20/AV80мс и
+STOI/RMS, без усреднения провалов. Дополнительно нужны2 Mac и2 Android
+зеркальных audio-only RTP stall: аудио останавливается, видео продолжает
+получать пакеты, затем обе оценки A/V после восстановления <=80мс. Стенд
+для зеркального случая подготовлен, медиапроверка ещё не выполнена.
+Публикация Android по существующим правилам требует физической приёмки точного
+APK; удалённый Xiaomi нельзя заменять результатом эмулятора.

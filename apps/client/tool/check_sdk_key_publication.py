@@ -44,12 +44,17 @@ def main():
     parser.add_argument('--av-marker-output', type=Path, help='Run the injected native synthetic A/V fixture')
     parser.add_argument('--shared-sync', action='store_true', help='Enable native A/V synchronization in the disposable room')
     parser.add_argument('--video-playout-ms', type=int, choices=(0, 130), default=0)
+    parser.add_argument('--native-video-playout-ms', type=int, choices=(0, 90, 100, 130), default=0)
+    parser.add_argument('--coherent-source', action='store_true', help='Queue video marker boundaries with the synthetic audio source')
+    parser.add_argument('--min-native-video-playout-ms', type=int, choices=(0, 20, 90, 100, 130))
     parser.add_argument('--max-video-playout-ms', type=int, choices=(130, 10000), default=10000)
     parser.add_argument('--av-marker-network', action='store_true', help='Apply video-only delay and outage in the disposable SFU')
     parser.add_argument('--av-speech', type=Path, help='Synthetic mono48kHz PCM16 WAV; never use a personal recording')
     parser.add_argument('--av-sender-root', type=Path, help='Separate account-free macOS sender checkout (A/V fixture only)')
     parser.add_argument('--av-media-ip', help='Local private interface for encrypted RTP between Mac and the owned Android emulator')
     args = parser.parse_args()
+    if args.min_native_video_playout_ms is not None and (args.native_video_playout_ms == 0 or args.min_native_video_playout_ms > args.native_video_playout_ms):
+        parser.error('Native minimum requires a nonzero maximum and must not exceed it')
     if bool(args.av_sender_root) != bool(args.av_media_ip):
         parser.error('Separate sender requires its checkout and a local private media interface')
     if args.av_sender_root:
@@ -264,6 +269,9 @@ def main():
                 'GROUP_TEST_REPEAT_RECEIVER_KEY': args.repeat_receiver_key,
                 'AV_MARKER_OUTPUT': marker_url,
                 'AV_VIDEO_PLAYOUT_MS': args.video_playout_ms,
+                'AV_NATIVE_VIDEO_PLAYOUT_MS': args.native_video_playout_ms,
+                'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS': args.min_native_video_playout_ms if args.min_native_video_playout_ms is not None else args.native_video_playout_ms,
+                'AV_COHERENT_MARKERS': args.coherent_source,
                 'AV_MARKER_NETWORK': args.av_marker_network,
                 'AV_MARKER_ROLE': 'receiver' if args.av_sender_root else 'both',
                 'AV_MARKER_KEY': marker_key,

@@ -93,7 +93,7 @@ def prepare(manifest, cache):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--manifest', type=Path, default=ROOT / 'infra/webrtc-sdk.json')
+    parser.add_argument('--manifest', type=Path, default=ROOT / 'infra/webrtc-sdk-artifacts.json')
     parser.add_argument('--cache', type=Path, default=ROOT / '.prototype/webrtc-sdk')
     args = parser.parse_args()
     print(prepare(json.loads(args.manifest.read_text()), args.cache).resolve())

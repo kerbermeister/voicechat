@@ -32,3 +32,11 @@ pass actual native shared-stream P2P and LiveKit encrypted-media calls, speech
 comparisons with an ordinary call, loss/recovery and lifecycle tests. Both raw
 and source-corrected A/V offsets must remain within 80 ms. See the existing
 [acceptance entry UA-08.C06](../docs/user-acceptance.md) for the open scope.
+
+Source pins in `webrtc-sdk.json` are build inputs; checksums and URLs of accepted
+SDK binaries belong in `webrtc-sdk-artifacts.json`. The Android helper verifies
+the AAR before publishing it into the local Maven cache, and verifies cached
+bytes on reuse. CocoaPods and SwiftPM must use the same accepted macOS archive.
+The SDK workflow automatically runs only when its build script, source manifest
+or C++ patch changes. Documentation, artifact delivery and app-only changes use
+the existing SDK bytes; workflow/job changes can be checked with a manual run.
