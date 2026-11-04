@@ -1,6 +1,15 @@
 name: Build bounded A/V WebRTC SDK
 on:
   workflow_dispatch:
+    inputs:
+      macos_only:
+        description: Build only the macOS SDK
+        type: boolean
+        default: false
+      timing_tests_run:
+        description: Reuse exact-source timing evidence from this successful test job's run
+        type: string
+        default: ''
   push:
     branches: [codex/native-sdk-av-sync]
     paths:
@@ -9,6 +18,7 @@ on:
       - infra/webrtc-bounded-sync.patch
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: webrtc-sdk-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
@@ -21,19 +31,31 @@ jobs:
         with:
           persist-credentials: false
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        if: inputs.timing_tests_run == ''
         with:
           repository: webrtc-sdk/webrtc-build
           ref: 717ec1dc5a94389d691e09cccaf3d7b3364fb4b7
           path: sdk-builder
           persist-credentials: false
       - name: Prepare isolated runner
+        if: inputs.timing_tests_run == ''
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android
           sudo env DEBIAN_FRONTEND=noninteractive apt-get update
           sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential ninja-build python3-setuptools rsync libx11-6 libxcomposite1 libxdamage1 libxext6 libxfixes3 libxrandr2 libxtst6 libgbm1
           df -h
       - name: Prove regression and run timing tests
+        if: inputs.timing_tests_run == ''
         run: python3 infra/build_webrtc_sdk.py test --builder sdk-builder/build --work "$RUNNER_TEMP/sdk" --output "$RUNNER_TEMP/results"
+      - name: Verify reusable native timing evidence
+        if: inputs.timing_tests_run != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TIMING_RUN: ${{ inputs.timing_tests_run }}
+        run: |
+          [[ "$TIMING_RUN" =~ ^[1-9][0-9]*$ ]] || exit 1
+          gh run download "$TIMING_RUN" --repo "$GITHUB_REPOSITORY" --name webrtc-timing-tests --dir "$RUNNER_TEMP/results"
+          python3 infra/verify_webrtc_timing.py "$RUNNER_TEMP/results"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
@@ -45,11 +67,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: macos
-            os: macos-26
-          - platform: android
-            os: ubuntu-24.04
+        include: ${{ fromJSON(inputs.macos_only && '[{"platform":"macos","os":"macos-26"}]' || '[{"platform":"macos","os":"macos-26"},{"platform":"android","os":"ubuntu-24.04"}]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     steps:
@@ -80,6 +98,7 @@ jobs:
           SDK_PLATFORM: ${{ matrix.platform }}
         run: python3 infra/build_webrtc_sdk.py "$SDK_PLATFORM" --builder sdk-builder/build --work "$RUNNER_TEMP/sdk" --output "$RUNNER_TEMP/results"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        if: always()
         with:
           name: webrtc-${{ matrix.platform }}-150.7871.04-vc1
           path: ${{ runner.temp }}/results/
