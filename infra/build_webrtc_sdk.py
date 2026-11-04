@@ -192,7 +192,7 @@ def android(source, work, output):
     run([sys.executable, source / 'tools_webrtc/android/build_aar.py',
          '--build-dir', source / 'out/voicechat-aar', '--output', aar,
          '--arch', 'armeabi-v7a', 'arm64-v8a', 'x86_64',
-         '--extra-gn-args=' + ANDROID_ARGS, '--extra-ninja-switches=-j2'], cwd=source)
+         '--extra-gn-args=' + ANDROID_ARGS, '--extra-ninja-switches=-local_jobs=2'], cwd=source)
     with zipfile.ZipFile(aar) as archive:
         names = set(archive.namelist())
         for abi in ['armeabi-v7a', 'arm64-v8a', 'x86_64']:
