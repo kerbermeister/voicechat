@@ -1,0 +1,22 @@
+{
+  "sdk_version": "150.7871.04",
+  "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
+  "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
+  "patch_sha256": "ca7d40aeccc9573da075238785252e32300f60aa5e541192c2a68e5f88b14f9c",
+  "original_files_sha256": {
+    "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
+    "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
+    "modules/video_coding/timing/timing_unittest.cc": "a09139d9e981cb3523d308c4a37264aff8b9a50e5aae38c71017af52e509754e",
+    "video/video_receive_stream2.cc": "77744fe47b8d84cfc85ee5fa37e7ad34ca9c846e2308d7dddf2d6992afd5dc4c"
+  },
+  "patched_files_sha256": {
+    "modules/video_coding/timing/timing.h": "2e467647b9ea596f18ceb037de2e32f45a95ed5a274bdb1fd6e85899c88f764e",
+    "modules/video_coding/timing/timing.cc": "1150e97d25f9d86f2abb6eb501df190172bf7dc9241f93c8825e535217c4955f",
+    "modules/video_coding/timing/timing_unittest.cc": "4d0888c5d93cb7e0076ac33cb0a0fd1775a647f6c1b20eb974228e29b58fb818",
+    "video/video_receive_stream2.cc": "09dc59f62d20ead86633f7eb79b83b71d9f60c26377d84a49abe7ef6334b14b6"
+  },
+  "unit_filter": "VCMTimingTest.*",
+  "regression_filter": "VCMTimingTest.SyncTarget*",
+  "release_artifact_version": "150.7871.04-vc1",
+  "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3"
+}

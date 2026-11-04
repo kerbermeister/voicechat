@@ -1,0 +1,74 @@
+--- a/modules/video_coding/timing/timing.h
++++ b/modules/video_coding/timing/timing.h
+@@ -106,6 +106,10 @@
+   // render delay.
+   TimeDelta TargetVideoDelay() const;
+ 
++  // Bounded delay for A/V sync. Keep the unbounded estimate above available
++  // for detecting excessive jitter and resetting the video frame buffer.
++  TimeDelta TargetVideoDelayForSync() const;
++
+   // Returns current timing information.
+   VideoDelayTimings GetTimings() const;
+ 
+--- a/modules/video_coding/timing/timing.cc
++++ b/modules/video_coding/timing/timing.cc
+@@ -180,6 +180,11 @@
+   return timings_.TargetDelay();
+ }
+ 
++TimeDelta VCMTiming::TargetVideoDelayForSync() const {
++  MutexLock lock(&mutex_);
++  return std::min(timings_.TargetDelay(), timings_.max_playout_delay);
++}
++
+ VCMTiming::VideoDelayTimings VCMTiming::GetTimings() const {
+   MutexLock lock(&mutex_);
+   VideoDelayTimings timings = timings_;
+--- a/modules/video_coding/timing/timing_unittest.cc
++++ b/modules/video_coding/timing/timing_unittest.cc
+@@ -482,5 +482,33 @@
+   EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
+ }
+ 
++TEST(VCMTimingTest, SyncTargetRespectsMaximumAfterVideoJitter) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(0);
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(90), TimeDelta::Millis(90)});
++  timing.SetMinimumDelay(TimeDelta::Seconds(2));
++
++  EXPECT_EQ(timing.TargetVideoDelayForSync(), TimeDelta::Millis(90));
++  // Do not hide the oversized jitter estimate from the frame-buffer reset guard.
++  EXPECT_GT(timing.TargetVideoDelay(), TimeDelta::Seconds(2));
++}
++
++TEST(VCMTimingTest, SyncTargetPreservesSmallerTargetsAndMinimum) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(0);
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(40), TimeDelta::Millis(130)});
++  timing.SetMinimumDelay(TimeDelta::Millis(5));
++  EXPECT_EQ(timing.TargetVideoDelayForSync(), TimeDelta::Millis(40));
++
++  timing.SetMinimumDelay(TimeDelta::Millis(50));
++  EXPECT_EQ(timing.TargetVideoDelayForSync(), timing.TargetVideoDelay());
++
++  timing.SetMinimumDelay(TimeDelta::Seconds(2));
++  EXPECT_EQ(timing.TargetVideoDelayForSync(), TimeDelta::Millis(130));
++  EXPECT_GT(timing.TargetVideoDelay(), TimeDelta::Seconds(2));
++}
++
+ }  // namespace
+ }  // namespace webrtc
+--- a/video/video_receive_stream2.cc
++++ b/video/video_receive_stream2.cc
+@@ -810,7 +810,7 @@
+   if (!info)
+     return std::nullopt;
+ 
+-  info->current_delay = timing_->TargetVideoDelay();
++  info->current_delay = timing_->TargetVideoDelayForSync();
+   return info;
+ }
+ 
