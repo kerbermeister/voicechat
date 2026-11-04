@@ -13458,7 +13458,7 @@
     "raw_private_evidence": ".prototype/native-p2p-android-cross-current-v1-sync-diagnostic2.media.json.gz"
   },
   "sdk_vc2": {
-    "status": "source prepared; C++ CI pending; not released",
+    "status": "43 C++ passed and8 negative regressions reproduced for7-file patch; final8-file patch adds upstream GN test deps, fresh gate pending",
     "commit": "46c02096f0c5b333f26fe3b9504db81dc10aeea1",
     "workflow_run": 41917176968,
     "native_tests_expected": 43,
@@ -13477,10 +13477,12 @@
       },
       {
         "id": 41917176968,
-        "outcome": "pending",
+        "outcome": "PASS43/43,8 negatives reproduced, no skips; SDK jobs cancelled before substantive builds to complete upstream test deps",
         "reason": "Upstream testonly exemption; real C++ gate required"
       }
-    ]
+    ],
+    "final_patch_sha256": "c0b4230d0be350aadf13de44a01686dcc920cfcc9718c2c371b89bbe4f1ca136",
+    "final_upstream_test_deps": "api/environment:environment_factory and test/time_controller in video/BUILD.gn; no C++ algorithm change"
   },
   "native_recovery_scoring": {
     "tests_passed": 4,

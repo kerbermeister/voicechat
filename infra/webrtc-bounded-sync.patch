@@ -397,3 +397,17 @@
 +}  // namespace
 +
  }  // namespace webrtc
+--- a/video/BUILD.gn
++++ b/video/BUILD.gn
+@@ -1748,9 +1748,11 @@
+     sources = [ "stream_synchronization_unittest.cc" ]
+     deps = [
+       ":video",
++      "../api/environment:environment_factory",
+       "../rtc_base:rtp_to_ntp_estimator",
+       "../system_wrappers",
+       "../test:test_support",
++      "../test/time_controller",
+       "//call",
+       "//call:call_interfaces",
+     ]

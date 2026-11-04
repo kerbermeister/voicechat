@@ -1,6 +1,6 @@
 # Bounded A/V synchronization SDK
 
-This candidate retains WebRTC SDK 150.7871.04 and its security fixes. The seven-file
+This candidate retains WebRTC SDK 150.7871.04 and its security fixes. The eight-file
 patch makes rendering and A/V synchronization use the same effective current
 video delay, including the low-latency path and negotiated bounds. The unbounded
 jitter estimate remains available to the video frame-buffer reset guard. Native
@@ -8,7 +8,7 @@ factory defaults and adaptive/audio-device buffering are preserved. Audio
 DSP, codecs, cryptors and certificate validation are unchanged.
 
 `webrtc-sdk.json` pins the SDK source, official builder, depot_tools, patch and all
-seven source files before/after patching. `build_webrtc_sdk.py` rejects unexpected inputs.
+eight source files before/after patching. `build_webrtc_sdk.py` rejects unexpected inputs.
 The CI workflow first proves that eight regression tests fail with the original
 getter/synchronizer behavior, then runs all 43 timing and synchronization tests.
 The synchronizer releases only its minimum-delay floors when either RTP stream
@@ -67,3 +67,7 @@ Android P2P pilot reached 385.652 ms corrected recovery skew. vc2 adds stale-flo
 recovery; its C++ and actual-call qualification are pending. The artifact manifest
 still describes vc1 until new immutable vc2 binaries have been built and verified.
 Do not publish client updates from this intermediate branch.
+
+The upstream stream_synchronization_unittest GN target also declares the two
+new test dependencies, in addition to the small isolated CI harness. This
+keeps the ordinary upstream test target buildable when using the patch.
