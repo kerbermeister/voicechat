@@ -11,8 +11,8 @@ import sys
 import zipfile
 
 HERE = Path(__file__).resolve().parent
-MANIFEST = json.loads((HERE / 'manifest.json').read_text())
-PATCH = HERE / 'bounded_sync.patch'
+MANIFEST = json.loads((HERE / 'webrtc-sdk.json').read_text())
+PATCH = HERE / 'webrtc-bounded-sync.patch'
 MIN_FREE = 2_000_000_000
 MAC_ARGS = '''enable_libaom=true enable_stripping=true
 is_component_build=false is_debug=false rtc_build_examples=false
