@@ -1,0 +1,228 @@
+// Injected by the isolated test runner; never compiled into a release app.
+import WebRTC
+import flutter_webrtc
+import AVFoundation
+
+final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioRenderer, RTCVideoRenderer {
+  static var instance: NativeAVMarker?
+  static func install(_ messenger: FlutterBinaryMessenger) {
+    instance = NativeAVMarker(messenger)
+  }
+  private let lock = NSLock()
+  private var origin = CACurrentMediaTime()
+  private var rate = 48000
+  private var sampleCursor: Int64 = 0
+  private let sourceLock = NSLock()
+  private var sourceMarker = 0
+  private var sourceVisible = false
+  private var lastSourceAudio = -1
+  private var lastSourceVideo = -1
+  private var sourceAudioMarkers = [[Double]]()
+  private var sourceVideoMarkers = [[Double]]()
+  private var speech = [Int16]()
+  private let lowTones: [Double] = [697, 770, 852, 941]
+  private let highTones: [Double] = [1209, 1336, 1477, 1633]
+  private var frameCounter = 0
+  private var backgrounds = [Data]()
+  private var timer: DispatchSourceTimer?
+  private var source: RTCVideoSource?
+  private var capturer: RTCVideoCapturer?
+  private var audio: RTCAudioTrack?
+  private var video: RTCVideoTrack?
+  private var audioChunks = [[String: Any]]()
+  private var audioPeak: Float = 0
+  private var videoMarkers = [[Double]]()
+  private var lastMarker = -1
+  private var running = false
+  private let channel: FlutterMethodChannel
+  init(_ messenger: FlutterBinaryMessenger) {
+    channel = FlutterMethodChannel(name: "voicechat/native-av-lab", binaryMessenger: messenger)
+    super.init()
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard let self, let plugin = FlutterWebRTCPlugin.sharedSingleton() else { return }
+      let args = call.arguments as? [String: Any] ?? [:]
+      switch call.method {
+      case "clock": result(CACurrentMediaTime())
+      case "receive": running = true; result(nil)
+      case "create":
+        guard let factory = plugin.peerConnectionFactory,
+          let id = args["stream"] as? String,
+          let stream = plugin.localStreams?[id] as? RTCMediaStream else {
+          result(FlutterError(code: "fixture", message: "Missing native stream", details: nil)); return
+        }
+        let source = factory.videoSource()
+        backgrounds = Self.makeBackgrounds()
+        if let data = args["speech"] as? FlutterStandardTypedData {
+          speech = data.data.withUnsafeBytes { Array($0.bindMemory(to: Int16.self)) }
+        }
+        self.source = source
+        capturer = RTCVideoCapturer(delegate: source)
+        let track = factory.videoTrack(with: source, trackId: UUID().uuidString)
+        stream.addVideoTrack(track)
+        plugin.localTracks?[track.trackId] = LocalVideoTrack(track: track)
+        plugin.audioManager?.capturePostProcessingAdapter.addProcessing(self)
+        origin = CACurrentMediaTime()
+        running = true
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "voicechat.native-av-marker"))
+        timer.schedule(deadline: .now(), repeating: 1.0 / 20)
+        timer.setEventHandler { [weak self] in self?.emitVideo() }
+        self.timer = timer
+        timer.resume()
+        result(nil)
+      case "observe":
+        audio = plugin.remoteTrack(forId: args["audio"] as? String ?? "") as? RTCAudioTrack
+        video = plugin.remoteTrack(forId: args["video"] as? String ?? "") as? RTCVideoTrack
+        guard let audio, let video else {
+          result(FlutterError(code: "fixture", message: "Missing remote media", details: nil)); return
+        }
+        audio.add(self)
+        video.add(self)
+        result(nil)
+      case "result":
+        lock.lock()
+        var value: [String: Any] = ["audio": audioChunks, "video": videoMarkers, "origin": origin]
+        lock.unlock()
+        sourceLock.lock()
+        value["source_audio"] = sourceAudioMarkers
+        value["source_video"] = sourceVideoMarkers
+        sourceLock.unlock()
+        result(value)
+      case "gate":
+        lock.lock()
+        let value: [String: Any] = ["audio_peak": audioPeak, "video_markers": videoMarkers.count,
+                                   "audio_chunks": audioChunks.count]
+        lock.unlock()
+        result(value)
+      case "stop":
+        running = false
+        timer?.cancel(); timer = nil
+        audio?.remove(self); video?.remove(self)
+        plugin.audioManager?.capturePostProcessingAdapter.removeProcessing(self)
+        result(nil)
+      default: result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+  func audioProcessingInitialize(withSampleRate sampleRateHz: Int, channels: Int) { rate = sampleRateHz }
+  private static func makeBackgrounds() -> [Data] {
+    var result = [Data]()
+    for frame in 0..<16 {
+      var bytes = [UInt8](repeating: 80, count: 640 * 360)
+      for row in 0..<360 { for col in 0..<640 {
+        let texture = ((col * 13 + row * 7 + frame * 17) ^ (col * row)) & 15
+        let horizontal = (((col + frame * 4) / 16) & 1) * 40
+        let vertical = (((row + frame * 2) / 16) & 1) * 40
+        bytes[row * 640 + col] = UInt8(80 + texture + horizontal + vertical)
+      }}
+      result.append(Data(bytes))
+    }
+    return result
+  }
+  func audioProcessingRelease() {}
+  func audioProcessingProcess(_ buffer: RTCAudioBuffer) {
+    guard running else { return }
+    if sampleCursor == 0 { origin = CACurrentMediaTime() }
+    // Both markers use the captured-sample clock. An emulated audio device can
+    // suspend while wall time advances; independent wall-clock video is then
+    // already out of sync before encoding.
+    let sourceTime = Double(sampleCursor) / Double(rate)
+    sourceLock.lock()
+    sourceMarker = Int(sourceTime / 2)
+    sourceVisible = sourceTime - Double(sourceMarker * 2) < 0.12
+    if sourceMarker != lastSourceAudio {
+      lastSourceAudio = sourceMarker
+      sourceAudioMarkers.append([Double(sourceMarker), CACurrentMediaTime()])
+    }
+    sourceLock.unlock()
+    for ch in 0..<buffer.channels {
+      let samples = buffer.rawBuffer(forChannel: ch)
+      for index in 0..<buffer.frames {
+        let time = Double(sampleCursor + Int64(index)) / Double(rate)
+        let id = Int(time / 2)
+        let phase = time - Double(id * 2)
+        let speechIndex = Int((phase - 0.75) * 48000)
+        if phase < 0.6 && phase.truncatingRemainder(dividingBy: 0.15) < 0.105 {
+          let a = (id >> 8) & 15, b = (id >> 4) & 15, c = id & 15
+          let digit: Int
+          switch min(3, Int(phase / 0.15)) {
+          case 0: digit = a
+          case 1: digit = b
+          case 2: digit = c
+          default: digit = a ^ b ^ c
+          }
+          samples[index] = Float(4500 * (sin(2 * .pi * lowTones[digit >> 2] * time) +
+                                         sin(2 * .pi * highTones[digit & 3] * time)))
+        } else {
+          samples[index] = phase >= 0.75 && speechIndex < speech.count ? Float(speech[speechIndex]) : 0
+        }
+      }
+    }
+    sampleCursor += Int64(buffer.frames)
+  }
+  func render(pcmBuffer buffer: AVAudioPCMBuffer) {
+    guard running else { return }
+    let count = Int(buffer.frameLength)
+    let samples: [Float]
+    if let floats = buffer.floatChannelData {
+      samples = Array(UnsafeBufferPointer(start: floats[0], count: count))
+    } else if let shorts = buffer.int16ChannelData {
+      samples = (0..<count).map { Float(shorts[0][$0]) / 32768 }
+    } else { return }
+    let data = samples.withUnsafeBytes { Data($0) }
+    lock.lock()
+    audioPeak = max(audioPeak, samples.map { abs($0) }.max() ?? 0)
+    if audioChunks.count < 14000 {
+      audioChunks.append(["time": CACurrentMediaTime(), "rate": buffer.format.sampleRate,
+                          "frames": count, "pcm": FlutterStandardTypedData(bytes: data)])
+    }
+    lock.unlock()
+  }
+  func setSize(_ size: CGSize) {}
+  func renderFrame(_ frame: RTCVideoFrame?) {
+    guard running, let frame else { return }
+    let pixels = frame.buffer.toI420()
+    guard pixels.width >= 256, pixels.height >= 90 else { return }
+    var word: UInt32 = 0
+    for bit in 0..<32 {
+      let x = (bit % 16) * 16 + 8, y = (bit / 16) * 40 + 20
+      if pixels.dataY[y * Int(pixels.strideY) + x] > 128 { word |= 1 << bit }
+    }
+    let id = Int(word & 0xffff)
+    guard (word >> 16) == UInt32(id ^ 0xffff), id != lastMarker else { return }
+    lastMarker = id
+    lock.lock(); videoMarkers.append([Double(id), CACurrentMediaTime()]); lock.unlock()
+  }
+  private func emitVideo() {
+    guard running, let source, let capturer else { return }
+    sourceLock.lock()
+    let id = UInt32(sourceMarker & 0xffff)
+    let word = sourceVisible ? id | ((id ^ 0xffff) << 16) : 0
+    sourceLock.unlock()
+    let pixels = RTCI420Buffer(width: 640, height: 360)
+    let y = UnsafeMutablePointer(mutating: pixels.dataY)
+    let u = UnsafeMutablePointer(mutating: pixels.dataU)
+    let v = UnsafeMutablePointer(mutating: pixels.dataV)
+    frameCounter += 1
+    backgrounds[frameCounter % backgrounds.count].withUnsafeBytes { bytes in
+      for row in 0..<360 {
+        memcpy(y + row * Int(pixels.strideY), bytes.baseAddress! + row * 640, 640)
+      }
+    }
+    for row in 0..<80 {
+      for col in 0..<16 {
+        let bit = (row / 40) * 16 + col
+        memset(y + row * Int(pixels.strideY) + col * 16, (word & (1 << bit)) == 0 ? 32 : 220, 16)
+      }
+    }
+    u.initialize(repeating: 128, count: Int(pixels.strideU) * 180)
+    v.initialize(repeating: 128, count: Int(pixels.strideV) * 180)
+    let captured = CACurrentMediaTime()
+    sourceLock.lock()
+    if word != 0 && Int(id) != lastSourceVideo {
+      lastSourceVideo = Int(id)
+      sourceVideoMarkers.append([Double(id), captured])
+    }
+    sourceLock.unlock()
+    source.capturer(capturer, didCapture: RTCVideoFrame(buffer: pixels, rotation: ._0, timeStampNs: Int64(captured * 1e9)))
+  }
+}

@@ -19,11 +19,48 @@ from check_route_turn import reserve_range
 from serve_key_epoch_fixture import fixture_server
 
 
+def create_marker_room(address, key, secret, shared_group=False, video_playout_ms=0, max_video_playout_ms=10000):
+    if not re.fullmatch(r'127\.0\.0\.1:\d{4,5}', address) or int(address.rsplit(':', 1)[1]) > 65535:
+        raise ValueError('Loopback SFU required')
+    if (type(shared_group) is not bool or type(video_playout_ms) is not int or
+            type(max_video_playout_ms) is not int or
+            not 0 <= video_playout_ms <= max_video_playout_ms <= 10000 or
+            video_playout_ms % 10 or max_video_playout_ms % 10):
+        raise ValueError('Invalid RTP playout-delay bounds')
+    def b64(data):
+        return base64.urlsafe_b64encode(data).decode().rstrip('=')
+    header = b64(b'{"alg":"HS256","typ":"JWT"}')
+    claims = b64(json.dumps({
+        'iss': key, 'nbf': int(time.time()) - 5, 'exp': int(time.time()) + 30,
+        'video': {'roomCreate': True},
+    }).encode())
+    jwt_body = f'{header}.{claims}'
+    signature = b64(hmac.digest(secret.encode(), jwt_body.encode(), hashlib.sha256))
+    settings = {'name': 'route-probe', 'max_participants': 10, 'sync_streams': shared_group}
+    if video_playout_ms:
+        settings.update(min_playout_delay=video_playout_ms, max_playout_delay=max_video_playout_ms)
+    create = urllib.request.Request(
+        f'http://{address}/twirp/livekit.RoomService/CreateRoom', json.dumps(settings).encode(),
+        {'Content-Type': 'application/json', 'Authorization': f'Bearer {jwt_body}.{signature}'},
+    )
+    for attempt in range(15):
+        try:
+            with urllib.request.urlopen(create, timeout=2) as reply:
+                assert json.load(reply)['name'] == 'route-probe'
+            return
+        except OSError:
+            if attempt == 14:
+                raise
+            time.sleep(.2)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--web-root', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--shared-sync', action='store_true')
+    parser.add_argument('--video-playout-ms', type=int, choices=(0, 130), default=0)
+    parser.add_argument('--max-video-playout-ms', type=int, choices=(130, 10000), default=10000)
     args = parser.parse_args()
     assets = args.web_root.resolve()
     if args.output.exists() or not all((assets / file).is_file() for file in (
@@ -67,31 +104,7 @@ def main():
                'bands', '2', 'priomap', *['0'] * 16)
             address = run('docker', 'port', name, '7880/tcp')
             assert address.startswith('127.0.0.1:')
-            def b64(data):
-                return base64.urlsafe_b64encode(data).decode().rstrip('=')
-
-            header = b64(b'{"alg":"HS256","typ":"JWT"}')
-            claims = b64(json.dumps({
-                'iss': key, 'nbf': int(time.time()) - 5, 'exp': int(time.time()) + 30,
-                'video': {'roomCreate': True},
-            }).encode())
-            jwt_body = f'{header}.{claims}'
-            signature = b64(hmac.digest(secret.encode(), jwt_body.encode(), hashlib.sha256))
-            create = urllib.request.Request(
-                f'http://{address}/twirp/livekit.RoomService/CreateRoom',
-                json.dumps({'name': 'route-probe', 'max_participants': 10,
-                            'sync_streams': shared_group}).encode(),
-                {'Content-Type': 'application/json', 'Authorization': f'Bearer {jwt_body}.{signature}'},
-            )
-            for attempt in range(15):
-                try:
-                    with urllib.request.urlopen(create, timeout=2) as reply:
-                        assert json.load(reply)['name'] == 'route-probe'
-                    break
-                except OSError:
-                    if attempt == 14:
-                        raise
-                    time.sleep(.2)
+            create_marker_room(address, key, secret, shared_group, args.video_playout_ms, args.max_video_playout_ms)
 
             fixture_config = json.dumps({
                 'marker_seconds': duration, 'media_payload_types': [96, 97], 'impaired_media': 'video',

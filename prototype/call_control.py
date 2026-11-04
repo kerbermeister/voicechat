@@ -66,8 +66,11 @@ class CallStore:
 
     def _ensure_room(self, name):
         if name not in self._provisioned:
+            # Bound native video playout after video-only stalls;
+            # audio keeps its own adaptive queue.
             self.media_api('CreateRoom', {'name': name, 'max_participants': self.limit,
-                                         'empty_timeout': 60, 'departure_timeout': 30})
+                                         'empty_timeout': 60, 'departure_timeout': 30,
+                                         'min_playout_delay': 130, 'max_playout_delay': 130})
             self._provisioned.add(name)
 
     def reconcile(self):
