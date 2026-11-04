@@ -1,61 +1,81 @@
 --- a/modules/video_coding/timing/timing.h
 +++ b/modules/video_coding/timing/timing.h
-@@ -106,6 +106,10 @@
-   // render delay.
-   TimeDelta TargetVideoDelay() const;
- 
-+  // Bounded delay for A/V sync. Keep the unbounded estimate above available
-+  // for detecting excessive jitter and resetting the video frame buffer.
-+  TimeDelta TargetVideoDelayForSync() const;
-+
-   // Returns current timing information.
-   VideoDelayTimings GetTimings() const;
- 
+@@ -36,6 +36,8 @@
+
+     void Reset();
+     TimeDelta TargetDelay() const;
++    // Effective delay used by rendering, including bounds and low-latency mode.
++    TimeDelta CurrentDelay() const;
+     TimeDelta StatsTargetDelay() const;
+     // Returns whether the low-latency path should be used, i.e., frames should
+     // be decoded and rendered as soon as possible.
 --- a/modules/video_coding/timing/timing.cc
 +++ b/modules/video_coding/timing/timing.cc
-@@ -180,6 +180,11 @@
-   return timings_.TargetDelay();
+@@ -65,6 +65,13 @@
+                   minimum_delay + estimated_max_decode_time + render_delay);
  }
- 
-+TimeDelta VCMTiming::TargetVideoDelayForSync() const {
-+  MutexLock lock(&mutex_);
-+  return std::min(timings_.TargetDelay(), timings_.max_playout_delay);
+
++TimeDelta VCMTiming::VideoDelayTimings::CurrentDelay() const {
++  if (UseLowLatencyRendering()) {
++    return TimeDelta::Zero();
++  }
++  return std::clamp(current_delay, min_playout_delay, max_playout_delay);
 +}
 +
- VCMTiming::VideoDelayTimings VCMTiming::GetTimings() const {
-   MutexLock lock(&mutex_);
-   VideoDelayTimings timings = timings_;
+ TimeDelta VCMTiming::VideoDelayTimings::StatsTargetDelay() const {
+   TimeDelta delay = TargetDelay() - (estimated_max_decode_time + render_delay);
+   return std::max(TimeDelta::Zero(), delay);
+@@ -170,9 +177,7 @@
+   if (!local_time.has_value()) {
+     return now;
+   }
+-  return *local_time + std::clamp(timings_.current_delay,
+-                                  timings_.min_playout_delay,
+-                                  timings_.max_playout_delay);
++  return *local_time + timings_.CurrentDelay();
+ }
+
+ TimeDelta VCMTiming::TargetVideoDelay() const {
 --- a/modules/video_coding/timing/timing_unittest.cc
 +++ b/modules/video_coding/timing/timing_unittest.cc
-@@ -482,5 +482,33 @@
+@@ -482,5 +482,42 @@
    EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
  }
- 
-+TEST(VCMTimingTest, SyncTargetRespectsMaximumAfterVideoJitter) {
+
++TEST(VCMTimingTest, SyncDelayUsesCurrentDelayAfterVideoJitter) {
 +  FieldTrials field_trials = CreateTestFieldTrials();
 +  SimulatedClock clock(0);
 +  VCMTiming timing(&clock, field_trials);
-+  timing.set_playout_delay({TimeDelta::Millis(90), TimeDelta::Millis(90)});
++  timing.SetMinimumDelay(TimeDelta::Millis(20));
 +  timing.SetMinimumDelay(TimeDelta::Seconds(2));
 +
-+  EXPECT_EQ(timing.TargetVideoDelayForSync(), TimeDelta::Millis(90));
-+  // Do not hide the oversized jitter estimate from the frame-buffer reset guard.
++  EXPECT_EQ(timing.GetTimings().CurrentDelay(), TimeDelta::Millis(20));
++  // Retain the raw estimate for detecting excessive jitter and resetting buffers.
 +  EXPECT_GT(timing.TargetVideoDelay(), TimeDelta::Seconds(2));
 +}
 +
-+TEST(VCMTimingTest, SyncTargetPreservesSmallerTargetsAndMinimum) {
++TEST(VCMTimingTest, SyncDelayRespectsBoundsAndAudioDeviceMinimum) {
 +  FieldTrials field_trials = CreateTestFieldTrials();
 +  SimulatedClock clock(0);
 +  VCMTiming timing(&clock, field_trials);
++  timing.SetMinimumDelay(TimeDelta::Millis(200));
 +  timing.set_playout_delay({TimeDelta::Millis(40), TimeDelta::Millis(130)});
-+  timing.SetMinimumDelay(TimeDelta::Millis(5));
-+  EXPECT_EQ(timing.TargetVideoDelayForSync(), TimeDelta::Millis(40));
++  EXPECT_EQ(timing.GetTimings().CurrentDelay(), TimeDelta::Millis(130));
 +
-+  timing.SetMinimumDelay(TimeDelta::Millis(50));
-+  EXPECT_EQ(timing.TargetVideoDelayForSync(), timing.TargetVideoDelay());
++  // A/V sync may legitimately add video delay to match an audio device.
++  timing.set_playout_delay({TimeDelta::Millis(250), TimeDelta::Seconds(10)});
++  EXPECT_EQ(timing.GetTimings().CurrentDelay(), TimeDelta::Millis(250));
++}
 +
++TEST(VCMTimingTest, SyncDelayUsesLowLatencyRenderingPath) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(0);
++  VCMTiming timing(&clock, field_trials);
 +  timing.SetMinimumDelay(TimeDelta::Seconds(2));
-+  EXPECT_EQ(timing.TargetVideoDelayForSync(), TimeDelta::Millis(130));
++  timing.set_playout_delay({TimeDelta::Zero(), TimeDelta::Millis(130)});
++
++  EXPECT_EQ(timing.GetTimings().CurrentDelay(), TimeDelta::Zero());
++  EXPECT_EQ(timing.RenderTime(0, clock.CurrentTime()), Timestamp::Zero());
 +  EXPECT_GT(timing.TargetVideoDelay(), TimeDelta::Seconds(2));
 +}
 +
@@ -66,9 +86,9 @@
 @@ -810,7 +810,7 @@
    if (!info)
      return std::nullopt;
- 
+
 -  info->current_delay = timing_->TargetVideoDelay();
-+  info->current_delay = timing_->TargetVideoDelayForSync();
++  info->current_delay = timing_->GetTimings().CurrentDelay();
    return info;
  }
- 
+

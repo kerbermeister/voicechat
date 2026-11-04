@@ -1,13 +1,15 @@
 # Bounded A/V synchronization SDK
 
 This candidate retains WebRTC SDK 150.7871.04 and its security fixes. The four-file
-patch bounds only the video delay reported to the A/V synchronizer. The unbounded
-jitter estimate remains available to the video frame-buffer reset guard. Audio
+patch makes rendering and A/V synchronization use the same effective current
+video delay, including the low-latency path and negotiated bounds. The unbounded
+jitter estimate remains available to the video frame-buffer reset guard. Native
+factory defaults and adaptive/audio-device buffering are preserved. Audio
 DSP, codecs, cryptors and certificate validation are unchanged.
 
 `webrtc-sdk.json` pins the SDK source, official builder, depot_tools, patch and all
 four source files before/after patching. `build_webrtc_sdk.py` rejects unexpected inputs.
-The CI workflow first proves that both regression tests fail with the old getter
+The CI workflow first proves that all three regression tests fail with the old getter
 behavior, then runs every `VCMTimingTest` with the fix. Only after that gate can
 it build a universal macOS framework and an Android AAR with the three supported
 application ABIs. Each artifact includes a SHA-256 build receipt.

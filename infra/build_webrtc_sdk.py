@@ -129,18 +129,19 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     run(['gn', 'gen', build, '--args=' + args], cwd=source)
     timing = source / 'modules/video_coding/timing/timing.cc'
     patched = timing.read_bytes()
-    bounded = b'return std::min(timings_.TargetDelay(), timings_.max_playout_delay);'
+    bounded = b'  if (UseLowLatencyRendering()) {\n    return TimeDelta::Zero();\n  }\n  return std::clamp(current_delay, min_playout_delay, max_playout_delay);'
     if patched.count(bounded) != 1:
-        raise RuntimeError('Expected exactly one synchronization-only cap')
+        raise RuntimeError('Expected exactly one effective render-delay calculation')
     try:
         # Same new API/test, old unbounded behavior: regression must fail first.
-        timing.write_bytes(patched.replace(bounded, b'return timings_.TargetDelay();'))
+        timing.write_bytes(patched.replace(bounded, b'  return TargetDelay();'))
         run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
         before = subprocess.run([str(build / 'timing_sync_unittests'),
             '--gtest_filter=' + MANIFEST['regression_filter']], capture_output=True, text=True)
         (output / 'before-fix.log').write_text(before.stdout + before.stderr)
-        failures = ['SyncTargetRespectsMaximumAfterVideoJitter',
-                    'SyncTargetPreservesSmallerTargetsAndMinimum']
+        failures = ['SyncDelayUsesCurrentDelayAfterVideoJitter',
+                    'SyncDelayRespectsBoundsAndAudioDeviceMinimum',
+                    'SyncDelayUsesLowLatencyRenderingPath']
         if before.returncode != 1 or not all(
                 '[  FAILED  ] VCMTimingTest.' + name in before.stdout for name in failures):
             raise RuntimeError('Regression test must detect the old unbounded behavior')

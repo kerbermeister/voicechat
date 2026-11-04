@@ -13339,8 +13339,8 @@
     "workflow": "https://github.com/kerbermeister/voicechat/actions/runs/41875798369",
     "paired_fixed90_series": "rejected: 2/3 pass, raw97.99/corrected100.80ms and speech regression",
     "shared_fixed90": "reproduced recovery2105.44ms; audio latency up to2240.07ms",
-    "change": "bounded synchronization getter; raw jitter estimate retained for frame-buffer reset",
-    "unit_tests": "pending native C++ red/green and all VCMTimingTest",
+    "change": "RenderTime and GetInfo share effective CurrentDelay; preserve adaptive factory defaults, audio device minimum and raw jitter reset guard",
+    "unit_tests": "pending3 regressions old/new and all VCMTimingTest",
     "fixture_checks": "4 Python +2 Node tests and targeted Dart analyzer pass",
     "native_release": 62,
     "published": false,
@@ -13354,6 +13354,7 @@
       "ordinary_android_preview": "built"
     },
     "delivery_tests": "5 checksum/download/cache guard tests pass",
-    "mirror_audio_stall": "fixture prepared;2 Mac +2 Android runs required; actual media checks not yet run"
+    "mirror_audio_stall": "fixture prepared;2 Mac +2 Android runs required; actual media checks not yet run",
+    "patch_sha256": "8f9c5903638c6117f68269fed254defa5fbf44e9fa1ae07c2cfc5664bb1df9f7"
   }
 }
