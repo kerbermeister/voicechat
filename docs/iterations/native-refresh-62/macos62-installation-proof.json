@@ -1,0 +1,16 @@
+{
+  "build": 62,
+  "previous_build": 60,
+  "installed_by_in_app_update": true,
+  "automatic_relaunch": true,
+  "installed_matches_signed_zip_and_dmg": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "profile_or_keychain_cleared": false,
+  "old_history_visible": true,
+  "account_preserved": true,
+  "device_id_preserved": true,
+  "about_build_62_visible": true,
+  "old_audio_played": false,
+  "native_lip_sync_verified": false
+}

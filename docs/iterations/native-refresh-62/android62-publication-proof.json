@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "build": 62,
+  "source": "596a80ff73df2b55aa8e923130486bdcc2c40250",
+  "sha256": "0186d907997ef581a5daefcc65e0766231fb5759c1edc4b70e7c02587970b648",
+  "published": true,
+  "physical_acceptance": false,
+  "emulator_installation": true,
+  "authorization": "Owner requested updated macOS and Android packages on 2026-11-04; native lip-sync remains unverified. Physical Xiaomi is remote.",
+  "previous_build": 60,
+  "services_unchanged": true,
+  "managed_release_pointer_unchanged": true,
+  "manifest_cache_control": "no-cache",
+  "published_at_unix": 1793780334
+}
