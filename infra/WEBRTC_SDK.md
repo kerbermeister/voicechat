@@ -64,10 +64,19 @@ packaging step fails; application release qualification remains separate.
 
 The vc1 dependency prerelease is rejected for application promotion: its first
 Android P2P pilot reached 385.652 ms corrected recovery skew. vc2 adds stale-floor
-recovery; its C++ and actual-call qualification are pending. The artifact manifest
+recovery; its final 43-test/eight-negative C++ gate passed (41920380791), while native
+macOS SDK built and passed source/archive identity checks; Android SDK and
+actual-call qualification remain pending. The artifact manifest
 still describes vc1 until new immutable vc2 binaries have been built and verified.
 Do not publish client updates from this intermediate branch.
 
 The upstream stream_synchronization_unittest GN target also declares the two
 new test dependencies, in addition to the small isolated CI harness. This
 keeps the ordinary upstream test target buildable when using the patch.
+
+A network pause resets the delay controller once and keeps its RTP/NTP clock
+estimates for recovery. Reassigning the audio/video pair recreates the
+measurements as well, so a previous sender clock cannot affect the new pair.
+The destructor clears only the surviving audio floor: the video stream's
+playout-delay state can already have ended its lifetime when the synchronizer
+member is destroyed.

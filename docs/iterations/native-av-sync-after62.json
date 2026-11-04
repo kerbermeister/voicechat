@@ -13458,12 +13458,12 @@
     "raw_private_evidence": ".prototype/native-p2p-android-cross-current-v1-sync-diagnostic2.media.json.gz"
   },
   "sdk_vc2": {
-    "status": "43 C++ passed and8 negative regressions reproduced for7-file patch; final8-file patch adds upstream GN test deps, fresh gate pending",
+    "status": "Final C++43/8 PASS; Mac SDKbuilt/HTTPS SHAverified, dependency prerelease only; Androidbuilding; actual vc2 media pending",
     "commit": "46c02096f0c5b333f26fe3b9504db81dc10aeea1",
-    "workflow_run": 41917176968,
+    "workflow_run": 41920380791,
     "native_tests_expected": 43,
     "negative_regressions_expected": 8,
-    "build_revision": "e3c4875c91eadf233a7aff178b08ba4b2e2116ab",
+    "build_revision": "ae0c3178848d41397680da3e21f952d48a100127",
     "cpp_runs": [
       {
         "id": 41914825766,
@@ -13479,10 +13479,28 @@
         "id": 41917176968,
         "outcome": "PASS43/43,8 negatives reproduced, no skips; SDK jobs cancelled before substantive builds to complete upstream test deps",
         "reason": "Upstream testonly exemption; real C++ gate required"
+      },
+      {
+        "id": 41920380791,
+        "job": 126890985913,
+        "outcome": "PASS43/43,8 negative regressions,0 skips; exact8-file source/toolchain receipt verified"
       }
     ],
     "final_patch_sha256": "c0b4230d0be350aadf13de44a01686dcc920cfcc9718c2c371b89bbe4f1ca136",
-    "final_upstream_test_deps": "api/environment:environment_factory and test/time_controller in video/BUILD.gn; no C++ algorithm change"
+    "final_upstream_test_deps": "api/environment:environment_factory and test/time_controller in video/BUILD.gn; no C++ algorithm change",
+    "platform_jobs": {
+      "macos": 126898436620,
+      "android": 126898436636
+    },
+    "macos_artifact": {
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc2/WebRTC.xcframework.zip",
+      "sha256": "8b9f68f70041ce67b01cdc6c4a74e2febe563f3b975fa00208023aa37568a855",
+      "size_bytes": 6341449,
+      "arm64_uuid": "f11b61e7-1a79-31d6-9eaf-90c8904e8f8e",
+      "binary_sha256": "a0928558ca897e1a6e6b362d2477d64d9dbda761f1ba29796345715704515291",
+      "build_workflow_run": 41920380791,
+      "build_revision": "ae0c3178848d41397680da3e21f952d48a100127"
+    }
   },
   "native_recovery_scoring": {
     "tests_passed": 4,
