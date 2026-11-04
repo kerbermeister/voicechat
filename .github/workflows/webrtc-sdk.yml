@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: webrtc-sdk-${{ github.ref }}
+  group: webrtc-sdk-${{ github.ref }}-${{ github.sha }}
   cancel-in-progress: false
 jobs:
   test:
