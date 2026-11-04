@@ -81,7 +81,7 @@ function analyzeTiming(data) {
         transport_skew_ms: skew - sourceSkew, video_time: time, audio_time: received.get(id)};
     });
   assert.equal(data.phases.length, 4);
-  const [initial, delay, , recovery] = data.phases;
+  const [initial, delay, interruption, recovery] = data.phases;
   function phase(start, end) {
     const values = pairs.filter(pair => pair.video_time >= start && pair.video_time < end);
     const raw = values.map(pair => Math.abs(pair.skew_ms));
@@ -90,7 +90,7 @@ function analyzeTiming(data) {
       max_source_corrected_abs_ms: Math.max(...corrected)};
   }
   const clean = phase(initial[1] + 5, delay[1]);
-  const recovered = phase(recovery[1] + 5, Infinity);
+  const recovered = phase((data.delay_only === true ? interruption : recovery)[1] + 5, Infinity);
   const sourceMax = Math.max(...pairs.map(pair => Math.abs(pair.source_skew_ms)));
   const allSourceMax = Math.max(...[...sentVideo].filter(([id]) => sentAudio.has(id))
     .map(([id, time]) => Math.abs(time - sentAudio.get(id)) * 1000));

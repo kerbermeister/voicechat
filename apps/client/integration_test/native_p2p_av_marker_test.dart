@@ -102,6 +102,8 @@ Future<Map<String, dynamic>> measureP2PReceiver(
   });
   final audioOnly = video == null;
   const impairAudio = bool.fromEnvironment('P2P_IMPAIR_AUDIO');
+  const delayOnly = bool.fromEnvironment('P2P_DELAY_ONLY');
+  expect(impairAudio && delayOnly, isFalse);
   expect(
     impairAudio && (audioOnly || audioControl != null),
     isFalse,
@@ -208,7 +210,12 @@ Future<Map<String, dynamic>> measureP2PReceiver(
   final sampleTimes = <double>[];
   final controlSamples = <List<Map<String, dynamic>>>[];
   for (var i = 0; i < 120; i++) {
-    final next = {0: 'clean', 20: 'delay', 50: 'offline', 62: 'clean'}[i];
+    final next = {
+      0: 'clean',
+      20: 'delay',
+      50: delayOnly ? 'clean' : 'offline',
+      62: 'clean',
+    }[i];
     if (next != null) {
       await profile(next, profilePayloads);
       phases.add([next, await _channel.invokeMethod<double>('clock')]);
@@ -250,7 +257,11 @@ Future<Map<String, dynamic>> measureP2PReceiver(
   num packets(int sample, String kind) =>
       samples[sample].firstWhere((s) => s['kind'] == kind)['packetsReceived']
           as num;
-  if (!audioOnly) {
+  if (delayOnly && !audioOnly) {
+    for (final kind in ['audio', 'video']) {
+      expect(packets(60, kind) - packets(52, kind), greaterThan(30));
+    }
+  } else if (!audioOnly) {
     final blocked = impairAudio ? 'audio' : 'video';
     final continuing = impairAudio ? 'video' : 'audio';
     expect(packets(60, blocked) - packets(52, blocked), 0);
@@ -289,6 +300,7 @@ Future<Map<String, dynamic>> measureP2PReceiver(
   return {
     'synthetic_media_only': true,
     'audio_only': audioOnly,
+    'delay_only': delayOnly,
     'markers': markers,
     'stats': samples,
     'stats_times': sampleTimes,

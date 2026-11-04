@@ -466,3 +466,20 @@ independent. The existing stale/reset cleanup remains. A new real-controller
 cap regression and explicit-base test extend the gate to45 C++ tests/9 negative
 regressions. Fresh compiled SDKs and all native media gates are still required;
 none of the latency, speech or encryption criteria were relaxed.
+
+
+## vc3 compiled gate and continuous-RTP recovery (05.11 local)
+
+Run41931657101/source3c68506 compiled the pinned patch17965b9e:45/45 real
+C++ tests pass, zero skips/errors; all9 required regressions fail with the
+original getter/synchronizer. The downloaded receipt matches every source and
+toolchain field. Platform SDK builds started; no vc3 media has run yet.
+
+Before vc3 media, two additional paired trials per platform are specified:
+video delay starts at20s and ends at50s without blocking RTP. Both streams must
+continue through52..60s. A/V and added voice-delay recovery budgets start at55s,
+not67s. The scorer regression inserts120ms lag at56s and rejects it in this
+scenario while preserving the full-outage window. Existing speech, crypto,
+source-timing, sample-count and80ms limits remain unchanged. Four Node tests and
+Dart analysis of all three P2P fixtures pass. This adds laboratory coverage,
+not physical-device acceptance; UA-08.C06 stays open and app channels stay62.

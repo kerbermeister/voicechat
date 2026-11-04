@@ -13564,5 +13564,23 @@
     "policy": "Bound retained controller state and added audio minimum to80ms beyond explicit base; natural NetEq and device/video delay remain independent",
     "gates": "Unchanged80ms A/V and added voice, STOI0.005/level0.15dB, minimum4 matched clips per phase; actual E2EE required",
     "interim_dependency": "Complete verified but rejected vc1 retained for ordinaryCI until vc3 artifacts exist; no application update authorized by this metadata"
+  },
+  "vc3_compiled_gate": {
+    "date_utc": "2026-11-04T23:31:05.175105+00:00",
+    "run": 41931657101,
+    "source": "3c68506eacca3762f17d94b3dcc08c7819a4936c",
+    "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0",
+    "tests_passed": 45,
+    "negative_regressions": 9,
+    "skipped": 0,
+    "receipt_verified": true,
+    "platform_builds": "in_progress",
+    "media": "not_run",
+    "delay_only_recovery_prespecified": {
+      "trials_per_platform": 2,
+      "recovery_guard_seconds": 5,
+      "raw_and_corrected_av_max_ms": 80,
+      "extra_voice_delay_max_ms": 80
+    }
   }
 }

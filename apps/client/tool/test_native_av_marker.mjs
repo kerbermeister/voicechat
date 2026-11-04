@@ -63,7 +63,7 @@ test('native P2P recovery requires both live streams at capture end', () => {
 });
 
 test('both native SFU and P2P reject good early timing followed by a frozen decoder', () => {
-  const rate = 48000, times = [6, 8, 10, 12, ...Array.from({length: 12}, (_, i) => 68 + 2 * i)];
+  const rate = 48000, times = [6, 8, 10, 12, 56, 58, ...Array.from({length: 12}, (_, i) => 68 + 2 * i)];
   const audio = times.map((time, id) => {
     const pcm = new Float32Array(rate);
     for (const [index, digit] of markerDigits(id).entries()) {
@@ -93,5 +93,12 @@ test('both native SFU and P2P reject good early timing followed by a frozen deco
     const result = score(data);
     assert.equal(result.outcome, 'pass', JSON.stringify({clean: result.clean, recovery: result.recovery, first: result.pairs[0]}));
     assert.equal(score({...data, stats: frozen}).outcome, 'stalled_transport');
+    const earlyLag = {...data, markers: {...data.markers,
+      video: points.map(([id, time]) => [id, time + (id === 4 ? .12 : 0)])}};
+    assert.equal(score(earlyLag).outcome, 'pass');
+    const delayOnly = {...earlyLag, delay_only: true,
+      phases: [['clean', 0], ['delay', 20], ['clean', 50], ['clean', 62]]};
+    assert.equal(score(delayOnly).outcome, 'budget_exceeded');
+    assert.equal(score({...delayOnly, markers: data.markers}).outcome, 'pass');
   }
 });
