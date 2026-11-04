@@ -4,9 +4,9 @@ on:
   push:
     branches: [codex/native-sdk-av-sync]
     paths:
-      - infra/*webrtc*
-      - infra/WEBRTC_SDK.md
-      - .github/workflows/webrtc-sdk.yml
+      - infra/build_webrtc_sdk.py
+      - infra/webrtc-sdk.json
+      - infra/webrtc-bounded-sync.patch
 permissions:
   contents: read
 concurrency:
