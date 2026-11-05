@@ -121,6 +121,21 @@ Future<void> closePeer(rtc.RTCPeerConnection pc) async {
   await pc.dispose();
 }
 
+Future<List<String>> opusParameters(rtc.RTCPeerConnection pc) async {
+  final sdp = (await pc.getLocalDescription())!.sdp!;
+  final opus = RegExp(
+    r'^a=rtpmap:(\d+) opus/[^\r\n]+',
+    multiLine: true,
+  ).firstMatch(sdp)!;
+  return [
+    opus[0]!,
+    ...RegExp(
+      '^a=fmtp:${opus[1]} [^\\r\\n]+',
+      multiLine: true,
+    ).allMatches(sdp).map((m) => m[0]!),
+  ];
+}
+
 Future<Map<String, dynamic>> measureP2PReceiver(
   rtc.RTCPeerConnection receiver,
   rtc.RTCRtpReceiver audio,
@@ -137,13 +152,15 @@ Future<Map<String, dynamic>> measureP2PReceiver(
   final audioOnly = video == null;
   const impairAudio = bool.fromEnvironment('P2P_IMPAIR_AUDIO');
   const delayOnly = bool.fromEnvironment('P2P_DELAY_ONLY');
-  expect(impairAudio && delayOnly, isFalse);
-  expect(
-    impairAudio && (audioOnly || audioControl != null),
-    isFalse,
-    reason:
-        'Audio-stall recovery uses one video call; the paired voice reference must remain intact',
-  );
+  if (impairAudio) {
+    expect(audioOnly, isFalse);
+    expect(
+      audioControl != null,
+      delayOnly,
+      reason:
+          'Delay both audio paths for a paired comparison; test an audio stall with one call',
+    );
+  }
   await _channel.invokeMethod<void>('observe', {
     'audio': audio.track!.id,
     if (video != null) 'video': video.track!.id,

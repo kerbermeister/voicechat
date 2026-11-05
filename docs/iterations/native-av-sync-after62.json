@@ -19452,5 +19452,87 @@
       }
     },
     "failure_reproduced": false
+  },
+  "sdk8_android_simultaneous_p2p_diagnostic": {
+    "trial": "current-23007def-sameclock-pilot-1",
+    "timing": "budget_exceeded",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 80.21099999999137,
+      "max_source_corrected_abs_ms": 79.23779166551981
+    },
+    "recovery": {
+      "count": 26,
+      "max_abs_ms": 62.38954200000535,
+      "max_source_corrected_abs_ms": 61.48266699949545
+    },
+    "source_max_ms": 3.058208334550727,
+    "voice_queue": {
+      "pass": true,
+      "clean": {
+        "count": 16,
+        "control_median_ms": 82.19687875150058,
+        "candidate_max_ms": 114.31372549019613,
+        "max_added_queue_ms": 32.11684673869556
+      },
+      "video_paused": {
+        "count": 8,
+        "control_median_ms": 79.80196078431379,
+        "candidate_max_ms": 85.59999999999975,
+        "max_added_queue_ms": 5.798039215685961
+      },
+      "recovery": {
+        "count": 54,
+        "control_median_ms": 81.89875950380178,
+        "candidate_max_ms": 86.79999999999927,
+        "max_added_queue_ms": 4.901240496197488
+      }
+    },
+    "voice_latency": {
+      "pass": true,
+      "clean": {
+        "count": 8,
+        "max_added_voice_delay_ms": 21.39729166668758
+      },
+      "video_paused": {
+        "count": 4,
+        "max_added_voice_delay_ms": -1.042333333316492
+      },
+      "recovery": {
+        "count": 26,
+        "max_added_voice_delay_ms": 21.67504166666845
+      }
+    },
+    "speech": "pass",
+    "identity": {
+      "jni_sha256": "0fb9e25c668c5aeadd50ef0723348b2c04c013c4a25c233f8f6e4d97abfed53c",
+      "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023",
+      "sdk_initialization_bytecode_sha256": "3ba12fad8beb777aa36f8e443d75ba11c7489a9a13bf1d1ba9d64bd6be62d61f",
+      "sender_sdk_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+      "sender_sdk": "patched"
+    },
+    "pass": false,
+    "matched_pcm": {
+      "clean": {
+        "clips": 8,
+        "identical_pcm": 8
+      },
+      "delay": {
+        "clips": 14,
+        "identical_pcm": 14
+      },
+      "pause": {
+        "clips": 6,
+        "identical_pcm": 6
+      },
+      "recovery": {
+        "clips": 26,
+        "identical_pcm": 26
+      }
+    },
+    "dtls_positive_and_negative_each": true,
+    "cpu_throttle_delta_zero": true,
+    "diagnostic_only": true,
+    "product_qualified": false
   }
 }

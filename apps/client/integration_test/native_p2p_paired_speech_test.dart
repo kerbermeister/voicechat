@@ -10,7 +10,12 @@ import 'package:integration_test/integration_test.dart';
 
 import 'native_av_marker_test.dart' show labPost;
 import 'native_p2p_av_marker_test.dart'
-    show negotiateP2P, closePeer, measureP2PReceiver, collectNativeSyncLogs;
+    show
+        negotiateP2P,
+        closePeer,
+        measureP2PReceiver,
+        collectNativeSyncLogs,
+        opusParameters;
 
 const channel = MethodChannel('voicechat/native-av-lab');
 
@@ -215,23 +220,8 @@ void main() {
         if (!referenceFirst)
           negotiateP2P(controlSender, controlReceiver, audioOnly: true),
       ]);
-      Future<List<String>> audioCodec(rtc.RTCPeerConnection pc) async {
-        final sdp = (await pc.getLocalDescription())!.sdp!;
-        final opus = RegExp(
-          r'^a=rtpmap:(\d+) opus/[^\r\n]+',
-          multiLine: true,
-        ).firstMatch(sdp)!;
-        return [
-          opus[0]!,
-          ...RegExp(
-            '^a=fmtp:${opus[1]} [^\\r\\n]+',
-            multiLine: true,
-          ).allMatches(sdp).map((m) => m[0]!),
-        ];
-      }
-
-      final codec = await audioCodec(sender),
-          controlCodec = await audioCodec(controlSender);
+      final codec = await opusParameters(sender),
+          controlCodec = await opusParameters(controlSender);
       expect(
         codec,
         controlCodec,

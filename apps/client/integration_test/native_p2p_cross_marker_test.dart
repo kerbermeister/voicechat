@@ -10,7 +10,12 @@ import 'package:integration_test/integration_test.dart';
 
 import 'native_av_marker_test.dart' show labPost, labWait;
 import 'native_p2p_av_marker_test.dart'
-    show gatherRelay, closePeer, measureP2PReceiver, collectNativeSyncLogs;
+    show
+        gatherRelay,
+        closePeer,
+        measureP2PReceiver,
+        collectNativeSyncLogs,
+        opusParameters;
 
 const channel = MethodChannel('voicechat/native-av-lab');
 
@@ -35,13 +40,18 @@ void main() {
   testWidgets('separate native P2P sender and receiver', (tester) async {
     const sender = bool.fromEnvironment('P2P_SENDER');
     const audioOnly = bool.fromEnvironment('P2P_AUDIO_ONLY');
+    const paired = bool.fromEnvironment('P2P_PAIRED_VOICE_REFERENCE');
+    if (paired) {
+      expect(audioOnly, isFalse);
+      expect(const bool.fromEnvironment('P2P_IMPAIR_AUDIO'), isFalse);
+    }
     const split = bool.fromEnvironment('P2P_SEPARATE_STREAMS');
     const productSync = bool.fromEnvironment('P2P_PRODUCT_SYNC');
     const playout = int.fromEnvironment('P2P_VIDEO_PLAYOUT_MS');
     final peers = <rtc.RTCPeerConnection>[];
     StreamSubscription<Map<String, dynamic>>? nativeLogs;
     final syncLogs = <Map<String, dynamic>>[];
-    rtc.MediaStream? stream, videoStream;
+    rtc.MediaStream? stream, videoStream, ordinaryStream;
     try {
       if (!sender) nativeLogs = await collectNativeSyncLogs(syncLogs);
       if (playout != 0) {
@@ -52,6 +62,16 @@ void main() {
           'audio': true,
           'video': false,
         });
+        if (paired) {
+          ordinaryStream = await rtc.navigator.mediaDevices.getUserMedia({
+            'audio': true,
+            'video': false,
+          });
+          expect(
+            ordinaryStream.getAudioTracks().single.id,
+            isNot(stream.getAudioTracks().single.id),
+          );
+        }
         await channel.invokeMethod<void>('create', {
           'stream': stream.id,
           'coherent': const bool.fromEnvironment('AV_COHERENT_MARKERS'),
@@ -66,30 +86,35 @@ void main() {
             : stream;
       }
       final config = await signal('config');
-      Future<rtc.RTCPeerConnection> pair() async {
+      Future<rtc.RTCPeerConnection> pair({bool ordinary = false}) async {
         final pc = await rtc.createPeerConnection({
           'iceServers': config[sender ? 'iceServers' : 'peer_ice_servers'],
-          'separateVideoSync': sender && split && productSync,
+          'separateVideoSync': sender && !ordinary && split && productSync,
           'iceTransportPolicy': 'relay',
           'bundlePolicy': 'max-bundle',
           'sdpSemantics': 'unified-plan',
         });
         peers.add(pc);
         if (sender) {
-          for (final track in stream!.getTracks()) {
+          final local = ordinary ? ordinaryStream! : stream!;
+          for (final track in local.getTracks()) {
             if (audioOnly && track.kind == 'video') continue;
             await pc.addTrack(
               track,
-              track.kind == 'video' && !productSync ? videoStream! : stream,
+              track.kind == 'video' && !productSync ? videoStream! : local,
             );
           }
         }
         return pc;
       }
 
-      Future<void> negotiate(rtc.RTCPeerConnection pc, String round) async {
+      Future<void> negotiate(
+        rtc.RTCPeerConnection pc,
+        String round, {
+        bool ordinary = false,
+      }) async {
         if (sender) {
-          final localOffer = audioOnly
+          final localOffer = audioOnly || ordinary
               ? await pc.createOffer({
                   'mandatory': {
                     'OfferToReceiveAudio': true,
@@ -107,7 +132,7 @@ void main() {
           });
           final answer = await signal('${round}_answer');
           var sdp = answer['sdp'] as String;
-          if (round == 'negative') {
+          if (round.endsWith('negative')) {
             final pattern = RegExp(r'(a=fingerprint:sha-256 )([0-9A-Fa-f]{2})');
             expect(pattern.hasMatch(sdp), isTrue);
             sdp = sdp.replaceAllMapped(
@@ -141,32 +166,50 @@ void main() {
         await channel.invokeMethod<void>('receive');
         await labPost('/signal', {'key': 'receiver_ready', 'value': true});
       }
-      await negotiate(negative, 'negative');
-      if (sender) {
-        var failed = false;
-        for (var i = 0; i < 60; i++) {
-          failed = (await negative.getStats()).any(
-            (s) => s.type == 'transport' && s.values['dtlsState'] == 'failed',
-          );
-          if (failed) break;
-          await Future<void>.delayed(const Duration(milliseconds: 100));
-        }
-        expect(failed, isTrue);
-        await labPost('/signal', {'key': 'negative_failed', 'value': failed});
-        await signal('negative_packets');
-      } else {
-        expect(await signal('negative_failed'), true);
-        final packets = (await negative.getStats())
-            .where((s) => s.type == 'inbound-rtp')
-            .fold<num>(
-              0,
-              (sum, s) => sum + (s.values['packetsReceived'] as num? ?? 0),
+      Future<void> rejectWrongCertificate(
+        rtc.RTCPeerConnection negative,
+        String round, {
+        bool ordinary = false,
+      }) async {
+        await negotiate(negative, round, ordinary: ordinary);
+        if (sender) {
+          var failed = false;
+          for (var i = 0; i < 60; i++) {
+            failed = (await negative.getStats()).any(
+              (s) => s.type == 'transport' && s.values['dtlsState'] == 'failed',
             );
-        expect(packets, 0);
-        await labPost('/signal', {'key': 'negative_packets', 'value': packets});
+            if (failed) break;
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+          }
+          expect(failed, isTrue);
+          await labPost('/signal', {'key': '${round}_failed', 'value': failed});
+          await signal('${round}_packets');
+        } else {
+          expect(await signal('${round}_failed'), true);
+          final packets = (await negative.getStats())
+              .where((s) => s.type == 'inbound-rtp')
+              .fold<num>(
+                0,
+                (sum, s) => sum + (s.values['packetsReceived'] as num? ?? 0),
+              );
+          expect(packets, 0);
+          await labPost('/signal', {
+            'key': '${round}_packets',
+            'value': packets,
+          });
+        }
+        await closePeer(negative);
+        peers.remove(negative);
       }
-      await closePeer(negative);
-      peers.remove(negative);
+
+      await rejectWrongCertificate(negative, 'negative');
+      if (paired) {
+        await rejectWrongCertificate(
+          await pair(ordinary: true),
+          'ordinary_negative',
+          ordinary: true,
+        );
+      }
       final positive = await pair();
       final audio = Completer<rtc.RTCRtpReceiver>(),
           video = Completer<rtc.RTCRtpReceiver>();
@@ -191,7 +234,22 @@ void main() {
           video.complete(event.receiver!);
         }
       };
+      final controlTrack = Completer<rtc.MediaStreamTrack>();
+      final control = paired ? await pair(ordinary: true) : null;
+      if (control != null) {
+        if (!sender) {
+          control.onTrack = (event) {
+            expect(event.track.kind, 'audio');
+            expect(event.streams, hasLength(1));
+            if (!controlTrack.isCompleted) controlTrack.complete(event.track);
+          };
+        }
+        await negotiate(control, 'ordinary', ordinary: true);
+      }
       await negotiate(positive, 'positive');
+      if (control != null && sender) {
+        expect(await opusParameters(control), await opusParameters(positive));
+      }
       if (sender) {
         await Future<void>.delayed(const Duration(seconds: 2));
         final diagnostics = await positive.getStats();
@@ -239,12 +297,22 @@ void main() {
             'video',
           });
         }
+        if (control != null) {
+          final ordinary = await controlTrack.future.timeout(
+            const Duration(seconds: 20),
+          );
+          expect(ordinary.id, isNot(remoteAudio.track!.id));
+          await channel.invokeMethod<void>('observeControl', {
+            'audio': ordinary.id,
+          });
+        }
         final result = await measureP2PReceiver(
           positive,
           remoteAudio,
           remoteVideo,
           split: split,
           playout: playout,
+          audioControl: control,
           cryptoControl: {
             'protocol': 'DTLS-SRTP',
             'negative_dtls_failed': await signal('negative_failed'),
@@ -252,6 +320,32 @@ void main() {
           },
         );
         if (syncLogs.isNotEmpty) result['native_sync_logs'] = syncLogs;
+        if (control != null) {
+          final rows = await control.getStats();
+          final transport = rows.singleWhere(
+            (r) =>
+                r.type == 'transport' && r.values['dtlsState'] == 'connected',
+          );
+          final byId = {for (final row in rows) row.id: row};
+          final selected = byId[transport.values['selectedCandidatePairId']]!;
+          for (final key in ['localCandidateId', 'remoteCandidateId']) {
+            expect(
+              byId[selected.values[key]]!.values['candidateType'],
+              'relay',
+            );
+          }
+          expect(transport.values['srtpCipher'], isA<String>());
+          result['audio_control_crypto'] = {
+            'protocol': 'DTLS-SRTP',
+            'positive_dtls_connected': true,
+            'srtp_cipher': transport.values['srtpCipher'],
+            'negative_dtls_failed': await signal('ordinary_negative_failed'),
+            'negative_received_media_packets': await signal(
+              'ordinary_negative_packets',
+            ),
+          };
+          result['simultaneous_ordinary_voice_reference'] = true;
+        }
         result['separate_native_sender'] = true;
         result['product_sync'] = productSync;
         result['original_stream_preserved'] = productSync;
@@ -272,6 +366,11 @@ void main() {
       if (videoStream != null && !identical(stream, videoStream)) {
         await videoStream.dispose();
       }
+      for (final track
+          in ordinaryStream?.getTracks() ?? <rtc.MediaStreamTrack>[]) {
+        await track.stop();
+      }
+      await ordinaryStream?.dispose();
       await stream?.dispose();
     }
   }, timeout: const Timeout(Duration(minutes: 6)));
