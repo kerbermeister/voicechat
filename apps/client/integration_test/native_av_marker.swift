@@ -31,6 +31,8 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
   private var lastSourceVideo = -1
   private var sourceAudioMarkers = [[Double]]()
   private var sourceVideoMarkers = [[Double]]()
+  private var sourceVideoFrames = [[Double]]()
+  private var receivedVideoFrames = [[Double]]()
   private var speech = [Int16]()
   private let lowTones: [Double] = [697, 770, 852, 941]
   private let highTones: [Double] = [1209, 1336, 1477, 1633]
@@ -127,11 +129,13 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
         plugin.audioManager?.capturePostProcessingAdapter.addProcessing(self)
         origin = CACurrentMediaTime()
         running = true
-        let timer = DispatchSource.makeTimerSource(queue: videoQueue)
-        timer.schedule(deadline: .now(), repeating: 1.0 / 20)
-        timer.setEventHandler { [weak self] in self?.emitVideo() }
-        self.timer = timer
-        timer.resume()
+        if !coherentMarkers {
+          let timer = DispatchSource.makeTimerSource(queue: videoQueue)
+          timer.schedule(deadline: .now(), repeating: 1.0 / 20)
+          timer.setEventHandler { [weak self] in self?.emitVideo() }
+          self.timer = timer
+          timer.resume()
+        }
         result(nil)
       case "observe":
         audio = plugin.remoteTrack(forId: args["audio"] as? String ?? "") as? RTCAudioTrack
@@ -153,12 +157,14 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
       case "result":
         lock.lock()
         var value: [String: Any] = ["audio": audioChunks, "video": videoMarkers,
+                                  "received_video_frames": receivedVideoFrames,
                                   "video_render_clocks": videoRenderClocks, "origin": origin]
         if controlAudio != nil { value["control_audio"] = controlChunks }
         lock.unlock()
         sourceLock.lock()
         value["source_audio"] = sourceAudioMarkers
         value["source_video"] = sourceVideoMarkers
+        value["source_video_frames"] = sourceVideoFrames
         sourceLock.unlock()
         result(value)
       case "gate":
@@ -210,9 +216,9 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
       sourceAudioMarkers.append([Double(sourceMarker), CACurrentMediaTime()])
     }
     sourceLock.unlock()
-    // A controlled source must not add up to one camera-frame period to the
-    // visual onset itself. Queue work outside the realtime audio callback.
-    if coherentMarkers && markerChanged {
+    // Emit exactly 20fps on the sample clock. Adding boundary frames to an
+    // independent timer exceeded the encoder cap and could drop the onset.
+    if coherentMarkers && sampleCursor % Int64(rate / 20) == 0 {
       videoQueue.async { [weak self] in self?.emitVideo() }
     }
     for ch in 0..<buffer.channels {
@@ -273,11 +279,13 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
       let y = ((bit / 16) * 40 + 20) * Int(pixels.height) / 360
       if pixels.dataY[y * Int(pixels.strideY) + x] > 128 { word |= 1 << bit }
     }
-    let id = Int(word & 0xffff)
-    guard (word >> 16) == UInt32(id ^ 0xffff), id != lastMarker else { return }
+    let encoded = word & 0xffff
+    let id = Int(encoded & 0xfff)
+    guard (word >> 16) == (encoded ^ 0xffff), id != lastMarker else { return }
     lastMarker = id
     lock.lock()
     videoMarkers.append([Double(id), CACurrentMediaTime()])
+    receivedVideoFrames.append([Double(id), Double(encoded >> 12)])
     videoRenderClocks.append([Double(id), callbackTime, Double(frame.timeStampNs) / 1e9])
     lock.unlock()
   }
@@ -285,13 +293,15 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
     guard running, let source, let capturer else { return }
     sourceLock.lock()
     let id = UInt32(sourceMarker & 0xffff)
-    let word = sourceVisible ? id | ((id ^ 0xffff) << 16) : 0
+    let visible = sourceVisible
     sourceLock.unlock()
     let pixels = RTCI420Buffer(width: 640, height: 360)
     let y = UnsafeMutablePointer(mutating: pixels.dataY)
     let u = UnsafeMutablePointer(mutating: pixels.dataU)
     let v = UnsafeMutablePointer(mutating: pixels.dataV)
     frameCounter += 1
+    let encoded = id | (UInt32(frameCounter & 15) << 12)
+    let word = visible ? encoded | ((encoded ^ 0xffff) << 16) : 0
     backgrounds[frameCounter % backgrounds.count].withUnsafeBytes { bytes in
       for row in 0..<360 {
         memcpy(y + row * Int(pixels.strideY), bytes.baseAddress! + row * 640, 640)
@@ -307,6 +317,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
     v.initialize(repeating: 128, count: Int(pixels.strideV) * 180)
     let captured = CACurrentMediaTime()
     sourceLock.lock()
+    if word != 0 { sourceVideoFrames.append([Double(id), Double(frameCounter & 15), captured]) }
     if word != 0 && Int(id) != lastSourceVideo {
       lastSourceVideo = Int(id)
       sourceVideoMarkers.append([Double(id), captured])

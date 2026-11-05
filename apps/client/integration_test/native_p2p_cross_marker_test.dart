@@ -210,7 +210,11 @@ void main() {
           'result',
         ))!;
         await labPost('/source', {
-          for (final name in ['source_audio', 'source_video'])
+          for (final name in [
+            'source_audio',
+            'source_video',
+            'source_video_frames',
+          ])
             name: markers[name],
         });
       } else {

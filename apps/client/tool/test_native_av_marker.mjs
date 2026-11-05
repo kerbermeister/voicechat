@@ -100,5 +100,18 @@ test('both native SFU and P2P reject good early timing followed by a frozen deco
       phases: [['clean', 0], ['delay', 20], ['clean', 50], ['clean', 62]]};
     assert.equal(score(delayOnly).outcome, 'budget_exceeded');
     assert.equal(score({...delayOnly, markers: data.markers}).outcome, 'pass');
+    const identified = {...data, coherent_source: true, markers: {...data.markers,
+      source_video_frames: points.flatMap(([id, time]) => [[id, 0, time], [id, 1, time + .12]]),
+      received_video_frames: points.map(([id]) => [id, 0])}};
+    assert.equal(score(identified).outcome, 'pass');
+    assert.equal(score(identified).source_frame_identity_verified, true);
+    // The first created frame can be dropped before encoding. Measure the
+    // frame whose checksum actually arrived, rather than hiding source lag.
+    const droppedOnsets = {...identified, markers: {...identified.markers,
+      received_video_frames: points.map(([id]) => [id, 1])}};
+    assert.equal(score(droppedOnsets).outcome, 'invalid_source_timing');
+    for (const frames of [[], points.map(([id]) => [id, 2])]) {
+      assert.throws(() => score({...identified, markers: {...identified.markers, received_video_frames: frames}}));
+    }
   }
 });

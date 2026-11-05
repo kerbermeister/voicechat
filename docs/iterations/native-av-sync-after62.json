@@ -16419,5 +16419,389 @@
       }
     ],
     "failed_label1_excluded": true
+  },
+  "native_sdk7_android_sfu_export_oom": {
+    "trial": "current-14ba4133-sfu-1",
+    "whole_trial_qualified": false,
+    "diagnostic_reproduced": "current14ba-sfu-export-diagnostic1",
+    "native_crash": "java.lang.OutOfMemoryError at StandardMessageCodec.writeBytes -> NativeAVMarker result.success",
+    "allocation_bytes": 65044496,
+    "java_heap_growth_limit_bytes": 201326592,
+    "media_exported": false,
+    "fix": "Bounded 128-chunk IPC pages preserving complete Float32 PCM and source timing; snapshot counts and incomplete page validation",
+    "unit_tests_pass": 4,
+    "analyzer": "pass",
+    "thresholds_or_recording_duration_changed": false,
+    "new_series": "current-14ba4133-paged-sfu-*",
+    "export_unit_tests_pass": 4
+  },
+  "native_sdk7_android_paged_sfu_failure": {
+    "date_utc": "2026-11-05T12:15:26.997600+00:00",
+    "records": [
+      {
+        "trial": "current-14ba4133-paged-sfu-1",
+        "timing": "budget_exceeded",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 200.26708399998938,
+          "max_source_corrected_abs_ms": 198.7187506663588
+        },
+        "recovery": {
+          "count": 26,
+          "max_abs_ms": 61.99033299998291,
+          "max_source_corrected_abs_ms": 60.52383299828534
+        },
+        "source_max_ms": 2.2570833316422068,
+        "identity": {
+          "jni_sha256": "84d9855a259d9ce8e08da9efbb5b855ebd3a1e30ac175dbe2b86513472eed73e",
+          "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+          "sdk_initialization_bytecode_sha256": "3ba12fad8beb777aa36f8e443d75ba11c7489a9a13bf1d1ba9d64bd6be62d61f",
+          "sender_sdk_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+          "sender_sdk": "patched"
+        },
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": -0.050833999992505596
+          },
+          "video_paused": {
+            "count": 3,
+            "max_added_voice_delay_ms": -0.08987499998625026
+          },
+          "recovery": {
+            "count": 26,
+            "max_added_voice_delay_ms": -0.06395799999836527
+          }
+        },
+        "speech": "pass",
+        "pass": false
+      }
+    ],
+    "complete": false,
+    "all_pass": false,
+    "retained_failed_trial_not_averaged": true
+  },
+  "native_sdk7_android_direct_sfu_failure": {
+    "date_utc": "2026-11-05T12:33:38.365255+00:00",
+    "records": [
+      {
+        "trial": "current-14ba4133-direct-sfu-1",
+        "timing": "budget_exceeded",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 198.01037599999916,
+          "max_source_corrected_abs_ms": 196.93841766665798
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 91.69529199999715,
+          "max_source_corrected_abs_ms": 90.6994169984614
+        },
+        "source_max_ms": 1.577125000039814,
+        "identity": {
+          "jni_sha256": "84d9855a259d9ce8e08da9efbb5b855ebd3a1e30ac175dbe2b86513472eed73e",
+          "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+          "sdk_initialization_bytecode_sha256": "3ba12fad8beb777aa36f8e443d75ba11c7489a9a13bf1d1ba9d64bd6be62d61f",
+          "sender_sdk_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+          "sender_sdk": "patched"
+        },
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": 35.055625666657875
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": -0.045916000004808666
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 25.66158333331714
+          }
+        },
+        "speech": "speech_regression",
+        "pass": false
+      }
+    ],
+    "complete": false,
+    "all_pass": false
+  },
+  "android_presentation_clock_audit": {
+    "pcm_sink_before_output": true,
+    "java_adm_playout_delay_fixed_ms": 75,
+    "verified_pinned_source": "sdk/android/src/jni/audio_device/audio_device_module.cc; java_audio_device_module.cc; audio_common.h",
+    "queue_spike_cause_established": false,
+    "direct_buffer_change_sufficient": false,
+    "automatic_75ms_subtraction_used": false,
+    "passive_output_clock_diagnostic": "current14ba-output-clock-diagnostic1",
+    "raw_gate_relaxed": false
+  },
+  "native_sdk8_candidate": {
+    "source": "4375e11",
+    "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023",
+    "cpp_run": 42031354123,
+    "expected_tests": 93,
+    "expected_negative_regressions": 21,
+    "status": "cpp_running_unqualified",
+    "approach": "Video follows actual audio presentation RTP/RTCP clock; 200ms update, independent2s staleness; filtered fallback only without fresh valid presentation mapping",
+    "audio_or_crypto_changed_from_sdk7": false,
+    "app_released": false,
+    "prior_cancelled_test_run": 42029242353,
+    "prior_cancel_reason": "New negative tests must assert optional target exists before dereferencing, so original behavior produces named assertion failures instead of abort",
+    "second_cancelled_test_run": 42029788350,
+    "second_cancel_reason": "Adjust test start so 90kHz RTP wraps during the twelve-second measurement instead of before it"
+  },
+  "native_sdk7_android_output_clock_diagnostic": {
+    "trial": "current14ba-output-clock-diagnostic1",
+    "timing": {
+      "schema": 1,
+      "outcome": "budget_exceeded",
+      "recovery_transport": {
+        "pass": true,
+        "packet_deltas": {
+          "audio": 470,
+          "video": 609
+        },
+        "decoded_video_frames": 195
+      },
+      "audio_checksum_markers": 61,
+      "matched_pairs": 51,
+      "shared_group": true,
+      "clean": {
+        "count": 8,
+        "max_abs_ms": 111.00308400000358,
+        "max_source_corrected_abs_ms": 110.15550066531432
+      },
+      "recovery": {
+        "count": 24,
+        "max_abs_ms": 100.9267503333433,
+        "max_source_corrected_abs_ms": 99.8812919980594
+      },
+      "max_source_offset_ms": 1.0959583341900725,
+      "max_all_source_offset_ms": 4.7701666662760545,
+      "physical_latency_measured": false,
+      "decoder_window_ms": 21.333333333333332,
+      "recovery_guard_after_seconds": 5
+    },
+    "presentation_clock_diagnostic": {
+      "diagnostic_only": true,
+      "original_raw_gate_pass": false,
+      "physical_acoustic_display_measured": false,
+      "per_chunk_presentation_not_constant_subtraction": true,
+      "phases": {
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 109.69241699999088,
+          "max_source_corrected_abs_ms": 110.54079200252431,
+          "queue_median_ms": 112.87770850000811,
+          "queue_range_ms": [
+            101.99966700000118,
+            120.15825000000291
+          ]
+        },
+        "recovery": {
+          "count": 24,
+          "max_abs_ms": 115.3397913333265,
+          "max_source_corrected_abs_ms": 116.21941633370625,
+          "queue_median_ms": 113.9225630000027,
+          "queue_range_ms": [
+            95.08095800001115,
+            130.8182919999865
+          ]
+        }
+      }
+    },
+    "speech": {
+      "schema": 1,
+      "outcome": "pass",
+      "synthetic_reference_only": true,
+      "physical_listening_test": false,
+      "paired_trials": 1,
+      "stoi_noninferiority_margin": 0.005,
+      "level_tolerance_db": 0.15,
+      "phases": {
+        "clean": {
+          "paired_clips": 9,
+          "control": {
+            "stoi": 0.9916267457779494,
+            "si_sdr_db": 8.731659690675475,
+            "rms_dbfs": -23.199136985767925
+          },
+          "candidate": {
+            "stoi": 0.9947408100912286,
+            "si_sdr_db": 9.15778195564632,
+            "rms_dbfs": -23.200948378309235
+          }
+        },
+        "delay": {
+          "paired_clips": 13,
+          "control": {
+            "stoi": 0.9903287850021759,
+            "si_sdr_db": 8.018079891301307,
+            "rms_dbfs": -23.216060494168055
+          },
+          "candidate": {
+            "stoi": 0.9949916309388207,
+            "si_sdr_db": 9.56095540216182,
+            "rms_dbfs": -23.190355048592735
+          }
+        },
+        "pause": {
+          "paired_clips": 5,
+          "control": {
+            "stoi": 0.9953946994579193,
+            "si_sdr_db": 9.555984859649811,
+            "rms_dbfs": -23.15825955437583
+          },
+          "candidate": {
+            "stoi": 0.9953946994579193,
+            "si_sdr_db": 9.555984859649811,
+            "rms_dbfs": -23.15825955437583
+          }
+        },
+        "recovery": {
+          "paired_clips": 26,
+          "control": {
+            "stoi": 0.9780704726118449,
+            "si_sdr_db": 6.752868565063253,
+            "rms_dbfs": -23.15635384112417
+          },
+          "candidate": {
+            "stoi": 0.9780704726118449,
+            "si_sdr_db": 6.752868565063253,
+            "rms_dbfs": -23.15635384112417
+          }
+        }
+      }
+    },
+    "native_output_sample_rate_hz": 8000,
+    "pcm_sink_sample_rate_hz": 48000,
+    "raw_gate_pass": false,
+    "physical_audio_display_test": false
+  },
+  "coherent_source_frame_identity": {
+    "finding": "Prior coherent fixture added0.5fps marker frames to independent20fps timer despite encoder20fps cap; actual first encoded frame was not identified",
+    "correction": "One20fps source driven only by captured-sample clock; CRC protects marker ID plus 4-bit frame sequence; both native receivers associate actual decoded frame with its source timestamp",
+    "unit_guard": "missing/ambiguous frame IDs rejected; dropped first onset cannot hide source skew",
+    "native_probe": "current14ba-sample-clock-source1",
+    "qualified": true,
+    "qualification_scope": "Fixture source identity only; SDK A/V gate still failed"
+  },
+  "native_sdk7_android_sample_clock_source_diagnostic": {
+    "trial": "native-av-android-current14ba-sample-clock-source1",
+    "timing": {
+      "schema": 1,
+      "outcome": "budget_exceeded",
+      "recovery_transport": {
+        "pass": true,
+        "packet_deltas": {
+          "audio": 409,
+          "video": 647
+        },
+        "decoded_video_frames": 201
+      },
+      "audio_checksum_markers": 61,
+      "matched_pairs": 53,
+      "shared_group": true,
+      "source_frame_identity_verified": true,
+      "clean": {
+        "count": 8,
+        "max_abs_ms": 83.47329199997944,
+        "max_source_corrected_abs_ms": 82.62045866533185
+      },
+      "recovery": {
+        "count": 26,
+        "max_abs_ms": 44.084916666633944,
+        "max_source_corrected_abs_ms": 43.02579166733267
+      },
+      "max_source_offset_ms": 1.3157083340047393,
+      "max_all_source_offset_ms": 2.202583335019881,
+      "physical_latency_measured": false,
+      "decoder_window_ms": 21.333333333333332,
+      "recovery_guard_after_seconds": 5
+    },
+    "voice": {
+      "pass": true,
+      "clean": {
+        "count": 8,
+        "max_added_voice_delay_ms": 61.027540999987195
+      },
+      "video_paused": {
+        "count": 3,
+        "max_added_voice_delay_ms": 70.10962500004325
+      },
+      "recovery": {
+        "count": 26,
+        "max_added_voice_delay_ms": 68.68716700000732
+      }
+    },
+    "speech": {
+      "schema": 1,
+      "outcome": "pass",
+      "synthetic_reference_only": true,
+      "physical_listening_test": false,
+      "paired_trials": 1,
+      "stoi_noninferiority_margin": 0.005,
+      "level_tolerance_db": 0.15,
+      "phases": {
+        "clean": {
+          "paired_clips": 8,
+          "control": {
+            "stoi": 0.9942172961174268,
+            "si_sdr_db": 9.376887116933057,
+            "rms_dbfs": -23.1183330256108
+          },
+          "candidate": {
+            "stoi": 0.9952903934590163,
+            "si_sdr_db": 9.185811646808993,
+            "rms_dbfs": -23.202204897189695
+          }
+        },
+        "delay": {
+          "paired_clips": 13,
+          "control": {
+            "stoi": 0.9853796396029656,
+            "si_sdr_db": 8.006625369391646,
+            "rms_dbfs": -23.16954175710674
+          },
+          "candidate": {
+            "stoi": 0.9949916309388207,
+            "si_sdr_db": 9.56095540216182,
+            "rms_dbfs": -23.190355048592735
+          }
+        },
+        "pause": {
+          "paired_clips": 5,
+          "control": {
+            "stoi": 0.9953876567666516,
+            "si_sdr_db": 9.471151367403998,
+            "rms_dbfs": -23.121692482013714
+          },
+          "candidate": {
+            "stoi": 0.9953946994579193,
+            "si_sdr_db": 9.555984859649811,
+            "rms_dbfs": -23.15825955437583
+          }
+        },
+        "recovery": {
+          "paired_clips": 26,
+          "control": {
+            "stoi": 0.9960326123331334,
+            "si_sdr_db": 9.43189265254042,
+            "rms_dbfs": -23.046197279588444
+          },
+          "candidate": {
+            "stoi": 0.9963704637331497,
+            "si_sdr_db": 9.3080264508806,
+            "rms_dbfs": -23.113129302971362
+          }
+        }
+      }
+    },
+    "whole_trial_pass": false,
+    "delivered_first_source_frames_verified": true,
+    "source_max_ms": 2.202583335019881
   }
 }

@@ -44,6 +44,7 @@ def main():
     parser.add_argument('--av-marker-output', type=Path, help='Run the injected native synthetic A/V fixture')
     parser.add_argument('--shared-sync', action='store_true', help='Enable native A/V synchronization in the disposable room')
     parser.add_argument('--native-call-sync', action='store_true', help='Use the native call subscriber stream policy without changing SFU/browser grouping')
+    parser.add_argument('--native-output-clock', action='store_true', help='Diagnostic Android fixture: observe AudioTrack presentation timestamps without retiming PCM')
     parser.add_argument('--video-playout-ms', type=int, choices=(0, 130), default=0)
     parser.add_argument('--native-video-playout-ms', type=int, choices=(0, 70, 90, 100, 130), default=0)
     parser.add_argument('--coherent-source', action='store_true', help='Queue video marker boundaries with the synthetic audio source')
@@ -59,6 +60,8 @@ def main():
     parser.add_argument('--av-sender-root', type=Path, help='Separate account-free macOS sender checkout (A/V fixture only)')
     parser.add_argument('--av-media-ip', help='Local private interface for encrypted RTP between Mac and the owned Android emulator')
     args = parser.parse_args()
+    if args.native_output_clock and not (args.av_marker_output and args.android_emulator):
+        parser.error('Output clock diagnostics require the owned Android A/V fixture')
     if args.drop_keyless_sif and not args.keyless_mute_cycle:
         parser.error('Dropping SFU blank frames is only a negative keyless diagnostic')
     if args.native_call_sync and (not args.av_marker_output or args.web_root):
@@ -215,7 +218,7 @@ def main():
                             source_markers = value
                             media = json.loads(args.av_marker_output.read_text())
                             assert media['separate_native_sender'] is True
-                            for field in ('source_audio', 'source_video'):
+                            for field in ('source_audio', 'source_video', 'source_video_frames'):
                                 media['markers'][field] = value[field]
                             args.av_marker_output.write_text(json.dumps(media))
                             self.send_response(200)
@@ -314,6 +317,7 @@ def main():
                 'AV_ADAPTIVE_VIDEO_PLAYOUT': args.adaptive_video_playout,
                 'AV_KEYLESS_MUTE_CYCLE': args.keyless_mute_cycle,
                 'AV_NATIVE_CALL_SYNC': args.native_call_sync,
+                'AV_NATIVE_OUTPUT_CLOCK': args.native_output_clock,
                 'AV_DROP_KEYLESS_SIF': args.drop_keyless_sif,
                 'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS': args.min_native_video_playout_ms if args.min_native_video_playout_ms is not None else args.native_video_playout_ms,
                 'AV_COHERENT_MARKERS': args.coherent_source,
@@ -385,7 +389,7 @@ def main():
                     raise RuntimeError('Separate native sender failed; inspect private sender log')
                 media = json.loads(args.av_marker_output.read_text())
                 assert media['separate_native_sender'] is True
-                for field in ('source_audio', 'source_video'):
+                for field in ('source_audio', 'source_video', 'source_video_frames'):
                     media['markers'][field] = source_markers[field]
                 args.av_marker_output.write_text(json.dumps(media))
             text = log.read_text()

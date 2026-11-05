@@ -82,6 +82,60 @@ Future<void> labWait(String state) async {
   fail('Separate native peer did not reach $state');
 }
 
+/// Read bounded PCM pages; a full paired recording can exceed Android's heap
+/// while StandardMessageCodec builds its single contiguous reply buffer.
+Future<Map<String, dynamic>> captureNativeMarkers(MethodChannel channel) async {
+  final markers = Map<String, dynamic>.from(
+    await channel.invokeMapMethod<String, dynamic>('result', {
+          'includeAudio': false,
+        }) ??
+        {},
+  );
+  if (markers['audio'] is! List) {
+    throw StateError('Missing native PCM stream');
+  }
+  for (final name in ['audio', 'control_audio']) {
+    if (markers[name] == null && !markers.containsKey('${name}_count')) {
+      continue;
+    }
+    if (markers[name] is! List) {
+      throw StateError('Missing native PCM stream');
+    }
+    final chunks = <Map<String, dynamic>>[];
+    void append(List rows) {
+      for (final row in rows.cast<Map>()) {
+        chunks.add({
+          ...Map<String, dynamic>.from(row),
+          'pcm': base64Encode(row['pcm'] as Uint8List),
+        });
+      }
+    }
+
+    if (markers.containsKey('${name}_count')) {
+      final count = markers.remove('${name}_count');
+      if (count is! int || count < 0 || count > 14000) {
+        throw StateError('Invalid PCM snapshot count');
+      }
+      for (var offset = 0; offset < count; offset += 128) {
+        final size = min(128, count - offset);
+        final page = await channel.invokeListMethod<dynamic>('audioChunks', {
+          'control': name == 'control_audio',
+          'offset': offset,
+          'limit': size,
+        });
+        if (page == null || page.length != size) {
+          throw StateError('Incomplete PCM page');
+        }
+        append(page);
+      }
+    } else {
+      append(markers[name] as List);
+    }
+    markers[name] = chunks;
+  }
+  return markers;
+}
+
 void expectSourceCadence(List source) {
   expect(source.length, greaterThan(50));
   for (var i = 1; i < source.length; i++) {
@@ -135,18 +189,6 @@ void main() {
     final nativeSifLogs = keylessMuteCycle
         ? await collectNativeSifLogs(sifLogs)
         : null;
-    Future<Map<String, dynamic>> captureMarkers() async {
-      final markers = Map<String, dynamic>.from(
-        await channel.invokeMapMethod<String, dynamic>('result') ?? {},
-      );
-      for (final kind in ['audio', if (ordinaryVoice) 'control_audio']) {
-        markers[kind] = [
-          for (final chunk in (markers[kind] as List).cast<Map>())
-            {...chunk, 'pcm': base64Encode(chunk['pcm'] as Uint8List)},
-        ];
-      }
-      return markers;
-    }
 
     const encodedKey = String.fromEnvironment('AV_MARKER_KEY');
     final key = encodedKey.isNotEmpty
@@ -165,6 +207,10 @@ void main() {
     );
     expect(sendKeys.options.discardFrameWhenCryptorNotReady, isTrue);
     expect(receiveKeys.options.discardFrameWhenCryptorNotReady, isTrue);
+    if (Platform.isAndroid &&
+        const bool.fromEnvironment('AV_NATIVE_OUTPUT_CLOCK')) {
+      await channel.invokeMethod<void>('observeOutputClock');
+    }
     await sendKeys.setRawKey(key, participantId: 'alice');
     final alice = lk.Room(
       roomOptions: lk.RoomOptions(
@@ -334,6 +380,7 @@ void main() {
           await labPost('/source', {
             'source_audio': markers!['source_audio'],
             'source_video': markers['source_video'],
+            'source_video_frames': markers['source_video_frames'],
             'encrypted_publications': true,
             'synthetic_media_only': true,
             'coherent_source': const bool.fromEnvironment(
@@ -448,7 +495,7 @@ void main() {
           'shared_group': audio.mediaStream.id == video.mediaStream.id,
           'stream_groups': streamGroups,
           'keys_installed': false,
-          'markers': await captureMarkers(),
+          'markers': await captureNativeMarkers(channel),
           'stats': counters(reports),
           'control_stats': counters(voiceReports),
           'missing_key_gate': {'content': contentGate},
@@ -500,7 +547,7 @@ void main() {
           'native_call_sync': nativeCallSync,
           'shared_group': audio.mediaStream.id == video.mediaStream.id,
           'stream_groups': streamGroups,
-          'markers': await captureMarkers(),
+          'markers': await captureNativeMarkers(channel),
           'missing_key_gate': gate,
           'native_sif_logs': sifLogs,
           'discard_frame_when_cryptor_not_ready': true,
@@ -649,7 +696,7 @@ void main() {
         }
         sampleTimes.add((await channel.invokeMethod<double>('clock'))!);
       }
-      final markers = await captureMarkers();
+      final markers = await captureNativeMarkers(channel);
       if (ordinaryVoice && role != 'receiver') {
         expectSourceCadence(markers['source_audio'] as List);
       }

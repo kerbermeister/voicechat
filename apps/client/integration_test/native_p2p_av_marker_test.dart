@@ -11,7 +11,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 import 'package:flutter_webrtc/src/native/event_channel.dart';
 import 'package:integration_test/integration_test.dart';
 
-import 'native_av_marker_test.dart' show labPost;
+import 'native_av_marker_test.dart' show labPost, captureNativeMarkers;
 
 const _channel = MethodChannel('voicechat/native-av-lab');
 
@@ -321,19 +321,7 @@ Future<Map<String, dynamic>> measureP2PReceiver(
     );
   }
 
-  final markers = Map<String, dynamic>.from(
-    (await _channel.invokeMapMethod<String, dynamic>('result'))!,
-  );
-  for (final name in ['audio', 'control_audio']) {
-    if (markers[name] == null) continue;
-    markers[name] = [
-      for (final chunk in markers[name] as List)
-        {
-          ...Map<String, dynamic>.from(chunk as Map),
-          'pcm': base64Encode(chunk['pcm'] as Uint8List),
-        },
-    ];
-  }
+  final markers = await captureNativeMarkers(_channel);
   return {
     'synthetic_media_only': true,
     'audio_only': audioOnly,

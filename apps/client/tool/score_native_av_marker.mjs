@@ -73,6 +73,24 @@ function analyzeTiming(data) {
   const audio = decodeAudioChunks(markers.audio);
   const received = new Map(audio.map(marker => [marker.id, marker.time]));
   const sentAudio = new Map(markers.source_audio), sentVideo = new Map(markers.source_video);
+  const sourceFramesVerified = markers.source_video_frames !== undefined || markers.received_video_frames !== undefined;
+  if (sourceFramesVerified) {
+    assert.ok(Array.isArray(markers.source_video_frames) && Array.isArray(markers.received_video_frames));
+    const frames = new Map();
+    for (const [id, frame, time] of markers.source_video_frames) {
+      assert.ok(Number.isInteger(id) && id >= 0 && id <= 4095 &&
+        Number.isInteger(frame) && frame >= 0 && frame < 16 && Number.isFinite(time));
+      const key = `${id}:${frame}`;
+      assert.ok(!frames.has(key), 'Ambiguous emitted marker frame');
+      frames.set(key, time);
+    }
+    assert.equal(markers.received_video_frames.length, markers.video.length);
+    for (const [index, [id, frame]] of markers.received_video_frames.entries()) {
+      assert.equal(id, markers.video[index][0]);
+      assert.ok(frames.has(`${id}:${frame}`), 'Received marker lacks its exact source frame');
+      sentVideo.set(id, frames.get(`${id}:${frame}`));
+    }
+  }
   const pairs = markers.video.filter(([id]) => received.has(id) && sentAudio.has(id) && sentVideo.has(id))
     .map(([id, time]) => {
       const skew = 1000 * (time - received.get(id));
@@ -103,7 +121,7 @@ function analyzeTiming(data) {
   return {schema: 1, outcome: outcome === 'pass' && !transport.pass ? 'stalled_transport' : outcome,
     recovery_transport: transport,
     audio_checksum_markers: audio.length, matched_pairs: pairs.length,
-    shared_group: data.shared_group, clean, recovery: recovered,
+    shared_group: data.shared_group, source_frame_identity_verified: sourceFramesVerified, clean, recovery: recovered,
     max_source_offset_ms: sourceMax, max_all_source_offset_ms: allSourceMax, physical_latency_measured: false,
     decoder_window_ms: 1024 / rate * 1000, recovery_guard_after_seconds: 5, audio_markers: audio, pairs};
 }
