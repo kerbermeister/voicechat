@@ -15893,6 +15893,20 @@
     "automatic_next_build_disabled": true,
     "installed_clients": "1.19.14(62)",
     "production_release": "full104",
-    "resume_from": "download/verify C++86 evidence, then build both SDKs only if all gates pass"
+    "resume_from": "download/verify C++86 evidence, then build both SDKs only if all gates pass",
+    "resumed_at_utc": "2026-11-05T09:57:38.893747+00:00",
+    "active": false
+  },
+  "native_sdk7_cpp86_verified": {
+    "run": 41983111458,
+    "source": "b29604eaa809dd0d55d1acd4ba321cfc3dfe2636",
+    "pass": 86,
+    "failed": 0,
+    "skipped": 0,
+    "original_behavior_regressions_detected": 15,
+    "exact_receipt_verified": true,
+    "platform_build_run": 42006621067,
+    "platform_artifacts_qualified": false,
+    "application_released": false
   }
 }

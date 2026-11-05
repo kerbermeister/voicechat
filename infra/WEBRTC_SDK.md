@@ -1,44 +1,46 @@
 # Native call synchronization SDK
 
-**Not release-qualified (2026-11-05).** Native app channels remain62. SDK4's
-130ms default was rejected by real SDK3 encrypted-SFU precursors (113.640ms and
-speech regression); its binary builds were cancelled and its45/9 C++ proof is
-retained. SDK3 fixed70 passes SFU but fails P2P recovery89.317ms. First SDK3
-fixed90 P2P/SFU precursors pass, but its second P2P pair fails pause speech by
-0.007431STOI. SDK5 C++46/46 plus10 negative regressions pass at run41955022535;
-its Mac binary/9 policy cases pass, but the actual Mac P2P pilot fails recovery
-126.919ms (source-corrected125.904ms); voice<=23.087ms and speech pass. SDK5 is
-rejected. Android3ABIs compile, but the Java21 classes fail the runner Java17
-post-build verifier; its final receipt/policy evidence is absent. No app release.
+**SDK7 candidate, not release-qualified (2026-11-05).** Installed application
+channels remain1.19.14(62). Exact sourceb29604e passes86/86 C++ tests, zero skips
+and15 original-behavior negative regressions in run41983111458. Both platform
+libraries are building in run42006621067. Application binary pins still refer
+to earlier internal SDKs until the complete SDK7 pair is verified; they must
+not be released. Earlier failed media attempts remain in the
+[technical journal](../docs/iterations/native-av-sync-after62.md).
 
-The VoiceChat fork pins WebRTC150.7871.04, official builder/depot_tools and every
-original/patched source file in `webrtc-sdk.json`. The12-file vc5 patch retains
-vc3's bounded effective render calculation, stale synchronization-floor cleanup
-and80ms cap on synchronization-added audio buffering. It also reports the
-remaining video render wait from the latest packet's receive time. Relative
-network delay is already measured from packet arrival; using only the nominal
-buffer ignored shifts in the RTP-to-local-clock fit after jitter. Render times
-in the past, low-latency rendering and absent RTP fits report zero added wait.
-Natural NetEq/device buffers, codecs, crypto and certificate validation remain.
+The fork pins WebRTC150.7871.04, the official builder/depot_tools and19 source
+inputs in `webrtc-sdk.json`. SDK7 synchronizes video to natural audio delay
+without adding an audio synchronization buffer. Its video target combines
+audio delay, signed packet-arrival versus fitted RTP-clock offset and relative
+RTCP network delay. Effective render delay respects explicit minimum/maximum
+and low-latency bounds; the ordinary jitter target remains available for stats
+and reset logic. An unavailable RTP fit produces no custom target. Missing or
+stopped streams clear the target after two sync intervals; detach/reassignment
+and timing reset also clear it. The timestamp extrapolator resets full slope/
+offset covariance on alarms, preserving its existing explicit opt-out.
 
-Native initialization supplies `WebRTC-ForcePlayoutDelay/min_ms:90,max_ms:90/`
-only when the caller has not specified that field-trial key. Explicit0/90/130ms,
-other trials and native invalid-input validation remain. This key affects the
-receiver; the pinned RTP sender uses separate WebRTC-ForceSendPlayoutDelay.
-No outgoing delay hint is forced. Hosted flutter_webrtc and its public API are
-unchanged. ObjC factory configuration and Java initialization-options builder
-apply the default before their factory/transport is created; no factory resets.
+Initialization defaults to
+`WebRTC-ForcePlayoutDelay/min_ms:90,max_ms:10000/` only when the caller has not
+provided this field-trial key. Explicit options and invalid-input validation
+remain. The default is a receiver policy; no outgoing hint is forced.
 
-The configuration has9 cases per platform. macOS compiles the actual method/
-helper using Foundation, then checks the compiled SDK policy. Android invokes
-the actual AAR builder on the JVM with an inert Context; no device/native API
-runs. These are configuration checks, not media/device acceptance. CI requires
-46 actual C++ tests,10 negative regressions and zero skips. The new test covers
-arrival later/earlier than the extrapolated clock, overdue frames, absent clock
-fit and low-latency rendering. Every source/toolchain receipt must match; older
-SDK proof cannot qualify vc5. Mac arm64 and Android3ABIs build after that gate.
+LiveKit assigns distinct MediaStreams to tracks. Opted-in macOS/Android call
+rooms associate subscriber audio/video by participant using a local SDP
+transform, preserving actual track IDs and transport/codec bytes. Publisher
+SDP, browser/iOS/Linux/Windows paths and other room types do not opt in. Unknown
+or conflicting stream formats remain unchanged. No global SFU grouping policy
+is required. Test fixtures use the same subscriber transform.
 
-Use an isolated runner with at least18GB free, Python3.11+ and the official tools:
+Strict crypto readiness now also applies to already whitelisted server-injected
+blank frames: absent participant/shared current key, these frames stop before
+the decoder. Once that key exists, blank-frame behavior is retained. The SDK's
+manual KeyProviderOptions copy constructor omitted the strict-ready flag;
+standard memberwise copying now preserves it. AES-GCM, KDF, key format, payload
+whitelist, legacy false-mode and certificate validation remain. Component tests
+cover direct/provider option copies and shared/participant nonzero key indices.
+Real missing-key and positive decrypted-content controls are still required.
+
+Use an isolated runner with at least18GB free, Python3.11+ and official tools:
 
 ```sh
 git clone https://github.com/webrtc-sdk/webrtc-build.git sdk-builder
@@ -47,30 +49,26 @@ python3 infra/build_webrtc_sdk.py test --builder sdk-builder/build --work /tmp/v
 ```
 
 Use fresh work/output paths. Substitute `macos` or `android` for `test` on the
-appropriate runner. The workflow selects Xcode26.0 on macOS and installs Linux
-prerequisites. SDK artifact names come from the pinned manifest. Packaging
-includes source/hash receipts and generated third-party notices, including in
-framework resources and Android assets so application packaging retains them.
-The workflow has read-only permissions and no release secrets. Dependency
-prereleases are not application updates; archives stay immutable.
+appropriate runner. The workflow selects Xcode26.0 and builds Mac arm64 and
+Android3ABIs. Each source/toolchain receipt must match exactly. Nine configuration
+cases per platform check the actual Objective-C initialization implementation
+and Android AAR initialization builder. The Android verifier uses the producer
+JDK when present. These checks do not exercise devices or media. Packaging
+includes generated third-party notices in framework resources and Android
+assets. The workflow has read-only permissions and no release secrets.
 
 Binary pins belong in `webrtc-sdk-artifacts.json`. The Android helper checks AAR
-hash, size and local Maven metadata on download/reuse. Gradle forces both consumers
-to that module. CocoaPods overrides only WebRTC-SDK through the checksum-pinned
-archive. When a same-version external podspec changes, `pod install` can reuse
-its old sandbox spec: use targeted `pod update WebRTC-SDK --no-repo-update`, verify
-the generated lock and the actual framework UUID. Never accept an edited lock
-as proof that a new framework was installed. Keep the existing SPM-disabled path.
+hash/size and Maven metadata on download/reuse. Gradle must force both consumers
+to that same immutable module. CocoaPods overrides only WebRTC-SDK through its
+checksum-pinned archive. A changed same-version external podspec requires
+`pod update WebRTC-SDK --no-repo-update`: verify the generated lock and actual
+embedded framework UUID; an edited lock is not proof of installation. Keep SPM
+disabled. Dependency prereleases are distinct from application updates.
 
 Native P2P/SFU calls, actual encrypted-content controls, ordinary-voice latency
 and matched speech must pass before app publication. Raw/source-corrected A/V and
 added voice delay stay within80ms; STOI margin0.005, level tolerance0.15dB and at
-least4 matched speech clips per phase remain unchanged. Missing evidence does
-not qualify. Physical devices and acoustic/display latency are separate evidence.
-The sole user acceptance entry is [UA-08.C06](../docs/user-acceptance.md).
-
-Failed trials and all policy comparisons remain in the technical iteration
-journal. Native90 is a candidate plus a new render-delay correction, not the
-previous rejected fixed90/split-stream wrapper. It retains shared P2P streams.
-Fresh compiled vc5 SDKs, full native P2P/SFU/voice/speech/crypto/mirror/delay series
-and signed app updates are required. Public Mac/Android channels remain62.
+least4 matched speech clips per phase remain unchanged. Missing or failed
+measurements do not qualify. Physical acoustic/display latency and Xiaomi/iPhone
+acceptance remain separate evidence. The sole user acceptance entry is
+[UA-08.C06](../docs/user-acceptance.md).

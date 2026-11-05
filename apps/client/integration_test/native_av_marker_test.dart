@@ -82,6 +82,15 @@ Future<void> labWait(String state) async {
   fail('Separate native peer did not reach $state');
 }
 
+void expectSourceCadence(List source) {
+  expect(source.length, greaterThan(50));
+  for (var i = 1; i < source.length; i++) {
+    final seconds = (source[i][1] as num) - (source[i - 1][1] as num);
+    final ids = (source[i][0] as num) - (source[i - 1][0] as num);
+    expect(seconds / ids, inInclusiveRange(1.8, 2.2));
+  }
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   testWidgets('native encrypted audio/video marker playout', (tester) async {
@@ -121,7 +130,6 @@ void main() {
     if (dropKeylessSif) expect(keylessMuteCycle, isTrue);
     if (keylessMuteCycle) {
       expect(ordinaryVoice, isTrue);
-      expect(role, 'both');
     }
     final sifLogs = <Map<String, dynamic>>[];
     final nativeSifLogs = keylessMuteCycle
@@ -309,10 +317,20 @@ void main() {
           expect(voiceAlice.localParticipant!.videoTrackPublications, isEmpty);
         }
         if (role == 'sender') {
+          if (keylessMuteCycle) {
+            await labWait('keyless_mute_requested');
+            await alice.localParticipant!.setMicrophoneEnabled(false);
+            await Future<void>.delayed(const Duration(milliseconds: 250));
+            await alice.localParticipant!.setMicrophoneEnabled(true);
+            await labPost('/mute', {'sender_muted_unmuted': true});
+          }
           await labWait('receiver_done');
           final markers = await channel.invokeMapMethod<String, dynamic>(
             'result',
           );
+          if (ordinaryVoice && !keylessMuteCycle) {
+            expectSourceCadence(markers!['source_audio'] as List);
+          }
           await labPost('/source', {
             'source_audio': markers!['source_audio'],
             'source_video': markers['source_video'],
@@ -380,9 +398,14 @@ void main() {
         });
       }
       if (keylessMuteCycle) {
-        await alice.localParticipant!.setMicrophoneEnabled(false);
-        await Future<void>.delayed(const Duration(milliseconds: 250));
-        await alice.localParticipant!.setMicrophoneEnabled(true);
+        if (role == 'receiver') {
+          await labPost('/mute', {'keyless_mute_requested': true});
+          await labWait('sender_muted_unmuted');
+        } else {
+          await alice.localParticipant!.setMicrophoneEnabled(false);
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+          await alice.localParticipant!.setMicrophoneEnabled(true);
+        }
       }
       await Future<void>.delayed(const Duration(seconds: 3));
       final gate = <String, Object>{};
@@ -419,6 +442,7 @@ void main() {
         await labPost('', {
           'synthetic_media_only': true,
           'key_gate_failed': true,
+          'separate_native_sender': role == 'receiver',
           'discard_frame_when_cryptor_not_ready': true,
           'native_call_sync': nativeCallSync,
           'shared_group': audio.mediaStream.id == video.mediaStream.id,
@@ -469,6 +493,7 @@ void main() {
         await labPost('', {
           'synthetic_media_only': true,
           'key_gate_only': true,
+          'separate_native_sender': role == 'receiver',
           'fixture_field_trial_overrides': fixtureOverrides,
           'drop_keyless_sif_diagnostic': dropKeylessSif,
           'keys_installed': false,
@@ -625,14 +650,8 @@ void main() {
         sampleTimes.add((await channel.invokeMethod<double>('clock'))!);
       }
       final markers = await captureMarkers();
-      if (ordinaryVoice) {
-        final source = markers['source_audio'] as List;
-        expect(source.length, greaterThan(50));
-        for (var i = 1; i < source.length; i++) {
-          final seconds = (source[i][1] as num) - (source[i - 1][1] as num);
-          final ids = (source[i][0] as num) - (source[i - 1][0] as num);
-          expect(seconds / ids, inInclusiveRange(1.8, 2.2));
-        }
+      if (ordinaryVoice && role != 'receiver') {
+        expectSourceCadence(markers['source_audio'] as List);
       }
       if (network) {
         int packets(int sample, String kind) =>

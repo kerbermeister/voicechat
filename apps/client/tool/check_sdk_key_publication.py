@@ -69,8 +69,8 @@ def main():
         parser.error('Ordinary voice comparison requires the Mac fixture or a separate Mac sender and owned Android receiver')
     if args.adaptive_video_playout and not (args.ordinary_voice_reference and args.timestamp_full_reset and args.shared_sync and args.video_playout_ms == 130 and args.max_video_playout_ms == 130):
         parser.error('Adaptive video diagnostic requires full clock recovery, ordinary voice reference, shared streams and the existing SFU130ms hint')
-    if args.keyless_mute_cycle and (not args.ordinary_voice_reference or args.device != 'macos' or args.av_sender_root):
-        parser.error('Keyless mute diagnostic requires the single-Mac paired ordinary voice fixture')
+    if args.keyless_mute_cycle and not args.ordinary_voice_reference:
+        parser.error('Keyless mute diagnostic requires the paired ordinary voice fixture')
     if args.min_native_video_playout_ms is not None and (args.native_video_playout_ms == 0 or args.min_native_video_playout_ms > args.native_video_playout_ms):
         parser.error('Native minimum requires a nonzero maximum and must not exceed it')
     if bool(args.av_sender_root) != bool(args.av_media_ip):
@@ -143,6 +143,8 @@ def main():
         network_profiles = []
         receiver_ready = False
         receiver_done = False
+        keyless_mute_requested = False
+        sender_muted_unmuted = False
         source_markers = None
         marker_key = base64.b64encode(secrets.token_bytes(32)).decode() if args.av_sender_root else ''
         helper = name + '-netem'
@@ -162,7 +164,9 @@ def main():
                         self.send_error(403)
                         return
                     data = json.dumps({'receiver_ready': receiver_ready,
-                                       'receiver_done': receiver_done}).encode()
+                                       'receiver_done': receiver_done,
+                                       'keyless_mute_requested': keyless_mute_requested,
+                                       'sender_muted_unmuted': sender_muted_unmuted}).encode()
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
                     self.send_header('Content-Length', str(len(data)))
@@ -171,9 +175,12 @@ def main():
 
                 def do_POST(self):
                     nonlocal payload_types, receiver_ready, receiver_done, source_markers
+                    nonlocal keyless_mute_requested, sender_muted_unmuted
                     paths = (marker_path, marker_path + '/profile')
                     if args.av_sender_root:
                         paths += (marker_path + '/ready', marker_path + '/source')
+                        if args.keyless_mute_cycle:
+                            paths += (marker_path + '/mute',)
                     if self.path not in paths or self.headers.get('Transfer-Encoding'):
                         self.send_error(403)
                         return
@@ -186,6 +193,15 @@ def main():
                     data = self.rfile.read(length)
                     try:
                         value = json.loads(data)
+                        if self.path.endswith('/mute'):
+                            if value == {'keyless_mute_requested': True}:
+                                keyless_mute_requested = True
+                            else:
+                                assert keyless_mute_requested and value == {'sender_muted_unmuted': True}
+                                sender_muted_unmuted = True
+                            self.send_response(200)
+                            self.end_headers()
+                            return
                         if self.path.endswith('/ready'):
                             assert value == {'receiver_ready': True}
                             receiver_ready = True
@@ -194,7 +210,8 @@ def main():
                             return
                         if self.path.endswith('/source'):
                             assert value['synthetic_media_only'] is True and value['encrypted_publications'] is True
-                            assert len(value['source_audio']) >= 20 and len(value['source_video']) >= 20
+                            minimum = 1 if args.keyless_mute_cycle else 20
+                            assert len(value['source_audio']) >= minimum and len(value['source_video']) >= minimum
                             source_markers = value
                             media = json.loads(args.av_marker_output.read_text())
                             assert media['separate_native_sender'] is True
