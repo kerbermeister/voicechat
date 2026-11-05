@@ -40,6 +40,10 @@ void main() {
     StreamSubscription<Map<String, dynamic>>? nativeLogs;
     try {
       const playout = int.fromEnvironment('P2P_VIDEO_PLAYOUT_MS');
+      const minPlayout = int.fromEnvironment(
+        'P2P_VIDEO_MIN_PLAYOUT_MS',
+        defaultValue: playout,
+      );
       const audioOnly = bool.fromEnvironment('P2P_AUDIO_ONLY');
       const timestampReset = int.fromEnvironment('P2P_TIMESTAMP_RESET_MS');
       const fullReset = bool.fromEnvironment('P2P_TIMESTAMP_FULL_RESET');
@@ -58,10 +62,7 @@ void main() {
       if (playout != 0) {
         await channel.invokeMethod<void>('playout', {
           'milliseconds': playout,
-          'minimum': const int.fromEnvironment(
-            'P2P_VIDEO_MIN_PLAYOUT_MS',
-            defaultValue: playout,
-          ),
+          'minimum': minPlayout,
         });
       }
       nativeLogs = await collectNativeSyncLogs(syncLogs);
@@ -302,6 +303,7 @@ void main() {
       result['timestamp_reset_ms'] = timestampReset;
       result['timestamp_full_covariance_reset'] = fullReset;
       result['adaptive_video_playout'] = adaptivePlayout;
+      result['video_min_playout_ms'] = minPlayout;
       if (syncLogs.isNotEmpty) result['native_sync_logs'] = syncLogs;
       // Retain the source pulse trace before rejecting an invalid source.
       await labPost('', result);

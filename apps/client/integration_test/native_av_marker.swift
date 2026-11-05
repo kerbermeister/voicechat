@@ -97,7 +97,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
         result(nil)
       case "playout":
         guard plugin.peerConnectionFactory == nil, let delay = args["milliseconds"] as? Int,
-          [70, 90, 100, 130].contains(delay) else {
+          [70, 90, 100, 130, 10000].contains(delay) else {
           result(FlutterError(code: "fixture", message: "Configure playout before native factory", details: nil)); return
         }
         let minimum = args["minimum"] as? Int ?? delay

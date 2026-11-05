@@ -18932,5 +18932,174 @@
     "zero_cfs_throttle_during_call_required": true,
     "prior_failed_trials_preserved": true,
     "reason": "Observed CFS throttle in former half-core local TURN fixture; separate source-vs-delivered-onset validation fix has before-fix regression and stronger frame consistency check"
+  },
+  "sdk8_cpu2_paired_first_failure": {
+    "trial": "current-23007def-cpu2-paired-1",
+    "timing": "budget_exceeded",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 31.085583337699063,
+      "max_source_corrected_abs_ms": 34.08641667192569
+    },
+    "recovery": {
+      "count": 25,
+      "max_abs_ms": 106.74954166461248,
+      "max_source_corrected_abs_ms": 104.11116666728049
+    },
+    "source_max_ms": 3.01029166803346,
+    "speech": "pass",
+    "pass": false,
+    "cpu_throttle_delta_zero": true,
+    "late_marker": 40,
+    "scheduled_render_s_after_marker_source": 0.198281208327,
+    "callback_s_before_render": 0.00764366666
+  },
+  "sdk8_min0_adaptive_diagnostic": {
+    "plan": {
+      "utc": "2026-11-05T16:22:56.819210+00:00",
+      "trials": 3,
+      "reference_first": [
+        false,
+        true,
+        false
+      ],
+      "sdk_archive_unchanged": "150.7871.04-vc8",
+      "only_native_field_trial_change": "WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:10000 instead of90..10000",
+      "nw_path_monitor_enabled": true,
+      "process_activity_override": false,
+      "cpu_per_turn": 2,
+      "requires_zero_cfs": true,
+      "purpose": "Verify whether former90ms floor prevents target correction when video RTP extrapolated clock moves late",
+      "all_original_gates_unchanged": true,
+      "not_product_qualification": true
+    },
+    "trials": [
+      {
+        "label": "current23007-cpuquota-min0adaptive1",
+        "timing": "pass",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 41.9839583337307,
+          "max_source_corrected_abs_ms": 43.926041667873506
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 41.47233333787881,
+          "max_source_corrected_abs_ms": 42.336541671829764
+        },
+        "speech": "pass",
+        "voice": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": -0.2631250026752241
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": -0.23874999897088856
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": -0.24454166850773618
+          }
+        },
+        "identity": {
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+          "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+        },
+        "product_qualified": false,
+        "cpu_throttle_delta_zero": true
+      },
+      {
+        "label": "current23007-cpuquota-min0adaptive2",
+        "timing": "pass",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 33.596166664210614,
+          "max_source_corrected_abs_ms": 36.376791664224584
+        },
+        "recovery": {
+          "count": 26,
+          "max_abs_ms": 44.95620833768044,
+          "max_source_corrected_abs_ms": 46.074083336861804
+        },
+        "speech": "speech_regression",
+        "voice": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": 0.3256666677771136
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 0.32483333052368835
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 0.33837500086519867
+          }
+        },
+        "identity": {
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+          "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+        },
+        "product_qualified": false,
+        "cpu_throttle_delta_zero": true
+      },
+      {
+        "label": "current23007-cpuquota-min0adaptive3",
+        "timing": "pass",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 44.88800000399351,
+          "max_source_corrected_abs_ms": 45.735708335996605
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 43.47816666995641,
+          "max_source_corrected_abs_ms": 44.2707500042161
+        },
+        "speech": "pass",
+        "voice": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": -0.26233332755509764
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 22.952083330892492
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 22.961875001783483
+          }
+        },
+        "identity": {
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+          "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+        },
+        "product_qualified": false,
+        "cpu_throttle_delta_zero": true
+      }
+    ],
+    "timing_pass_count": 3,
+    "speech_pass_count": 2,
+    "all_pass": false,
+    "speech_failure": {
+      "trial": 2,
+      "phase": "clean",
+      "marker": 6,
+      "phase_stoi_video": 0.9728738206663831,
+      "phase_stoi_ordinary": 0.9902571467303097,
+      "clip_stoi_video": 0.899791257920307,
+      "clip_stoi_ordinary": 0.9893626517340663,
+      "removed_samples_video": 674,
+      "removed_samples_ordinary": 279,
+      "rtp_loss_delta": 0
+    }
   }
 }

@@ -263,6 +263,7 @@ Future<Map<String, dynamic>> measureP2PReceiver(
           {
             for (final field in [
               'kind',
+              'ssrc',
               'framesDecoded',
               'framesDropped',
               'framesPerSecond',
