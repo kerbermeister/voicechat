@@ -15,6 +15,8 @@ on:
     paths:
       - infra/build_webrtc_sdk.py
       - infra/webrtc-sdk.json
+      - infra/verify_native_playout_policy.py
+      - infra/verify_webrtc_timing.py
       - infra/webrtc-bounded-sync.patch
 permissions:
   contents: read
@@ -80,6 +82,16 @@ jobs:
           ref: 717ec1dc5a94389d691e09cccaf3d7b3364fb4b7
           path: sdk-builder
           persist-credentials: false
+      - name: Read pinned SDK artifact version
+        id: sdk_version
+        run: |
+          python3 - <<'PYTHON'
+          import json, os, re
+          value = json.load(open('infra/webrtc-sdk.json'))['release_artifact_version']
+          assert re.fullmatch(r'[0-9]+(?:\.[0-9]+){2}-vc[1-9][0-9]*', value)
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write('version=' + value + '\n')
+          PYTHON
       - name: Prepare isolated Linux runner
         if: runner.os == 'Linux'
         run: |
@@ -100,6 +112,6 @@ jobs:
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         if: always()
         with:
-          name: webrtc-${{ matrix.platform }}-150.7871.04-vc3
+          name: webrtc-${{ matrix.platform }}-${{ steps.sdk_version.outputs.version }}
           path: ${{ runner.temp }}/results/
           if-no-files-found: error
