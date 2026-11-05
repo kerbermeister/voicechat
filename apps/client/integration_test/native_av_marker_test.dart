@@ -15,14 +15,18 @@ import 'package:voicechat_probe/call_stream_sync.dart';
 
 Future<StreamSubscription<Map<String, dynamic>>> collectNativeSifLogs(
   List<Map<String, dynamic>> logs,
+  void Function() onMissingKey,
 ) async {
   final watch = Stopwatch()..start();
   final subscription = FlutterWebRTCEventChannel.instance.handleEvents.stream
       .listen((event) {
         final value = event['onLogData'];
         final message = value is Map ? value['data'] : null;
-        if (message is String &&
-            logs.length < 300 &&
+        if (message is! String) return;
+        if (message.contains('decryptFrame() no keys, or ')) {
+          onMissingKey();
+        }
+        if (logs.length < 300 &&
             (message.contains('server injected frame') ||
                 message.contains('SIF trailer'))) {
           logs.add({
@@ -186,8 +190,11 @@ void main() {
       expect(ordinaryVoice, isTrue);
     }
     final sifLogs = <Map<String, dynamic>>[];
-    final nativeSifLogs = keylessMuteCycle
-        ? await collectNativeSifLogs(sifLogs)
+    var nativeMissingKeyFrames = 0;
+    const nativeSifTrace = bool.fromEnvironment('AV_NATIVE_SIF_TRACE');
+    const startupOnly = bool.fromEnvironment('AV_NATIVE_STARTUP_ONLY');
+    final nativeSifLogs = keylessMuteCycle || nativeSifTrace
+        ? await collectNativeSifLogs(sifLogs, () => nativeMissingKeyFrames++)
         : null;
 
     const encodedKey = String.fromEnvironment('AV_MARKER_KEY');
@@ -456,14 +463,45 @@ void main() {
         }
       }
       await Future<void>.delayed(const Duration(seconds: 3));
-      final gate = <String, Object>{};
       final contentGate = await channel.invokeMapMethod<String, dynamic>(
         'gate',
       );
-      if ((contentGate!['video_markers'] as num) != 0 ||
+      final gate = <String, Object>{'content': contentGate!};
+      final inboundTracks = [
+        ('audio', audio),
+        ('video', video),
+        if (ordinaryVoice) ('ordinary_voice', voiceAudio!),
+      ];
+      final inboundGate = <String, Map<String, num>>{};
+      for (final (label, track) in inboundTracks) {
+        final reports = await track.receiver!.getStats();
+        final kind = label == 'video' ? 'video' : 'audio';
+        final stats = reports
+            .firstWhere(
+              (row) => row.type == 'inbound-rtp' && row.values['kind'] == kind,
+            )
+            .values;
+        final decoded = label == 'video'
+            ? (stats['framesDecoded'] as num? ?? 0)
+            : (stats['totalSamplesReceived'] as num? ?? 0) -
+                  (stats['concealedSamples'] as num? ?? 0);
+        inboundGate[label] = {
+          'packets': stats['packetsReceived'] as num,
+          'decoded': decoded,
+          if (label == 'ordinary_voice')
+            'plaintext_audio_peak': contentGate['control_audio_peak'] as num,
+        };
+      }
+      gate.addAll(inboundGate);
+      final nativeSifBeforeKeyCount = sifLogs.length;
+      final nativeMissingKeyFramesBeforeKey = nativeMissingKeyFrames;
+      if ((contentGate['video_markers'] as num) != 0 ||
           (contentGate['audio_peak'] as num) >= .001 ||
           (ordinaryVoice &&
-              (contentGate['control_audio_peak'] as num) >= .001)) {
+              (contentGate['control_audio_peak'] as num) >= .001) ||
+          inboundGate.values.any(
+            (track) => track['packets']! <= 0 || track['decoded'] != 0,
+          )) {
         // Preserve synthetic PCM and decoder counters before rejecting the
         // negative control; no keys are installed and no assertion is relaxed.
         final reports = await bob.engine.subscriber!.pc.getStats();
@@ -499,45 +537,27 @@ void main() {
           'markers': await captureNativeMarkers(channel),
           'stats': counters(reports),
           'control_stats': counters(voiceReports),
-          'missing_key_gate': {'content': contentGate},
+          'missing_key_gate': gate,
           'simultaneous_ordinary_voice_reference': ordinaryVoice,
           'native_sif_logs': sifLogs,
+          if (nativeSifTrace)
+            'native_sif_before_key_count': nativeSifBeforeKeyCount,
+          if (nativeSifTrace)
+            'native_missing_key_frames': nativeMissingKeyFramesBeforeKey,
           'keyless_mute_cycle': keylessMuteCycle,
+          if (startupOnly) 'startup_only': true,
         });
       }
       expect(contentGate['video_markers'], 0);
       expect(contentGate['audio_peak'], lessThan(.001));
-      gate['content'] = contentGate;
       if (ordinaryVoice) {
         expect(contentGate['control_audio_peak'], lessThan(.001));
-        final rows = await voiceAudio!.receiver!.getStats();
-        final inbound = rows.singleWhere(
-          (r) => r.type == 'inbound-rtp' && r.values['kind'] == 'audio',
-        );
-        expect(inbound.values['packetsReceived'], greaterThan(0));
-        gate['ordinary_voice'] = {
-          'packets': inbound.values['packetsReceived'],
-          'plaintext_audio_peak': contentGate['control_audio_peak'],
-          'decoded':
-              (inbound.values['totalSamplesReceived'] as num? ?? 0) -
-              (inbound.values['concealedSamples'] as num? ?? 0),
-        };
       }
-      for (final (label, track) in [('audio', audio), ('video', video)]) {
-        final reports = await track.receiver!.getStats();
-        final stats = reports
-            .where((row) => row.type == 'inbound-rtp')
-            .first
-            .values;
-        final decoded = label == 'video'
-            ? (stats['framesDecoded'] as num? ?? 0)
-            : (stats['totalSamplesReceived'] as num? ?? 0) -
-                  (stats['concealedSamples'] as num? ?? 0);
-        expect(stats['packetsReceived'], greaterThan(0));
-        if (label == 'video') expect(decoded, 0);
-        gate[label] = {'packets': stats['packetsReceived'], 'decoded': decoded};
+      for (final entry in inboundGate.entries) {
+        expect(entry.value['packets'], greaterThan(0), reason: entry.key);
+        expect(entry.value['decoded'], 0, reason: entry.key);
       }
-      if (keylessMuteCycle) {
+      if (keylessMuteCycle || startupOnly) {
         await labPost('', {
           'synthetic_media_only': true,
           'key_gate_only': true,
@@ -551,8 +571,16 @@ void main() {
           'markers': await captureNativeMarkers(channel),
           'missing_key_gate': gate,
           'native_sif_logs': sifLogs,
+          if (startupOnly) 'startup_only': true,
+          if (nativeSifTrace)
+            'native_sif_before_key_count': nativeSifBeforeKeyCount,
+          if (nativeSifTrace)
+            'native_missing_key_frames': nativeMissingKeyFramesBeforeKey,
           'discard_frame_when_cryptor_not_ready': true,
         });
+        if (startupOnly) {
+          expect(nativeMissingKeyFramesBeforeKey, greaterThan(0));
+        }
         // This is solely a negative crypto control, not a media qualification.
         // ignore: avoid_print
         print(
@@ -716,6 +744,10 @@ void main() {
         'stats_times': sampleTimes,
         'simultaneous_ordinary_voice_reference': ordinaryVoice,
         'native_sif_logs': sifLogs,
+        if (nativeSifTrace)
+          'native_sif_before_key_count': nativeSifBeforeKeyCount,
+        if (nativeSifTrace)
+          'native_missing_key_frames': nativeMissingKeyFramesBeforeKey,
         'keyless_mute_cycle': keylessMuteCycle,
         if (ordinaryVoice) 'control_stats': voiceSamples,
         if (ordinaryVoice) 'ordinary_voice_room': voiceBob!.name,
