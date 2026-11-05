@@ -655,3 +655,82 @@
              enableInternalTracer, nativeLibraryLoader, nativeLibraryName, loggable,
              loggableSeverity);
        }
+--- a/modules/video_coding/timing/timestamp_extrapolator.h
++++ b/modules/video_coding/timing/timestamp_extrapolator.h
+@@ -123,11 +123,10 @@
+     // TODO(brandtr): Increase from this unreasonably low value.
+     int acc_max_error = 7000;  // 77 ms <=> 2.3 frames@30fps.
+
+-    // If true, reset the entire uncertainty covariance matrix on alarms.
+-    // If false, only reset the offset variance term.
+-    // TODO(brandtr): Flip so that the frequency term won't get hit tpp badly
+-    // when a large delay spike happens.
+-    bool reset_full_cov_on_alarm = false;
++    // Reset slope/offset covariance together after a network delay change;
++    // keeping the old cross-covariance makes clock skew recover slowly.
++    // An explicit field trial can still request offset-only resetting.
++    bool reset_full_cov_on_alarm = true;
+   };
+
+   TimestampExtrapolator(Timestamp start, const FieldTrialsView& field_trials);
+--- a/modules/video_coding/timing/timestamp_extrapolator_unittest.cc
++++ b/modules/video_coding/timing/timestamp_extrapolator_unittest.cc
+@@ -10,11 +10,14 @@
+
+ #include "modules/video_coding/timing/timestamp_extrapolator.h"
+
++#include <algorithm>
+ #include <cstdint>
+ #include <cstdlib>
+ #include <limits>
+ #include <optional>
+ #include <string>
++#include <utility>
++#include <vector>
+
+ #include "api/units/frequency.h"
+ #include "api/units/time_delta.h"
+@@ -330,6 +333,43 @@
+   const int kExpectedFastClockDriftPpm = (k25Fps / k24Fps - 1.0) * kToPpmFactor;
+   EXPECT_NEAR(kExpectedFastClockDriftPpm, metrics::MinSample(kHistogramName),
+               kPpmTolerance);
++}
++
++TEST(TimestampExtrapolatorTest, RecoversClockRateAfterNetworkDelay) {
++  SimulatedClock clock(Timestamp::Millis(1337));
++  TimestampExtrapolator extrapolator(clock.CurrentTime(), CreateTestFieldTrials());
++  const Timestamp start = clock.CurrentTime();
++  std::vector<std::pair<Timestamp, uint32_t>> arrivals;
++  for (int i = 0; i < 650; ++i) {
++    const Timestamp capture = start + TimeDelta::Millis(i * 50);
++    const TimeDelta network_delay =
++        TimeDelta::Millis(i >= 50 && i < 350 ? 150 : 0);
++    arrivals.emplace_back(capture + network_delay, 90000 + i * 4500);
++  }
++  // Delay transitions reorder frames. Feed real arrival order without moving
++  // the receiver clock backwards or resetting the estimator between phases.
++  std::sort(arrivals.begin(), arrivals.end());
++  for (const auto& [arrival, rtp] : arrivals) {
++    clock.AdvanceTime(arrival - clock.CurrentTime());
++    extrapolator.Update(clock.CurrentTime(), rtp);
++  }
++  const uint32_t last_rtp = 90000 + 649 * 4500;
++  auto last = extrapolator.ExtrapolateLocalTime(last_rtp);
++  auto next = extrapolator.ExtrapolateLocalTime(last_rtp + 90000);
++  ASSERT_TRUE(last.has_value());
++  ASSERT_TRUE(next.has_value());
++  EXPECT_LE((*last - clock.CurrentTime()).Abs(), TimeDelta::Millis(1));
++  // A transient path delay must not become a persistent sender-clock drift.
++  EXPECT_LE((*next - clock.CurrentTime() - TimeDelta::Seconds(1)).Abs(),
++            TimeDelta::Millis(1));
++}
++
++TEST(TimestampExtrapolatorTest, PreservesExplicitOffsetOnlyReset) {
++  TimestampExtrapolator extrapolator(
++      Timestamp::Millis(1337),
++      CreateTestFieldTrials("WebRTC-TimestampExtrapolatorConfig/"
++                            "reset_full_cov_on_alarm:false/"));
++  EXPECT_FALSE(extrapolator.GetConfigForTest().reset_full_cov_on_alarm);
+ }
+
+ TEST(TimestampExtrapolatorTest, SetsValidConfig) {

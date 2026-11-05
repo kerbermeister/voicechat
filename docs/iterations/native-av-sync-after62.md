@@ -759,3 +759,21 @@ The second starts the simultaneous ordinary reference first. These are the
 existing SDK5 binary with an explicit supported field trial, not a new compiled
 default or completed qualification. Third P2P and actual LiveKit AES-GCM series
 are predeclared; stop on first failed gate. No app update is published.
+
+## Isolated SDK6 compiler candidate prepared
+
+Three actual SDK5 full-covariance field-trial P2P diagnostics pass; encrypted SFU
+remains pending. The isolated codex/native-sdk-av-vc6 compiler candidate changes
+only the existing extrapolator full-covariance default in addition to retained
+SDK5 fixes. Explicit reset_full_cov_on_alarm:false remains supported. No timeout,
+audio DSP/codec, encryption, certificate, frame-dropping or packet-flush change.
+
+New C++ behavior regression feeds 650 arrivals at 20fps with150ms delay on frames
+50..349, sorted by actual arrival time to preserve a monotonic receiver clock.
+After recovery both the current and future1s RTP estimates must match the local
+clock within1ms. This checks retained clock skew after a path-delay change, not
+just a configuration flag. Full gate must first fail the original default then
+pass all63 actual tests/11 negative regressions with zero skips. Builds and media
+are unqualified. The candidate restores both client pins to the last complete
+SDK3 internal pair instead of pushing an incomplete Mac-only SDK5 pin. This is
+compiler preparation, not a released app change; published channels remain62.

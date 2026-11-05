@@ -1,5 +1,17 @@
 # Native call synchronization SDK
 
+**SDK6 compiler candidate, not qualified.** The isolated source changes the
+existing timestamp extrapolator default to reset full slope/offset covariance
+on delay alarms, retaining explicit offset-only opt-out and the10s timeout.
+Three SDK5 binary diagnostics using this same existing field trial pass paired
+P2P/speech/voice gates; actual encrypted SFU diagnostics are still running.
+A new deterministic regression feeds arrival-ordered150ms delay transitions
+and checks clock-rate recovery without resetting the receiver clock. Existing
+extrapolator tests and explicit opt-out join the gate:63 C++ tests/11 negative
+regressions are required, not yet claimed passed. The manifest has14 source
+files. Both client binary pins deliberately remain the previous complete SDK3
+internal pair until exact new platform artifacts are verified. No app update.
+
 **Not release-qualified (2026-11-05).** Native app channels remain62. SDK4's
 130ms default was rejected by real SDK3 encrypted-SFU precursors (113.640ms and
 speech regression); its binary builds were cancelled and its45/9 C++ proof is

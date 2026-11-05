@@ -173,6 +173,8 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     patched_sync = synchronizer.read_bytes()
     sync_header = synchronizer.with_suffix('.h')
     patched_header = sync_header.read_bytes()
+    extrapolator_header = source / 'modules/video_coding/timing/timestamp_extrapolator.h'
+    patched_extrapolator_header = extrapolator_header.read_bytes()
     bounded = b'  if (UseLowLatencyRendering()) {\n    return TimeDelta::Zero();\n  }\n  return std::clamp(current_delay, min_playout_delay, max_playout_delay);'
     if patched.count(bounded) != 1:
         raise RuntimeError('Expected exactly one effective render-delay calculation')
@@ -185,7 +187,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         before_timing = before_timing.replace(receive_relative,
                                               b'  return GetTimings().CurrentDelay();')
         timing.write_bytes(before_timing)
-        for path in [synchronizer, sync_header]:
+        for path in [synchronizer, sync_header, extrapolator_header]:
             path.write_bytes(subprocess.check_output(
                 ['git', 'show', MANIFEST['webrtc_commit'] + ':' + path.relative_to(source).as_posix()],
                 cwd=source))
@@ -200,6 +202,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         timing.write_bytes(patched)
         synchronizer.write_bytes(patched_sync)
         sync_header.write_bytes(patched_header)
+        extrapolator_header.write_bytes(patched_extrapolator_header)
     verify_files(source, MANIFEST['patched_files_sha256'])
     run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
     after = subprocess.run([str(build / 'timing_sync_unittests'),
