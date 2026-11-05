@@ -148,7 +148,11 @@ rtc_test("timing_sync_unittests") {
   sources = []
   deps = [
     ":sync_unittests",
+    "//api/crypto:crypto_unittests",
+    "//common_video",
     "//modules/video_coding/timing:timing_unittests",
+    "//rtc_base:byte_buffer",
+    "//rtc_base:crypto_random",
   ]
 }
 ''')
@@ -175,10 +179,12 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     patched_header = sync_header.read_bytes()
     extrapolator_header = source / 'modules/video_coding/timing/timestamp_extrapolator.h'
     patched_extrapolator_header = extrapolator_header.read_bytes()
+    cryptor = source / 'api/crypto/frame_crypto_transformer.cc'
+    patched_cryptor = cryptor.read_bytes()
     bounded = b'  if (UseLowLatencyRendering()) {\n    return TimeDelta::Zero();\n  }\n  return std::clamp(sync_playout_delay.value_or(current_delay),\n                    min_playout_delay, max_playout_delay);'
     if patched.count(bounded) != 1:
         raise RuntimeError('Expected exactly one effective render-delay calculation')
-    receive_relative = b'  return GetSyncDelay(rtp_timestamp, receive_time).remaining.value_or(TimeDelta::Zero());'
+    receive_relative = b'  return std::max(TimeDelta::Zero(),\n                  RenderTime(rtp_timestamp, receive_time) - receive_time);'
     if patched.count(receive_relative) != 1:
         raise RuntimeError('Expected exactly one receive-relative render delay')
     try:
@@ -187,7 +193,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         before_timing = before_timing.replace(receive_relative,
                                               b'  return GetTimings().CurrentDelay();')
         timing.write_bytes(before_timing)
-        for path in [synchronizer, sync_header, extrapolator_header]:
+        for path in [synchronizer, sync_header, extrapolator_header, cryptor]:
             path.write_bytes(subprocess.check_output(
                 ['git', 'show', MANIFEST['webrtc_commit'] + ':' + path.relative_to(source).as_posix()],
                 cwd=source))
@@ -203,6 +209,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         synchronizer.write_bytes(patched_sync)
         sync_header.write_bytes(patched_header)
         extrapolator_header.write_bytes(patched_extrapolator_header)
+        cryptor.write_bytes(patched_cryptor)
     verify_files(source, MANIFEST['patched_files_sha256'])
     run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
     after = subprocess.run([str(build / 'timing_sync_unittests'),

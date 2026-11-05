@@ -17,7 +17,7 @@
    };
 
    VCMTiming(Clock* clock, const FieldTrialsView& field_trials);
-@@ -102,6 +105,18 @@
+@@ -102,6 +105,15 @@
    // should be rendered, assuming that the system time currently is `now`.
    Timestamp RenderTime(uint32_t rtp_timestamp, Timestamp now) const;
 
@@ -26,25 +26,13 @@
 +  TimeDelta CurrentDelayFromReceive(uint32_t rtp_timestamp,
 +                                   Timestamp receive_time) const;
 +
-+  struct SyncDelay {
-+    std::optional<TimeDelta> remaining;
-+    TimeDelta buffer;
-+  };
-+  SyncDelay GetSyncDelay(uint32_t rtp_timestamp, Timestamp receive_time) const;
++  std::optional<TimeDelta> VideoClockOffset(uint32_t rtp_timestamp,
++                                           Timestamp receive_time) const;
 +  void SetSyncPlayoutDelay(std::optional<TimeDelta> delay);
 +
    // Returns the current target delay which is minimum delay + decode time +
    // render delay.
    TimeDelta TargetVideoDelay() const;
-@@ -115,6 +130,8 @@
-   VideoFrame::RenderParameters RenderParameters() const;
-
-  private:
-+  std::optional<Timestamp> RenderTimeLocked(uint32_t rtp_timestamp) const
-+      RTC_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
-   mutable Mutex mutex_;
-   Clock* const clock_;
-   const std::unique_ptr<TimestampExtrapolator> ts_extrapolator_
 --- a/modules/video_coding/timing/timing.cc
 +++ b/modules/video_coding/timing/timing.cc
 @@ -58,11 +58,20 @@
@@ -68,44 +56,29 @@
  }
 
  TimeDelta VCMTiming::VideoDelayTimings::StatsTargetDelay() const {
-@@ -161,6 +170,10 @@
-
- Timestamp VCMTiming::RenderTime(uint32_t rtp_timestamp, Timestamp now) const {
-   MutexLock lock(&mutex_);
-+  return RenderTimeLocked(rtp_timestamp).value_or(now);
-+}
-+
-+std::optional<Timestamp> VCMTiming::RenderTimeLocked(uint32_t rtp_timestamp) const {
-   if (timings_.UseLowLatencyRendering()) {
-     // Render as soon as possible or with low-latency renderer algorithm.
-     return Timestamp::Zero();
-@@ -168,11 +181,29 @@
-   std::optional<Timestamp> local_time =
-       ts_extrapolator_->ExtrapolateLocalTime(rtp_timestamp);
+@@ -170,9 +179,27 @@
    if (!local_time.has_value()) {
--    return now;
--  }
+     return now;
+   }
 -  return *local_time + std::clamp(timings_.current_delay,
 -                                  timings_.min_playout_delay,
 -                                  timings_.max_playout_delay);
-+    return std::nullopt;
-+  }
 +  return *local_time + timings_.CurrentDelay();
 +}
 +
 +TimeDelta VCMTiming::CurrentDelayFromReceive(uint32_t rtp_timestamp,
 +                                           Timestamp receive_time) const {
-+  return GetSyncDelay(rtp_timestamp, receive_time).remaining.value_or(TimeDelta::Zero());
++  return std::max(TimeDelta::Zero(),
++                  RenderTime(rtp_timestamp, receive_time) - receive_time);
 +}
 +
-+VCMTiming::SyncDelay VCMTiming::GetSyncDelay(uint32_t rtp_timestamp,
-+                                            Timestamp receive_time) const {
++std::optional<TimeDelta> VCMTiming::VideoClockOffset(
++    uint32_t rtp_timestamp, Timestamp receive_time) const {
 +  MutexLock lock(&mutex_);
-+  const auto render_time = RenderTimeLocked(rtp_timestamp);
-+  return {render_time ? std::make_optional(std::max(
-+                            TimeDelta::Zero(), *render_time - receive_time))
-+                      : std::nullopt,
-+          timings_.CurrentDelay()};
++  auto local_time = ts_extrapolator_->ExtrapolateLocalTime(rtp_timestamp);
++  if (!local_time.has_value())
++    return std::nullopt;
++  return receive_time - *local_time;
 +}
 +
 +void VCMTiming::SetSyncPlayoutDelay(std::optional<TimeDelta> delay) {
@@ -157,12 +130,12 @@
 +  VCMTiming timing(&clock, field_trials);
 +  timing.SetMinimumDelay(TimeDelta::Millis(500));
 +  timing.set_playout_delay({TimeDelta::Millis(90), TimeDelta::Seconds(10)});
-+  EXPECT_FALSE(timing.GetSyncDelay(90000, clock.CurrentTime()).remaining.has_value());
++  EXPECT_FALSE(timing.VideoClockOffset(90000, clock.CurrentTime()).has_value());
 +  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
 +  timing.SetSyncPlayoutDelay(TimeDelta::Millis(225));
-+  auto delay = timing.GetSyncDelay(90000, clock.CurrentTime());
-+  EXPECT_EQ(delay.remaining, TimeDelta::Millis(225));
-+  EXPECT_EQ(delay.buffer, TimeDelta::Millis(225));
++  EXPECT_EQ(timing.VideoClockOffset(90000, clock.CurrentTime()), TimeDelta::Zero());
++  EXPECT_EQ(timing.CurrentDelayFromReceive(90000, clock.CurrentTime()),
++            TimeDelta::Millis(225));
 +  timing.SetSyncPlayoutDelay(TimeDelta::Millis(110));
 +  EXPECT_EQ(timing.GetTimings().CurrentDelay(), TimeDelta::Millis(110));
 +  EXPECT_GT(timing.TargetVideoDelay(), TimeDelta::Millis(500));
@@ -227,20 +200,19 @@
  }  // namespace webrtc
 --- a/video/video_receive_stream2.cc
 +++ b/video/video_receive_stream2.cc
-@@ -810,7 +810,11 @@
+@@ -810,7 +810,10 @@
    if (!info)
      return std::nullopt;
 
 -  info->current_delay = timing_->TargetVideoDelay();
-+  const auto delay = timing_->GetSyncDelay(
++  info->current_delay = timing_->CurrentDelayFromReceive(
 +      info->latest_received_capture_rtp_timestamp, info->latest_receive_time);
-+  info->current_delay = delay.remaining.value_or(TimeDelta::Zero());
-+  if (delay.remaining.has_value())
-+    info->video_buffer_delay = delay.buffer;
++  info->video_clock_offset = timing_->VideoClockOffset(
++      info->latest_received_capture_rtp_timestamp, info->latest_receive_time);
    return info;
  }
 
-@@ -823,6 +827,11 @@
+@@ -823,6 +826,11 @@
  void VideoReceiveStream2::SetEstimatedPlayoutNtpTimestamp(NtpTime ntp_time,
                                                            Timestamp time) {
    RTC_DCHECK_NOTREACHED();
@@ -406,7 +378,7 @@
                       << "cur_delay: " << video_info->current_delay
                       << "} {relative_delay_ms: " << relative_delay_ms << "} ";
    }
-@@ -147,31 +157,18 @@
+@@ -147,31 +157,17 @@
                   audio_info->current_delay.ms());
    TRACE_COUNTER1("webrtc", "SyncRelativeDelay", relative_delay_ms);
 
@@ -435,22 +407,21 @@
 -          TimeDelta::Millis(target_video_delay_ms))) {
 -    sync_->ReduceVideoDelay();
 -  }
-+  if (!video_info->video_buffer_delay.has_value())
++  if (!video_info->video_clock_offset.has_value())
 +    return;
 +
-+  // Relative delay already includes transport latency. Correct the *total*
-+  // video buffer by the measured render error, rather than feeding a remaining
-+  // packet-to-render wait back as a minimum buffer or time-stretching audio.
++  // Keep the RTP-clock offset signed, even when a frame's deadline is past.
++  // The target is a total video buffer, not a remaining render wait. Audio
++  // stays on its natural NetEq/device delay, with no synchronization floor.
 +  const TimeDelta target = std::max(
-+      TimeDelta::Zero(), *video_info->video_buffer_delay +
-+          audio_info->current_delay - video_info->current_delay -
-+          TimeDelta::Millis(relative_delay_ms));
++      TimeDelta::Zero(), audio_info->current_delay +
++          *video_info->video_clock_offset - TimeDelta::Millis(relative_delay_ms));
 +  syncable_video_->SetVideoSyncDelay(target);
 +
  }
 
  // TODO(https://bugs.webrtc.org/7065): Move RtpToNtpEstimator out of
-@@ -195,7 +192,7 @@
+@@ -195,7 +191,7 @@
    }
 
    NtpTime latest_audio_ntp =
@@ -459,7 +430,7 @@
    if (!latest_audio_ntp.Valid()) {
      return false;
    }
-@@ -205,7 +202,7 @@
+@@ -205,7 +201,7 @@
                                                     audio->time);
 
    NtpTime latest_video_ntp =
@@ -468,7 +439,7 @@
    if (!latest_video_ntp.Valid()) {
      return false;
    }
-@@ -223,7 +220,7 @@
+@@ -223,7 +219,7 @@
 
    *video_playout_ntp_ms = latest_video_ntp_ms;
    *stream_offset_ms = latest_audio_ntp_ms - latest_video_ntp_ms;
@@ -520,7 +491,7 @@
 +    if (video_buffer.has_value()) {
 +      const TimeDelta buffer = video_target.value_or(*video_buffer);
 +      info.current_delay = std::max(TimeDelta::Zero(), buffer + transport_offset);
-+      info.video_buffer_delay = buffer;
++      info.video_clock_offset = -transport_offset;
 +    }
 +    return info;
 +  }
@@ -817,8 +788,8 @@
 
      // Current playout delay for the given `Syncable`.
      TimeDelta current_delay;
-+    // Present only when the video receiver has a fitted RTP/render clock.
-+    std::optional<TimeDelta> video_buffer_delay;
++    // Packet arrival minus fitted RTP time, only when the video clock is ready.
++    std::optional<TimeDelta> video_clock_offset;
    };
 
    // Mapping between capture/render time in RTP timestamps and local clock.
@@ -841,3 +812,74 @@
 
    std::vector<webrtc::RtpSource> GetSources() const override;
 
+--- a/api/crypto/frame_crypto_transformer.cc
++++ b/api/crypto/frame_crypto_transformer.cc
+@@ -666,6 +666,20 @@
+         }
+         return;
+       }
++      if (key_provider_->options().discard_frame_when_cryptor_not_ready) {
++        auto key_handler = key_provider_->options().shared_key
++                               ? key_provider_->GetSharedKey(participant_id_)
++                               : key_provider_->GetKey(participant_id_);
++        if (key_handler == nullptr || key_handler->GetKeySet(-1) == nullptr) {
++          RTC_LOG(LS_INFO) << "FrameCryptorTransformer::decryptFrame() dropping "
++                              "server injected frame before key";
++          if (last_dec_error_ != FrameCryptionState::kMissingKey) {
++            last_dec_error_ = FrameCryptionState::kMissingKey;
++            onFrameCryptionStateChanged(last_dec_error_);
++          }
++          return;
++        }
++      }
+       RTC_LOG(LS_INFO) << "FrameCryptorTransformer::decryptFrame() forwarding "
+                           "server injected frame, size "
+                        << payload.size();
+--- a/api/crypto/sif_payload_unittest.cc
++++ b/api/crypto/sif_payload_unittest.cc
+@@ -202,6 +202,45 @@
+   std::vector<uint8_t> written_;
+ };
+
++TEST_F(SifTransformTest, StrictReadyDropsBlankWithoutSharedKey) {
++  key_provider_->options().discard_frame_when_cryptor_not_ready = true;
++  Transform(kVp8KeyFrame8x8);
++  ASSERT_TRUE(observer_->event.Wait(TimeDelta::Seconds(5)));
++  EXPECT_EQ(observer_->last, FrameCryptionState::kMissingKey);
++  EXPECT_FALSE(sink_->event.Wait(TimeDelta::Millis(200)));
++  EXPECT_EQ(sink_->count, 0);
++}
++
++TEST_F(SifTransformTest, StrictReadyDoesNotUseAnotherParticipantsKey) {
++  key_provider_->options().discard_frame_when_cryptor_not_ready = true;
++  key_provider_->options().shared_key = false;
++  key_provider_->SetKey("another", 7, std::vector<uint8_t>(32, 0x42));
++  Transform(OpusSilence());
++  ASSERT_TRUE(observer_->event.Wait(TimeDelta::Seconds(5)));
++  EXPECT_EQ(observer_->last, FrameCryptionState::kMissingKey);
++  EXPECT_FALSE(sink_->event.Wait(TimeDelta::Millis(200)));
++  EXPECT_EQ(sink_->count, 0);
++}
++
++TEST_F(SifTransformTest, StrictReadyForwardsBlankWithSharedKeyAtNonzeroIndex) {
++  key_provider_->options().discard_frame_when_cryptor_not_ready = true;
++  key_provider_->SetSharedKey(7, std::vector<uint8_t>(32, 0x42));
++  Transform(kVp8KeyFrame8x8);
++  ASSERT_TRUE(sink_->event.Wait(TimeDelta::Seconds(5)));
++  EXPECT_EQ(sink_->count, 1);
++  EXPECT_EQ(written_, kVp8KeyFrame8x8);
++}
++
++TEST_F(SifTransformTest, StrictReadyForwardsBlankWithParticipantKeyAtNonzeroIndex) {
++  key_provider_->options().discard_frame_when_cryptor_not_ready = true;
++  key_provider_->options().shared_key = false;
++  key_provider_->SetKey("remote", 7, std::vector<uint8_t>(32, 0x42));
++  Transform(OpusSilence());
++  ASSERT_TRUE(sink_->event.Wait(TimeDelta::Seconds(5)));
++  EXPECT_EQ(sink_->count, 1);
++  EXPECT_EQ(written_, OpusSilence());
++}
++
+ TEST_F(SifTransformTest, ForwardsServerBlankFrameWithoutKeyAndStripsTrailer) {
+   Transform(kVp8KeyFrame8x8);
+   ASSERT_TRUE(sink_->event.Wait(TimeDelta::Seconds(5)));
