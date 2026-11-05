@@ -1317,3 +1317,10 @@ SDK8 Mac:2 настоящих default keyless/mute контроля PASS (жив
 UUID e9d200c9 и тихий вывод проверены при каждом прогоне. Worst recovery
 raw73,574/source-corrected74,826мс; свежая ordinary voice/speech3/3 PASS,
 добавленная речь≤22,706мс. Android и P2P/mirror/delay ещё не квалифицированы.
+
+SDK8 Android API35 arm64 emulator:2 default keyless/mute контроля PASS,
+JNI0fb9e25c и Mac sender UUIDe9d200c9 подтверждены. LiveKit E2EE SFU3/3
+PASS: все clean/recovery raw≤62.622/source-corrected≤62.090мс,
+fresh ordinary speech3/3 PASS, добавленная речь≤62.646мс.
+Это эмулятор, не физический Xiaomi/акустический замер. Нативные P2P,
+mirror/delay и выпуск остаются открытыми; пороги не менялись.
