@@ -1371,7 +1371,7 @@ quota (проверено read-only SSH); в локальном стенде л�
 trace/analysis не переписаны, отдельный reanalysis диагностического
 packettrace1: original3,174мс, delivered106,733мс, raw32,465мс; pass
 вместо ошибочного source-invalid. Это не приёмка продукта и не закрытие
-paired2 speech FAIL. Python network-lab21 PASS/1 opt-in skip.
+paired2 speech FAIL. Python network-lab20 PASS/1 opt-in skip (21 total).
 
 Для исправленного стенда заранее задана новая Mac P2P серия3, имена
 `current-23007def-cpu2-paired-*`, порядок false,true,false, прежние
