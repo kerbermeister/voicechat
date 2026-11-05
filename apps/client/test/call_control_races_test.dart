@@ -99,6 +99,32 @@ void main() {
       );
     });
   }
+  testWidgets('desktop window switches keep the current camera running', (
+    tester,
+  ) async {
+    final client = Client('qa-window-focus', database: WindowDatabase());
+    final call = PendingControlCall(CallRoom(client));
+    final calls = CallController(
+      client,
+      'http://localhost:9',
+      'ws://localhost:9',
+      (_) {},
+    )..active = call;
+    for (final state in [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.resumed,
+      AppLifecycleState.inactive,
+    ]) {
+      calls.didChangeAppLifecycleState(state);
+      await tester.pump();
+    }
+    expect(call.operations, isEmpty);
+    expect(call.cameraEnabled, true);
+    calls.active = null;
+    await tester.runAsync(calls.close);
+    await client.dispose();
+  }, variant: TargetPlatformVariant.desktop());
   testWidgets(
     'inactive resumed inactive must not enable camera in the final inactive state',
     (tester) async {
@@ -128,7 +154,7 @@ void main() {
         reason: 'Queued resume must respect a subsequent inactive transition',
       );
     },
-    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    variant: TargetPlatformVariant.mobile(),
   );
   testWidgets('Inactive during an in-flight resume still queues camera off', (
     tester,
@@ -157,5 +183,5 @@ void main() {
     calls.active = null;
     await tester.runAsync(calls.close);
     await client.dispose();
-  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+  }, variant: TargetPlatformVariant.mobile());
 }

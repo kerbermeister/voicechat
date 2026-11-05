@@ -193,7 +193,15 @@ class CallController extends ChangeNotifier
       unawaited(screen?.poll());
       _refresh();
     }
-    if (kIsWeb) return;
+    // Desktop focus changes must not restart capture on each window switch.
+    if (kIsWeb ||
+        const {
+          TargetPlatform.macOS,
+          TargetPlatform.windows,
+          TargetPlatform.linux,
+        }.contains(defaultTargetPlatform)) {
+      return;
+    }
     final call = active;
     if (call == null || call.isClosed || !call.video) return;
     if (state != AppLifecycleState.resumed &&
