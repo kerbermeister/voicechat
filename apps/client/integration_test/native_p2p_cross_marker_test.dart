@@ -64,13 +64,8 @@ void main() {
         videoStream = split && !productSync
             ? await rtc.createLocalMediaStream('synthetic-video')
             : stream;
-      } else {
-        await channel.invokeMethod<void>('receive');
       }
       final config = await signal('config');
-      if (!sender) {
-        await labPost('/signal', {'key': 'receiver_ready', 'value': true});
-      }
       Future<rtc.RTCPeerConnection> pair() async {
         final pc = await rtc.createPeerConnection({
           'iceServers': config[sender ? 'iceServers' : 'peer_ice_servers'],
@@ -141,6 +136,11 @@ void main() {
       }
 
       final negative = await pair();
+      if (!sender) {
+        // The first peer initializes the ADM; mute it before negotiation.
+        await channel.invokeMethod<void>('receive');
+        await labPost('/signal', {'key': 'receiver_ready', 'value': true});
+      }
       await negotiate(negative, 'negative');
       if (sender) {
         var failed = false;

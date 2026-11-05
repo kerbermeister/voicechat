@@ -19101,5 +19101,74 @@
       "removed_samples_ordinary": 279,
       "rtp_loss_delta": 0
     }
+  },
+  "sdk8_min0_packet_diagnostic": {
+    "label": "current23007-cpuquota-min0adaptive-packet1",
+    "rtp_metadata_rows": 25648,
+    "timing_corrected_max_ms": 44.403333333320916,
+    "speech": "pass",
+    "voice": "pass",
+    "crypto_control": "pass",
+    "cpu_throttle_delta_zero": true,
+    "clean_rtp_gaps": {
+      "video_call": {
+        "ingress": {
+          "packets": 1052,
+          "median_gap_ms": 20.999499996833038,
+          "p99_gap_ms": 30.92691599886166,
+          "max_gap_ms": 119.48737500642892,
+          "gaps_over_60_ms": 2
+        },
+        "egress": {
+          "packets": 1052,
+          "median_gap_ms": 21.04154200060293,
+          "p99_gap_ms": 32.400666998000816,
+          "max_gap_ms": 127.08766599826049,
+          "gaps_over_60_ms": 2
+        }
+      },
+      "ordinary_voice": {
+        "ingress": {
+          "packets": 1065,
+          "median_gap_ms": 20.96466600050917,
+          "p99_gap_ms": 30.821583997749258,
+          "max_gap_ms": 119.20349999854807,
+          "gaps_over_60_ms": 2
+        },
+        "egress": {
+          "packets": 1065,
+          "median_gap_ms": 20.940228998370003,
+          "p99_gap_ms": 31.85670799575746,
+          "max_gap_ms": 127.02879199787276,
+          "gaps_over_60_ms": 2
+        }
+      }
+    },
+    "failure_reproduced": false,
+    "product_qualified": false
+  },
+  "sdk9_compiler_candidate": {
+    "source_revision": "1c74569795c38f448f1ee24477c4571c91a3ecc6",
+    "patch_sha256": "aa0dde2a41aff3e912f20d7103509896e34ca19216e95b5a56294f0ef9b20309",
+    "sdk_version": "150.7871.04-vc9",
+    "video_min_ms": 0,
+    "video_max_ms": 10000,
+    "cpp_run": 42066923273,
+    "cpp_expected": 93,
+    "negative_regressions_expected": 21,
+    "macos_local_source_policy_pass": 10,
+    "product_qualified": false
+  },
+  "sdk8_android_p2p_fixture": {
+    "first_label": "current-23007def-cpu2-pilot-1-ordinary",
+    "first_outcome": "fixture_setup_failed",
+    "cause": "quiet receiver requested before peer factory/ADM creation; teardown masked initialization error",
+    "correction": "mute after first peer creation before negotiation; tolerate absent capture processor on teardown",
+    "ordinary_control": "current-23007def-cpu2init-pilot-1-ordinary",
+    "ordinary_audio_markers": 63,
+    "ordinary_no_video_rtp": true,
+    "ordinary_source_offset_max_ms": 2.9259583388920873,
+    "ordinary_cpu_throttle_delta_zero": true,
+    "product_qualified": false
   }
 }

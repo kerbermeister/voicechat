@@ -197,7 +197,7 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
                         (field.get(plugin) as MethodCallHandlerImpl).playbackSamplesReadyCallbackAdapter.removeCallback(callback)
                     }
                     outputClockCallback = null
-                    plugin.audioProcessingController.capturePostProcessing.removeProcessor(this)
+                    plugin.audioProcessingController?.capturePostProcessing?.removeProcessor(this)
                     result.success(null)
                 }
                 else -> result.notImplemented()
