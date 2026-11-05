@@ -89,4 +89,56 @@ void main() {
     final input = rtc.RTCSessionDescription(before, 'offer');
     expect(synchronizeCallStreams(input), same(input));
   });
+
+  test(
+    'retains multi-source participants while grouping another participant',
+    () {
+      for (final secondKind in ['audio', 'video']) {
+        final before =
+            'a=msid-semantic: WMS PA_a|TR_audio PA_a|TR_video PA_a|TR_extra PA_b|TR_video\r\n'
+            'm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n'
+            'a=msid:PA_a|TR_audio TR_audio\r\n'
+            'm=video 9 UDP/TLS/RTP/SAVPF 96\r\n'
+            'a=msid:PA_a|TR_video TR_video\r\n'
+            'a=ssrc:123 msid:PA_a|TR_video TR_video\r\n'
+            'm=$secondKind 9 UDP/TLS/RTP/SAVPF 96\r\n'
+            'a=msid:PA_a|TR_extra TR_extra\r\n'
+            'm=video 9 UDP/TLS/RTP/SAVPF 96\r\n'
+            'a=msid:PA_b|TR_video TR_video\r\n';
+        final after = synchronizeCallStreams(
+          rtc.RTCSessionDescription(before, 'offer'),
+        );
+        expect(
+          after.sdp,
+          before.replaceAll('PA_b|TR_video', 'PA_b|voicechat-call'),
+        );
+        expect(synchronizeCallStreams(after).sdp, after.sdp);
+      }
+    },
+  );
+
+  test('retired camera sections do not disable the active A/V pair', () {
+    for (final retired in [
+      'm=video 0 UDP/TLS/RTP/SAVPF 96\r\n',
+      'm=video 9 UDP/TLS/RTP/SAVPF 96\r\na=inactive\r\n',
+      'm=video 9 UDP/TLS/RTP/SAVPF 96\r\na=recvonly\r\n',
+    ]) {
+      final before =
+          'm=audio 9 UDP/TLS/RTP/SAVPF 111\r\n'
+          'a=msid:PA_a|TR_audio TR_audio\r\n'
+          '${retired}a=msid:PA_a|TR_old TR_old\r\n'
+          'm=video 9 UDP/TLS/RTP/SAVPF 96\r\n'
+          'a=sendonly\r\n'
+          'a=msid:PA_a|TR_camera TR_camera\r\n';
+      final after = synchronizeCallStreams(
+        rtc.RTCSessionDescription(before, 'offer'),
+      );
+      expect(
+        after.sdp,
+        before
+            .replaceAll('PA_a|TR_audio ', 'PA_a|voicechat-call ')
+            .replaceAll('PA_a|TR_camera ', 'PA_a|voicechat-call '),
+      );
+    }
+  });
 }

@@ -13,6 +13,35 @@ rtc.RTCSessionDescription synchronizeCallStreams(
     multiLine: true,
   );
   final ambiguous = <String>{};
+  final participantTracks = <String, Map<String, Set<String>>>{};
+  final inactiveStreams = <String>{};
+  for (final section in sdp.split(RegExp(r'(?=^m=)', multiLine: true))) {
+    final media = RegExp(r'^m=(audio|video) ([0-9]+) ').firstMatch(section);
+    if (media == null) continue;
+    final inactive =
+        media[2] == '0' ||
+        RegExp(
+          r'^a=(inactive|recvonly)\r?$',
+          multiLine: true,
+        ).hasMatch(section);
+    for (final match in msid.allMatches(section)) {
+      if (inactive) {
+        inactiveStreams.add(match[2]!);
+        continue;
+      }
+      final participant = match[2]!.split('|').first;
+      participantTracks
+          .putIfAbsent(participant, () => {})
+          .putIfAbsent(media[1]!, () => {})
+          .add(match[3]!);
+    }
+  }
+  // WebRTC Call::ConfigureSync supports only one A/V pair per sync group.
+  // Multiple camera/screen/audio sources retain their original associations.
+  final multipleSources = {
+    for (final entry in participantTracks.entries)
+      if (entry.value.values.any((tracks) => tracks.length > 1)) entry.key,
+  };
   for (final match in msid.allMatches(sdp)) {
     final stream = match[2]!;
     if (stream.split('|')[1] != match[3]) ambiguous.add(stream);
@@ -22,7 +51,12 @@ rtc.RTCSessionDescription synchronizeCallStreams(
     final parts = stream.split('|');
     // Unknown server formats stay untouched; the SDK needs the actual track ID
     // for publication lookup and participant-specific frame encryption.
-    if (stream.length > 64 || ambiguous.contains(stream)) return match[0]!;
+    if (stream.length > 64 ||
+        ambiguous.contains(stream) ||
+        inactiveStreams.contains(stream) ||
+        multipleSources.contains(parts[0])) {
+      return match[0]!;
+    }
     final group = '${parts[0]}|voicechat-call';
     if (group.length > 64) return match[0]!;
     streams[stream] = group;

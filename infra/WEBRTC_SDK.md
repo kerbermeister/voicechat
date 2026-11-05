@@ -28,7 +28,9 @@ LiveKit assigns distinct MediaStreams to tracks. Opted-in macOS/Android call
 rooms associate subscriber audio/video by participant using a local SDP
 transform, preserving actual track IDs and transport/codec bytes. Publisher
 SDP, browser/iOS/Linux/Windows paths and other room types do not opt in. Unknown
-or conflicting stream formats remain unchanged. No global SFU grouping policy
+or conflicting stream formats remain unchanged. Participants with multiple
+audio/video sources retain their original associations: the native Call
+synchronizer supports only one A/V pair per group. No global SFU grouping policy
 is required. Test fixtures use the same subscriber transform.
 
 Strict crypto readiness now also applies to already whitelisted server-injected

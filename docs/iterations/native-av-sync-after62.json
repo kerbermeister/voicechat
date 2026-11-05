@@ -15908,5 +15908,30 @@
     "platform_build_run": 42006621067,
     "platform_artifacts_qualified": false,
     "application_released": false
+  },
+  "native_sdk7_macos_binary_verified": {
+    "ci_run": 42006621067,
+    "source": "b29604eaa809dd0d55d1acd4ba321cfc3dfe2636",
+    "artifact": {
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc7/WebRTC.xcframework.zip",
+      "sha256": "e2c357cec1e600a9688b8b01b81cc1125216b1abb7e7211e4b28f3af2591af3e",
+      "size_bytes": 6302333,
+      "arm64_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+      "binary_sha256": "873e7051e8ccae239736fdf8cf5838c6ff947e29a4a7b9962482ad80d9a81a83"
+    },
+    "source_inputs": 19,
+    "configuration_cases_pass": 9,
+    "codesign_strict_verified": true,
+    "arm64_verified": true,
+    "media_qualified": false,
+    "android_pending": true
+  },
+  "native_stream_multisource_guard": {
+    "upstream_constraint": "Call::ConfigureSync supports only one A/V pair per group",
+    "behavior": "Retain original participant associations for multiple active audio/video sources; retired/rejected/recvonly sections excluded from grouping",
+    "flutter_tests_pass": 17,
+    "analyzer": "pass",
+    "real_multisource_native_media_tested": false,
+    "cpp_sdk_changed": false
   }
 }
