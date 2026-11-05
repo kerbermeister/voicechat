@@ -17212,5 +17212,55 @@
     "whole_trial_qualified": false,
     "interrupted_to_stop_audible_tones_on_user_request": true,
     "media_exported": false
+  },
+  "current_client_complete_checks": {
+    "source": "1548f1e39477b58a80bad01a0d4182edc4dfa493",
+    "flutter": "3.47.7",
+    "all_client_analysis": "pass",
+    "client_tests_pass": 794,
+    "client_tests_skip": 4,
+    "unit_suite_exercises_native_binary": false,
+    "actual_sdk8_media_qualification": false,
+    "logs": {
+      "unit": {
+        "sha256": "05ea9cc77549ab62c36bcc1ff5b15e3e19c8ffbe393cbcec82626dcff92a9796",
+        "bytes": 342282
+      },
+      "analyze": {
+        "sha256": "2bdc40a00daf1c795a52602fcce901d7f9997899a4a06c27b5574d0e23b1119b",
+        "bytes": 97
+      }
+    },
+    "skip_reasons": [
+      "CHAT_FEATURES_CAPTURE",
+      "HALO_CAPTURE",
+      "HALO_POLISH_CAPTURE",
+      "AUTH_CAPTURE"
+    ],
+    "skip_scope": "Four opt-in visual capture tests; no call tests skipped"
+  },
+  "production_source_preflight": {
+    "utc": "2026-11-05T13:52:06.143366+00:00",
+    "production_source": "da0dd92edc2f72c2c50ded026509e76f748d978f",
+    "candidate_source": "1548f1e39477b58a80bad01a0d4182edc4dfa493",
+    "production_is_ancestor": true,
+    "outside_client_docs_livekit_vendor": [
+      ".github/workflows/webrtc-sdk.yml",
+      "infra/WEBRTC_SDK.md",
+      "infra/build_webrtc_sdk.py",
+      "infra/prepare_android_webrtc.py",
+      "infra/verify_native_playout_policy.py",
+      "infra/verify_webrtc_timing.py",
+      "infra/webrtc-bounded-sync.patch",
+      "infra/webrtc-sdk-artifacts.json",
+      "infra/webrtc-sdk.json",
+      "prototype/check_route_livekit.py",
+      "prototype/test_android_webrtc_sdk.py",
+      "prototype/test_webrtc_timing_evidence.py",
+      "vendor/webrtc-sdk/WebRTC-SDK.podspec"
+    ],
+    "server_runtime_paths_changed": [],
+    "required_deploy_mode": "full due protected SDK build/verification/test paths and podspec",
+    "deployed": false
   }
 }

@@ -1286,3 +1286,13 @@ Mac quiet1 с реально исполняемым обработчиком з�
 точного доставленного кадра. Raw80мс продолжает учитывать полную стоимость
 пропущенного onset. Порог не изменён, исходный trace не переписан; unit guards
 принимают известный52мс пропуск при raw≤80 и по-прежнему отвергают raw150мс.
+
+
+Полный текущий клиент/source1548f1e: flutter analyze PASS, flutter test
+--concurrency=1:794 PASS/4 skip, без failures. Это Dart/widget/API-проверки,
+они не означают исполнения ещё собирающихся нативных библиотек SDK8.
+Python timing/artifact verifier11 и fixture restoration4 PASS.
+Сверка с production/full104 da0dd92: этот commit — предок текущего источника,
+серверные runtime/config пути не откатываются и не менялись; защищённые
+SDK build/verification/test/vendor пути требуют штатного **full** выпуска.
+Публикация ещё не выполнялась.
