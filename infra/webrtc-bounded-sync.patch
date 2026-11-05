@@ -89,7 +89,7 @@
  TimeDelta VCMTiming::TargetVideoDelay() const {
 --- a/modules/video_coding/timing/timing_unittest.cc
 +++ b/modules/video_coding/timing/timing_unittest.cc
-@@ -482,5 +482,108 @@
+@@ -482,5 +482,115 @@
    EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
  }
 
@@ -141,6 +141,13 @@
 +  EXPECT_GT(timing.TargetVideoDelay(), TimeDelta::Millis(500));
 +  timing.SetSyncPlayoutDelay(TimeDelta::Zero());
 +  EXPECT_EQ(timing.GetTimings().CurrentDelay(), TimeDelta::Millis(90));
++  // The default adaptive policy can follow audio below the former floor
++  // without switching to the renderer that ignores sync deadlines.
++  timing.set_playout_delay({TimeDelta::Zero(), TimeDelta::Seconds(10)});
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(40));
++  EXPECT_FALSE(timing.RenderParameters().use_low_latency_rendering);
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1040));
 +  timing.set_playout_delay({TimeDelta::Millis(90), TimeDelta::Millis(130)});
 +  timing.SetSyncPlayoutDelay(TimeDelta::Millis(225));
 +  EXPECT_EQ(timing.GetTimings().CurrentDelay(), TimeDelta::Millis(130));
@@ -750,7 +757,7 @@
 +// Explicit settings, codecs and audio processing remain unchanged.
 +static NSString *FieldTrialsWithDefaultVideoPlayout(NSString *fieldTrials) {
 +  NSString *trials = fieldTrials ?: @"";
-+  NSString *defaultTrial = @"WebRTC-ForcePlayoutDelay/min_ms:90,max_ms:10000/";
++  NSString *defaultTrial = @"WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:10000/";
 +  if (trials.length == 0) return defaultTrial;
 +  NSArray<NSString *> *parts = [trials componentsSeparatedByString:@"/"];
 +  if (parts.count % 2 == 0 || ![trials hasSuffix:@"/"]) return trials;
@@ -782,7 +789,7 @@
 +    // Preserve explicit options and the native parser's validation of bad input.
 +    private static String withDefaultVideoPlayout(String trials) {
 +      if (trials == null) return null;
-+      String defaultTrial = "WebRTC-ForcePlayoutDelay/min_ms:90,max_ms:10000/";
++      String defaultTrial = "WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:10000/";
 +      if (trials.isEmpty()) return defaultTrial;
 +      String[] parts = trials.split("/", -1);
 +      if (parts.length % 2 == 0 || !trials.endsWith("/")) return trials;
