@@ -1324,3 +1324,13 @@ PASS: все clean/recovery raw≤62.622/source-corrected≤62.090мс,
 fresh ordinary speech3/3 PASS, добавленная речь≤62.646мс.
 Это эмулятор, не физический Xiaomi/акустический замер. Нативные P2P,
 mirror/delay и выпуск остаются открытыми; пороги не менялись.
+
+SDK8 Mac P2P paired1 PASS: A/V≤30,692мс, speech PASS, DTLS/negative
+fingerprint PASS. Paired2 остановил серию: A/V≤47,296мс, но pause speech
+STOI candidate0,970717/control0,990842 FAIL (margin0,005 сохранён).
+Ухудшение локализовано в clip30:0,908223/0,986180. Source callbacks
+не имеют больших пауз (max15,730мс); оба RTP audio packetLoss0.
+В этом интервале candidate NetEq удалил395 samples (8,23мс) при acceleration;
+это совпадение требует проверки, причина регрессии пока не установлена.
+Порог/методика оценки не менялись, failed trace сохранён. SDK8 не принят
+для выпуска, несмотря на LiveKit6/6 PASS.
