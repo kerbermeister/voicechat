@@ -19534,5 +19534,175 @@
     "cpu_throttle_delta_zero": true,
     "diagnostic_only": true,
     "product_qualified": false
+  },
+  "sdk9_platform_artifacts": {
+    "run": 42069957294,
+    "verified": {
+      "macos": {
+        "job": 127394988186,
+        "conclusion": "success",
+        "build_revision": "1c74569795c38f448f1ee24477c4571c91a3ecc6",
+        "sha256": "64788eb11806fa601119aab8141f3046f733808bdcaaf72c76a89612ba5e9989",
+        "size_bytes": 6302436,
+        "receipt_verified": true
+      },
+      "android": {
+        "job": 127394987987,
+        "conclusion": "success",
+        "build_revision": "1c74569795c38f448f1ee24477c4571c91a3ecc6",
+        "sha256": "2e2f3fc1e9e54ed34cc1b7cd147ef85de5d5ffe0a509f162f120756d48b4cc04",
+        "size_bytes": 36291687,
+        "receipt_verified": true
+      }
+    },
+    "factory_policy_cases_each": 10,
+    "android_elf_pt_load_alignments": {
+      "arm64-v8a": [
+        16384,
+        16384,
+        16384
+      ],
+      "armeabi-v7a": [
+        4096,
+        4096,
+        4096
+      ],
+      "x86_64": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    "dependency_prerelease_only": true
+  },
+  "sdk9_actual_default_missing_key": {
+    "macos": [
+      {
+        "utc": "2026-11-05T18:42:57.148349+00:00",
+        "sdk_identity": {
+          "arm64_uuid": "58b05166-6da7-316d-aa5b-61e3ce909771",
+          "sdk_binary_sha256": "884856b62160638673db35a1c91f478e510b449acd50b043b04107ca80a14528",
+          "patch_sha256": "aa0dde2a41aff3e912f20d7103509896e34ca19216e95b5a56294f0ef9b20309"
+        },
+        "missing_key_gate": {
+          "content": {
+            "audio_peak": 0.0,
+            "audio_chunks": 332,
+            "control_audio_peak": 0.0,
+            "video_markers": 0
+          },
+          "ordinary_voice": {
+            "packets": 142,
+            "plaintext_audio_peak": 0.0,
+            "decoded": 0
+          },
+          "audio": {
+            "packets": 131,
+            "decoded": 0
+          },
+          "video": {
+            "packets": 173,
+            "decoded": 0
+          }
+        },
+        "negative_keyless_gate_pass": true
+      },
+      {
+        "utc": "2026-11-05T18:43:37.832314+00:00",
+        "sdk_identity": {
+          "arm64_uuid": "58b05166-6da7-316d-aa5b-61e3ce909771",
+          "sdk_binary_sha256": "884856b62160638673db35a1c91f478e510b449acd50b043b04107ca80a14528",
+          "patch_sha256": "aa0dde2a41aff3e912f20d7103509896e34ca19216e95b5a56294f0ef9b20309"
+        },
+        "missing_key_gate": {
+          "content": {
+            "video_markers": 0,
+            "audio_chunks": 322,
+            "audio_peak": 0.0,
+            "control_audio_peak": 0.0
+          },
+          "ordinary_voice": {
+            "packets": 141,
+            "plaintext_audio_peak": 0.0,
+            "decoded": 0
+          },
+          "audio": {
+            "packets": 131,
+            "decoded": 0
+          },
+          "video": {
+            "packets": 166,
+            "decoded": 0
+          }
+        },
+        "negative_keyless_gate_pass": true
+      }
+    ],
+    "android": [
+      {
+        "utc": "2026-11-05T18:35:45.512940+00:00",
+        "sdk_identity": {
+          "jni_sha256": "0fb9e25c668c5aeadd50ef0723348b2c04c013c4a25c233f8f6e4d97abfed53c",
+          "patch_sha256": "aa0dde2a41aff3e912f20d7103509896e34ca19216e95b5a56294f0ef9b20309",
+          "sdk_initialization_bytecode_sha256": "68f54a127d81c016a73b6af4fbb5edc0f4fe0f00a69705d74c1c4d00a65fedd5",
+          "sender_sdk_uuid": "58b05166-6da7-316d-aa5b-61e3ce909771",
+          "sender_sdk": "patched"
+        },
+        "missing_key_gate": {
+          "content": {
+            "audio_peak": 0.0,
+            "video_markers": 0,
+            "audio_chunks": 408,
+            "control_audio_peak": 0.0
+          },
+          "ordinary_voice": {
+            "packets": 156,
+            "plaintext_audio_peak": 0.0,
+            "decoded": 0
+          },
+          "audio": {
+            "packets": 162,
+            "decoded": 0
+          },
+          "video": {
+            "packets": 267,
+            "decoded": 0
+          }
+        },
+        "negative_keyless_gate_pass": true
+      },
+      {
+        "utc": "2026-11-05T18:37:12.437668+00:00",
+        "sdk_identity": {
+          "jni_sha256": "0fb9e25c668c5aeadd50ef0723348b2c04c013c4a25c233f8f6e4d97abfed53c",
+          "patch_sha256": "aa0dde2a41aff3e912f20d7103509896e34ca19216e95b5a56294f0ef9b20309",
+          "sdk_initialization_bytecode_sha256": "68f54a127d81c016a73b6af4fbb5edc0f4fe0f00a69705d74c1c4d00a65fedd5",
+          "sender_sdk_uuid": "58b05166-6da7-316d-aa5b-61e3ce909771",
+          "sender_sdk": "patched"
+        },
+        "missing_key_gate": {
+          "content": {
+            "audio_peak": 0.0,
+            "video_markers": 0,
+            "audio_chunks": 405,
+            "control_audio_peak": 0.0
+          },
+          "ordinary_voice": {
+            "packets": 171,
+            "plaintext_audio_peak": 0.0,
+            "decoded": 0
+          },
+          "audio": {
+            "packets": 178,
+            "decoded": 0
+          },
+          "video": {
+            "packets": 263,
+            "decoded": 0
+          }
+        },
+        "negative_keyless_gate_pass": true
+      }
+    ]
   }
 }
