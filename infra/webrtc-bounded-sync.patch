@@ -492,7 +492,7 @@
 
  #include "rtc_base/rtp_to_ntp_estimator.h"
  #include "system_wrappers/include/clock.h"
-@@ -531,4 +538,227 @@
+@@ -531,4 +538,232 @@
    BothDelayedVideoLaterTest(kBaseTargetDelayMs);
  }
 
@@ -652,6 +652,7 @@
 +  audio_.delay_ms = 350;
 +  audio_.actual_playout_delay = TimeDelta::Millis(100);
 +  time_.AdvanceTime(TimeDelta::Seconds(1));
++  ASSERT_TRUE(video_.video_target.has_value());
 +  EXPECT_NEAR(video_.video_target->ms(), 100, 1);
 +  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
 +}
@@ -660,6 +661,7 @@
 +  audio_.delay_ms = 60;
 +  audio_.actual_playout_delay = TimeDelta::Millis(325);
 +  time_.AdvanceTime(TimeDelta::Seconds(1));
++  ASSERT_TRUE(video_.video_target.has_value());
 +  EXPECT_NEAR(video_.video_target->ms(), 325, 1);
 +  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
 +}
@@ -667,6 +669,7 @@
 +TEST_F(RtpStreamsSynchronizerTest, TracksAudioPlayoutWithinTwoHundredMilliseconds) {
 +  audio_.actual_playout_delay = TimeDelta::Millis(80);
 +  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target.has_value());
 +  EXPECT_NEAR(video_.video_target->ms(), 80, 1);
 +  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
 +}
@@ -678,6 +681,7 @@
 +  video_.receive_age = TimeDelta::Millis(110);
 +  video_.transport_offset = TimeDelta::Millis(-80);
 +  time_.AdvanceTime(TimeDelta::Seconds(2));
++  ASSERT_TRUE(video_.video_target.has_value());
 +  EXPECT_NEAR(video_.video_target->ms(), 220, 1);
 +  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
 +}
@@ -699,6 +703,7 @@
 +  audio_.actual_playout_delay = TimeDelta::Millis(110);
 +  sync_->ConfigureSync(&audio_);
 +  time_.AdvanceTime(TimeDelta::Seconds(12));
++  ASSERT_TRUE(video_.video_target.has_value());
 +  EXPECT_NEAR(video_.video_target->ms(), 110, 1);
 +  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
 +}
