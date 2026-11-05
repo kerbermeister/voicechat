@@ -33,6 +33,7 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
     }
     private val lock = Any()
     @Volatile private var running = false
+    private var outputSilenced = false
     @Volatile private var origin = System.nanoTime() / 1e9
     private var sampleCursor = 0L
     @Volatile private var sourceMarker = 0
@@ -114,10 +115,16 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
             val plugin = FlutterWebRTCPlugin.sharedSingleton
             when (call.method) {
                 "clock" -> result.success(System.nanoTime() / 1e9)
-                "receive" -> { checkNotNull(plugin.audioDeviceModule).setSpeakerMute(true); running = true; result.success(null) }
+                "receive" -> {
+                    checkNotNull(plugin.audioDeviceModule).setSpeakerMute(true)
+                    outputSilenced = true
+                    running = true
+                    result.success(null)
+                }
                 "observeOutputClock" -> { observeOutputClock(plugin); result.success(null) }
                 "create" -> {
                     checkNotNull(plugin.audioDeviceModule).setSpeakerMute(true)
+                    outputSilenced = true
                     coherentMarkers = call.argument<Boolean>("coherent") == true
                     val stream = plugin.getStreamForId(call.argument<String>("stream"), "")
                     backgrounds = Array(16) { frame -> ByteArray(640 * 360) { index ->
@@ -158,6 +165,7 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
                     val includeAudio = call.argument<Boolean>("includeAudio") != false
                     val chunks = if (includeAudio) audioChunks(false, 0, audioCount) else emptyList()
                     val value = mutableMapOf<String, Any>("audio" to chunks, "video" to videoMarkers.toList(), "origin" to origin,
+                        "test_output_silenced" to outputSilenced,
                         "video_render_clocks" to videoRenderClocks.toList(),
                         "source_audio" to sourceAudioMarkers.toList(), "source_video" to sourceVideoMarkers.toList(),
                         "source_audio_callbacks" to sourceAudioCallbackTimes.take(sourceAudioCallbackCount),

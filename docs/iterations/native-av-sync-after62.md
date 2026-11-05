@@ -1296,3 +1296,10 @@ Python timing/artifact verifier11 и fixture restoration4 PASS.
 серверные runtime/config пути не откатываются и не менялись; защищённые
 SDK build/verification/test/vendor пути требуют штатного **full** выпуска.
 Публикация ещё не выполнялась.
+
+Mac SDK8 архив/source4375e11 собран успешно и receipt проверен:
+SHA256 0134a72bfbaa0f7b3518c51570efdd4705a424d6bbb8bd48c67f8365bf555ed6.
+Android ещё собирается; пару не подменяем старой Android-библиотекой.
+Android fixture теперь также возвращает `test_output_silenced`; обе
+платформенные квалификации требуют этот флаг, помимо положительного
+измеряемого PCM. Исполнение новой Android fixture ещё предстоит.
