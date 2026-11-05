@@ -699,7 +699,7 @@
 +
 +TEST_F(RtpStreamsSynchronizerTest, PresentationClockSurvivesRtpWrap) {
 +  sync_->ConfigureSync(nullptr);
-+  time_.AdvanceTime(TimeDelta::Seconds(47720));
++  time_.AdvanceTime(TimeDelta::Seconds(47700));
 +  audio_.actual_playout_delay = TimeDelta::Millis(110);
 +  sync_->ConfigureSync(&audio_);
 +  time_.AdvanceTime(TimeDelta::Seconds(12));
