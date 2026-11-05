@@ -65,6 +65,5 @@ Rejected dependencies remain immutable evidence: vc1 reached385.652/416.472ms
 Android P2P recovery skew. vc2's Mac paired pilot passed A/V(~52ms), but voice
 was1165.610ms later than ordinary voice during video pause; the audio queue had
 built up to2s before reset. It also lacked enough matched pause speech clips.
-Do not promote either dependency into application update feeds. vc3 is prepared
-for fresh C++ and media qualification. The artifact manifest can describe the
+Do not promote either dependency into application update feeds. vc3 passed the45/9 compiled gate; native media qualification is pending. The artifact manifest can describe the
 last built rejected dependency until vc3 binaries are built and verified.

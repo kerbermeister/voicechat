@@ -1,35 +1,23 @@
 {
   "schema": 1,
   "sdk_version": "150.7871.04",
-  "release_artifact_version": "150.7871.04-vc1",
+  "release_artifact_version": "150.7871.04-vc3",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
-  "patch_sha256": "8f9c5903638c6117f68269fed254defa5fbf44e9fa1ae07c2cfc5664bb1df9f7",
+  "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0",
   "artifacts": {
     "macos": {
-      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc1/WebRTC.xcframework.zip",
-      "sha256": "8a2c23229796332ea4a7705bed750f26d34e8c54b7507f6481f4a81bdda28f6e",
-      "size_bytes": 6341452,
-      "arm64_uuid": "9500e56c-d0aa-3368-84ad-e969ab0bc23e",
-      "binary_sha256": "e234c97c7a444aa07f18016d5aef6cd58ecb239f99c240e6fadecfcf463a76be",
-      "build_workflow_run": 41899866524,
-      "build_revision": "f5d9a5868bf374dff441eba468bd010279d40caa",
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc3/WebRTC.xcframework.zip",
+      "sha256": "90af747f20b2343bfdfffad37763c8bf2200fd004b41ef5fa6edab7599263b06",
+      "size_bytes": 6341609,
+      "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+      "binary_sha256": "e3eedc79780b37372cf4dcced95ff3533e65bc86f17995d94eedda1bf165f4b5",
+      "build_workflow_run": 41931657101,
+      "build_revision": "3c68506eacca3762f17d94b3dcc08c7819a4936c",
       "architectures": [
         "arm64"
       ],
-      "packaging": "local recovery, compiled bytes unchanged"
-    },
-    "android": {
-      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc1/libwebrtc.aar",
-      "sha256": "9a76a5562f7e59bd5eda8d3f200642f3d0da270a6c97b5d004fee5d1255eaa35",
-      "size_bytes": 36270403,
-      "jni_sha256": {
-        "armeabi-v7a": "899e0da29bdb17b703e1baca8bc215ba82d1b4658d4356a385aa11fc0744f0b6",
-        "arm64-v8a": "f948d0ca844dc6e0992a1a3775029e09ec0adc1d80274fb2bdb0d9a031749ef8",
-        "x86_64": "362a67131647cf3c685dc8c6836b290611888de92a298ad373f41ed0a108781d"
-      },
-      "build_workflow_run": 41890363278,
-      "build_revision": "6004dfe084c382d563afd0e9dc08ae9893ae9800"
+      "packaging": "official pinned builder; normal generated third-party notices"
     }
   },
-  "qualification_status": "REJECTED vc1 baseline for ordinary CI while vc3 builds. vc2 Mac pilot also rejected (voice+1165.610ms); do not publish application updates from this baseline."
+  "qualification_status": "macos-only internal qualification; Android pending; not an application release"
 }
