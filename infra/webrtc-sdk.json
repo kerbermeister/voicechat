@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "886e2f1dad827c52e325f0e7ad1251abd987f248118f75fe7d93a3d290544adf",
+  "patch_sha256": "403132d8063e4b6dfcb7e9424282ca4f269f25282702b7f7d619d9f9a7e8e431",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -40,7 +40,7 @@
     "call/syncable.h": "e00bc323a9ff5ce05e6ff5116ce4abe305a673415e37a0b8f38cffd32adc550c",
     "video/video_receive_stream2.h": "a36a02346358c94eb33e19e273c06044fc19348e212d1c5bf03a305a00c81100",
     "api/crypto/frame_crypto_transformer.cc": "0da3fa6759b09f4b4fd0d6076c336d23b9eb32d42c9c6d422b6f3cb2d7950430",
-    "api/crypto/sif_payload_unittest.cc": "fb72340b28913743eb4f4c0e98cfbe5d4052dc305313ab401ceb3134eed63c1c",
+    "api/crypto/sif_payload_unittest.cc": "3db0a3b839530e35d39b65584297a7864f78b578f4150aded95519838c7d4973",
     "api/crypto/BUILD.gn": "6e92edc0d213f67b547de0a6729251a8df1bd63a0498de409f7e4f98aafe0ffb",
     "api/crypto/frame_crypto_transformer_unittest.cc": "ef6b53dfa57117f581af18fc262df88f18a7204d588827257d44f629b2877e26",
     "api/crypto/frame_crypto_transformer.h": "97e5f1bdbfc6b9167668b12b895bff7fd72c5906a533e1a961bb78367d7e8a43"

@@ -837,7 +837,27 @@
                         << payload.size();
 --- a/api/crypto/sif_payload_unittest.cc
 +++ b/api/crypto/sif_payload_unittest.cc
-@@ -202,6 +202,45 @@
+@@ -171,9 +171,8 @@
+     signaling_thread_->Stop();
+   }
+
+-  // Feeds `payload + trailer` as an incoming video frame; returns the bytes the
+-  // transformer wrote back with SetData, if any.
+-  std::vector<uint8_t> Transform(std::vector<uint8_t> payload) {
++  // Feed an incoming frame; tests inspect written_ only after sink/observer events.
++  void Transform(std::vector<uint8_t> payload) {
+     data_ = payload;
+     data_.insert(data_.end(), trailer_.begin(), trailer_.end());
+     auto frame = std::make_unique<NiceMock<MockTransformableVideoFrame>>();
+@@ -189,7 +188,6 @@
+         });
+     scoped_refptr<FrameTransformerInterface> as_interface = transformer_;
+     as_interface->Transform(std::move(frame));
+-    return written_;
+   }
+
+   scoped_refptr<DefaultKeyProviderImpl> key_provider_;
+@@ -202,6 +200,45 @@
    std::vector<uint8_t> written_;
  };
 

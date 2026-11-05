@@ -151,6 +151,7 @@ rtc_test("timing_sync_unittests") {
     "//api/crypto:crypto_unittests",
     "//common_video",
     "//modules/video_coding/timing:timing_unittests",
+    "//modules/rtp_rtcp:rtp_video_header",
     "//rtc_base:byte_buffer",
     "//rtc_base:crypto_random",
   ]
