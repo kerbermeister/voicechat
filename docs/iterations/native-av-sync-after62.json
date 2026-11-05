@@ -18051,5 +18051,345 @@
         }
       }
     }
+  },
+  "native_sdk8_ordinary_calibration": {
+    "plan": {
+      "utc": "2026-11-05T15:09:42.964759+00:00",
+      "source": "5d79187c7db616ad54f4a26a451db7de09f70969",
+      "sdk": "150.7871.04-vc8",
+      "trials": 3,
+      "reference_first": [
+        true,
+        false,
+        true
+      ],
+      "purpose": "Diagnose normal NetEq/metric behavior; no video transmitted; does not qualify failed SDK8 paired2",
+      "speech_margin": 0.005,
+      "level_tolerance_db": 0.15,
+      "product_failure_preserved": true
+    },
+    "records": [
+      {
+        "label": "current23007-ordinary-calibration-1",
+        "ordinary_only": true,
+        "no_video_rtp": true,
+        "reference_first": true,
+        "speech": "pass",
+        "identity": {
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+          "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+        },
+        "product_gate_pass": false,
+        "speech_report": {
+          "schema": 1,
+          "outcome": "pass",
+          "synthetic_reference_only": true,
+          "physical_listening_test": false,
+          "paired_trials": 1,
+          "stoi_noninferiority_margin": 0.005,
+          "level_tolerance_db": 0.15,
+          "phases": {
+            "clean": {
+              "paired_clips": 9,
+              "control": {
+                "stoi": 0.9922854473947508,
+                "si_sdr_db": 8.819090034826056,
+                "rms_dbfs": -23.301952641829917
+              },
+              "candidate": {
+                "stoi": 0.9922854473947508,
+                "si_sdr_db": 8.819090034826056,
+                "rms_dbfs": -23.301952641829917
+              }
+            },
+            "delay": {
+              "paired_clips": 13,
+              "control": {
+                "stoi": 0.9890718188393951,
+                "si_sdr_db": 8.918374740326886,
+                "rms_dbfs": -23.245524057336834
+              },
+              "candidate": {
+                "stoi": 0.9890718188393951,
+                "si_sdr_db": 8.918374740326886,
+                "rms_dbfs": -23.245524057336834
+              }
+            },
+            "pause": {
+              "paired_clips": 5,
+              "control": {
+                "stoi": 0.9893269645920786,
+                "si_sdr_db": 9.039344376885918,
+                "rms_dbfs": -23.23149096025363
+              },
+              "candidate": {
+                "stoi": 0.9893269645920786,
+                "si_sdr_db": 9.039344376885918,
+                "rms_dbfs": -23.23149096025363
+              }
+            },
+            "recovery": {
+              "paired_clips": 25,
+              "control": {
+                "stoi": 0.9945988713133909,
+                "si_sdr_db": 8.988618000446094,
+                "rms_dbfs": -23.17101572926211
+              },
+              "candidate": {
+                "stoi": 0.9945988713133909,
+                "si_sdr_db": 8.988618000446094,
+                "rms_dbfs": -23.17101572926211
+              }
+            }
+          }
+        }
+      },
+      {
+        "label": "current23007-ordinary-calibration-2",
+        "ordinary_only": true,
+        "no_video_rtp": true,
+        "reference_first": false,
+        "speech": "pass",
+        "identity": {
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+          "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+        },
+        "product_gate_pass": false,
+        "speech_report": {
+          "schema": 1,
+          "outcome": "pass",
+          "synthetic_reference_only": true,
+          "physical_listening_test": false,
+          "paired_trials": 1,
+          "stoi_noninferiority_margin": 0.005,
+          "level_tolerance_db": 0.15,
+          "phases": {
+            "clean": {
+              "paired_clips": 9,
+              "control": {
+                "stoi": 0.9922854473947508,
+                "si_sdr_db": 8.819090034826056,
+                "rms_dbfs": -23.301952641829917
+              },
+              "candidate": {
+                "stoi": 0.992256262248811,
+                "si_sdr_db": 8.8179014230807,
+                "rms_dbfs": -23.301816814915306
+              }
+            },
+            "delay": {
+              "paired_clips": 13,
+              "control": {
+                "stoi": 0.9890718188393951,
+                "si_sdr_db": 8.918374740326886,
+                "rms_dbfs": -23.245524057336834
+              },
+              "candidate": {
+                "stoi": 0.9890718188393951,
+                "si_sdr_db": 8.918374740326886,
+                "rms_dbfs": -23.245524057336834
+              }
+            },
+            "pause": {
+              "paired_clips": 5,
+              "control": {
+                "stoi": 0.9893269645920786,
+                "si_sdr_db": 9.039344376885918,
+                "rms_dbfs": -23.23149096025363
+              },
+              "candidate": {
+                "stoi": 0.9893269645920786,
+                "si_sdr_db": 9.039344376885918,
+                "rms_dbfs": -23.23149096025363
+              }
+            },
+            "recovery": {
+              "paired_clips": 26,
+              "control": {
+                "stoi": 0.9946083971588907,
+                "si_sdr_db": 8.98638726720003,
+                "rms_dbfs": -23.171161229381
+              },
+              "candidate": {
+                "stoi": 0.9946083971588907,
+                "si_sdr_db": 8.98638726720003,
+                "rms_dbfs": -23.171161229381
+              }
+            }
+          }
+        }
+      },
+      {
+        "label": "current23007-ordinary-calibration-3",
+        "ordinary_only": true,
+        "no_video_rtp": true,
+        "reference_first": true,
+        "speech": "pass",
+        "identity": {
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+          "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+        },
+        "product_gate_pass": false,
+        "speech_report": {
+          "schema": 1,
+          "outcome": "pass",
+          "synthetic_reference_only": true,
+          "physical_listening_test": false,
+          "paired_trials": 1,
+          "stoi_noninferiority_margin": 0.005,
+          "level_tolerance_db": 0.15,
+          "phases": {
+            "clean": {
+              "paired_clips": 9,
+              "control": {
+                "stoi": 0.9922854473947508,
+                "si_sdr_db": 8.819090034826056,
+                "rms_dbfs": -23.301952641829917
+              },
+              "candidate": {
+                "stoi": 0.9922854473947508,
+                "si_sdr_db": 8.819090034826056,
+                "rms_dbfs": -23.301952641829917
+              }
+            },
+            "delay": {
+              "paired_clips": 13,
+              "control": {
+                "stoi": 0.9890718188393951,
+                "si_sdr_db": 8.918374740326886,
+                "rms_dbfs": -23.245524057336834
+              },
+              "candidate": {
+                "stoi": 0.9890718188393951,
+                "si_sdr_db": 8.918374740326886,
+                "rms_dbfs": -23.245524057336834
+              }
+            },
+            "pause": {
+              "paired_clips": 5,
+              "control": {
+                "stoi": 0.9893269645920786,
+                "si_sdr_db": 9.039344376885918,
+                "rms_dbfs": -23.23149096025363
+              },
+              "candidate": {
+                "stoi": 0.9893269645920786,
+                "si_sdr_db": 9.039344376885918,
+                "rms_dbfs": -23.23149096025363
+              }
+            },
+            "recovery": {
+              "paired_clips": 26,
+              "control": {
+                "stoi": 0.9946083971588907,
+                "si_sdr_db": 8.98638726720003,
+                "rms_dbfs": -23.171161229381
+              },
+              "candidate": {
+                "stoi": 0.9946083971588907,
+                "si_sdr_db": 8.98638726720003,
+                "rms_dbfs": -23.171161229381
+              }
+            }
+          }
+        }
+      }
+    ],
+    "complete": true
+  },
+  "native_sdk8_cpuquota_diagnostic": {
+    "label": "current23007-cpuquota-baseline1",
+    "timing": "pass",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 37.39616666643997,
+      "max_source_corrected_abs_ms": 39.57970833289437
+    },
+    "recovery": {
+      "count": 24,
+      "max_abs_ms": 25.41683333038236,
+      "max_source_corrected_abs_ms": 24.902791665226687
+    },
+    "speech": "pass",
+    "voice": {
+      "pass": true,
+      "clean": {
+        "count": 8,
+        "max_added_voice_delay_ms": 0.3243749997636769
+      },
+      "video_paused": {
+        "count": 4,
+        "max_added_voice_delay_ms": 0.36550000004353933
+      },
+      "recovery": {
+        "count": 27,
+        "max_added_voice_delay_ms": 0.5334583329386078
+      }
+    },
+    "identity": {
+      "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+      "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+      "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+    },
+    "cpu": {
+      "before": {
+        "turn": {
+          "usage_usec": 75011,
+          "user_usec": 27469,
+          "system_usec": 47542,
+          "nr_periods": 4,
+          "nr_throttled": 0,
+          "throttled_usec": 0
+        },
+        "other": {
+          "usage_usec": 57104,
+          "user_usec": 21699,
+          "system_usec": 35404,
+          "nr_periods": 3,
+          "nr_throttled": 0,
+          "throttled_usec": 0
+        }
+      },
+      "after": {
+        "turn": {
+          "usage_usec": 4139245,
+          "user_usec": 1147760,
+          "system_usec": 2991485,
+          "nr_periods": 1373,
+          "nr_throttled": 0,
+          "throttled_usec": 0
+        },
+        "other": {
+          "usage_usec": 4225870,
+          "user_usec": 945673,
+          "system_usec": 3280196,
+          "nr_periods": 1355,
+          "nr_throttled": 0,
+          "throttled_usec": 0
+        }
+      },
+      "deltas": {
+        "turn": {
+          "usage_usec": 4064234,
+          "user_usec": 1120291,
+          "system_usec": 2943943,
+          "nr_periods": 1369,
+          "nr_throttled": 0,
+          "throttled_usec": 0
+        },
+        "other": {
+          "usage_usec": 4168766,
+          "user_usec": 923974,
+          "system_usec": 3244792,
+          "nr_periods": 1352,
+          "nr_throttled": 0,
+          "throttled_usec": 0
+        }
+      }
+    },
+    "product_qualified": false
   }
 }
