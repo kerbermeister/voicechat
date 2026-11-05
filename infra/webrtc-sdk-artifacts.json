@@ -1,21 +1,21 @@
 {
   "schema": 1,
   "sdk_version": "150.7871.04",
-  "release_artifact_version": "150.7871.04-vc8",
+  "release_artifact_version": "150.7871.04-vc9",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
-  "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023",
+  "patch_sha256": "aa0dde2a41aff3e912f20d7103509896e34ca19216e95b5a56294f0ef9b20309",
   "artifacts": {
     "macos": {
-      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc8/WebRTC.xcframework.zip",
-      "sha256": "0134a72bfbaa0f7b3518c51570efdd4705a424d6bbb8bd48c67f8365bf555ed6",
-      "size_bytes": 6303233,
-      "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
-      "binary_sha256": "de61784b01bfaa53818691e8711f73658fc0d2d2cdb9525dc562ec1d383dd4e6"
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc9/WebRTC.xcframework.zip",
+      "sha256": "64788eb11806fa601119aab8141f3046f733808bdcaaf72c76a89612ba5e9989",
+      "size_bytes": 6302436,
+      "arm64_uuid": "58b05166-6da7-316d-aa5b-61e3ce909771",
+      "binary_sha256": "9f1af25e1775be381460c2c0858f430767be2915e6f51caacee88a839b4aa683"
     },
     "android": {
-      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc8/libwebrtc.aar",
-      "sha256": "ea13d30e240e075e1b7cda924506904235adc27737080462b813764effb6d6ed",
-      "size_bytes": 36291688,
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc9/libwebrtc.aar",
+      "sha256": "2e2f3fc1e9e54ed34cc1b7cd147ef85de5d5ffe0a509f162f120756d48b4cc04",
+      "size_bytes": 36291687,
       "jni_sha256": {
         "armeabi-v7a": "6f3aa12a7c36752953f6cd1e82626373afd3e1a82c42489ae769bdc43122821e",
         "arm64-v8a": "0fb9e25c668c5aeadd50ef0723348b2c04c013c4a25c233f8f6e4d97abfed53c",
@@ -23,7 +23,7 @@
       }
     }
   },
-  "native_video_playout_ms": 90,
+  "native_video_playout_ms": 0,
   "native_video_playout_max_ms": 10000,
-  "platform_policy_test_count": 9
+  "platform_policy_test_count": 10
 }
