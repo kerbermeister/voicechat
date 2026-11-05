@@ -13783,5 +13783,78 @@
     ],
     "new_marker_metadata_present": true,
     "scope": "Instrumented diagnostic, not application qualification"
+  },
+  "vc3_native130_diagnostic": {
+    "date_utc": "2026-11-05T00:50:42.532448+00:00",
+    "purpose": "Diagnostic, not application qualification",
+    "sdk_identity": {
+      "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+      "sdk_binary_sha256": "0e5d0341dd61f62532c43c4b6fa8928ed211313e4ce2020142ea6417218a3a65",
+      "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0"
+    },
+    "playout_ms": 130,
+    "minimum_playout_ms": 130,
+    "timing": {
+      "schema": 1,
+      "outcome": "pass",
+      "recovery_transport": {
+        "pass": true,
+        "packet_deltas": {
+          "audio": 502,
+          "video": 1876
+        },
+        "decoded_video_frames": 206
+      },
+      "audio_checksum_markers": 64,
+      "matched_pairs": 56,
+      "shared_group": true,
+      "clean": {
+        "count": 8,
+        "max_abs_ms": 59.13795833475888,
+        "max_source_corrected_abs_ms": 57.84579167084303
+      },
+      "recovery": {
+        "count": 27,
+        "max_abs_ms": 53.48437500651926,
+        "max_source_corrected_abs_ms": 50.768958346452564
+      },
+      "max_source_offset_ms": 4.367749992525205,
+      "max_all_source_offset_ms": 4.367749992525205,
+      "physical_latency_measured": false,
+      "decoder_window_ms": 21.333333333333332,
+      "recovery_guard_after_seconds": 5
+    },
+    "voice_latency": {
+      "pass": true,
+      "clean": {
+        "count": 8,
+        "max_added_voice_delay_ms": 23.0698749946896
+      },
+      "video_paused": {
+        "count": 4,
+        "max_added_voice_delay_ms": 23.16504168265965
+      },
+      "recovery": {
+        "count": 27,
+        "max_added_voice_delay_ms": 23.087333334842697
+      }
+    },
+    "speech": "pass",
+    "all_gates_pass": true
+  },
+  "vc4_prepared": {
+    "date_utc": "2026-11-05T01:19:14.494988+00:00",
+    "patch_sha256": "ea71b6074213a9e7b288379c34194fd2febe8261fc055b7a9430e2a309474db1",
+    "source_files": 12,
+    "cpp_tests_required": 45,
+    "negative_regressions_required": 9,
+    "platform_policy_cases_required": 9,
+    "policy": "native video min=max130 default, explicit settings preserved; vc3 audio cap unchanged",
+    "local_source_policy_cases_passed": {
+      "macos": 9,
+      "java_helper": 9
+    },
+    "compiled_sdk4": "not_built",
+    "media": "not_run"
   }
 }

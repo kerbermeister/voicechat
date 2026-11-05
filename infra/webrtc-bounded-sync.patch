@@ -538,3 +538,70 @@
    // Make sure that video is never below our target.
    video_delay_.extra_ms =
        std::max(video_delay_.extra_ms, base_target_delay_ms_);
+--- a/sdk/objc/api/peerconnection/RTCPeerConnectionFactory.mm
++++ b/sdk/objc/api/peerconnection/RTCPeerConnectionFactory.mm
+@@ -71,6 +71,22 @@
+ #if defined(WEBRTC_IOS)
+ #import "sdk/objc/native/api/audio_device_module.h"
+ #endif
++
++// Match the call's video buffer to the existing 130 ms SFU policy without
++// changing codecs, audio processing or an explicitly configured video delay.
++static NSString *FieldTrialsWithDefaultVideoPlayout(NSString *fieldTrials) {
++  NSString *trials = fieldTrials ?: @"";
++  NSString *defaultTrial = @"WebRTC-ForcePlayoutDelay/min_ms:130,max_ms:130/";
++  if (trials.length == 0) return defaultTrial;
++  NSArray<NSString *> *parts = [trials componentsSeparatedByString:@"/"];
++  if (parts.count % 2 == 0 || ![trials hasSuffix:@"/"]) return trials;
++  for (NSUInteger i = 0; i + 1 < parts.count; i += 2) {
++    // Leave invalid input to the existing native validation, never repair it.
++    if (parts[i].length == 0 || parts[i + 1].length == 0) return trials;
++    if ([parts[i] isEqualToString:@"WebRTC-ForcePlayoutDelay"]) return trials;
++  }
++  return [trials stringByAppendingString:defaultTrial];
++}
+
+ static NSString *gFieldTrials = nil;
+
+@@ -544,7 +560,7 @@
+ }
+
+ + (void)configureFieldTrials:(nullable NSString *)fieldTrials {
+-  gFieldTrials = [fieldTrials copy];
++  gFieldTrials = [FieldTrialsWithDefaultVideoPlayout(fieldTrials) copy];
+ }
+
+ - (webrtc::Thread *)signalingThread {
+--- a/sdk/android/api/org/webrtc/PeerConnectionFactory.java
++++ b/sdk/android/api/org/webrtc/PeerConnectionFactory.java
+@@ -81,6 +81,20 @@
+       this.loggableSeverity = loggableSeverity;
+     }
+
++    // Preserve explicit options and the native parser's validation of bad input.
++    private static String withDefaultVideoPlayout(String trials) {
++      if (trials == null) return null;
++      String defaultTrial = "WebRTC-ForcePlayoutDelay/min_ms:130,max_ms:130/";
++      if (trials.isEmpty()) return defaultTrial;
++      String[] parts = trials.split("/", -1);
++      if (parts.length % 2 == 0 || !trials.endsWith("/")) return trials;
++      for (int i = 0; i + 1 < parts.length; i += 2) {
++        if (parts[i].isEmpty() || parts[i + 1].isEmpty()) return trials;
++        if (parts[i].equals("WebRTC-ForcePlayoutDelay")) return trials;
++      }
++      return trials + defaultTrial;
++    }
++
+     public static Builder builder(Context applicationContext) {
+       return new Builder(applicationContext);
+     }
+@@ -128,7 +142,8 @@
+       }
+
+       public PeerConnectionFactory.InitializationOptions createInitializationOptions() {
+-        return new PeerConnectionFactory.InitializationOptions(applicationContext, fieldTrials,
++        return new PeerConnectionFactory.InitializationOptions(applicationContext,
++            withDefaultVideoPlayout(fieldTrials),
+             enableInternalTracer, nativeLibraryLoader, nativeLibraryName, loggable,
+             loggableSeverity);
+       }

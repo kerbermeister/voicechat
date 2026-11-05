@@ -11,6 +11,8 @@ import subprocess
 import sys
 import zipfile
 
+from verify_native_playout_policy import verify as verify_playout_policy
+
 HERE = Path(__file__).resolve().parent
 MANIFEST = json.loads((HERE / 'webrtc-sdk.json').read_text())
 PATCH = HERE / 'webrtc-bounded-sync.patch'
@@ -238,6 +240,11 @@ def macos(source, work, output):
     if not binary.is_file():
         raise RuntimeError('macOS framework binary link is broken')
     run(['lipo', binary, '-verify_arch', 'arm64'])
+    resources = framework / 'Versions/A/Resources'
+    resources.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source / 'LICENSE', resources / 'WebRTC-LICENSE')
+    shutil.copy2(output / 'LICENSE.md', resources / 'WebRTC-THIRD-PARTY-NOTICES.md')
+    run(['codesign', '--force', '--sign', '-', '--timestamp=none', framework])
     run(['zip', '--symlinks', '-r', output / 'WebRTC.xcframework.zip', 'WebRTC.xcframework'], cwd=output)
     return output / 'WebRTC.xcframework.zip'
 
@@ -255,6 +262,13 @@ def android(source, work, output):
                 raise RuntimeError('Missing native ABI ' + abi)
         if 'classes.jar' not in names:
             raise RuntimeError('SDK Java bindings missing')
+    with zipfile.ZipFile(aar, 'a', compression=zipfile.ZIP_DEFLATED) as archive:
+        for name, path in [('LICENSE', source / 'LICENSE'),
+                           ('THIRD-PARTY-NOTICES.md', output / 'LICENSE.md')]:
+            destination = 'assets/webrtc-sdk/' + name
+            if destination in archive.namelist():
+                raise RuntimeError('Duplicate SDK license asset')
+            archive.write(path, destination)
     return aar
 
 
@@ -277,11 +291,22 @@ def main():
         unit_tests(source, work, output)
     else:
         artifact = macos(source, work, output) if args.platform == 'macos' else android(source, work, output)
+    policy = None
+    if artifact is not None:
+        report = output / 'native-playout-policy-tests.json'
+        binary = (output / 'WebRTC.xcframework/macos-arm64/WebRTC.framework/WebRTC'
+                  if args.platform == 'macos' else None)
+        policy = verify_playout_policy(source, args.platform, report, artifact, binary)
+        if policy['pass_count'] != MANIFEST['platform_policy_test_count']:
+            raise RuntimeError('Incomplete native default-playout tests')
+        policy['report_sha256'] = sha(report)
     verify_files(source, MANIFEST['patched_files_sha256'])
     receipt = {**MANIFEST, 'platform': args.platform,
                'artifact': artifact.name if artifact else None,
                'artifact_sha256': sha(artifact) if artifact else None,
                'source_files_verified': True, 'shallow_checkout': True}
+    if policy is not None:
+        receipt['native_playout_policy_tests'] = policy
     (output / 'build-receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
 
 

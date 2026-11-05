@@ -563,3 +563,25 @@ control. It tests the user's requested130ms policy with unchanged A/V, voice,
 speech and encryption gates. It is not an application configuration yet and
 does not erase either failed adaptive pilot. A successful diagnostic still
 requires production initialization plus the complete fresh qualification series.
+
+
+## Native130ms diagnostic passes; vc4 initialization prepared
+
+One actual vc3 Mac paired diagnostic with native min=max130ms passes all gates:
+clean raw59.138/corrected57.846ms, recovery raw53.484/corrected50.769ms;
+source4.368ms. Added voice latency max23.166ms and speech comparison pass.
+Native sync logs show current video delay130ms throughout, proving the option
+was applied, not merely written to the report. Both streams/decode remain live.
+This single diagnostic does not erase the failed adaptive trials or qualify vc4.
+
+vc4 preserves the exact vc3 C++ timing/voice fixes and configures the130ms policy
+in the Objective-C/Java initialization entry points used by the hosted wrapper.
+It preserves explicit field-trial settings, other options and existing invalid-
+input validation. Local checks:9 Foundation cases pass for the actual method and
+helper;9 Java exact-helper cases pass. The original Mac method and actual vc3 AAR
+constructor fail the new default check as expected. Full vc4 AAR constructor
+checks, compiled binary checks, fresh45/9 C++ gate and native media are pending.
+The12-file patch applies cleanly and all original/patched hashes match. No SDK4
+media result is claimed. SDK notices are also retained in final framework/APK
+resources; a packaging smoke on copied SDK3 preserves signatures and all original
+Android classes/JNI bytes. It is packaging evidence, not SDK4 runtime evidence.
