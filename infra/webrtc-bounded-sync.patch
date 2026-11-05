@@ -903,3 +903,42 @@
  TEST_F(SifTransformTest, ForwardsServerBlankFrameWithoutKeyAndStripsTrailer) {
    Transform(kVp8KeyFrame8x8);
    ASSERT_TRUE(sink_->event.Wait(TimeDelta::Seconds(5)));
+--- a/api/crypto/frame_crypto_transformer_unittest.cc
++++ b/api/crypto/frame_crypto_transformer_unittest.cc
+@@ -10,6 +10,17 @@
+ #include "test/gtest.h"
+
+ namespace webrtc {
++
++TEST(FrameCryptor, CopiesStrictReadinessThroughProviderConstruction) {
++  for (bool strict : {false, true}) {
++    KeyProviderOptions original;
++    original.discard_frame_when_cryptor_not_ready = strict;
++    const KeyProviderOptions copied(original);
++    EXPECT_EQ(copied.discard_frame_when_cryptor_not_ready, strict);
++    auto provider = make_ref_counted<DefaultKeyProviderImpl>(original);
++    EXPECT_EQ(provider->options().discard_frame_when_cryptor_not_ready, strict);
++  }
++}
+
+ TEST(FrameCryptor, KeyProvider) {
+   auto key_options = KeyProviderOptions();
+--- a/api/crypto/frame_crypto_transformer.h
++++ b/api/crypto/frame_crypto_transformer.h
+@@ -63,15 +63,7 @@
+         discard_frame_when_cryptor_not_ready(false),
+         key_derivation_algorithm(kPBKDF2),
+         key_size(128) {}
+-  KeyProviderOptions(KeyProviderOptions& copy)
+-      : shared_key(copy.shared_key),
+-        ratchet_salt(copy.ratchet_salt),
+-        uncrypted_magic_bytes(copy.uncrypted_magic_bytes),
+-        ratchet_window_size(copy.ratchet_window_size),
+-        failure_tolerance(copy.failure_tolerance),
+-        key_ring_size(copy.key_ring_size),
+-        key_derivation_algorithm(copy.key_derivation_algorithm),
+-        key_size(copy.key_size) {}
++  KeyProviderOptions(const KeyProviderOptions&) = default;
+   // The frame key length in bits that key derivation uses.
+   unsigned int frame_key_bits() const {
+     return key_size == 256 ? 256u : 128u;

@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "403132d8063e4b6dfcb7e9424282ca4f269f25282702b7f7d619d9f9a7e8e431",
+  "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -42,14 +42,14 @@
     "api/crypto/frame_crypto_transformer.cc": "0da3fa6759b09f4b4fd0d6076c336d23b9eb32d42c9c6d422b6f3cb2d7950430",
     "api/crypto/sif_payload_unittest.cc": "3db0a3b839530e35d39b65584297a7864f78b578f4150aded95519838c7d4973",
     "api/crypto/BUILD.gn": "6e92edc0d213f67b547de0a6729251a8df1bd63a0498de409f7e4f98aafe0ffb",
-    "api/crypto/frame_crypto_transformer_unittest.cc": "ef6b53dfa57117f581af18fc262df88f18a7204d588827257d44f629b2877e26",
-    "api/crypto/frame_crypto_transformer.h": "97e5f1bdbfc6b9167668b12b895bff7fd72c5906a533e1a961bb78367d7e8a43"
+    "api/crypto/frame_crypto_transformer_unittest.cc": "3c0b3fc6e61fd9e70b5333d51ef9724237a38b37bf73a6f5b6b21c0b9d0c2f98",
+    "api/crypto/frame_crypto_transformer.h": "7c899722681bfe286435017608a82699fa5d84c3488c3d7f5f2377d521d920d3"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey",
   "release_artifact_version": "150.7871.04-vc7",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
-  "unit_test_count": 85,
+  "unit_test_count": 86,
   "regressions": [
     "VCMTimingTest.SyncDelayUsesCurrentDelayAfterVideoJitter",
     "VCMTimingTest.SyncDelayRespectsBoundsAndAudioDeviceMinimum",
