@@ -14928,6 +14928,417 @@
         "full_covariance_reset_on_alarm": true
       }
     ],
-    "third_p2p_and_sfu_pending": true
+    "third_p2p_and_sfu_pending": false,
+    "p2p_results": [
+      {
+        "date_utc": "2026-11-05T03:43:52.910530+00:00",
+        "purpose": "Diagnostic, not application qualification",
+        "sdk_identity": {
+          "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+          "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+          "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+        },
+        "playout_ms": 0,
+        "minimum_playout_ms": 0,
+        "timing": {
+          "schema": 1,
+          "outcome": "pass",
+          "recovery_transport": {
+            "pass": true,
+            "packet_deltas": {
+              "audio": 503,
+              "video": 1877
+            },
+            "decoded_video_frames": 206
+          },
+          "audio_checksum_markers": 63,
+          "matched_pairs": 55,
+          "shared_group": true,
+          "clean": {
+            "count": 8,
+            "max_abs_ms": 36.06183333613444,
+            "max_source_corrected_abs_ms": 35.17083334736526
+          },
+          "recovery": {
+            "count": 27,
+            "max_abs_ms": 26.412416656967252,
+            "max_source_corrected_abs_ms": 28.74412499659229
+          },
+          "max_source_offset_ms": 3.342874988447875,
+          "max_all_source_offset_ms": 3.342874988447875,
+          "physical_latency_measured": false,
+          "decoder_window_ms": 21.333333333333332,
+          "recovery_guard_after_seconds": 5
+        },
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": 22.91754166071769
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 45.287708344403654
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 45.6432499922812
+          }
+        },
+        "speech": "pass",
+        "all_gates_pass": true
+      },
+      {
+        "date_utc": "2026-11-05T03:47:36.906858+00:00",
+        "purpose": "Diagnostic, not application qualification",
+        "sdk_identity": {
+          "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+          "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+          "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+        },
+        "playout_ms": 0,
+        "minimum_playout_ms": 0,
+        "timing": {
+          "schema": 1,
+          "outcome": "pass",
+          "recovery_transport": {
+            "pass": true,
+            "packet_deltas": {
+              "audio": 503,
+              "video": 1881
+            },
+            "decoded_video_frames": 206
+          },
+          "audio_checksum_markers": 64,
+          "matched_pairs": 55,
+          "shared_group": true,
+          "clean": {
+            "count": 8,
+            "max_abs_ms": 22.55170833086595,
+            "max_source_corrected_abs_ms": 21.74475000356324
+          },
+          "recovery": {
+            "count": 27,
+            "max_abs_ms": 68.5324583464535,
+            "max_source_corrected_abs_ms": 69.43658334785141
+          },
+          "max_source_offset_ms": 4.28999999712687,
+          "max_all_source_offset_ms": 4.28999999712687,
+          "physical_latency_measured": false,
+          "decoder_window_ms": 21.333333333333332,
+          "recovery_guard_after_seconds": 5
+        },
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": 12.809666674002074
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 22.88641667109914
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 22.90858334163204
+          }
+        },
+        "speech": "pass",
+        "all_gates_pass": true
+      },
+      {
+        "date_utc": "2026-11-05T03:51:41.667336+00:00",
+        "purpose": "Diagnostic, not application qualification",
+        "sdk_identity": {
+          "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+          "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+          "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+        },
+        "playout_ms": 0,
+        "minimum_playout_ms": 0,
+        "timing": {
+          "schema": 1,
+          "outcome": "pass",
+          "recovery_transport": {
+            "pass": true,
+            "packet_deltas": {
+              "audio": 503,
+              "video": 1874
+            },
+            "decoded_video_frames": 206
+          },
+          "audio_checksum_markers": 64,
+          "matched_pairs": 55,
+          "shared_group": true,
+          "clean": {
+            "count": 8,
+            "max_abs_ms": 51.76308333466295,
+            "max_source_corrected_abs_ms": 50.89987500105053
+          },
+          "recovery": {
+            "count": 26,
+            "max_abs_ms": 28.506291651865467,
+            "max_source_corrected_abs_ms": 29.40716665762011
+          },
+          "max_source_offset_ms": 3.2863749947864562,
+          "max_all_source_offset_ms": 3.2863749947864562,
+          "physical_latency_measured": false,
+          "decoder_window_ms": 21.333333333333332,
+          "recovery_guard_after_seconds": 5
+        },
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": 22.29483333940152
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": -0.2574166574049741
+          },
+          "recovery": {
+            "count": 26,
+            "max_added_voice_delay_ms": -0.25491666747257113
+          }
+        },
+        "speech": "pass",
+        "all_gates_pass": true
+      }
+    ],
+    "sfu_status": "rejected_second_sfu_clean_timing_and_speech",
+    "sfu_results": [
+      {
+        "date_utc": "2026-11-05T03:54:50.839886+00:00",
+        "purpose": "SDK5 full covariance field-trial diagnostic; not fresh compiled-default qualification or app release",
+        "identity": {
+          "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+          "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+          "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+        },
+        "timing": {
+          "schema": 1,
+          "outcome": "pass",
+          "recovery_transport": {
+            "pass": true,
+            "packet_deltas": {
+              "audio": 408,
+              "video": 645
+            },
+            "decoded_video_frames": 201
+          },
+          "audio_checksum_markers": 61,
+          "matched_pairs": 54,
+          "shared_group": false,
+          "clean": {
+            "count": 7,
+            "max_abs_ms": 23.74499999859836,
+            "max_source_corrected_abs_ms": 24.602458332083188
+          },
+          "recovery": {
+            "count": 27,
+            "max_abs_ms": 34.66833333368413,
+            "max_source_corrected_abs_ms": 35.57670833833981
+          },
+          "max_source_offset_ms": 3.0324999970616773,
+          "max_all_source_offset_ms": 3.0324999970616773,
+          "physical_latency_measured": false,
+          "decoder_window_ms": 21.333333333333332,
+          "recovery_guard_after_seconds": 5
+        },
+        "speech": "pass",
+        "missing_key_gate": {
+          "content": {
+            "audio_chunks": 293,
+            "audio_peak": 0.0,
+            "video_markers": 0
+          },
+          "audio": {
+            "packets": 126,
+            "decoded": 0
+          },
+          "video": {
+            "packets": 169,
+            "decoded": 0
+          }
+        },
+        "encrypted_publications": true,
+        "native_factory_video_playout_ms": 90,
+        "timestamp_full_covariance_reset": true,
+        "speech_control_is_historical": true,
+        "sfu_rtp_video_playout_ms": 130,
+        "all_diagnostic_gates_pass": true
+      },
+      {
+        "date_utc": "2026-11-05T03:58:02.256136+00:00",
+        "purpose": "SDK5 full covariance field-trial diagnostic; not fresh compiled-default qualification or app release",
+        "identity": {
+          "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+          "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+          "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+        },
+        "timing": {
+          "schema": 1,
+          "outcome": "budget_exceeded",
+          "recovery_transport": {
+            "pass": true,
+            "packet_deltas": {
+              "audio": 407,
+              "video": 653
+            },
+            "decoded_video_frames": 201
+          },
+          "audio_checksum_markers": 61,
+          "matched_pairs": 54,
+          "shared_group": false,
+          "clean": {
+            "count": 7,
+            "max_abs_ms": 176.3611666538054,
+            "max_source_corrected_abs_ms": 177.3306666436838
+          },
+          "recovery": {
+            "count": 27,
+            "max_abs_ms": 40.618624989292584,
+            "max_source_corrected_abs_ms": 43.462583314976655
+          },
+          "max_source_offset_ms": 4.3185416725464165,
+          "max_all_source_offset_ms": 4.3185416725464165,
+          "physical_latency_measured": false,
+          "decoder_window_ms": 21.333333333333332,
+          "recovery_guard_after_seconds": 5
+        },
+        "speech": "speech_regression",
+        "missing_key_gate": {
+          "content": {
+            "audio_peak": 0.0,
+            "video_markers": 0,
+            "audio_chunks": 300
+          },
+          "audio": {
+            "packets": 131,
+            "decoded": 0
+          },
+          "video": {
+            "packets": 176,
+            "decoded": 0
+          }
+        },
+        "encrypted_publications": true,
+        "native_factory_video_playout_ms": 90,
+        "timestamp_full_covariance_reset": true,
+        "speech_control_is_historical": true,
+        "sfu_rtp_video_playout_ms": 130,
+        "all_diagnostic_gates_pass": false
+      }
+    ],
+    "remaining_series_stopped": true
+  },
+  "vc6_compiled_gate": {
+    "run": 41964629040,
+    "revision": "1a22906178a320b43b62edf0223b2ffac2522636",
+    "patch_sha256": "ec4f0eb13bbdfb8dcceca59aa22718fdd8e7f11adb7e21e2bb157a18844a0596",
+    "actual_unit_tests": 63,
+    "actual_negative_regressions": 11,
+    "failures": 0,
+    "skips": 0,
+    "source_toolchain_receipt_verified": true,
+    "new_clock_recovery_before_errors_ms": [
+      22,
+      28
+    ],
+    "new_clock_recovery_after_tolerance_ms": 1,
+    "native_binary_builds": "cancel_requested_after_cpp_success_due_to_failed_sfu_policy",
+    "native_media_qualified": false
+  },
+  "vc5_fresh_sfu_ordinary_voice": {
+    "purpose": "SDK5 explicit fullcov diagnostic, independent simultaneous ordinary E2EE call; not SDK6 binary acceptance",
+    "setup_failure": {
+      "status": "synthetic_capture_export_failed",
+      "reason": "Two PCM streams exceed existing64MB loopback upload limit; server413 caused broken pipe",
+      "media_qualification": false,
+      "timing_not_available": true,
+      "retained_private_log": "heartbeat51-source/.prototype/voicechat-sdk-key-88b223e38200.private.log",
+      "fix": "Use128MB bound only for paired ordinary voice fixture; all other contexts64MB unchanged"
+    },
+    "first_valid": {
+      "date_utc": "2026-11-05T04:18:21.881877+00:00",
+      "purpose": "SDK5 explicit fullcov diagnostic; fresh simultaneous ordinary encrypted audio-only call in separate room, not SDK6 acceptance",
+      "sdk_identity": {
+        "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+        "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+        "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+      },
+      "timing": {
+        "schema": 1,
+        "outcome": "pass",
+        "recovery_transport": {
+          "pass": true,
+          "packet_deltas": {
+            "audio": 405,
+            "video": 642
+          },
+          "decoded_video_frames": 202
+        },
+        "audio_checksum_markers": 61,
+        "matched_pairs": 53,
+        "shared_group": false,
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 77.7385000110371,
+          "max_source_corrected_abs_ms": 76.51275000534952
+        },
+        "recovery": {
+          "count": 26,
+          "max_abs_ms": 54.852041677804664,
+          "max_source_corrected_abs_ms": 53.95754167693667
+        },
+        "max_source_offset_ms": 5.761916661867872,
+        "max_all_source_offset_ms": 5.761916661867872,
+        "physical_latency_measured": false,
+        "decoder_window_ms": 21.333333333333332,
+        "recovery_guard_after_seconds": 5
+      },
+      "voice_latency": {
+        "pass": true,
+        "clean": {
+          "count": 8,
+          "max_added_voice_delay_ms": -0.26841666840482503
+        },
+        "video_paused": {
+          "count": 3,
+          "max_added_voice_delay_ms": 22.28383332840167
+        },
+        "recovery": {
+          "count": 26,
+          "max_added_voice_delay_ms": 22.76999999594409
+        }
+      },
+      "speech": "pass",
+      "speech_control_is_historical": false,
+      "missing_key_gate": {
+        "content": {
+          "audio_chunks": 300,
+          "video_markers": 0,
+          "control_audio_peak": 0.0,
+          "audio_peak": 0.0
+        },
+        "ordinary_voice": {
+          "packets": 132,
+          "plaintext_audio_peak": 0.0
+        },
+        "audio": {
+          "packets": 134,
+          "decoded": 0
+        },
+        "video": {
+          "packets": 174,
+          "decoded": 0
+        }
+      },
+      "all_gates_pass": true
+    },
+    "source_clock_interval_min_seconds_per_id": 1.9949397916643647,
+    "source_clock_interval_max_seconds_per_id": 2.0053054166637594,
+    "next_diagnostic": "current-vc5-fullcov-fresh-sfu-diagnostic3_running",
+    "prior_absolute_177ms_failure_retained": true
   }
 }

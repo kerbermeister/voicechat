@@ -759,3 +759,73 @@ The second starts the simultaneous ordinary reference first. These are the
 existing SDK5 binary with an explicit supported field trial, not a new compiled
 default or completed qualification. Third P2P and actual LiveKit AES-GCM series
 are predeclared; stop on first failed gate. No app update is published.
+
+Third full-covariance P2P diagnostic passes: clean raw51.763/corrected50.900ms,
+recovery raw28.506/corrected29.407ms, voice<=22.295ms and speech pass. All three
+predeclared P2P pairs pass. First actual LiveKit AES-GCM diagnostic now runs; its
+speech comparison uses the retained historical SFU control and is labelled as
+such. Final qualification still needs fresh compiled defaults, ordinary controls
+and all mirrored/continuous-delay/platform/encryption checks.
+
+First actual SDK5 full-covariance LiveKit diagnostic passes: clean raw23.745/
+corrected24.602ms, recovery raw34.668/corrected35.577ms, speech passes against
+the explicitly historical control. The missing-key stage receives126 audio/169
+video packets while audio peak stays0 and decoded/video markers stay0; after key
+installation checksummed video/audio speech decode and remain live at the end.
+This is actual AES-GCM content evidence, not merely an enabled setting. Second
+SFU diagnostic runs. Native compiler candidate SDK6/source1a22906 is isolated;
+new actual C++/platform proofs and complete fresh media qualification still required.
+
+Second SDK5 full-covariance SFU diagnostic FAILS: clean raw176.361ms/corrected
+177.331ms; recovery raw40.619/corrected43.463ms passes. Clean speech STOI0.977676
+versus historical control0.988594 differs by−0.010919 (>0.005). Missing-key and
+positive actual AES-GCM controls still pass. SFU3/delay repeats stop without
+being counted. This configuration is unqualified despite all three P2P passes.
+
+Clean markers4..10 show audio source-to-callback282.535→167.846ms while video
+is90.903–143.097ms and render schedules remain100.466–152.027ms. Audio then
+returns95.342ms by marker11. Stats show4 concealment events/7183 concealed
+samples/2400 silent concealed samples, packet-loss counter0; first SFU diagnostic
+has no concealment. These observations identify an initial audio-delay excursion,
+not proof of its cause or of a covariance regression. The speech control is
+historical: fresh ordinary encrypted voice controls are still necessary.
+
+A fixed90ms video cap cannot follow a transient~280ms audio playout delay. The
+current SFU fixture also reports separate media streams, disabling the native
+pair synchronizer. Investigate both real stream grouping and adaptive video
+headroom rather than increasing fixed delay or capping/flushing natural audio.
+SDK6 compiler test remains useful for clock-skew regression, but dependent binary
+builds are scheduled for cancellation after that proof; no accepted media policy
+exists. App62 remains. All absolute80ms and speech gates remain unchanged.
+
+SDK6 actual C++ gate SUCCESS at run41964629040/source1a22906: all63 tests with
+zero failures/skips, all11 original-behavior regressions fail before correction.
+Exact source/toolchain receipt verifies. New clock recovery regression measures
+22ms current/28ms future-estimate errors before, within1ms after; explicit
+offset-only opt-out and all15 existing extrapolator tests pass. This proves a
+clock recovery component, not a complete A/V solution. Dependent Mac/Android
+build cancellation is requested after test completion because SFU policy failed.
+
+New optional Mac fixture runs a simultaneous ordinary E2EE voice call in a
+separate loopback room/PeerConnection pair, matching source clock/audio codec and
+missing-key gate. Both encrypted publications are asserted; neither ordinary
+endpoint publishes/receives video. It records separate PCM/stats and exact stats
+times. Test room/join helpers only admit the two disposable names;4 helper tests
+and unsupported-context guards pass. No production client behavior is changed.
+
+First paired SFU capture reaches export but exceeds the old64MB loopback JSON
+limit for two PCM streams, causing413/broken pipe. No timing or speech acceptance
+is claimed for that attempt. Paired-fixture limit alone becomes128MB; single
+stream contexts remain64MB. Original logs/failure receipt retained and repeat2
+is running with the same media gates. Historical-control SFU2 failure remains.
+
+First valid fresh ordinary-SFU comparison (label...diagnostic2, after export
+repair) passes: clean raw77.739/corrected76.513ms, recovery raw54.852/corrected
+53.958ms, voice excess<=22.770ms and matched speech pass. Separate audio-only
+room/PeerConnections use actual E2EE; missing keys block both rooms' PCM while
+RTP arrives, then decoded checksums/speech pass after key installation. Codec
+parity and absence of ordinary video are asserted. Source clock interval is
+1.994940–2.005305s/id, within the original invariant; source A/V offset<=5.762ms.
+The historical-control absolute177ms failure is retained and keeps policy
+unqualified. A second fresh ordinary comparison is running, rather than
+promoting one good call or changing80ms/speech gates.

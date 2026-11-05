@@ -50,12 +50,15 @@ def main():
     parser.add_argument('--max-video-playout-ms', type=int, choices=(130, 10000), default=10000)
     parser.add_argument('--av-marker-network', action='store_true', help='Apply video-only delay and outage in the disposable SFU')
     parser.add_argument('--timestamp-full-reset', action='store_true', help='Diagnostic macOS fixture: reset full timestamp-model covariance on alarms')
+    parser.add_argument('--ordinary-voice-reference', action='store_true', help='Run a simultaneous E2EE audio-only call in a separate disposable room (Mac fixture)')
     parser.add_argument('--av-speech', type=Path, help='Synthetic mono48kHz PCM16 WAV; never use a personal recording')
     parser.add_argument('--av-sender-root', type=Path, help='Separate account-free macOS sender checkout (A/V fixture only)')
     parser.add_argument('--av-media-ip', help='Local private interface for encrypted RTP between Mac and the owned Android emulator')
     args = parser.parse_args()
     if args.timestamp_full_reset and (args.device != 'macos' or not args.av_marker_output or args.native_video_playout_ms != 0):
         parser.error('Timestamp diagnostic requires the Mac A/V fixture with native SDK default playout')
+    if args.ordinary_voice_reference and (args.device != 'macos' or not args.av_marker_output or args.av_sender_root or args.web_root):
+        parser.error('Ordinary voice comparison requires the single-Mac synthetic A/V fixture')
     if args.min_native_video_playout_ms is not None and (args.native_video_playout_ms == 0 or args.min_native_video_playout_ms > args.native_video_playout_ms):
         parser.error('Native minimum requires a nonzero maximum and must not exceed it')
     if bool(args.av_sender_root) != bool(args.av_media_ip):
@@ -163,7 +166,9 @@ def main():
                         self.send_error(403)
                         return
                     length = int(self.headers.get('Content-Length', '0'))
-                    if not 0 < length <= 64_000_000:
+                    # Paired capture exports two bounded synthetic PCM streams.
+                    limit = 128_000_000 if args.ordinary_voice_reference else 64_000_000
+                    if not 0 < length <= limit:
                         self.send_error(413)
                         return
                     data = self.rfile.read(length)
@@ -262,6 +267,8 @@ def main():
             else:
                 raise RuntimeError('Local SFU not ready')
             create_marker_room(address, api_key, secret, args.shared_sync, args.video_playout_ms, args.max_video_playout_ms)
+            if args.ordinary_voice_reference:
+                create_marker_room(address, api_key, secret, room_name='route-probe-voice')
             client_address = address.replace('127.0.0.1:', '10.0.2.2:') if args.android_emulator else address
             defines = folder / 'client.json'
             defines.write_text(json.dumps({
@@ -274,6 +281,7 @@ def main():
                 'AV_VIDEO_PLAYOUT_MS': args.video_playout_ms,
                 'AV_NATIVE_VIDEO_PLAYOUT_MS': args.native_video_playout_ms,
                 'AV_TIMESTAMP_FULL_RESET': args.timestamp_full_reset,
+                'AV_ORDINARY_VOICE_REFERENCE': args.ordinary_voice_reference,
                 'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS': args.min_native_video_playout_ms if args.min_native_video_playout_ms is not None else args.native_video_playout_ms,
                 'AV_COHERENT_MARKERS': args.coherent_source,
                 'AV_MARKER_NETWORK': args.av_marker_network,
@@ -283,6 +291,9 @@ def main():
                 'GROUP_TEST_ALICE': token('alice', api_key, secret),
                 'GROUP_TEST_BOB': token('bob', api_key, secret),
                 'GROUP_TEST_OBSERVER': token('observer', api_key, secret),
+                **({'AV_VOICE_ALICE': token('voice-alice', api_key, secret, room_name='route-probe-voice'),
+                    'AV_VOICE_BOB': token('voice-bob', api_key, secret, room_name='route-probe-voice')}
+                   if args.ordinary_voice_reference else {}),
             }))
             defines.chmod(0o600)
             if args.web_root:

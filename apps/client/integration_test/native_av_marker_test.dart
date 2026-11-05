@@ -75,6 +75,8 @@ void main() {
     }
     final random = Random.secure();
     const role = String.fromEnvironment('AV_MARKER_ROLE', defaultValue: 'both');
+    const ordinaryVoice = bool.fromEnvironment('AV_ORDINARY_VOICE_REFERENCE');
+    if (ordinaryVoice) expect(role, 'both');
     const encodedKey = String.fromEnvironment('AV_MARKER_KEY');
     final key = encodedKey.isNotEmpty
         ? base64Decode(encodedKey)
@@ -94,8 +96,37 @@ void main() {
     );
     final bob = lk.Room(roomOptions: options);
     rtc.MediaStream? stream;
+    rtc.MediaStream? voiceStream;
+    lk.Room? voiceAlice;
+    lk.Room? voiceBob;
+    lk.BaseKeyProvider? voiceReceiveKeys;
+    lk.RemoteAudioTrack? voiceAudio;
     try {
       const url = String.fromEnvironment('GROUP_TEST_URL');
+      if (ordinaryVoice) {
+        final voiceSendKeys = await lk.BaseKeyProvider.create(sharedKey: false);
+        voiceReceiveKeys = await lk.BaseKeyProvider.create(sharedKey: false);
+        await voiceSendKeys.setRawKey(key, participantId: 'voice-alice');
+        voiceAlice = lk.Room(
+          roomOptions: lk.RoomOptions(
+            encryption: lk.E2EEOptions(keyProvider: voiceSendKeys),
+          ),
+        );
+        voiceBob = lk.Room(
+          roomOptions: lk.RoomOptions(
+            encryption: lk.E2EEOptions(keyProvider: voiceReceiveKeys),
+          ),
+        );
+        await voiceBob.connect(
+          url,
+          const String.fromEnvironment('AV_VOICE_BOB'),
+        );
+        await voiceAlice.connect(
+          url,
+          const String.fromEnvironment('AV_VOICE_ALICE'),
+        );
+        expect(voiceBob.name, 'route-probe-voice');
+      }
       if (role != 'sender') {
         await bob.connect(url, const String.fromEnvironment('GROUP_TEST_BOB'));
         if (role == 'receiver') {
@@ -113,6 +144,12 @@ void main() {
           'audio': true,
           'video': false,
         });
+        if (ordinaryVoice) {
+          voiceStream = await rtc.navigator.mediaDevices.getUserMedia({
+            'audio': true,
+            'video': false,
+          });
+        }
         await channel.invokeMethod<void>('create', {
           'stream': stream.id,
           'coherent': const bool.fromEnvironment('AV_COHERENT_MARKERS'),
@@ -152,6 +189,23 @@ void main() {
         );
         expect(a.encryptionType, lk.EncryptionType.kGcm);
         expect(v.encryptionType, lk.EncryptionType.kGcm);
+        if (ordinaryVoice) {
+          final voiceTrack = lk.LocalAudioTrack(
+            lk.TrackSource.microphone,
+            voiceStream!,
+            voiceStream.getAudioTracks().single,
+            const lk.AudioCaptureOptions(),
+          );
+          final publication = await voiceAlice!.localParticipant!
+              .publishAudioTrack(
+                voiceTrack,
+                publishOptions: const lk.AudioPublishOptions(
+                  stream: 'ordinary-voice',
+                ),
+              );
+          expect(publication.encryptionType, lk.EncryptionType.kGcm);
+          expect(voiceAlice.localParticipant!.videoTrackPublications, isEmpty);
+        }
         if (role == 'sender') {
           await labWait('receiver_done');
           final markers = await channel.invokeMapMethod<String, dynamic>(
@@ -181,7 +235,18 @@ void main() {
         final participant = bob.remoteParticipants['alice'];
         audio = participant?.audioTrackPublications.firstOrNull?.track;
         video = participant?.videoTrackPublications.firstOrNull?.track;
-        if (audio != null && video != null) break;
+        if (ordinaryVoice) {
+          voiceAudio = voiceBob!
+              .remoteParticipants['voice-alice']
+              ?.audioTrackPublications
+              .firstOrNull
+              ?.track;
+        }
+        if (audio != null &&
+            video != null &&
+            (!ordinaryVoice || voiceAudio != null)) {
+          break;
+        }
         await Future<void>.delayed(const Duration(milliseconds: 100));
       }
       expect(audio, isNotNull);
@@ -190,6 +255,16 @@ void main() {
         'audio': audio!.mediaStreamTrack.id,
         'video': video!.mediaStreamTrack.id,
       });
+      if (ordinaryVoice) {
+        expect(bob.name, 'route-probe');
+        expect(
+          voiceBob!.engine.subscriber!.pc,
+          isNot(same(bob.engine.subscriber!.pc)),
+        );
+        await channel.invokeMethod<void>('observeControl', {
+          'audio': voiceAudio!.mediaStreamTrack.id,
+        });
+      }
       await Future<void>.delayed(const Duration(seconds: 3));
       final gate = <String, Object>{};
       final contentGate = await channel.invokeMapMethod<String, dynamic>(
@@ -198,6 +273,18 @@ void main() {
       expect(contentGate!['video_markers'], 0);
       expect(contentGate['audio_peak'], lessThan(.001));
       gate['content'] = contentGate;
+      if (ordinaryVoice) {
+        expect(contentGate['control_audio_peak'], lessThan(.001));
+        final rows = await voiceAudio!.receiver!.getStats();
+        final inbound = rows.singleWhere(
+          (r) => r.type == 'inbound-rtp' && r.values['kind'] == 'audio',
+        );
+        expect(inbound.values['packetsReceived'], greaterThan(0));
+        gate['ordinary_voice'] = {
+          'packets': inbound.values['packetsReceived'],
+          'plaintext_audio_peak': contentGate['control_audio_peak'],
+        };
+      }
       for (final (label, track) in [('audio', audio), ('video', video)]) {
         final reports = await track.receiver!.getStats();
         final stats = reports
@@ -212,8 +299,14 @@ void main() {
         if (label == 'video') expect(decoded, 0);
         gate[label] = {'packets': stats['packetsReceived'], 'decoded': decoded};
       }
-      await receiveKeys.setRawKey(key, participantId: 'alice');
+      await Future.wait([
+        receiveKeys.setRawKey(key, participantId: 'alice'),
+        if (ordinaryVoice)
+          voiceReceiveKeys!.setRawKey(key, participantId: 'voice-alice'),
+      ]);
       final samples = <Object>[];
+      final voiceSamples = <Object>[];
+      final sampleTimes = <double>[];
       final phases = <Object>[];
       const network = bool.fromEnvironment('AV_MARKER_NETWORK');
       final payloads = <int>{};
@@ -250,6 +343,36 @@ void main() {
           payloads.add(int.parse(match[1]!));
         }
       }
+      List<Object> inboundStats(List<rtc.StatsReport> stats) => [
+        for (final report in stats)
+          if (report.type == 'inbound-rtp')
+            {
+              for (final field in [
+                'kind',
+                'framesDecoded',
+                'framesDropped',
+                'framesPerSecond',
+                'frameWidth',
+                'frameHeight',
+                'totalDecodeTime',
+                'jitterBufferDelay',
+                'jitterBufferEmittedCount',
+                'jitterBufferTargetDelay',
+                'jitterBufferMinimumDelay',
+                'estimatedPlayoutTimestamp',
+                'totalSamplesReceived',
+                'concealedSamples',
+                'silentConcealedSamples',
+                'concealmentEvents',
+                'insertedSamplesForDeceleration',
+                'removedSamplesForAcceleration',
+                'packetsLost',
+                'packetsReceived',
+                'jitter',
+              ])
+                if (report.values[field] != null) field: report.values[field],
+            },
+      ];
       for (var i = 0; i < (network ? 120 : 20); i++) {
         final phase = {0: 'clean', 20: 'delay', 50: 'offline', 62: 'clean'}[i];
         if (network && phase != null) {
@@ -279,40 +402,52 @@ void main() {
         }
         await Future<void>.delayed(const Duration(seconds: 1));
         final stats = await bob.engine.subscriber!.pc.getStats();
-        samples.add([
-          for (final report in stats)
-            if (report.type == 'inbound-rtp')
-              {
-                for (final field in [
-                  'kind',
-                  'framesDecoded',
-                  'framesDropped',
-                  'framesPerSecond',
-                  'frameWidth',
-                  'frameHeight',
-                  'totalDecodeTime',
-                  'jitterBufferDelay',
-                  'jitterBufferEmittedCount',
-                  'jitterBufferTargetDelay',
-                  'jitterBufferMinimumDelay',
-                  'estimatedPlayoutTimestamp',
-                  'totalSamplesReceived',
-                  'concealedSamples',
-                  'silentConcealedSamples',
-                  'concealmentEvents',
-                  'insertedSamplesForDeceleration',
-                  'removedSamplesForAcceleration',
-                  'packetsLost',
-                  'packetsReceived',
-                  'jitter',
+        samples.add(inboundStats(stats));
+        if (ordinaryVoice) {
+          final voiceStats = await voiceBob!.engine.subscriber!.pc.getStats();
+          voiceSamples.add(inboundStats(voiceStats));
+          expect(
+            voiceStats.where(
+              (r) => r.type == 'inbound-rtp' && r.values['kind'] == 'video',
+            ),
+            isEmpty,
+          );
+          if (i == 0) {
+            Map<String, dynamic> audioCodec(List<rtc.StatsReport> rows) {
+              final audio = rows.singleWhere(
+                (r) => r.type == 'inbound-rtp' && r.values['kind'] == 'audio',
+              );
+              final codec = rows
+                  .singleWhere((r) => r.id == audio.values['codecId'])
+                  .values;
+              return {
+                for (final key in [
+                  'mimeType',
+                  'clockRate',
+                  'channels',
+                  'sdpFmtpLine',
                 ])
-                  if (report.values[field] != null) field: report.values[field],
-              },
-        ]);
+                  key: codec[key],
+              };
+            }
+
+            expect(audioCodec(voiceStats), audioCodec(stats));
+          }
+        }
+        sampleTimes.add((await channel.invokeMethod<double>('clock'))!);
       }
       final markers = Map<String, dynamic>.from(
         await channel.invokeMapMethod<String, dynamic>('result') ?? {},
       );
+      if (ordinaryVoice) {
+        final source = markers['source_audio'] as List;
+        expect(source.length, greaterThan(50));
+        for (var i = 1; i < source.length; i++) {
+          final seconds = (source[i][1] as num) - (source[i - 1][1] as num);
+          final ids = (source[i][0] as num) - (source[i - 1][0] as num);
+          expect(seconds / ids, inInclusiveRange(1.8, 2.2));
+        }
+      }
       if (network) {
         int packets(int sample, String kind) =>
             ((samples[sample] as List).cast<Map>().firstWhere(
@@ -324,13 +459,19 @@ void main() {
         expect(packets(60, 'audio') - packets(52, 'audio'), greaterThan(30));
       }
       final chunks = (markers['audio'] as List).cast<Map>();
-      markers['audio'] = [
-        for (final chunk in chunks)
-          {...chunk, 'pcm': base64Encode(chunk['pcm'] as Uint8List)},
-      ];
+      for (final kind in ['audio', if (ordinaryVoice) 'control_audio']) {
+        markers[kind] = [
+          for (final chunk in (markers[kind] as List).cast<Map>())
+            {...chunk, 'pcm': base64Encode(chunk['pcm'] as Uint8List)},
+        ];
+      }
       final result = {
         'markers': markers,
         'stats': samples,
+        'stats_times': sampleTimes,
+        'simultaneous_ordinary_voice_reference': ordinaryVoice,
+        if (ordinaryVoice) 'control_stats': voiceSamples,
+        if (ordinaryVoice) 'ordinary_voice_room': voiceBob!.name,
         'missing_key_gate': gate,
         'phases': phases,
         'video_payload_types': payloads.toList(),
@@ -340,6 +481,7 @@ void main() {
         'synthetic_media_only': true,
         'coherent_source': const bool.fromEnvironment('AV_COHERENT_MARKERS'),
         'native_video_playout_ms': nativePlayout,
+        'timestamp_full_covariance_reset': fullReset,
         'native_video_min_playout_ms': const int.fromEnvironment(
           'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS',
           defaultValue: nativePlayout,
@@ -353,6 +495,7 @@ void main() {
       );
     } finally {
       // Stop the sender before removing the synthetic input replacement.
+      await voiceAlice?.disconnect();
       if (role != 'receiver') await alice.disconnect();
       for (final track in stream?.getTracks() ?? <rtc.MediaStreamTrack>[]) {
         await track.stop();
@@ -361,6 +504,14 @@ void main() {
       if (role != 'sender') await bob.disconnect();
       await alice.dispose();
       await bob.dispose();
+      for (final track
+          in voiceStream?.getTracks() ?? <rtc.MediaStreamTrack>[]) {
+        await track.stop();
+      }
+      await voiceBob?.disconnect();
+      await voiceAlice?.dispose();
+      await voiceBob?.dispose();
+      await voiceStream?.dispose();
       await stream?.dispose();
     }
   }, timeout: const Timeout(Duration(minutes: 4)));

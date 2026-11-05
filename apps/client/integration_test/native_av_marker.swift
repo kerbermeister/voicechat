@@ -36,6 +36,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
   private var controlAudio: RTCAudioTrack?
   private lazy var controlSink = MarkerControlAudioSink(owner: self)
   private var audioPeak: Float = 0
+  private var controlPeak: Float = 0
   private var videoMarkers = [[Double]]()
   private var videoRenderClocks = [[Double]]()
   private var lastMarker = -1
@@ -146,7 +147,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
       case "gate":
         lock.lock()
         let value: [String: Any] = ["audio_peak": audioPeak, "video_markers": videoMarkers.count,
-                                   "audio_chunks": audioChunks.count]
+                                   "audio_chunks": audioChunks.count, "control_audio_peak": controlPeak]
         lock.unlock()
         result(value)
       case "stop":
@@ -239,6 +240,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
     let chunk: [String: Any] = ["time": CACurrentMediaTime(), "rate": buffer.format.sampleRate,
                                 "frames": count, "pcm": FlutterStandardTypedData(bytes: data)]
     if control {
+      controlPeak = max(controlPeak, samples.map { abs($0) }.max() ?? 0)
       if controlChunks.count < 14000 { controlChunks.append(chunk) }
     } else {
       audioPeak = max(audioPeak, samples.map { abs($0) }.max() ?? 0)
