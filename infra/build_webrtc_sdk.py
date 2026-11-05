@@ -175,10 +175,10 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     patched_header = sync_header.read_bytes()
     extrapolator_header = source / 'modules/video_coding/timing/timestamp_extrapolator.h'
     patched_extrapolator_header = extrapolator_header.read_bytes()
-    bounded = b'  if (UseLowLatencyRendering()) {\n    return TimeDelta::Zero();\n  }\n  return std::clamp(current_delay, min_playout_delay, max_playout_delay);'
+    bounded = b'  if (UseLowLatencyRendering()) {\n    return TimeDelta::Zero();\n  }\n  return std::clamp(sync_playout_delay.value_or(current_delay),\n                    min_playout_delay, max_playout_delay);'
     if patched.count(bounded) != 1:
         raise RuntimeError('Expected exactly one effective render-delay calculation')
-    receive_relative = b'  return std::max(TimeDelta::Zero(),\n                  RenderTime(rtp_timestamp, receive_time) - receive_time);'
+    receive_relative = b'  return GetSyncDelay(rtp_timestamp, receive_time).remaining;'
     if patched.count(receive_relative) != 1:
         raise RuntimeError('Expected exactly one receive-relative render delay')
     try:
