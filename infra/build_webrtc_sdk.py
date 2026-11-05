@@ -178,7 +178,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     bounded = b'  if (UseLowLatencyRendering()) {\n    return TimeDelta::Zero();\n  }\n  return std::clamp(sync_playout_delay.value_or(current_delay),\n                    min_playout_delay, max_playout_delay);'
     if patched.count(bounded) != 1:
         raise RuntimeError('Expected exactly one effective render-delay calculation')
-    receive_relative = b'  return GetSyncDelay(rtp_timestamp, receive_time).remaining;'
+    receive_relative = b'  return GetSyncDelay(rtp_timestamp, receive_time).remaining.value_or(TimeDelta::Zero());'
     if patched.count(receive_relative) != 1:
         raise RuntimeError('Expected exactly one receive-relative render delay')
     try:

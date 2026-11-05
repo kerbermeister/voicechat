@@ -27,7 +27,7 @@
 +                                   Timestamp receive_time) const;
 +
 +  struct SyncDelay {
-+    TimeDelta remaining;
++    std::optional<TimeDelta> remaining;
 +    TimeDelta buffer;
 +  };
 +  SyncDelay GetSyncDelay(uint32_t rtp_timestamp, Timestamp receive_time) const;
@@ -40,7 +40,7 @@
    VideoFrame::RenderParameters RenderParameters() const;
 
   private:
-+  Timestamp RenderTimeLocked(uint32_t rtp_timestamp, Timestamp now) const
++  std::optional<Timestamp> RenderTimeLocked(uint32_t rtp_timestamp) const
 +      RTC_EXCLUSIVE_LOCKS_REQUIRED(mutex_);
    mutable Mutex mutex_;
    Clock* const clock_;
@@ -68,38 +68,43 @@
  }
 
  TimeDelta VCMTiming::VideoDelayTimings::StatsTargetDelay() const {
-@@ -161,6 +170,11 @@
+@@ -161,6 +170,10 @@
 
  Timestamp VCMTiming::RenderTime(uint32_t rtp_timestamp, Timestamp now) const {
    MutexLock lock(&mutex_);
-+  return RenderTimeLocked(rtp_timestamp, now);
++  return RenderTimeLocked(rtp_timestamp).value_or(now);
 +}
 +
-+Timestamp VCMTiming::RenderTimeLocked(uint32_t rtp_timestamp,
-+                                     Timestamp now) const {
++std::optional<Timestamp> VCMTiming::RenderTimeLocked(uint32_t rtp_timestamp) const {
    if (timings_.UseLowLatencyRendering()) {
      // Render as soon as possible or with low-latency renderer algorithm.
      return Timestamp::Zero();
-@@ -170,9 +184,25 @@
+@@ -168,11 +181,29 @@
+   std::optional<Timestamp> local_time =
+       ts_extrapolator_->ExtrapolateLocalTime(rtp_timestamp);
    if (!local_time.has_value()) {
-     return now;
-   }
+-    return now;
+-  }
 -  return *local_time + std::clamp(timings_.current_delay,
 -                                  timings_.min_playout_delay,
 -                                  timings_.max_playout_delay);
++    return std::nullopt;
++  }
 +  return *local_time + timings_.CurrentDelay();
 +}
 +
 +TimeDelta VCMTiming::CurrentDelayFromReceive(uint32_t rtp_timestamp,
 +                                           Timestamp receive_time) const {
-+  return GetSyncDelay(rtp_timestamp, receive_time).remaining;
++  return GetSyncDelay(rtp_timestamp, receive_time).remaining.value_or(TimeDelta::Zero());
 +}
 +
 +VCMTiming::SyncDelay VCMTiming::GetSyncDelay(uint32_t rtp_timestamp,
 +                                            Timestamp receive_time) const {
 +  MutexLock lock(&mutex_);
-+  return {std::max(TimeDelta::Zero(),
-+                   RenderTimeLocked(rtp_timestamp, receive_time) - receive_time),
++  const auto render_time = RenderTimeLocked(rtp_timestamp);
++  return {render_time ? std::make_optional(std::max(
++                            TimeDelta::Zero(), *render_time - receive_time))
++                      : std::nullopt,
 +          timings_.CurrentDelay()};
 +}
 +
@@ -111,7 +116,7 @@
  TimeDelta VCMTiming::TargetVideoDelay() const {
 --- a/modules/video_coding/timing/timing_unittest.cc
 +++ b/modules/video_coding/timing/timing_unittest.cc
-@@ -482,5 +482,107 @@
+@@ -482,5 +482,108 @@
    EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
  }
 
@@ -152,6 +157,7 @@
 +  VCMTiming timing(&clock, field_trials);
 +  timing.SetMinimumDelay(TimeDelta::Millis(500));
 +  timing.set_playout_delay({TimeDelta::Millis(90), TimeDelta::Seconds(10)});
++  EXPECT_FALSE(timing.GetSyncDelay(90000, clock.CurrentTime()).remaining.has_value());
 +  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
 +  timing.SetSyncPlayoutDelay(TimeDelta::Millis(225));
 +  auto delay = timing.GetSyncDelay(90000, clock.CurrentTime());
@@ -221,19 +227,20 @@
  }  // namespace webrtc
 --- a/video/video_receive_stream2.cc
 +++ b/video/video_receive_stream2.cc
-@@ -810,7 +810,10 @@
+@@ -810,7 +810,11 @@
    if (!info)
      return std::nullopt;
 
 -  info->current_delay = timing_->TargetVideoDelay();
 +  const auto delay = timing_->GetSyncDelay(
 +      info->latest_received_capture_rtp_timestamp, info->latest_receive_time);
-+  info->current_delay = delay.remaining;
-+  info->video_buffer_delay = delay.buffer;
++  info->current_delay = delay.remaining.value_or(TimeDelta::Zero());
++  if (delay.remaining.has_value())
++    info->video_buffer_delay = delay.buffer;
    return info;
  }
 
-@@ -823,6 +826,11 @@
+@@ -823,6 +827,11 @@
  void VideoReceiveStream2::SetEstimatedPlayoutNtpTimestamp(NtpTime ntp_time,
                                                            Timestamp time) {
    RTC_DCHECK_NOTREACHED();
@@ -806,15 +813,16 @@
  TEST(TimestampExtrapolatorTest, SetsValidConfig) {
 --- a/call/syncable.h
 +++ b/call/syncable.h
-@@ -37,6 +37,7 @@
+@@ -37,6 +37,8 @@
 
      // Current playout delay for the given `Syncable`.
      TimeDelta current_delay;
++    // Present only when the video receiver has a fitted RTP/render clock.
 +    std::optional<TimeDelta> video_buffer_delay;
    };
 
    // Mapping between capture/render time in RTP timestamps and local clock.
-@@ -51,6 +52,8 @@
+@@ -51,6 +53,8 @@
    virtual std::optional<Info> GetInfo() const = 0;
    virtual std::optional<PlayoutInfo> GetPlayoutRtpTimestamp() const = 0;
    virtual bool SetMinimumPlayoutDelay(TimeDelta delay) = 0;

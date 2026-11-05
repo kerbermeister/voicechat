@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "ed8e430c9ddc8e906545d559a5c34bbe892dd52d8987663434eb227e6ec114b1",
+  "patch_sha256": "a8bdb7b8880bd389c3f70ed85e80be82b47fcc1e6e50ddca304cf3bce7f7ffe5",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -20,10 +20,10 @@
     "video/video_receive_stream2.h": "b2c7131a38c7e26ffc04a6381c9f850da8967b2a412dd4aa02db2c8f1cfa8074"
   },
   "patched_files_sha256": {
-    "modules/video_coding/timing/timing.h": "9c4e424c003d67449001f8461cb38b8bc81b467d91349880ee420b6ee9574b0f",
-    "modules/video_coding/timing/timing.cc": "fc1144a1db2c8700a86990c655b84cedfdf10ee6cac6beeeb8ef452e641094b3",
-    "modules/video_coding/timing/timing_unittest.cc": "90ae2786d88a71aa7827cce070d51969b41fc9fcfcde05b7487b31f336cf711b",
-    "video/video_receive_stream2.cc": "14a0d2ab264ac05cebcb10d947e2cd0216ce27f26e2f9235b7c97a1a4590dcbf",
+    "modules/video_coding/timing/timing.h": "faed6bf927479accfc261e0b591fd05288b0f584f93fd2d2ba685a28cf6165f2",
+    "modules/video_coding/timing/timing.cc": "71aab64df8bd5f80bea70f61e522262980e2edd30af4dbc6cfdd0481b7f6ae52",
+    "modules/video_coding/timing/timing_unittest.cc": "c7f59ca5f9a08199f2a59d3c35f23060cf5f304dc6aee3967c3c1952abb8bdc7",
+    "video/video_receive_stream2.cc": "7a1b20af02e384489ae3e32a15b8f391f91cb2084c6b26b96bce5ee9211c54bc",
     "video/rtp_streams_synchronizer2.h": "38e0fcce58b14e9ff6f57709b55fac7f6bfb9d0fecb35db58c3c7eda4b6970d0",
     "video/rtp_streams_synchronizer2.cc": "2f6571a3e7ed364b129c38924052d8b5efb1448d84282c6661dd8e8ca8947dd3",
     "video/stream_synchronization_unittest.cc": "1509ad17ae954c2b25b5b5886147b2d07beb5018bb8bfa3f7bf077e410c4fdb2",
@@ -32,7 +32,7 @@
     "sdk/android/api/org/webrtc/PeerConnectionFactory.java": "83e600b2fceb7274ea1c123ed34bcd40a0b05d15130751d65a0560daf2830a17",
     "modules/video_coding/timing/timestamp_extrapolator.h": "8eb17e9ade3842ceb1b949776d0134f912f1727839fed501856d9b78f4e2a7b7",
     "modules/video_coding/timing/timestamp_extrapolator_unittest.cc": "0f926712aa25fb3d74a7c4f76835dc46f961d10a9b82e5c51cad88e11f6f8b5a",
-    "call/syncable.h": "a851fef281322c101f3bac6de7ae1f7f1cefa95d864df1d7ab49563684c50d12",
+    "call/syncable.h": "2db8fd4616009865fedef3a3abd7fa45c7d9943485b6c98a405cb76f372634d7",
     "video/video_receive_stream2.h": "a36a02346358c94eb33e19e273c06044fc19348e212d1c5bf03a305a00c81100"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*",
