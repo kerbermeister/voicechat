@@ -40,6 +40,8 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
     private var lastSourceAudio = -1
     private var lastSourceVideo = -1
     private val sourceAudioMarkers = mutableListOf<List<Double>>()
+    private val sourceAudioCallbackTimes = DoubleArray(14000)
+    private var sourceAudioCallbackCount = 0
     private val sourceVideoMarkers = mutableListOf<List<Double>>()
     private val sourceVideoFrames = mutableListOf<List<Double>>()
     private val receivedVideoFrames = mutableListOf<List<Double>>()
@@ -112,9 +114,10 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
             val plugin = FlutterWebRTCPlugin.sharedSingleton
             when (call.method) {
                 "clock" -> result.success(System.nanoTime() / 1e9)
-                "receive" -> { running = true; result.success(null) }
+                "receive" -> { checkNotNull(plugin.audioDeviceModule).setSpeakerMute(true); running = true; result.success(null) }
                 "observeOutputClock" -> { observeOutputClock(plugin); result.success(null) }
                 "create" -> {
+                    checkNotNull(plugin.audioDeviceModule).setSpeakerMute(true)
                     coherentMarkers = call.argument<Boolean>("coherent") == true
                     val stream = plugin.getStreamForId(call.argument<String>("stream"), "")
                     backgrounds = Array(16) { frame -> ByteArray(640 * 360) { index ->
@@ -157,6 +160,7 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
                     val value = mutableMapOf<String, Any>("audio" to chunks, "video" to videoMarkers.toList(), "origin" to origin,
                         "video_render_clocks" to videoRenderClocks.toList(),
                         "source_audio" to sourceAudioMarkers.toList(), "source_video" to sourceVideoMarkers.toList(),
+                        "source_audio_callbacks" to sourceAudioCallbackTimes.take(sourceAudioCallbackCount),
                         "source_video_frames" to sourceVideoFrames.toList(), "received_video_frames" to receivedVideoFrames.toList())
                     if (!includeAudio) value["audio_count"] = audioCount
                     if (outputClockCallback != null) value["audio_output_clock"] = outputClock.toList()
@@ -210,6 +214,9 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
         if (sampleCursor == 0L) origin = System.nanoTime() / 1e9
         val sourceTime = sampleCursor.toDouble() / rate
         synchronized(lock) {
+            if (sourceAudioCallbackCount < sourceAudioCallbackTimes.size) {
+                sourceAudioCallbackTimes[sourceAudioCallbackCount++] = System.nanoTime() / 1e9
+            }
             sourceMarker = (sourceTime / 2).toInt()
             sourceVisible = sourceTime - sourceMarker * 2 < .12
             if (sourceMarker != lastSourceAudio) {

@@ -40,6 +40,7 @@ void main() {
     StreamSubscription<Map<String, dynamic>>? nativeLogs;
     try {
       const playout = int.fromEnvironment('P2P_VIDEO_PLAYOUT_MS');
+      const audioOnly = bool.fromEnvironment('P2P_AUDIO_ONLY');
       const timestampReset = int.fromEnvironment('P2P_TIMESTAMP_RESET_MS');
       const fullReset = bool.fromEnvironment('P2P_TIMESTAMP_FULL_RESET');
       const adaptivePlayout = bool.fromEnvironment(
@@ -103,6 +104,7 @@ void main() {
         });
         peers.add(sender);
         for (final track in streams[index].getTracks()) {
+          if (audioOnly && track.kind == 'video') continue;
           await sender.addTrack(track, streams[index]);
         }
         return (sender, receiver);
@@ -148,7 +150,7 @@ void main() {
           sender,
           receiver,
           wrongFingerprint: true,
-          audioOnly: index == 1,
+          audioOnly: audioOnly || index == 1,
         );
         var failed = false;
         for (var i = 0; i < 60; i++) {
@@ -208,7 +210,7 @@ void main() {
       await Future.wait([
         if (referenceFirst)
           negotiateP2P(controlSender, controlReceiver, audioOnly: true),
-        negotiateP2P(sender, receiver),
+        negotiateP2P(sender, receiver, audioOnly: audioOnly),
         if (!referenceFirst)
           negotiateP2P(controlSender, controlReceiver, audioOnly: true),
       ]);
@@ -238,14 +240,18 @@ void main() {
       final remoteAudio = await audio.future.timeout(
         const Duration(seconds: 15),
       );
-      final remoteVideo = await video.future.timeout(
-        const Duration(seconds: 15),
-      );
+      final remoteVideo = audioOnly
+          ? null
+          : await video.future.timeout(const Duration(seconds: 15));
       final referenceAudio = await controlAudio.future.timeout(
         const Duration(seconds: 15),
       );
       expect(remoteAudio.track!.id, isNot(referenceAudio.track!.id));
-      expect(ids['audio'], ids['video']);
+      if (audioOnly) {
+        expect(video.isCompleted, isFalse);
+      } else {
+        expect(ids['audio'], ids['video']);
+      }
       final controlProof = await proof(controlReceiver);
       await channel.invokeMethod<void>('observeControl', {
         'audio': referenceAudio.track!.id,
@@ -288,6 +294,7 @@ void main() {
       (result['crypto_control'] as Map).addAll(await negative(0));
       result['audio_control_crypto'] = {...controlProof, ...await negative(1)};
       result['simultaneous_ordinary_voice_reference'] = true;
+      result['speech_reference_calibration'] = audioOnly;
       result['reference_started_first'] = referenceFirst;
       result['coherent_source'] = true;
       result['product_sync'] = true;
@@ -295,6 +302,9 @@ void main() {
       result['timestamp_reset_ms'] = timestampReset;
       result['timestamp_full_covariance_reset'] = fullReset;
       result['adaptive_video_playout'] = adaptivePlayout;
+      if (syncLogs.isNotEmpty) result['native_sync_logs'] = syncLogs;
+      // Retain the source pulse trace before rejecting an invalid source.
+      await labPost('', result);
       final source = (result['markers'] as Map)['source_audio'] as List;
       expect(source.length, greaterThan(50));
       for (var i = 1; i < source.length; i++) {
@@ -306,8 +316,6 @@ void main() {
           reason: 'Two audio tracks must share one physical capture clock',
         );
       }
-      if (syncLogs.isNotEmpty) result['native_sync_logs'] = syncLogs;
-      await labPost('', result);
     } finally {
       await nativeLogs?.cancel();
       for (final pc in peers.reversed) {

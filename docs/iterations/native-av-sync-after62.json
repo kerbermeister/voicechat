@@ -16544,14 +16544,17 @@
     "cpp_run": 42031354123,
     "expected_tests": 93,
     "expected_negative_regressions": 21,
-    "status": "cpp_running_unqualified",
+    "status": "cpp93_pass_platform_builds_running",
     "approach": "Video follows actual audio presentation RTP/RTCP clock; 200ms update, independent2s staleness; filtered fallback only without fresh valid presentation mapping",
     "audio_or_crypto_changed_from_sdk7": false,
     "app_released": false,
     "prior_cancelled_test_run": 42029242353,
     "prior_cancel_reason": "New negative tests must assert optional target exists before dereferencing, so original behavior produces named assertion failures instead of abort",
     "second_cancelled_test_run": 42029788350,
-    "second_cancel_reason": "Adjust test start so 90kHz RTP wraps during the twelve-second measurement instead of before it"
+    "second_cancel_reason": "Adjust test start so 90kHz RTP wraps during the twelve-second measurement instead of before it",
+    "cpp_tests_pass": 93,
+    "negative_regressions_verified": 21,
+    "platform_run": 42034416556
   },
   "native_sdk7_android_output_clock_diagnostic": {
     "trial": "current14ba-output-clock-diagnostic1",
@@ -16803,5 +16806,411 @@
     "whole_trial_pass": false,
     "delivered_first_source_frames_verified": true,
     "source_max_ms": 2.202583335019881
+  },
+  "native_sdk7_mac_p2p_sample_clock_pilot": {
+    "date_utc": "2026-11-05T13:08:53.699556+00:00",
+    "records": [
+      {
+        "trial": "current-14ba4133-pilot-1",
+        "timing": "pass",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 26.15158332991996,
+          "max_source_corrected_abs_ms": 23.82733333070064
+        },
+        "recovery": {
+          "count": 23,
+          "max_abs_ms": 31.778666667378275,
+          "max_source_corrected_abs_ms": 34.43479166890029
+        },
+        "source_max_ms": 8.072500000707805,
+        "source_frame_identity_verified": true,
+        "identity": {
+          "arm64_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+          "sdk_binary_sha256": "d8b0b10e380fa3b8283c6800df6072e1f731f2909dfdba892fbbfb7ba9570985",
+          "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530"
+        },
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": -0.45683333519264124
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 22.496041667182
+          },
+          "recovery": {
+            "count": 26,
+            "max_added_voice_delay_ms": 23.24741666961927
+          }
+        },
+        "speech": {
+          "schema": 1,
+          "outcome": "speech_regression",
+          "synthetic_reference_only": true,
+          "physical_listening_test": false,
+          "paired_trials": 1,
+          "stoi_noninferiority_margin": 0.005,
+          "level_tolerance_db": 0.15,
+          "phases": {
+            "clean": {
+              "paired_clips": 9,
+              "control": {
+                "stoi": 0.9925624747260919,
+                "si_sdr_db": 8.830338031756254,
+                "rms_dbfs": -23.289651506328568
+              },
+              "candidate": {
+                "stoi": 0.9925624747260919,
+                "si_sdr_db": 8.830338031756254,
+                "rms_dbfs": -23.289651506328568
+              }
+            },
+            "delay": {
+              "paired_clips": 13,
+              "control": {
+                "stoi": 0.9490331149327955,
+                "si_sdr_db": 6.00767658867687,
+                "rms_dbfs": -23.288582570424914
+              },
+              "candidate": {
+                "stoi": 0.9497324394692169,
+                "si_sdr_db": 6.650082343535395,
+                "rms_dbfs": -23.246724678985885
+              }
+            },
+            "pause": {
+              "paired_clips": 6,
+              "control": {
+                "stoi": 0.9744988048251966,
+                "si_sdr_db": 5.627037355534842,
+                "rms_dbfs": -23.37090633929666
+              },
+              "candidate": {
+                "stoi": 0.974085911777722,
+                "si_sdr_db": 5.392729616086712,
+                "rms_dbfs": -23.36457496581132
+              }
+            },
+            "recovery": {
+              "paired_clips": 26,
+              "control": {
+                "stoi": 0.9944601597844861,
+                "si_sdr_db": 9.009703689580032,
+                "rms_dbfs": -23.169880807942704
+              },
+              "candidate": {
+                "stoi": 0.9855149746400415,
+                "si_sdr_db": 7.540333827063358,
+                "rms_dbfs": -23.208476908588658
+              }
+            }
+          }
+        },
+        "pass": false,
+        "postprocessing_note": "Initial control frame metadata mismatch fixed only in derived reference; main media, PCM, stats and numeric gates unchanged"
+      }
+    ],
+    "complete": true,
+    "all_pass": false
+  },
+  "ordinary_voice_calibration_protocol": {
+    "planned_trials": 2,
+    "orders": [
+      "candidate_first",
+      "reference_first"
+    ],
+    "native_sdk": "vc7 unchanged audio path",
+    "both_calls_audio_only": true,
+    "network_impairment_applies_to_audio": false,
+    "purpose": "Check independent NetEq comparison variability before attributing single-phase STOI loss to video-only sync changes",
+    "thresholds_changed": false,
+    "active_trial": "current14ba-ordinary-calibration-1",
+    "complete": true,
+    "results": [
+      {
+        "trial": "native-p2p-macos-current14ba-ordinary-calibration-1",
+        "reference_first": false,
+        "outcome": "pass",
+        "phases": {
+          "clean": {
+            "paired_clips": 9,
+            "control": {
+              "stoi": 0.9922854473947508,
+              "si_sdr_db": 8.819090034826056,
+              "rms_dbfs": -23.301952641829917
+            },
+            "candidate": {
+              "stoi": 0.9922854473947508,
+              "si_sdr_db": 8.819090034826056,
+              "rms_dbfs": -23.301952641829917
+            }
+          },
+          "delay": {
+            "paired_clips": 13,
+            "control": {
+              "stoi": 0.9890718188393951,
+              "si_sdr_db": 8.918374740326886,
+              "rms_dbfs": -23.245524057336834
+            },
+            "candidate": {
+              "stoi": 0.9890718188393951,
+              "si_sdr_db": 8.918374740326886,
+              "rms_dbfs": -23.245524057336834
+            }
+          },
+          "pause": {
+            "paired_clips": 5,
+            "control": {
+              "stoi": 0.9845917744128209,
+              "si_sdr_db": 5.986500264397565,
+              "rms_dbfs": -23.288951434116186
+            },
+            "candidate": {
+              "stoi": 0.9893269645920786,
+              "si_sdr_db": 9.039344376885918,
+              "rms_dbfs": -23.23149096025363
+            }
+          },
+          "recovery": {
+            "paired_clips": 25,
+            "control": {
+              "stoi": 0.9938629209840408,
+              "si_sdr_db": 8.808605965288672,
+              "rms_dbfs": -23.17609829631281
+            },
+            "candidate": {
+              "stoi": 0.9946014520521691,
+              "si_sdr_db": 8.979596876768829,
+              "rms_dbfs": -23.17074907186842
+            }
+          }
+        },
+        "physical_acoustic_test": false
+      },
+      {
+        "trial": "native-p2p-macos-current14ba-ordinary-calibration-2",
+        "reference_first": true,
+        "outcome": "pass",
+        "phases": {
+          "clean": {
+            "paired_clips": 9,
+            "control": {
+              "stoi": 0.9922584568520921,
+              "si_sdr_db": 8.817436357934014,
+              "rms_dbfs": -23.301854833904848
+            },
+            "candidate": {
+              "stoi": 0.9922584568520921,
+              "si_sdr_db": 8.817436357934014,
+              "rms_dbfs": -23.301854833904848
+            }
+          },
+          "delay": {
+            "paired_clips": 13,
+            "control": {
+              "stoi": 0.9801229610993576,
+              "si_sdr_db": 7.89442525335946,
+              "rms_dbfs": -23.245988111194336
+            },
+            "candidate": {
+              "stoi": 0.9801229610993576,
+              "si_sdr_db": 7.89442525335946,
+              "rms_dbfs": -23.245988111194336
+            }
+          },
+          "pause": {
+            "paired_clips": 5,
+            "control": {
+              "stoi": 0.9893269645920786,
+              "si_sdr_db": 9.039344376885918,
+              "rms_dbfs": -23.23149096025363
+            },
+            "candidate": {
+              "stoi": 0.9893269645920786,
+              "si_sdr_db": 9.039344376885918,
+              "rms_dbfs": -23.23149096025363
+            }
+          },
+          "recovery": {
+            "paired_clips": 25,
+            "control": {
+              "stoi": 0.9945988713133909,
+              "si_sdr_db": 8.988618000446094,
+              "rms_dbfs": -23.17101572926211
+            },
+            "candidate": {
+              "stoi": 0.9945988713133909,
+              "si_sdr_db": 8.988618000446094,
+              "rms_dbfs": -23.17101572926211
+            }
+          }
+        },
+        "physical_acoustic_test": false
+      }
+    ],
+    "interpretation": "Both reference/reference calibrations pass; cannot dismiss P2P video speech regression as demonstrated reference variability"
+  },
+  "source_callback_pulse_diagnostic1": {
+    "trial": "current14ba-source-pulse-diagnostic1",
+    "whole_trial_qualified": false,
+    "source_cadence_assertion_failed": true,
+    "measured_seconds_per_two_second_marker": 2.2204432083344727,
+    "allowed": [
+      1.8,
+      2.2
+    ],
+    "media_exported": false,
+    "reason": "source assertion ran before export; persist trace before assertion without relaxing assertion in next label"
+  },
+  "user_window_switch_trigger": {
+    "date": "2026-11-05",
+    "reported": "Intermittent mismatch while working and switching windows",
+    "platform_of_report": "not explicitly specified",
+    "confirmed_code_defect": "Native desktop inactive/hidden lifecycle stopped camera and resumed restarted it",
+    "before_fix_desktop_variants_failed": 3,
+    "before_fix_operations": [
+      "camera:false",
+      "camera:false",
+      "camera:true",
+      "camera:false"
+    ],
+    "after_fix_tests_pass": 11,
+    "after_fix_analyzer": "pass",
+    "mobile_background_camera_policy_preserved": true,
+    "physical_real_call_window_switch_verified": false,
+    "released": false
+  },
+  "quiet_native_fixture": {
+    "user_requested_no_audible_test_tones": true,
+    "macos": "Zero render-preprocessing samples after per-track PCM sinks, before ADM output, retain through teardown",
+    "android": "Per-fixture JavaADM speaker mute, PCM sinks before ADM remain intact; emulator also no-audio",
+    "os_volume_changed": false,
+    "production_audio_muted": false,
+    "macos_native_probe_pass": true,
+    "android_native_quiet_probe_executed": false
+  },
+  "native_sdk7_macos_quiet_source_pulse": {
+    "outcome": "pass",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 33.183249997819075,
+      "max_source_corrected_abs_ms": 30.865291664667893
+    },
+    "recovery": {
+      "count": 27,
+      "max_abs_ms": 73.12437500149827,
+      "max_source_corrected_abs_ms": 74.26095833216095
+    },
+    "max_all_source_offset_ms": 4.173249999439577,
+    "max_source_offset_ms": 53.9530416681373,
+    "source_frame_identity_verified": true,
+    "voice_latency": {
+      "pass": true,
+      "clean": {
+        "count": 8,
+        "max_added_voice_delay_ms": 45.1704166662239
+      },
+      "video_paused": {
+        "count": 4,
+        "max_added_voice_delay_ms": 22.740291668014834
+      },
+      "recovery": {
+        "count": 27,
+        "max_added_voice_delay_ms": 22.90862500012736
+      }
+    },
+    "speech": {
+      "schema": 1,
+      "outcome": "pass",
+      "synthetic_reference_only": true,
+      "physical_listening_test": false,
+      "paired_trials": 1,
+      "stoi_noninferiority_margin": 0.005,
+      "level_tolerance_db": 0.15,
+      "phases": {
+        "clean": {
+          "paired_clips": 9,
+          "control": {
+            "stoi": 0.9840431062368331,
+            "si_sdr_db": 7.080527561918187,
+            "rms_dbfs": -23.266807411667138
+          },
+          "candidate": {
+            "stoi": 0.9925624747260919,
+            "si_sdr_db": 8.830338031756254,
+            "rms_dbfs": -23.289651506328568
+          }
+        },
+        "delay": {
+          "paired_clips": 13,
+          "control": {
+            "stoi": 0.9890672403540414,
+            "si_sdr_db": 8.927909269784479,
+            "rms_dbfs": -23.248357967528456
+          },
+          "candidate": {
+            "stoi": 0.9890672403540414,
+            "si_sdr_db": 8.927909269784479,
+            "rms_dbfs": -23.248357967528456
+          }
+        },
+        "pause": {
+          "paired_clips": 5,
+          "control": {
+            "stoi": 0.9908417633080661,
+            "si_sdr_db": 9.075518318172813,
+            "rms_dbfs": -23.215368517815026
+          },
+          "candidate": {
+            "stoi": 0.9908417633080661,
+            "si_sdr_db": 9.075518318172813,
+            "rms_dbfs": -23.215368517815026
+          }
+        },
+        "recovery": {
+          "paired_clips": 25,
+          "control": {
+            "stoi": 0.9815624438087782,
+            "si_sdr_db": 7.8230144328721485,
+            "rms_dbfs": -23.18030682140971
+          },
+          "candidate": {
+            "stoi": 0.9822768564830915,
+            "si_sdr_db": 7.8356052170826995,
+            "rms_dbfs": -23.180122854600846
+          }
+        }
+      }
+    },
+    "identity": {
+      "arm64_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+      "sdk_binary_sha256": "d8b0b10e380fa3b8283c6800df6072e1f731f2909dfdba892fbbfb7ba9570985",
+      "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530"
+    },
+    "output_silenced": true,
+    "source_callback_count": 12707,
+    "source_max_callback_gap_ms": 12.142583334934898,
+    "whole_trial_pass": true,
+    "unqualified_previous_trials_retained": true,
+    "platform": "macOS actual SDK7 P2P fixture; no physical acoustic/display acceptance"
+  },
+  "source_coherence_scorer_correction": {
+    "trace": "current14ba-source-pulse-quiet1",
+    "original_classification": "invalid_source_timing",
+    "reason": "Delivered first frame after planned network loss was incorrectly treated as the original generator onset for global20ms source coherence",
+    "generator_source_max_ms": 4.173249999439577,
+    "delivered_onset_extra_delay_ms": 51.49083333526505,
+    "delivered_onset_time_from_recovery_seconds": 1.79,
+    "fixed": "Global20ms source coherence uses emitted onset; actual delivered-frame timestamps remain in pairs. Raw80ms gate includes complete dropped-frame cost unchanged",
+    "raw_media_changed": false,
+    "thresholds_changed": false,
+    "regression_tests": "known52ms frame drop does not invalidate generator; raw150ms still budget_exceeded"
+  },
+  "source_callback_pulse_diagnostic2": {
+    "whole_trial_qualified": false,
+    "interrupted_to_stop_audible_tones_on_user_request": true,
+    "media_exported": false
   }
 }

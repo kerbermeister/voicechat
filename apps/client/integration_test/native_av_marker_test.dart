@@ -374,11 +374,9 @@ void main() {
           final markers = await channel.invokeMapMethod<String, dynamic>(
             'result',
           );
-          if (ordinaryVoice && !keylessMuteCycle) {
-            expectSourceCadence(markers!['source_audio'] as List);
-          }
           await labPost('/source', {
             'source_audio': markers!['source_audio'],
+            'source_audio_callbacks': markers['source_audio_callbacks'],
             'source_video': markers['source_video'],
             'source_video_frames': markers['source_video_frames'],
             'encrypted_publications': true,
@@ -392,6 +390,9 @@ void main() {
               defaultValue: nativePlayout,
             ),
           });
+          if (ordinaryVoice && !keylessMuteCycle) {
+            expectSourceCadence(markers['source_audio'] as List);
+          }
           return;
         }
       }
@@ -697,9 +698,6 @@ void main() {
         sampleTimes.add((await channel.invokeMethod<double>('clock'))!);
       }
       final markers = await captureNativeMarkers(channel);
-      if (ordinaryVoice && role != 'receiver') {
-        expectSourceCadence(markers['source_audio'] as List);
-      }
       if (network) {
         int packets(int sample, String kind) =>
             ((samples[sample] as List).cast<Map>().firstWhere(
@@ -747,6 +745,9 @@ void main() {
         'separate_native_sender': role == 'receiver',
       };
       await labPost('', result);
+      if (ordinaryVoice && role != 'receiver') {
+        expectSourceCadence(markers['source_audio'] as List);
+      }
       // ignore: avoid_print
       print(
         'SDK_AV_MARKER_PROOF ${jsonEncode({'shared_group': audio.mediaStream.id == video.mediaStream.id, 'audio_chunks': chunks.length, 'video_markers': (markers['video'] as List).length, 'missing_key_blocked': true})}',

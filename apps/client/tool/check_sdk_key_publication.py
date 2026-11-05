@@ -218,7 +218,7 @@ def main():
                             source_markers = value
                             media = json.loads(args.av_marker_output.read_text())
                             assert media['separate_native_sender'] is True
-                            for field in ('source_audio', 'source_video', 'source_video_frames'):
+                            for field in ('source_audio', 'source_audio_callbacks', 'source_video', 'source_video_frames'):
                                 media['markers'][field] = value[field]
                             args.av_marker_output.write_text(json.dumps(media))
                             self.send_response(200)
@@ -389,7 +389,7 @@ def main():
                     raise RuntimeError('Separate native sender failed; inspect private sender log')
                 media = json.loads(args.av_marker_output.read_text())
                 assert media['separate_native_sender'] is True
-                for field in ('source_audio', 'source_video', 'source_video_frames'):
+                for field in ('source_audio', 'source_audio_callbacks', 'source_video', 'source_video_frames'):
                     media['markers'][field] = source_markers[field]
                 args.av_marker_output.write_text(json.dumps(media))
             text = log.read_text()

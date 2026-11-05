@@ -73,6 +73,7 @@ function analyzeTiming(data) {
   const audio = decodeAudioChunks(markers.audio);
   const received = new Map(audio.map(marker => [marker.id, marker.time]));
   const sentAudio = new Map(markers.source_audio), sentVideo = new Map(markers.source_video);
+  const emittedVideo = new Map(sentVideo);
   const sourceFramesVerified = markers.source_video_frames !== undefined || markers.received_video_frames !== undefined;
   if (sourceFramesVerified) {
     assert.ok(Array.isArray(markers.source_video_frames) && Array.isArray(markers.received_video_frames));
@@ -110,7 +111,10 @@ function analyzeTiming(data) {
   const clean = phase(initial[1] + 5, delay[1]);
   const recovered = phase((data.delay_only === true ? interruption : recovery)[1] + 5, Infinity);
   const sourceMax = Math.max(...pairs.map(pair => Math.abs(pair.source_skew_ms)));
-  const allSourceMax = Math.max(...[...sentVideo].filter(([id]) => sentAudio.has(id))
+  // Source coherence is measured before the encoder/network can drop an onset.
+  // Exact delivered-frame timing remains in pairs; raw playout still includes
+  // the complete cost of any dropped onset and must meet the unchanged budget.
+  const allSourceMax = Math.max(...[...emittedVideo].filter(([id]) => sentAudio.has(id))
     .map(([id, time]) => Math.abs(time - sentAudio.get(id)) * 1000));
   const enough = clean.count >= 4 && recovered.count >= 12;
   const withinBudget = [clean, recovered].every(phase =>

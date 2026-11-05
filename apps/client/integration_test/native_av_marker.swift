@@ -30,6 +30,8 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
   private var lastSourceAudio = -1
   private var lastSourceVideo = -1
   private var sourceAudioMarkers = [[Double]]()
+  private var sourceAudioCallbackTimes = [Double](repeating: 0, count: 14000)
+  private var sourceAudioCallbackCount = 0
   private var sourceVideoMarkers = [[Double]]()
   private var sourceVideoFrames = [[Double]]()
   private var receivedVideoFrames = [[Double]]()
@@ -55,7 +57,19 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
   private var videoRenderClocks = [[Double]]()
   private var lastMarker = -1
   private var running = false
+  private let silentOutput = MarkerSilentAudioOutput()
+  private var outputSilenced = false
   private let channel: FlutterMethodChannel
+  private func silenceOutput(_ plugin: FlutterWebRTCPlugin) {
+    guard !outputSilenced else { return }
+    guard let manager = plugin.audioManager else {
+      preconditionFailure("Initialize the native factory before the quiet fixture")
+    }
+    // This runs after the per-track PCM sinks. Keep actual playout silent for
+    // the whole fixture process, including teardown; measured PCM stays intact.
+    manager.renderPreProcessingAdapter.addProcessing(silentOutput)
+    outputSilenced = true
+  }
   init(_ messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(name: "voicechat/native-av-lab", binaryMessenger: messenger)
     super.init()
@@ -108,7 +122,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
           result(FlutterError(code: "fixture", message: String(describing: (error as NSError).userInfo), details: nil))
         }
       case "clock": result(CACurrentMediaTime())
-      case "receive": running = true; result(nil)
+      case "receive": silenceOutput(plugin); running = true; result(nil)
       case "create":
         guard let factory = plugin.peerConnectionFactory,
           let id = args["stream"] as? String,
@@ -122,6 +136,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
           speech = data.data.withUnsafeBytes { Array($0.bindMemory(to: Int16.self)) }
         }
         self.source = source
+        silenceOutput(plugin)
         capturer = RTCVideoCapturer(delegate: source)
         let track = factory.videoTrack(with: source, trackId: UUID().uuidString)
         stream.addVideoTrack(track)
@@ -157,12 +172,14 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
       case "result":
         lock.lock()
         var value: [String: Any] = ["audio": audioChunks, "video": videoMarkers,
+                                  "test_output_silenced": outputSilenced,
                                   "received_video_frames": receivedVideoFrames,
                                   "video_render_clocks": videoRenderClocks, "origin": origin]
         if controlAudio != nil { value["control_audio"] = controlChunks }
         lock.unlock()
         sourceLock.lock()
         value["source_audio"] = sourceAudioMarkers
+        value["source_audio_callbacks"] = Array(sourceAudioCallbackTimes.prefix(sourceAudioCallbackCount))
         value["source_video"] = sourceVideoMarkers
         value["source_video_frames"] = sourceVideoFrames
         sourceLock.unlock()
@@ -208,6 +225,10 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
     // already out of sync before encoding.
     let sourceTime = Double(sampleCursor) / Double(rate)
     sourceLock.lock()
+    if sourceAudioCallbackCount < sourceAudioCallbackTimes.count {
+      sourceAudioCallbackTimes[sourceAudioCallbackCount] = CACurrentMediaTime()
+      sourceAudioCallbackCount += 1
+    }
     sourceMarker = Int(sourceTime / 2)
     sourceVisible = sourceTime - Double(sourceMarker * 2) < 0.12
     let markerChanged = sourceMarker != lastSourceAudio
@@ -324,6 +345,16 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
     }
     sourceLock.unlock()
     source.capturer(capturer, didCapture: RTCVideoFrame(buffer: pixels, rotation: ._0, timeStampNs: Int64(captured * 1e9)))
+  }
+}
+
+private final class MarkerSilentAudioOutput: NSObject, ExternalAudioProcessingDelegate {
+  func audioProcessingInitialize(withSampleRate sampleRate: Int, channels: Int) {}
+  func audioProcessingRelease() {}
+  func audioProcessingProcess(_ buffer: RTCAudioBuffer) {
+    for channel in 0..<buffer.channels {
+      memset(buffer.rawBuffer(forChannel: channel), 0, buffer.frames * MemoryLayout<Float>.size)
+    }
   }
 }
 

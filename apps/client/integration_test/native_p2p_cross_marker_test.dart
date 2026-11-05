@@ -212,6 +212,7 @@ void main() {
         await labPost('/source', {
           for (final name in [
             'source_audio',
+            'source_audio_callbacks',
             'source_video',
             'source_video_frames',
           ])

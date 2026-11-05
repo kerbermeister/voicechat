@@ -110,6 +110,14 @@ test('both native SFU and P2P reject good early timing followed by a frozen deco
     const droppedOnsets = {...identified, markers: {...identified.markers,
       received_video_frames: points.map(([id]) => [id, 1])}};
     assert.equal(score(droppedOnsets).outcome, 'invalid_source_timing');
+    const oneDroppedFrame = {...identified, markers: {...identified.markers,
+      video: points.map(([id, time]) => [id, time + .052]),
+      source_video_frames: points.map(([id, time]) => [id, 1, time + .052]),
+      received_video_frames: points.map(([id]) => [id, 1])}};
+    assert.equal(score(oneDroppedFrame).outcome, 'pass');
+    assert.equal(score(oneDroppedFrame).max_all_source_offset_ms, 0);
+    assert.equal(score({...oneDroppedFrame, markers: {...oneDroppedFrame.markers,
+      video: points.map(([id, time]) => [id, time + .15])}}).outcome, 'budget_exceeded');
     for (const frames of [[], points.map(([id]) => [id, 2])]) {
       assert.throws(() => score({...identified, markers: {...identified.markers, received_video_frames: frames}}));
     }
