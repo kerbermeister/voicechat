@@ -262,7 +262,17 @@
  };
 --- a/video/rtp_streams_synchronizer2.cc
 +++ b/video/rtp_streams_synchronizer2.cc
-@@ -58,6 +58,8 @@
+@@ -32,7 +32,8 @@
+ namespace {
+ // Time interval for logging stats.
+ constexpr int64_t kStatsLogIntervalMs = 10000;
+-constexpr TimeDelta kSyncInterval = TimeDelta::Millis(1000);
++constexpr TimeDelta kSyncInterval = TimeDelta::Millis(200);
++constexpr TimeDelta kStaleStreamTimeout = TimeDelta::Seconds(2);
+
+ bool UpdateMeasurements(StreamSynchronization::Measurements* stream,
+                         const Syncable::Info& info) {
+@@ -58,6 +59,8 @@
  RtpStreamsSynchronizer::~RtpStreamsSynchronizer() {
    RTC_DCHECK_RUN_ON(&main_checker_);
    repeating_task_.Stop();
@@ -271,7 +281,7 @@
  }
 
  void RtpStreamsSynchronizer::ConfigureSync(Syncable* syncable_audio) {
-@@ -67,15 +69,17 @@
+@@ -67,15 +70,17 @@
    if (syncable_audio == syncable_audio_)
      return;
 
@@ -293,7 +303,7 @@
 
    if (repeating_task_.Running())
      return;
-@@ -87,13 +91,17 @@
+@@ -87,13 +92,17 @@
        });
  }
 
@@ -313,7 +323,7 @@
 
    bool log_stats = false;
    const int64_t now_ms = env_.clock().TimeInMilliseconds();
-@@ -102,41 +110,43 @@
+@@ -102,41 +111,43 @@
      log_stats = true;
    }
 
@@ -338,11 +348,11 @@
 -  if (last_video_receive_ms == video_measurement_.latest_receive_time_ms) {
 -    // No new video packet has been received since last update.
 +  const Timestamp now = env_.clock().CurrentTime();
-+  // A transient gap shorter than two sync intervals keeps normal adaptation.
++  // A transient gap shorter than two seconds keeps normal adaptation.
 +  // A stopped stream must not hold its peer's old synchronization delay.
 +  if (!audio_info || !video_info ||
-+      now - audio_info->latest_receive_time >= 2 * kSyncInterval ||
-+      now - video_info->latest_receive_time >= 2 * kSyncInterval) {
++      now - audio_info->latest_receive_time >= kStaleStreamTimeout ||
++      now - video_info->latest_receive_time >= kStaleStreamTimeout) {
 +    if (!sync_suspended_) {
 +      ResetSyncDelays();
 +      sync_suspended_ = true;
@@ -378,7 +388,7 @@
                       << "cur_delay: " << video_info->current_delay
                       << "} {relative_delay_ms: " << relative_delay_ms << "} ";
    }
-@@ -147,31 +157,17 @@
+@@ -147,31 +158,35 @@
                   audio_info->current_delay.ms());
    TRACE_COUNTER1("webrtc", "SyncRelativeDelay", relative_delay_ms);
 
@@ -413,15 +423,33 @@
 +  // Keep the RTP-clock offset signed, even when a frame's deadline is past.
 +  // The target is a total video buffer, not a remaining render wait. Audio
 +  // stays on its natural NetEq/device delay, with no synchronization floor.
-+  const TimeDelta target = std::max(
-+      TimeDelta::Zero(), audio_info->current_delay +
-+          *video_info->video_clock_offset - TimeDelta::Millis(relative_delay_ms));
++  TimeDelta target = audio_info->current_delay +
++      *video_info->video_clock_offset - TimeDelta::Millis(relative_delay_ms);
++  // NetEq's filtered packet-buffer level can lag a queue change. Prefer the
++  // actual audio presentation clock (including the ADM's output delay) once
++  // both RTP clocks have a valid RTCP mapping. Never change audio buffering.
++  const auto audio_playout = syncable_audio_->GetPlayoutRtpTimestamp();
++  if (audio_playout && audio_playout->time <= now &&
++      now - audio_playout->time < kStaleStreamTimeout) {
++    const NtpTime audio_ntp = audio_measurement_->rtp_to_ntp.Estimate(
++        audio_playout->rtp_timestamp);
++    const NtpTime video_ntp = video_measurement_->rtp_to_ntp.Estimate(
++        video_info->latest_received_capture_rtp_timestamp);
++    if (audio_ntp.Valid() && video_ntp.Valid()) {
++      const TimeDelta capture_offset =
++          TimeDelta::Millis(video_ntp.ToMs() - audio_ntp.ToMs());
++      target = capture_offset - (now - audio_playout->time) +
++          (now - video_info->latest_receive_time) +
++          *video_info->video_clock_offset;
++    }
++  }
++  target = std::max(TimeDelta::Zero(), target);
 +  syncable_video_->SetVideoSyncDelay(target);
 +
  }
 
  // TODO(https://bugs.webrtc.org/7065): Move RtpToNtpEstimator out of
-@@ -195,7 +191,7 @@
+@@ -195,7 +210,7 @@
    }
 
    NtpTime latest_audio_ntp =
@@ -430,7 +458,7 @@
    if (!latest_audio_ntp.Valid()) {
      return false;
    }
-@@ -205,7 +201,7 @@
+@@ -205,7 +220,7 @@
                                                     audio->time);
 
    NtpTime latest_video_ntp =
@@ -439,7 +467,7 @@
    if (!latest_video_ntp.Valid()) {
      return false;
    }
-@@ -223,7 +219,7 @@
+@@ -223,7 +238,7 @@
 
    *video_playout_ntp_ms = latest_video_ntp_ms;
    *stream_offset_ms = latest_audio_ntp_ms - latest_video_ntp_ms;
@@ -464,7 +492,7 @@
 
  #include "rtc_base/rtp_to_ntp_estimator.h"
  #include "system_wrappers/include/clock.h"
-@@ -531,4 +538,157 @@
+@@ -531,4 +538,227 @@
    BothDelayedVideoLaterTest(kBaseTargetDelayMs);
  }
 
@@ -478,7 +506,7 @@
 +  uint32_t id() const override { return id_; }
 +  std::optional<Info> GetInfo() const override {
 +    if (!has_info) return std::nullopt;
-+    if (receiving) last_receive_ = clock_->CurrentTime();
++    if (receiving) last_receive_ = clock_->CurrentTime() - receive_age;
 +    const uint32_t timestamp = last_receive_.ms() * frequency_ / 1000;
 +    const int64_t ntp_ms = last_receive_.ms() + 100000;
 +    Info info;
@@ -496,7 +524,11 @@
 +    return info;
 +  }
 +  std::optional<PlayoutInfo> GetPlayoutRtpTimestamp() const override {
-+    return std::nullopt;
++    if (!actual_playout_delay) return std::nullopt;
++    const Timestamp instant = clock_->CurrentTime() - playout_age;
++    const uint32_t rtp = (instant - *actual_playout_delay).ms() *
++        frequency_ / 1000;
++    return PlayoutInfo{.time = instant, .rtp_timestamp = rtp};
 +  }
 +  bool SetMinimumPlayoutDelay(TimeDelta delay) override {
 +    floor = delay;
@@ -510,6 +542,9 @@
 +  bool receiving = true;
 +  bool has_info = true;
 +  int delay_ms;
++  std::optional<TimeDelta> actual_playout_delay;
++  TimeDelta playout_age = TimeDelta::Zero();
++  TimeDelta receive_age = TimeDelta::Zero();
 +  TimeDelta floor = TimeDelta::Zero();
 +  std::optional<TimeDelta> video_buffer;
 +  std::optional<TimeDelta> video_target;
@@ -611,6 +646,69 @@
 +  EXPECT_EQ(video_.video_target, TimeDelta::Millis(250));
 +  EXPECT_EQ(other.GetInfo()->current_delay, TimeDelta::Millis(250));
 +  sync_->ConfigureSync(nullptr);
++}
++
++TEST_F(RtpStreamsSynchronizerTest, FollowsAudioPlayoutAfterDelayFalls) {
++  audio_.delay_ms = 350;
++  audio_.actual_playout_delay = TimeDelta::Millis(100);
++  time_.AdvanceTime(TimeDelta::Seconds(1));
++  EXPECT_NEAR(video_.video_target->ms(), 100, 1);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest, FollowsAudioPlayoutAfterDelayRises) {
++  audio_.delay_ms = 60;
++  audio_.actual_playout_delay = TimeDelta::Millis(325);
++  time_.AdvanceTime(TimeDelta::Seconds(1));
++  EXPECT_NEAR(video_.video_target->ms(), 325, 1);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest, TracksAudioPlayoutWithinTwoHundredMilliseconds) {
++  audio_.actual_playout_delay = TimeDelta::Millis(80);
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  EXPECT_NEAR(video_.video_target->ms(), 80, 1);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest, UsesPresentationClockInsteadOfPacketArrival) {
++  audio_.actual_playout_delay = TimeDelta::Millis(140);
++  audio_.playout_age = TimeDelta::Millis(90);
++  audio_.receive_age = TimeDelta::Millis(70);
++  video_.receive_age = TimeDelta::Millis(110);
++  video_.transport_offset = TimeDelta::Millis(-80);
++  time_.AdvanceTime(TimeDelta::Seconds(2));
++  EXPECT_NEAR(video_.video_target->ms(), 220, 1);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest, IgnoresStaleOrFutureAudioPlayout) {
++  audio_.actual_playout_delay = TimeDelta::Millis(500);
++  audio_.delay_ms = 40;
++  for (TimeDelta age : {TimeDelta::Seconds(2), TimeDelta::Millis(-1)}) {
++    audio_.playout_age = age;
++    time_.AdvanceTime(TimeDelta::Seconds(1));
++    EXPECT_EQ(video_.video_target, TimeDelta::Millis(40));
++    EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++  }
++}
++
++TEST_F(RtpStreamsSynchronizerTest, PresentationClockSurvivesRtpWrap) {
++  sync_->ConfigureSync(nullptr);
++  time_.AdvanceTime(TimeDelta::Seconds(47720));
++  audio_.actual_playout_delay = TimeDelta::Millis(110);
++  sync_->ConfigureSync(&audio_);
++  time_.AdvanceTime(TimeDelta::Seconds(12));
++  EXPECT_NEAR(video_.video_target->ms(), 110, 1);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest, ClampsPresentationTargetAtZero) {
++  audio_.actual_playout_delay = TimeDelta::Millis(50);
++  video_.transport_offset = TimeDelta::Millis(150);
++  time_.AdvanceTime(TimeDelta::Seconds(1));
++  EXPECT_EQ(video_.video_target, TimeDelta::Zero());
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
 +}
 +
 +TEST_F(RtpStreamsSynchronizerTest, DestructionReleasesOnlyAudioFloor) {
