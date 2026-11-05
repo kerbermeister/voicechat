@@ -48,6 +48,19 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
       guard let self, let plugin = FlutterWebRTCPlugin.sharedSingleton() else { return }
       let args = call.arguments as? [String: Any] ?? [:]
       switch call.method {
+      case "timestampReset":
+        guard plugin.peerConnectionFactory == nil,
+          let timeout = args["milliseconds"] as? Int, [0, 1000, 2000].contains(timeout) else {
+          result(FlutterError(code: "fixture", message: "Configure timestamp recovery before native factory", details: nil)); return
+        }
+        var parameters = [String]()
+        if timeout > 0 { parameters.append("hard_reset_timeout:\(timeout)ms") }
+        if args["fullReset"] as? Bool == true { parameters.append("reset_full_cov_on_alarm:true") }
+        guard !parameters.isEmpty else {
+          result(FlutterError(code: "fixture", message: "Missing timestamp experiment", details: nil)); return
+        }
+        RTCPeerConnectionFactory.configureFieldTrials("WebRTC-Network-UseNWPathMonitor/Enabled/WebRTC-TimestampExtrapolatorConfig/\(parameters.joined(separator: ","))/")
+        result(nil)
       case "playout":
         guard plugin.peerConnectionFactory == nil, let delay = args["milliseconds"] as? Int,
           [70, 90, 100, 130].contains(delay) else {

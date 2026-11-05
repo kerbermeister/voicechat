@@ -40,6 +40,15 @@ void main() {
     StreamSubscription<Map<String, dynamic>>? nativeLogs;
     try {
       const playout = int.fromEnvironment('P2P_VIDEO_PLAYOUT_MS');
+      const timestampReset = int.fromEnvironment('P2P_TIMESTAMP_RESET_MS');
+      const fullReset = bool.fromEnvironment('P2P_TIMESTAMP_FULL_RESET');
+      if (timestampReset != 0 || fullReset) {
+        expect(playout, 0);
+        await channel.invokeMethod<void>('timestampReset', {
+          'milliseconds': timestampReset,
+          'fullReset': fullReset,
+        });
+      }
       if (playout != 0) {
         await channel.invokeMethod<void>('playout', {
           'milliseconds': playout,
@@ -278,6 +287,8 @@ void main() {
       result['coherent_source'] = true;
       result['product_sync'] = true;
       result['original_stream_preserved'] = true;
+      result['timestamp_reset_ms'] = timestampReset;
+      result['timestamp_full_covariance_reset'] = fullReset;
       final source = (result['markers'] as Map)['source_audio'] as List;
       expect(source.length, greaterThan(50));
       for (var i = 1; i < source.length; i++) {

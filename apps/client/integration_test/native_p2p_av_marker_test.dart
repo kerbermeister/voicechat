@@ -26,7 +26,11 @@ Future<StreamSubscription<Map<String, dynamic>>?> collectNativeSyncLogs(
         if (message is String &&
             logs.length < 100 &&
             (message.contains('Sync info stats:') ||
-                message.contains('Sync delay stats:'))) {
+                message.contains('Sync delay stats:') ||
+                message.contains('Resetting jitter estimator') ||
+                message.contains('Frame has bad render timing') ||
+                message.contains('Target video delay is too large') ||
+                message.contains('Resetting filter.'))) {
           logs.add({
             'time': await _channel.invokeMethod<double>('clock'),
             'message': message,

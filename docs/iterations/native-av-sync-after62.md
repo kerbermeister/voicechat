@@ -706,3 +706,56 @@ synchronization-floor release. This supports investigating time scaling as a
 cause; the counters alone do not prove causation or qualify SDK5's correction.
 The synthetic control/candidate clips are retained locally for diagnosis. SDK5
 must independently pass the full speech, voice, A/V and encrypted-content gates.
+
+
+## SDK5 actual Mac pilot rejected; Android verifier toolchain mismatch
+
+SDK5 run41955022535 produces the exact Mac archive281b6b82…89fb16, UUID
+2625555c-0df2-3fb2-86f0-4ca5ab07172c. The9 compiled native configuration cases,
+source/receipt hashes, notices and framework signature pass. Targeted CocoaPods
+update and embedded UUID confirm the real SDK5 before media, rather than an old
+same-version cached SDK. Generated Pod checksum is d5e50c5228c248bddd7755a0019cdc54475b1a99.
+The dependency prerelease is not an application update and is not qualified.
+
+Actual Mac paired P2P pilot current-8f742bdb-pilot-1 fails: clean raw36.329ms,
+recovery raw126.919ms/source-corrected125.904ms. Added voice<=23.087ms and matched
+speech pass; source offset<=3.525ms. DTLS positive/negative transport checks pass;
+this is not a FrameCryptor/SFU acceptance claim. The series stops after this
+first failure, with all original80ms/STOI0.005/level0.15dB gates retained.
+
+Recovery marker37 arrives214.600ms after source although its scheduled timestamp
+is43.761ms before source. Several next frames arrive8–16ms after source despite
+the90ms receive default. This identifies both a late decoded output and an early
+schedule; it does not yet prove which timing mechanism caused them. Investigate
+RTP-to-local extrapolator recovery after the network pause rather than selecting
+another fixed delay solely to pass. Exact media/logs retained locally.
+
+Android job127013749249 compiles all3ABIs/AAR, then fails the actual policy check:
+PeerConnectionFactory.class version65 (Java21) versus runner javac17/version61.
+AAR and notices are retained, but no final build receipt or policy report was
+produced. Fix the verifier to use the producer SDK JDK before the next accepted
+candidate; do not fabricate successful CI evidence or rebuild rejected SDK5 just
+for publication. Published Mac/Android remain62; physical acceptance is open.
+
+The verifier now prefers the SDK producer JDK at third_party/jdk/current/bin,
+with the existing host fallback for partial local source trees. On this Mac,
+the exact downloaded AAR passes all9 actual builder cases using JDK21; a second
+assertion check selects the producer JDK even when PATH supplies only the system
+Java shim. This is local post-check evidence, not a replacement CI build receipt.
+A separate predeclared diagnostic uses the existing timestamp-extrapolator
+field trial hard_reset_timeout:2000ms, leaving SDK5 default90 and all gates intact.
+It tests stale clock-fit recovery without another SDK rebuild or product change.
+
+The2s timeout diagnostic also fails: raw recovery84.208ms, corrected86.245ms;
+voice<=33.222ms and speech pass. It does not establish a sufficient fix. A second
+predeclared diagnostic changes only the existing reset_full_cov_on_alarm trial,
+leaving the10s timeout and90ms video policy intact. The pinned upstream source
+explicitly notes that resetting only offset variance can affect frequency on a
+delay spike. Expanded filtered native logs now also retain timing-reset alarms.
+
+Full-covariance diagnostics1/2 pass unchanged P2P gates: raw recovery26.412/
+68.532ms, corrected28.744/69.437ms; speech passes, added voice<=45.644/22.909ms.
+The second starts the simultaneous ordinary reference first. These are the
+existing SDK5 binary with an explicit supported field trial, not a new compiled
+default or completed qualification. Third P2P and actual LiveKit AES-GCM series
+are predeclared; stop on first failed gate. No app update is published.

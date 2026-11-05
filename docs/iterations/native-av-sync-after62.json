@@ -14451,7 +14451,7 @@
     "failures": 0,
     "skips": 0,
     "source_toolchain_receipt_verified": true,
-    "native_binary_builds": "in_progress",
+    "native_binary_builds": "macos_success_android_postbuild_java_version_failure",
     "native_media_qualified": false
   },
   "factory90_precursor_series": {
@@ -14681,5 +14681,253 @@
       ]
     },
     "inference": "Counter changes can associate quality loss with NetEq time scaling; they do not by themselves prove causation. SDK5 requires actual full new media tests."
+  },
+  "vc5_actual_macos_pilot": {
+    "date_utc": "2026-11-05T03:24:28.418472+00:00",
+    "records": [
+      {
+        "trial": "current-8f742bdb-pilot-1",
+        "timing": "budget_exceeded",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 36.328624992165715,
+          "max_source_corrected_abs_ms": 37.542041653068736
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 126.91929166612681,
+          "max_source_corrected_abs_ms": 125.9040416625794
+        },
+        "source_max_ms": 3.524791667587124,
+        "identity": {
+          "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+          "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+          "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+        },
+        "factory_policy": "native default90; no fixture override",
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": -0.25749999622348696
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": -0.25670834293123335
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 23.086375003913417
+          }
+        },
+        "speech": "pass",
+        "pass": false
+      }
+    ],
+    "complete": true,
+    "all_pass": false
+  },
+  "vc5_android_postbuild_failure": {
+    "run": 41955022535,
+    "job": 127013749249,
+    "three_abis_compiled": true,
+    "classfile_version": 65,
+    "runner_javac_classfile_support": 61,
+    "final_receipt_produced": false,
+    "policy_report_produced": false,
+    "release_qualified": false,
+    "local_actual_aar_policy_check": {
+      "platform": "android",
+      "test_count": 9,
+      "pass_count": 9,
+      "outcome": "pass",
+      "configuration_only": true,
+      "classes_sha256": "ab646230231d66ad41b9bfe454664f45760b983aa9e0285adec92a442785292f",
+      "producer_jdk_preferred_over_host_verified": true,
+      "ci_build_receipt_replaced": false
+    }
+  },
+  "vc5_timestamp_reset_diagnostic": {
+    "date_utc": "2026-11-05T03:38:47.381943+00:00",
+    "purpose": "Diagnostic, not application qualification",
+    "sdk_identity": {
+      "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+      "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+      "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+    },
+    "playout_ms": 0,
+    "minimum_playout_ms": 0,
+    "timing": {
+      "schema": 1,
+      "outcome": "budget_exceeded",
+      "recovery_transport": {
+        "pass": true,
+        "packet_deltas": {
+          "audio": 503,
+          "video": 1885
+        },
+        "decoded_video_frames": 206
+      },
+      "audio_checksum_markers": 64,
+      "matched_pairs": 55,
+      "shared_group": true,
+      "clean": {
+        "count": 8,
+        "max_abs_ms": 32.382583332946524,
+        "max_source_corrected_abs_ms": 30.522708329954185
+      },
+      "recovery": {
+        "count": 27,
+        "max_abs_ms": 84.20779166044667,
+        "max_source_corrected_abs_ms": 86.24470833456144
+      },
+      "max_source_offset_ms": 3.102041664533317,
+      "max_all_source_offset_ms": 3.102041664533317,
+      "physical_latency_measured": false,
+      "decoder_window_ms": 21.333333333333332,
+      "recovery_guard_after_seconds": 5
+    },
+    "voice_latency": {
+      "pass": true,
+      "clean": {
+        "count": 8,
+        "max_added_voice_delay_ms": 10.494458343600854
+      },
+      "video_paused": {
+        "count": 4,
+        "max_added_voice_delay_ms": 33.22137500799727
+      },
+      "recovery": {
+        "count": 27,
+        "max_added_voice_delay_ms": 32.95537499070633
+      }
+    },
+    "speech": "pass",
+    "all_gates_pass": false,
+    "hard_reset_timeout_ms": 2000
+  },
+  "vc5_full_covariance_diagnostics": {
+    "purpose": "Existing field-trial diagnostic, not compiled-default or app acceptance",
+    "first_two": [
+      {
+        "date_utc": "2026-11-05T03:43:52.910530+00:00",
+        "purpose": "Diagnostic, not application qualification",
+        "sdk_identity": {
+          "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+          "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+          "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+        },
+        "playout_ms": 0,
+        "minimum_playout_ms": 0,
+        "timing": {
+          "schema": 1,
+          "outcome": "pass",
+          "recovery_transport": {
+            "pass": true,
+            "packet_deltas": {
+              "audio": 503,
+              "video": 1877
+            },
+            "decoded_video_frames": 206
+          },
+          "audio_checksum_markers": 63,
+          "matched_pairs": 55,
+          "shared_group": true,
+          "clean": {
+            "count": 8,
+            "max_abs_ms": 36.06183333613444,
+            "max_source_corrected_abs_ms": 35.17083334736526
+          },
+          "recovery": {
+            "count": 27,
+            "max_abs_ms": 26.412416656967252,
+            "max_source_corrected_abs_ms": 28.74412499659229
+          },
+          "max_source_offset_ms": 3.342874988447875,
+          "max_all_source_offset_ms": 3.342874988447875,
+          "physical_latency_measured": false,
+          "decoder_window_ms": 21.333333333333332,
+          "recovery_guard_after_seconds": 5
+        },
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": 22.91754166071769
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 45.287708344403654
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 45.6432499922812
+          }
+        },
+        "speech": "pass",
+        "all_gates_pass": true,
+        "full_covariance_reset_on_alarm": true
+      },
+      {
+        "date_utc": "2026-11-05T03:47:36.906858+00:00",
+        "purpose": "Diagnostic, not application qualification",
+        "sdk_identity": {
+          "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+          "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+          "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+        },
+        "playout_ms": 0,
+        "minimum_playout_ms": 0,
+        "timing": {
+          "schema": 1,
+          "outcome": "pass",
+          "recovery_transport": {
+            "pass": true,
+            "packet_deltas": {
+              "audio": 503,
+              "video": 1881
+            },
+            "decoded_video_frames": 206
+          },
+          "audio_checksum_markers": 64,
+          "matched_pairs": 55,
+          "shared_group": true,
+          "clean": {
+            "count": 8,
+            "max_abs_ms": 22.55170833086595,
+            "max_source_corrected_abs_ms": 21.74475000356324
+          },
+          "recovery": {
+            "count": 27,
+            "max_abs_ms": 68.5324583464535,
+            "max_source_corrected_abs_ms": 69.43658334785141
+          },
+          "max_source_offset_ms": 4.28999999712687,
+          "max_all_source_offset_ms": 4.28999999712687,
+          "physical_latency_measured": false,
+          "decoder_window_ms": 21.333333333333332,
+          "recovery_guard_after_seconds": 5
+        },
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": 12.809666674002074
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 22.88641667109914
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 22.90858334163204
+          }
+        },
+        "speech": "pass",
+        "all_gates_pass": true,
+        "full_covariance_reset_on_alarm": true
+      }
+    ],
+    "third_p2p_and_sfu_pending": true
   }
 }

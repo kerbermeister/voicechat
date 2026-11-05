@@ -56,6 +56,14 @@ void main() {
   testWidgets('native encrypted audio/video marker playout', (tester) async {
     const channel = MethodChannel('voicechat/native-av-lab');
     const nativePlayout = int.fromEnvironment('AV_NATIVE_VIDEO_PLAYOUT_MS');
+    const fullReset = bool.fromEnvironment('AV_TIMESTAMP_FULL_RESET');
+    if (fullReset) {
+      expect(nativePlayout, 0);
+      await channel.invokeMethod<void>('timestampReset', {
+        'milliseconds': 0,
+        'fullReset': true,
+      });
+    }
     if (nativePlayout != 0) {
       await channel.invokeMethod<void>('playout', {
         'milliseconds': nativePlayout,

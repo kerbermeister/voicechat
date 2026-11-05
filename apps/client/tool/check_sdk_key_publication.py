@@ -49,10 +49,13 @@ def main():
     parser.add_argument('--min-native-video-playout-ms', type=int, choices=(0, 20, 70, 90, 100, 130))
     parser.add_argument('--max-video-playout-ms', type=int, choices=(130, 10000), default=10000)
     parser.add_argument('--av-marker-network', action='store_true', help='Apply video-only delay and outage in the disposable SFU')
+    parser.add_argument('--timestamp-full-reset', action='store_true', help='Diagnostic macOS fixture: reset full timestamp-model covariance on alarms')
     parser.add_argument('--av-speech', type=Path, help='Synthetic mono48kHz PCM16 WAV; never use a personal recording')
     parser.add_argument('--av-sender-root', type=Path, help='Separate account-free macOS sender checkout (A/V fixture only)')
     parser.add_argument('--av-media-ip', help='Local private interface for encrypted RTP between Mac and the owned Android emulator')
     args = parser.parse_args()
+    if args.timestamp_full_reset and (args.device != 'macos' or not args.av_marker_output or args.native_video_playout_ms != 0):
+        parser.error('Timestamp diagnostic requires the Mac A/V fixture with native SDK default playout')
     if args.min_native_video_playout_ms is not None and (args.native_video_playout_ms == 0 or args.min_native_video_playout_ms > args.native_video_playout_ms):
         parser.error('Native minimum requires a nonzero maximum and must not exceed it')
     if bool(args.av_sender_root) != bool(args.av_media_ip):
@@ -270,6 +273,7 @@ def main():
                 'AV_MARKER_OUTPUT': marker_url,
                 'AV_VIDEO_PLAYOUT_MS': args.video_playout_ms,
                 'AV_NATIVE_VIDEO_PLAYOUT_MS': args.native_video_playout_ms,
+                'AV_TIMESTAMP_FULL_RESET': args.timestamp_full_reset,
                 'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS': args.min_native_video_playout_ms if args.min_native_video_playout_ms is not None else args.native_video_playout_ms,
                 'AV_COHERENT_MARKERS': args.coherent_source,
                 'AV_MARKER_NETWORK': args.av_marker_network,

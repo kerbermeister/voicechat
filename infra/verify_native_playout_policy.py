@@ -72,7 +72,14 @@ public class PlayoutPolicyCheck {
   }
   public static void main(String[] args) {
 ''' + '\n'.join(checks) + '\n  }\n}\n')
-            javac = Path(shutil.which('javac')).resolve()
+            # The AAR is compiled by Chromium's pinned JDK, which can be newer
+            # than the runner's default. Use that same JDK to execute its API.
+            javac = source / 'third_party/jdk/current/bin/javac'
+            if not javac.is_file():
+                installed = shutil.which('javac')
+                if installed is None:
+                    raise RuntimeError('Android policy verification needs a JDK')
+                javac = Path(installed).resolve()
             java = javac.with_name('java')
             invoke([javac, '-cp', work / 'classes.jar', '-d', work, context, test], work)
             invoke([java, '-cp', str(work) + ':' + str(work / 'classes.jar'),
