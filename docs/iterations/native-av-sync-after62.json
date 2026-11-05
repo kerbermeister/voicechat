@@ -16544,7 +16544,7 @@
     "cpp_run": 42031354123,
     "expected_tests": 93,
     "expected_negative_regressions": 21,
-    "status": "cpp93_pass_platform_builds_running",
+    "status": "cpp93_pass_platform_pair_verified_media_pending",
     "approach": "Video follows actual audio presentation RTP/RTCP clock; 200ms update, independent2s staleness; filtered fallback only without fresh valid presentation mapping",
     "audio_or_crypto_changed_from_sdk7": false,
     "app_released": false,
@@ -16554,7 +16554,61 @@
     "second_cancel_reason": "Adjust test start so 90kHz RTP wraps during the twelve-second measurement instead of before it",
     "cpp_tests_pass": 93,
     "negative_regressions_verified": 21,
-    "platform_run": 42034416556
+    "platform_run": 42034416556,
+    "platform_builds": {
+      "macos": {
+        "job": 127268859542,
+        "conclusion": "success",
+        "directory": "/Users/anton/IdeaProjects/VoiceChat/.prototype/current-sdk-macos-4375e11",
+        "build_revision": "4375e11552c51d5442a927237afbfb9f79c162b9",
+        "artifact": "/Users/anton/IdeaProjects/VoiceChat/.prototype/current-sdk-macos-4375e11/WebRTC.xcframework.zip",
+        "sha256": "0134a72bfbaa0f7b3518c51570efdd4705a424d6bbb8bd48c67f8365bf555ed6",
+        "size_bytes": 6303233,
+        "receipt_verified": true
+      },
+      "android": {
+        "job": 127268859468,
+        "conclusion": "success",
+        "directory": "/Users/anton/IdeaProjects/VoiceChat/.prototype/current-sdk-android-4375e11",
+        "build_revision": "4375e11552c51d5442a927237afbfb9f79c162b9",
+        "artifact": "/Users/anton/IdeaProjects/VoiceChat/.prototype/current-sdk-android-4375e11/libwebrtc.aar",
+        "sha256": "ea13d30e240e075e1b7cda924506904235adc27737080462b813764effb6d6ed",
+        "size_bytes": 36291688,
+        "receipt_verified": true
+      }
+    },
+    "artifact_identity": {
+      "schema": 1,
+      "sdk_version": "150.7871.04",
+      "release_artifact_version": "150.7871.04-vc8",
+      "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
+      "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023",
+      "artifacts": {
+        "macos": {
+          "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc8/WebRTC.xcframework.zip",
+          "sha256": "0134a72bfbaa0f7b3518c51570efdd4705a424d6bbb8bd48c67f8365bf555ed6",
+          "size_bytes": 6303233,
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "binary_sha256": "de61784b01bfaa53818691e8711f73658fc0d2d2cdb9525dc562ec1d383dd4e6"
+        },
+        "android": {
+          "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc8/libwebrtc.aar",
+          "sha256": "ea13d30e240e075e1b7cda924506904235adc27737080462b813764effb6d6ed",
+          "size_bytes": 36291688,
+          "jni_sha256": {
+            "armeabi-v7a": "6f3aa12a7c36752953f6cd1e82626373afd3e1a82c42489ae769bdc43122821e",
+            "arm64-v8a": "0fb9e25c668c5aeadd50ef0723348b2c04c013c4a25c233f8f6e4d97abfed53c",
+            "x86_64": "b38c4543e5877419fc05d2f6d991ecfa02accfd068562665c90c9edc3861695a"
+          }
+        }
+      },
+      "native_video_playout_ms": 90,
+      "native_video_playout_max_ms": 10000,
+      "platform_policy_test_count": 9
+    },
+    "dependency_prerelease": "webrtc-sdk-150.7871.04-vc8",
+    "application_update_published": false,
+    "artifact_verifier_unit_tests_pass": 11
   },
   "native_sdk7_android_output_clock_diagnostic": {
     "trial": "current14ba-output-clock-diagnostic1",
@@ -17089,7 +17143,8 @@
     "os_volume_changed": false,
     "production_audio_muted": false,
     "macos_native_probe_pass": true,
-    "android_native_quiet_probe_executed": false
+    "android_native_quiet_probe_executed": false,
+    "qualification_requires_test_output_silenced": true
   },
   "native_sdk7_macos_quiet_source_pulse": {
     "outcome": "pass",

@@ -1,25 +1,25 @@
 {
   "schema": 1,
   "sdk_version": "150.7871.04",
-  "release_artifact_version": "150.7871.04-vc7",
+  "release_artifact_version": "150.7871.04-vc8",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
-  "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+  "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023",
   "artifacts": {
     "macos": {
-      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc7/WebRTC.xcframework.zip",
-      "sha256": "e2c357cec1e600a9688b8b01b81cc1125216b1abb7e7211e4b28f3af2591af3e",
-      "size_bytes": 6302333,
-      "arm64_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
-      "binary_sha256": "873e7051e8ccae239736fdf8cf5838c6ff947e29a4a7b9962482ad80d9a81a83"
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc8/WebRTC.xcframework.zip",
+      "sha256": "0134a72bfbaa0f7b3518c51570efdd4705a424d6bbb8bd48c67f8365bf555ed6",
+      "size_bytes": 6303233,
+      "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+      "binary_sha256": "de61784b01bfaa53818691e8711f73658fc0d2d2cdb9525dc562ec1d383dd4e6"
     },
     "android": {
-      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc7/libwebrtc.aar",
-      "sha256": "c2a6de5e0f471e9426736418358c5174b9e9693e0280a5892be553e911f1bbb6",
-      "size_bytes": 36290008,
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc8/libwebrtc.aar",
+      "sha256": "ea13d30e240e075e1b7cda924506904235adc27737080462b813764effb6d6ed",
+      "size_bytes": 36291688,
       "jni_sha256": {
-        "armeabi-v7a": "9ef554f9a17df9b0b5d141e64325dc943042c6d2f816e2891ad3c3cd62ec991c",
-        "arm64-v8a": "84d9855a259d9ce8e08da9efbb5b855ebd3a1e30ac175dbe2b86513472eed73e",
-        "x86_64": "e5fbf618dba99e2bf3c36ec078cd7fab0980abf6627ee3051af20ac24bea1458"
+        "armeabi-v7a": "6f3aa12a7c36752953f6cd1e82626373afd3e1a82c42489ae769bdc43122821e",
+        "arm64-v8a": "0fb9e25c668c5aeadd50ef0723348b2c04c013c4a25c233f8f6e4d97abfed53c",
+        "x86_64": "b38c4543e5877419fc05d2f6d991ecfa02accfd068562665c90c9edc3861695a"
       }
     }
   },
