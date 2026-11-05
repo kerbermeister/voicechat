@@ -17,7 +17,19 @@
         "arm64"
       ],
       "packaging": "official pinned builder; normal generated third-party notices"
+    },
+    "android": {
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc3/libwebrtc.aar",
+      "sha256": "5bdfad08959a68b105e9ae8979b3765d0f89a61f2cc898013b1150b83d31ef01",
+      "size_bytes": 36273763,
+      "jni_sha256": {
+        "armeabi-v7a": "06d19e2010fde3fe67dc06158187c772118a9016f9741febb3acd4acdb6e0704",
+        "arm64-v8a": "e6adfbf174103610cc00e0a55b99ce733fe556042346a2b8974ee8d05abe6638",
+        "x86_64": "cec4a07592ebff9df1396366a53ce6ea122e609ec3ba096ed0832a8ee2dda1e6"
+      },
+      "build_workflow_run": 41931657101,
+      "build_revision": "3c68506eacca3762f17d94b3dcc08c7819a4936c"
     }
   },
-  "qualification_status": "macos-only internal qualification; Android pending; not an application release"
+  "qualification_status": "NOT QUALIFIED for application updates: initial Mac vc3 recovery A/V99.364ms fails80ms; voice<=10.929ms and speech pass. Native rendering diagnosis; Android/FrameCryptor media pending."
 }

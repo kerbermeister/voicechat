@@ -5,7 +5,7 @@ val nativeWebRtcRepository = providers.exec {
 
 allprojects {
     configurations.configureEach {
-        resolutionStrategy.force("io.github.webrtc-sdk:android:150.7871.04-vc1")
+        resolutionStrategy.force("io.github.webrtc-sdk:android:150.7871.04-vc3")
     }
     repositories {
         maven {

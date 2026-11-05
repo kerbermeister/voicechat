@@ -6,14 +6,11 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
-// Pinned SDK event stream supplies numeric sync diagnostics without a new logger dependency.
-// ignore: implementation_imports
-import 'package:flutter_webrtc/src/native/event_channel.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'native_av_marker_test.dart' show labPost, labWait;
 import 'native_p2p_av_marker_test.dart'
-    show gatherRelay, closePeer, measureP2PReceiver;
+    show gatherRelay, closePeer, measureP2PReceiver, collectNativeSyncLogs;
 
 const channel = MethodChannel('voicechat/native-av-lab');
 
@@ -46,25 +43,7 @@ void main() {
     final syncLogs = <Map<String, dynamic>>[];
     rtc.MediaStream? stream, videoStream;
     try {
-      if (!sender && const bool.fromEnvironment('P2P_NATIVE_SYNC_LOGS')) {
-        nativeLogs = FlutterWebRTCEventChannel.instance.handleEvents.stream
-            .listen((event) async {
-              final value = event['onLogData'];
-              final message = value is Map ? value['data'] : null;
-              if (message is String &&
-                  syncLogs.length < 100 &&
-                  (message.contains('Sync info stats:') ||
-                      message.contains('Sync delay stats:'))) {
-                syncLogs.add({
-                  'time': await channel.invokeMethod<double>('clock'),
-                  'message': message,
-                });
-                // ignore: avoid_print
-                print('P2P_NATIVE_SYNC $message');
-              }
-            });
-        await rtc.WebRTC.initialize(options: {'logSeverity': 'info'});
-      }
+      if (!sender) nativeLogs = await collectNativeSyncLogs(syncLogs);
       if (playout != 0) {
         await channel.invokeMethod<void>('playout', {'milliseconds': playout});
       }

@@ -13576,7 +13576,7 @@
     "receipt_verified": true,
     "platform_builds": {
       "macos": "success; public archive SHA/size and source receipt verified",
-      "android": "in_progress"
+      "android": "success; receipt, archive/JNI hashes and public HTTPS verified"
     },
     "media": "not_run",
     "delay_only_recovery_prespecified": {
@@ -13662,5 +13662,126 @@
       "arm64"
     ],
     "packaging": "official pinned builder; normal generated third-party notices"
+  },
+  "vc3_macos_pilot": {
+    "date_utc": "2026-11-05T00:11:54.371303+00:00",
+    "records": [
+      {
+        "trial": "current-17965b9e-pilot-1",
+        "timing": "budget_exceeded",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 62.56937500438653,
+          "max_source_corrected_abs_ms": 63.458166681812145
+        },
+        "recovery": {
+          "count": 26,
+          "max_abs_ms": 98.45454165770207,
+          "max_source_corrected_abs_ms": 99.36433333496097
+        },
+        "source_max_ms": 5.39862499863375,
+        "identity": {
+          "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+          "sdk_binary_sha256": "0e5d0341dd61f62532c43c4b6fa8928ed211313e4ce2020142ea6417218a3a65",
+          "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0"
+        },
+        "factory_policy": "upstream adaptive; no fixed90",
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": 10.852750012418255
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 10.582000002614222
+          },
+          "recovery": {
+            "count": 26,
+            "max_added_voice_delay_ms": 10.928416668321006
+          }
+        },
+        "speech": "pass",
+        "pass": false
+      }
+    ],
+    "complete": true,
+    "all_pass": false,
+    "conclusion": "Voice latency and speech passed; recovery A/V99.364ms failed80ms gate. Do not promote; diagnose native rendering/timestamps."
+  },
+  "vc3_android_sdk": {
+    "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc3/libwebrtc.aar",
+    "sha256": "5bdfad08959a68b105e9ae8979b3765d0f89a61f2cc898013b1150b83d31ef01",
+    "size_bytes": 36273763,
+    "jni_sha256": {
+      "armeabi-v7a": "06d19e2010fde3fe67dc06158187c772118a9016f9741febb3acd4acdb6e0704",
+      "arm64-v8a": "e6adfbf174103610cc00e0a55b99ce733fe556042346a2b8974ee8d05abe6638",
+      "x86_64": "cec4a07592ebff9df1396366a53ce6ea122e609ec3ba096ed0832a8ee2dda1e6"
+    },
+    "build_workflow_run": 41931657101,
+    "build_revision": "3c68506eacca3762f17d94b3dcc08c7819a4936c"
+  },
+  "vc3_render_diagnostic": {
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 69.34945833927486,
+      "max_source_corrected_abs_ms": 70.22741666878574
+    },
+    "recovery": {
+      "count": 27,
+      "max_abs_ms": 99.84591665852349,
+      "max_source_corrected_abs_ms": 100.68120832147542
+    },
+    "source_max_ms": 3.177666658302769,
+    "render_clock_lead_ms": {
+      "min": -2177.7690000162693,
+      "median": 9.083812474273145,
+      "max": 10.248666643747129
+    },
+    "render_clock_samples": [
+      {
+        "id": 5.0,
+        "t": 6.2942737083358224,
+        "scheduled_minus_callback_ms": 6.895541650010273
+      },
+      {
+        "id": 10.0,
+        "t": 16.259947583341273,
+        "scheduled_minus_callback_ms": 10.22166664188262
+      },
+      {
+        "id": 20.0,
+        "t": 39.01138104166603,
+        "scheduled_minus_callback_ms": 9.788208320969716
+      },
+      {
+        "id": 35.0,
+        "t": 66.32072312499804,
+        "scheduled_minus_callback_ms": 6.4461249858140945
+      },
+      {
+        "id": 40.0,
+        "t": 76.35173833333829,
+        "scheduled_minus_callback_ms": 6.430916648241691
+      },
+      {
+        "id": 44.0,
+        "t": 84.3183635000023,
+        "scheduled_minus_callback_ms": 9.805749985389411
+      },
+      {
+        "id": 50.0,
+        "t": 96.31048300000839,
+        "scheduled_minus_callback_ms": 8.686249973834492
+      },
+      {
+        "id": 55.0,
+        "t": 106.28957504166465,
+        "scheduled_minus_callback_ms": 9.59420831350144
+      }
+    ],
+    "new_marker_metadata_present": true,
+    "scope": "Instrumented diagnostic, not application qualification"
   }
 }

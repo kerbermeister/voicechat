@@ -6,11 +6,41 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
+// Pinned native SDK log stream; diagnostic runs only.
+// ignore: implementation_imports
+import 'package:flutter_webrtc/src/native/event_channel.dart';
 import 'package:integration_test/integration_test.dart';
 
 import 'native_av_marker_test.dart' show labPost;
 
 const _channel = MethodChannel('voicechat/native-av-lab');
+
+Future<StreamSubscription<Map<String, dynamic>>?> collectNativeSyncLogs(
+  List<Map<String, dynamic>> logs,
+) async {
+  if (!const bool.fromEnvironment('P2P_NATIVE_SYNC_LOGS')) return null;
+  final subscription = FlutterWebRTCEventChannel.instance.handleEvents.stream
+      .listen((event) async {
+        final value = event['onLogData'];
+        final message = value is Map ? value['data'] : null;
+        if (message is String &&
+            logs.length < 100 &&
+            (message.contains('Sync info stats:') ||
+                message.contains('Sync delay stats:'))) {
+          logs.add({
+            'time': await _channel.invokeMethod<double>('clock'),
+            'message': message,
+          });
+        }
+      });
+  try {
+    await rtc.WebRTC.initialize(options: {'logSeverity': 'info'});
+  } catch (_) {
+    await subscription.cancel();
+    rethrow;
+  }
+  return subscription;
+}
 
 Future<void> gatherRelay(rtc.RTCPeerConnection pc) async {
   final watch = Stopwatch()..start();
@@ -238,6 +268,9 @@ Future<Map<String, dynamic>> measureP2PReceiver(
               'jitterBufferEmittedCount',
               'jitterBufferTargetDelay',
               'jitterBufferMinimumDelay',
+              'estimatedPlayoutTimestamp',
+              'insertedSamplesForDeceleration',
+              'removedSamplesForAcceleration',
               'totalSamplesReceived',
               'concealedSamples',
               'packetsReceived',

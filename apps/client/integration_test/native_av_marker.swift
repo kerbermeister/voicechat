@@ -37,6 +37,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
   private lazy var controlSink = MarkerControlAudioSink(owner: self)
   private var audioPeak: Float = 0
   private var videoMarkers = [[Double]]()
+  private var videoRenderClocks = [[Double]]()
   private var lastMarker = -1
   private var running = false
   private let channel: FlutterMethodChannel
@@ -120,7 +121,8 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
         result(nil)
       case "result":
         lock.lock()
-        var value: [String: Any] = ["audio": audioChunks, "video": videoMarkers, "origin": origin]
+        var value: [String: Any] = ["audio": audioChunks, "video": videoMarkers,
+                                  "video_render_clocks": videoRenderClocks, "origin": origin]
         if controlAudio != nil { value["control_audio"] = controlChunks }
         lock.unlock()
         sourceLock.lock()
@@ -234,6 +236,7 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
   func setSize(_ size: CGSize) {}
   func renderFrame(_ frame: RTCVideoFrame?) {
     guard running, let frame else { return }
+    let callbackTime = CACurrentMediaTime()
     let pixels = frame.buffer.toI420()
     guard pixels.width >= 256, pixels.height >= 90 else { return }
     var word: UInt32 = 0
@@ -245,7 +248,10 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
     let id = Int(word & 0xffff)
     guard (word >> 16) == UInt32(id ^ 0xffff), id != lastMarker else { return }
     lastMarker = id
-    lock.lock(); videoMarkers.append([Double(id), CACurrentMediaTime()]); lock.unlock()
+    lock.lock()
+    videoMarkers.append([Double(id), CACurrentMediaTime()])
+    videoRenderClocks.append([Double(id), callbackTime, Double(frame.timeStampNs) / 1e9])
+    lock.unlock()
   }
   private func emitVideo() {
     guard running, let source, let capturer else { return }

@@ -10,7 +10,7 @@ import 'package:integration_test/integration_test.dart';
 
 import 'native_av_marker_test.dart' show labPost;
 import 'native_p2p_av_marker_test.dart'
-    show negotiateP2P, closePeer, measureP2PReceiver;
+    show negotiateP2P, closePeer, measureP2PReceiver, collectNativeSyncLogs;
 
 const channel = MethodChannel('voicechat/native-av-lab');
 
@@ -20,21 +20,36 @@ void main() {
     tester,
   ) async {
     final http = HttpClient();
-    final config = jsonDecode(
-      await utf8.decoder
-          .bind(
-            await (await http.getUrl(
-              Uri.parse(
-                '${const String.fromEnvironment('P2P_LAB_URL')}/turn.json',
-              ),
-            )).close(),
-          )
-          .join(),
-    ) as Map<String, dynamic>;
+    final config =
+        jsonDecode(
+              await utf8.decoder
+                  .bind(
+                    await (await http.getUrl(
+                      Uri.parse(
+                        '${const String.fromEnvironment('P2P_LAB_URL')}/turn.json',
+                      ),
+                    )).close(),
+                  )
+                  .join(),
+            )
+            as Map<String, dynamic>;
     http.close(force: true);
     final streams = <rtc.MediaStream>[];
     final peers = <rtc.RTCPeerConnection>[];
+    final syncLogs = <Map<String, dynamic>>[];
+    StreamSubscription<Map<String, dynamic>>? nativeLogs;
     try {
+      const playout = int.fromEnvironment('P2P_VIDEO_PLAYOUT_MS');
+      if (playout != 0) {
+        await channel.invokeMethod<void>('playout', {
+          'milliseconds': playout,
+          'minimum': const int.fromEnvironment(
+            'P2P_VIDEO_MIN_PLAYOUT_MS',
+            defaultValue: playout,
+          ),
+        });
+      }
+      nativeLogs = await collectNativeSyncLogs(syncLogs);
       for (var i = 0; i < 2; i++) {
         streams.add(
           await rtc.navigator.mediaDevices.getUserMedia({
@@ -226,7 +241,7 @@ void main() {
         remoteAudio,
         remoteVideo,
         split: false,
-        playout: 0,
+        playout: playout,
         audioControl: controlReceiver,
         cryptoControl: {'protocol': 'DTLS-SRTP'},
       );
@@ -274,8 +289,10 @@ void main() {
           reason: 'Two audio tracks must share one physical capture clock',
         );
       }
+      if (syncLogs.isNotEmpty) result['native_sync_logs'] = syncLogs;
       await labPost('', result);
     } finally {
+      await nativeLogs?.cancel();
       for (final pc in peers.reversed) {
         await closePeer(pc);
       }
