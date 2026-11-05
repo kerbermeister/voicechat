@@ -1,35 +1,26 @@
 {
   "schema": 1,
   "sdk_version": "150.7871.04",
-  "release_artifact_version": "150.7871.04-vc3",
+  "release_artifact_version": "150.7871.04-vc5",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
-  "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0",
+  "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671",
   "artifacts": {
     "macos": {
-      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc3/WebRTC.xcframework.zip",
-      "sha256": "90af747f20b2343bfdfffad37763c8bf2200fd004b41ef5fa6edab7599263b06",
-      "size_bytes": 6341609,
-      "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
-      "binary_sha256": "e3eedc79780b37372cf4dcced95ff3533e65bc86f17995d94eedda1bf165f4b5",
-      "build_workflow_run": 41931657101,
-      "build_revision": "3c68506eacca3762f17d94b3dcc08c7819a4936c",
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc5/WebRTC.xcframework.zip",
+      "sha256": "281b6b8205003742e5140062427533a5e5f817576a4b38c7bc2ef77ea389fb16",
+      "size_bytes": 6303474,
+      "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+      "binary_sha256": "6fdc756f7f3ba68e49756c4786dc4ff4472b7d935a67d57595b2e46939a842a9",
+      "build_workflow_run": 41955022535,
+      "build_revision": "7339294e38d1c9c6db5d436d26267ed196a1dc0a",
       "architectures": [
         "arm64"
       ],
-      "packaging": "official pinned builder; normal generated third-party notices"
-    },
-    "android": {
-      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc3/libwebrtc.aar",
-      "sha256": "5bdfad08959a68b105e9ae8979b3765d0f89a61f2cc898013b1150b83d31ef01",
-      "size_bytes": 36273763,
-      "jni_sha256": {
-        "armeabi-v7a": "06d19e2010fde3fe67dc06158187c772118a9016f9741febb3acd4acdb6e0704",
-        "arm64-v8a": "e6adfbf174103610cc00e0a55b99ce733fe556042346a2b8974ee8d05abe6638",
-        "x86_64": "cec4a07592ebff9df1396366a53ce6ea122e609ec3ba096ed0832a8ee2dda1e6"
-      },
-      "build_workflow_run": 41931657101,
-      "build_revision": "3c68506eacca3762f17d94b3dcc08c7819a4936c"
+      "minimum_macos": "11.0",
+      "packaging": "official pinned builder; generated notices in framework resources; ad-hoc signature verified"
     }
   },
-  "qualification_status": "NOT QUALIFIED for application updates: SDK3 adaptive Mac recovery99/100ms fails. SDK3 Android adaptive diagnostic passes, real SFU encryption/speech proven but timing97.951ms fails. Explicit130 fails SFU;70failsP2P;90P2P/SFU precursor first calls pass. SDK5 source adds receive-relative render-delay fix and90receiver default; its binaries/media still pending."
+  "native_video_playout_ms": 90,
+  "platform_policy_test_count": 9,
+  "qualification_status": "macos-only internal qualification; Android pending; not an application release"
 }
