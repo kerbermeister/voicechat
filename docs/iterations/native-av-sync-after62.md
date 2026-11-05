@@ -683,3 +683,26 @@ behavior preserved. It is distinct from rejected old fixed90/split wrappers.
 The pinned sender reads a separate ForceSendPlayoutDelay key, so remote hints
 are not forced. Local Foundation9 cases pass; source/hash/apply and Python
 checks pass. SDK5 binary builds and actual media are still pending. App62 stays.
+
+## SDK5 C++ gate verified; SDK3 repeat exposes a speech defect
+
+Fresh SDK5 run41955022535/source7339294 passes all46 C++ tests with zero failures/
+skips; all10 original-behaviour negative regressions fail as required, including
+the new receive-relative schedule test. Receipt/source/toolchain hashes match.
+Native SDK5 binary builds have started; no SDK5 media or app release is claimed.
+
+The SDK3 fixed90 precursor series passes audio-stall recovery20.146ms and
+continuous-RTP delay recovery19.408ms, voice<=22.925ms and matched speech. Its
+second P2P pair passes A/V37.006/31.238ms and voice<=22.542ms but fails pause
+speech: aggregate STOI0.983761 versus control0.991192, difference−0.007431.
+The series stops there; SFU2/3 and P2P3 were not run or counted as passed.
+All outcomes remain retained; acceptance limits stay unchanged.
+
+Offline clip analysis localizes the pause difference to marker30: individual
+STOI0.925720 versus0.986180, while the other five pause clips match control.
+There is no packet loss/concealment in that window. NetEq removes763 candidate
+samples versus249 control samples, an extra514 samples (10.708ms), around the
+synchronization-floor release. This supports investigating time scaling as a
+cause; the counters alone do not prove causation or qualify SDK5's correction.
+The synthetic control/candidate clips are retained locally for diagnosis. SDK5
+must independently pass the full speech, voice, A/V and encrypted-content gates.

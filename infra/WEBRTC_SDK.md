@@ -4,8 +4,9 @@
 130ms default was rejected by real SDK3 encrypted-SFU precursors (113.640ms and
 speech regression); its binary builds were cancelled and its45/9 C++ proof is
 retained. SDK3 fixed70 passes SFU but fails P2P recovery89.317ms. First SDK3
-fixed90 P2P/SFU precursors pass timing, speech and encryption; they are not SDK5
-qualification. Fresh SDK5 builds and the full native series remain required.
+fixed90 P2P/SFU precursors pass, but its second P2P pair fails pause speech by
+0.007431STOI. SDK5 C++46/46 plus10 negative regressions pass at run41955022535;
+its binary builds and full native media series remain required.
 
 The VoiceChat fork pins WebRTC150.7871.04, official builder/depot_tools and every
 original/patched source file in `webrtc-sdk.json`. The12-file vc5 patch retains

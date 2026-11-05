@@ -14441,5 +14441,245 @@
     "required_negative_regressions": 10,
     "native_media_qualified": false,
     "published_app_build": 62
+  },
+  "vc5_compiled_gate": {
+    "run": 41955022535,
+    "revision": "7339294e38d1c9c6db5d436d26267ed196a1dc0a",
+    "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671",
+    "actual_unit_tests": 46,
+    "actual_negative_regressions": 10,
+    "failures": 0,
+    "skips": 0,
+    "source_toolchain_receipt_verified": true,
+    "native_binary_builds": "in_progress",
+    "native_media_qualified": false
+  },
+  "factory90_precursor_series": {
+    "purpose": "SDK3 precursor only; NOT SDK5 or app acceptance",
+    "updated_utc": "2026-11-05T02:37:57.047059+00:00",
+    "records": [
+      {
+        "kind": "mirror",
+        "label": "current-vc3-factory90-mirror-diagnostic1",
+        "pass": true,
+        "timing": {
+          "schema": 1,
+          "outcome": "pass",
+          "recovery_transport": {
+            "pass": true,
+            "packet_deltas": {
+              "audio": 502,
+              "video": 1848
+            },
+            "decoded_video_frames": 206
+          },
+          "audio_checksum_markers": 57,
+          "matched_pairs": 57,
+          "shared_group": true,
+          "clean": {
+            "count": 8,
+            "max_abs_ms": 16.23841666150838,
+            "max_source_corrected_abs_ms": 15.306041663279757
+          },
+          "recovery": {
+            "count": 26,
+            "max_abs_ms": 19.22266666952055,
+            "max_source_corrected_abs_ms": 20.14525000413414
+          },
+          "max_source_offset_ms": 3.5314583365106955,
+          "max_all_source_offset_ms": 3.5314583365106955,
+          "physical_latency_measured": false,
+          "decoder_window_ms": 21.333333333333332,
+          "recovery_guard_after_seconds": 5
+        },
+        "speech": null,
+        "voice": null
+      },
+      {
+        "kind": "delay",
+        "label": "current-vc3-factory90-delay-diagnostic1",
+        "pass": true,
+        "timing": {
+          "schema": 1,
+          "outcome": "pass",
+          "recovery_transport": {
+            "pass": true,
+            "packet_deltas": {
+              "audio": 503,
+              "video": 1854
+            },
+            "decoded_video_frames": 206
+          },
+          "audio_checksum_markers": 63,
+          "matched_pairs": 62,
+          "shared_group": true,
+          "clean": {
+            "count": 8,
+            "max_abs_ms": 38.28145834268071,
+            "max_source_corrected_abs_ms": 36.13495833997149
+          },
+          "recovery": {
+            "count": 33,
+            "max_abs_ms": 18.40658333094325,
+            "max_source_corrected_abs_ms": 19.407041676458903
+          },
+          "max_source_offset_ms": 3.258416661992669,
+          "max_all_source_offset_ms": 3.258416661992669,
+          "physical_latency_measured": false,
+          "decoder_window_ms": 21.333333333333332,
+          "recovery_guard_after_seconds": 5
+        },
+        "speech": "pass",
+        "voice": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": -0.31091667187865824
+          },
+          "post_delay": {
+            "count": 4,
+            "max_added_voice_delay_ms": 22.92404166655615
+          },
+          "recovery": {
+            "count": 33,
+            "max_added_voice_delay_ms": 22.92404166655615
+          }
+        }
+      },
+      {
+        "kind": "p2p",
+        "label": "current-vc3-factory90-p2p-diagnostic2",
+        "pass": false,
+        "timing": {
+          "schema": 1,
+          "outcome": "pass",
+          "recovery_transport": {
+            "pass": true,
+            "packet_deltas": {
+              "audio": 503,
+              "video": 1866
+            },
+            "decoded_video_frames": 206
+          },
+          "audio_checksum_markers": 63,
+          "matched_pairs": 55,
+          "shared_group": true,
+          "clean": {
+            "count": 8,
+            "max_abs_ms": 37.00591665983666,
+            "max_source_corrected_abs_ms": 36.07720832224004
+          },
+          "recovery": {
+            "count": 26,
+            "max_abs_ms": 30.058500007726252,
+            "max_source_corrected_abs_ms": 31.237208342645317
+          },
+          "max_source_offset_ms": 4.380458340165205,
+          "max_all_source_offset_ms": 4.380458340165205,
+          "physical_latency_measured": false,
+          "decoder_window_ms": 21.333333333333332,
+          "recovery_guard_after_seconds": 5
+        },
+        "speech": "speech_regression",
+        "voice": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": -0.28320834098849446
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": -0.2714583242777735
+          },
+          "recovery": {
+            "count": 26,
+            "max_added_voice_delay_ms": 22.541500002262183
+          }
+        }
+      }
+    ],
+    "all_pass": false,
+    "complete": false
+  },
+  "factory90_pause_quality_diagnostic": {
+    "purpose": "SDK3 pause speech diagnostic, not an alternate acceptance metric",
+    "clips": [
+      {
+        "id": 30,
+        "control_stoi": 0.9861797459777234,
+        "candidate_stoi": 0.9257195536750891,
+        "delta": -0.06046019230263433,
+        "seconds_from_video_stop": 3.07673320833419
+      },
+      {
+        "id": 29,
+        "control_stoi": 0.9855781355614515,
+        "candidate_stoi": 0.9855781355614515,
+        "delta": 0.0,
+        "seconds_from_video_stop": 1.088986416652915
+      },
+      {
+        "id": 31,
+        "control_stoi": 0.9865071769352374,
+        "candidate_stoi": 0.9865071769352374,
+        "delta": 0.0,
+        "seconds_from_video_stop": 5.0652020833367715
+      },
+      {
+        "id": 32,
+        "control_stoi": 0.9935928557227337,
+        "candidate_stoi": 0.9935928557227337,
+        "delta": 0.0,
+        "seconds_from_video_stop": 7.065075916674687
+      },
+      {
+        "id": 33,
+        "control_stoi": 0.9934466067667004,
+        "candidate_stoi": 0.9934466067667004,
+        "delta": 0.0,
+        "seconds_from_video_stop": 9.066405749996193
+      },
+      {
+        "id": 34,
+        "control_stoi": 0.99302866418691,
+        "candidate_stoi": 0.99302866418691,
+        "delta": 0.0,
+        "seconds_from_video_stop": 11.076820916656288
+      }
+    ],
+    "neteq_counters": {
+      "candidate": [
+        {
+          "seconds_from_video_stop": 3.0143725416710367,
+          "delta": {
+            "insertedSamplesForDeceleration": 0,
+            "removedSamplesForAcceleration": 360,
+            "concealedSamples": 0,
+            "packetsLost": 0
+          }
+        },
+        {
+          "seconds_from_video_stop": 5.023808666664991,
+          "delta": {
+            "insertedSamplesForDeceleration": 0,
+            "removedSamplesForAcceleration": 403,
+            "concealedSamples": 0,
+            "packetsLost": 0
+          }
+        }
+      ],
+      "control": [
+        {
+          "seconds_from_video_stop": 5.023808666664991,
+          "delta": {
+            "insertedSamplesForDeceleration": 0,
+            "removedSamplesForAcceleration": 249,
+            "concealedSamples": 0,
+            "packetsLost": 0
+          }
+        }
+      ]
+    },
+    "inference": "Counter changes can associate quality loss with NetEq time scaling; they do not by themselves prove causation. SDK5 requires actual full new media tests."
   }
 }
