@@ -585,3 +585,19 @@ The12-file patch applies cleanly and all original/patched hashes match. No SDK4
 media result is claimed. SDK notices are also retained in final framework/APK
 resources; a packaging smoke on copied SDK3 preserves signatures and all original
 Android classes/JNI bytes. It is packaging evidence, not SDK4 runtime evidence.
+## Fresh vc4 C++ gate verified; native builds in progress
+
+Run41947763477/sourcee688a36 passes all45 native tests with zero failures/skips
+and all9 original-behaviour negative regressions. The downloaded receipt matches
+the exact12-file patch ea71b607 and every SDK/toolchain pin. macOS/Android binary
+builds have started; their9 configuration cases and media qualification remain
+pending. Application channels stay62.
+
+The SDK3 adaptive Android before-control initially stopped before measurement:
+the cross fixture skipped its video track but its default offer still advertised
+a recvonly video m-section. The receiver's strict audio-only SDP assertion caught
+this. The fixture now uses the existing explicit audio-only offer constraints
+for both negative and positive rounds. Analysis passes; the fresh ordinary audio-only native cross call
+passes, with both encryption-control rounds and live transport. The A/V candidate
+capture remains in progress. The failed setup and logs are retained separately and do
+not count as a media failure or successful SDK4 evidence.

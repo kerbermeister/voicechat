@@ -94,7 +94,16 @@ void main() {
 
       Future<void> negotiate(rtc.RTCPeerConnection pc, String round) async {
         if (sender) {
-          await pc.setLocalDescription(await pc.createOffer());
+          final localOffer = audioOnly
+              ? await pc.createOffer({
+                  'mandatory': {
+                    'OfferToReceiveAudio': true,
+                    'OfferToReceiveVideo': false,
+                  },
+                  'optional': <dynamic>[],
+                })
+              : await pc.createOffer();
+          await pc.setLocalDescription(localOffer);
           await gatherRelay(pc);
           final offer = (await pc.getLocalDescription())!;
           await labPost('/signal', {

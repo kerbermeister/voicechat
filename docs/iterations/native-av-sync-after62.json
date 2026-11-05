@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "date": "2026-11-04",
+  "date": "2026-11-05",
   "status": "published_livekit_104_native_p2p_open",
   "scope": "LiveKit; native P2P remains open",
   "policy": {
@@ -13856,5 +13856,26 @@
     },
     "compiled_sdk4": "not_built",
     "media": "not_run"
+  },
+  "vc4_compiled_gate": {
+    "run": 41947763477,
+    "revision": "e688a36c5643e945fa785ba7af363cc5379b48cd",
+    "patch_sha256": "ea71b6074213a9e7b288379c34194fd2febe8261fc055b7a9430e2a309474db1",
+    "unit_tests": 45,
+    "negative_regressions": 9,
+    "failures": 0,
+    "skips": 0,
+    "source_toolchain_receipt_verified": true,
+    "native_binary_builds": "in_progress",
+    "platform_configuration_tests": "pending",
+    "native_media_qualified": false,
+    "published_app_build": 62
+  },
+  "vc3_android_before_setup": {
+    "outcome": "fixture_setup_rejected_before_measurement",
+    "reason": "audio-only cross offer advertised recvonly video m-section",
+    "fix": "explicit existing audio-only offer constraints in both negotiation rounds",
+    "repeat": "ordinary audio-only native cross call passed; A/V candidate capture pending",
+    "sdk4_evidence": false
   }
 }
