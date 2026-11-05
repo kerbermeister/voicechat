@@ -601,3 +601,85 @@ for both negative and positive rounds. Analysis passes; the fresh ordinary audio
 passes, with both encryption-control rounds and live transport. The A/V candidate
 capture remains in progress. The failed setup and logs are retained separately and do
 not count as a media failure or successful SDK4 evidence.
+
+## SDK3 adaptive Android baseline completed
+
+A fresh ordinary audio-only call and a separate actual Mac-to-Android-emulator
+P2P video call pass: clean raw77.307/corrected78.279ms; recovery raw62.959/
+corrected62.070ms. All-source offset2.733ms; audio/video packets and206 decoded
+frames remain live in the final recovery window. Extra interval audio queue is
+70.000ms clean and11.795ms recovery; matched speech passes the unchanged0.005
+STOI/0.15dB limits. Both actual DTLS-SRTP negative/positive controls pass.
+This is one SDK3 adaptive diagnostic on the owned API35arm64 emulator, not SDK4
+qualification or physical Xiaomi acceptance. The Mac adaptive failures remain.
+A separate SDK3 LiveKit AES-GCM diagnostic is running while SDK4 binaries build.
+
+## SDK3 LiveKit: RTP130 alone still exceeds A/V budget
+
+A real native Mac LiveKit call with SDK3's adaptive factory and SFU RTP
+min=max130ms passes speech and actual AES-GCM controls: encrypted packets arrive
+without decoded media while the receiver lacks its key; installing the key
+produces checksum-protected audio/video and matched speech. Final recovery still
+has408 audio/653 video packets and201 decoded frames. A/V clean raw44.715/
+corrected45.541ms passes, but recovery raw96.001/corrected97.951ms fails.
+Source6.984ms is valid. This diagnostic used native factory override0: its130ms
+was the SFU RTP setting, not the new SDK default. No release gate is relaxed.
+A distinct SDK3 diagnostic with explicit native factory min=max130ms is running
+to test the proposed policy in the same real encrypted SFU path. SDK4 binaries
+and their own full qualification remain pending.
+
+## Global native130 rejected by real encrypted SFU diagnostics
+
+SDK3 plus explicit native factory130 fails independent-stream LiveKit: clean
+raw110.983ms/recovery113.640ms, and clean STOI regresses0.005879 beyond0.005.
+Actual AES-GCM controls pass. Measured video latency is176–179ms while natural
+audio is66–78ms: the fixed video floor overshoots independent audio. A distinct
+shared-sync130 call improves recovery to57.143ms, but clean81.013ms and speech
+still fail. Source offsets remain valid. Neither failed result is discarded.
+SDK4's global130 policy must not release on the earlier P2P diagnostic; its
+platform-build cancellation was requested, with its fresh45/9 C++ proof retained.
+
+Before capturing any new candidate, a70ms diagnostic protocol was recorded:
+it aims video near118ms, centered in the observed independent SFU audio65–147ms,
+without delaying ordinary speech. All old80ms/STOI0.005/level0.15dB/count gates
+remain. Test-only inputs now permit70ms; no app default or production service
+has changed. Three paired P2P and three AES-GCM SFU diagnostics are planned,
+retaining every attempt, followed by fresh binary qualification if accepted.
+The first70ms SFU diagnostic is running. This is a hypothesis, not a release.
+
+## Fixed70 diagnostic: SFU passes, P2P still fails; next diagnostic90
+
+The first SDK3 fixed70 AES-GCM SFU call passes: clean raw55.775/corrected56.766ms,
+recovery raw28.056/corrected31.153ms, speech and missing-key/positive-content
+controls. Mirrored audio-RTP interruption also passes raw/corrected recovery
+35.115/36.001ms. But the paired P2P video-RTP interruption fails recovery
+raw87.697/corrected89.317ms; speech and extra voice<=44.923ms pass. SDK70 is not
+accepted and no native default changed. Its planned repeats do not count as
+completed; a new90ms hypothesis is recorded before capture with the same gates.
+The pinned sender source uses WebRTC-ForceSendPlayoutDelay, a separate key from
+the receiver's WebRTC-ForcePlayoutDelay: the tested receiver default does not
+force outgoing RTP hints. The90ms paired diagnostic is now running. A common
+policy still requires both paths and every full native binary qualification.
+
+## SDK5 prepared: receive-relative render delay and90ms receiver default
+
+Both first SDK3 native90 precursor calls pass: P2P clean41.428/recovery34.827ms,
+extra voice<=10.785ms and speech/DTLS controls; SFU clean60.551/recovery62.765ms,
+speech and actual AES-GCM controls. These are diagnostics, not SDK5 evidence.
+
+Time-aligned70ms P2P clocks expose an additional mismatch: nominal video delay
+stays70ms while scheduled output for markers37/38/40 is−9.566/4.954/27.216ms
+from capture. Actual callback is6.108/13.480/18.683ms from capture. Thus the
+clamped buffer alone is not the remaining delay from the packet's arrival when
+the RTP extrapolator shifts after jitter. SDK5 uses the same RenderTime function
+as rendering and subtracts latest_receive_time, clipping expired schedules at0.
+A new actual timing regression tests arrival-relative20/110/0ms, missing clock
+fit and low-latency cases. CI must first reject the former nominal-buffer
+calculation, then pass all46 C++ tests and10 negative regressions. The80ms audio
+cap, stale reset, raw jitter estimate, codec/DSP/crypto/certificate logic remain.
+
+The SDK5 default is90ms receive-only, with explicit0/90/130 and malformed input
+behavior preserved. It is distinct from rejected old fixed90/split wrappers.
+The pinned sender reads a separate ForceSendPlayoutDelay key, so remote hints
+are not forced. Local Foundation9 cases pass; source/hash/apply and Python
+checks pass. SDK5 binary builds and actual media are still pending. App62 stays.

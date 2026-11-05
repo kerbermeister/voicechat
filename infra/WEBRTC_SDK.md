@@ -1,28 +1,38 @@
 # Native call synchronization SDK
 
-The VoiceChat fork pins WebRTC150.7871.04, its official builder/depot_tools and
-every original/patched source file in `webrtc-sdk.json`. The12-file vc4 patch
-retains vc3's effective rendering-delay calculation, stale synchronization-floor
-cleanup and80ms cap on synchronization-added audio buffering. Natural NetEq and
-device buffering, codecs, crypto and certificate validation remain unchanged.
+**Not release-qualified (2026-11-05).** Native app channels remain62. SDK4's
+130ms default was rejected by real SDK3 encrypted-SFU precursors (113.640ms and
+speech regression); its binary builds were cancelled and its45/9 C++ proof is
+retained. SDK3 fixed70 passes SFU but fails P2P recovery89.317ms. First SDK3
+fixed90 P2P/SFU precursors pass timing, speech and encryption; they are not SDK5
+qualification. Fresh SDK5 builds and the full native series remain required.
 
-Native initialization now supplies `WebRTC-ForcePlayoutDelay/min_ms:130,max_ms:130/`
-when the caller has not explicitly specified that field-trial key. This matches
-the existing SFU policy. Explicit0/90/130ms settings and other field trials remain
-intact; malformed input is left to the existing native validation. The hosted
-flutter_webrtc wrapper and its public API are unchanged. The Objective-C factory
-configuration and Android initialization-options builder apply this before their
-factory/transport is created; no live factory is reinitialized.
+The VoiceChat fork pins WebRTC150.7871.04, official builder/depot_tools and every
+original/patched source file in `webrtc-sdk.json`. The12-file vc5 patch retains
+vc3's bounded effective render calculation, stale synchronization-floor cleanup
+and80ms cap on synchronization-added audio buffering. It also reports the
+remaining video render wait from the latest packet's receive time. Relative
+network delay is already measured from packet arrival; using only the nominal
+buffer ignored shifts in the RTP-to-local-clock fit after jitter. Render times
+in the past, low-latency rendering and absent RTP fits report zero added wait.
+Natural NetEq/device buffers, codecs, crypto and certificate validation remain.
 
-The default is tested with9 cases per platform. macOS compiles and executes the
-actual configuration method/helper using Foundation, then checks the compiled
-SDK contains the policy. Android invokes the actual AAR initialization-options
-builder on the JVM with an inert Context type; no device APIs/native library run.
-These configuration checks do not claim media or physical-device acceptance.
-The CI also requires45 actual C++ timing/synchronization tests,9 negative
-regressions and zero skips. All source/toolchain pins must match the receipts;
-SDK3 evidence cannot substitute for a fresh vc4 gate. The macOS arm64 SDK and all
-three Android ABIs build only after the C++ gate.
+Native initialization supplies `WebRTC-ForcePlayoutDelay/min_ms:90,max_ms:90/`
+only when the caller has not specified that field-trial key. Explicit0/90/130ms,
+other trials and native invalid-input validation remain. This key affects the
+receiver; the pinned RTP sender uses separate WebRTC-ForceSendPlayoutDelay.
+No outgoing delay hint is forced. Hosted flutter_webrtc and its public API are
+unchanged. ObjC factory configuration and Java initialization-options builder
+apply the default before their factory/transport is created; no factory resets.
+
+The configuration has9 cases per platform. macOS compiles the actual method/
+helper using Foundation, then checks the compiled SDK policy. Android invokes
+the actual AAR builder on the JVM with an inert Context; no device/native API
+runs. These are configuration checks, not media/device acceptance. CI requires
+46 actual C++ tests,10 negative regressions and zero skips. The new test covers
+arrival later/earlier than the extrapolated clock, overdue frames, absent clock
+fit and low-latency rendering. Every source/toolchain receipt must match; older
+SDK proof cannot qualify vc5. Mac arm64 and Android3ABIs build after that gate.
 
 Use an isolated runner with at least18GB free, Python3.11+ and the official tools:
 
@@ -55,10 +65,8 @@ least4 matched speech clips per phase remain unchanged. Missing evidence does
 not qualify. Physical devices and acoustic/display latency are separate evidence.
 The sole user acceptance entry is [UA-08.C06](../docs/user-acceptance.md).
 
-Rejected evidence is retained: vc1 Android recovery416.472ms; vc2 Mac voice
-+1165.610ms and continuous-RTP A/V1878.354ms. vc3 fixes accumulated voice delay
-and passes speech, but adaptive Mac recovery still reaches99.364/100.681ms.
-One vc3 diagnostic with native130ms passes A/V59.138ms clean/53.484ms recovery,
-added voice<=23.166ms and speech. This motivates vc4's native defaults; it is not
-vc4 qualification. Fresh compiled vc4 SDKs, full native media series and signed
-application updates remain required. Public Mac/Android channels remain62.
+Failed trials and all policy comparisons remain in the technical iteration
+journal. Native90 is a candidate plus a new render-delay correction, not the
+previous rejected fixed90/split-stream wrapper. It retains shared P2P streams.
+Fresh compiled vc5 SDKs, full native P2P/SFU/voice/speech/crypto/mirror/delay series
+and signed app updates are required. Public Mac/Android channels remain62.

@@ -8,10 +8,10 @@ import subprocess
 import tempfile
 import zipfile
 
-DEFAULT = 'WebRTC-ForcePlayoutDelay/min_ms:130,max_ms:130/'
+DEFAULT = 'WebRTC-ForcePlayoutDelay/min_ms:90,max_ms:90/'
 CASES = [
     ('', DEFAULT),
-    (DEFAULT, DEFAULT),
+    ('WebRTC-ForcePlayoutDelay/min_ms:130,max_ms:130/', 'WebRTC-ForcePlayoutDelay/min_ms:130,max_ms:130/'),
     ('WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:0/', 'WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:0/'),
     ('WebRTC-IceHandshakeDtls/Enabled/', 'WebRTC-IceHandshakeDtls/Enabled/' + DEFAULT),
     ('Other/WebRTC-ForcePlayoutDelay/', 'Other/WebRTC-ForcePlayoutDelay/' + DEFAULT),

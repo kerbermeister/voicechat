@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "ea71b6074213a9e7b288379c34194fd2febe8261fc055b7a9430e2a309474db1",
+  "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -18,24 +18,24 @@
     "sdk/android/api/org/webrtc/PeerConnectionFactory.java": "4941b8943ef42e0512c20947f85f8d0cfd225732b99b9ccb39703b2c912fa0b3"
   },
   "patched_files_sha256": {
-    "modules/video_coding/timing/timing.h": "ea88070498b2aca81a4ca2934a9a905527da1fdfb6dcd0ce122656bbdd69c95f",
-    "modules/video_coding/timing/timing.cc": "30bd3ae51a98a2b49ab627a35ae834da9b492224632443107c30c906a9e70931",
-    "modules/video_coding/timing/timing_unittest.cc": "30fe773ff7e9bd68d809dbf3f86d39344b536f541a8cf9759b7823986743561c",
-    "video/video_receive_stream2.cc": "b3456a386ebf9ba46b976d4b9d3a8dfb334723f20d0915aa8debfda013ff287f",
+    "modules/video_coding/timing/timing.h": "6bce31b362c5ede3e367e11408cbd771763a4d97981d79a76468295b8d61c74c",
+    "modules/video_coding/timing/timing.cc": "35174c55b3d046fa1684b8bbc69cd7fad693ecf6d543dcf4c06a188f96585a3e",
+    "modules/video_coding/timing/timing_unittest.cc": "da57d5c2b72e9c20a48172758bb999efda66f483f1ff84cf78c3828ebbfb8ca7",
+    "video/video_receive_stream2.cc": "005b82fff3938536366d43edadf676eff586c51f6af1b14e6be71b5cac05cab6",
     "video/rtp_streams_synchronizer2.h": "9447bc9392b92cf68db9a52cd8303b4320c265b2d7a36512eb26a4dc7c66346d",
     "video/rtp_streams_synchronizer2.cc": "00f540ac4ba8f14280c058770b8a4cfc874bdace8283f7b6764bd53bd12c8a93",
     "video/stream_synchronization_unittest.cc": "fdd9820663b268b8236201a26a27d64fec422a98468d9d7d3fc54f09be9a409a",
     "video/BUILD.gn": "ada847d6c82f6044d7e03aa840305ce749ceb29c041b008b2c9178788faa8bd5",
     "video/stream_synchronization.h": "7a13f217fc2e654fab7bda33fcaf487fde5f9fb645f0fd1d74ea453182535272",
     "video/stream_synchronization.cc": "6bae4a83b2c9c5ff0117b1f1090f161d295441a33e485fe798e47676297f9825",
-    "sdk/objc/api/peerconnection/RTCPeerConnectionFactory.mm": "2112f862fa48022997d7b134a87f2dc60807db0ceddf3524148fbb8d34cbfbf5",
-    "sdk/android/api/org/webrtc/PeerConnectionFactory.java": "bcd80d3a449abe9ec2095f5aab83b28371aec638355be5f4406e41f644cb158f"
+    "sdk/objc/api/peerconnection/RTCPeerConnectionFactory.mm": "bdd657661043dcceaa25d76e892518f04d6ab556aa1b2d82328e0b48baed131b",
+    "sdk/android/api/org/webrtc/PeerConnectionFactory.java": "7d004a63b6b7da7b6db62637072b6655a906e7be17533202d4a7aa2f97558132"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*",
   "regression_filter": "VCMTimingTest.SyncDelay*:RtpStreamsSynchronizerTest.*",
-  "release_artifact_version": "150.7871.04-vc4",
+  "release_artifact_version": "150.7871.04-vc5",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
-  "unit_test_count": 45,
+  "unit_test_count": 46,
   "regressions": [
     "VCMTimingTest.SyncDelayUsesCurrentDelayAfterVideoJitter",
     "VCMTimingTest.SyncDelayRespectsBoundsAndAudioDeviceMinimum",
@@ -45,8 +45,9 @@
     "RtpStreamsSynchronizerTest.ReleasesFloorsWhenInfoDisappears",
     "RtpStreamsSynchronizerTest.DetachAndReassignReleaseOldFloors",
     "RtpStreamsSynchronizerTest.DestructionReleasesAudioFloor",
-    "RtpStreamsSynchronizerTest.CapsOnlyAddedAudioSynchronizationDelay"
+    "RtpStreamsSynchronizerTest.CapsOnlyAddedAudioSynchronizationDelay",
+    "VCMTimingTest.SyncDelayMeasuresRenderScheduleFromPacketReceipt"
   ],
-  "native_video_playout_ms": 130,
+  "native_video_playout_ms": 90,
   "platform_policy_test_count": 9
 }

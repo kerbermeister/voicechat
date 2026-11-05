@@ -9,6 +9,18 @@
      TimeDelta StatsTargetDelay() const;
      // Returns whether the low-latency path should be used, i.e., frames should
      // be decoded and rendered as soon as possible.
+@@ -102,6 +104,11 @@
+   // should be rendered, assuming that the system time currently is `now`.
+   Timestamp RenderTime(uint32_t rtp_timestamp, Timestamp now) const;
+
++  // Relative network delay is already measured from the last packet's arrival.
++  // Report the remaining render wait, including the RTP extrapolator's offset.
++  TimeDelta CurrentDelayFromReceive(uint32_t rtp_timestamp,
++                                   Timestamp receive_time) const;
++
+   // Returns the current target delay which is minimum delay + decode time +
+   // render delay.
+   TimeDelta TargetVideoDelay() const;
 --- a/modules/video_coding/timing/timing.cc
 +++ b/modules/video_coding/timing/timing.cc
 @@ -65,6 +65,13 @@
@@ -25,7 +37,7 @@
  TimeDelta VCMTiming::VideoDelayTimings::StatsTargetDelay() const {
    TimeDelta delay = TargetDelay() - (estimated_max_decode_time + render_delay);
    return std::max(TimeDelta::Zero(), delay);
-@@ -170,9 +177,7 @@
+@@ -170,9 +177,13 @@
    if (!local_time.has_value()) {
      return now;
    }
@@ -33,15 +45,52 @@
 -                                  timings_.min_playout_delay,
 -                                  timings_.max_playout_delay);
 +  return *local_time + timings_.CurrentDelay();
++}
++
++TimeDelta VCMTiming::CurrentDelayFromReceive(uint32_t rtp_timestamp,
++                                           Timestamp receive_time) const {
++  return std::max(TimeDelta::Zero(),
++                  RenderTime(rtp_timestamp, receive_time) - receive_time);
  }
 
  TimeDelta VCMTiming::TargetVideoDelay() const {
 --- a/modules/video_coding/timing/timing_unittest.cc
 +++ b/modules/video_coding/timing/timing_unittest.cc
-@@ -482,5 +482,42 @@
+@@ -482,5 +482,73 @@
    EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
  }
 
++TEST(VCMTimingTest, SyncDelayMeasuresRenderScheduleFromPacketReceipt) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Millis(70)});
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++  clock.AdvanceTime(TimeDelta::Millis(60));
++
++  // The RTP clock predicts capture at 1010 ms and rendering at 1080 ms.
++  // Arrival at 1060 ms after a network change leaves only 20 ms to render.
++  EXPECT_EQ(timing.RenderTime(90900, clock.CurrentTime()),
++            Timestamp::Millis(1080));
++  EXPECT_EQ(timing.CurrentDelayFromReceive(90900, clock.CurrentTime()),
++            TimeDelta::Millis(20));
++  // Earlier arrival than the fitted RTP clock leaves a longer render wait.
++  EXPECT_EQ(timing.CurrentDelayFromReceive(99000, clock.CurrentTime()),
++            TimeDelta::Millis(110));
++
++  clock.AdvanceTime(TimeDelta::Millis(40));
++  EXPECT_EQ(timing.CurrentDelayFromReceive(90900, clock.CurrentTime()),
++            TimeDelta::Zero());
++  // No fitted RTP clock and low-latency rendering must not delay audio.
++  VCMTiming unsampled(&clock, field_trials);
++  unsampled.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Millis(70)});
++  EXPECT_EQ(unsampled.CurrentDelayFromReceive(90900, clock.CurrentTime()),
++            TimeDelta::Zero());
++  timing.set_playout_delay({TimeDelta::Zero(), TimeDelta::Millis(130)});
++  EXPECT_EQ(timing.CurrentDelayFromReceive(90900, clock.CurrentTime()),
++            TimeDelta::Zero());
++}
++
 +TEST(VCMTimingTest, SyncDelayUsesCurrentDelayAfterVideoJitter) {
 +  FieldTrials field_trials = CreateTestFieldTrials();
 +  SimulatedClock clock(0);
@@ -83,12 +132,13 @@
  }  // namespace webrtc
 --- a/video/video_receive_stream2.cc
 +++ b/video/video_receive_stream2.cc
-@@ -810,7 +810,7 @@
+@@ -810,7 +810,8 @@
    if (!info)
      return std::nullopt;
 
 -  info->current_delay = timing_->TargetVideoDelay();
-+  info->current_delay = timing_->GetTimings().CurrentDelay();
++  info->current_delay = timing_->CurrentDelayFromReceive(
++      info->latest_received_capture_rtp_timestamp, info->latest_receive_time);
    return info;
  }
 
@@ -545,11 +595,11 @@
  #import "sdk/objc/native/api/audio_device_module.h"
  #endif
 +
-+// Match the call's video buffer to the existing 130 ms SFU policy without
-+// changing codecs, audio processing or an explicitly configured video delay.
++// Bound receiver video buffering while keeping ordinary speech responsive.
++// Explicit settings, codecs and audio processing remain unchanged.
 +static NSString *FieldTrialsWithDefaultVideoPlayout(NSString *fieldTrials) {
 +  NSString *trials = fieldTrials ?: @"";
-+  NSString *defaultTrial = @"WebRTC-ForcePlayoutDelay/min_ms:130,max_ms:130/";
++  NSString *defaultTrial = @"WebRTC-ForcePlayoutDelay/min_ms:90,max_ms:90/";
 +  if (trials.length == 0) return defaultTrial;
 +  NSArray<NSString *> *parts = [trials componentsSeparatedByString:@"/"];
 +  if (parts.count % 2 == 0 || ![trials hasSuffix:@"/"]) return trials;
@@ -581,7 +631,7 @@
 +    // Preserve explicit options and the native parser's validation of bad input.
 +    private static String withDefaultVideoPlayout(String trials) {
 +      if (trials == null) return null;
-+      String defaultTrial = "WebRTC-ForcePlayoutDelay/min_ms:130,max_ms:130/";
++      String defaultTrial = "WebRTC-ForcePlayoutDelay/min_ms:90,max_ms:90/";
 +      if (trials.isEmpty()) return defaultTrial;
 +      String[] parts = trials.split("/", -1);
 +      if (parts.length % 2 == 0 || !trials.endsWith("/")) return trials;

@@ -13866,7 +13866,7 @@
     "failures": 0,
     "skips": 0,
     "source_toolchain_receipt_verified": true,
-    "native_binary_builds": "in_progress",
+    "native_binary_builds": "cancellation requested after precursor fixed130 SFU timing/speech failures; do not release global130 default",
     "platform_configuration_tests": "pending",
     "native_media_qualified": false,
     "published_app_build": 62
@@ -13875,7 +13875,571 @@
     "outcome": "fixture_setup_rejected_before_measurement",
     "reason": "audio-only cross offer advertised recvonly video m-section",
     "fix": "explicit existing audio-only offer constraints in both negotiation rounds",
-    "repeat": "ordinary audio-only native cross call passed; A/V candidate capture pending",
+    "repeat": "ordinary audio-only and A/V calls pass; raw/source-corrected timing, speech and interval audio-queue gates pass",
     "sdk4_evidence": false
+  },
+  "vc3_android_adaptive_diagnostic": {
+    "date_utc": "2026-11-05T01:45:13.131847+00:00",
+    "purpose": "SDK3 adaptive Android baseline; NOT SDK4 qualification",
+    "physical_device": false,
+    "identity": {
+      "jni_sha256": "e6adfbf174103610cc00e0a55b99ce733fe556042346a2b8974ee8d05abe6638",
+      "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0",
+      "sender_sdk_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+      "sender_sdk": "patched"
+    },
+    "timing": {
+      "schema": 1,
+      "outcome": "pass",
+      "recovery_transport": {
+        "pass": true,
+        "packet_deltas": {
+          "audio": 503,
+          "video": 1377
+        },
+        "decoded_video_frames": 206
+      },
+      "audio_checksum_markers": 65,
+      "matched_pairs": 58,
+      "shared_group": true,
+      "clean": {
+        "count": 8,
+        "max_abs_ms": 77.30745900002489,
+        "max_source_corrected_abs_ms": 78.27870900322864
+      },
+      "recovery": {
+        "count": 26,
+        "max_abs_ms": 62.959333999998535,
+        "max_source_corrected_abs_ms": 62.0702089964027
+      },
+      "max_source_offset_ms": 1.164208326372318,
+      "max_all_source_offset_ms": 2.732124994508922,
+      "physical_latency_measured": false,
+      "decoder_window_ms": 21.333333333333332,
+      "recovery_guard_after_seconds": 5
+    },
+    "voice_queue": {
+      "pass": true,
+      "clean": {
+        "count": 16,
+        "control_median_ms": 60.200000000000045,
+        "candidate_max_ms": 130.2000000000001,
+        "max_added_queue_ms": 70.00000000000006
+      },
+      "video_paused": {
+        "count": 8,
+        "control_median_ms": 69.29999999999987,
+        "candidate_max_ms": 81.17647058823577,
+        "max_added_queue_ms": 11.876470588235904
+      },
+      "recovery": {
+        "count": 54,
+        "control_median_ms": 69.80588235294059,
+        "candidate_max_ms": 81.60000000000097,
+        "max_added_queue_ms": 11.79411764706039
+      }
+    },
+    "speech": "pass",
+    "all_gates_pass": true
+  },
+  "vc3_sfu_adaptive_factory_diagnostic": {
+    "date_utc": "2026-11-05T01:48:20.635789+00:00",
+    "purpose": "SDK3 real LiveKit diagnostic; NOT SDK4 qualification or app release",
+    "identity": {
+      "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+      "sdk_binary_sha256": "0e5d0341dd61f62532c43c4b6fa8928ed211313e4ce2020142ea6417218a3a65",
+      "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0"
+    },
+    "timing": {
+      "schema": 1,
+      "outcome": "budget_exceeded",
+      "recovery_transport": {
+        "pass": true,
+        "packet_deltas": {
+          "audio": 408,
+          "video": 653
+        },
+        "decoded_video_frames": 201
+      },
+      "audio_checksum_markers": 61,
+      "matched_pairs": 54,
+      "shared_group": false,
+      "clean": {
+        "count": 7,
+        "max_abs_ms": 44.71541667589918,
+        "max_source_corrected_abs_ms": 45.540958337369375
+      },
+      "recovery": {
+        "count": 27,
+        "max_abs_ms": 96.00141667760909,
+        "max_source_corrected_abs_ms": 97.95079167815857
+      },
+      "max_source_offset_ms": 6.983833329286426,
+      "max_all_source_offset_ms": 6.983833329286426,
+      "physical_latency_measured": false,
+      "decoder_window_ms": 21.333333333333332,
+      "recovery_guard_after_seconds": 5
+    },
+    "speech": "pass",
+    "missing_key_gate": {
+      "content": {
+        "audio_peak": 0.0,
+        "video_markers": 0,
+        "audio_chunks": 294
+      },
+      "audio": {
+        "packets": 127,
+        "decoded": 0
+      },
+      "video": {
+        "packets": 170,
+        "decoded": 0
+      }
+    },
+    "encrypted_publications": true,
+    "all_diagnostic_gates_pass": false,
+    "policy_scope": "SDK3 adaptive native factory; SFU RTP130min=max only, NOT explicit factory130",
+    "native_factory_video_playout_ms": 0,
+    "sfu_rtp_video_playout_ms": 130
+  },
+  "vc3_sfu_factory130_diagnostic": {
+    "date_utc": "2026-11-05T01:51:53.821348+00:00",
+    "purpose": "SDK3 real LiveKit diagnostic; NOT SDK4 qualification or app release",
+    "identity": {
+      "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+      "sdk_binary_sha256": "0e5d0341dd61f62532c43c4b6fa8928ed211313e4ce2020142ea6417218a3a65",
+      "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0"
+    },
+    "timing": {
+      "schema": 1,
+      "outcome": "budget_exceeded",
+      "recovery_transport": {
+        "pass": true,
+        "packet_deltas": {
+          "audio": 408,
+          "video": 638
+        },
+        "decoded_video_frames": 201
+      },
+      "audio_checksum_markers": 61,
+      "matched_pairs": 54,
+      "shared_group": false,
+      "clean": {
+        "count": 8,
+        "max_abs_ms": 110.98312500689644,
+        "max_source_corrected_abs_ms": 110.09104168624617
+      },
+      "recovery": {
+        "count": 27,
+        "max_abs_ms": 113.63970833190251,
+        "max_source_corrected_abs_ms": 112.43779165670276
+      },
+      "max_source_offset_ms": 5.019666670705192,
+      "max_all_source_offset_ms": 5.019666670705192,
+      "physical_latency_measured": false,
+      "decoder_window_ms": 21.333333333333332,
+      "recovery_guard_after_seconds": 5
+    },
+    "speech": "speech_regression",
+    "missing_key_gate": {
+      "content": {
+        "video_markers": 0,
+        "audio_chunks": 299,
+        "audio_peak": 0.0
+      },
+      "audio": {
+        "packets": 132,
+        "decoded": 0
+      },
+      "video": {
+        "packets": 177,
+        "decoded": 0
+      }
+    },
+    "encrypted_publications": true,
+    "native_factory_video_playout_ms": 130,
+    "sfu_rtp_video_playout_ms": 130,
+    "all_diagnostic_gates_pass": false
+  },
+  "vc3_sfu_shared130_diagnostic": {
+    "date_utc": "2026-11-05T01:59:02.600948+00:00",
+    "purpose": "SDK3 real LiveKit diagnostic; NOT SDK4 qualification or app release",
+    "identity": {
+      "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+      "sdk_binary_sha256": "0e5d0341dd61f62532c43c4b6fa8928ed211313e4ce2020142ea6417218a3a65",
+      "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0"
+    },
+    "timing": {
+      "schema": 1,
+      "outcome": "budget_exceeded",
+      "recovery_transport": {
+        "pass": true,
+        "packet_deltas": {
+          "audio": 407,
+          "video": 651
+        },
+        "decoded_video_frames": 201
+      },
+      "audio_checksum_markers": 61,
+      "matched_pairs": 54,
+      "shared_group": true,
+      "clean": {
+        "count": 8,
+        "max_abs_ms": 81.01325000461657,
+        "max_source_corrected_abs_ms": 79.96516667481046
+      },
+      "recovery": {
+        "count": 27,
+        "max_abs_ms": 57.1429583360441,
+        "max_source_corrected_abs_ms": 56.29308334027883
+      },
+      "max_source_offset_ms": 1.1411666637286544,
+      "max_all_source_offset_ms": 1.1411666637286544,
+      "physical_latency_measured": false,
+      "decoder_window_ms": 21.333333333333332,
+      "recovery_guard_after_seconds": 5
+    },
+    "speech": "speech_regression",
+    "missing_key_gate": {
+      "content": {
+        "audio_chunks": 300,
+        "video_markers": 0,
+        "audio_peak": 0.0
+      },
+      "audio": {
+        "packets": 132,
+        "decoded": 0
+      },
+      "video": {
+        "packets": 173,
+        "decoded": 0
+      }
+    },
+    "encrypted_publications": true,
+    "shared_group": true,
+    "native_factory_video_playout_ms": 130,
+    "sfu_rtp_video_playout_ms": 130,
+    "all_diagnostic_gates_pass": false
+  },
+  "factory70_diagnostic_protocol": {
+    "date_utc": "2026-11-05T01:58:27.611239+00:00",
+    "candidate": "SDK3 core, native factory fixed70ms, no production change",
+    "reason": "Measured SFU independent audio65..147ms and video~50ms; fixed130 makes video~178ms and fails110..114ms budget.70ms aims video~118ms centered in observed natural audio range, without delaying ordinary audio. Candidate must pass unchanged gates; not declared a fix.",
+    "qualification": "three Mac P2P paired controls and three actual AES-GCM LiveKit diagnostics, retain all attempts; repeat full fresh native binary qualification on chosen final policy",
+    "strict_limits": {
+      "av_raw_and_source_corrected_ms": 80,
+      "extra_voice_delay_ms": 80,
+      "stoi_margin": 0.005,
+      "rms_tolerance_db": 0.15,
+      "minimum_speech_clips_per_phase": 4
+    },
+    "prior_factory130_sfu_result": "FAIL timing113.640ms and cleanSTOI -0.005879; E2EEpass",
+    "sdk4_release_qualified": false
+  },
+  "factory70_diagnostics": {
+    "current-vc3-factory70-sfu-diagnostic1": {
+      "date_utc": "2026-11-05T02:02:25.490216+00:00",
+      "purpose": "SDK3 real LiveKit diagnostic; NOT SDK4 qualification or app release",
+      "identity": {
+        "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+        "sdk_binary_sha256": "0e5d0341dd61f62532c43c4b6fa8928ed211313e4ce2020142ea6417218a3a65",
+        "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0"
+      },
+      "timing": {
+        "schema": 1,
+        "outcome": "pass",
+        "recovery_transport": {
+          "pass": true,
+          "packet_deltas": {
+            "audio": 408,
+            "video": 649
+          },
+          "decoded_video_frames": 201
+        },
+        "audio_checksum_markers": 61,
+        "matched_pairs": 54,
+        "shared_group": false,
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 55.77474999881815,
+          "max_source_corrected_abs_ms": 56.76554166711867
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 28.055250004399568,
+          "max_source_corrected_abs_ms": 31.152750001638196
+        },
+        "max_source_offset_ms": 3.332749998662621,
+        "max_all_source_offset_ms": 3.332749998662621,
+        "physical_latency_measured": false,
+        "decoder_window_ms": 21.333333333333332,
+        "recovery_guard_after_seconds": 5
+      },
+      "speech": "pass",
+      "missing_key_gate": {
+        "content": {
+          "video_markers": 0,
+          "audio_peak": 0.0,
+          "audio_chunks": 299
+        },
+        "audio": {
+          "packets": 132,
+          "decoded": 0
+        },
+        "video": {
+          "packets": 169,
+          "decoded": 0
+        }
+      },
+      "encrypted_publications": true,
+      "native_factory_video_playout_ms": 70,
+      "sfu_rtp_video_playout_ms": 130,
+      "all_diagnostic_gates_pass": true
+    },
+    "current-vc3-factory70-p2p-diagnostic1": {
+      "date_utc": "2026-11-05T02:05:46.987429+00:00",
+      "purpose": "Diagnostic, not application qualification",
+      "sdk_identity": {
+        "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+        "sdk_binary_sha256": "0e5d0341dd61f62532c43c4b6fa8928ed211313e4ce2020142ea6417218a3a65",
+        "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0"
+      },
+      "playout_ms": 70,
+      "minimum_playout_ms": 70,
+      "timing": {
+        "schema": 1,
+        "outcome": "budget_exceeded",
+        "recovery_transport": {
+          "pass": true,
+          "packet_deltas": {
+            "audio": 503,
+            "video": 1876
+          },
+          "decoded_video_frames": 207
+        },
+        "audio_checksum_markers": 64,
+        "matched_pairs": 55,
+        "shared_group": true,
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 17.72599999094382,
+          "max_source_corrected_abs_ms": 18.604666664032266
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 87.69633331394289,
+          "max_source_corrected_abs_ms": 89.31691665202379
+        },
+        "max_source_offset_ms": 3.451708340435289,
+        "max_all_source_offset_ms": 3.451708340435289,
+        "physical_latency_measured": false,
+        "decoder_window_ms": 21.333333333333332,
+        "recovery_guard_after_seconds": 5
+      },
+      "voice_latency": {
+        "pass": true,
+        "clean": {
+          "count": 8,
+          "max_added_voice_delay_ms": 22.509083326440305
+        },
+        "video_paused": {
+          "count": 4,
+          "max_added_voice_delay_ms": 44.81445833516773
+        },
+        "recovery": {
+          "count": 27,
+          "max_added_voice_delay_ms": 44.922666653292254
+        }
+      },
+      "speech": "pass",
+      "all_gates_pass": false
+    },
+    "current-vc3-factory70-mirror-diagnostic1": {
+      "date_utc": "2026-11-05T02:10:25.583822+00:00",
+      "purpose": "SDK3 fixed70 mirrored audio RTP stall diagnostic; NOT SDK5 or app acceptance",
+      "identity": {
+        "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+        "sdk_binary_sha256": "0e5d0341dd61f62532c43c4b6fa8928ed211313e4ce2020142ea6417218a3a65",
+        "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0"
+      },
+      "factory_playout_ms": 70,
+      "timing": {
+        "schema": 1,
+        "outcome": "pass",
+        "recovery_transport": {
+          "pass": true,
+          "packet_deltas": {
+            "audio": 502,
+            "video": 1859
+          },
+          "decoded_video_frames": 206
+        },
+        "audio_checksum_markers": 56,
+        "matched_pairs": 56,
+        "shared_group": true,
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 14.001499992446043,
+          "max_source_corrected_abs_ms": 14.93341664900072
+        },
+        "recovery": {
+          "count": 26,
+          "max_abs_ms": 35.11450000223704,
+          "max_source_corrected_abs_ms": 36.00070833635982
+        },
+        "max_source_offset_ms": 4.235791668179445,
+        "max_all_source_offset_ms": 4.235791668179445,
+        "physical_latency_measured": false,
+        "decoder_window_ms": 21.333333333333332,
+        "recovery_guard_after_seconds": 5
+      },
+      "speech_comparison": "not performed in mirror diagnostic; separate paired tests required",
+      "pass": true
+    }
+  },
+  "factory90_diagnostic_protocol": {
+    "date_utc": "2026-11-05T02:10:24.720213+00:00",
+    "candidate": "SDK3 bounded core, existing native receiver ForcePlayoutDelay min=max90ms",
+    "basis": "130ms passes P2P but SFU independent audio/video113.640ms and speech fail.70ms passes SFU56.766/31.153ms but P2P recovery89.317ms fails.90ms is selected before capture to shift P2P video later and SFU video earlier. No budget or speech threshold changes.",
+    "sender_compatibility": "Pinned RTP sender uses separate WebRTC-ForceSendPlayoutDelay, so receiver ForcePlayoutDelay does not force outgoing hints. Source checked before design.",
+    "planned": "three paired P2P, three AES-GCM SFU, mirrored audio stalls and continuous-RTP delay; retain all; fresh binary qualification required if candidate accepted",
+    "strict_limits": {
+      "raw_and_corrected_ms": 80,
+      "extra_voice_ms": 80,
+      "stoi_margin": 0.005,
+      "level_db": 0.15,
+      "minimum_matched_clips_per_phase": 4
+    },
+    "app_release_qualified": false
+  },
+  "factory90_diagnostics": {
+    "current-vc3-factory90-p2p-diagnostic1": {
+      "date_utc": "2026-11-05T02:14:39.445171+00:00",
+      "purpose": "Diagnostic, not application qualification",
+      "sdk_identity": {
+        "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+        "sdk_binary_sha256": "0e5d0341dd61f62532c43c4b6fa8928ed211313e4ce2020142ea6417218a3a65",
+        "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0"
+      },
+      "playout_ms": 90,
+      "minimum_playout_ms": 90,
+      "timing": {
+        "schema": 1,
+        "outcome": "pass",
+        "recovery_transport": {
+          "pass": true,
+          "packet_deltas": {
+            "audio": 503,
+            "video": 1874
+          },
+          "decoded_video_frames": 206
+        },
+        "audio_checksum_markers": 64,
+        "matched_pairs": 56,
+        "shared_group": true,
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 41.427083328017034,
+          "max_source_corrected_abs_ms": 38.91216666670516
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 32.44391665793955,
+          "max_source_corrected_abs_ms": 34.826124989194795
+        },
+        "max_source_offset_ms": 3.5132083285134286,
+        "max_all_source_offset_ms": 3.5132083285134286,
+        "physical_latency_measured": false,
+        "decoder_window_ms": 21.333333333333332,
+        "recovery_guard_after_seconds": 5
+      },
+      "voice_latency": {
+        "pass": true,
+        "clean": {
+          "count": 8,
+          "max_added_voice_delay_ms": 10.753083333838731
+        },
+        "video_paused": {
+          "count": 4,
+          "max_added_voice_delay_ms": 10.529625011258759
+        },
+        "recovery": {
+          "count": 27,
+          "max_added_voice_delay_ms": 10.784666665131226
+        }
+      },
+      "speech": "pass",
+      "all_gates_pass": true
+    },
+    "current-vc3-factory90-sfu-diagnostic1": {
+      "date_utc": "2026-11-05T02:18:24.876358+00:00",
+      "purpose": "SDK3 real LiveKit diagnostic; NOT SDK4 qualification or app release",
+      "identity": {
+        "arm64_uuid": "50a0c7b4-176b-3f63-b31e-2584b0ac50c7",
+        "sdk_binary_sha256": "0e5d0341dd61f62532c43c4b6fa8928ed211313e4ce2020142ea6417218a3a65",
+        "patch_sha256": "17965b9e43ac6b62fabe52ef5232eef8c3d0e614bbf0f92660ee82e21f0353f0"
+      },
+      "timing": {
+        "schema": 1,
+        "outcome": "pass",
+        "recovery_transport": {
+          "pass": true,
+          "packet_deltas": {
+            "audio": 408,
+            "video": 650
+          },
+          "decoded_video_frames": 201
+        },
+        "audio_checksum_markers": 61,
+        "matched_pairs": 54,
+        "shared_group": false,
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 60.55062499945052,
+          "max_source_corrected_abs_ms": 59.538875008001924
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 62.76412500301376,
+          "max_source_corrected_abs_ms": 61.881708330474794
+        },
+        "max_source_offset_ms": 3.3306666591670364,
+        "max_all_source_offset_ms": 3.3306666591670364,
+        "physical_latency_measured": false,
+        "decoder_window_ms": 21.333333333333332,
+        "recovery_guard_after_seconds": 5
+      },
+      "speech": "pass",
+      "missing_key_gate": {
+        "content": {
+          "audio_peak": 0.0,
+          "video_markers": 0,
+          "audio_chunks": 300
+        },
+        "audio": {
+          "packets": 132,
+          "decoded": 0
+        },
+        "video": {
+          "packets": 176,
+          "decoded": 0
+        }
+      },
+      "encrypted_publications": true,
+      "native_factory_video_playout_ms": 90,
+      "sfu_rtp_video_playout_ms": 130,
+      "all_diagnostic_gates_pass": true
+    }
+  },
+  "vc5_prepared": {
+    "version": "150.7871.04-vc5",
+    "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671",
+    "source_files": 12,
+    "new_root_correction": "current video playout from RenderTime(latest RTP)-latest_receive_time, clipped at0; avoids ignoring extrapolator shift",
+    "local_macos_configuration_cases_pass": 9,
+    "required_cpp_tests": 46,
+    "required_negative_regressions": 10,
+    "native_media_qualified": false,
+    "published_app_build": 62
   }
 }

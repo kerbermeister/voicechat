@@ -31,5 +31,5 @@
       "build_revision": "3c68506eacca3762f17d94b3dcc08c7819a4936c"
     }
   },
-  "qualification_status": "NOT QUALIFIED for application updates: initial Mac vc3 recovery A/V99.364ms fails80ms; voice<=10.929ms and speech pass. Native rendering diagnosis; Android/FrameCryptor media pending."
+  "qualification_status": "NOT QUALIFIED for application updates: SDK3 adaptive Mac recovery99/100ms fails. SDK3 Android adaptive diagnostic passes, real SFU encryption/speech proven but timing97.951ms fails. Explicit130 fails SFU;70failsP2P;90P2P/SFU precursor first calls pass. SDK5 source adds receive-relative render-delay fix and90receiver default; its binaries/media still pending."
 }
