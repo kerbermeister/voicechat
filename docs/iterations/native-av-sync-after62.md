@@ -1311,3 +1311,9 @@ ea13d30e240e075e1b7cda924506904235adc27737080462b813764effb6d6ed, все3 ABI.
 архивы, notices и receipts опубликованы как dependency prerelease
 `webrtc-sdk-150.7871.04-vc8`, без изменения приложений или VPS.
 Новая пара закреплена в исходниках; исполнение в нативных звонках ещё впереди.
+
+SDK8 Mac:2 настоящих default keyless/mute контроля PASS (живой RTP в обеих
+комнатах, PCM0/decoded0). Положительная LiveKit E2EE серия3/3 PASS, точный
+UUID e9d200c9 и тихий вывод проверены при каждом прогоне. Worst recovery
+raw73,574/source-corrected74,826мс; свежая ordinary voice/speech3/3 PASS,
+добавленная речь≤22,706мс. Android и P2P/mirror/delay ещё не квалифицированы.

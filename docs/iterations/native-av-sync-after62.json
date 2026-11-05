@@ -17317,5 +17317,263 @@
     "server_runtime_paths_changed": [],
     "required_deploy_mode": "full due protected SDK build/verification/test paths and podspec",
     "deployed": false
+  },
+  "native_sdk8_macos_default_keyless_controls": [
+    {
+      "utc": "2026-11-05T14:27:32.012215+00:00",
+      "platform": "macos",
+      "sdk_identity": {
+        "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+        "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+        "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+      },
+      "manifest_patch": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023",
+      "default_binary_no_field_trial_or_sif_override": true,
+      "missing_key_gate": {
+        "content": {
+          "audio_chunks": 330,
+          "audio_peak": 0.0,
+          "control_audio_peak": 0.0,
+          "video_markers": 0
+        },
+        "ordinary_voice": {
+          "packets": 144,
+          "plaintext_audio_peak": 0.0,
+          "decoded": 0
+        },
+        "audio": {
+          "packets": 148,
+          "decoded": 0
+        },
+        "video": {
+          "packets": 211,
+          "decoded": 0
+        }
+      },
+      "native_sif_logs": [
+        {
+          "elapsed_us": 7303622,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7303657,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7315482,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7338342,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7356618,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7376566,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7396979,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7416182,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7435724,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7456666,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7478065,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7506811,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7517239,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7536433,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7567633,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        },
+        {
+          "elapsed_us": 7579331,
+          "message": "(frame_crypto_transformer.cc:674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+        }
+      ],
+      "negative_keyless_gate_pass": true,
+      "positive_media_qualified": false
+    },
+    {
+      "utc": "2026-11-05T14:28:26.766369+00:00",
+      "platform": "macos",
+      "sdk_identity": {
+        "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+        "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+        "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+      },
+      "manifest_patch": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023",
+      "default_binary_no_field_trial_or_sif_override": true,
+      "missing_key_gate": {
+        "content": {
+          "audio_peak": 0.0,
+          "control_audio_peak": 0.0,
+          "audio_chunks": 317,
+          "video_markers": 0
+        },
+        "ordinary_voice": {
+          "packets": 139,
+          "plaintext_audio_peak": 0.0,
+          "decoded": 0
+        },
+        "audio": {
+          "packets": 131,
+          "decoded": 0
+        },
+        "video": {
+          "packets": 171,
+          "decoded": 0
+        }
+      },
+      "native_sif_logs": [],
+      "negative_keyless_gate_pass": true,
+      "positive_media_qualified": false
+    }
+  ],
+  "native_sdk8_macos_sfu": {
+    "date_utc": "2026-11-05T14:38:03.643417+00:00",
+    "records": [
+      {
+        "trial": "current-23007def-sfu-1",
+        "timing": "pass",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 40.78529166872613,
+          "max_source_corrected_abs_ms": 43.20637500131852
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 66.50812500083703,
+          "max_source_corrected_abs_ms": 69.45320833256119
+        },
+        "source_max_ms": 4.34283333379426,
+        "identity": {
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+          "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+        },
+        "factory_policy": "native default90..10000; no fixture override",
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 7,
+            "max_added_voice_delay_ms": -0.25024999922607094
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": -0.42374999975436367
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": -0.25599999935366213
+          }
+        },
+        "speech": "pass",
+        "pass": true
+      },
+      {
+        "trial": "current-23007def-sfu-2",
+        "timing": "pass",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 49.394374997064006,
+          "max_source_corrected_abs_ms": 52.2142083318613
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 53.46020833167131,
+          "max_source_corrected_abs_ms": 54.49583333029295
+        },
+        "source_max_ms": 3.2631249996484257,
+        "identity": {
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+          "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+        },
+        "factory_policy": "native default90..10000; no fixture override",
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": 22.134291662951
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 22.466125003120396
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 22.705833336658543
+          }
+        },
+        "speech": "pass",
+        "pass": true
+      },
+      {
+        "trial": "current-23007def-sfu-3",
+        "timing": "pass",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 66.34570833557518,
+          "max_source_corrected_abs_ms": 67.39375000324799
+        },
+        "recovery": {
+          "count": 26,
+          "max_abs_ms": 73.5738333351037,
+          "max_source_corrected_abs_ms": 74.82549999986077
+        },
+        "source_max_ms": 3.6825416682404466,
+        "identity": {
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+          "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+        },
+        "factory_policy": "native default90..10000; no fixture override",
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": 22.52420833610813
+          },
+          "video_paused": {
+            "count": 3,
+            "max_added_voice_delay_ms": -0.47454166633542627
+          },
+          "recovery": {
+            "count": 26,
+            "max_added_voice_delay_ms": -0.28362499870127067
+          }
+        },
+        "speech": "pass",
+        "pass": true
+      }
+    ],
+    "complete": true,
+    "all_pass": true
   }
 }
