@@ -15246,7 +15246,7 @@
       28
     ],
     "new_clock_recovery_after_tolerance_ms": 1,
-    "native_binary_builds": "cancel_requested_after_cpp_success_due_to_failed_sfu_policy",
+    "native_binary_builds": "both_cancelled_after_cpp_success_due_to_failed_sfu_policy",
     "native_media_qualified": false
   },
   "vc5_fresh_sfu_ordinary_voice": {
@@ -15338,7 +15338,561 @@
     },
     "source_clock_interval_min_seconds_per_id": 1.9949397916643647,
     "source_clock_interval_max_seconds_per_id": 2.0053054166637594,
-    "next_diagnostic": "current-vc5-fullcov-fresh-sfu-diagnostic3_running",
-    "prior_absolute_177ms_failure_retained": true
+    "next_diagnostic": "strict_product_crypto_option_parity_controls",
+    "prior_absolute_177ms_failure_retained": true,
+    "key_gate_repeat3": {
+      "outcome": "negative_key_gate_failed",
+      "plaintext_audio_peak": 0.00299072265625,
+      "required_peak_below": 0.001,
+      "key_installed_before_failure": false,
+      "decoded_video_gate_passed": true,
+      "cause_proven": false,
+      "pcm_capture_available": false,
+      "timing_qualified": false,
+      "source_private_log": "heartbeat51-source/.prototype/voicechat-sdk-key-f60008b32c7e.private.log",
+      "next_action": "Repeat unchanged gates with synthetic PCM/decoder stats preserved before assertion"
+    },
+    "repeat4": {
+      "date_utc": "2026-11-05T04:28:48.523862+00:00",
+      "purpose": "SDK5 explicit fullcov diagnostic; fresh simultaneous ordinary encrypted audio-only call in separate room, not SDK6 acceptance",
+      "sdk_identity": {
+        "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+        "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+        "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+      },
+      "adaptive_video_playout": false,
+      "shared_native_sync": false,
+      "timing": {
+        "schema": 1,
+        "outcome": "pass",
+        "recovery_transport": {
+          "pass": true,
+          "packet_deltas": {
+            "audio": 408,
+            "video": 648
+          },
+          "decoded_video_frames": 201
+        },
+        "audio_checksum_markers": 61,
+        "matched_pairs": 54,
+        "shared_group": false,
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 28.170416670036502,
+          "max_source_corrected_abs_ms": 29.02691667259205
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 43.024666665587574,
+          "max_source_corrected_abs_ms": 43.93633334257174
+        },
+        "max_source_offset_ms": 3.6219583416823298,
+        "max_all_source_offset_ms": 3.6219583416823298,
+        "physical_latency_measured": false,
+        "decoder_window_ms": 21.333333333333332,
+        "recovery_guard_after_seconds": 5
+      },
+      "voice_latency": {
+        "pass": true,
+        "clean": {
+          "count": 8,
+          "max_added_voice_delay_ms": -0.29183333390392363
+        },
+        "video_paused": {
+          "count": 4,
+          "max_added_voice_delay_ms": -0.28183333051856607
+        },
+        "recovery": {
+          "count": 27,
+          "max_added_voice_delay_ms": -0.268374991719611
+        }
+      },
+      "speech": "pass",
+      "speech_control_is_historical": false,
+      "missing_key_gate": {
+        "content": {
+          "control_audio_peak": 0.0,
+          "audio_chunks": 299,
+          "video_markers": 0,
+          "audio_peak": 0.0
+        },
+        "ordinary_voice": {
+          "packets": 132,
+          "plaintext_audio_peak": 0.0
+        },
+        "audio": {
+          "packets": 134,
+          "decoded": 0
+        },
+        "video": {
+          "packets": 177,
+          "decoded": 0
+        }
+      },
+      "all_gates_pass": true
+    }
+  },
+  "vc5_adaptive_p2p_diagnostic": {
+    "date_utc": "2026-11-05T04:33:28.476367+00:00",
+    "purpose": "Diagnostic, not application qualification",
+    "sdk_identity": {
+      "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+      "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+      "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+    },
+    "playout_ms": 0,
+    "minimum_playout_ms": 0,
+    "timing": {
+      "schema": 1,
+      "outcome": "budget_exceeded",
+      "recovery_transport": {
+        "pass": true,
+        "packet_deltas": {
+          "audio": 504,
+          "video": 1868
+        },
+        "decoded_video_frames": 207
+      },
+      "audio_checksum_markers": 64,
+      "matched_pairs": 57,
+      "shared_group": true,
+      "clean": {
+        "count": 8,
+        "max_abs_ms": 31.99529164703563,
+        "max_source_corrected_abs_ms": 32.884749976801686
+      },
+      "recovery": {
+        "count": 27,
+        "max_abs_ms": 82.96683334629051,
+        "max_source_corrected_abs_ms": 83.77912500873208
+      },
+      "max_source_offset_ms": 3.5471250012051314,
+      "max_all_source_offset_ms": 3.5471250012051314,
+      "physical_latency_measured": false,
+      "decoder_window_ms": 21.333333333333332,
+      "recovery_guard_after_seconds": 5
+    },
+    "voice_latency": {
+      "pass": true,
+      "clean": {
+        "count": 8,
+        "max_added_voice_delay_ms": -0.2710833359742537
+      },
+      "video_paused": {
+        "count": 4,
+        "max_added_voice_delay_ms": 45.52262500510551
+      },
+      "recovery": {
+        "count": 27,
+        "max_added_voice_delay_ms": 23.125749998143874
+      }
+    },
+    "speech": "pass",
+    "all_gates_pass": false
+  },
+  "native_sfu_crypto_option_parity": {
+    "recorded_before_strict_capture": true,
+    "production_value": true,
+    "option": "discardFrameWhenCryptorNotReady",
+    "production_sources": [
+      "apps/client/lib/call_probe.dart",
+      "apps/client/lib/stream_controller.dart",
+      "apps/client/lib/screen_controller.dart"
+    ],
+    "prior_marker_fixture_value": false,
+    "prior_marker_media_is_diagnostic_not_product_acceptance": true,
+    "corrected_four_native_fixture_providers": true,
+    "runtime_options_assertions": true,
+    "strict_missing_key_mute_label": "current-vc5-strict-keyless-mute-sfu-diagnostic1",
+    "negative_only": true,
+    "positive_media_qualified": false,
+    "full_fresh_sfu_requalification_required": true,
+    "all_original_gates_unchanged": true
+  },
+  "native_sdk7_candidate": {
+    "source_revision": "b29604eaa809dd0d55d1acd4ba321cfc3dfe2636",
+    "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+    "ci_run": 41983111458,
+    "cpp_expected": 86,
+    "negative_regressions_expected": 15,
+    "cpp_status": "in_progress",
+    "platform_builds_enabled": false,
+    "compiled_binary_available": false,
+    "video_only_sync": true,
+    "native_call_local_subscriber_grouping": true,
+    "flutter_tests_passed": 15,
+    "dart_analyze_passed": true,
+    "android_fresh_voice_sink_native_compile": "pass_compile_only_sdk3_baseline",
+    "published": false,
+    "dart_analyze_files": 8,
+    "strict_ready_sif_guard": true,
+    "source_inputs_verified": 19,
+    "swift_pcm_reader_apple_buffer_cases": 6,
+    "swift_pcm_reader_pass": true,
+    "android_compile_proof": {
+      "fixture_sha256": "51ef7728d7c69addbd79f94e0e59339194962e737c01a863c3509cac460621ba",
+      "compiler_exit": 0,
+      "compile_only": true,
+      "baseline_sdk": "vc3 existing Android cache",
+      "emulator_or_physical_device_run": false,
+      "apk_assembled": false,
+      "new_sdk_media_qualified": false,
+      "native_entrypoints_restored": true,
+      "prior_offline_attempt": "failed resolving existing integration_test dynamic runner metadata; not a source failure"
+    },
+    "options_copy_constructor_fix": true
+  },
+  "native_group_keyless_sdk5_diagnostic": {
+    "date_utc": "2026-11-05T05:31:18.309308+00:00",
+    "purpose": "Unchanged negative E2EE gate failed; synthetic PCM/counters retained for diagnosis",
+    "sdk_identity": {
+      "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+      "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+      "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+    },
+    "keys_installed": false,
+    "missing_key_gate": {
+      "content": {
+        "audio_peak": 0.045318603515625,
+        "audio_chunks": 331,
+        "video_markers": 0,
+        "control_audio_peak": 0.0
+      }
+    },
+    "stats": [
+      {
+        "kind": "video",
+        "packetsReceived": 157,
+        "packetsLost": 0,
+        "framesDecoded": 0
+      },
+      {
+        "kind": "audio",
+        "packetsReceived": 151,
+        "packetsLost": 0,
+        "totalSamplesReceived": 163200,
+        "concealedSamples": 145050,
+        "silentConcealedSamples": 139680,
+        "concealmentEvents": 17
+      }
+    ],
+    "control_stats": [
+      {
+        "kind": "audio",
+        "packetsReceived": 143,
+        "packetsLost": 0,
+        "totalSamplesReceived": 0,
+        "concealedSamples": 0,
+        "silentConcealedSamples": 0,
+        "concealmentEvents": 0
+      }
+    ],
+    "native_sif_logs": [
+      {
+        "elapsed_us": 6369967,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6369995,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6420132,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6421872,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6426260,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6446847,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6473149,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6488002,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6506383,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6528603,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6547036,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6571502,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6588559,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6608514,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6629871,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 6653967,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      }
+    ],
+    "keyless_mute_cycle": true,
+    "all_gates_pass": false
+  },
+  "native_group_keyless_sdk5_pcm_analysis": {
+    "keys_installed": false,
+    "checksum_markers": 0,
+    "peak": 0.045318603515625,
+    "nonzero_chunks_above_gate": 4,
+    "total_chunks": 332,
+    "does_not_prove_absence_of_plaintext_speech": true,
+    "negative_pcm_gate_pass": false
+  },
+  "native_sdk7_prior_cpp65": {
+    "run": 41975448176,
+    "source": "3cd9dac",
+    "pass": 64,
+    "failed": 1,
+    "zero_skipped": true,
+    "failed_case": "RtpStreamsSynchronizerTest.CorrectsExtrapolatorOffsetWithoutIntegralDrift",
+    "expected_ms": 325,
+    "actual_ms": 300,
+    "new_fix": "Use signed packet-arrival minus fitted RTP-clock offset directly; expected325 unchanged",
+    "qualified": false
+  },
+  "native_sdk7_prior_cpp85_link": {
+    "run": 41978051269,
+    "source": "67c2b9e",
+    "compiled": true,
+    "tests_executed": false,
+    "missing_symbol": "webrtc::RTPVideoHeader constructor/destructor",
+    "fix": "Add modules/rtp_rtcp:rtp_video_header to isolated harness deps",
+    "qualified": false
+  },
+  "strict_unshared_keyless_sdk5_repeat": {
+    "date_utc": "2026-11-05T05:49:49.236242+00:00",
+    "purpose": "Unchanged negative E2EE gate failed; synthetic PCM/counters retained for diagnosis",
+    "sdk_identity": {
+      "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+      "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+      "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+    },
+    "keys_installed": false,
+    "missing_key_gate": {
+      "content": {
+        "video_markers": 0,
+        "control_audio_peak": 0.00299072265625,
+        "audio_chunks": 332,
+        "audio_peak": 0.0
+      }
+    },
+    "stats": [
+      {
+        "kind": "video",
+        "packetsReceived": 194,
+        "packetsLost": 0,
+        "framesDecoded": 0
+      },
+      {
+        "kind": "audio",
+        "packetsReceived": 150,
+        "packetsLost": 0,
+        "totalSamplesReceived": 157920,
+        "concealedSamples": 142650,
+        "silentConcealedSamples": 140640,
+        "concealmentEvents": 16
+      }
+    ],
+    "control_stats": [
+      {
+        "kind": "audio",
+        "packetsReceived": 145,
+        "packetsLost": 0,
+        "totalSamplesReceived": 159840,
+        "concealedSamples": 158445,
+        "silentConcealedSamples": 150426,
+        "concealmentEvents": 1
+      }
+    ],
+    "native_sif_logs": [
+      {
+        "elapsed_us": 5460045,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5460069,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5481729,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5499545,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5522207,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5540118,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5560168,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5579408,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5599954,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5619877,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5639155,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5658929,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5680284,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5700530,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5731035,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      },
+      {
+        "elapsed_us": 5742803,
+        "message": "(frame_crypto_transformer.cc:669): FrameCryptorTransformer::decryptFrame() forwarding server injected frame, size 80\n"
+      }
+    ],
+    "keyless_mute_cycle": true,
+    "all_gates_pass": false
+  },
+  "keyless_sif_disabled_diagnostics": [
+    {
+      "date_utc": "2026-11-05T05:57:35.993943+00:00",
+      "purpose": "Only negative missing-key + mic-mute/unmute control; never positive media qualification",
+      "sdk_identity": {
+        "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+        "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+        "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+      },
+      "native_call_sync_diagnostic": false,
+      "drop_keyless_sif_diagnostic": true,
+      "negative_key_gate_pass": true,
+      "positive_media_qualified": false,
+      "discard_frame_when_cryptor_not_ready": true,
+      "missing_key_gate": {
+        "content": {
+          "control_audio_peak": 0.0,
+          "video_markers": 0,
+          "audio_chunks": 330,
+          "audio_peak": 0.0
+        },
+        "ordinary_voice": {
+          "packets": 145,
+          "plaintext_audio_peak": 0.0
+        },
+        "audio": {
+          "packets": 149,
+          "decoded": 0
+        },
+        "video": {
+          "packets": 198,
+          "decoded": 0
+        }
+      },
+      "native_sif_logs": []
+    },
+    {
+      "date_utc": "2026-11-05T06:17:16.082081+00:00",
+      "purpose": "Only negative missing-key + mic-mute/unmute control; never positive media qualification",
+      "sdk_identity": {
+        "arm64_uuid": "2625555c-0df2-3fb2-86f0-4ca5ab07172c",
+        "sdk_binary_sha256": "e1de1107e8b5a6eac848c6352bf081e4038093378dce50439172239728da6d09",
+        "patch_sha256": "8f742bdbb881fdb02e8566920e7318028e893ea5009c9b70c551e08d7421f671"
+      },
+      "native_call_sync_diagnostic": false,
+      "drop_keyless_sif_diagnostic": true,
+      "negative_key_gate_pass": true,
+      "positive_media_qualified": false,
+      "discard_frame_when_cryptor_not_ready": true,
+      "missing_key_gate": {
+        "content": {
+          "control_audio_peak": 0.0,
+          "audio_chunks": 332,
+          "video_markers": 0,
+          "audio_peak": 0.0
+        },
+        "ordinary_voice": {
+          "packets": 144,
+          "plaintext_audio_peak": 0.0
+        },
+        "audio": {
+          "packets": 151,
+          "decoded": 0
+        },
+        "video": {
+          "packets": 196,
+          "decoded": 0
+        }
+      },
+      "native_sif_logs": []
+    }
+  ],
+  "keyless_sif_disabled_diagnostics_are_not_product_acceptance": true,
+  "native_sdk7_prior_cpp85_runtime": {
+    "run": 41979996000,
+    "source": "27f134c",
+    "pass": 84,
+    "failed": 1,
+    "zero_skips": true,
+    "failed_case": "SifTransformTest.ForwardsServerBlankFrameWithoutKeyAndStripsTrailer",
+    "root_cause": "KeyProviderOptions handwritten copy constructor omitted discard_frame_when_cryptor_not_ready; uninitialized native bool",
+    "fix": "Defaulted const-reference copy constructor; standard memberwise copy",
+    "all_timing_65_and_new_four_sif_cases_passed_in_this_run": true,
+    "whole_suite_qualified": false
+  },
+  "work_pause": {
+    "utc": "2026-11-05T06:57:21.466549+00:00",
+    "user_requested": true,
+    "cpp_test_run": 41983111458,
+    "cpp_last_observed_status": "in_progress",
+    "automatic_next_build_disabled": true,
+    "installed_clients": "1.19.14(62)",
+    "production_release": "full104",
+    "resume_from": "download/verify C++86 evidence, then build both SDKs only if all gates pass"
   }
 }

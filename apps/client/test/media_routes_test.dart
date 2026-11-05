@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'route_fixture.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -8,6 +9,7 @@ import 'package:matrix/src/voip/models/call_options.dart';
 import 'package:voicechat_probe/media_routes.dart';
 import 'package:voicechat_probe/route_config.dart';
 import 'chat_actions_test.dart' show OutboxDatabase;
+import 'package:livekit_client/livekit_client.dart' as lk;
 
 class RestartPeer implements RTCPeerConnection {
   final steps = <String>[];
@@ -42,6 +44,38 @@ class RestartVoip implements VoIP {
 }
 
 void main() {
+  test(
+    'call synchronization is confined to opted-in Android/macOS SDKs',
+    () async {
+    final client = Client('native-call-policy', database: OutboxDatabase());
+      addTearDown(client.dispose);
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      for (final platform in TargetPlatform.values) {
+        debugDefaultTargetPlatformOverride = platform;
+        for (final call in [false, true]) {
+          final room = routedMediaRoom(
+            client,
+            'wss://synthetic.invalid',
+            const lk.RoomOptions(),
+            canRecover: () => true,
+            synchronizeNativeCall: call,
+          );
+          // ignore: invalid_use_of_internal_member
+          final transform = room.engine.subscriberDescriptionTransform;
+          expect(
+            transform != null,
+            call &&
+                {
+                  TargetPlatform.android,
+                  TargetPlatform.macOS,
+                }.contains(platform),
+          );
+          await room.dispose();
+        }
+      }
+    },
+  );
+
   test('TURN settings are temporary and confined to the signed host set', () {
     final config = RouteConfig.parse(routeFixture('three-vps.example.json'));
     TurnServerCredentials credentials(List<String> urls, {int ttl = 3600}) =>

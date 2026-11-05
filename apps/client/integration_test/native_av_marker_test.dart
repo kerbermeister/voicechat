@@ -1,13 +1,44 @@
 // Real native SDK/SFU media; synthetic tones and bitmaps, no account or camera.
-// ignore_for_file: invalid_use_of_internal_member
+// ignore_for_file: invalid_use_of_internal_member, implementation_imports
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
+import 'package:flutter_webrtc/src/native/event_channel.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
+import 'package:livekit_client/src/core/engine.dart';
+import 'package:voicechat_probe/call_stream_sync.dart';
+
+Future<StreamSubscription<Map<String, dynamic>>> collectNativeSifLogs(
+  List<Map<String, dynamic>> logs,
+) async {
+  final watch = Stopwatch()..start();
+  final subscription = FlutterWebRTCEventChannel.instance.handleEvents.stream
+      .listen((event) {
+        final value = event['onLogData'];
+        final message = value is Map ? value['data'] : null;
+        if (message is String &&
+            logs.length < 300 &&
+            (message.contains('server injected frame') ||
+                message.contains('SIF trailer'))) {
+          logs.add({
+            'elapsed_us': watch.elapsedMicroseconds,
+            'message': message,
+          });
+        }
+      });
+  try {
+    await rtc.WebRTC.initialize(options: {'logSeverity': 'info'});
+  } catch (_) {
+    await subscription.cancel();
+    rethrow;
+  }
+  return subscription;
+}
 
 Future<void> labPost(String suffix, Object value) async {
   final client = HttpClient();
@@ -57,11 +88,19 @@ void main() {
     const channel = MethodChannel('voicechat/native-av-lab');
     const nativePlayout = int.fromEnvironment('AV_NATIVE_VIDEO_PLAYOUT_MS');
     const fullReset = bool.fromEnvironment('AV_TIMESTAMP_FULL_RESET');
+    const adaptivePlayout = bool.fromEnvironment('AV_ADAPTIVE_VIDEO_PLAYOUT');
+    final fixtureOverrides = {
+      'timestamp_full_reset': fullReset,
+      'adaptive_video': adaptivePlayout,
+      'video_playout_ms': nativePlayout,
+    };
+    if (adaptivePlayout) expect(fullReset, isTrue);
     if (fullReset) {
       expect(nativePlayout, 0);
       await channel.invokeMethod<void>('timestampReset', {
         'milliseconds': 0,
         'fullReset': true,
+        'adaptiveVideo': adaptivePlayout,
       });
     }
     if (nativePlayout != 0) {
@@ -76,15 +115,48 @@ void main() {
     final random = Random.secure();
     const role = String.fromEnvironment('AV_MARKER_ROLE', defaultValue: 'both');
     const ordinaryVoice = bool.fromEnvironment('AV_ORDINARY_VOICE_REFERENCE');
-    if (ordinaryVoice) expect(role, 'both');
+    const keylessMuteCycle = bool.fromEnvironment('AV_KEYLESS_MUTE_CYCLE');
+    const nativeCallSync = bool.fromEnvironment('AV_NATIVE_CALL_SYNC');
+    const dropKeylessSif = bool.fromEnvironment('AV_DROP_KEYLESS_SIF');
+    if (dropKeylessSif) expect(keylessMuteCycle, isTrue);
+    if (keylessMuteCycle) {
+      expect(ordinaryVoice, isTrue);
+      expect(role, 'both');
+    }
+    final sifLogs = <Map<String, dynamic>>[];
+    final nativeSifLogs = keylessMuteCycle
+        ? await collectNativeSifLogs(sifLogs)
+        : null;
+    Future<Map<String, dynamic>> captureMarkers() async {
+      final markers = Map<String, dynamic>.from(
+        await channel.invokeMapMethod<String, dynamic>('result') ?? {},
+      );
+      for (final kind in ['audio', if (ordinaryVoice) 'control_audio']) {
+        markers[kind] = [
+          for (final chunk in (markers[kind] as List).cast<Map>())
+            {...chunk, 'pcm': base64Encode(chunk['pcm'] as Uint8List)},
+        ];
+      }
+      return markers;
+    }
+
     const encodedKey = String.fromEnvironment('AV_MARKER_KEY');
     final key = encodedKey.isNotEmpty
         ? base64Decode(encodedKey)
         : Uint8List.fromList(List.generate(32, (_) => random.nextInt(256)));
     expect(key.length, 32);
     expect({'both', 'sender', 'receiver'}, contains(role));
-    final sendKeys = await lk.BaseKeyProvider.create(sharedKey: false);
-    final receiveKeys = await lk.BaseKeyProvider.create(sharedKey: false);
+    // Match the product controllers; the upstream default permits empty frames.
+    final sendKeys = await lk.BaseKeyProvider.create(
+      sharedKey: false,
+      discardFrameWhenCryptorNotReady: true,
+    );
+    final receiveKeys = await lk.BaseKeyProvider.create(
+      sharedKey: false,
+      discardFrameWhenCryptorNotReady: true,
+    );
+    expect(sendKeys.options.discardFrameWhenCryptorNotReady, isTrue);
+    expect(receiveKeys.options.discardFrameWhenCryptorNotReady, isTrue);
     await sendKeys.setRawKey(key, participantId: 'alice');
     final alice = lk.Room(
       roomOptions: lk.RoomOptions(
@@ -94,7 +166,16 @@ void main() {
     final options = lk.RoomOptions(
       encryption: lk.E2EEOptions(keyProvider: receiveKeys),
     );
-    final bob = lk.Room(roomOptions: options);
+    final bob = lk.Room(
+      roomOptions: options,
+      engine: Engine(
+        connectOptions: const lk.ConnectOptions(),
+        roomOptions: options,
+        subscriberDescriptionTransform: nativeCallSync
+            ? synchronizeCallStreams
+            : null,
+      ),
+    );
     rtc.MediaStream? stream;
     rtc.MediaStream? voiceStream;
     lk.Room? voiceAlice;
@@ -104,8 +185,19 @@ void main() {
     try {
       const url = String.fromEnvironment('GROUP_TEST_URL');
       if (ordinaryVoice) {
-        final voiceSendKeys = await lk.BaseKeyProvider.create(sharedKey: false);
-        voiceReceiveKeys = await lk.BaseKeyProvider.create(sharedKey: false);
+        final voiceSendKeys = await lk.BaseKeyProvider.create(
+          sharedKey: false,
+          discardFrameWhenCryptorNotReady: true,
+        );
+        voiceReceiveKeys = await lk.BaseKeyProvider.create(
+          sharedKey: false,
+          discardFrameWhenCryptorNotReady: true,
+        );
+        expect(voiceSendKeys.options.discardFrameWhenCryptorNotReady, isTrue);
+        expect(
+          voiceReceiveKeys.options.discardFrameWhenCryptorNotReady,
+          isTrue,
+        );
         await voiceSendKeys.setRawKey(key, participantId: 'voice-alice');
         voiceAlice = lk.Room(
           roomOptions: lk.RoomOptions(
@@ -117,18 +209,28 @@ void main() {
             encryption: lk.E2EEOptions(keyProvider: voiceReceiveKeys),
           ),
         );
-        await voiceBob.connect(
-          url,
-          const String.fromEnvironment('AV_VOICE_BOB'),
-        );
-        await voiceAlice.connect(
-          url,
-          const String.fromEnvironment('AV_VOICE_ALICE'),
-        );
-        expect(voiceBob.name, 'route-probe-voice');
+        if (role != 'sender') {
+          await voiceBob.connect(
+            url,
+            const String.fromEnvironment('AV_VOICE_BOB'),
+          );
+          expect(voiceBob.name, 'route-probe-voice');
+        }
+        if (role != 'receiver') {
+          await voiceAlice.connect(
+            url,
+            const String.fromEnvironment('AV_VOICE_ALICE'),
+          );
+        }
       }
       if (role != 'sender') {
         await bob.connect(url, const String.fromEnvironment('GROUP_TEST_BOB'));
+        if (dropKeylessSif) {
+          // Diagnostic only: distinguish SFU blank-frame/PLC output from media.
+          // Never used as a positive crypto or production-parity qualification.
+          await receiveKeys.setSifTrailer(Uint8List(0));
+          await voiceReceiveKeys!.setSifTrailer(Uint8List(0));
+        }
         if (role == 'receiver') {
           await channel.invokeMethod<void>('receive');
           await labPost('/ready', {'receiver_ready': true});
@@ -251,10 +353,22 @@ void main() {
       }
       expect(audio, isNotNull);
       expect(video, isNotNull);
+      if (nativeCallSync) {
+        expect(audio!.mediaStream.id, video!.mediaStream.id);
+        expect(audio.mediaStream.id, endsWith('|voicechat-call'));
+        expect(audio.mediaStreamTrack.id, startsWith('TR_'));
+        expect(video.mediaStreamTrack.id, startsWith('TR_'));
+      }
       await channel.invokeMethod<void>('observe', {
         'audio': audio!.mediaStreamTrack.id,
         'video': video!.mediaStreamTrack.id,
       });
+      final streamGroups = {
+        'audio': audio.mediaStream.id,
+        'video': video.mediaStream.id,
+        'audio_track': audio.mediaStreamTrack.id,
+        'video_track': video.mediaStreamTrack.id,
+      };
       if (ordinaryVoice) {
         expect(bob.name, 'route-probe');
         expect(
@@ -265,12 +379,61 @@ void main() {
           'audio': voiceAudio!.mediaStreamTrack.id,
         });
       }
+      if (keylessMuteCycle) {
+        await alice.localParticipant!.setMicrophoneEnabled(false);
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        await alice.localParticipant!.setMicrophoneEnabled(true);
+      }
       await Future<void>.delayed(const Duration(seconds: 3));
       final gate = <String, Object>{};
       final contentGate = await channel.invokeMapMethod<String, dynamic>(
         'gate',
       );
-      expect(contentGate!['video_markers'], 0);
+      if ((contentGate!['video_markers'] as num) != 0 ||
+          (contentGate['audio_peak'] as num) >= .001 ||
+          (ordinaryVoice &&
+              (contentGate['control_audio_peak'] as num) >= .001)) {
+        // Preserve synthetic PCM and decoder counters before rejecting the
+        // negative control; no keys are installed and no assertion is relaxed.
+        final reports = await bob.engine.subscriber!.pc.getStats();
+        final voiceReports = ordinaryVoice
+            ? await voiceBob!.engine.subscriber!.pc.getStats()
+            : <rtc.StatsReport>[];
+        List<Object> counters(List<rtc.StatsReport> rows) => [
+          for (final row in rows)
+            if (row.type == 'inbound-rtp')
+              {
+                for (final key in [
+                  'kind',
+                  'packetsReceived',
+                  'packetsLost',
+                  'totalSamplesReceived',
+                  'concealedSamples',
+                  'silentConcealedSamples',
+                  'concealmentEvents',
+                  'framesDecoded',
+                ])
+                  if (row.values[key] != null) key: row.values[key],
+              },
+        ];
+        await labPost('', {
+          'synthetic_media_only': true,
+          'key_gate_failed': true,
+          'discard_frame_when_cryptor_not_ready': true,
+          'native_call_sync': nativeCallSync,
+          'shared_group': audio.mediaStream.id == video.mediaStream.id,
+          'stream_groups': streamGroups,
+          'keys_installed': false,
+          'markers': await captureMarkers(),
+          'stats': counters(reports),
+          'control_stats': counters(voiceReports),
+          'missing_key_gate': {'content': contentGate},
+          'simultaneous_ordinary_voice_reference': ordinaryVoice,
+          'native_sif_logs': sifLogs,
+          'keyless_mute_cycle': keylessMuteCycle,
+        });
+      }
+      expect(contentGate['video_markers'], 0);
       expect(contentGate['audio_peak'], lessThan(.001));
       gate['content'] = contentGate;
       if (ordinaryVoice) {
@@ -283,6 +446,9 @@ void main() {
         gate['ordinary_voice'] = {
           'packets': inbound.values['packetsReceived'],
           'plaintext_audio_peak': contentGate['control_audio_peak'],
+          'decoded':
+              (inbound.values['totalSamplesReceived'] as num? ?? 0) -
+              (inbound.values['concealedSamples'] as num? ?? 0),
         };
       }
       for (final (label, track) in [('audio', audio), ('video', video)]) {
@@ -298,6 +464,28 @@ void main() {
         expect(stats['packetsReceived'], greaterThan(0));
         if (label == 'video') expect(decoded, 0);
         gate[label] = {'packets': stats['packetsReceived'], 'decoded': decoded};
+      }
+      if (keylessMuteCycle) {
+        await labPost('', {
+          'synthetic_media_only': true,
+          'key_gate_only': true,
+          'fixture_field_trial_overrides': fixtureOverrides,
+          'drop_keyless_sif_diagnostic': dropKeylessSif,
+          'keys_installed': false,
+          'native_call_sync': nativeCallSync,
+          'shared_group': audio.mediaStream.id == video.mediaStream.id,
+          'stream_groups': streamGroups,
+          'markers': await captureMarkers(),
+          'missing_key_gate': gate,
+          'native_sif_logs': sifLogs,
+          'discard_frame_when_cryptor_not_ready': true,
+        });
+        // This is solely a negative crypto control, not a media qualification.
+        // ignore: avoid_print
+        print(
+          'SDK_AV_KEY_GATE_PROOF ${jsonEncode({'missing_key_blocked': true, 'ordinary_missing_key_blocked': true, 'keys_installed': false, 'positive_media_qualified': false})}',
+        );
+        return;
       }
       await Future.wait([
         receiveKeys.setRawKey(key, participantId: 'alice'),
@@ -436,9 +624,7 @@ void main() {
         }
         sampleTimes.add((await channel.invokeMethod<double>('clock'))!);
       }
-      final markers = Map<String, dynamic>.from(
-        await channel.invokeMapMethod<String, dynamic>('result') ?? {},
-      );
+      final markers = await captureMarkers();
       if (ordinaryVoice) {
         final source = markers['source_audio'] as List;
         expect(source.length, greaterThan(50));
@@ -459,29 +645,35 @@ void main() {
         expect(packets(60, 'audio') - packets(52, 'audio'), greaterThan(30));
       }
       final chunks = (markers['audio'] as List).cast<Map>();
-      for (final kind in ['audio', if (ordinaryVoice) 'control_audio']) {
-        markers[kind] = [
-          for (final chunk in (markers[kind] as List).cast<Map>())
-            {...chunk, 'pcm': base64Encode(chunk['pcm'] as Uint8List)},
-        ];
-      }
       final result = {
         'markers': markers,
+        'fixture_field_trial_overrides': fixtureOverrides,
         'stats': samples,
         'stats_times': sampleTimes,
         'simultaneous_ordinary_voice_reference': ordinaryVoice,
+        'native_sif_logs': sifLogs,
+        'keyless_mute_cycle': keylessMuteCycle,
         if (ordinaryVoice) 'control_stats': voiceSamples,
         if (ordinaryVoice) 'ordinary_voice_room': voiceBob!.name,
+        if (ordinaryVoice)
+          'ordinary_voice_stream': {
+            'audio': voiceAudio!.mediaStream.id,
+            'audio_track': voiceAudio.mediaStreamTrack.id,
+          },
         'missing_key_gate': gate,
         'phases': phases,
         'video_payload_types': payloads.toList(),
         'rtp_playout_delay_negotiated': playoutNegotiated,
         'shared_group': audio.mediaStream.id == video.mediaStream.id,
+        'native_call_sync': nativeCallSync,
+        'stream_groups': streamGroups,
         'encrypted_publications': true,
         'synthetic_media_only': true,
         'coherent_source': const bool.fromEnvironment('AV_COHERENT_MARKERS'),
         'native_video_playout_ms': nativePlayout,
         'timestamp_full_covariance_reset': fullReset,
+        'adaptive_video_playout': adaptivePlayout,
+        'discard_frame_when_cryptor_not_ready': true,
         'native_video_min_playout_ms': const int.fromEnvironment(
           'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS',
           defaultValue: nativePlayout,
@@ -513,6 +705,7 @@ void main() {
       await voiceBob?.dispose();
       await voiceStream?.dispose();
       await stream?.dispose();
+      await nativeSifLogs?.cancel();
     }
   }, timeout: const Timeout(Duration(minutes: 4)));
 }

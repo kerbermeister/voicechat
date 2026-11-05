@@ -75,6 +75,9 @@ class Engine extends Disposable with EventsEmittable<EngineEvent> {
 
   final PeerConnectionCreate _peerConnectionCreate;
 
+  /// Optional local subscriber metadata policy; publisher SDP is untouched.
+  final rtc.RTCSessionDescription Function(rtc.RTCSessionDescription)? subscriberDescriptionTransform;
+
   @internal
   Transport? publisher;
 
@@ -209,6 +212,7 @@ class Engine extends Disposable with EventsEmittable<EngineEvent> {
     SignalClient? signalClient,
     PeerConnectionCreate? peerConnectionCreate,
     E2EEManager? e2eeManager,
+    this.subscriberDescriptionTransform,
   }) : signalClient = signalClient ?? SignalClient(LiveKitWebSocket.connect),
        _peerConnectionCreate = peerConnectionCreate ?? rtc.createPeerConnection,
        _e2eeManager = e2eeManager {
@@ -1546,7 +1550,7 @@ class Engine extends Disposable with EventsEmittable<EngineEvent> {
       );
       logger.finer('sdp: ${event.sd.sdp}');
 
-      await subscriber!.setRemoteDescription(event.sd);
+      await subscriber!.setRemoteDescription(subscriberDescriptionTransform?.call(event.sd) ?? event.sd);
 
       try {
         final answer = await subscriber!.pc.createAnswer();

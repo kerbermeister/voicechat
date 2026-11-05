@@ -49,6 +49,7 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
     private var source: VideoSource? = null
     private var timer: ScheduledExecutorService? = null
     private var audio: AudioTrack? = null
+    private var controlAudio: AudioTrack? = null
     private var video: VideoTrack? = null
     private var lastMarker = -1
     private var peak = 0.0
@@ -57,6 +58,15 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
     private val audioPcm = ByteBuffer.allocate(14000 * 480 * 4).order(ByteOrder.LITTLE_ENDIAN)
     private val audioTimes = DoubleArray(14000)
     private var audioCount = 0
+    private val controlPcm = ByteBuffer.allocate(14000 * 480 * 4).order(ByteOrder.LITTLE_ENDIAN)
+    private val controlTimes = DoubleArray(14000)
+    private var controlCount = 0
+    private var controlPeak = 0.0
+    private val controlSink = object : AudioTrackSink {
+        override fun onData(data: ByteBuffer, bits: Int, sampleRate: Int, channels: Int, frames: Int, captureTime: Long) {
+            recordAudio(data, bits, sampleRate, channels, frames, true)
+        }
+    }
     private val framePool = ArrayBlockingQueue<ByteBuffer>(8).apply {
         repeat(8) { add(ByteBuffer.allocateDirect(640 * 360 * 3 / 2)) }
     }
@@ -95,22 +105,33 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
                     if (audio == null || (call.hasArgument("video") && video == null)) result.error("fixture", "Missing remote media", null)
                     else { audio!!.addSink(this); video?.addSink(this); result.success(null) }
                 }
+                "observeControl" -> {
+                    val track = plugin.getRemoteTrack(call.argument<String>("audio")) as? AudioTrack
+                    if (track == null || controlAudio != null) result.error("fixture", "Missing or duplicate ordinary voice track", null)
+                    else { controlAudio = track; track.addSink(controlSink); result.success(null) }
+                }
                 "gate" -> synchronized(lock) {
                     result.success(mapOf("audio_peak" to peak, "video_markers" to videoMarkers.size,
-                        "audio_chunks" to audioCount))
+                        "audio_chunks" to audioCount, "control_audio_peak" to controlPeak))
                 }
                 "result" -> synchronized(lock) {
                     val chunks = (0 until audioCount).map { index ->
                         mapOf("time" to audioTimes[index], "rate" to 48000, "frames" to 480,
                             "pcm" to audioPcm.array().copyOfRange(index * 1920, (index + 1) * 1920))
                     }
-                    result.success(mapOf("audio" to chunks, "video" to videoMarkers.toList(), "origin" to origin,
-                        "source_audio" to sourceAudioMarkers.toList(), "source_video" to sourceVideoMarkers.toList()))
+                    val value = mutableMapOf<String, Any>("audio" to chunks, "video" to videoMarkers.toList(), "origin" to origin,
+                        "source_audio" to sourceAudioMarkers.toList(), "source_video" to sourceVideoMarkers.toList())
+                    if (controlAudio != null) value["control_audio"] = (0 until controlCount).map { index ->
+                        mapOf("time" to controlTimes[index], "rate" to 48000, "frames" to 480,
+                            "pcm" to controlPcm.array().copyOfRange(index * 1920, (index + 1) * 1920))
+                    }
+                    result.success(value)
                 }
                 "stop" -> {
                     running = false
                     timer?.shutdownNow()
                     audio?.removeSink(this); video?.removeSink(this)
+                    controlAudio?.removeSink(controlSink)
                     plugin.audioProcessingController.capturePostProcessing.removeProcessor(this)
                     result.success(null)
                 }
@@ -148,21 +169,30 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
         sampleCursor += numFrames
     }
     override fun onData(data: ByteBuffer, bits: Int, sampleRate: Int, channels: Int, frames: Int, captureTime: Long) {
+        recordAudio(data, bits, sampleRate, channels, frames, false)
+    }
+    private fun recordAudio(data: ByteBuffer, bits: Int, sampleRate: Int, channels: Int, frames: Int, control: Boolean) {
         if (!running) return
         check(bits == 16)
         val input = data.duplicate().order(ByteOrder.nativeOrder()).asShortBuffer()
         val arrived = System.nanoTime() / 1e9
         check(sampleRate == 48000 && frames == 480)
-        val chunk = audioCount
+        val chunk = if (control) controlCount else audioCount
+        val pcm = if (control) controlPcm else audioPcm
         var chunkPeak = 0.0
         for (index in 0 until frames) {
             val value = input.get(index * channels).toFloat() / 32768
-            if (chunk < audioTimes.size) audioPcm.putFloat((chunk * 480 + index) * 4, value)
+            if (chunk < audioTimes.size) pcm.putFloat((chunk * 480 + index) * 4, value)
             chunkPeak = maxOf(chunkPeak, abs(value.toDouble()))
         }
         synchronized(lock) {
-            peak = maxOf(peak, chunkPeak)
-            if (chunk < audioTimes.size) { audioTimes[chunk] = arrived; audioCount++ }
+            if (control) {
+                controlPeak = maxOf(controlPeak, chunkPeak)
+                if (chunk < controlTimes.size) { controlTimes[chunk] = arrived; controlCount++ }
+            } else {
+                peak = maxOf(peak, chunkPeak)
+                if (chunk < audioTimes.size) { audioTimes[chunk] = arrived; audioCount++ }
+            }
         }
     }
     override fun onFrame(frame: VideoFrame) {

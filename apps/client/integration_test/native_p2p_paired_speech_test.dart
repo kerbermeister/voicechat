@@ -42,11 +42,16 @@ void main() {
       const playout = int.fromEnvironment('P2P_VIDEO_PLAYOUT_MS');
       const timestampReset = int.fromEnvironment('P2P_TIMESTAMP_RESET_MS');
       const fullReset = bool.fromEnvironment('P2P_TIMESTAMP_FULL_RESET');
+      const adaptivePlayout = bool.fromEnvironment(
+        'P2P_ADAPTIVE_VIDEO_PLAYOUT',
+      );
+      if (adaptivePlayout) expect(fullReset, isTrue);
       if (timestampReset != 0 || fullReset) {
         expect(playout, 0);
         await channel.invokeMethod<void>('timestampReset', {
           'milliseconds': timestampReset,
           'fullReset': fullReset,
+          'adaptiveVideo': adaptivePlayout,
         });
       }
       if (playout != 0) {
@@ -289,6 +294,7 @@ void main() {
       result['original_stream_preserved'] = true;
       result['timestamp_reset_ms'] = timestampReset;
       result['timestamp_full_covariance_reset'] = fullReset;
+      result['adaptive_video_playout'] = adaptivePlayout;
       final source = (result['markers'] as Map)['source_audio'] as List;
       expect(source.length, greaterThan(50));
       for (var i = 1; i < source.length; i++) {

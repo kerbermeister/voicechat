@@ -3,6 +3,18 @@ import WebRTC
 import flutter_webrtc
 import AVFoundation
 
+func nativeMarkerAudioSamples(_ buffer: AVAudioPCMBuffer) -> [Float]? {
+  let count = Int(buffer.frameLength)
+  let step = buffer.stride
+  if let floats = buffer.floatChannelData {
+    return (0..<count).map { floats[0][$0 * step] }
+  }
+  if let shorts = buffer.int16ChannelData {
+    return (0..<count).map { Float(shorts[0][$0 * step]) / 32768 }
+  }
+  return nil
+}
+
 final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioRenderer, RTCVideoRenderer {
   static var instance: NativeAVMarker?
   static func install(_ messenger: FlutterBinaryMessenger) {
@@ -60,7 +72,12 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
         guard !parameters.isEmpty else {
           result(FlutterError(code: "fixture", message: "Missing timestamp experiment", details: nil)); return
         }
-        RTCPeerConnectionFactory.configureFieldTrials("WebRTC-Network-UseNWPathMonitor/Enabled/WebRTC-TimestampExtrapolatorConfig/\(parameters.joined(separator: ","))/")
+        var trials = "WebRTC-Network-UseNWPathMonitor/Enabled/"
+        if args["adaptiveVideo"] as? Bool == true {
+          trials += "WebRTC-ForcePlayoutDelay/min_ms:90,max_ms:10000/"
+        }
+        trials += "WebRTC-TimestampExtrapolatorConfig/\(parameters.joined(separator: ","))/"
+        RTCPeerConnectionFactory.configureFieldTrials(trials)
         result(nil)
       case "playout":
         guard plugin.peerConnectionFactory == nil, let delay = args["milliseconds"] as? Int,
@@ -228,17 +245,13 @@ final class NativeAVMarker: NSObject, ExternalAudioProcessingDelegate, RTCAudioR
   }
   fileprivate func recordAudio(_ buffer: AVAudioPCMBuffer, control: Bool) {
     guard running else { return }
-    let count = Int(buffer.frameLength)
-    let samples: [Float]
-    if let floats = buffer.floatChannelData {
-      samples = Array(UnsafeBufferPointer(start: floats[0], count: count))
-    } else if let shorts = buffer.int16ChannelData {
-      samples = (0..<count).map { Float(shorts[0][$0]) / 32768 }
-    } else { return }
+    guard let samples = nativeMarkerAudioSamples(buffer) else { return }
+    let count = samples.count
     let data = samples.withUnsafeBytes { Data($0) }
     lock.lock()
     let chunk: [String: Any] = ["time": CACurrentMediaTime(), "rate": buffer.format.sampleRate,
-                                "frames": count, "pcm": FlutterStandardTypedData(bytes: data)]
+                                "frames": count, "channels": buffer.format.channelCount,
+                                "stride": buffer.stride, "pcm": FlutterStandardTypedData(bytes: data)]
     if control {
       controlPeak = max(controlPeak, samples.map { abs($0) }.max() ?? 0)
       if controlChunks.count < 14000 { controlChunks.append(chunk) }

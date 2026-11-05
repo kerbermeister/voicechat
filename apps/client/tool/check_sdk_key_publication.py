@@ -43,6 +43,7 @@ def main():
     parser.add_argument('--failures', action='store_true', help='Exercise native capture/cryptor rollback')
     parser.add_argument('--av-marker-output', type=Path, help='Run the injected native synthetic A/V fixture')
     parser.add_argument('--shared-sync', action='store_true', help='Enable native A/V synchronization in the disposable room')
+    parser.add_argument('--native-call-sync', action='store_true', help='Use the native call subscriber stream policy without changing SFU/browser grouping')
     parser.add_argument('--video-playout-ms', type=int, choices=(0, 130), default=0)
     parser.add_argument('--native-video-playout-ms', type=int, choices=(0, 70, 90, 100, 130), default=0)
     parser.add_argument('--coherent-source', action='store_true', help='Queue video marker boundaries with the synthetic audio source')
@@ -51,14 +52,25 @@ def main():
     parser.add_argument('--av-marker-network', action='store_true', help='Apply video-only delay and outage in the disposable SFU')
     parser.add_argument('--timestamp-full-reset', action='store_true', help='Diagnostic macOS fixture: reset full timestamp-model covariance on alarms')
     parser.add_argument('--ordinary-voice-reference', action='store_true', help='Run a simultaneous E2EE audio-only call in a separate disposable room (Mac fixture)')
+    parser.add_argument('--adaptive-video-playout', action='store_true', help='Diagnostic only: native adaptive video delay with full clock recovery and shared A/V streams')
+    parser.add_argument('--keyless-mute-cycle', action='store_true', help='Diagnostic only: mute/unmute before receiver keys, retain native SIF logs')
+    parser.add_argument('--drop-keyless-sif', action='store_true', help='Negative diagnostic only: disable SFU blank-frame bypass before keys')
     parser.add_argument('--av-speech', type=Path, help='Synthetic mono48kHz PCM16 WAV; never use a personal recording')
     parser.add_argument('--av-sender-root', type=Path, help='Separate account-free macOS sender checkout (A/V fixture only)')
     parser.add_argument('--av-media-ip', help='Local private interface for encrypted RTP between Mac and the owned Android emulator')
     args = parser.parse_args()
+    if args.drop_keyless_sif and not args.keyless_mute_cycle:
+        parser.error('Dropping SFU blank frames is only a negative keyless diagnostic')
+    if args.native_call_sync and (not args.av_marker_output or args.web_root):
+        parser.error('Native call synchronization requires the native A/V marker fixture')
     if args.timestamp_full_reset and (args.device != 'macos' or not args.av_marker_output or args.native_video_playout_ms != 0):
         parser.error('Timestamp diagnostic requires the Mac A/V fixture with native SDK default playout')
-    if args.ordinary_voice_reference and (args.device != 'macos' or not args.av_marker_output or args.av_sender_root or args.web_root):
-        parser.error('Ordinary voice comparison requires the single-Mac synthetic A/V fixture')
+    if args.ordinary_voice_reference and (not args.av_marker_output or args.web_root or (args.device != 'macos' and not args.av_sender_root)):
+        parser.error('Ordinary voice comparison requires the Mac fixture or a separate Mac sender and owned Android receiver')
+    if args.adaptive_video_playout and not (args.ordinary_voice_reference and args.timestamp_full_reset and args.shared_sync and args.video_playout_ms == 130 and args.max_video_playout_ms == 130):
+        parser.error('Adaptive video diagnostic requires full clock recovery, ordinary voice reference, shared streams and the existing SFU130ms hint')
+    if args.keyless_mute_cycle and (not args.ordinary_voice_reference or args.device != 'macos' or args.av_sender_root):
+        parser.error('Keyless mute diagnostic requires the single-Mac paired ordinary voice fixture')
     if args.min_native_video_playout_ms is not None and (args.native_video_playout_ms == 0 or args.min_native_video_playout_ms > args.native_video_playout_ms):
         parser.error('Native minimum requires a nonzero maximum and must not exceed it')
     if bool(args.av_sender_root) != bool(args.av_media_ip):
@@ -282,6 +294,10 @@ def main():
                 'AV_NATIVE_VIDEO_PLAYOUT_MS': args.native_video_playout_ms,
                 'AV_TIMESTAMP_FULL_RESET': args.timestamp_full_reset,
                 'AV_ORDINARY_VOICE_REFERENCE': args.ordinary_voice_reference,
+                'AV_ADAPTIVE_VIDEO_PLAYOUT': args.adaptive_video_playout,
+                'AV_KEYLESS_MUTE_CYCLE': args.keyless_mute_cycle,
+                'AV_NATIVE_CALL_SYNC': args.native_call_sync,
+                'AV_DROP_KEYLESS_SIF': args.drop_keyless_sif,
                 'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS': args.min_native_video_playout_ms if args.min_native_video_playout_ms is not None else args.native_video_playout_ms,
                 'AV_COHERENT_MARKERS': args.coherent_source,
                 'AV_MARKER_NETWORK': args.av_marker_network,
@@ -358,13 +374,16 @@ def main():
             text = log.read_text()
             if result.returncode or 'All tests passed!' not in text:
                 raise RuntimeError('SDK assertions failed; inspect private log ' + str(log))
-            marker = 'SDK_AV_MARKER_PROOF' if args.av_marker_output else 'SDK_KEY_FAILURE_PROOF' if args.failures else 'SDK_KEY_PUBLICATION_PROOF'
+            marker = 'SDK_AV_KEY_GATE_PROOF' if args.keyless_mute_cycle else 'SDK_AV_MARKER_PROOF' if args.av_marker_output else 'SDK_KEY_FAILURE_PROOF' if args.failures else 'SDK_KEY_PUBLICATION_PROOF'
             proofs = [json.loads(value) for value in re.findall(
                 marker + r' (\{[^\n]+\})', text)]
             expected = {'both': [False, True], 'baseline': [False], 'pinned': [True]}
-            if args.av_marker_output:
+            if args.keyless_mute_cycle:
+                assert len(proofs) == 1 and proofs[0]['missing_key_blocked'] and proofs[0]['ordinary_missing_key_blocked']
+                assert proofs[0]['keys_installed'] is False and proofs[0]['positive_media_qualified'] is False
+            elif args.av_marker_output:
                 assert len(proofs) == 1 and proofs[0]['missing_key_blocked']
-                assert proofs[0]['shared_group'] == args.shared_sync
+                assert proofs[0]['shared_group'] == (args.shared_sync or args.native_call_sync)
                 assert proofs[0]['audio_chunks'] > 1000 and proofs[0]['video_markers'] > 5
             elif args.failures:
                 assert len(proofs) == 12

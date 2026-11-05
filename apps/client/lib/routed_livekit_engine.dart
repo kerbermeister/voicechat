@@ -42,6 +42,7 @@ class RoutedLiveKitEngine extends Engine {
     required this.canRecover,
     required super.roomOptions,
     super.signalClient,
+    super.subscriberDescriptionTransform,
   }) : super(connectOptions: const lk.ConnectOptions(autoSubscribe: false));
 
   Future<void> _reportFailure(String failedUrl) {

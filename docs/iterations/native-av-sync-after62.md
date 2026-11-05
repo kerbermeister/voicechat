@@ -28,8 +28,9 @@ min_playout_delay=130 и max_playout_delay=130, без включения sync_s
 ограничивают накопление видеозадержки после паузы: вариант130..10000мс
 позволял SFU/получателю сохранять лишнюю задержку и не прошёл80мс.
 
-Diff относительно опубликованного нативного62 (596a80f) не содержит изменений
-продуктового Flutter/Swift/Kotlin/SDK-кода. Штатный full-релиз сервера и web для этапа LiveKit выполнен. Установленные62 получают новую политику
+В опубликованном этапе full104 относительно нативного62 (596a80f) не было изменений
+продуктового Flutter/Swift/Kotlin/SDK-кода. Последующие нативные кандидаты ниже
+ещё не выпущены. Штатный full-релиз сервера и web для первого этапа LiveKit выполнен. Установленные62 получают новую политику
 при следующем звонке; отдельная перепаковка тех же нативных клиентов не нужна.
 
 ## Проверяемый путь
@@ -829,3 +830,198 @@ parity and absence of ordinary video are asserted. Source clock interval is
 The historical-control absolute177ms failure is retained and keeps policy
 unqualified. A second fresh ordinary comparison is running, rather than
 promoting one good call or changing80ms/speech gates.
+
+Fresh repeat3 aborts at the unchanged negative key gate: primary PCM peak
+0.002990723 exceeds0.001 before key installation, video remains zero. No PCM/
+decoder snapshot was retained, so neither decrypted speech nor a cause is
+proved. Repeat4 passes clean corrected29.027/recovery43.936ms, voice/speech/AES
+controls, but does not erase the failed attempt. A pre-key mute-cycle probe
+passes silence gating then violates source-clock cadence at2.282458s/id; it is
+not A/V acceptance. Its negative snapshot was not exported. Future mute-cycle
+checks are explicitly negative-only and cannot count as positive media proof.
+
+Additional native full-adaptive min0/max10000 plus full covariance P2P fails
+recovery raw82.967/corrected83.779ms; speech and voice<=45.523ms pass. Its planned
+adaptive SFU is not run after this failure. No accepted global policy exists.
+
+A source audit finds a material fixture mismatch: call_probe, stream_controller
+and screen_controller already set discardFrameWhenCryptorNotReady:true; the
+marker fixture's four providers omitted it, selecting SDK default false. Earlier
+SFU marker runs are diagnostics with this mismatch, not product acceptance.
+The fixture now explicitly matches true and asserts each provider's actual
+options. The0.001 peak limit and every media/speech bound remain unchanged; no
+production crypto configuration, key, cipher or decoder is modified. New strict
+negative-only mute control runs with retained synthetic PCM/decoder counters
+on failure and native logs of known SFU injected frames. Hypotheses about blank
+frames/comfort noise remain unproved; do not label this as a product data leak.
+Both SDK6 platform jobs are confirmed cancelled, C++63/11 proof remains valid.
+
+## 05.11: строгий повтор и отказ от фиксированной/совместной задержки
+
+С точными продуктовыми настройками `discardFrameWhenCryptorNotReady=true`
+первый свежий LiveKit/ordinary-voice прогон прошёл, второй отклонён:
+clean raw86,248 / corrected87,175мс, recovery raw79,224 / corrected80,122мс.
+Аудиозадержка около225мс одновременно возникла у видеозвонка и независимого
+обычного аудиозвонка; видео около138мс. Добавленная голосовая задержка
+не более22,448мс, речь и фактическая AES-GCM расшифровка проходят.
+Это доказывает недостаточность фиксированной видеозадержки для этого
+сценария, но не устанавливает причину исторического звонка на Xiaomi.
+
+Диагностика min90/max10000 со штатной общей синхронизацией также отклонена:
+clean corrected52,580мс, recovery raw363,384/corrected364,241мс,
+добавленная задержка речи228,305мс и регрессия речи. Источник ≤5,726мс,
+RTP живой, положительная и отрицательная проверки E2EE проходят.
+Такую политику выпускать нельзя. Повторная сборка SDK6 run41970078061
+отменена после этого результата; повторное использование C++63/63+11
+подтверждено, новых платформенных библиотек нет.
+
+Отдельный отрицательный mute-cycle с точными настройками прошёл:
+до ключа PCM peak0, video0 при живом RTP обеих комнат. Декодер может
+считать разрешённые SFU blank/SIF Opus-пакеты, выдавая нулевой PCM;
+один счётчик декодирования не доказывает расшифровку речи. Это только
+отрицательная проверка, а не квалификация полноценного звонка.
+
+Следующий кандидат должен подстраивать видео под фактическую задержку
+обычного аудио, не добавляя задержку речи и не сохраняя старый видеобуфер
+после восстановления. Нативное объединение потоков нужно изолировать
+от браузеров и незатронутых комнат; глобальный `sync_streams` не принят.
+SDK7 пока не собран и не квалифицирован. Production full104 и клиенты62
+не менялись; UA-08.C06 открыт.
+
+## 05.11: SDK7 и локальная группировка — проверки продолжаются
+
+Новый изолированный кандидат `codex/native-sdk-av-vc7`, source12249e2,
+patch ed8e430c9ddc8e906545d559a5c34bbe892dd52d8987663434eb227e6ec114b1:
+контроллер меняет только видеобуфер, используя оставшееся время до рендера,
+эффективную видеозадержку, фактическую задержку аудио и относительную
+сетевую задержку из RTCP. Он не добавляет аудиобуфер; устаревшие цели
+сбрасываются при остановке/отключении потоков. Явные video min/max и режим
+низкой задержки сохраняются. Неиспользуемое изменение интегрального
+аудиоконтроллера удалено. Предусмотрено65 C++ тестов и13 отрицательных
+регрессий; [CI41974316479](https://github.com/kerbermeister/voicechat/actions/runs/41974316479)
+ещё выполняется. Первый запуск отменён до получения C++ результата:
+исправлен только ошибочный ожидаемый счётчик64→65. Платформенные сборки
+для этого этапа явно отключены, новых библиотек нет. Девять macOS
+проверок конфигурации проходят на исходнике; это не проверка бинарника.
+
+В клиентском кандидате добавлено только для нативных call rooms локальное
+объединение subscriber msid по участнику, без глобального SFU sync_streams.
+Идентификаторы дорожек, ICE, DTLS, кодеки и шифрование сохраняются;
+браузер, publisher SDP, трансляции и отдельные screen rooms не подключают
+эту политику. Связь MediaStream/track через msid описана в
+[RFC8830](https://www.rfc-editor.org/rfc/rfc8830.html). Неизвестные и
+конфликтующие форматы не переписываются. Четырнадцать Flutter тестов
+и анализ семи затронутых Dart файлов проходят, включая два offer через
+настоящий SDK обработчик и тестовый WebSocket. Добавлен Android sink
+одновременного независимого ordinary-voice E2EE контроля; его нативная
+компиляция и медиапроверка ещё не выполнены. Квалификаторы обеих платформ
+подготовлены к свежему одновременному контролю и остановке после первого
+отказа. Историческая речь для новой SFU приёмки больше не подходит.
+
+Диагностика локальной группировки на прежней SDK5 подтверждает реальные
+общие stream IDs/сохранение track IDs, но **отрицательный PCM gate не
+прошёл** после mute/unmute до установки ключа: peak0,045319, 4 из332
+10мс блоков выше0,001. Контрольная audio-only комната имеет peak0; video0,
+RTP обеих комнат живой. В main audio145050 concealed samples; декодер
+не нашёл ни одной контрольной DTMF метки. Это не доказывает ни расшифровку
+речи, ни её отсутствие: причина ненулевого PCM ещё не установлена.
+Порог не меняется, вариант не принят. SDK7 обязан заново пройти этот
+отрицательный контроль перед любыми выводами о качестве/безопасности.
+
+## 05.11, актуализация: знаковое смещение и строгая готовность SIF
+
+CI41975448176/source3cd9dac выполнил65 C++ тестов:64 PASS, один отказ
+без skips. `CorrectsExtrapolatorOffsetWithoutIntegralDrift` ожидал325мс,
+получил300мс на первом обновлении. Нулевая обрезка отрицательного остатка
+до рендера теряла часть коррекции. Расчёт упрощён: из фактического
+аудиобуфера, знакового смещения packet-arrival относительно fitted RTP
+clock и относительной RTCP задержки получается полный video target.
+Ожидание325мс не менялось. Неготовая модель часов возвращает nullopt.
+
+Прежний SDK5 без общей группировки также не прошёл строгий keyless
+повтор: main peak0, ordinary voice0,002991; в332 main блоках реально
+channels=1/stride=1. Поэтому проблема отрицательного PCM не объясняется
+ни только группировкой, ни только чтением стерео. У Mac-стенда всё же
+исправлена реальная ошибка: теперь чтение AVAudioPCMBuffer учитывает
+stride. Точный helper проходит6 случаев настоящих AVFoundation буферов:
+mono/stereo, interleaved/deinterleaved, Int16/Float32, неподдерживаемый
+Float64. Предыдущие цифровые метки не подменяют физических измерений.
+
+Два отдельных причинных опыта на SDK5 отключали только распознавание
+служебного SIF trailer у получателей до ключа. Оба дают PCM peak0
+в обеих комнатах и decoded0 при живом RTP. Ключи не установлены, AES
+не отключался; это **только отрицательная диагностика с отличающейся
+политикой SIF**, а не продуктовая/положительная медиаприёмка. Простой
+изолированный libopus1.6.1 decoder даёт нули на3/80-byte blank packet;
+он не является точным нативным декодером продукта и не доказывает причину
+ненулевого PCM в NetEq. Вектор SIF/декодер подтверждён как требующий
+проверки; расшифровка речи без ключа не установлена.
+
+Кандидат теперь учитывает discardFrameWhenCryptorNotReady и для уже
+разрешённых whitelist пустых SIF: до наличия ключа именно этого участника
+пакет не передаётся декодеру. Старое поведение при false, whitelist, AES,
+KDF и формат ключей сохранены. Покрыты отсутствие shared key, чужой
+participant key и положительные случаи обоих режимов с index7. Удалён
+неиспользуемый возврат вектора в старом асинхронном SIF тестовом helper,
+чтобы не читать его параллельно записи transform task.
+
+CI41978051269/source67c2b9e скомпилировал стенд, но не выполнил тесты:
+при линковке не хватало RTPVideoHeader constructor/destructor. В harness
+добавлен реальный target modules/rtp_rtcp:rtp_video_header. Новый точный
+кандидат source27f134c, patch403132d8063e4b6dfcb7e9424282ca4f269f25282702b7f7d619d9f9a7e8e431,
+19 проверяемых SDK inputs (16 изменённых файлов и3 неизменённых входа),
+85 тестов/15 отрицательных регрессий;
+[CI41979996000](https://github.com/kerbermeister/voicechat/actions/runs/41979996000)
+выполняется. Платформенные библиотеки пока не собираются.
+
+Flutter:15 тестов PASS и анализ8 файлов без замечаний. Нативная
+группировка ограничена Android/macOS с новым SDK; iOS/Linux/Windows
+и web её не включают. Kotlin sink свежего ordinary-voice контроля
+проверяется отдельной compile-only задачей на старой SDK3, без устройства
+и без сборки/квалификации APK. Дальше требуется новая библиотека,
+отрицательные keyless и положительные actual AES/обычная речь/A/V
+прогоны, затем подписанные обновления. Установленные клиенты62 и full104
+в этой итерации не обновлялись.
+
+Kotlin compile-only завершён успешно: Gradle/JDK21, source SHA-256
+51ef7728d7c69addbd79f94e0e59339194962e737c01a863c3509cac460621ba,
+266 задач (4 выполнены,262 актуальны). Первый offline запуск не разрешил
+уже существующий integration_test runner1.2+ metadata; обычный запуск
+разрешил зависимость без изменения исходников/lock. Это старый SDK3 cache,
+без APK, эмулятора или физического устройства; не приёмка SDK7.
+
+## 05.11, последний кандидат: устранено неопределённое значение strict-ready
+
+CI41979996000/source27f134c запустил85 тестов:84 PASS, один отказ,
+zero skips. Все65 timing/sync тестов и четыре новых SIF guard случая
+проходят; legacy `ForwardsServerBlankFrameWithoutKeyAndStripsTrailer`
+неожиданно блокировал кадр. Расследование выявило конкретную ошибку
+SDK: ручной `KeyProviderOptions(KeyProviderOptions& copy)` не копировал
+`discard_frame_when_cryptor_not_ready`. Поле оставалось неопределённым
+при передаче options по значению в DefaultKeyProviderImpl и копировании
+в options_. Это также означает, что Dart-level true сам по себе
+не доказывал точное значение флага внутри нативного provider.
+
+Вместо ручного перечисления полей используется стандартный defaulted
+copy constructor с const-reference; move semantics отдельно не вводятся.
+Новый тест проверяет false/true через прямое копирование и настоящий
+DefaultKeyProviderImpl. Legacy ожидание не ослаблено. Теперь в suite86
+тестов и прежние15 original-behavior negative regressions. Исходник
+b29604eaa809dd0d55d1acd4ba321cfc3dfe2636,
+patch14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530;
+[CI41983111458](https://github.com/kerbermeister/voicechat/actions/runs/41983111458)
+выполняется. Ни один неполный C++ прогон не объявлен квалификацией.
+После полного PASS с точным receipt автоматически разрешена сборка
+обеих SDK библиотек для последующих реальных медиаэкспериментов;
+публикация приложения остаётся запрещена до прохождения медиагейтов.
+
+## Пауза перед перезагрузкой компьютера, 05.11.2026
+
+По явному запросу пользователя работа приостановлена. Монитор с автоматическим
+запуском обеих SDK сборок остановлен; добавлен локальный pause guard.
+Test-only CI41983111458 может завершиться в GitHub самостоятельно, но
+новые SDK/platform jobs, публикации, деплой и установки автоматически
+не запускаются. Клиенты62 и full104 остаются последними выпусками.
+После команды «Продолжай»: прочитать сохранённый handoff, получить результат
+этого точного86/15 прогона, проверить receipt/логи, затем продолжить
+сборки и медиагейты. Неполный или неуспешный прогон не разрешает выпуск.

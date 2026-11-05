@@ -240,6 +240,7 @@ class CallProbe implements VoiceCall {
         dynacast: true,
       ),
       canRecover: () => !_closed && transportSerial == _transportSerial,
+      synchronizeNativeCall: true,
     );
     _events = media!.createListener();
     _events!.on<lk.LocalTrackPublishedEvent>((_) => changed?.call());
