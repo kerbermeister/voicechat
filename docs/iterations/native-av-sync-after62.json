@@ -18391,5 +18391,546 @@
       }
     },
     "product_qualified": false
+  },
+  "sdk8_latency_activity_experiment": {
+    "plan": {
+      "utc": "2026-11-05T15:51:28.673913+00:00",
+      "trials": 2,
+      "reference_first": [
+        true,
+        false
+      ],
+      "latencyCritical": true,
+      "scope": "test-only per-process activity while recording, not global power policy or production change",
+      "reason": "Differentiate macOS timer/I-O scheduling from decoder; AppNapNo snapshot does not establish cause",
+      "gates_changed": false,
+      "no_product_qualification": true,
+      "source_hashes": {
+        "native_av_marker.swift": "5da70c1ceeba0246515ef6aae2ce145f292fd05a798ca1607b3feecfe05452a5",
+        "native_p2p_paired_speech_test.dart": "f5efcb72da0f523a626f1e75f38769ce7443abc2afe5cab2aea369a305b77b20"
+      }
+    },
+    "results": [
+      {
+        "label": "current23007-cpuquota-latency1",
+        "timing": "invalid_source_timing",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 34.68145833176095,
+          "max_source_corrected_abs_ms": 36.014541667100275
+        },
+        "recovery": {
+          "count": 26,
+          "max_abs_ms": 36.20450000016717,
+          "max_source_corrected_abs_ms": 37.17766666522948
+        },
+        "speech": "speech_regression",
+        "voice": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": 0.39704166920273565
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 0.31870833481661975
+          },
+          "recovery": {
+            "count": 26,
+            "max_added_voice_delay_ms": 23.145250001107343
+          }
+        },
+        "identity": {
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+          "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+        },
+        "cpu": {
+          "before": {
+            "turn": {
+              "usage_usec": 68883,
+              "user_usec": 24054,
+              "system_usec": 44829,
+              "nr_periods": 4,
+              "nr_throttled": 0,
+              "throttled_usec": 0
+            },
+            "other": {
+              "usage_usec": 57364,
+              "user_usec": 19121,
+              "system_usec": 38242,
+              "nr_periods": 3,
+              "nr_throttled": 0,
+              "throttled_usec": 0
+            }
+          },
+          "after": {
+            "turn": {
+              "usage_usec": 4046123,
+              "user_usec": 1182264,
+              "system_usec": 2863859,
+              "nr_periods": 1367,
+              "nr_throttled": 7,
+              "throttled_usec": 882357
+            },
+            "other": {
+              "usage_usec": 4127922,
+              "user_usec": 962603,
+              "system_usec": 3165318,
+              "nr_periods": 1350,
+              "nr_throttled": 3,
+              "throttled_usec": 95787
+            }
+          },
+          "deltas": {
+            "turn": {
+              "usage_usec": 3977240,
+              "user_usec": 1158210,
+              "system_usec": 2819030,
+              "nr_periods": 1363,
+              "nr_throttled": 7,
+              "throttled_usec": 882357
+            },
+            "other": {
+              "usage_usec": 4070558,
+              "user_usec": 943482,
+              "system_usec": 3127076,
+              "nr_periods": 1347,
+              "nr_throttled": 3,
+              "throttled_usec": 95787
+            }
+          }
+        },
+        "product_qualified": false
+      },
+      {
+        "label": "current23007-cpuquota-latency2",
+        "timing": "pass",
+        "clean": {
+          "count": 8,
+          "max_abs_ms": 16.118291667226003,
+          "max_source_corrected_abs_ms": 16.931833335547708
+        },
+        "recovery": {
+          "count": 25,
+          "max_abs_ms": 38.88625000035972,
+          "max_source_corrected_abs_ms": 40.65120833183755
+        },
+        "speech": "speech_regression",
+        "voice": {
+          "pass": true,
+          "clean": {
+            "count": 8,
+            "max_added_voice_delay_ms": -0.25408333385712467
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 22.60050000040792
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 22.723624999343883
+          }
+        },
+        "identity": {
+          "arm64_uuid": "e9d200c9-0a03-324b-b4ee-1f6f13c481a5",
+          "sdk_binary_sha256": "d64c94d09f061eeabf28522a25f90a0d89579e9ed35c79751b1279e77f5ca36e",
+          "patch_sha256": "23007defbf96e4a716dd6957a8787f06c23acb9fb3cebb4652178678012cd023"
+        },
+        "cpu": {
+          "before": {
+            "turn": {
+              "usage_usec": 85419,
+              "user_usec": 35499,
+              "system_usec": 49920,
+              "nr_periods": 5,
+              "nr_throttled": 1,
+              "throttled_usec": 29036
+            },
+            "other": {
+              "usage_usec": 58078,
+              "user_usec": 18629,
+              "system_usec": 39449,
+              "nr_periods": 4,
+              "nr_throttled": 0,
+              "throttled_usec": 0
+            }
+          },
+          "after": {
+            "turn": {
+              "usage_usec": 4137137,
+              "user_usec": 1198594,
+              "system_usec": 2938542,
+              "nr_periods": 1342,
+              "nr_throttled": 1,
+              "throttled_usec": 29036
+            },
+            "other": {
+              "usage_usec": 4220449,
+              "user_usec": 912435,
+              "system_usec": 3308013,
+              "nr_periods": 1337,
+              "nr_throttled": 0,
+              "throttled_usec": 0
+            }
+          },
+          "deltas": {
+            "turn": {
+              "usage_usec": 4051718,
+              "user_usec": 1163095,
+              "system_usec": 2888622,
+              "nr_periods": 1337,
+              "nr_throttled": 0,
+              "throttled_usec": 0
+            },
+            "other": {
+              "usage_usec": 4162371,
+              "user_usec": 893806,
+              "system_usec": 3268564,
+              "nr_periods": 1333,
+              "nr_throttled": 0,
+              "throttled_usec": 0
+            }
+          }
+        },
+        "product_qualified": false
+      }
+    ],
+    "production_implemented": false,
+    "test_code_removed_after_no_benefit": true
+  },
+  "sdk8_local_udp_isolation": {
+    "docker": {
+      "audio_only": {
+        "rtt_ms": {
+          "n": 3000,
+          "median": 2.8841875000000003,
+          "p99": 11.460292,
+          "max": 47.000209
+        },
+        "send_call_ms": {
+          "n": 3000,
+          "median": 0.184646,
+          "p99": 1.380958,
+          "max": 7.590584
+        },
+        "kernel_to_server_ms": {
+          "n": 3000,
+          "median": 0.2766455,
+          "p99": 1.720458,
+          "max": 9.519167
+        },
+        "forward_excess_ms": {
+          "n": 2999,
+          "median": 0.013708000000001164,
+          "p99": 5.569958,
+          "max": 36.195959
+        },
+        "send_gap_ms": {
+          "n": 2999,
+          "median": 19.918167,
+          "p99": 24.669417,
+          "max": 30.7305
+        },
+        "worst": [
+          {
+            "seq": 817,
+            "when": 16.341719916,
+            "send_gap_ms": 18.879416,
+            "kernel_gap_ms": 55.075375,
+            "forward_excess_ms": 36.195959,
+            "rtt_ms": 47.000209
+          },
+          {
+            "seq": 649,
+            "when": 12.982875125,
+            "send_gap_ms": 18.888709,
+            "kernel_gap_ms": 35.024333,
+            "forward_excess_ms": 16.135624,
+            "rtt_ms": 22.623708
+          },
+          {
+            "seq": 2062,
+            "when": 41.243708041,
+            "send_gap_ms": 19.487458,
+            "kernel_gap_ms": 32.475625,
+            "forward_excess_ms": 12.988167,
+            "rtt_ms": 15.941042
+          },
+          {
+            "seq": 1124,
+            "when": 22.483903958,
+            "send_gap_ms": 23.687083,
+            "kernel_gap_ms": 36.605458,
+            "forward_excess_ms": 12.918374999999997,
+            "rtt_ms": 16.348417
+          },
+          {
+            "seq": 1104,
+            "when": 22.080596791,
+            "send_gap_ms": 18.49625,
+            "kernel_gap_ms": 30.809375,
+            "forward_excess_ms": 12.313125,
+            "rtt_ms": 14.62125
+          },
+          {
+            "seq": 937,
+            "when": 18.743777791,
+            "send_gap_ms": 21.758875,
+            "kernel_gap_ms": 31.851333,
+            "forward_excess_ms": 10.092458,
+            "rtt_ms": 12.769042
+          },
+          {
+            "seq": 2054,
+            "when": 41.08301125,
+            "send_gap_ms": 19.209084,
+            "kernel_gap_ms": 29.198375,
+            "forward_excess_ms": 9.989290999999998,
+            "rtt_ms": 15.08525
+          },
+          {
+            "seq": 2946,
+            "when": 58.92181825,
+            "send_gap_ms": 17.372834,
+            "kernel_gap_ms": 26.913083,
+            "forward_excess_ms": 9.540249,
+            "rtt_ms": 11.597416
+          }
+        ]
+      },
+      "with_load": {
+        "rtt_ms": {
+          "n": 3001,
+          "median": 1.115417,
+          "p99": 8.0285,
+          "max": 41.651375
+        },
+        "send_call_ms": {
+          "n": 3001,
+          "median": 0.064792,
+          "p99": 0.645,
+          "max": 7.666625
+        },
+        "kernel_to_server_ms": {
+          "n": 3001,
+          "median": 0.095209,
+          "p99": 0.829416,
+          "max": 7.03425
+        },
+        "forward_excess_ms": {
+          "n": 3000,
+          "median": 0.009312500000000057,
+          "p99": 4.446874000000001,
+          "max": 39.862083
+        },
+        "send_gap_ms": {
+          "n": 3000,
+          "median": 19.9165,
+          "p99": 24.809208,
+          "max": 37.7615
+        },
+        "worst": [
+          {
+            "seq": 3200,
+            "when": 64.002841166,
+            "send_gap_ms": 20.101958,
+            "kernel_gap_ms": 59.964041,
+            "forward_excess_ms": 39.862083,
+            "rtt_ms": 41.651375
+          },
+          {
+            "seq": 4309,
+            "when": 86.189717375,
+            "send_gap_ms": 25.851292,
+            "kernel_gap_ms": 58.246833,
+            "forward_excess_ms": 32.395541,
+            "rtt_ms": 33.706291
+          },
+          {
+            "seq": 3468,
+            "when": 69.365902208,
+            "send_gap_ms": 24.640875,
+            "kernel_gap_ms": 56.138042,
+            "forward_excess_ms": 31.497166999999997,
+            "rtt_ms": 32.34475
+          },
+          {
+            "seq": 4696,
+            "when": 93.934757041,
+            "send_gap_ms": 21.197416,
+            "kernel_gap_ms": 39.265709,
+            "forward_excess_ms": 18.068293,
+            "rtt_ms": 26.406417
+          },
+          {
+            "seq": 4882,
+            "when": 97.65741725,
+            "send_gap_ms": 23.050917,
+            "kernel_gap_ms": 33.979584,
+            "forward_excess_ms": 10.928667000000004,
+            "rtt_ms": 11.862916
+          },
+          {
+            "seq": 3454,
+            "when": 69.095859833,
+            "send_gap_ms": 32.156,
+            "kernel_gap_ms": 42.218375,
+            "forward_excess_ms": 10.062375000000003,
+            "rtt_ms": 11.198417
+          },
+          {
+            "seq": 5299,
+            "when": 105.994168958,
+            "send_gap_ms": 22.432208,
+            "kernel_gap_ms": 31.894083,
+            "forward_excess_ms": 9.461875,
+            "rtt_ms": 10.619875
+          },
+          {
+            "seq": 5422,
+            "when": 108.454255416,
+            "send_gap_ms": 19.9705,
+            "kernel_gap_ms": 29.2555,
+            "forward_excess_ms": 9.285,
+            "rtt_ms": 10.629625
+          }
+        ]
+      },
+      "cpu": {
+        "before": {
+          "usage_usec": 100540,
+          "user_usec": 55135,
+          "system_usec": 45405,
+          "nr_periods": 3,
+          "nr_throttled": 0,
+          "throttled_usec": 0
+        },
+        "after": {
+          "usage_usec": 4718371,
+          "user_usec": 2887763,
+          "system_usec": 1830607,
+          "nr_periods": 1209,
+          "nr_throttled": 0,
+          "throttled_usec": 0
+        }
+      },
+      "all_6001_received": true
+    },
+    "native": {
+      "audio_only": {
+        "rtt_ms": {
+          "n": 2996,
+          "median": 0.38525,
+          "p99": 3.475125,
+          "max": 39.765042
+        },
+        "forward_user_space_excess_ms": {
+          "n": 2995,
+          "median": 0.000168,
+          "p99": 2.104542,
+          "max": 34.281125
+        },
+        "send_gap_ms": {
+          "n": 2995,
+          "median": 19.908875,
+          "p99": 25.476917,
+          "max": 82.252042
+        },
+        "send_call_ms": {
+          "n": 2996,
+          "median": 0.1634165,
+          "p99": 1.477417,
+          "max": 34.342875
+        }
+      },
+      "with_load": {
+        "rtt_ms": {
+          "n": 3001,
+          "median": 0.21275,
+          "p99": 2.908041,
+          "max": 33.970666
+        },
+        "forward_user_space_excess_ms": {
+          "n": 3000,
+          "median": 0.0005835,
+          "p99": 2.073667,
+          "max": 16.778666
+        },
+        "send_gap_ms": {
+          "n": 3000,
+          "median": 19.924374999999998,
+          "p99": 25.388375,
+          "max": 31.945125
+        },
+        "send_call_ms": {
+          "n": 3001,
+          "median": 0.065292,
+          "p99": 0.866291,
+          "max": 5.739
+        }
+      },
+      "sent": 5997,
+      "received": 5997,
+      "receive_clock": "native user-space monotonic, not kernel timestamp"
+    }
+  },
+  "sdk8_turn_cpu_resource_correction": {
+    "old_cpus_per_container": 0.5,
+    "new_cpus_per_container": 2,
+    "positive_cfs_example": {
+      "turn_periods": 7,
+      "turn_throttled_usec": 882357,
+      "other_periods": 3,
+      "other_throttled_usec": 95787
+    },
+    "qualification_requires_zero_during_call": true,
+    "validator_tests_pass": 6,
+    "production_read_only": {
+      "utc": "2026-11-05T15:32:26.355669+00:00",
+      "read_only": true,
+      "turn_cpu_limits": [
+        {
+          "name": "voicechat-edge-a-turn-1",
+          "limits": {
+            "NanoCpus": 0,
+            "CpuQuota": 0,
+            "CpuPeriod": 0,
+            "CpusetCpus": ""
+          }
+        }
+      ]
+    }
+  },
+  "sdk8_source_validation_correction": {
+    "before": "invalid_source_timing",
+    "after": "pass",
+    "source_original_ms": 3.174291668983642,
+    "source_delivered_ms": 106.73250000036205,
+    "stronger_first_frame_registry_consistency": true,
+    "raw_and_corrected_av_bounds_unchanged_ms": 80,
+    "coherent_source_bound_unchanged_ms": 20,
+    "diagnostic_only_not_product_qualification": true
+  },
+  "sdk8_cpu2_new_paired_plan": {
+    "utc": "2026-11-05T16:08:57.733222+00:00",
+    "trials": 3,
+    "series": "cpu2",
+    "mode": "paired",
+    "platform": "macos",
+    "reference_first": [
+      false,
+      true,
+      false
+    ],
+    "turn_cpu_per_container": 2,
+    "no_process_activity_override": true,
+    "raw_and_source_corrected_av_max_ms": 80,
+    "source_emission_coherence_max_ms": 20,
+    "speech_stoi_margin": 0.005,
+    "speech_level_tolerance_db": 0.15,
+    "zero_cfs_throttle_during_call_required": true,
+    "prior_failed_trials_preserved": true,
+    "reason": "Observed CFS throttle in former half-core local TURN fixture; separate source-vs-delivered-onset validation fix has before-fix regression and stronger frame consistency check"
   }
 }

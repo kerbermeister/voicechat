@@ -105,19 +105,35 @@ test('both native SFU and P2P reject good early timing followed by a frozen deco
       received_video_frames: points.map(([id]) => [id, 0])}};
     assert.equal(score(identified).outcome, 'pass');
     assert.equal(score(identified).source_frame_identity_verified, true);
+    const earlyOnsetLost = {...identified,
+      phases: [['clean', 0], ['delay', 20], ['offline', 50], ['clean', 55]],
+      markers: {...identified.markers,
+        video: points.map(([id, time]) => [id, time + (id === 4 ? .12 : 0)]),
+        received_video_frames: points.map(([id]) => [id, id === 4 ? 1 : 0])}};
+    // An encoder/network loss inside the recovery guard is not a bad source
+    // clock: its first generated frame still exists and was on time.
+    assert.equal(score(earlyOnsetLost).outcome, 'pass');
+    assert.equal(score(earlyOnsetLost).source_validation_max_ms, 0);
+    assert.ok(score(earlyOnsetLost).max_source_offset_ms > 75);
+    const lateOnsetLost = {...earlyOnsetLost, markers: {...earlyOnsetLost.markers,
+      video: points.map(([id, time]) => [id, time + (id === 6 ? .12 : 0)]),
+      received_video_frames: points.map(([id]) => [id, id === 6 ? 1 : 0])}};
+    assert.equal(score(lateOnsetLost).outcome, 'budget_exceeded');
     // The first created frame can be dropped before encoding. Measure the
     // frame whose checksum actually arrived, rather than hiding source lag.
     const droppedOnsets = {...identified, markers: {...identified.markers,
       received_video_frames: points.map(([id]) => [id, 1])}};
-    assert.equal(score(droppedOnsets).outcome, 'invalid_source_timing');
+    assert.equal(score(droppedOnsets).outcome, 'budget_exceeded');
     const oneDroppedFrame = {...identified, markers: {...identified.markers,
       video: points.map(([id, time]) => [id, time + .052]),
-      source_video_frames: points.map(([id, time]) => [id, 1, time + .052]),
+      source_video_frames: points.flatMap(([id, time]) => [[id, 0, time], [id, 1, time + .052]]),
       received_video_frames: points.map(([id]) => [id, 1])}};
     assert.equal(score(oneDroppedFrame).outcome, 'pass');
     assert.equal(score(oneDroppedFrame).max_all_source_offset_ms, 0);
     assert.equal(score({...oneDroppedFrame, markers: {...oneDroppedFrame.markers,
       video: points.map(([id, time]) => [id, time + .15])}}).outcome, 'budget_exceeded');
+    assert.throws(() => score({...identified, markers: {...identified.markers,
+      source_video: points.map(([id, time]) => [id, time + .01])}}));
     for (const frames of [[], points.map(([id]) => [id, 2])]) {
       assert.throws(() => score({...identified, markers: {...identified.markers, received_video_frames: frames}}));
     }

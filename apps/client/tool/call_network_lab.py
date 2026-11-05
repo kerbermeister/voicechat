@@ -254,7 +254,9 @@ def main():
                 'ports': ['127.0.0.1::3478/tcp', '127.0.0.1::3478/udp'] + [
                     f'127.0.0.1:{p}:{p}/udp' for p in range(first, first + 8)
                 ],
-                'mem_limit': '128m', 'cpus': .5,
+                # Half-core CFS throttling added unintended audio jitter under
+                # video bursts. The impairment must come only from netem.
+                'mem_limit': '128m', 'cpus': 2,
             },
             'netem': {
                 'image': args.netem_image, 'entrypoint': ['/bin/sh', '-c'],
@@ -270,7 +272,7 @@ def main():
             services['other'] = {
                 'image': image('turn'), 'command': ['-c', '/other.conf'],
                 'volumes': ['./other.conf:/other.conf:ro'],
-                'network_mode': 'service:turn', 'mem_limit': '128m', 'cpus': .5,
+                'network_mode': 'service:turn', 'mem_limit': '128m', 'cpus': 2,
             }
         compose = folder / 'compose.json'
         compose.write_text(json.dumps({'name': project, 'services': services}))

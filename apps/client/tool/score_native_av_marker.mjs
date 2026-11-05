@@ -78,12 +78,17 @@ function analyzeTiming(data) {
   if (sourceFramesVerified) {
     assert.ok(Array.isArray(markers.source_video_frames) && Array.isArray(markers.received_video_frames));
     const frames = new Map();
+    const firstFrames = new Map();
     for (const [id, frame, time] of markers.source_video_frames) {
       assert.ok(Number.isInteger(id) && id >= 0 && id <= 4095 &&
         Number.isInteger(frame) && frame >= 0 && frame < 16 && Number.isFinite(time));
       const key = `${id}:${frame}`;
       assert.ok(!frames.has(key), 'Ambiguous emitted marker frame');
       frames.set(key, time);
+      firstFrames.set(id, Math.min(firstFrames.get(id) ?? Infinity, time));
+    }
+    for (const [id, time] of emittedVideo) {
+      assert.equal(firstFrames.get(id), time, 'Source onset must match its first generated frame');
     }
     assert.equal(markers.received_video_frames.length, markers.video.length);
     for (const [index, [id, frame]] of markers.received_video_frames.entries()) {
@@ -116,17 +121,19 @@ function analyzeTiming(data) {
   // the complete cost of any dropped onset and must meet the unchanged budget.
   const allSourceMax = Math.max(...[...emittedVideo].filter(([id]) => sentAudio.has(id))
     .map(([id, time]) => Math.abs(time - sentAudio.get(id)) * 1000));
+  const sourceValidationMax = sourceFramesVerified ? allSourceMax : sourceMax;
   const enough = clean.count >= 4 && recovered.count >= 12;
   const withinBudget = [clean, recovered].every(phase =>
     phase.max_abs_ms <= 80 && phase.max_source_corrected_abs_ms <= 80);
   const transport = recoveryTransport(data);
-  const outcome = enough && withinBudget && sourceMax <= 75 ? 'pass' :
-    !enough ? 'insufficient_markers' : sourceMax > 75 ? 'invalid_source_timing' : 'budget_exceeded';
+  const outcome = enough && withinBudget && sourceValidationMax <= 75 ? 'pass' :
+    !enough ? 'insufficient_markers' : sourceValidationMax > 75 ? 'invalid_source_timing' : 'budget_exceeded';
   return {schema: 1, outcome: outcome === 'pass' && !transport.pass ? 'stalled_transport' : outcome,
     recovery_transport: transport,
     audio_checksum_markers: audio.length, matched_pairs: pairs.length,
     shared_group: data.shared_group, source_frame_identity_verified: sourceFramesVerified, clean, recovery: recovered,
-    max_source_offset_ms: sourceMax, max_all_source_offset_ms: allSourceMax, physical_latency_measured: false,
+    max_source_offset_ms: sourceMax, max_all_source_offset_ms: allSourceMax,
+    source_validation_max_ms: sourceValidationMax, physical_latency_measured: false,
     decoder_window_ms: 1024 / rate * 1000, recovery_guard_after_seconds: 5, audio_markers: audio, pairs};
 }
 
