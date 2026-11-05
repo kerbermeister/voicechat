@@ -2,6 +2,10 @@ name: Build bounded A/V WebRTC SDK
 on:
   workflow_dispatch:
     inputs:
+      tests_only:
+        description: Qualify C++ timing before compiling platform libraries
+        type: boolean
+        default: false
       macos_only:
         description: Build only the macOS SDK
         type: boolean
@@ -65,6 +69,7 @@ jobs:
           path: ${{ runner.temp }}/results/
           if-no-files-found: error
   sdk:
+    if: inputs.tests_only != true
     needs: test
     strategy:
       fail-fast: false

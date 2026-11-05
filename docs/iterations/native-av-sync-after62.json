@@ -15933,5 +15933,47 @@
     "analyzer": "pass",
     "real_multisource_native_media_tested": false,
     "cpp_sdk_changed": false
+  },
+  "native_sdk7_complete_binary_pair": {
+    "run": 42006621067,
+    "source": "b29604eaa809dd0d55d1acd4ba321cfc3dfe2636",
+    "pins": {
+      "schema": 1,
+      "sdk_version": "150.7871.04",
+      "release_artifact_version": "150.7871.04-vc7",
+      "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
+      "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+      "artifacts": {
+        "macos": {
+          "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc7/WebRTC.xcframework.zip",
+          "sha256": "e2c357cec1e600a9688b8b01b81cc1125216b1abb7e7211e4b28f3af2591af3e",
+          "size_bytes": 6302333,
+          "arm64_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+          "binary_sha256": "873e7051e8ccae239736fdf8cf5838c6ff947e29a4a7b9962482ad80d9a81a83"
+        },
+        "android": {
+          "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc7/libwebrtc.aar",
+          "sha256": "c2a6de5e0f471e9426736418358c5174b9e9693e0280a5892be553e911f1bbb6",
+          "size_bytes": 36290008,
+          "jni_sha256": {
+            "armeabi-v7a": "9ef554f9a17df9b0b5d141e64325dc943042c6d2f816e2891ad3c3cd62ec991c",
+            "arm64-v8a": "84d9855a259d9ce8e08da9efbb5b855ebd3a1e30ac175dbe2b86513472eed73e",
+            "x86_64": "e5fbf618dba99e2bf3c36ec078cd7fab0980abf6627ee3051af20ac24bea1458"
+          }
+        }
+      },
+      "native_video_playout_ms": 90,
+      "native_video_playout_max_ms": 10000,
+      "platform_policy_test_count": 9
+    },
+    "macos_and_android_source_receipts_verified": true,
+    "configuration_cases_per_platform": 9,
+    "android_abis": [
+      "armeabi-v7a",
+      "arm64-v8a",
+      "x86_64"
+    ],
+    "native_media_qualified": false,
+    "application_released": false
   }
 }

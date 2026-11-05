@@ -1077,3 +1077,12 @@ Guard также исключает старые inactive/recvonly/rejected m-с
 A/V пару и не занимают её sync group. Всего17 Flutter тестов PASS; анализ
 изменённых двух Dart файлов без замечаний. Физическая и нативная
 медиапроверка нескольких источников этим не подменяется.
+
+SDK7 Android CI42006621067 завершился успешно: armeabi-v7a/arm64-v8a/
+x86_64, затем9 реальных AAR initialization-policy случаев. При получении
+проверены19-input source receipt, AAR SHA-256
+c2a6de5e0f471e9426736418358c5174b9e9693e0280a5892be553e911f1bbb6,
+classes.jar hash, notices и все три JNI ELF/hash. Теперь проверена полная
+пара SDK7. Начата публикация immutable dependency prerelease для разрешения
+зависимостей тестовых приложений; это не app release и не медиаприёмка.
+Реальные keyless/положительный AES, речь/обычный voice и A/V≤80мс ещё впереди.

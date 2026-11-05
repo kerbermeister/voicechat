@@ -3,9 +3,10 @@
 **SDK7 candidate, not release-qualified (2026-11-05).** Installed application
 channels remain1.19.14(62). Exact sourceb29604e passes86/86 C++ tests, zero skips
 and15 original-behavior negative regressions in run41983111458. Both platform
-libraries are building in run42006621067. Application binary pins still refer
-to earlier internal SDKs until the complete SDK7 pair is verified; they must
-not be released. Earlier failed media attempts remain in the
+libraries and their9 configuration cases passed in run42006621067; exact
+receipts, archive hashes, Mac signature/UUID and Android3ABI hashes/notices
+were verified locally. The complete SDK7 pair is pinned for internal native
+media qualification; it must not be released as an application yet. Earlier failed media attempts remain in the
 [technical journal](../docs/iterations/native-av-sync-after62.md).
 
 The fork pins WebRTC150.7871.04, the official builder/depot_tools and19 source
