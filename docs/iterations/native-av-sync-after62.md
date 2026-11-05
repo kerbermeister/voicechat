@@ -1086,3 +1086,47 @@ classes.jar hash, notices и все три JNI ELF/hash. Теперь прове
 пара SDK7. Начата публикация immutable dependency prerelease для разрешения
 зависимостей тестовых приложений; это не app release и не медиаприёмка.
 Реальные keyless/положительный AES, речь/обычный voice и A/V≤80мс ещё впереди.
+
+SDK7/default Mac: два свежих keyless mute/unmute контроля PASS. В обеих
+комнатах PCM peak0, audio decoded0/video decoded0 при живом зашифрованном
+RTP. Фактически встроенный UUID64c574a9-029a-3928-816e-90b2bb12dafe
+подтверждён. Нет field-trial/SIF overrides; ключи получателям не установлены.
+Это отрицательный контроль, не положительная медиаприёмка. Начат первый
+полный encrypted SFU звонок со свежим одновременным ordinary-voice контролем.
+
+Первый SDK7/default реальный encrypted LiveKit SFU звонок на Mac PASS:
+clean18,468мс/raw и22,000мс/source-corrected; recovery64,979/66,095мс,
+27 recovery checksum pairs, source max4,201мс. Свежий одновременный
+ordinary-voice контроль: добавленная речь≤22,895мс, matched speech PASS.
+Отрицательный gate до ключей и декодированные метки/речь после установки
+ключей проходят на фактическом SDK7 UUID. Это1/3 SFU повторов; остальные
+Mac/P2P и Android серии и app updates не завершены. Порог80мс не менялся.
+
+Полная серия SDK7/default Mac SFU:3/3 PASS, каждый отдельный порог
+сохранён. Recovery raw/source-corrected по прогонам:64,979/66,095;
+76,758/77,694;63,305/61,443мс. Clean maxima≤62,513мс. Во всех трёх
+matched speech PASS, added voice≤22,895мс и source timing≤5,448мс.
+Первый/второй keyless отрицательный контроль также PASS, без диагностических
+политик. Android keyless+SFU, обе P2P/остальные сетевые серии и подписанные
+обновления остаются; physical/acoustic/display результат не утверждается.
+
+Первый SDK7/default Android keyless cross-peer дошёл до PCM0/decoded0
+при живом RTP в обеих комнатах, но **весь прогон не принят**: finally
+вызывал Room.disconnect у не подключённого voiceAlice на receiver и
+voiceBob на sender. Оба ожидали отсутствующее событие disconnect и
+завершились TimeoutException. Сохранены raw media и failure-summary;
+actual APK JNI SHA84d9855a259d9ce8e08da9efbb5b855ebd3a1e30ac175dbe2b86513472eed73e,
+compiled Java initialization policy и sender SDK7 UUID проверены.
+Очистка теперь ограничена подключаемой ролью, как у основной A/V пары;
+затем dispose по-прежнему выполняется для всех объектов. Пороги/crypto
+assertions не ослаблены. Анализ Dart PASS; запущены новые labels Android2/3
+вместо перезаписи failed1, затем положительная SFU серия.
+
+SDK7/default Android labels2/3 полностью PASS, включая sender/receiver
+cleanup. В обеих комнатах PCM0/decoded0 при живом RTP. В обоих прогонах
+получены настоящие native logs `dropping server injected frame before key`,
+при неизменённых default flags (SIF/field-trial overrides отсутствуют).
+APK JNI/Java initialization hashes и SDK7 Mac sender UUID совпали.
+Среда: только собственный API35 arm64-v8a emulator/qemu1, не Xiaomi;
+physical acoustic/display latency не измерялась. Failed1 не включён
+в успешную серию. Начата положительная Android encrypted SFU серия.

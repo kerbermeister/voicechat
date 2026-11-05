@@ -15975,5 +15975,449 @@
     ],
     "native_media_qualified": false,
     "application_released": false
+  },
+  "native_sdk7_macos_default_keyless_controls": [
+    {
+      "utc": "2026-11-05T11:21:08.861637+00:00",
+      "platform": "macos",
+      "sdk_identity": {
+        "arm64_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+        "sdk_binary_sha256": "d8b0b10e380fa3b8283c6800df6072e1f731f2909dfdba892fbbfb7ba9570985",
+        "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530"
+      },
+      "manifest_patch": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+      "default_binary_no_field_trial_or_sif_override": true,
+      "missing_key_gate": {
+        "content": {
+          "video_markers": 0,
+          "audio_peak": 0.0,
+          "audio_chunks": 329,
+          "control_audio_peak": 0.0
+        },
+        "ordinary_voice": {
+          "packets": 142,
+          "plaintext_audio_peak": 0.0,
+          "decoded": 0
+        },
+        "audio": {
+          "packets": 131,
+          "decoded": 0
+        },
+        "video": {
+          "packets": 196,
+          "decoded": 0
+        }
+      },
+      "native_sif_logs": [],
+      "negative_keyless_gate_pass": true,
+      "positive_media_qualified": false
+    },
+    {
+      "utc": "2026-11-05T11:22:27.151277+00:00",
+      "platform": "macos",
+      "sdk_identity": {
+        "arm64_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+        "sdk_binary_sha256": "d8b0b10e380fa3b8283c6800df6072e1f731f2909dfdba892fbbfb7ba9570985",
+        "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530"
+      },
+      "manifest_patch": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+      "default_binary_no_field_trial_or_sif_override": true,
+      "missing_key_gate": {
+        "content": {
+          "control_audio_peak": 0.0,
+          "audio_peak": 0.0,
+          "video_markers": 0,
+          "audio_chunks": 329
+        },
+        "ordinary_voice": {
+          "packets": 142,
+          "plaintext_audio_peak": 0.0,
+          "decoded": 0
+        },
+        "audio": {
+          "packets": 131,
+          "decoded": 0
+        },
+        "video": {
+          "packets": 177,
+          "decoded": 0
+        }
+      },
+      "native_sif_logs": [],
+      "negative_keyless_gate_pass": true,
+      "positive_media_qualified": false
+    }
+  ],
+  "native_sdk7_default_sfu_macos": {
+    "date_utc": "2026-11-05T11:31:00.806654+00:00",
+    "records": [
+      {
+        "trial": "current-14ba4133-sfu-1",
+        "timing": "pass",
+        "clean": {
+          "count": 7,
+          "max_abs_ms": 18.468416667019483,
+          "max_source_corrected_abs_ms": 22.000416665832745
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 64.97870833300112,
+          "max_source_corrected_abs_ms": 66.09529166780703
+        },
+        "source_max_ms": 4.2011250006908085,
+        "identity": {
+          "arm64_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+          "sdk_binary_sha256": "d8b0b10e380fa3b8283c6800df6072e1f731f2909dfdba892fbbfb7ba9570985",
+          "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530"
+        },
+        "factory_policy": "native default90..10000; no fixture override",
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 7,
+            "max_added_voice_delay_ms": -0.29800000083923806
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": 22.568291666175355
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 22.894166666446836
+          }
+        },
+        "speech": "pass",
+        "pass": true
+      },
+      {
+        "trial": "current-14ba4133-sfu-2",
+        "timing": "pass",
+        "clean": {
+          "count": 7,
+          "max_abs_ms": 37.08895833187853,
+          "max_source_corrected_abs_ms": 34.21462499863992
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 76.75833333269111,
+          "max_source_corrected_abs_ms": 77.6936249985738
+        },
+        "source_max_ms": 4.313708333938848,
+        "identity": {
+          "arm64_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+          "sdk_binary_sha256": "d8b0b10e380fa3b8283c6800df6072e1f731f2909dfdba892fbbfb7ba9570985",
+          "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530"
+        },
+        "factory_policy": "native default90..10000; no fixture override",
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 7,
+            "max_added_voice_delay_ms": -0.418625000747852
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": -0.3951250000682194
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": 22.330166666506557
+          }
+        },
+        "speech": "pass",
+        "pass": true
+      },
+      {
+        "trial": "current-14ba4133-sfu-3",
+        "timing": "pass",
+        "clean": {
+          "count": 7,
+          "max_abs_ms": 62.51291666740144,
+          "max_source_corrected_abs_ms": 59.74437499935448
+        },
+        "recovery": {
+          "count": 27,
+          "max_abs_ms": 63.304791667178506,
+          "max_source_corrected_abs_ms": 61.44329166818352
+        },
+        "source_max_ms": 5.44758333307982,
+        "identity": {
+          "arm64_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+          "sdk_binary_sha256": "d8b0b10e380fa3b8283c6800df6072e1f731f2909dfdba892fbbfb7ba9570985",
+          "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530"
+        },
+        "factory_policy": "native default90..10000; no fixture override",
+        "voice_latency": {
+          "pass": true,
+          "clean": {
+            "count": 7,
+            "max_added_voice_delay_ms": -0.2679583340068348
+          },
+          "video_paused": {
+            "count": 4,
+            "max_added_voice_delay_ms": -0.2980416666105157
+          },
+          "recovery": {
+            "count": 27,
+            "max_added_voice_delay_ms": -0.2748333317867946
+          }
+        },
+        "speech": "pass",
+        "pass": true
+      }
+    ],
+    "complete": true,
+    "all_pass": true
+  },
+  "native_sdk7_android_keyless1_teardown_failure": {
+    "whole_trial_qualified": false,
+    "reason": "Unused sender/receiver voice Room.disconnect times out during fixture teardown; role-specific cleanup required",
+    "negative_content_criteria_passed": true,
+    "sdk_identity": {
+      "jni_sha256": "84d9855a259d9ce8e08da9efbb5b855ebd3a1e30ac175dbe2b86513472eed73e",
+      "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+      "sdk_initialization_bytecode_sha256": "3ba12fad8beb777aa36f8e443d75ba11c7489a9a13bf1d1ba9d64bd6be62d61f",
+      "sender_sdk_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+      "sender_sdk": "patched"
+    },
+    "missing_key_gate": {
+      "content": {
+        "audio_peak": 0.0,
+        "video_markers": 0,
+        "audio_chunks": 366,
+        "control_audio_peak": 0.0
+      },
+      "ordinary_voice": {
+        "packets": 159,
+        "plaintext_audio_peak": 0.0,
+        "decoded": 0
+      },
+      "audio": {
+        "packets": 163,
+        "decoded": 0
+      },
+      "video": {
+        "packets": 233,
+        "decoded": 0
+      }
+    },
+    "next_labels": "Android keyless2/3; preserve failed1"
+  },
+  "native_sdk7_android_default_keyless_controls": {
+    "environment": {
+      "runtime": "owned Android emulator",
+      "api": "35",
+      "abi": "arm64-v8a",
+      "qemu": "1",
+      "physical_device": false,
+      "physical_acoustic_display_latency_measured": false
+    },
+    "reports": [
+      {
+        "utc": "2026-11-05T11:42:53.803995+00:00",
+        "platform": "android",
+        "sdk_identity": {
+          "jni_sha256": "84d9855a259d9ce8e08da9efbb5b855ebd3a1e30ac175dbe2b86513472eed73e",
+          "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+          "sdk_initialization_bytecode_sha256": "3ba12fad8beb777aa36f8e443d75ba11c7489a9a13bf1d1ba9d64bd6be62d61f",
+          "sender_sdk_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+          "sender_sdk": "patched"
+        },
+        "manifest_patch": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+        "default_binary_no_field_trial_or_sif_override": true,
+        "missing_key_gate": {
+          "content": {
+            "audio_peak": 0.0,
+            "video_markers": 0,
+            "audio_chunks": 363,
+            "control_audio_peak": 0.0
+          },
+          "ordinary_voice": {
+            "packets": 154,
+            "plaintext_audio_peak": 0.0,
+            "decoded": 0
+          },
+          "audio": {
+            "packets": 159,
+            "decoded": 0
+          },
+          "video": {
+            "packets": 221,
+            "decoded": 0
+          }
+        },
+        "native_sif_logs": [
+          {
+            "elapsed_us": 11203872,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11204034,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11220570,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11240778,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11259688,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11280468,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11301357,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11322412,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11343565,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11365085,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11381745,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11402371,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11422025,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11443766,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11460664,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11485188,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          }
+        ],
+        "negative_keyless_gate_pass": true,
+        "positive_media_qualified": false
+      },
+      {
+        "utc": "2026-11-05T11:44:22.543031+00:00",
+        "platform": "android",
+        "sdk_identity": {
+          "jni_sha256": "84d9855a259d9ce8e08da9efbb5b855ebd3a1e30ac175dbe2b86513472eed73e",
+          "patch_sha256": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+          "sdk_initialization_bytecode_sha256": "3ba12fad8beb777aa36f8e443d75ba11c7489a9a13bf1d1ba9d64bd6be62d61f",
+          "sender_sdk_uuid": "64c574a9-029a-3928-816e-90b2bb12dafe",
+          "sender_sdk": "patched"
+        },
+        "manifest_patch": "14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530",
+        "default_binary_no_field_trial_or_sif_override": true,
+        "missing_key_gate": {
+          "content": {
+            "audio_peak": 0.0,
+            "video_markers": 0,
+            "audio_chunks": 406,
+            "control_audio_peak": 0.0
+          },
+          "ordinary_voice": {
+            "packets": 171,
+            "plaintext_audio_peak": 0.0,
+            "decoded": 0
+          },
+          "audio": {
+            "packets": 176,
+            "decoded": 0
+          },
+          "video": {
+            "packets": 242,
+            "decoded": 0
+          }
+        },
+        "native_sif_logs": [
+          {
+            "elapsed_us": 10864139,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 10864679,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 10886790,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 10899312,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 10920621,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 10939371,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 10959513,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 10978977,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 10998356,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11018973,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11038742,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11067176,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11078732,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11098691,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11121660,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          },
+          {
+            "elapsed_us": 11139451,
+            "message": "(line 674): FrameCryptorTransformer::decryptFrame() dropping server injected frame before key\n"
+          }
+        ],
+        "negative_keyless_gate_pass": true,
+        "positive_media_qualified": false
+      }
+    ],
+    "failed_label1_excluded": true
   }
 }

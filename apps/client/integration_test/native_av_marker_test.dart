@@ -706,7 +706,7 @@ void main() {
       );
     } finally {
       // Stop the sender before removing the synthetic input replacement.
-      await voiceAlice?.disconnect();
+      if (role != 'receiver') await voiceAlice?.disconnect();
       if (role != 'receiver') await alice.disconnect();
       for (final track in stream?.getTracks() ?? <rtc.MediaStreamTrack>[]) {
         await track.stop();
@@ -719,7 +719,7 @@ void main() {
           in voiceStream?.getTracks() ?? <rtc.MediaStreamTrack>[]) {
         await track.stop();
       }
-      await voiceBob?.disconnect();
+      if (role != 'sender') await voiceBob?.disconnect();
       await voiceAlice?.dispose();
       await voiceBob?.dispose();
       await voiceStream?.dispose();
