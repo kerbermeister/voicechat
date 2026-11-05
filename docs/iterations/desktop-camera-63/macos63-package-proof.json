@@ -1,0 +1,12 @@
+{
+  "build": 63,
+  "source": "cc18eee7f11e3666b6e09a56248a15ba4c90d7b3",
+  "entries": 285,
+  "zip_dmg_files_identical": true,
+  "codesign_strict": true,
+  "bundle_feed_sparkle_key_match_previous": true,
+  "physical_candidate_ui": true,
+  "about_version_63_visible": true,
+  "same_account_device_as_installed62": true,
+  "old_history_visible": true
+}
