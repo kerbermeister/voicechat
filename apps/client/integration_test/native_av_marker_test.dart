@@ -12,6 +12,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:livekit_client/src/core/engine.dart';
 import 'package:voicechat_probe/call_stream_sync.dart';
+import 'package:voicechat_probe/call_video_playout_stub.dart';
 
 Future<StreamSubscription<Map<String, dynamic>>> collectNativeSifLogs(
   List<Map<String, dynamic>> logs,
@@ -184,6 +185,15 @@ void main() {
     const ordinaryVoice = bool.fromEnvironment('AV_ORDINARY_VOICE_REFERENCE');
     const keylessMuteCycle = bool.fromEnvironment('AV_KEYLESS_MUTE_CYCLE');
     const nativeCallSync = bool.fromEnvironment('AV_NATIVE_CALL_SYNC');
+    const nativeReceiverPlayout = bool.fromEnvironment(
+      'AV_NATIVE_RECEIVER_PLAYOUT',
+    );
+    if (nativeReceiverPlayout) {
+      expect(
+        Platform.isMacOS && nativeCallSync && nativePlayout == 0 && !fullReset,
+        isTrue,
+      );
+    }
     const dropKeylessSif = bool.fromEnvironment('AV_DROP_KEYLESS_SIF');
     if (dropKeylessSif) expect(keylessMuteCycle, isTrue);
     if (keylessMuteCycle) {
@@ -426,6 +436,10 @@ void main() {
       }
       expect(audio, isNotNull);
       expect(video, isNotNull);
+      if (nativeReceiverPlayout) {
+        expect(await tuneMacOSCallVideoPlayout(video!.receiver), isTrue);
+        expect(await tuneMacOSCallVideoPlayout(audio!.receiver), isFalse);
+      }
       if (nativeCallSync) {
         expect(audio!.mediaStream.id, video!.mediaStream.id);
         expect(audio.mediaStream.id, endsWith('|voicechat-call'));
@@ -531,6 +545,7 @@ void main() {
           'separate_native_sender': role == 'receiver',
           'discard_frame_when_cryptor_not_ready': true,
           'native_call_sync': nativeCallSync,
+          'native_receiver_playout': nativeReceiverPlayout,
           'shared_group': audio.mediaStream.id == video.mediaStream.id,
           'stream_groups': streamGroups,
           'keys_installed': false,
@@ -744,6 +759,7 @@ void main() {
         'stats_times': sampleTimes,
         'simultaneous_ordinary_voice_reference': ordinaryVoice,
         'native_sif_logs': sifLogs,
+        'native_receiver_playout': nativeReceiverPlayout,
         if (nativeSifTrace)
           'native_sif_before_key_count': nativeSifBeforeKeyCount,
         if (nativeSifTrace)

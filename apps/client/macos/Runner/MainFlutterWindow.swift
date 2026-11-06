@@ -1,5 +1,7 @@
 import Cocoa
 import FlutterMacOS
+import WebRTC
+import flutter_webrtc
 
 class MainFlutterWindow: NSWindow, NSDraggingDestination {
   private(set) var updater: MacUpdater?
@@ -20,6 +22,22 @@ class MainFlutterWindow: NSWindow, NSDraggingDestination {
     RegisterGeneratedPlugins(registry: flutterViewController)
     calls = FlutterMethodChannel(name: "voicechat/calls",
       binaryMessenger: flutterViewController.engine.binaryMessenger)
+    calls?.setMethodCallHandler { call, result in
+      guard call.method == "tuneVideoPlayout" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard let args = call.arguments as? [String: String],
+        let peerId = args["peerConnectionId"], let receiverId = args["receiverId"],
+        let peer = FlutterWebRTCPlugin.sharedSingleton()?.peerConnections?[peerId] as? RTCPeerConnection,
+        let receiver = peer.receivers.first(where: { $0.receiverId == receiverId })
+      else {
+        result(false)
+        return
+      }
+      // The browser and other native call paths keep their own buffer policy.
+      result(receiver.setMinimumVideoPlayoutDelayMs(70))
+    }
     if #available(macOS 14.0, *) {
       screenCapture = ScreenCapture(messenger: flutterViewController.engine.binaryMessenger)
     }

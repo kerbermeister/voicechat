@@ -58,6 +58,7 @@ def main():
     parser.add_argument('--drop-keyless-sif', action='store_true', help='Negative diagnostic only: disable SFU blank-frame bypass before keys')
     parser.add_argument('--native-sif-trace', action='store_true', help='Record native SFU blank-frame handling during the media probe')
     parser.add_argument('--native-startup-only', action='store_true', help='Stop after tracing the unmuted receiver before keys')
+    parser.add_argument('--native-receiver-playout', action='store_true', help='Apply the Mac app video receiver policy')
     parser.add_argument('--av-speech', type=Path, help='Synthetic mono48kHz PCM16 WAV; never use a personal recording')
     parser.add_argument('--av-sender-root', type=Path, help='Separate account-free macOS sender checkout (A/V fixture only)')
     parser.add_argument('--av-media-ip', help='Local private interface for encrypted RTP between Mac and the owned Android emulator')
@@ -68,6 +69,9 @@ def main():
         parser.error('Dropping SFU blank frames is only a negative keyless diagnostic')
     if args.native_call_sync and (not args.av_marker_output or args.web_root):
         parser.error('Native call synchronization requires the native A/V marker fixture')
+    if args.native_receiver_playout and (args.device != 'macos' or not args.native_call_sync or
+                                        args.native_video_playout_ms or args.timestamp_full_reset):
+        parser.error('Receiver playout requires the Mac call fixture without a field trial override')
     if args.timestamp_full_reset and (args.device != 'macos' or not args.av_marker_output or args.native_video_playout_ms != 0):
         parser.error('Timestamp diagnostic requires the Mac A/V fixture with native SDK default playout')
     if args.ordinary_voice_reference and (not args.av_marker_output or args.web_root or (args.device != 'macos' and not args.av_sender_root)):
@@ -329,6 +333,7 @@ def main():
                 'AV_DROP_KEYLESS_SIF': args.drop_keyless_sif,
                 'AV_NATIVE_SIF_TRACE': args.native_sif_trace,
                 'AV_NATIVE_STARTUP_ONLY': args.native_startup_only,
+                'AV_NATIVE_RECEIVER_PLAYOUT': args.native_receiver_playout,
                 'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS': args.min_native_video_playout_ms if args.min_native_video_playout_ms is not None else args.native_video_playout_ms,
                 'AV_COHERENT_MARKERS': args.coherent_source,
                 'AV_MARKER_NETWORK': args.av_marker_network,
