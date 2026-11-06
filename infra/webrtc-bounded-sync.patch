@@ -1052,3 +1052,36 @@
    // The frame key length in bits that key derivation uses.
    unsigned int frame_key_bits() const {
      return key_size == 256 ? 256u : 128u;
+--- a/sdk/objc/api/peerconnection/RTCRtpReceiver.h
++++ b/sdk/objc/api/peerconnection/RTCRtpReceiver.h
+@@ -100,6 +100,12 @@
+
+ - (instancetype)init NS_UNAVAILABLE;
+
++/** Sets the minimum playout delay of this video receiver, in milliseconds.
++ *  Zero clears the application minimum. Returns NO for an invalid delay or
++ *  a receiver that does not handle video.
++ */
++- (BOOL)setMinimumVideoPlayoutDelayMs:(NSInteger)delayMs;
++
+ @end
+
+ NS_ASSUME_NONNULL_END
+--- a/sdk/objc/api/peerconnection/RTCRtpReceiver.mm
++++ b/sdk/objc/api/peerconnection/RTCRtpReceiver.mm
+@@ -63,6 +63,15 @@
+
+ - (NSString *)receiverId {
+   return [NSString stringForStdString:_nativeRtpReceiver->id()];
++}
++
++- (BOOL)setMinimumVideoPlayoutDelayMs:(NSInteger)delayMs {
++  if (delayMs < 0 || delayMs > 10000 ||
++      _nativeRtpReceiver->media_type() != webrtc::MediaType::VIDEO) {
++    return NO;
++  }
++  _nativeRtpReceiver->SetJitterBufferMinimumDelay(delayMs / 1000.0);
++  return YES;
+ }
+
+ - (RTC_OBJC_TYPE(RTCRtpParameters) *)parameters {

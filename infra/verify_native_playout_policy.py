@@ -40,6 +40,44 @@ def invoke(args, cwd):
         raise RuntimeError(f'{Path(args[0]).name} exited {result.returncode}: ' + result.stdout + result.stderr)
 
 
+def verify_macos_video_receiver(work, framework_dir):
+    test = work / 'video-receiver.m'
+    test.write_text('''#import <WebRTC/WebRTC.h>
+
+int main(void) {
+  @autoreleasepool {
+    RTCPeerConnectionFactory *factory = [[RTCPeerConnectionFactory alloc] init];
+    RTCConfiguration *configuration = [[RTCConfiguration alloc] init];
+    configuration.sdpSemantics = RTCSdpSemanticsUnifiedPlan;
+    RTCMediaConstraints *constraints =
+        [[RTCMediaConstraints alloc] initWithMandatoryConstraints:nil
+                                              optionalConstraints:nil];
+    RTCPeerConnection *peer = [factory peerConnectionWithConfiguration:configuration
+                                                          constraints:constraints
+                                                             delegate:nil];
+    RTCRtpReceiver *video = [peer addTransceiverOfType:RTCRtpMediaTypeVideo].receiver;
+    RTCRtpReceiver *audio = [peer addTransceiverOfType:RTCRtpMediaTypeAudio].receiver;
+    int result = 0;
+    if (!video || !audio || ![video setMinimumVideoPlayoutDelayMs:70] ||
+        ![video setMinimumVideoPlayoutDelayMs:0] ||
+        [video setMinimumVideoPlayoutDelayMs:-1] ||
+        [video setMinimumVideoPlayoutDelayMs:10001] ||
+        [audio setMinimumVideoPlayoutDelayMs:70]) {
+      result = 1;
+    }
+    [peer close];
+    return result;
+  }
+}
+''')
+    executable = work / 'video-receiver'
+    invoke(['xcrun', 'clang', '-fobjc-arc', '-mmacosx-version-min=12.0',
+            '-F', framework_dir, '-rpath', framework_dir,
+            '-framework', 'Foundation', '-framework', 'WebRTC',
+            test, '-o', executable], work)
+    invoke([executable], work)
+
+
 def verify(source, platform, output, artifact=None, binary=None):
     with tempfile.TemporaryDirectory(prefix='webrtc-playout-policy-') as temporary:
         work = Path(temporary)
@@ -109,6 +147,9 @@ static NSString *configure(NSString *fieldTrials) {
                 raise ValueError('Compiled macOS SDK lacks the tested default policy')
             identity = {'configuration_source_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
                         'compiled_binary_checked': binary is not None}
+            if binary is not None:
+                verify_macos_video_receiver(work, binary.parent.parent.resolve())
+                identity['compiled_video_receiver_checked'] = True
         else:
             raise ValueError('Unknown native platform')
     report = {'platform': platform, 'test_count': len(CASES), 'pass_count': len(CASES),
