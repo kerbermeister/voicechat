@@ -58,7 +58,7 @@ class PlayoutSession extends VideoSession {
   bool get isLocalVideoMuted => true;
   @override
   final AudioFeed remoteUserMediaStream = AudioFeed();
-  final _peer = PlayoutPeer();
+  var _peer = PlayoutPeer();
   @override
   PlayoutPeer get pc => _peer;
 }
@@ -150,6 +150,24 @@ void main() {
     expect(calls.single.arguments, {
       'peerConnectionId': 'peer',
       'receiverId': 'microphone-receiver',
+    });
+
+    video._peer = PlayoutPeer()
+      ..remoteReceivers.add(
+        RTCRtpReceiverNative(
+          'reconnected-receiver',
+          mic,
+          rtc.RTCRtpParameters(),
+          'new-peer',
+        ),
+      );
+    video.onCallStreamsChanged.add(video);
+    await Future<void>.delayed(Duration.zero);
+    expect(calls, hasLength(2));
+    expect(calls.last.method, 'tuneDirectAudioPlayout');
+    expect(calls.last.arguments, {
+      'peerConnectionId': 'new-peer',
+      'receiverId': 'reconnected-receiver',
     });
   });
   test(
