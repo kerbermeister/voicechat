@@ -1247,3 +1247,20 @@
    void OnAssembledFrame(std::unique_ptr<RtpFrameObject> frame)
        RTC_RUN_ON(packet_sequence_checker_);
    void UpdatePacketReceiveTimestamps(const RtpPacketReceived& packet,
+
+--- a/audio/channel_send.cc
++++ b/audio/channel_send.cc
+@@ -519,7 +519,13 @@
+       crypto_options_(crypto_options),
+       encoder_queue_(env_.task_queue_factory().CreateTaskQueue(
+           "AudioEncoderQueue",
++#if defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)
++          // Keep audio encoding responsive under desktop workload. Match
++          // upstream's default audio priority and retain its explicit opt-out.
++          !env_.field_trials().IsDisabled("WebRTC-MediaTaskQueuePriorities")
++#else
+           env_.field_trials().IsEnabled("WebRTC-MediaTaskQueuePriorities")
++#endif
+               ? TaskQueueFactory::Priority::kAudio
+               : TaskQueueFactory::Priority::kNormal)),
+       encoder_queue_checker_(encoder_queue_.get()),
