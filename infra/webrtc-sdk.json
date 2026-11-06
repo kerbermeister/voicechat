@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "9926755b97390706ec96685616845ec7b030f42caca6ec4c9bc7cb90ce9bab61",
+  "patch_sha256": "134a366662ec99c1c0318dc5d29414daa23f96b4f07cdb17242310129640a070",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -24,7 +24,14 @@
     "api/crypto/frame_crypto_transformer_unittest.cc": "ef6b53dfa57117f581af18fc262df88f18a7204d588827257d44f629b2877e26",
     "api/crypto/frame_crypto_transformer.h": "97e5f1bdbfc6b9167668b12b895bff7fd72c5906a533e1a961bb78367d7e8a43",
     "sdk/objc/api/peerconnection/RTCRtpReceiver.h": "d269a7564b9a3612cdf6bb236a6a86cc41a72b21dc0e4d3d7991427717cd504a",
-    "sdk/objc/api/peerconnection/RTCRtpReceiver.mm": "8373ad2c4e94044d4298be749f2d84c2173223ab23a00ae441bc92e1390ffe9f"
+    "sdk/objc/api/peerconnection/RTCRtpReceiver.mm": "8373ad2c4e94044d4298be749f2d84c2173223ab23a00ae441bc92e1390ffe9f",
+    "api/frame_transformer_interface.h": "ee15b4e9d1346d46868cdbf9a77b2bf46b7086882d1ef957f5d930a4c4bc70f1",
+    "audio/channel_receive.cc": "4b30d85289fbc98fa9a798385d9170358d04ddbefd9825da24785d4227bf1647",
+    "modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.cc": "2805654c9d23b7bd1fbb4e0643af27ba6e9defc27536e39c46e2a4b077002cc5",
+    "modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.h": "6fc4651b508dde881c6ee0cade57a7d5e845e4fdb7dbc2ad522e5049403f07ff",
+    "video/buffered_frame_decryptor.h": "34ff2b9d7c56d06ebb4c2bd59bd597bd0b8c4f6711715f4dd21d5d4dadd352ed",
+    "video/rtp_video_stream_receiver2.cc": "a032c1c3bdeb7bf4afe8a63775b5230253b7f1306037c2040bd97e8b20c28c55",
+    "video/rtp_video_stream_receiver2.h": "407af95cc2339c9ea96cfb7c79cfcb6476766b003060420932edd67006306e4b"
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "03852fcee5c80880b5a376a0b4af88470e3b40537adefdd86fd9b53d5939e61e",
@@ -41,19 +48,26 @@
     "modules/video_coding/timing/timestamp_extrapolator_unittest.cc": "0f926712aa25fb3d74a7c4f76835dc46f961d10a9b82e5c51cad88e11f6f8b5a",
     "call/syncable.h": "e00bc323a9ff5ce05e6ff5116ce4abe305a673415e37a0b8f38cffd32adc550c",
     "video/video_receive_stream2.h": "a36a02346358c94eb33e19e273c06044fc19348e212d1c5bf03a305a00c81100",
-    "api/crypto/frame_crypto_transformer.cc": "0da3fa6759b09f4b4fd0d6076c336d23b9eb32d42c9c6d422b6f3cb2d7950430",
-    "api/crypto/sif_payload_unittest.cc": "3db0a3b839530e35d39b65584297a7864f78b578f4150aded95519838c7d4973",
+    "api/crypto/frame_crypto_transformer.cc": "6a985703ed230ff2ad64fdf318087079d8695d5f9968b1d20eba5a0cf1b5de0e",
+    "api/crypto/sif_payload_unittest.cc": "5683e2147a5b81f144b66e3a39e5cbb3fc05ae51eaa0dce22a4f6be39b66df79",
     "api/crypto/BUILD.gn": "6e92edc0d213f67b547de0a6729251a8df1bd63a0498de409f7e4f98aafe0ffb",
     "api/crypto/frame_crypto_transformer_unittest.cc": "3c0b3fc6e61fd9e70b5333d51ef9724237a38b37bf73a6f5b6b21c0b9d0c2f98",
-    "api/crypto/frame_crypto_transformer.h": "7c899722681bfe286435017608a82699fa5d84c3488c3d7f5f2377d521d920d3",
+    "api/crypto/frame_crypto_transformer.h": "aa28105797e68800c8cb2dcd285cf810c0df0bae0a92acea646d061d5aab5d31",
     "sdk/objc/api/peerconnection/RTCRtpReceiver.h": "f47aa7118c8b7ca8ba269a03115c65b2a3ed5a7bbbc66ee3d7c5202bb1cad20b",
-    "sdk/objc/api/peerconnection/RTCRtpReceiver.mm": "31258dac819c0cdd3630e192c9b41678c65a99994b120fb2d7b74374652250a8"
+    "sdk/objc/api/peerconnection/RTCRtpReceiver.mm": "31258dac819c0cdd3630e192c9b41678c65a99994b120fb2d7b74374652250a8",
+    "api/frame_transformer_interface.h": "c933a8b612fd9ddd3b5df00cf2d47d21ab4fba8c632adcf66c3a7850096ea2bf",
+    "audio/channel_receive.cc": "343608c40fdfe219bbf9ba54dfb282a952570a37e446c16946ed77dc666e7fda",
+    "modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.cc": "07f961eba8f4645a5b2289ddb593fec8802e905bde801ce7ac497192b39d89f5",
+    "modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.h": "d78af97333e92509c40ee9fd2c703daea6821803354e7883f57fb5cd95b6a4c3",
+    "video/buffered_frame_decryptor.h": "048da153d844f6606eeaa8be2d44f91e9c1872defcd5607132a793b2fbd2ba84",
+    "video/rtp_video_stream_receiver2.cc": "cb0ebea1b8602106203b471d0f6efecbe19297ffe55b482d6530a99eff6d8f52",
+    "video/rtp_video_stream_receiver2.h": "087670309dbb1090b2066266f76f88e8c5b70293134faed3cc55555e687b1e27"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*",
-  "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey",
-  "release_artifact_version": "150.7871.04-vc10",
+  "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey:SifTransformTest.StrictDisabledCryptorDropsFrames",
+  "release_artifact_version": "150.7871.04-vc12",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
-  "unit_test_count": 93,
+  "unit_test_count": 95,
   "regressions": [
     "VCMTimingTest.SyncDelayUsesCurrentDelayAfterVideoJitter",
     "VCMTimingTest.SyncDelayRespectsBoundsAndAudioDeviceMinimum",
@@ -75,7 +89,8 @@
     "RtpStreamsSynchronizerTest.TracksAudioPlayoutWithinTwoHundredMilliseconds",
     "RtpStreamsSynchronizerTest.UsesPresentationClockInsteadOfPacketArrival",
     "RtpStreamsSynchronizerTest.PresentationClockSurvivesRtpWrap",
-    "RtpStreamsSynchronizerTest.ClampsPresentationTargetAtZero"
+    "RtpStreamsSynchronizerTest.ClampsPresentationTargetAtZero",
+    "SifTransformTest.StrictDisabledCryptorDropsFrames"
   ],
   "native_video_playout_ms": 0,
   "platform_policy_test_count": 10,

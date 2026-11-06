@@ -924,7 +924,29 @@
 
 --- a/api/crypto/frame_crypto_transformer.cc
 +++ b/api/crypto/frame_crypto_transformer.cc
-@@ -666,6 +666,20 @@
+@@ -517,7 +517,9 @@
+     return;
+   }
+   if (!enabled_cryption) {
+-    sink_callback->OnTransformedFrame(std::move(frame));
++    if (!EnforcesFrameEncryption()) {
++      sink_callback->OnTransformedFrame(std::move(frame));
++    }
+     return;
+   }
+
+@@ -640,7 +642,9 @@
+     return;
+   }
+   if (!enabled_cryption) {
+-    sink_callback->OnTransformedFrame(std::move(frame));
++    if (!EnforcesFrameEncryption()) {
++      sink_callback->OnTransformedFrame(std::move(frame));
++    }
+     return;
+   }
+
+@@ -666,6 +670,20 @@
          }
          return;
        }
@@ -967,10 +989,26 @@
    }
 
    scoped_refptr<DefaultKeyProviderImpl> key_provider_;
-@@ -202,6 +200,45 @@
+@@ -202,13 +200,67 @@
    std::vector<uint8_t> written_;
  };
 
+-TEST_F(SifTransformTest, ForwardsServerBlankFrameWithoutKeyAndStripsTrailer) {
++TEST_F(SifTransformTest, StrictDisabledCryptorDropsFrames) {
++  key_provider_->options().discard_frame_when_cryptor_not_ready = true;
++  transformer_->SetEnabled(false);
++  EXPECT_TRUE(transformer_->EnforcesFrameEncryption());
++  Transform(kVp8KeyFrame8x8);
++  EXPECT_FALSE(sink_->event.Wait(TimeDelta::Millis(250)));
++}
++
++TEST_F(SifTransformTest, NonStrictDisabledCryptorKeepsPassthrough) {
++  transformer_->SetEnabled(false);
++  EXPECT_FALSE(transformer_->EnforcesFrameEncryption());
++  Transform(kVp8KeyFrame8x8);
++  EXPECT_TRUE(sink_->event.Wait(TimeDelta::Seconds(1)));
++}
++
 +TEST_F(SifTransformTest, StrictReadyDropsBlankWithoutSharedKey) {
 +  key_provider_->options().discard_frame_when_cryptor_not_ready = true;
 +  Transform(kVp8KeyFrame8x8);
@@ -994,12 +1032,12 @@
 +TEST_F(SifTransformTest, StrictReadyForwardsBlankWithSharedKeyAtNonzeroIndex) {
 +  key_provider_->options().discard_frame_when_cryptor_not_ready = true;
 +  key_provider_->SetSharedKey(7, std::vector<uint8_t>(32, 0x42));
-+  Transform(kVp8KeyFrame8x8);
-+  ASSERT_TRUE(sink_->event.Wait(TimeDelta::Seconds(5)));
-+  EXPECT_EQ(sink_->count, 1);
-+  EXPECT_EQ(written_, kVp8KeyFrame8x8);
-+}
-+
+   Transform(kVp8KeyFrame8x8);
+   ASSERT_TRUE(sink_->event.Wait(TimeDelta::Seconds(5)));
+   EXPECT_EQ(sink_->count, 1);
+   EXPECT_EQ(written_, kVp8KeyFrame8x8);
+ }
+
 +TEST_F(SifTransformTest, StrictReadyForwardsBlankWithParticipantKeyAtNonzeroIndex) {
 +  key_provider_->options().discard_frame_when_cryptor_not_ready = true;
 +  key_provider_->options().shared_key = false;
@@ -1010,9 +1048,16 @@
 +  EXPECT_EQ(written_, OpusSilence());
 +}
 +
- TEST_F(SifTransformTest, ForwardsServerBlankFrameWithoutKeyAndStripsTrailer) {
-   Transform(kVp8KeyFrame8x8);
-   ASSERT_TRUE(sink_->event.Wait(TimeDelta::Seconds(5)));
++TEST_F(SifTransformTest, ForwardsServerBlankFrameWithoutKeyAndStripsTrailer) {
++  Transform(kVp8KeyFrame8x8);
++  ASSERT_TRUE(sink_->event.Wait(TimeDelta::Seconds(5)));
++  EXPECT_EQ(sink_->count, 1);
++  EXPECT_EQ(written_, kVp8KeyFrame8x8);
++}
++
+ TEST_F(SifTransformTest, DropsForeignPayloadCarryingTrailerWithoutKey) {
+   Transform({0xde, 0xad, 0xbe, 0xef, 0x00, 0x11, 0x22, 0x33});
+   ASSERT_TRUE(observer_->event.Wait(TimeDelta::Seconds(5)));
 --- a/api/crypto/frame_crypto_transformer_unittest.cc
 +++ b/api/crypto/frame_crypto_transformer_unittest.cc
 @@ -10,6 +10,17 @@
@@ -1052,6 +1097,17 @@
    // The frame key length in bits that key derivation uses.
    unsigned int frame_key_bits() const {
      return key_size == 256 ? 256u : 128u;
+@@ -451,6 +443,10 @@
+     return enabled_cryption_;
+   }
+   virtual const std::string participant_id() const { return participant_id_; }
++
++  bool EnforcesFrameEncryption() const override {
++    return key_provider_->options().discard_frame_when_cryptor_not_ready;
++  }
+
+  protected:
+   virtual void RegisterTransformedFrameCallback(
 --- a/sdk/objc/api/peerconnection/RTCRtpReceiver.h
 +++ b/sdk/objc/api/peerconnection/RTCRtpReceiver.h
 @@ -100,6 +100,12 @@
@@ -1085,3 +1141,116 @@
  }
 
  - (RTC_OBJC_TYPE(RTCRtpParameters) *)parameters {
+--- a/api/frame_transformer_interface.h
++++ b/api/frame_transformer_interface.h
+@@ -171,6 +171,9 @@
+ // the TransformedFrameCallback interface (see above).
+ class FrameTransformerInterface : public RefCountInterface {
+  public:
++  // Whether this transformer keeps the media path closed until crypto is ready.
++  virtual bool EnforcesFrameEncryption() const { return false; }
++
+   // Transforms `frame` using the implementing class' processing logic.
+   virtual void Transform(
+       std::unique_ptr<TransformableFrameInterface> transformable_frame) = 0;
+--- a/audio/channel_receive.cc
++++ b/audio/channel_receive.cc
+@@ -771,10 +771,12 @@
+
+     payload = decrypted_audio_payload.data();
+     payload_data_length = decrypted_audio_payload.size();
+-  } else if (crypto_options_.sframe.require_frame_encryption) {
+-    RTC_DLOG(LS_ERROR)
+-        << "FrameDecryptor required but not set, dropping packet";
+-    payload_data_length = 0;
++  } else if (crypto_options_.sframe.require_frame_encryption &&
++             (!frame_transformer_delegate_ ||
++              !frame_transformer_delegate_->FrameTransformer()
++                   ->EnforcesFrameEncryption())) {
++    // A subscription can receive RTP before its frame cryptor is attached.
++    return;
+   }
+
+   std::span<const uint8_t> payload_data(payload, payload_data_length);
+--- a/modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.cc
++++ b/modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.cc
+@@ -158,6 +158,12 @@
+   frame_transformer_->UnregisterTransformedFrameSinkCallback(ssrc_);
+   frame_transformer_ = nullptr;
+   receiver_ = nullptr;
++}
++
++bool RtpVideoStreamReceiverFrameTransformerDelegate::EnforcesFrameEncryption()
++    const {
++  RTC_DCHECK_RUN_ON(&network_sequence_checker_);
++  return frame_transformer_ && frame_transformer_->EnforcesFrameEncryption();
+ }
+
+ void RtpVideoStreamReceiverFrameTransformerDelegate::TransformFrame(
+--- a/modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.h
++++ b/modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.h
+@@ -49,6 +49,7 @@
+
+   void Init();
+   void Reset();
++  bool EnforcesFrameEncryption() const;
+
+   // Delegates the call to FrameTransformerInterface::TransformFrame.
+   void TransformFrame(std::unique_ptr<RtpFrameObject> frame);
+--- a/video/buffered_frame_decryptor.h
++++ b/video/buffered_frame_decryptor.h
+@@ -72,6 +72,7 @@
+   // the video stream.
+   void SetFrameDecryptor(
+       scoped_refptr<FrameDecryptorInterface> frame_decryptor);
++  bool HasFrameDecryptor() const { return frame_decryptor_ != nullptr; }
+
+   // Determines whether the frame should be stashed, dropped or handed off to
+   // the OnDecryptedFrameCallback.
+--- a/video/rtp_video_stream_receiver2.cc
++++ b/video/rtp_video_stream_receiver2.cc
+@@ -817,7 +817,15 @@
+
+ bool RtpVideoStreamReceiver2::IsDecryptable() const {
+   RTC_DCHECK_RUN_ON(&worker_task_checker_);
+-  return frames_decryptable_;
++  return frames_decryptable_ || UsesEncryptedFrameTransformer();
++}
++
++bool RtpVideoStreamReceiver2::UsesEncryptedFrameTransformer() const {
++  RTC_DCHECK_RUN_ON(&worker_task_checker_);
++  return frame_transformer_delegate_ &&
++         frame_transformer_delegate_->EnforcesFrameEncryption() &&
++         (!buffered_frame_decryptor_ ||
++          !buffered_frame_decryptor_->HasFrameDecryptor());
+ }
+
+ void RtpVideoStreamReceiver2::OnInsertedPacket(
+@@ -927,6 +935,7 @@
+ void RtpVideoStreamReceiver2::OnAssembledFrame(
+     std::unique_ptr<RtpFrameObject> frame) {
+   RTC_DCHECK_RUN_ON(&packet_sequence_checker_);
++  RTC_DCHECK_RUN_ON(&worker_task_checker_);
+   RTC_DCHECK(frame);
+
+   const std::optional<RTPVideoHeader::GenericDescriptorInfo>& descriptor =
+@@ -982,7 +991,7 @@
+     last_assembled_frame_rtp_timestamp_ = frame->RtpTimestamp();
+   }
+
+-  if (buffered_frame_decryptor_ != nullptr) {
++  if (buffered_frame_decryptor_ != nullptr && !UsesEncryptedFrameTransformer()) {
+     buffered_frame_decryptor_->ManageEncryptedFrame(std::move(frame));
+   } else if (frame_transformer_delegate_) {
+     frame_transformer_delegate_->TransformFrame(std::move(frame));
+--- a/video/rtp_video_stream_receiver2.h
++++ b/video/rtp_video_stream_receiver2.h
+@@ -326,6 +326,8 @@
+   ParseGenericDependenciesResult ParseGenericDependenciesExtension(
+       const RtpPacketReceived& rtp_packet,
+       RTPVideoHeader* video_header) RTC_RUN_ON(packet_sequence_checker_);
++  bool UsesEncryptedFrameTransformer() const
++      RTC_RUN_ON(&worker_task_checker_);
+   void OnAssembledFrame(std::unique_ptr<RtpFrameObject> frame)
+       RTC_RUN_ON(packet_sequence_checker_);
+   void UpdatePacketReceiveTimestamps(const RtpPacketReceived& packet,
