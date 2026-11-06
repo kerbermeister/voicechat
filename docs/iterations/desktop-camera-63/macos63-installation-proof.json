@@ -1,0 +1,16 @@
+{
+  "previous_build": 62,
+  "build": 63,
+  "installed_by_in_app_update": true,
+  "automatic_relaunch": true,
+  "installed_matches_signed_zip_and_dmg": true,
+  "entries": 285,
+  "codesign_strict": true,
+  "about_build_63_visible": true,
+  "account_preserved": true,
+  "device_id_preserved": true,
+  "old_history_visible": true,
+  "profile_or_keychain_cleared": false,
+  "live_window_switch_video_acceptance": false,
+  "latest_check_after_install": true
+}

@@ -1,11 +1,7 @@
 # OPT-08: нативная синхронизация после выпуска62
 
-04.11.2026. LiveKit-исправление опубликовано штатным full-выпуском №104:
-[workflow](https://github.com/kerbermeister/voicechat/actions/runs/41824931971),
-ревизия da0dd92. Независимо подтверждены runtime source/digests, здоровье
-служб, прежний rollback pointer и сохранность данных. Feed, Android manifest
-и полные HTTPS-ответы ZIP/DMG/APK62 сверены по SHA-256; большие ответы
-хешировались с VPS, внешняя доступность отдельно проверена с Mac. После одной неудачной пары речи macOS
+04.11.2026. Кандидат LiveKit прошёл доступные A/V, E2EE и речевые проверки;
+штатная публикация ещё не завершена. После одной неудачной пары речи macOS
 выполнена заранее заданная сбалансированная серия из3 пар с включением всех
 результатов. Прежние допуски STOI0,005 и уровня0,15дБ сохранены; итог прошёл. Единственная пользовательская приёмка —
 [UA-08.C06](../user-acceptance.md). Физический Xiaomi недоступен; Android
@@ -28,9 +24,9 @@ min_playout_delay=130 и max_playout_delay=130, без включения sync_s
 ограничивают накопление видеозадержки после паузы: вариант130..10000мс
 позволял SFU/получателю сохранять лишнюю задержку и не прошёл80мс.
 
-В опубликованном этапе full104 относительно нативного62 (596a80f) не было изменений
-продуктового Flutter/Swift/Kotlin/SDK-кода. Последующие нативные кандидаты ниже
-ещё не выпущены. Штатный full-релиз сервера и web для первого этапа LiveKit выполнен. Установленные62 получают новую политику
+Diff относительно опубликованного нативного62 (596a80f) не содержит изменений
+продуктового Flutter/Swift/Kotlin/SDK-кода. Если кандидат пройдёт проверку,
+нужен штатный full-релиз сервера и web для этапа LiveKit. Установленные62 получают новую политику
 при следующем звонке; отдельная перепаковка тех же нативных клиентов не нужна.
 
 ## Проверяемый путь
@@ -130,1410 +126,570 @@ STOI0,004870 при допуске0,005, разница уровня≤0,009дБ
 
 ## Открытый личный P2P-тракт
 
-DirectCall использует личный P2P, CallProbe — LiveKit. Серверная политика130
-не меняет P2P. Нативная лаборатория использует настоящие PeerConnections,
-два TURN relay, H264/Opus, синтетические метки и речь. Матрица аккаунтов
-не создаётся. Неверный SHA256 DTLS fingerprint приводит к dtlsState=failed
-и нулю принятых медиапакетов; правильный даёт декодируемое содержимое с
-AES_CM_128_HMAC_SHA1_80. Это проверка DTLS-SRTP, а не AES-GCM missing-key
-gate LiveKit. Настройки шифрования не меняются.
-
-Нативный SDK адаптирует разрешение320/480/640. Первоначальный декодер P2P
-читал фиксированные пиксельные координаты и пропускал уменьшенные кадры:
-прежние P2P timing-числа предварительные, ими нельзя закрывать80мс.
-Проверены все4 принятых LiveKit-кандидата: они сохраняли640×360 во всех
-сэмплах, опубликованная квалификация не затронута. Новый декодер использует
-координаты относительно размеров принятого кадра. Стенд ждёт фактический
-декодированный кадр до замера и классифицирует все согласованные video PT,
-включая RED/FEC/RTX; пересечение с audio PT запрещено. Во время outage
-по-прежнему обязательны video packets+0 и продолжающийся audio.
-
-| Проверка macOS, масштабируемый декодер | Максимум recovery | Вывод |
-| --- | --- | --- |
-| Исходная общая группа H264, обычный буфер | raw2010,2 / corrected2029,7мс | Дефект воспроизведён |
-| То же, отрицательный DTLS-тест после измерения | raw2048,4 / corrected2064,3мс | Порядок криптопроверки не причина |
-| Отдельный первый video msid с сохранением исходного потока, обычный буфер | raw104,9 / corrected56,6мс | Большой дрейф устранён, строгий raw80мс не пройден |
-| Глобальный нативный fixed100 в LiveKit с серверным130 | clean raw86,5мс | Отклонён: нельзя распространять на все звонки |
-
-Дополнительный первый video msid позволяет разделить нативную группу
-синхронизации, сохранив исходный поток с обоими треками для Matrix metadata
-и UI; фактическое членство проверено на получателе. Продуктовый кандидат реализован, пока не выпущен. Приватные ABI/vtable-вызовы не добавлены.
-В C++ SDK есть SetJitterBufferMinimumDelay(optional<double> seconds), в
-публичных Java/ObjC wrappers setter отсутствует. Простой SDK upgrade не
-считается решением без проверки API и поведения.
-
-Сравнение речи с исходной общей группой улучшило STOI, но не прошло
-прежний допуск изменения RMS0,15дБ; этот результат не удалён. Отдельный
-контроль влияния буфера при одинаковой раздельной группировке (обычный
-буфер против100мс) прошёл прежние STOI/RMS-допуски во всех4 фазах;
-52 парных декодированных речевых клипа побайтно совпали:9/13/5/25.
-Геометрическая ошибка видеодекодера не влияет на эти PCM-свидетельства.
-Это не физическое прослушивание и не утверждение, что прежний RMS-тест прошёл.
-
-Следующий протокол источника выбран до новых результатов: видеокадр с
-новой меткой ставится на отдельную очередь при границе аудиометки, сохраняя
-номинальный20fps таймер (до0,5 дополнительного кадра/с). Аудиоволна не меняется,
-работа не переносится в realtime audio callback. Это исключает независимую
-квантизацию визуального начала периодом50мс самого стенда. Raw и corrected
-80мс остаются обязательными; дополнительно проверяется max source offset20мс
-для всех отправленных меток, включая не дошедшие до получателя. Такой
-контролируемый источник не заменяет физическую проверку камеры и динамика.
-
-Первый фактический продуктовый прогон `product0-coherent` прошёл: raw clean
-49,28мс / recovery55,53мс, corrected50,16/57,09мс, максимум источника7,38мс.
-Проверены два video msid, исходный поток с обоими треками и отрицательный
-DTLS-контроль; буфер SDK, H264/Opus, обработка звука и криптография не изменены.
-Это один прогон, не завершённая квалификация. До следующих результатов
-задан протокол: ещё два независимых прогона с теми же80/20мс пределами,
-каждый сравнивается с одним свежим обычным аудиозвонком по прежним
-STOI0,005/RMS0,15дБ; все результаты учитываются отдельно. После этого —
-Android с отдельным Mac-отправителем и регрессии. Неуспешные запуски
-подготовки аудиоконтроля не засчитываются в качество медиапотока.
-
-Остаток и версии ведутся только в [UA-08.C06](../user-acceptance.md):
-квалифицировать минимальное P2P-исправление, Android с отдельным нативным
-отправителем, регрессии речи/E2EE и затронутого LiveKit, затем выпустить
-подписанные нативные клиенты, если меняется продуктовый код. Физические
-Xiaomi и iPhone Safari/PWA остаются недоступными для текущего стенда.
-
-Свежий обычный аудиоконтроль завершён: DTLS negative blocked, Opus,
-relay-only, аудио продолжалось во всех фазах. A/V-score для него ожидаемо
-`insufficient_markers`, поскольку видео не отправляется. Сравнение с первым
-продуктовым прогоном не прошло STOI в delay:0,9805268 против0,9891161
-(допуск0,005), RMS прошёл. Результат сохранён, не усредняется и не исключается.
-Потерянных audio packets в обоих прогонах0, но concealment вырос с1686 до5134
-samples в delay кандидата; требуется установить влияние графика доставки/
-нативного playout. Продуктовый выпуск остаётся закрыт этим результатом.
-
-Итог заранее заданной продуктовой серии (обычный буфер): A/V2/3 PASS,
-речь1/3 PASS. Второй прогон: recovery223,03мс raw /217,90мс corrected при
-валидном source7,41мс. Третий: raw43,84/56,72мс, corrected52,17/60,83мс,
-source8,68мс; речь PASS. Продуктовая серия отклонена, а не усреднена.
-Следующий пилот до результатов задан как video min20/max100мс, прежние
-raw/corrected80мс, source20мс и STOI/RMS. В исходниках закреплённой ветки
-WebRTC7871 подтверждены ForcePlayoutDelay в RTP video receiver и ограничение
-render time. Нулевой minimum с max<=500 включает вывод без сглаживания,
-поэтому выбран положительный minimum20. Сначала P2P и LiveKit AES-GCM,
-затем полноценная квалификация, если пилоты пройдут. Это не выпуск.
-
-Пилоты с тем же источником и прежними допусками:
-
-| Вариант | A/V clean/recovery raw, мс | Речь | Итог |
-| --- | --- | --- | --- |
-| P2P video20–100 |38,69/93,21; corrected recovery94,88; source7,50 | PASS | Отклонён: видео опережает аудио |
-| P2P fixed100 |51,91/46,45; source7,42 | PASS | Один пилот, не квалификация |
-| LiveKit AES-GCM fixed100, SFU130 |80,12/59,75; corrected79,07/58,64; source2,44 | PASS | Отклонён по raw80,12; ключевой контент-гейт пройден |
-
-После этих результатов до следующего прогона выбран fixed90 для обоих
-маршрутов. Не округляем80,12 до проходного80 и не меняем STOI/RMS-пороги.
-Первичные исходники SDK: [RTP video receiver, ветка7871](https://webrtc.googlesource.com/src/+/refs/branch-heads/7871/video/rtp_video_stream_receiver2.cc),
-[video timing](https://webrtc.googlesource.com/src/+/refs/branch-heads/7871/modules/video_coding/timing/timing.cc).
-
-Fixed90 оба пилота прошли: P2P raw29,08/68,29мс (corrected25,34/71,24),
-LiveKit21,69/31,27мс (corrected23,85/33,56), речь и криптогейты PASS.
-Настройка перенесена в нативную инициализацию Darwin/Android; SDK binaries,
-кодеки, DSP и cryptors не изменены, это подтверждено сверкой с архивом1.6.3.
-Фактический Mac plugin SHA-2563f1171b2fb220a145b69711ed9a87886fc215322608d4c61559d074d2cb60a36.
-Серия продуктового default90 без стендового override: первые два A/V PASS
-(recovery67,46/65,92мс), третий invalid_source_timing21,44мс>20, при этом
-raw102,28/corrected80,84мс тоже не приняты. Речь3/3 PASS. Серия не закрывает
-выпуск. Генератор видео перенесён на очередь userInteractive (звук не меняется),
-до новых результатов заданы3 свежих P2P-прогона с прежними20/80мс и STOI/RMS.
-Исходный неуспешный прогон сохранён. Затем3 actual LiveKit и Android/web.
-
-После QoS исправления3/3 продуктовых Mac P2P-прогона прошли A/V80мс
-(max corrected74,79мс, source max4,92мс). Последовательная речь1/3 PASS.
-A/A того же бинарника также нарушает STOI: clean−0,00852 и pause−0,02418;
-это не позволяет приписать разницу кодовому изменению. Все результаты сохранены.
-Замороженная серия actual-default90 LiveKit:3/3 A/V, речь и AES-GCM PASS,
-max raw75,05мс /corrected73,50мс. PluginSHA во всех прогонах один3f1171b2…
-Пилот одновременного обычного аудиозвонка и видеозвонка прошёл прежние
-STOI/RMS во всех фазах; P2P recovery45,37мс raw/46,47 corrected, source4,02мс.
-Дорожки/приёмники различны, источник/часы общие, Opus SDP совпадает, оба
-соединения прошли свои положительные и отрицательные DTLS-контроли.
-Аудиоконтроль не отправляет видео, его A/V-анализ ожидаемо insufficient_markers,
-при этом62 CRC-аудиометки декодированы. До результатов заданы3 свежих парных
-прогона с перестановкой порядка запуска во втором, все должны пройти;
-никакие старые провалы не исключены из журнала.
-
-### 04.11: одновременный контроль и исправление SDK
-
-Свежая серия трёх одновременных пар завершена:2/3 проходят A/V и речь;
-один звонок raw97,99/corrected100,80мс плюс регрессия речи. Кандидат
-split-msid/global90 отклонён, все результаты сохранены. Обычная общая
-синхронизация с фактическим global90 воспроизвела recovery2105,44мс
-и задержку аудио до2240,07мс. Ограничения видеобуфера недостаточно.
-
-В точном исходнике SDK150.7871.04 (a545de45259b47dfac5f3635863e47cb601f1bb2)
-`VideoReceiveStream2::GetInfo()` получает неограниченный `TargetVideoDelay`,
-тогда как `RenderTime()` ограничивает current delay min/max playout.
-Подготовлен отдельный `TargetVideoDelayForSync()` с верхним пределом.
-Старый getter сохранён для защитного reset в VideoStreamBufferController.
-Четыре файла; кодеки, аудио DSP, шифрование и CA-набор SDK04 не меняются.
-Два новых C++ теста должны сначала упасть на старом поведении, затем весь
-VCMTimingTest должен пройти. Сборка в изолированном CI, не на пользовательском
-Mac с ограниченным диском; после неё нужны реальные shared-stream P2P, речь,
-LiveKit AES-GCM и Android. Патч пока не считается доказанным исправлением.
-
-GitHub CLI авторизован пользователем, вход завершён; scopes repo/read:org/gist,
-хранение keyring. SDK source branch `codex/native-sdk-av-sync`, полный журнал
-запуска и хеши будут добавлены после CI. Новая версия63 не опубликована.
-
-SDK build inputs сохранены плоскими файлами `infra/build_webrtc_sdk.py`,
-`infra/webrtc-sdk.json`, `infra/webrtc-bounded-sync.patch`, `infra/WEBRTC_SDK.md`.
-Это сохраняет существующий контракт frozen migration sources;19 migration
-тестов PASS. Первые CI-прогоны с вложенным каталогом отклонены, код
-миграции/проверки безопасности не ослаблялся. Изолированный GN test target
-зарегистрирован в корневом графе; исправленный SDK workflow:
-https://github.com/kerbermeister/voicechat/actions/runs/41873429695.
-
-Подготовлен shared-stream paired-speech fixture: обычный аудиозвонок и
-видеозвонок имеют отдельные дорожки/приёмники, единые часы источника и
-одинаковые Opus SDP; аудио/видео основного звонка теперь явно должны иметь
-один общий stream ID.4 Python и2 Node проверки стенда PASS, targeted Dart
-analyze PASS. Полная локальная серверная проверка до setup нового worktree
-невалидна (нет локальных test secrets, а путь .prototype нарушает существующую
-assertion стенда); чистый CI выполняет штатный setup и полный набор.
-
-Текущий SDK CI4631d2f:
-https://github.com/kerbermeister/voicechat/actions/runs/41875798369.
-Исправлен обязательный путь Android build_aar внутри source checkout.
-Общий Prototype CI54ca593 завершён успешно:854 серверных теста, analyze,
-Flutter tests и обычный Android preview.5 проверок доставки SDK SHA/размеров,
-кеша, Maven metadata и границ источника PASS. Подготовлены отдельные source
-и artifact manifests, чтобы публикация хешей не запускала сборку SDK заново.
-
-До результатов новых SDK-звонков закреплены3 shared-stream simultaneous
-Mac P2P пары,3 native LiveKit,3 Android P2P и3 Android LiveKit с речевыми
-контролями. Все валидные прогоны должны пройти прежние source20/AV80мс и
-STOI/RMS, без усреднения провалов. Дополнительно нужны2 Mac и2 Android
-зеркальных audio-only RTP stall: аудио останавливается, видео продолжает
-получать пакеты, затем обе оценки A/V после восстановления <=80мс. Стенд
-для зеркального случая подготовлен, медиапроверка ещё не выполнена.
-Публикация Android по существующим правилам требует физической приёмки точного
-APK; удалённый Xiaomi нельзя заменять результатом эмулятора.
-
-### Уточнение корневого исправления: текущая задержка вместо целевой
-
-Повторная оценка исходного adaptive/shared0-coherent: recovery video sink
-median25,41мс, max100,67мс; audio sink median707,84мс, max2244,55мс.
-Это поддерживает исправление самого несоответствия TargetDelay и CurrentDelay,
-а не обязательный fixed90. Фиксированный верхний предел также ограничил бы
-легитимную синхронизацию с более медленным аудиоустройством.
-
-В актуальном патче `VideoDelayTimings::CurrentDelay()` возвращает ту же
-эффективную задержку, что рендерер:0 для low-latency path, иначе clamp текущей
-задержки между min/max. `RenderTime` и `VideoReceiveStream2::GetInfo` используют
-один этот расчёт; raw TargetVideoDelay остаётся для защитного reset. Три новых
-C++ теста охватывают jitter target2s при current20ms, границы/минимум аудиоустройства
-250ms и low-latency mode. Нативные factory defaults возвращены к upstream;
-адаптивный буфер и учёт гарнитур сохранены. Матрица и допуски проверок прежние;
-ни одного медиапрогона этого SDK ещё нет. Альтернативный bounded-target SDK
-остаётся историческим кандидатом и не предназначен к выпуску.
-
-CurrentDelay C++ gate в1c848bb пройден:
-https://github.com/kerbermeister/voicechat/actions/runs/41884712502.
-На старом TargetDelay поведении все3 SyncDelay regression tests падают;
-с исправлением21/21 VCMTimingTest PASS,0 failures/errors/skips.
-XML и receipt сверены с patch SHA8f9c5903638c6117f68269fed254defa5fbf44e9fa1ae07c2cfc5664bb1df9f7.
-Это доказательство расчёта в C++, не медиаприёмка. Собираются native SDK
-Mac/Android; новых нативных звонков/обновлений пока нет.
-Дополнительный P2P gate: excess voice delay относительно одновременного обычного
-аудиозвонка <=80мс в clean, после5с video pause и после5с recovery.
-Так исключаем исправление lip-sync искусственным накоплением обоих потоков.
-
-
-04.11, продолжение сборки: Android job126777599005 остановился до C++:
-штатный build_aar вызывает Siso, которому не подходит Ninja-флаг `-j2`.
-В6004dfe заменён только лимит параллелизма на `-local_jobs=2`;
-повтор41890363278 выполняется с тем же8f9c5903 C++-патчем.
-Исходная macOS job126777598847 дошла до компиляции4239 targets на срез.
-Ни один результат этих SDK ещё не считается медиаприёмкой.
-
-Для Android ordinary audio-only control добавлен в cross-device fixture;
-аудиобуфер измеряется по delta jitterBufferDelay / delta jitterBufferEmittedCount
-с монотонными временами samples и фактическими фазами. До новых результатов
-зафиксирован дополнительный порог: максимальная средняя задержка за интервал
-минус медиана обычного аудиозвонка не более80мс в clean/video-pause/recovery
-после5с. Контроль gates:79,5мс проходит,80,5мс и2с отклоняются;
-отсутствующее свидетельство не принимается. Это не проверка физического DAC.
-
-
-04.11, упаковка Mac: обе архитектуры успешно скомпилированы в41884712502,
-но моя команда `lipo -verify_arch ... <file>` имела неверный порядок аргументов.
-Сборка остановилась до готового SDK ZIP; артефакта исправленной библиотеки пока нет.
-В8b2aaae проверка исправлена и добавлено сохранение промежуточного framework
-с source/hash receipt до упаковки, а вf5d9a58 выбран arm64 — фактическая
-архитектура установленного `/Applications/VoiceChat.app` и текущих выпусков.
-Повтор41899866524 использует точные C++-свидетельства6004dfe:
-повторно проверены3 отрицательные регрессии,21/21 зелёных и0 skipped/notrun.
-Четыре теста верификатора доказывают отказ при другом source pin, skipped test
-и отсутствии отрицательного контроля. Нативная упаковка f5d9a58 отдельно
-прошла реальными xcodebuild/lipo/ZIP на копии штатного SDK; это не медиаприёмка.
-
-Итоговое подключение упрощено: flutter_webrtc остаётся hosted1.6.3 из прежнего
-pubspec.lock, его копия в vendor не нужна. Android централизованно выбирает
-проверенный SDK через Gradle resolutionStrategy, оба исходных зависимых build
-файла остаются штатными. Mac использует относительный podspec и существующий
-CocoaPods-путь; SwiftPM остаётся выключенным как в опубликованном клиенте.
-
-## Второй нативный дефект: удержание A/V-задержки (04.11)
-
-SDK vc1 собран: 21 C++ тест прошёл, три отрицательных контроля воспроизвели
-ошибку getter. Android AAR и macOS arm64 framework проверены по receipt/SHA;
-опубликован только prerelease зависимости, не обновление приложения.
-Первый настоящий P2P-вызов Mac→Android API35 с точным JNI vc1 не прошёл:
-clean 28,704 мс (27,806 с поправкой), recovery 384,772 мс (385,652 с поправкой).
-Отрицательный DTLS fingerprint и положительная расшифровка контрольных меток
-прошли. Это не квалификация FrameCryptor E2EE через SFU и не сравнение речи.
-
-Во время 12-секундной остановки видео аудиобуфер держался около 510 мс,
-его цель — 483 мс. В исходнике RtpStreamsSynchronizer при отсутствии новых
-пакетов выполняется return без снятия ранее установленного minimum delay.
-Кандидат vc2 снимает только добавку A/V-синхронизации после двух секунд без
-одного потока; сбрасывает накопленное состояние контроллера и освобождает
-старую пару при detach/reassign/destruction. Пакеты, NetEq DSP, base/device
-latency, криптография и границы video playout не меняются. Добавлены пять
-детерминированных тестов настоящего C++ синхронизатора; их выполнение ожидается
-в CI вместе с 38 существующими timing/stream-sync тестами.
-
-Отдельный дефект стенда: lifetime TURN был 120 с записи +120 с подготовки;
-холодная сборка съела запас, и транспорт остановился примерно на 98-й секунде
-записи. Рассинхрон 385 мс возник до истечения срока и остаётся отрицательным
-результатом, но попытка не считается полным 120-секундным прогоном. Нативным
-стендам дан отдельный setup grace 900 с и добавлена проверка роста счётчиков
-обоих RTP-потоков в последние десять секунд. Первый повтор остановлен до
-измерения: remote candidate оказался prflx вместо требуемого relay; guard
-сохранён, результаты не засчитаны. Повторная диагностика завершена: полный120-секундный прогон, в конце audio+503/video+1366 RTP-пакетов и206 декодированных видеокадров за10с. Clean67,627мс и recovery416,472мс с поправкой на источник; максимальное смещение самого источника1,310мс. Native logs: audio current delay до906мс, после паузы814мс; прежний код сохранял большую задержку при отсутствующем видео. DTLS-SRTP negative/positive controls снова PASS. Это независимое подтверждение дефекта vc1 без истечения TURN.
-
-vc1 запрещён к продвижению в клиентский выпуск. Для vc2 ещё нужны C++ green
-с red-контролями, новые SDK обоих платформ, полная серия P2P/SFU, сравнение
-речи с обычным звонком и проверки E2EE. Клиентские каналы остаются 1.19.14(62).
-
-Проверка живого транспорта расширена на общий scorer P2P/LiveKit: в последние
-10 с должны расти audio/video packetsReceived и video framesDecoded; у
-обычного audio-only контроля проверяется звук. Новый тест даёт корректные
-метки в начале recovery, затем замораживает декодер при продолжающемся RTP:
-старый SFU scorer ошибочно PASS, исправленный — stalled_transport. Все четыре
-Node-теста PASS. Повторный анализ прежнего успешного macOS SFU130 сохранил
-PASS (audio+407/video+651 packets,201 frames за10с); полный vc1 Android вызов
-сохранил budget_exceeded416,472мс при живом транспорте. Это повторный анализ
-сохранённых данных, не новый медиапрогон vc2.
-
-vc2, первый C++ gate (run41917176968/sourcee3c4875):43/43 PASS, все8
-отрицательных регрессий воспроизведены, пропусков нет. Артефакт с receipt/XML
-сохранён. До платформенной сборки завершён охват штатного upstream target:
-video/BUILD.gn получил зависимости environment_factory и time_controller для
-добавленных тестов. C++-алгоритм не менялся; финальный патч теперь включает8
-файлов, поэтому нужен новый exact-source gate. Старые платформенные jobs
-остановлены до существенной сборки; этот green не выдаётся за проверку нового
-GN fingerprint или звонков vc2.
-
-Финальный8-файловый gate41920380791/sourceae0c317 завершён:43/43 PASS,
-8/8 red-контролей,0 пропусков. Receipt, SDK/toolchain pins и XML сверены
-локальным verifier. Mac job126898436620 и Android126898436636 собираются.
-Медиапрогонов vc2 ещё нет. Первый пилот заранее усилен: macOS одновременно
-с обычным голосовым контролем, Android с новым обычным control перед A/V;
-сразу проверяются лишняя задержка голоса и речь по прежним80мс/0,005 STOI/
-0,15дБ, чтобы отклонить неполное решение до всей серии. Это усиление проверки,
-допуски не ослаблялись; новые пользовательские пункты приёмки не создаются.
-
-macOS SDK vc2 собран и опубликован только как dependency prerelease. SHA-256
-8b9f68f70041ce67b01cdc6c4a74e2febe563f3b975fa00208023aa37568a855,
-arm64 UUID f11b61e7-1a79-31d6-9eaf-90c8904e8f8e; прямой HTTPS GET совпал
-по SHA/размеру. Нативный медиапилот ещё не выполнен, Android ещё собирается.
-Mac-only интеграция для внутренних испытаний остаётся локальным коммитом до
-полного Android manifest; клиентские каналы62 не менялись.
-
-## vc2 paired pilot: A/V pass, voice fail; vc3 prepared (05.11 local)
-
-Exact SDK UUID f11b61e7-1a79-31d6-9eaf-90c8904e8f8e was verified inside the
-running native Mac app, with the original hosted wrapper and no fixed90.
-The actual P2P/DTLS-SRTP paired call passed transport and final decoded-content
-liveness; clean51.275/recovery51.686ms source-corrected A/V, source3.887ms.
-It failed the ordinary-voice gate: clean-0.262ms, video-pause1165.610ms,
-recovery23.057ms added delay. Candidate audio queue reached1992ms while its
-ordinary simultaneous control stayed~51ms. The target reached2412ms, then the
-stale reset lowered it to40ms; already queued speech took time to drain.
-Only3 paired pause speech clips remained (required4), so quality is unqualified.
-This is a failed pilot, not an accepted improvement. Lossless synthetic media,
-voice/queue diagnostics and binary identity are retained; SDK vc2 release notes
-explicitly prohibit application promotion. Public client channels remain62.
-
-vc3 bounds both the audio delay controller state and output to80ms beyond its
-explicit base, preventing the buildup before a video outage. Natural adaptive
-NetEq/device delay and video synchronization for slow audio hardware remain
-independent. The existing stale/reset cleanup remains. A new real-controller
-cap regression and explicit-base test extend the gate to45 C++ tests/9 negative
-regressions. Fresh compiled SDKs and all native media gates are still required;
-none of the latency, speech or encryption criteria were relaxed.
-
-
-## vc3 compiled gate and continuous-RTP recovery (05.11 local)
-
-Run41931657101/source3c68506 compiled the pinned patch17965b9e:45/45 real
-C++ tests pass, zero skips/errors; all9 required regressions fail with the
-original getter/synchronizer. The downloaded receipt matches every source and
-toolchain field. Platform SDK builds started; no vc3 media has run yet.
-
-Before vc3 media, two additional paired trials per platform are specified:
-video delay starts at20s and ends at50s without blocking RTP. Both streams must
-continue through52..60s. A/V and added voice-delay recovery budgets start at55s,
-not67s. The scorer regression inserts120ms lag at56s and rejects it in this
-scenario while preserving the full-outage window. Existing speech, crypto,
-source-timing, sample-count and80ms limits remain unchanged. Four Node tests and
-Dart analysis of all three P2P fixtures pass. This adds laboratory coverage,
-not physical-device acceptance; UA-08.C06 stays open and app channels stay62.
-
-
-### Continuous-RTP negative control on rejected vc2
-
-One fresh native Mac paired call used the exact vc2 UUID above and the new
-bc35f01 fixture: video delay20..50s, clean from50s, no RTP outage. All native
-transport assertions passed; final audio503/video1874 packets and206 decoded
-video frames prove continued media. Source offset4.370ms; clean A/V49.433ms.
-Recovery from55s failed at raw1877.494/corrected1878.354ms: audio, not video,
-was late. Added voice delay reached1942.144ms; measured audio queue2126.481ms,
-with target2071.296ms at57.2s. Interval queue averages stayed above100ms
-for38.031s after clean networking returned; this is receiver buffering, not an
-acoustic-latency measurement.
-Speech also failed the unchanged gates (delay STOI0.8472 vs ordinary0.9891;
-recovery0.9021 vs0.9945). All four phases had enough paired speech clips.
-
-This is a rejected-vc2 negative control, not a vc3 media result or proof on a
-physical Xiaomi/iPhone. It reproduces the persistent desync and audio degradation
-without an RTP stop, supporting the vc3 controller-state bound. Lossless
-synthetic media, pairs with offset direction, queue diagnostics, ordinary-voice control
-and speech metrics are retained privately. Public application channels remain62.
-
-
-### vc3 macOS SDK ready; media pending
-
-Run41931657101/source3c68506 produced a verified macOS arm64 SDK. Public HTTPS
-archive SHA-25690af747f20b2343bfdfffad37763c8bf2200fd004b41ef5fa6edab7599263b06,
-size6341609; UUID50a0c7b4-176b-3f63-b31e-2584b0ac50c7. Normal generated third-party
-notices and all source/C++/build receipts are in the dependency prerelease.
-The Mac-only pin is for internal qualification while Android builds; no incomplete
-Android manifest is pushed to the shared branch. Native media and application
-publication are still pending. CocoaPods checksum is generated by `pod ipc spec`
-using the format first checked against the existing lock, then confirmed by
-normal pod resolution. Application channels remain62.
-
-
-### vc3 initial Mac pilot: voice fixed, A/V still fails
-
-The exact new SDK UUID50a0c7b4-176b-3f63-b31e-2584b0ac50c7 was verified in
-Pods and the rebuilt test app, using the unchanged hosted plugin. Initial
-same-version `pod install` had reused the vc2 external spec; the UUID guard found
-this before media and that setup was aborted (`No tests ran`). A targeted
-`pod update WebRTC-SDK --no-repo-update` installed vc3 and reproduced the
-platform-generated lock checksum0aa2856f6f7c8ddd25d9110220efb2cd390dd22c.
-
-The actual vc3 paired pilot passes added voice delay (clean10.853,
-video-pause10.582, recovery10.928ms) and all speech gates: STOI, SI-SDR and level
-match ordinary voice in all four phases. Source max5.399ms is valid.
-Clean A/V63.458ms passes; recovery99.364ms fails80ms. One of26 recovery pairs
-exceeds the budget (id44,18.243s after recovery); most remaining offsets are
-negative50..78ms, with video arriving earlier than audio. Both RTP streams and
-decoded video remain live. This is not an accepted candidate. The failed pilot
-is retained, dependency notes mark the failed A/V gate, and app channels stay62.
-Further diagnostics add callback-vs-native-render timestamps and existing SDK
-sync logs, without changing the scorer or thresholds. No vc3 SFU FrameCryptor
-qualification or physical-device result is claimed.
-
-
-### vc3 render diagnostics and both SDK archives
-
-Android AAR completed from the same source/gate, SHA-256
-5bdfad08959a68b105e9ae8979b3765d0f89a61f2cc898013b1150b83d31ef01,
-size36273763; all three JNI ABIs, Java bindings, receipt and public HTTPS bytes
-verified. This completes the dependency pins, not Android media acceptance.
-
-A fresh instrumented Mac call still fails recovery at100.681ms. Native video
-callbacks occur about9ms before their scheduled presentation (the existing
-renderer allowance). When aligned in time, native current delay155ms matches
-nearby video latency159ms; comparing it with a later64ms median would be wrong.
-The failing marker instead has audio167.776/video67.095ms end-to-end latency.
-This is not evidence for changing the timing units or relaxing the80ms gate.
-The fixture now retains render clocks and reuses the bounded native-log collector.
-Diagnostic settings stay off in normal runs; no test hook enters the app.
-
-Before any result, a separate diagnostic is selected with native video
-min=max130ms and the same vc3 audio cap, shared streams and ordinary-voice
-control. It tests the user's requested130ms policy with unchanged A/V, voice,
-speech and encryption gates. It is not an application configuration yet and
-does not erase either failed adaptive pilot. A successful diagnostic still
-requires production initialization plus the complete fresh qualification series.
-
-
-## Native130ms diagnostic passes; vc4 initialization prepared
-
-One actual vc3 Mac paired diagnostic with native min=max130ms passes all gates:
-clean raw59.138/corrected57.846ms, recovery raw53.484/corrected50.769ms;
-source4.368ms. Added voice latency max23.166ms and speech comparison pass.
-Native sync logs show current video delay130ms throughout, proving the option
-was applied, not merely written to the report. Both streams/decode remain live.
-This single diagnostic does not erase the failed adaptive trials or qualify vc4.
-
-vc4 preserves the exact vc3 C++ timing/voice fixes and configures the130ms policy
-in the Objective-C/Java initialization entry points used by the hosted wrapper.
-It preserves explicit field-trial settings, other options and existing invalid-
-input validation. Local checks:9 Foundation cases pass for the actual method and
-helper;9 Java exact-helper cases pass. The original Mac method and actual vc3 AAR
-constructor fail the new default check as expected. Full vc4 AAR constructor
-checks, compiled binary checks, fresh45/9 C++ gate and native media are pending.
-The12-file patch applies cleanly and all original/patched hashes match. No SDK4
-media result is claimed. SDK notices are also retained in final framework/APK
-resources; a packaging smoke on copied SDK3 preserves signatures and all original
-Android classes/JNI bytes. It is packaging evidence, not SDK4 runtime evidence.
-## Fresh vc4 C++ gate verified; native builds in progress
-
-Run41947763477/sourcee688a36 passes all45 native tests with zero failures/skips
-and all9 original-behaviour negative regressions. The downloaded receipt matches
-the exact12-file patch ea71b607 and every SDK/toolchain pin. macOS/Android binary
-builds have started; their9 configuration cases and media qualification remain
-pending. Application channels stay62.
-
-The SDK3 adaptive Android before-control initially stopped before measurement:
-the cross fixture skipped its video track but its default offer still advertised
-a recvonly video m-section. The receiver's strict audio-only SDP assertion caught
-this. The fixture now uses the existing explicit audio-only offer constraints
-for both negative and positive rounds. Analysis passes; the fresh ordinary audio-only native cross call
-passes, with both encryption-control rounds and live transport. The A/V candidate
-capture remains in progress. The failed setup and logs are retained separately and do
-not count as a media failure or successful SDK4 evidence.
-
-## SDK3 adaptive Android baseline completed
-
-A fresh ordinary audio-only call and a separate actual Mac-to-Android-emulator
-P2P video call pass: clean raw77.307/corrected78.279ms; recovery raw62.959/
-corrected62.070ms. All-source offset2.733ms; audio/video packets and206 decoded
-frames remain live in the final recovery window. Extra interval audio queue is
-70.000ms clean and11.795ms recovery; matched speech passes the unchanged0.005
-STOI/0.15dB limits. Both actual DTLS-SRTP negative/positive controls pass.
-This is one SDK3 adaptive diagnostic on the owned API35arm64 emulator, not SDK4
-qualification or physical Xiaomi acceptance. The Mac adaptive failures remain.
-A separate SDK3 LiveKit AES-GCM diagnostic is running while SDK4 binaries build.
-
-## SDK3 LiveKit: RTP130 alone still exceeds A/V budget
-
-A real native Mac LiveKit call with SDK3's adaptive factory and SFU RTP
-min=max130ms passes speech and actual AES-GCM controls: encrypted packets arrive
-without decoded media while the receiver lacks its key; installing the key
-produces checksum-protected audio/video and matched speech. Final recovery still
-has408 audio/653 video packets and201 decoded frames. A/V clean raw44.715/
-corrected45.541ms passes, but recovery raw96.001/corrected97.951ms fails.
-Source6.984ms is valid. This diagnostic used native factory override0: its130ms
-was the SFU RTP setting, not the new SDK default. No release gate is relaxed.
-A distinct SDK3 diagnostic with explicit native factory min=max130ms is running
-to test the proposed policy in the same real encrypted SFU path. SDK4 binaries
-and their own full qualification remain pending.
-
-## Global native130 rejected by real encrypted SFU diagnostics
-
-SDK3 plus explicit native factory130 fails independent-stream LiveKit: clean
-raw110.983ms/recovery113.640ms, and clean STOI regresses0.005879 beyond0.005.
-Actual AES-GCM controls pass. Measured video latency is176–179ms while natural
-audio is66–78ms: the fixed video floor overshoots independent audio. A distinct
-shared-sync130 call improves recovery to57.143ms, but clean81.013ms and speech
-still fail. Source offsets remain valid. Neither failed result is discarded.
-SDK4's global130 policy must not release on the earlier P2P diagnostic; its
-platform-build cancellation was requested, with its fresh45/9 C++ proof retained.
-
-Before capturing any new candidate, a70ms diagnostic protocol was recorded:
-it aims video near118ms, centered in the observed independent SFU audio65–147ms,
-without delaying ordinary speech. All old80ms/STOI0.005/level0.15dB/count gates
-remain. Test-only inputs now permit70ms; no app default or production service
-has changed. Three paired P2P and three AES-GCM SFU diagnostics are planned,
-retaining every attempt, followed by fresh binary qualification if accepted.
-The first70ms SFU diagnostic is running. This is a hypothesis, not a release.
-
-## Fixed70 diagnostic: SFU passes, P2P still fails; next diagnostic90
-
-The first SDK3 fixed70 AES-GCM SFU call passes: clean raw55.775/corrected56.766ms,
-recovery raw28.056/corrected31.153ms, speech and missing-key/positive-content
-controls. Mirrored audio-RTP interruption also passes raw/corrected recovery
-35.115/36.001ms. But the paired P2P video-RTP interruption fails recovery
-raw87.697/corrected89.317ms; speech and extra voice<=44.923ms pass. SDK70 is not
-accepted and no native default changed. Its planned repeats do not count as
-completed; a new90ms hypothesis is recorded before capture with the same gates.
-The pinned sender source uses WebRTC-ForceSendPlayoutDelay, a separate key from
-the receiver's WebRTC-ForcePlayoutDelay: the tested receiver default does not
-force outgoing RTP hints. The90ms paired diagnostic is now running. A common
-policy still requires both paths and every full native binary qualification.
-
-## SDK5 prepared: receive-relative render delay and90ms receiver default
-
-Both first SDK3 native90 precursor calls pass: P2P clean41.428/recovery34.827ms,
-extra voice<=10.785ms and speech/DTLS controls; SFU clean60.551/recovery62.765ms,
-speech and actual AES-GCM controls. These are diagnostics, not SDK5 evidence.
-
-Time-aligned70ms P2P clocks expose an additional mismatch: nominal video delay
-stays70ms while scheduled output for markers37/38/40 is−9.566/4.954/27.216ms
-from capture. Actual callback is6.108/13.480/18.683ms from capture. Thus the
-clamped buffer alone is not the remaining delay from the packet's arrival when
-the RTP extrapolator shifts after jitter. SDK5 uses the same RenderTime function
-as rendering and subtracts latest_receive_time, clipping expired schedules at0.
-A new actual timing regression tests arrival-relative20/110/0ms, missing clock
-fit and low-latency cases. CI must first reject the former nominal-buffer
-calculation, then pass all46 C++ tests and10 negative regressions. The80ms audio
-cap, stale reset, raw jitter estimate, codec/DSP/crypto/certificate logic remain.
-
-The SDK5 default is90ms receive-only, with explicit0/90/130 and malformed input
-behavior preserved. It is distinct from rejected old fixed90/split wrappers.
-The pinned sender reads a separate ForceSendPlayoutDelay key, so remote hints
-are not forced. Local Foundation9 cases pass; source/hash/apply and Python
-checks pass. SDK5 binary builds and actual media are still pending. App62 stays.
-
-## SDK5 C++ gate verified; SDK3 repeat exposes a speech defect
-
-Fresh SDK5 run41955022535/source7339294 passes all46 C++ tests with zero failures/
-skips; all10 original-behaviour negative regressions fail as required, including
-the new receive-relative schedule test. Receipt/source/toolchain hashes match.
-Native SDK5 binary builds have started; no SDK5 media or app release is claimed.
-
-The SDK3 fixed90 precursor series passes audio-stall recovery20.146ms and
-continuous-RTP delay recovery19.408ms, voice<=22.925ms and matched speech. Its
-second P2P pair passes A/V37.006/31.238ms and voice<=22.542ms but fails pause
-speech: aggregate STOI0.983761 versus control0.991192, difference−0.007431.
-The series stops there; SFU2/3 and P2P3 were not run or counted as passed.
-All outcomes remain retained; acceptance limits stay unchanged.
-
-Offline clip analysis localizes the pause difference to marker30: individual
-STOI0.925720 versus0.986180, while the other five pause clips match control.
-There is no packet loss/concealment in that window. NetEq removes763 candidate
-samples versus249 control samples, an extra514 samples (10.708ms), around the
-synchronization-floor release. This supports investigating time scaling as a
-cause; the counters alone do not prove causation or qualify SDK5's correction.
-The synthetic control/candidate clips are retained locally for diagnosis. SDK5
-must independently pass the full speech, voice, A/V and encrypted-content gates.
-
-
-## SDK5 actual Mac pilot rejected; Android verifier toolchain mismatch
-
-SDK5 run41955022535 produces the exact Mac archive281b6b82…89fb16, UUID
-2625555c-0df2-3fb2-86f0-4ca5ab07172c. The9 compiled native configuration cases,
-source/receipt hashes, notices and framework signature pass. Targeted CocoaPods
-update and embedded UUID confirm the real SDK5 before media, rather than an old
-same-version cached SDK. Generated Pod checksum is d5e50c5228c248bddd7755a0019cdc54475b1a99.
-The dependency prerelease is not an application update and is not qualified.
-
-Actual Mac paired P2P pilot current-8f742bdb-pilot-1 fails: clean raw36.329ms,
-recovery raw126.919ms/source-corrected125.904ms. Added voice<=23.087ms and matched
-speech pass; source offset<=3.525ms. DTLS positive/negative transport checks pass;
-this is not a FrameCryptor/SFU acceptance claim. The series stops after this
-first failure, with all original80ms/STOI0.005/level0.15dB gates retained.
-
-Recovery marker37 arrives214.600ms after source although its scheduled timestamp
-is43.761ms before source. Several next frames arrive8–16ms after source despite
-the90ms receive default. This identifies both a late decoded output and an early
-schedule; it does not yet prove which timing mechanism caused them. Investigate
-RTP-to-local extrapolator recovery after the network pause rather than selecting
-another fixed delay solely to pass. Exact media/logs retained locally.
-
-Android job127013749249 compiles all3ABIs/AAR, then fails the actual policy check:
-PeerConnectionFactory.class version65 (Java21) versus runner javac17/version61.
-AAR and notices are retained, but no final build receipt or policy report was
-produced. Fix the verifier to use the producer SDK JDK before the next accepted
-candidate; do not fabricate successful CI evidence or rebuild rejected SDK5 just
-for publication. Published Mac/Android remain62; physical acceptance is open.
-
-The verifier now prefers the SDK producer JDK at third_party/jdk/current/bin,
-with the existing host fallback for partial local source trees. On this Mac,
-the exact downloaded AAR passes all9 actual builder cases using JDK21; a second
-assertion check selects the producer JDK even when PATH supplies only the system
-Java shim. This is local post-check evidence, not a replacement CI build receipt.
-A separate predeclared diagnostic uses the existing timestamp-extrapolator
-field trial hard_reset_timeout:2000ms, leaving SDK5 default90 and all gates intact.
-It tests stale clock-fit recovery without another SDK rebuild or product change.
-
-The2s timeout diagnostic also fails: raw recovery84.208ms, corrected86.245ms;
-voice<=33.222ms and speech pass. It does not establish a sufficient fix. A second
-predeclared diagnostic changes only the existing reset_full_cov_on_alarm trial,
-leaving the10s timeout and90ms video policy intact. The pinned upstream source
-explicitly notes that resetting only offset variance can affect frequency on a
-delay spike. Expanded filtered native logs now also retain timing-reset alarms.
-
-Full-covariance diagnostics1/2 pass unchanged P2P gates: raw recovery26.412/
-68.532ms, corrected28.744/69.437ms; speech passes, added voice<=45.644/22.909ms.
-The second starts the simultaneous ordinary reference first. These are the
-existing SDK5 binary with an explicit supported field trial, not a new compiled
-default or completed qualification. Third P2P and actual LiveKit AES-GCM series
-are predeclared; stop on first failed gate. No app update is published.
-
-Third full-covariance P2P diagnostic passes: clean raw51.763/corrected50.900ms,
-recovery raw28.506/corrected29.407ms, voice<=22.295ms and speech pass. All three
-predeclared P2P pairs pass. First actual LiveKit AES-GCM diagnostic now runs; its
-speech comparison uses the retained historical SFU control and is labelled as
-such. Final qualification still needs fresh compiled defaults, ordinary controls
-and all mirrored/continuous-delay/platform/encryption checks.
-
-First actual SDK5 full-covariance LiveKit diagnostic passes: clean raw23.745/
-corrected24.602ms, recovery raw34.668/corrected35.577ms, speech passes against
-the explicitly historical control. The missing-key stage receives126 audio/169
-video packets while audio peak stays0 and decoded/video markers stay0; after key
-installation checksummed video/audio speech decode and remain live at the end.
-This is actual AES-GCM content evidence, not merely an enabled setting. Second
-SFU diagnostic runs. Native compiler candidate SDK6/source1a22906 is isolated;
-new actual C++/platform proofs and complete fresh media qualification still required.
-
-Second SDK5 full-covariance SFU diagnostic FAILS: clean raw176.361ms/corrected
-177.331ms; recovery raw40.619/corrected43.463ms passes. Clean speech STOI0.977676
-versus historical control0.988594 differs by−0.010919 (>0.005). Missing-key and
-positive actual AES-GCM controls still pass. SFU3/delay repeats stop without
-being counted. This configuration is unqualified despite all three P2P passes.
-
-Clean markers4..10 show audio source-to-callback282.535→167.846ms while video
-is90.903–143.097ms and render schedules remain100.466–152.027ms. Audio then
-returns95.342ms by marker11. Stats show4 concealment events/7183 concealed
-samples/2400 silent concealed samples, packet-loss counter0; first SFU diagnostic
-has no concealment. These observations identify an initial audio-delay excursion,
-not proof of its cause or of a covariance regression. The speech control is
-historical: fresh ordinary encrypted voice controls are still necessary.
-
-A fixed90ms video cap cannot follow a transient~280ms audio playout delay. The
-current SFU fixture also reports separate media streams, disabling the native
-pair synchronizer. Investigate both real stream grouping and adaptive video
-headroom rather than increasing fixed delay or capping/flushing natural audio.
-SDK6 compiler test remains useful for clock-skew regression, but dependent binary
-builds are scheduled for cancellation after that proof; no accepted media policy
-exists. App62 remains. All absolute80ms and speech gates remain unchanged.
-
-SDK6 actual C++ gate SUCCESS at run41964629040/source1a22906: all63 tests with
-zero failures/skips, all11 original-behavior regressions fail before correction.
-Exact source/toolchain receipt verifies. New clock recovery regression measures
-22ms current/28ms future-estimate errors before, within1ms after; explicit
-offset-only opt-out and all15 existing extrapolator tests pass. This proves a
-clock recovery component, not a complete A/V solution. Dependent Mac/Android
-build cancellation is requested after test completion because SFU policy failed.
-
-New optional Mac fixture runs a simultaneous ordinary E2EE voice call in a
-separate loopback room/PeerConnection pair, matching source clock/audio codec and
-missing-key gate. Both encrypted publications are asserted; neither ordinary
-endpoint publishes/receives video. It records separate PCM/stats and exact stats
-times. Test room/join helpers only admit the two disposable names;4 helper tests
-and unsupported-context guards pass. No production client behavior is changed.
-
-First paired SFU capture reaches export but exceeds the old64MB loopback JSON
-limit for two PCM streams, causing413/broken pipe. No timing or speech acceptance
-is claimed for that attempt. Paired-fixture limit alone becomes128MB; single
-stream contexts remain64MB. Original logs/failure receipt retained and repeat2
-is running with the same media gates. Historical-control SFU2 failure remains.
-
-First valid fresh ordinary-SFU comparison (label...diagnostic2, after export
-repair) passes: clean raw77.739/corrected76.513ms, recovery raw54.852/corrected
-53.958ms, voice excess<=22.770ms and matched speech pass. Separate audio-only
-room/PeerConnections use actual E2EE; missing keys block both rooms' PCM while
-RTP arrives, then decoded checksums/speech pass after key installation. Codec
-parity and absence of ordinary video are asserted. Source clock interval is
-1.994940–2.005305s/id, within the original invariant; source A/V offset<=5.762ms.
-The historical-control absolute177ms failure is retained and keeps policy
-unqualified. A second fresh ordinary comparison is running, rather than
-promoting one good call or changing80ms/speech gates.
-
-Fresh repeat3 aborts at the unchanged negative key gate: primary PCM peak
-0.002990723 exceeds0.001 before key installation, video remains zero. No PCM/
-decoder snapshot was retained, so neither decrypted speech nor a cause is
-proved. Repeat4 passes clean corrected29.027/recovery43.936ms, voice/speech/AES
-controls, but does not erase the failed attempt. A pre-key mute-cycle probe
-passes silence gating then violates source-clock cadence at2.282458s/id; it is
-not A/V acceptance. Its negative snapshot was not exported. Future mute-cycle
-checks are explicitly negative-only and cannot count as positive media proof.
-
-Additional native full-adaptive min0/max10000 plus full covariance P2P fails
-recovery raw82.967/corrected83.779ms; speech and voice<=45.523ms pass. Its planned
-adaptive SFU is not run after this failure. No accepted global policy exists.
-
-A source audit finds a material fixture mismatch: call_probe, stream_controller
-and screen_controller already set discardFrameWhenCryptorNotReady:true; the
-marker fixture's four providers omitted it, selecting SDK default false. Earlier
-SFU marker runs are diagnostics with this mismatch, not product acceptance.
-The fixture now explicitly matches true and asserts each provider's actual
-options. The0.001 peak limit and every media/speech bound remain unchanged; no
-production crypto configuration, key, cipher or decoder is modified. New strict
-negative-only mute control runs with retained synthetic PCM/decoder counters
-on failure and native logs of known SFU injected frames. Hypotheses about blank
-frames/comfort noise remain unproved; do not label this as a product data leak.
-Both SDK6 platform jobs are confirmed cancelled, C++63/11 proof remains valid.
-
-## 05.11: строгий повтор и отказ от фиксированной/совместной задержки
-
-С точными продуктовыми настройками `discardFrameWhenCryptorNotReady=true`
-первый свежий LiveKit/ordinary-voice прогон прошёл, второй отклонён:
-clean raw86,248 / corrected87,175мс, recovery raw79,224 / corrected80,122мс.
-Аудиозадержка около225мс одновременно возникла у видеозвонка и независимого
-обычного аудиозвонка; видео около138мс. Добавленная голосовая задержка
-не более22,448мс, речь и фактическая AES-GCM расшифровка проходят.
-Это доказывает недостаточность фиксированной видеозадержки для этого
-сценария, но не устанавливает причину исторического звонка на Xiaomi.
-
-Диагностика min90/max10000 со штатной общей синхронизацией также отклонена:
-clean corrected52,580мс, recovery raw363,384/corrected364,241мс,
-добавленная задержка речи228,305мс и регрессия речи. Источник ≤5,726мс,
-RTP живой, положительная и отрицательная проверки E2EE проходят.
-Такую политику выпускать нельзя. Повторная сборка SDK6 run41970078061
-отменена после этого результата; повторное использование C++63/63+11
-подтверждено, новых платформенных библиотек нет.
-
-Отдельный отрицательный mute-cycle с точными настройками прошёл:
-до ключа PCM peak0, video0 при живом RTP обеих комнат. Декодер может
-считать разрешённые SFU blank/SIF Opus-пакеты, выдавая нулевой PCM;
-один счётчик декодирования не доказывает расшифровку речи. Это только
-отрицательная проверка, а не квалификация полноценного звонка.
-
-Следующий кандидат должен подстраивать видео под фактическую задержку
-обычного аудио, не добавляя задержку речи и не сохраняя старый видеобуфер
-после восстановления. Нативное объединение потоков нужно изолировать
-от браузеров и незатронутых комнат; глобальный `sync_streams` не принят.
-SDK7 пока не собран и не квалифицирован. Production full104 и клиенты62
-не менялись; UA-08.C06 открыт.
-
-## 05.11: SDK7 и локальная группировка — проверки продолжаются
-
-Новый изолированный кандидат `codex/native-sdk-av-vc7`, source12249e2,
-patch ed8e430c9ddc8e906545d559a5c34bbe892dd52d8987663434eb227e6ec114b1:
-контроллер меняет только видеобуфер, используя оставшееся время до рендера,
-эффективную видеозадержку, фактическую задержку аудио и относительную
-сетевую задержку из RTCP. Он не добавляет аудиобуфер; устаревшие цели
-сбрасываются при остановке/отключении потоков. Явные video min/max и режим
-низкой задержки сохраняются. Неиспользуемое изменение интегрального
-аудиоконтроллера удалено. Предусмотрено65 C++ тестов и13 отрицательных
-регрессий; [CI41974316479](https://github.com/kerbermeister/voicechat/actions/runs/41974316479)
-ещё выполняется. Первый запуск отменён до получения C++ результата:
-исправлен только ошибочный ожидаемый счётчик64→65. Платформенные сборки
-для этого этапа явно отключены, новых библиотек нет. Девять macOS
-проверок конфигурации проходят на исходнике; это не проверка бинарника.
-
-В клиентском кандидате добавлено только для нативных call rooms локальное
-объединение subscriber msid по участнику, без глобального SFU sync_streams.
-Идентификаторы дорожек, ICE, DTLS, кодеки и шифрование сохраняются;
-браузер, publisher SDP, трансляции и отдельные screen rooms не подключают
-эту политику. Связь MediaStream/track через msid описана в
-[RFC8830](https://www.rfc-editor.org/rfc/rfc8830.html). Неизвестные и
-конфликтующие форматы не переписываются. Четырнадцать Flutter тестов
-и анализ семи затронутых Dart файлов проходят, включая два offer через
-настоящий SDK обработчик и тестовый WebSocket. Добавлен Android sink
-одновременного независимого ordinary-voice E2EE контроля; его нативная
-компиляция и медиапроверка ещё не выполнены. Квалификаторы обеих платформ
-подготовлены к свежему одновременному контролю и остановке после первого
-отказа. Историческая речь для новой SFU приёмки больше не подходит.
-
-Диагностика локальной группировки на прежней SDK5 подтверждает реальные
-общие stream IDs/сохранение track IDs, но **отрицательный PCM gate не
-прошёл** после mute/unmute до установки ключа: peak0,045319, 4 из332
-10мс блоков выше0,001. Контрольная audio-only комната имеет peak0; video0,
-RTP обеих комнат живой. В main audio145050 concealed samples; декодер
-не нашёл ни одной контрольной DTMF метки. Это не доказывает ни расшифровку
-речи, ни её отсутствие: причина ненулевого PCM ещё не установлена.
-Порог не меняется, вариант не принят. SDK7 обязан заново пройти этот
-отрицательный контроль перед любыми выводами о качестве/безопасности.
-
-## 05.11, актуализация: знаковое смещение и строгая готовность SIF
-
-CI41975448176/source3cd9dac выполнил65 C++ тестов:64 PASS, один отказ
-без skips. `CorrectsExtrapolatorOffsetWithoutIntegralDrift` ожидал325мс,
-получил300мс на первом обновлении. Нулевая обрезка отрицательного остатка
-до рендера теряла часть коррекции. Расчёт упрощён: из фактического
-аудиобуфера, знакового смещения packet-arrival относительно fitted RTP
-clock и относительной RTCP задержки получается полный video target.
-Ожидание325мс не менялось. Неготовая модель часов возвращает nullopt.
-
-Прежний SDK5 без общей группировки также не прошёл строгий keyless
-повтор: main peak0, ordinary voice0,002991; в332 main блоках реально
-channels=1/stride=1. Поэтому проблема отрицательного PCM не объясняется
-ни только группировкой, ни только чтением стерео. У Mac-стенда всё же
-исправлена реальная ошибка: теперь чтение AVAudioPCMBuffer учитывает
-stride. Точный helper проходит6 случаев настоящих AVFoundation буферов:
-mono/stereo, interleaved/deinterleaved, Int16/Float32, неподдерживаемый
-Float64. Предыдущие цифровые метки не подменяют физических измерений.
-
-Два отдельных причинных опыта на SDK5 отключали только распознавание
-служебного SIF trailer у получателей до ключа. Оба дают PCM peak0
-в обеих комнатах и decoded0 при живом RTP. Ключи не установлены, AES
-не отключался; это **только отрицательная диагностика с отличающейся
-политикой SIF**, а не продуктовая/положительная медиаприёмка. Простой
-изолированный libopus1.6.1 decoder даёт нули на3/80-byte blank packet;
-он не является точным нативным декодером продукта и не доказывает причину
-ненулевого PCM в NetEq. Вектор SIF/декодер подтверждён как требующий
-проверки; расшифровка речи без ключа не установлена.
-
-Кандидат теперь учитывает discardFrameWhenCryptorNotReady и для уже
-разрешённых whitelist пустых SIF: до наличия ключа именно этого участника
-пакет не передаётся декодеру. Старое поведение при false, whitelist, AES,
-KDF и формат ключей сохранены. Покрыты отсутствие shared key, чужой
-participant key и положительные случаи обоих режимов с index7. Удалён
-неиспользуемый возврат вектора в старом асинхронном SIF тестовом helper,
-чтобы не читать его параллельно записи transform task.
-
-CI41978051269/source67c2b9e скомпилировал стенд, но не выполнил тесты:
-при линковке не хватало RTPVideoHeader constructor/destructor. В harness
-добавлен реальный target modules/rtp_rtcp:rtp_video_header. Новый точный
-кандидат source27f134c, patch403132d8063e4b6dfcb7e9424282ca4f269f25282702b7f7d619d9f9a7e8e431,
-19 проверяемых SDK inputs (16 изменённых файлов и3 неизменённых входа),
-85 тестов/15 отрицательных регрессий;
-[CI41979996000](https://github.com/kerbermeister/voicechat/actions/runs/41979996000)
-выполняется. Платформенные библиотеки пока не собираются.
-
-Flutter:15 тестов PASS и анализ8 файлов без замечаний. Нативная
-группировка ограничена Android/macOS с новым SDK; iOS/Linux/Windows
-и web её не включают. Kotlin sink свежего ordinary-voice контроля
-проверяется отдельной compile-only задачей на старой SDK3, без устройства
-и без сборки/квалификации APK. Дальше требуется новая библиотека,
-отрицательные keyless и положительные actual AES/обычная речь/A/V
-прогоны, затем подписанные обновления. Установленные клиенты62 и full104
-в этой итерации не обновлялись.
-
-Kotlin compile-only завершён успешно: Gradle/JDK21, source SHA-256
-51ef7728d7c69addbd79f94e0e59339194962e737c01a863c3509cac460621ba,
-266 задач (4 выполнены,262 актуальны). Первый offline запуск не разрешил
-уже существующий integration_test runner1.2+ metadata; обычный запуск
-разрешил зависимость без изменения исходников/lock. Это старый SDK3 cache,
-без APK, эмулятора или физического устройства; не приёмка SDK7.
-
-## 05.11, последний кандидат: устранено неопределённое значение strict-ready
-
-CI41979996000/source27f134c запустил85 тестов:84 PASS, один отказ,
-zero skips. Все65 timing/sync тестов и четыре новых SIF guard случая
-проходят; legacy `ForwardsServerBlankFrameWithoutKeyAndStripsTrailer`
-неожиданно блокировал кадр. Расследование выявило конкретную ошибку
-SDK: ручной `KeyProviderOptions(KeyProviderOptions& copy)` не копировал
-`discard_frame_when_cryptor_not_ready`. Поле оставалось неопределённым
-при передаче options по значению в DefaultKeyProviderImpl и копировании
-в options_. Это также означает, что Dart-level true сам по себе
-не доказывал точное значение флага внутри нативного provider.
-
-Вместо ручного перечисления полей используется стандартный defaulted
-copy constructor с const-reference; move semantics отдельно не вводятся.
-Новый тест проверяет false/true через прямое копирование и настоящий
-DefaultKeyProviderImpl. Legacy ожидание не ослаблено. Теперь в suite86
-тестов и прежние15 original-behavior negative regressions. Исходник
-b29604eaa809dd0d55d1acd4ba321cfc3dfe2636,
-patch14ba413327dfee7ad9e1b765b8097185319a22e9fd99d4cfaca6b23aea796530;
-[CI41983111458](https://github.com/kerbermeister/voicechat/actions/runs/41983111458)
-выполняется. Ни один неполный C++ прогон не объявлен квалификацией.
-После полного PASS с точным receipt автоматически разрешена сборка
-обеих SDK библиотек для последующих реальных медиаэкспериментов;
-публикация приложения остаётся запрещена до прохождения медиагейтов.
-
-## Пауза перед перезагрузкой компьютера, 05.11.2026
-
-По явному запросу пользователя работа приостановлена. Монитор с автоматическим
-запуском обеих SDK сборок остановлен; добавлен локальный pause guard.
-Test-only CI41983111458 может завершиться в GitHub самостоятельно, но
-новые SDK/platform jobs, публикации, деплой и установки автоматически
-не запускаются. Клиенты62 и full104 остаются последними выпусками.
-После команды «Продолжай»: прочитать сохранённый handoff, получить результат
-этого точного86/15 прогона, проверить receipt/логи, затем продолжить
-сборки и медиагейты. Неполный или неуспешный прогон не разрешает выпуск.
-
-## 05.11, работа возобновлена: полный C++ прогон подтверждён
-
-После команды пользователя «Продолжай» получен законченный
-[CI41983111458](https://github.com/kerbermeister/voicechat/actions/runs/41983111458):
-86/86 PASS, zero skips,15 отрицательных регрессий на исходном поведении.
-Локальный verifier подтвердил точный manifest/source/toolchain receipt
-для b29604eaa809dd0d55d1acd4ba321cfc3dfe2636. Исправление копирования
-strict-ready bool проходит вместе с legacy SIF/AES и timing тестами.
-Запущены обе SDK библиотеки в
-[CI42006621067](https://github.com/kerbermeister/voicechat/actions/runs/42006621067).
-Это компонентная проверка: реальный keyless/положительный E2EE,
-сравнение речи с обычным звонком и A/V≤80мс на новых бинарниках ещё впереди.
-Клиенты62 и production full104 не менялись.
-
-Статическая подготовка межплатформенного отрицательного контроля выявила
-ошибку стенда: Android receiver проверял source_audio, который создаётся
-в отдельном Mac sender. Теперь прежняя проверка ≥50 меток/каденса1,8..2,2с
-выполняется на источнике до его экспорта. Для keyless mute/unmute добавлена
-nonce-scoped синхронизация sender/receiver; контроль не устанавливает ключи
-и заканчивается до положительного звонка. Single-Mac путь сохранён.
-Анализ Dart fixture проходит; межплатформенный runtime ещё ожидает SDK7.
-Проверка повторного использования C++ evidence:6/6 Python тестов PASS,
-включая отказ для других исходников, skips, дубликатов и отсутствующего
-отрицательного доказательства. Четыре проверки безопасного восстановления
-внедряемого стенда (Mac/Android, failure/concurrent edits) проходят.
-
-SDK7 Mac arm64 собран в CI42006621067 и получен локально. Совпали19
-source inputs, точный receipt и архив SHA-256
-e2c357cec1e600a9688b8b01b81cc1125216b1abb7e7211e4b28f3af2591af3e.
-Девять policy случаев PASS; проверены strict codesign, ссылки внутри пакета,
-arm64, notices и UUID64c574a9-029a-3928-816e-90b2bb12dafe. Android ещё
-собирается, SDK7 к клиентам не подключён; медиаприёмки нового бинарника нет.
-Read-only production preflight подтвердил core/edge source da0dd92,
-отсутствие pending операций и наличие rollback pointers. Core services healthy,
-restart counts0; публичные каналы и установленный Mac остаются62.
-
-Проверка настоящего call/call.cc (закреплённый WebRTC source) показала, что
-Call::ConfigureSync связывает только первую A/V пару одной sync group.
-Локальная SDP политика теперь сохраняет исходные связи участника, если
-у него больше одной уникальной audio или video track; повторные SSRC/RTX
-одной track не считаются вторым источником. Другие участники по-прежнему
-группируются независимо. Это защита от влияния camera+screen/двух audio
-на уже существующий сценарий, не заявление о синхронизации нескольких
-пар. Новый тест проверяет обе разновидности, WMS, дубликаты SSRC и
-идемпотентность. Изменений C++ SDK не требуется; его receipt остаётся b29604e.
-
-Guard также исключает старые inactive/recvonly/rejected m-секции из новой
-группы: после повторного включения камеры они не блокируют действующую
-A/V пару и не занимают её sync group. Всего17 Flutter тестов PASS; анализ
-изменённых двух Dart файлов без замечаний. Физическая и нативная
-медиапроверка нескольких источников этим не подменяется.
-
-SDK7 Android CI42006621067 завершился успешно: armeabi-v7a/arm64-v8a/
-x86_64, затем9 реальных AAR initialization-policy случаев. При получении
-проверены19-input source receipt, AAR SHA-256
-c2a6de5e0f471e9426736418358c5174b9e9693e0280a5892be553e911f1bbb6,
-classes.jar hash, notices и все три JNI ELF/hash. Теперь проверена полная
-пара SDK7. Начата публикация immutable dependency prerelease для разрешения
-зависимостей тестовых приложений; это не app release и не медиаприёмка.
-Реальные keyless/положительный AES, речь/обычный voice и A/V≤80мс ещё впереди.
-
-SDK7/default Mac: два свежих keyless mute/unmute контроля PASS. В обеих
-комнатах PCM peak0, audio decoded0/video decoded0 при живом зашифрованном
-RTP. Фактически встроенный UUID64c574a9-029a-3928-816e-90b2bb12dafe
-подтверждён. Нет field-trial/SIF overrides; ключи получателям не установлены.
-Это отрицательный контроль, не положительная медиаприёмка. Начат первый
-полный encrypted SFU звонок со свежим одновременным ordinary-voice контролем.
-
-Первый SDK7/default реальный encrypted LiveKit SFU звонок на Mac PASS:
-clean18,468мс/raw и22,000мс/source-corrected; recovery64,979/66,095мс,
-27 recovery checksum pairs, source max4,201мс. Свежий одновременный
-ordinary-voice контроль: добавленная речь≤22,895мс, matched speech PASS.
-Отрицательный gate до ключей и декодированные метки/речь после установки
-ключей проходят на фактическом SDK7 UUID. Это1/3 SFU повторов; остальные
-Mac/P2P и Android серии и app updates не завершены. Порог80мс не менялся.
-
-Полная серия SDK7/default Mac SFU:3/3 PASS, каждый отдельный порог
-сохранён. Recovery raw/source-corrected по прогонам:64,979/66,095;
-76,758/77,694;63,305/61,443мс. Clean maxima≤62,513мс. Во всех трёх
-matched speech PASS, added voice≤22,895мс и source timing≤5,448мс.
-Первый/второй keyless отрицательный контроль также PASS, без диагностических
-политик. Android keyless+SFU, обе P2P/остальные сетевые серии и подписанные
-обновления остаются; physical/acoustic/display результат не утверждается.
-
-Первый SDK7/default Android keyless cross-peer дошёл до PCM0/decoded0
-при живом RTP в обеих комнатах, но **весь прогон не принят**: finally
-вызывал Room.disconnect у не подключённого voiceAlice на receiver и
-voiceBob на sender. Оба ожидали отсутствующее событие disconnect и
-завершились TimeoutException. Сохранены raw media и failure-summary;
-actual APK JNI SHA84d9855a259d9ce8e08da9efbb5b855ebd3a1e30ac175dbe2b86513472eed73e,
-compiled Java initialization policy и sender SDK7 UUID проверены.
-Очистка теперь ограничена подключаемой ролью, как у основной A/V пары;
-затем dispose по-прежнему выполняется для всех объектов. Пороги/crypto
-assertions не ослаблены. Анализ Dart PASS; запущены новые labels Android2/3
-вместо перезаписи failed1, затем положительная SFU серия.
-
-SDK7/default Android labels2/3 полностью PASS, включая sender/receiver
-cleanup. В обеих комнатах PCM0/decoded0 при живом RTP. В обоих прогонах
-получены настоящие native logs `dropping server injected frame before key`,
-при неизменённых default flags (SIF/field-trial overrides отсутствуют).
-APK JNI/Java initialization hashes и SDK7 Mac sender UUID совпали.
-Среда: только собственный API35 arm64-v8a emulator/qemu1, не Xiaomi;
-physical acoustic/display latency не измерялась. Failed1 не включён
-в успешную серию. Начата положительная Android encrypted SFU серия.
-
-Первый положительный Android SFU прогон завершился без экспорта; результат
-по A/V/речи не принят. Отдельный повтор с crash log воспроизвёл настоящую
-причину: java.lang.OutOfMemoryError в StandardMessageCodec.writeBytes →
-NativeAVMarker result.success, запрос65044496 bytes при Java heap limit
-201326592 bytes. Это сериализация двух полных тестовых PCM записей.
-Новый snapshot/export читает Android PCM порциями≤128 блоков; Float32 байты,
-все сэмплы, timestamps,120 stats, длительность и пороги сохранены. Mac legacy
-API возвращает прежние данные. Общий reader переиспользуется SFU и P2P
-receiver. Три Flutter tests PASS: byte-for-byte legacy,129+1 samples across
-main/control page boundaries, отказ на invalid count/incomplete page.
-Анализ3 Dart файлов PASS. Запущена новая Android SFU серия paged1..3;
-оба прежних failed attempts сохранены, не входят в приёмку.
-
-Android paged-export закончил реальный звонок/полную выгрузку без OOM,
-но **не прошёл A/V gate**: clean raw200,267/source-corrected198,719мс;
-recovery61,990/60,524мс, source≤2,257мс. Речь PASS, added voice≤0мс
-относительно одновременно работающего ordinary control. Clean STOI обоих
-потоков0,982289; данные совпадают. Ухудшение приходится на14–18с до
-netem: audio/control jitter-buffer delta одновременно выросли с≈70 до
-≈310–380мс, video decode time с≈3 до≈23мс и выросли dropped frames.
-Причина timing spike пока не установлена, этот прогон не принят.
-Для устранения собственной нагрузки рекордера54МБ PCM вынесены из ART
-heap в direct buffers, сохранив сэмплы/время и bounded IPC pages. Следующая
-отдельная серия direct собирает app GC/crash logs. Это диагностическое
-исправление стенда, не утверждение причины A/V и не ослабление80мс.
-
-
-### 05.11: Android direct и следующий кандидат синхронизации
-
-Перенос PCM в direct buffers сам по себе не решил рассинхрон: следующий
-полный Android SFU прогон дал clean raw198,010/source196,938мс,
-recovery91,695/90,699мс. Добавленная задержка речи≤35,056мс, однако
-clean STOI control0,990509/candidate0,980828 нарушил прежний допуск0,005.
-Этот отказ сохранён целиком; серия остановлена на первом результате.
-Порционная выгрузка теперь проверена4 unit-тестами; анализ3 Dart файлов PASS.
-
-В точном исходнике JavaADM выходная задержка оценивается константой
-150/2=75мс. AudioTrackSink стенда записывает PCM до аппаратной очереди;
-следовательно, его время нельзя считать временем слышимого воспроизведения.
-Это объясняет возможное постоянное смещение, но не доказывает причину пика.
-75мс автоматически не вычитаются, исходные метки и допуски сохранены.
-Диагностика `--native-output-clock` дополнительно записывает настоящие
-AudioTrack presentation timestamps и позиции записанных фреймов через уже
-существующий callback. Она не перенастраивает аудиовывод и не меняет PCM.
-
-SDK8/source4375e11 отдельно проверяет решение по фактическому audio playout
-RTP и его RTCP→NTP преобразованию. Видео получает deadline той же временной
-шкалы с периодом200мс; свежесть потоков сохраняет отдельный срок2с.
-Сглаженная оценка используется как fallback при отсутствии валидной свежей
-позиции. Буфер речи, кодеки и E2EE не изменены относительно SDK7.
-Добавлено7 C++ случаев, включая падение/рост очереди, устаревшую/будущую
-позицию и RTP wrap. Ожидаются93 теста и21 отрицательная регрессия в
-[42031354123](https://github.com/kerbermeister/voicechat/actions/runs/42031354123).
-Это непроверенный кандидат; библиотеки и приложения SDK8 ещё не выпущены.
-
-
-Пассивный AudioTrack-прогон `current14ba-output-clock-diagnostic1` закончен:
-PCM raw clean111,003/recovery100,927мс (FAIL); индивидуальные presentation
-timestamps дают max abs109,692/115,340мс (тоже FAIL). Восемь/24 пары;
-измеренная очередь в этих парах≈95–131мс, медиана≈113–114мс. Речь относительно
-одновременного control PASS. У эмулятора реальный output8000Hz, sink PCM48000Hz;
-это не аппаратный тест слышимого качества. PCM не сдвигался, новый результат
-не подменяет исходный. Подробный [контракт AudioTimestamp](https://developer.android.com/reference/android/media/AudioTrack#getTimestamp(android.media.AudioTimestamp))
-отличает committed presentation от callback и не обещает физической точности.
-
-При аудите источника найден ещё один дефект стенда: coherent-режим добавлял
-маркерный кадр каждые2с к независимым20fps при ограничении encoder20fps.
-Первый созданный кадр мог быть отброшен, а прежний журнал не различал,
-какой кадр одного маркера пришёл. Теперь coherent-видео создаётся только по
-аудиосчётчику ровно20fps. Четыре дополнительных бита номера кадра защищены
-тем же checksum; оба получателя и scorer сверяют источник именно пришедшего
-кадра. Пустая/неизвестная/неоднозначная связь отклоняется; regression guard
-проверяет, что отброшенный onset не скрывает120мс source lag. Старые результаты
-сохранены, новые серии обязаны содержать frame identity. Это исправление
-измерения, а не доказанная причина пользовательского рассинхрона.
-
-
-Исправленный источник прошёл реальный Mac→SFU→Android прогон: все53
-доставленные видеометки имеют точный ID первого созданного кадра;
-source≤2,203мс. Для SDK7 clean raw83,473/source82,620мс — всё ещё FAIL;
-recovery44,085/43,026мс. Речь PASS во всех четырёх фазах, прежние STOI/level
-допуски сохранены.18 Flutter-тестов и анализ4 Dart файлов PASS; Node4 и
-restoration4 PASS. Новый Android journal также сохраняет callback/render
-clock по аналогии с Mac; это тестовый код и не меняет релизное приложение.
-
-
-Mac P2P pilot с новым источником: H264/Opus, source8,073мс, clean raw26,152/
-corrected23,827мс, recovery31,779/34,435мс — timing PASS. DTLS-SRTP positive
-и wrong-fingerprint negative PASS. Добавленная речь≤23,248мс, однако
-recovery STOI candidate0,985515/control0,994460 нарушает0,005; весь pilot
-FAIL. Первичная обработка control остановилась из-за перенесённых video-frame
-IDs в audio-only metadata; исправлена только эта метаинформация, PCM/stats
-и основной trace не менялись. Полный пересчёт исходных сэмплов дал указанный
-speech FAIL, пороги сохранены. Оба отправителя имеют targetBitrate32000 и
-одинаковые Opus fmtp/bytesSent; audio packetsLost0, но NetEq concealment/ускорение
-есть в обоих потоках. Причина отличия речи ещё не доказана.
-
-Перед выводом о регрессии от video-only контроллера заранее назначены два
-контрольных прогона двух обычных audio-only вызовов с тем же источником и
-обратным порядком запуска во втором. Это проверка вариативности измерения,
-она не отменяет speech FAIL и не ослабляет допуск0,005/0,15дБ.
-
-
-Оба заранее назначенных audio-only контрольных прогона завершены: речь
-PASS во всех фазах с теми же допусками,63/62 checksum аудиометки у каждого
-получателя, подтверждены две DTLS-SRTP сессии и wrong-fingerprint негативные
-контроли. Это не позволяет списать предыдущую P2P speech regression на
-доказанную вариативность контрольной пары. В проблемном видеопрогоне на
-49–52с оба NetEq добавили≈0,4–0,5с concealment при packetLoss0, затем оба
-ускоряли речь. В следующий диагностический прогон добавлена только запись
-моментов10ms source audio callbacks в предварительно выделенный буфер:
-она различит задержку создания/отправки синтетики и приёмного тракта.
-
-SDK8/source4375e11 прошёл93/93 C++ теста, zero skips и21 original-behavior
-negative regression. Точный manifest/toolchain receipt проверен из
-42031354123. Обе библиотеки собираются в
-[42034416556](https://github.com/kerbermeister/voicechat/actions/runs/42034416556).
-До положительных медиапроверок это не обновление приложений.
-
-
-### 05.11: переключение окон и тихие измерения
-
-Владелец сообщил о расхождении при работе/переключении окон; платформу
-этого отдельного эпизода не уточнял. Найден независимый дефект настольного
-CallController: inactive/hidden выключали камеру, resumed запускал её снова.
-Один переход между окнами фактически пересоздавал захват. Новая регрессия
-на исходном коде упала на трёх desktop variants с операциями
-camera:false,false,true,false вместо отсутствия переключений. Исправление
-оставляет настольный захват активным. Mobile-политика ухода в фон и защиты
-от отложенного camera(true) сохранены;11 controller tests и анализ2 файлов
-PASS. Это ещё не реальный пользовательский звонок со сменой окон и не
-доказательство единственной причины исторического lip-sync.
-
-По просьбе владельца слышимый тестовый процесс немедленно остановлен;
-прерванный pulse2 не принят. Все дальнейшие прогоны используют тихий вывод:
-на Mac данные обнуляются в renderPreProcessing после индивидуальных PCM
-sinks и перед выводом ADM; обработчик остаётся активным и при teardown.
-На Android используется speaker mute тестового ADM. Системная громкость и
-продуктовый звук не меняются, сами PCM/Opus/E2EE измеряются до этого места.
-Mac quiet1 с реально исполняемым обработчиком закончен: silenced=true,
-положительный PCM/64 checksum IDs, DTLS-SRTP и negative fingerprints PASS.
-Весь quiet1: A/V raw clean33,183/recovery73,124мс, corrected30,865/74,261мс;
-речь PASS, добавленная задержка речи≤45,171мс. Предыдущий speech FAIL сохранён;
-один успешный диагностический прогон не заменяет всю квалификацию SDK8.
-
-Записано12707 source callbacks, максимум между соседними12,143мс;
-ни у источника, ни у приёмного PCM нет пауз>40мс в этом прогоне. Ранее
-предполагаемый общий источник0,5с разрыва в нём не воспроизведён. Генератор
-имеет source skew≤4,173мс. После намеренной потери video при восстановлении
-одна метка пришла со следующим кадром (+51,491мс, recovery+1,79с, ещё до
-5s guard). Новая проверка frame identity ошибочно считала этот сетевой
-пропуск нарушением генератора20мс; исправлено разделение исходного onset и
-точного доставленного кадра. Raw80мс продолжает учитывать полную стоимость
-пропущенного onset. Порог не изменён, исходный trace не переписан; unit guards
-принимают известный52мс пропуск при raw≤80 и по-прежнему отвергают raw150мс.
-
-
-Полный текущий клиент/source1548f1e: flutter analyze PASS, flutter test
---concurrency=1:794 PASS/4 skip, без failures. Это Dart/widget/API-проверки,
-они не означают исполнения ещё собирающихся нативных библиотек SDK8.
-Python timing/artifact verifier11 и fixture restoration4 PASS.
-Сверка с production/full104 da0dd92: этот commit — предок текущего источника,
-серверные runtime/config пути не откатываются и не менялись; защищённые
-SDK build/verification/test/vendor пути требуют штатного **full** выпуска.
-Публикация ещё не выполнялась.
-
-Mac SDK8 архив/source4375e11 собран успешно и receipt проверен:
-SHA256 0134a72bfbaa0f7b3518c51570efdd4705a424d6bbb8bd48c67f8365bf555ed6.
-Android ещё собирается; пару не подменяем старой Android-библиотекой.
-Android fixture теперь также возвращает `test_output_silenced`; обе
-платформенные квалификации требуют этот флаг, помимо положительного
-измеряемого PCM. Исполнение новой Android fixture ещё предстоит.
-
-Обе платформы SDK8/source4375e11 теперь собраны и проверены (42034416556):
-Mac UUID e9d200c9-0a03-324b-b4ee-1f6f13c481a5; Android AAR
-ea13d30e240e075e1b7cda924506904235adc27737080462b813764effb6d6ed, все3 ABI.
-11 timing/artifact unit tests PASS на интегрированном источнике. Точные
-архивы, notices и receipts опубликованы как dependency prerelease
-`webrtc-sdk-150.7871.04-vc8`, без изменения приложений или VPS.
-Новая пара закреплена в исходниках; исполнение в нативных звонках ещё впереди.
-
-SDK8 Mac:2 настоящих default keyless/mute контроля PASS (живой RTP в обеих
-комнатах, PCM0/decoded0). Положительная LiveKit E2EE серия3/3 PASS, точный
-UUID e9d200c9 и тихий вывод проверены при каждом прогоне. Worst recovery
-raw73,574/source-corrected74,826мс; свежая ordinary voice/speech3/3 PASS,
-добавленная речь≤22,706мс. Android и P2P/mirror/delay ещё не квалифицированы.
-
-SDK8 Android API35 arm64 emulator:2 default keyless/mute контроля PASS,
-JNI0fb9e25c и Mac sender UUIDe9d200c9 подтверждены. LiveKit E2EE SFU3/3
-PASS: все clean/recovery raw≤62.622/source-corrected≤62.090мс,
-fresh ordinary speech3/3 PASS, добавленная речь≤62.646мс.
-Это эмулятор, не физический Xiaomi/акустический замер. Нативные P2P,
-mirror/delay и выпуск остаются открытыми; пороги не менялись.
-
-SDK8 Mac P2P paired1 PASS: A/V≤30,692мс, speech PASS, DTLS/negative
-fingerprint PASS. Paired2 остановил серию: A/V≤47,296мс, но pause speech
-STOI candidate0,970717/control0,990842 FAIL (margin0,005 сохранён).
-Ухудшение локализовано в clip30:0,908223/0,986180. Source callbacks
-не имеют больших пауз (max15,730мс); оба RTP audio packetLoss0.
-В этом интервале candidate NetEq удалил395 samples (8,23мс) при acceleration;
-это совпадение требует проверки, причина регрессии пока не установлена.
-Порог/методика оценки не менялись, failed trace сохранён. SDK8 не принят
-для выпуска, несмотря на LiveKit6/6 PASS.
-
-Три заранее заданных SDK8 ordinary-only сравнения с порядком true,false,true
-завершены:3/3 speech PASS, без переданного video RTP, с тем же источником
-и прежними порогами. Они не подтверждают гипотезу вариативности контроля.
-Диагностика TURN CPU quota (0,5 ядра в каждом локальном контейнере):
-видеозвонок A/V/speech PASS, nr_throttled/throttled_usec0 в обоих контейнерах,
-поэтому менять quota оснований нет. Этот отдельный успех не заменяет
-paired2 FAIL. Добавляется пассивная трассировка только времени/заголовков
-синтетического audio RTP; парсер проверен6 тестами.
-
-[Официальное описание NetEq](https://chromium.googlesource.com/external/webrtc/+/refs/heads/main/modules/audio_coding/neteq/g3doc/index.md)
-описывает ускорение/замедление как штатное управление уровнем буфера.
-В закреплённом исходнике SetMinimumDelay(0) повторно задаёт те же delay
-constraints и не очищает NetEq. Причина единичного речевого ухудшения
-пока не установлена; отключать адаптацию или ослаблять speech gate нельзя.
-
-Два заранее заданных latencyCritical-эксперимента завершены: оба speech
-FAIL; механизм не переносится в продукт, экспериментальный Swift/Dart
-код сохранён в локальном snapshot и удалён из текущего источника. Во время
-первого из них впервые зафиксирован CFS throttling: TURN7 periods/882357µs,
-второй listener3/95787µs. Нули в прежнем одиночном контроле не исключали
-интермиттирующий дефект стенда. Production TURN не имеет контейнерной CPU
-quota (проверено read-only SSH); в локальном стенде лимит поднят0,5→2 ядра
-на TURN, память128MiB сохранена. Все следующие принятые TURN-прогоны обязаны
-иметь нулевые CFS-дельты, валидатор проверен6 тестами.
-
-Исправлен второй остаточный дефект source gate:75мс применялись к первому
-доставленному кадру даже при известном ID и намеренно потерянном onset
-внутри5s guard. Теперь при точных frame IDs валидируется исходный
-генератор; его onset обязан совпадать с первым кадром реестра. Перекос
-доставленного кадра по-прежнему используется для correction и сохраняется
-в отчёте. Пределы raw/corrected80мс и coherent source20мс сохранены.
-Новая регрессия падает на старом коде;4 Node tests PASS, включая120мс
-после guard/150мс raw и поддельный onset (все отвергаются). Исходные
-trace/analysis не переписаны, отдельный reanalysis диагностического
-packettrace1: original3,174мс, delivered106,733мс, raw32,465мс; pass
-вместо ошибочного source-invalid. Это не приёмка продукта и не закрытие
-paired2 speech FAIL. Python network-lab20 PASS/1 opt-in skip (21 total).
-
-Для исправленного стенда заранее задана новая Mac P2P серия3, имена
-`current-23007def-cpu2-paired-*`, порядок false,true,false, прежние
-speech/latency/crypto требования. Предыдущие failures сохранены.
-
-Первый прогон с этой конфигурацией остановил приёмку SDK8: CFS-дельты
-нулевые, речь и добавленная задержка голоса прошли, но после восстановления
-raw A/V достиг106,750мс (104,111мс с поправкой на источник). Маркер40
-попал уже за пределы 5с guard. Callback кадра опередил назначенный
-нативным планировщиком момент показа на7,643мс; это не задержка Flutter
-между получением кадра и его показом. За 75–82с аудиобуфер держался
-около60мс без новых событий concealment/acceleration. Причина позднего
-назначения пока не установлена; ограничение CPU стенда её не объясняет.
-
-Проверяем прежний нижний предел видеобуфера90мс: на том же Mac SDK8
-(`e9d200c9-0a03-324b-b4ee-1f6f13c481a5`) меняется только нижний предел
-в диагностическом field trial,90→0мс. Верхний10000мс, NWPathMonitor,
-сценарий и критерии не меняются. Запланировано три парных прогона,
-порядок ordinary-first false,true,false. Они диагностические и не могут
-подменить приёмку штатной конфигурации. Тестовый вывод на динамики
-отключён после измерительных PCM sinks; системная громкость не менялась.
-
-| Диагностика min0/max10000 | Макс. raw A/V | Макс. A/V с поправкой на источник | Речь относительно обычного звонка |
-| --- | --- | --- | --- |
-| 1, видео первым | 41,984мс | 43,926мс | PASS |
-| 2, обычный первым | 44,956мс | 46,074мс | FAIL, чистая сеть |
-| 3, видео первым | 44,888мс | 45,736мс | PASS |
-
-Во всех трёх прогонах CFS0, DTLS-SRTP проверен с отрицательным
-контролем, добавленная задержка голоса ≤0,339мс. Это свидетельство в
-пользу снижения нижней границы видеобуфера, но приёмка не пройдена:
-в прогоне 2 clean STOI 0,972874 против 0,990257, хуже допуска 0,005.
-В худшем фрагменте №6 STOI 0,899791 против 0,989363. В секунду вокруг
-начала фрагмента NetEq удалил 674 сэмпла в видеозвонке против 279 в
-обычном, без RTP потерь или concealment. Источник и приём PCM имели
-интервалы не более 11,35 и 11,13мс соответственно. Счётчики за секунду
-не определяют точный момент и причину ускорения. Критерии не ослаблены,
-новый SDK и приложения не выпускались.
-
-Дополнительный диагностический прогон `min0adaptive-packet1`: 44,403мс,
-речь и DTLS-SRTP PASS, CFS0; предыдущий сбой речи не воспроизведён.
-На входе в TURN в clean были интервалы до119,487мс в видеозвонке и
-119,203мс в обычном; на выходе до127,088 и127,029мс. SSRC сопоставлены
-со статистикой приёмников. Это 25 648 строк метаданных без RTP payload;
-общий разрыв уже виден до обработки TURN, но его связь с отказом речи
-во втором прогоне не доказана. Пакетный прогон не заменяет приёмку.
-
-SDK9 `1c74569`: кандидат для обеих нативных платформ с min0/max10000.
-Тест проверяет, что дедлайн40мс работает при новом нижнем пределе без
-перехода в немедленный рендер; явно заданная политика сохраняется. Только
-два factory defaults изменены в рабочем коде SDK8, аудиотракт и криптография
-не тронуты. Mac проверка исходного кода конфигурации10/10 PASS; бинарная
-и медиа-приёмка ещё впереди. [C++ CI42066923273](https://github.com/kerbermeister/voicechat/actions/runs/42066923273)
-должен подтвердить 93 теста и 21 отрицательную регрессию перед сборками.
-
-Android P2P pilot `cpu2` остановился до медиа: стенд запрашивал mute до
-создания factory/ADM, а teardown без capture processor скрывал исходную
-ошибку. Приёмник теперь глушит вывод после создания первого peer и до
-SDP, teardown переносит незапущенный захват. Тихий обычный контроль
-`cpu2init` на API35 arm64 получил 63 аудиомаркера, без видео и CFS throttle;
-source ≤2,926мс, DTLS-SRTP и отрицательный fingerprint control PASS.
-Этот контроль не означает, что видеопара уже принята.
-
-Видеопара Android SDK8 `cpu2init`: A/V raw78,811/source77,911мс PASS,
-реальные H.264/Opus, DTLS-SRTP с отрицательным контролем, CFS0, source
-≤1,784мс. Выпуск заблокирован: речь хуже обычного в clean, pause и
-recovery (дельты STOI −0,01665/−0,01904/−0,00637 против допуска 0,005).
-Добавочная очередь относительно медианы обычного звонка +143,386мс в
-video pause и +121,229мс после восстановления; предел80мс не пройден.
-Аудиопотерь и concealment нет, но в восстановлении NetEq удалил 9536
-сэмплов в видеопаре против 2173 в обычном. Два отдельных прогона на
-эмуляторе показывают до207мс между PCM callbacks в обоих сценариях;
-аппаратный источник проблемы на Xiaomi этим не установлен. Записи обоих
-прогонов архивированы. Критерии и статус публикации не менялись.
-
-Парный Mac `min0adaptive-audiodelay2`: +150мс только для обоих audio
-RTP-путей, затем clean без остановки. Первый setup был отклонён guard;
-стенд теперь допускает конечную задержку с парным контролем, прежний
-аудио-blackout по-прежнему проверяется без пары. По сопоставленным RTP
-seq/timestamp медиана задержки в TURN 151,211/151,187мс (видео/обычный).
-После снятия A/V raw41,762/source42,645мс, речь и голос ≤23,626мс PASS,
-CFS0, DTLS-SRTP PASS. Ошибка речи не воспроизведена, этот результат
-не закрывает прежние отказы и не является приёмкой SDK9.
-
-Точная проверка SDK9 `1c74569` завершена: 93 C++ PASS, 21 отрицательная
-регрессия на старом поведении, без пропусков. [Сборки платформ42069957294](https://github.com/kerbermeister/voicechat/actions/runs/42069957294)
-запущены по проверенному receipt. Дальше обе библиотеки проверяются в
-штатных native AES/E2EE и DTLS-SRTP сценариях с обычным речевым контролем.
-
-Android `sameclock` SDK8: два независимых P2P peer одновременно на том
-же API35 arm64, общий синтетический микрофон, разные дорожки и одинаковые
-Opus fmtp. Оба прошли DTLS-SRTP с отдельной отрицательной проверкой
-сертификата. 54 сопоставленных фрагмента имеют идентичные PCM сэмплы;
-задержка речи ≤21,676мс, очередь ≤32,117мс, CFS0. Recovery A/V
-raw62,390/source61,483мс. Однако clean маркер6 raw80,211мс (source
-0,973мс, скорректировано79,238мс), поэтому общий порог80мс FAIL.
-Сравнение при общей нагрузке не воспроизвело сбой речи и очереди
-последовательного прогона; оба результата сохранены. Тихий вывод
-подтверждён для обеих дорожек, анализ трёх Dart fixtures PASS.
-
-Обе библиотеки SDK9 из CI42069957294 скачаны и сверены с отчётом
-точной ревизии. По десять factory policy случаев на платформу, Mac
-arm64 и три Android ABI, 16 КиБ ELF для двух 64-битных ABI. Закреплённые
-CocoaPods и Maven получили опубликованные архивы. На штатной фабрике
-прошли два прогона без ключа на каждой платформе. Живой RTP дошёл до
-обоих приёмников, декодированных кадров и PCM нет. Следующая проверка
-включает расшифровку с ключом, речь и порог синхронизации.
-
-Первый штатный Mac LiveKit SDK9 остановился до передачи ключей. В первом
-10 мс аудиоблоке peak достиг 0,001404 при пределе 0,001. Ненулевой PCM
-только в первых семи блоках, видео не декодировано, обычный голос дал
-нулевой PCM. Синтетический исходник и счётчики сохранены. Источник
-этого сигнала пока не установлен. Проверки шифрования и порог сохраняются.
-
-Все три штатных Android LiveKit-прогона SDK9 завершились успешно на
-arm64-эмуляторе Android 15 с отдельным отправителем Mac. Пик A/V в
-чистой сети 64,529 мс (63,714 мс с поправкой на источник), после
-восстановления 59,650 мс (58,717 мс с поправкой). Во всех трёх до
-ключа при живом RTP нулевые PCM и счётчики декодирования. После
-ключа совпали контрольные метки; сравнение речи с одновременным
-обычным звонком прошло, добавленная задержка голоса ≤25,706 мс.
-
-Диагностический повтор Mac без mute-cycle прошёл проверку до ключа
-с нулевыми PCM и декодированием, после ключа подтвердил исходные
-метки и качество речи. Recovery A/V 80,620 мс напрямую и 82,495 мс
-с поправкой на источник, поэтому порог не пройден. Все 27 маркеров
-recovery показывают опережение видео, медиана 65,275 мс. В журнале
-SIF событий нет, полнота захвата этим прогоном не доказана. Повтор
-не объясняет первый отказ и не засчитывается в серию приёмки.
-
-Во втором диагностическом повторе Mac логгер зарегистрировал 314
-отброшенных кадров без ключа и ни одного SIF-события до ключа. PCM
-и счётчики декодирования оставались нулевыми. После ключа исходные
-метки подтверждены, речь прошла сравнение. Recovery A/V 87,057 мс
-напрямую и 88,407 мс с поправкой. Медиана опережения видео 65,425 мс.
-В обоих повторах в ближайших к контрольным меткам снимках WebRTC
-медиана разности `estimatedPlayoutTimestamp` была в пределах 1 мс,
-хотя контрольные метки расходились. В этих условиях сами оценки
-WebRTC не подходят для проверки порога80мс. Нужно разделить ошибку
-оценки по RTCP и задержку между RTP и наблюдаемым PCM/кадром.
-
-Четыре коротких старта Mac с теми же параметрами без mute/unmute
-остановлены до выдачи ключа. В каждом RTP дошёл, PCM и счётчики
-декодирования остались нулевыми, журнал записал 314–321 отклонение
-кадра без ключа и 0 SIF-событий. Ранний ненулевой PCM не повторился.
-Отчёты и хеши исходных снимков сохранены. Эти старты проверяют
-только период до установки ключа.
-
-Отдельный штатный P2P-пилот Mac SDK9 с тем же синтетическим источником
-и одновременным обычным звонком прошёл. Clean raw44,200/source46,612 мс,
-recovery raw41,673/source42,581 мс. Речь без регрессии. Подтверждён
-DTLS-SRTP с валидным сертификатом и ноль принятых медиа-пакетов при
-отказе DTLS. TURN CFS throttling0. Один пилот не закрывает серию P2P.
-
-Три опыта Mac LiveKit изменили только нижнюю границу видеобуфера
-с 0 до 70 мс через поле WebRTC. Верхняя граница осталась 10000 мс,
-аудиополитика та же. После восстановления максимумы raw/source
-52,149/53,418, 64,527/66,948 и 72,740/75,341 мс. У всех трёх
-нулевые PCM и декодирование до ключа при живом RTP, правильные
-исходные метки после ключа, сравнение речи PASS и добавленная
-голосовая задержка ≤22,599 мс. Эти результаты поддерживают проверку
-нижней границы для видеоприёмника LiveKit в приложении. В опытах
-поле глобальное, поэтому для выпуска отдельно нужен ограниченный
-путь для камеры и проверка соседних сценариев. Первый отказ до
-ключа остаётся открытым.
+CallController.start выбирает DirectCall для личного исходящего вызова,
+а CallProbe/LiveKit — для группового. Серверная RTP-политика не исправляет
+P2P. До изменения P2P требуется отдельно воспроизвести его задержку: у него
+свои stream IDs, RTCP и DTLS-SRTP напрямую между участниками. Переключение
+всех личных вызовов на SFU ради обхода setter не сделано.
+
+В C++ API SDK имеется SetJitterBufferMinimumDelay(optional<double> seconds),
+но его нет в публичных Java/ObjC wrappers. На04.11.2026 pub.dev по-прежнему
+предлагает flutter_webrtc1.6.3; SDK m150.7871.05 опубликован30.10.2026,
+но простое обновление версии не добавляет setter в просмотренный Java API.
+Приватные vtable/ObjC ABI-вызовы не внедрены. Следующий шаг — настоящий
+нативный P2P контроль с теми же маркерами, затем минимальное решение по
+его результату. Пункт остаётся открытым в UA-08.C06.
+
+## 05.11.2026 — проверка SDK9
+
+Три штатных звонка Android LiveKit на Android 15 arm64 с отдельным
+отправителем Mac прошли A/V, E2EE и парное сравнение речи. Максимум
+A/V напрямую 64,529 мс, после восстановления 59,650 мс.
+
+На Mac один штатный запуск остановился из-за PCM peak 0,001404 до
+установки ключа при пределе 0,001. Запись синтетического сигнала
+сохранена, происхождение пока не установлено. Два диагностических
+повтора прошли проверки речи и E2EE, но вышли за порог A/V после
+восстановления. Худший замер 87,057 мс напрямую и 88,407 мс с
+поправкой на источник. В обоих повторах видео опережало звук
+примерно на 65 мс по медиане, при разнице между оценками
+воспроизведения WebRTC в пределах 1 мс по медиане.
+
+Четыре отдельных коротких старта Mac прошли проверку до выдачи ключа
+с нулевым PCM и декодированием. Первый отказ сохранён.
+Приложения на SDK9 не выпускались.
+
+Один штатный P2P-пилот Mac прошёл с максимумом 46,612 мс с поправкой
+на источник, без регрессии речи. Установление DTLS-SRTP и отрицательный
+контроль сертификата подтверждены. Серия P2P остаётся открытой.
+
+Три диагностических LiveKit-прогона Mac с нижней границей только
+видеобуфера 70 мс прошли порог80 мс. Худший recovery raw72,740 мс,
+с поправкой75,341 мс. Сравнение речи и отрицательный/положительный
+контроли E2EE прошли в каждой паре. Для выпуска нужна проверка
+производственного пути настройки и расследование первого старта.
+
+[Точные отчёты и код стенда](https://github.com/kerbermeister/voicechat/blob/2614f9cd440a319d8a7464539755ef6776f1aa0c/docs/iterations/native-av-sync-after62.md).
+
+## 06.11.2026 — проверка каналов и прямого звонка Android
+
+Публичные APK62 и ZIP63 совпали по SHA-256 с записью выпуска.
+На Mac установлена 1.19.15 (63), подпись действительна. Веб отдаёт
+1.19.14 (62), API и Matrix отвечают 200. Пользовательское изменение
+после 62 относится к камере настольного клиента.
+
+Один штатный P2P-пилот SDK9 на Android 15 arm64 с отдельным Mac
+отправителем и одновременным обычным звонком прошёл проверки речи,
+DTLS-SRTP и задержки голоса. Clean raw68,121/source67,146 мс, recovery
+raw111,950/source110,742 мс. При живом RTP счётчик декодирования видео
+оставался на 744 как минимум от 8,07 до 11,10 с после восстановления,
+число отброшенных кадров росло. В следующем снимке декодирование
+возобновилось. Причина остановки декодера пока не установлена. Порог
+80 мс сохранён, выпуск SDK9 не выполнен.
+
+Для macOS подготовлен вызов настройки нижней границы только для
+видеоприёмника камеры LiveKit. Проверены интерфейс Swift и 19 тестов
+Flutter. Нативная сборка и проверка фактического звонка ещё нужны.
+[Сборка SDK](https://github.com/kerbermeister/voicechat/actions/runs/42172703974).
+
+Нативный SDK macOS собрался, отчёт исходников, SHA-256 архива и UUID
+проверены. Первый прогон через штатный вызов отдельного видеоприёмника
+без глобального переопределения буфера прошёл порог A/V. Recovery
+raw33,451/source35,755 мс. До ключа PCM и декодирование нулевые
+при живом RTP, после ключа подтверждены исходные метки. Сравнение
+речи остановило выпуск: STOI после восстановления 0,990721 против
+0,996033 в одновременном аудиозвонке, допуск 0,005. В двух худших
+фрагментах потерь RTP не было, NetEq удалил 400 и добавил 520
+сэмплов соответственно. Исходный стартовый отказ SDK9 остаётся
+открытым.
+
+Контроль с тем же SDK10 и выключенной настройкой 70 мс остановился
+до установки ключа. В отдельном синтетическом аудиозвонке peak
+составил 0,472961 при лимите 0,001. Разность totalSamplesReceived и
+concealedSamples составила 704, последующий PCM затухал. Логгер
+зарегистрировал 325 отклонений кадров без ключа и 0 SIF-событий.
+Основная A/V дорожка до ключа дала нулевой PCM и нулевые счётчики
+декодирования. Контроль не дошёл до сравнения речи. Происхождение
+сигнала не установлено. Нативный выпуск macOS остановлен.
+
+Два Android-повтора с длинной потерей только video RTP воспроизвели
+остановку декодирования. PLI доходил до отправителя, ключевые кадры
+были закодированы и собраны приёмником. На одном прогоне между 4,04
+и 11,10 с после восстановления из видеобуфера вышел 141 кадр,
+счётчик декодирования стоял. В другом остановка повторилась на
+эмуляторном MediaCodec `c2.goldfish.h264.decoder`. В обоих прогонах
+выход вернулся при смене разрешения. Это локализует сбой после
+видеобуфера. Поведение физического Android в этой ситуации ещё
+не измерено.
+
+Проверен локальный диагностический AAR, в котором заменены только
+классы Java-декодера. При непрерывном входе без выхода он возвращает
+ошибку после двух секунд и использует штатный сброс WebRTC. В тесте
+он сработал на 5,300 с после возврата сети, после чего декодирование
+стабильно продолжилось к 6,049 с в том же 640×360. Смена размера
+произошла позже. Речь и DTLS-SRTP прошли, recovery raw69,173 мс.
+Чистая фаза до сброса вышла за порог, raw148,153 мс. Этот результат
+подтверждает срабатывание восстановления на эмуляторе. Полная
+приёмка клиента и физического Android остаётся открытой.
+[Сборка и тест SDK Android](https://github.com/kerbermeister/voicechat/actions/runs/42184214352).
+
+## Диагностика старта на Mac и Android, 06.11.2026
+
+На Mac SDK10 два контролируемых старта с зашифрованной синтетической
+речью воспроизвели PCM до ключа. При задержке установки криптора обычный
+аудиоприёмник показал peak 1,0 и 50 297 сэмплов по разности счётчиков
+принятых и скрытых сэмплов. При задержке включения уже установленного
+криптора peak 1,0 и разность 49 238. В обоих опытах было 133 принятых
+RTP-пакета и 0 SIF-событий. Основные A/V дорожки оставались пустыми.
+Оба пути допускают передачу данных декодеру до проверки кадра. В ещё
+одном запуске без задержек обычный аудиоприёмник дал peak 0,919 при
+живом RTP до ключа. Конкретный путь в этом запуске и наличие разборчивой
+речи в сигнале не установлены.
+
+SDK12 закрывает приём до установки строгого криптора и исключает
+передачу кадров через выключенный строгий криптор. Настройка клиента
+применяется к подписчику зашифрованного звонка на macOS, включая
+возобновление соединения. Сохранены исходные настройки SRTP. Проверки
+точного SDK должны повторить обе задержки, обычный старт и декодирование
+контрольных меток после ключа. В первом CI прошли 95 C++-тестов и
+22 отрицательных контроля. Сборка фреймворка macOS остановилась на
+аннотации доступа к видеодекриптору. Проверку перенесли на очередь
+RTP-пакетов. Локальный тест Clang с `-Werror=thread-safety-analysis`
+воспроизвёл исходную ошибку и принял исправление. Точная пересборка
+запущена. [Первый CI](https://github.com/kerbermeister/voicechat/actions/runs/42186104350),
+[пересборка SDK12](https://github.com/kerbermeister/voicechat/actions/runs/42191425031).
+
+На двух фрагментах с просадкой STOI оба звонка получали одинаковое
+число пакетов с одной конфигурацией Opus, без потерь и concealment.
+Цель NetEq у A/V дорожки менялась примерно с 40 до 80 мс и обратно,
+тогда как у параллельного аудиозвонка держалась около 60 мс. Изменения
+темпа совпали с просадкой речи. Причина различия целей пока открыта.
+После проверки закрытого старта нужно сопоставить PCM с метаданными
+времени прихода RTP на обеих дорожках. Порог STOI 0,005 сохранён.
+
+На Android пик −148,153 мс возник на первом зачётном маркере чистой
+фазы, через 5,529 с, до отключения сети и сброса декодера. Аудиобуферы
+обоих звонков держали примерно 154–162 мс, видеобуфер 18–23 мс.
+Оценки часов воспроизведения появились к снимку 7,06 с, а следующие
+маркеры чистой фазы остались в пределах 65,68 мс. В текущем WebRTC
+синхронизатору нужны RTCP sender reports для обеих дорожек, а оценка
+RTP→NTP требует двух разных отчётов. Штатный интервал аудиоотчётов
+5 с согласуется с этим наблюдением. В контролируемом повторе с тем
+же диагностическим AAR в 6,09 с аудио имело один отчёт, видео 25.
+На снимке в 7,12 с у аудио было два отчёта, появились часы обеих
+дорожек. Это подтверждает стартовое ожидание аудиоотчёта.
+
+В повторе речь и DTLS-SRTP прошли, максимум после восстановления
+67,12 мс. В чистой фазе кадр пришёл на 117,44 мс позже аудиометки
+уже после появления часов. Из них 48,79 мс составила разница
+между запланированным выводом видео и аудиометкой, 50,73 мс между
+запланированным временем и вызовом видеоприёмника, 17,93 мс между
+вызовом и чтением маркера. Кадр источника сопоставлен по номеру,
+потерь RTP в этом окне не было. В двух прежних прогонах вызов
+видеоприёмника также запаздывал относительно плана на 35,88–41,27 мс.
+В другом кадре того же повтора уже запланированный вывод отставал
+от аудио на 80,95 мс. Причины поздней выдачи и назначения времени
+вывода остаются открытыми. Порог 80 мс и способ измерения сохранены.
+
+Обе точные сборки SDK сверены с отчётами CI. На Mac SDK12 тест с
+задержкой установки криптора, тест с задержкой его включения и обычный
+старт дали нулевые PCM и видеометки при живом RTP до ключа. Первый
+полный парный звонок LiveKit подтвердил декодирование исходных меток
+после ключа. Максимумы A/V в чистой фазе 18,96 мс без поправки и
+16,51 мс с поправкой на источник, после восстановления 15,91 и 17,00 мс.
+Сравнение речи прошло. Худшая разница уровня 0,009 дБ. В стенде
+действует та же серверная граница видеобуфера 130 мс, что и в текущем
+коде создания комнат. Второй звонок также прошёл речь, E2EE и порог
+A/V. Максимум после восстановления 29,82 мс с поправкой на источник.
+
+Третий звонок Mac подтвердил E2EE, но после восстановления не прошёл
+два критерия. Маркер 39 показал 402,09 мс без поправки и 403,74 мс
+с поправкой. Просадка STOI составила 0,00668 при допуске 0,005.
+Отставание аудиометки возникло одновременно в звонке с видео и
+отдельном обычном аудиозвонке. В обеих дорожках появились concealment
+и буферная задержка около 310 мс. На выходе SFU зафиксированы паузы
+252–354 мс между соседними аудиопакетами с шагом RTP 20 мс.
+Интервал колбэков источника и приёмников в этот момент не превышал
+13 мс. Пауза локализована до выхода SFU. Для разделения отправителя,
+сети стенда и SFU нужны метки входящих пакетов и счётчики CPU.
+Выпуск Mac остаётся закрытым.
+
+Диагностика с метками входа и выхода SFU показала паузы до 86,73 мс
+на входе и 86,78 мс на выходе. Сильная пауза третьего звонка не
+повторилась, критерии пройдены. В production проверено отсутствие
+лимита CPU у контейнера LiveKit. В отдельном локальном звонке без
+лимита счётчик throttling остался нулевым. Речь и E2EE прошли, но A/V
+после восстановления достиг 84,85 мс с поправкой на источник. В
+обоих аудиопотоках этого прогона интервалы до 123,52 мс уже видны
+на входе SFU. Лимит CPU стенда сам по себе не объясняет регрессию.
+
+SDK11 Android прошёл 93 C++-теста и тест watchdog декодера на API 29
+и 36. Подтверждены три ABI, выравнивание ELF 16 КиБ для 64-разрядных
+ABI и соответствие JNI стендового APK скачанному AAR. В первом P2P
+прогоне на Android 15 A/V составил 63,63 мс в чистой сети и 72,45 мс
+после восстановления. Речь и DTLS-SRTP прошли. Часы обеих дорожек
+появились при втором RTCP-отчёте аудио, к снимку 10,06 с. После
+возобновления RTP видео стабильно декодировалось к 11,08 с, до смены
+разрешения. Между 6,04 и 9,06 с число декодированных кадров почти
+не менялось. Журнал этого прогона не показал срабатывание watchdog.
+В повторе с нативным журналом SDK11 в 2,80 с после возврата сети
+WebRTC запросил ключевой кадр. К 4,04 с приёмник начал собирать
+видео, но к 6,06 с декодировал только один кадр. Тот провёл в тракте
+3,09 с, из которых декодирование заняло 28 мс. Watchdog сработал
+в 8,68 с, JNI подтвердил сброс в 8,78 с. К 10,18 с восстановились
+20 кадров/с в 640×360. Смена разрешения началась позже, около 12,26 с.
+Речь и DTLS-SRTP прошли. Максимум A/V после восстановления 147,19 мс
+без поправки и 114,40 мс с поправкой. Второй выброс был спустя 36 с
+после возврата сети при работающем декодере. Выпуск Android остаётся
+закрытым. В работе задержка до сброса, остаточный рассинхрон и
+приёмка физического Xiaomi.
+
+В отчёт P2P добавлена максимальная длительность паузы декодирования
+при продолжающейся сборке видеокадров после возврата сети. Она видна
+отдельно от A/V и проверки транспорта на конце звонка. Повторная
+обработка зафиксировала 3,02 с и 2,11 с в двух прогонах SDK11.
+
+Отдельный звонок LiveKit на Android 15 с тем же точным AAR прошёл
+E2EE, речь и A/V. До ключа пришли 128 аудио- и 168 видеопакетов,
+декодирование и PCM оставались нулевыми. После ключа совпали исходные
+метки. Максимум A/V 65,90 мс в чистой сети и 44,88 мс после
+восстановления. Снижение STOI не превысило 0,00265. Эта проверка
+закрывает один стендовый сценарий LiveKit на SDK11. Повтор сбоев в
+P2P и проверка Xiaomi остаются открытыми.
+
+## 06.11.2026 — где задерживаются аудиопакеты и как раньше запросить видео
+
+На Mac добавлен независимый замер входа LiveKit и времени UDP-отправки
+в изолированном клиенте. Первый стенд с локальным ретранслятором сам
+добавлял до 166 мс ожидания, поэтому из его результата нельзя судить
+о производственном маршруте. Прямой замер использует исходный маршрут
+и сохраняет только время, длину и идентификаторы RTP синтетического звонка.
+
+В прямом прогоне сопоставлены 10 201 аудиопакет. На стороне отправителя
+был промежуток 101,27 мс при шаге RTP 20 мс и максимальном интервале
+колбэков источника 11,13 мс. В другом месте промежуток 6,12 мс между
+вызовами отправки вырос до 86,21 мс на входе контейнера. Подтверждены
+задержки после захвата на стороне Mac и отдельно на пути до стенда.
+Длинная пауза третьего звонка не повторилась. Порог 80 мс, речь и E2EE
+в этом диагностическом прогоне пройдены, максимум 42,22 мс.
+Второй прямой замер сопоставил 10 195 пакетов и подтвердил одновременно
+на двух дорожках паузы до UDP-отправки 62,51 и 56,75 мс. Интервал
+колбэков источника не превысил 11,63 мс. A/V и E2EE прошли, максимум
+34,71 мс. Снижение STOI превысило допуск в чистой фазе (0,01394) и
+после восстановления (0,00586). В худших фрагментах NetEq применил
+замещение пропусков или коррекцию темпа при нулевых счётчиках потерь
+RTP. Выпуск Mac остаётся закрытым.
+Нативный диагностический SDK добавляет тайминг очередей кодирования,
+шифрования и отправки. Первые C++-тесты прошли. Workflow остановился
+на имени артефакта, номер исправлен и пересборка запущена.
+[Диагностическая сборка Mac](https://github.com/kerbermeister/voicechat/actions/runs/42224412063).
+
+Android-кандидат сохраняет watchdog декодера и добавляет единичный
+RTCP-запрос ключевого кадра на первом новом зависимом RTP-пакете после
+разрыва не короче двух секунд с потерей порядковых номеров. Пауза без
+пропуска номеров, повторы, RTX и уже пришедший ключевой кадр не вызывают
+дополнительный запрос. Тест использует штатный RTP-приёмник и проверяет
+те же пакеты до и после исправления. Подтверждены 93 теста тайминга,
+23 теста приёмника и отрицательный контроль раннего запроса. CI
+собирает AAR. Проверка времени восстановления, порога 80 мс, речи
+и шифрования на точном AAR ещё предстоит.
+[Сборка Android SDK13](https://github.com/kerbermeister/voicechat/actions/runs/42219885945).
+
+CI SDK13 завершился успешно. Для скачанного AAR сверены исходники,
+контрольная сумма, три ABI, выравнивание ELF 16 КиБ и тесты watchdog
+на API 29 и 36. JNI и код watchdog в стендовом APK совпали с AAR.
+В первом тихом прямом звонке на эмуляторе Android 15 отправитель
+получил два PLI к 0,69 с от возврата сети и создал следующий
+ключевой кадр к 1,19 с. Приёмник декодировал видео к 2,02 с и
+достиг около 20 кадров/с к 6,05 с. В сравнимом прогоне SDK11 было
+10,18 с. Задержки декодирования при поступлении собранных кадров
+не зафиксировано. В этом прогоне разрешение понизилось до 320×180
+при первом возобновлении, поэтому эффект запроса отдельно от смены
+разрешения ещё нужно подтвердить повтором.
+
+Положительный DTLS-SRTP и отказ с неверным отпечатком прошли.
+Максимум A/V в чистой сети 51,23 мс, после восстановления 88,27 мс
+без поправки и 87,08 мс с поправкой на источник. Выброс возник через
+45,16 с после возврата сети при продолжающемся декодировании.
+Снижение STOI 0,00962 в чистой фазе превысило допуск 0,005.
+Речь после восстановления уложилась в допуск. Выпуск закрыт.
+Отдельный звонок LiveKit E2EE на SDK13 и Xiaomi остаются открытыми.
+
+### Очередь кодирования аудио на Mac
+
+Диагностический SDK14 прошёл 95 C++-тестов. Для тихого звонка
+LiveKit сверены подписанный фреймворк, UUID в приложении и 10 199
+аудиопакетов между UDP-отправкой и входом SFU. Две аудиодорожки
+одновременно дали интервалы 74,86 и 74,01 мс между отправками при
+шаге RTP 20 мс. Колбэки захвата продолжали идти с интервалом до
+11,06 мс. Задачи на этих дорожках ждали в очереди кодирования
+54,64 и 56,75 мс. Кодирование, очередь шифрования и очередь
+отправки в этом прогоне не дали событий от 40 мс. На входе SFU
+те же интервалы выросли до 100,63 и 100,54 мс. Длинная пауза
+третьего звонка SDK12 не повторилась.
+
+В том же прогоне A/V составил 74,33 мс без поправки и 77,58 мс
+с поправкой на источник после восстановления. Сравнение речи
+прошло. До ключа пришли 132 аудио- и 171 видеопакет, PCM и
+декодирование были нулевыми. После ключа совпали исходные
+аудио- и видеометки. Это один диагностический прогон.
+
+Закреплённый WebRTC выбирает обычный приоритет для очереди
+кодирования без включённого эксперимента. SDK15 переносит
+на macOS более высокий приоритет аудиокодировщика из новой
+версии WebRTC и сохраняет явное выключение настройки.
+Локальная проверка реальных очередей GCD показала ожидаемый
+отказ на прежнем Mac по умолчанию. С исправлением прошли
+настройка по умолчанию и явные переключения. Ветви выбора для
+iOS и других ОС сохранили прежнее поведение. Сборка SDK15
+запущена. Тихая проверка точного кандидата с A/V до 80 мс,
+речью и E2EE остаётся обязательной перед выпуском.
+[Изменение WebRTC](https://webrtc.googlesource.com/src/+/af859639f9f4de19773c3ea972aebbb68dad8bb8), [сборка SDK15](https://github.com/kerbermeister/voicechat/actions/runs/42234036793).
+
+### Возврат видео при неизменном разрешении Android
+
+В повторе SDK13 отправитель и приёмник сохраняли 640×360. После
+возврата сети ключевой кадр отправлен к 0,48 с, кадр декодирован к
+4,03 с, watchdog сработал через 5,21 с и сбросил декодер через
+5,34 с. Выдача 20 кадров/с вернулась к 7,05 с. Сравнение речи и
+DTLS-SRTP прошли. Для остальных пар в фазе восстановления
+максимум составил 71,33 мс. С одним подтверждённым устаревшим
+кадром максимум составил 6635,79 мс без поправки и 6538,55 мс с
+поправкой. Кадр был декодирован в 214,308 с стендовых часов, его
+срок показа 222,542 с совпал с фактическим выходом. Свежие кадры
+уже декодировались, но планировались раньше ошибочного срока.
+
+Штатная очередь WebRTC допускает сроки до 10 с в будущем.
+При постановке такого кадра она также отбрасывает кадры с
+более ранним сроком, даже когда у них более новый RTP.
+SDK16 сохраняет штатную обработку обычной перестановки
+кадров. При большом обратном скачке срока на более новом
+RTP он убирает из очереди устаревшие поздние кадры и
+перепланирует показ при необходимости. Тесты используют
+штатную очередь, моделируют скачок, переполнение RTP и
+обычный порядок кадров. Сборка и сравнение с прежним
+поведением запущены. Звонки SDK16 и физический Xiaomi
+остаются открытыми.
+[Сборка SDK16](https://github.com/kerbermeister/voicechat/actions/runs/42235706968).
+
+Отдельный звонок LiveKit на точном AAR SDK13 прошёл на
+эмуляторе Android 15. Максимум A/V 50,43 мс в чистой сети
+и 61,07 мс после восстановления. Сравнение речи прошло.
+До ключа пришли 132 аудио- и 177 видеопакетов, декодирование
+и PCM оставались нулевыми. После ключа подтвердились
+исходные метки. Это проверка стендового LiveKit. Выпуск
+Android остаётся закрытым из-за прямого звонка.
+
+### Проверка SDK15 на точном фреймворке Mac
+
+CI и сверка точного артефакта SDK15 прошли. В первом
+стендовом звонке пройдены E2EE и порог A/V, максимум
+34,99 мс. Во время паузы видео сравнение речи вышло за
+допуск (STOI 0,96962 против 0,99536). В двух заметных
+фрагментах NetEq убрал 399 и 700 сэмплов без потерь RTP,
+в параллельном аудиозвонке счётчики в этих окнах не менялись.
+В SFU за весь прогон была одна задержка из-за лимита CPU.
+Связь с этими фрагментами не установлена.
+
+В дополнительном прогоне без лимита CPU речь и E2EE прошли.
+На отправителе максимальный интервал между последовательными
+аудиопакетами 43,56 мс. У одного A/V-маркера через 5,43 с после
+возврата сети видео шло раньше звука на 86,18 мс
+(87,00 мс с поправкой). Аудиометка параллельного звонка
+пришла на 68,75 мс раньше аудиометки видеозвонка. Обе проверки
+сохранены. Результаты расходятся по обязательным критериям,
+выпуск Mac закрыт. Проверяется нижняя граница видеобуфера
+90 мс при прежнем максимуме 130 мс.
+
+Нижняя граница 90 мс при максимуме 130 мс дала A/V до
+55,55 мс с поправкой и прошедшее E2EE. Речь в чистой фазе
+вышла за допуск (снижение STOI 0,01183) даже без лимита
+CPU. Настройка 90 мс осталась в стенде.
+
+В диагностике с отключённым Opus DTX в обеих комнатах
+RTP шёл шагом 20 мс, без разрывов на тишине. Речь совпала
+с обычным аудиозвонком по STOI во всех четырёх фазах.
+E2EE и A/V до 27,57 мс с поправкой прошли. Параллельный
+контроль с прежним DTX и отключением DTX только в видеозвонке
+также прошёл речь, E2EE и A/V до 44,40 мс с поправкой.
+Дополнительный трафик по RTP с IPv4/UDP в стенде составил
+около 11 кбит/с на аудиопоток. Это синтетическая нагрузка,
+доля тишины в реальном звонке влияет на расход.
+
+Кандидат применяет настройку при запуске нативного
+видеозвонка LiveKit на Mac. 17 адресных Flutter-тестов
+и анализ прошли. Проверка вызова через стандартные
+настройки публикации и повтор серии остаются обязательными.
+
+В первом точном прогоне со штатными параметрами публикации
+подтверждены непрерывный RTP видеозвонка и DTX обычного
+аудиозвонка. A/V до 50,37 мс с поправкой и E2EE прошли.
+В чистой фазе речь вышла за допуск (STOI снизился на 0,01102).
+Дополнительная задержка речи также вышла за допуск (80,15 мс).
+В худшем фрагменте NetEq убрал 2083 сэмпла при нулевых потерях
+RTP. На выходе SFU максимальный промежуток между соседними
+аудиопакетами в этом окне составил 26,57 мс. Ограничений CPU
+в прогоне не было. Отключение DTX оказалось недостаточным.
+Кандидат не прошёл выпуск. Измеряется путь от выхода SFU
+до получения пакета и декодирования на Mac.
+
+### Проверка Android SDK16 с исправленной очередью показа
+
+Проверены 26 тестов приёмника и очереди показа, включая
+отрицательные проверки старого поведения, и 93 теста
+тайминга. AAR и JNI стендового APK сверены с отчётом CI.
+Тихий прямой звонок на Android 15 с фиксированным 640×360
+дал декодирование к 2,01 с, свежую видеометку к 3,20 с и
+около 20 кадров/с к 5,03 с. Пауза декодирования при
+поступлении собранных кадров не зафиксирована. Прежний
+задержанный кадр на несколько секунд не повторился.
+
+Речь совпала с контрольным аудиозвонком по STOI во всех
+фазах. DTLS-SRTP прошёл, контроль с неверным отпечатком
+не получил медиа. После восстановления один A/V-маркер
+превысил порог в 7,27 с от возврата сети (99,27 мс без
+поправки, 98,19 мс с поправкой). Второй по величине
+результат в этой фазе 57,64 мс. Кандидат ещё не прошёл
+выпуск. Проверки обычной адаптации разрешения и LiveKit
+на SDK16 продолжаются. Физический Xiaomi недоступен.
+
+С обычной адаптацией разрешения SDK16 прошёл прямой
+звонок. Максимум A/V 74,31 мс в чистой сети и 66,12 мс
+после восстановления, речь и DTLS-SRTP прошли. Один
+период без новых декодированных кадров при поступлении
+собранных кадров длился 2,02 с. Первая свежая контрольная
+видеометка после сбоя появилась к 7,17 с. Кадр с отставанием
+в несколько секунд не наблюдался.
+
+Отдельный звонок LiveKit на точном SDK16 прошёл
+A/V до 75,01 мс в чистой сети и 71,69 мс после восстановления.
+Речь совпала с контролем во всех четырёх фазах. До ключа
+приняты 131 аудио- и 176 видеопакетов с нулевыми PCM
+и декодированием. После ключа подтверждены исходные
+аудио- и видеометки. Выпуск остаётся закрытым из-за
+выброса 99,27 мс в фиксированном разрешении. Для этого
+сценария добавлен более частый замер сразу после
+восстановления сети.
+
+В повторе 640×360 с дополнительными измерениями один
+первый после паузы кадр дал 210,85 мс без поправки
+и 114,40 мс после поправки. Его RTP-пакеты собирались
+171 мс, декодирование заняло 26 мс и завершилось на 54 мс
+позже срока показа. Декодер перед этим не выдавал кадры
+при продолжающемся входе. Сработал watchdog, сброс
+зафиксирован в 5,17 с, первая свежая видеометка в 5,42 с.
+Сценарий на несколько секунд отставания не повторился.
+DTLS-SRTP прошёл. Речь вышла за допуск в фазе задержки
+видео (снижение STOI 0,00605). Выпуск закрыт.
+
+Собран локальный диагностический вариант с прежним JNI.
+Он ускоряет сброс только у ранее работавшего декодера,
+который после долгого разрыва принял новый ключевой кадр,
+а затем не выдавал кадры. Обычный таймер остаётся 2 с.
+Проверяется, вызывает ли этот путь более ранний показ
+кадров и сохраняет ли речь и шифрование.
+
+Первый локальный опыт с ускоренным watchdog прошёл A/V
+до 72,92 мс, речь и DTLS-SRTP. Ускоренный путь за весь
+звонок не сработал. Этот прогон подтверждает совместимость
+стенда, эффект сброса остаётся неизмеренным.
+
+Штатная экспериментальная очистка очереди отправки при
+новом ключевом кадре дала смешанный результат. Один
+прогон прошёл A/V до 77,77 мс с поправкой, но сравнение
+речи вышло за допуск. Повтор прошёл речь и DTLS-SRTP,
+но дал максимум A/V 105,76 мс без поправки и 104,61 мс
+с поправкой. В повторе сработал штатный watchdog в 4,76 с
+от возврата сети, сброс JNI виден в 4,86 с, свежая метка
+появилась в 5,23 с. У соседнего измеренного кадра сборка
+пакетов заняла 169 мс, декодирование 37 мс, срок показа
+пропущен на 33 мс. Экспериментальная очистка не прошла
+выпуск. Следующая диагностика проверяет наличие ожидающих
+выхода кадров в MediaCodec в момент нового ключевого кадра
+после длинной паузы.
+
+На Android 15 проба очистки незавершённых кадров
+показала, что через 3,14 с после возврата сети первый
+новый входной кадр был ключевым. Очередь учёта
+отправленных в MediaCodec кадров была пустой. Пробный сброс не сработал. Обычный
+watchdog увидел отсутствие выхода через 2,08 с
+после ключевого кадра и перезапустил декодер.
+Речь и DTLS-SRTP прошли, A/V достиг 763,81 мс без
+поправки и 709,42 мс с поправкой. Очистка старого входа
+этот механизм не исправляет.
+
+Отдельный повтор на точном SDK16 с фиксацией 640×360
+прошёл речь, DTLS-SRTP и A/V до 74,03 мс. Метаданные
+RTP по конкретному кадру связали 128 мс сборки на
+Android с 129,13 мс между приходом его пакетов на TURN
+и 129,06 мс на выходе TURN. На этом кадре RTX с тем же
+RTP timestamp не наблюдалась. Наблюдение локализует
+растянутую отправку до выхода TURN и само по себе
+не устанавливает источник задержки до входа TURN.
+Другая выборка дала срок показа почти на 10 с позже
+декодирования, но фактического показа старого кадра
+через 10 с в этом звонке не было. Результаты фиксированного
+режима остаются непостоянными. Для следующего опыта
+подготовлены раздельные замеры входа MediaCodec,
+выдачи буфера, отправки текстуры и callback получателя.
+
+Раздельные замеры подтвердили блокировку после
+MediaCodec на Android 15. После возврата сети первый
+ключевой кадр дошёл до декодера в 3,24 с. Декодирование
+заняло 33 мс, срок показа стоял на 8,04 с позже. Время
+выдачи этой текстуры совпало с callback декодера примерно
+до 2 мс. Через 2,15 с после ключевого кадра watchdog
+зафиксировал, что MediaCodec выдал очередной буфер всего
+165 мс назад, а новый callback текстуры отсутствовал
+2118 мс. Это согласуется с удержанием единственной
+текстуры в очереди показа. Положительный и отрицательный
+контроли DTLS-SRTP прошли. Порог A/V (81,77 мс) и речь
+(снижение STOI на 0,01808 в паузе видео) не прошли.
+
+Кандидат SDK18 сразу освобождает нативный буфер, если
+срок показа находится более чем на 2 с впереди.
+Сбрасываемый кадр уже декодирован, поэтому цепочка
+декодирования следующих кадров сохраняется. Штатные
+сроки показа нативных буферов сохранены. Добавлены
+проверка фактического освобождения текстуры и контроль
+штатного срока. Сборка и проверки запущены.
+[Сборка SDK18](https://github.com/kerbermeister/voicechat/actions/runs/42262806589).
+
+### Диагностика аудиоприёмника macOS
+
+Для SDK17 добавлены метки времени поступления аудио RTP,
+ожидания расшифровки и входа в NetEq, а также аудиовызовов
+и коррекций NetEq. Диагностика сохраняет только номера
+потоков, метки времени и счётчики, без медиа и ключей.
+95 тестов нативного тайминга и отрицательные проверки
+прошли. Сборка прошла. Подпись, SHA-256 архивов и arm64 UUID
+фреймворка сверены с артефактом CI.
+Следующий парный звонок проверит, на каком участке появилась
+задержка речи и совпало ли это с коррекцией буфера.
+[Сборка SDK17](https://github.com/kerbermeister/voicechat/actions/runs/42249982530).
+
+
+Первый точный тихий звонок LiveKit на SDK17 прошёл A/V
+до 32,56 мс и сравнение речи с обычным аудиозвонком.
+Пауза звука не повторилась. В обоих аудиопотоках были
+одновременные промежутки между пакетами около 70 мс.
+Один из них уже присутствовал перед отправкой на Mac
+(65,90 и 65,83 мс). У предшествующих пакетов ожидание
+от входа RTP до NetEq достигло 40,31 и 45,97 мс.
+Расшифровка не показала ожидания очереди от 25 мс.
+Ограничитель CPU стенда не срабатывал.
+
+Второй звонок также прошёл A/V (до 22,15 мс с поправкой)
+и E2EE. Средний STOI снизился на 0,01637 при задержке
+видео и на 0,02086 в фазе остановки видео. В худшем
+фрагменте пакеты не терялись, на выходе SFU интервалы
+не превышали 27,61 мс. На этом фрагменте NetEq удалил
+398 сэмплов при цели 20 мс и уровне буфера 60 мс.
+Контрольный аудиозвонок в том же окне сэмплы не
+удалял. Ожидание дешифратора и задержки входа NetEq
+выше порогов диагностики в этом фрагменте отсутствовали.
+Оба прогона дали нулевые PCM и декодирование до ключа
+при живом RTP, затем исходные аудио- и видеометки.
+Просадка совпала с коррекцией темпа NetEq. Причина
+исходной длинной паузы ещё открыта. Выпуск SDK17
+не квалифицирован, проверяется штатная настройка Opus DTX.
