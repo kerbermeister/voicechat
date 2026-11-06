@@ -193,6 +193,11 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         before_timing = patched.replace(bounded, b'  return TargetDelay();')
         before_timing = before_timing.replace(receive_relative,
                                               b'  return GetTimings().CurrentDelay();')
+        future_guard = b'constexpr TimeDelta kMaxFrameClockLead = TimeDelta::Millis(250);'
+        if before_timing.count(future_guard) != 1:
+            raise RuntimeError('Expected exactly one RTP arrival-clock guard')
+        before_timing = before_timing.replace(future_guard,
+            b'constexpr TimeDelta kMaxFrameClockLead = TimeDelta::PlusInfinity();')
         timing.write_bytes(before_timing)
         for path in [synchronizer, sync_header, extrapolator_header, cryptor]:
             path.write_bytes(subprocess.check_output(

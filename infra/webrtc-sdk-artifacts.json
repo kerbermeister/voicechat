@@ -1,22 +1,22 @@
 {
   "schema": 1,
   "sdk_version": "150.7871.04",
-  "release_artifact_version": "150.7871.04-vc19",
+  "release_artifact_version": "150.7871.04-vc21",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
-  "patch_sha256": "27ff063cc705715dafbba6222de7347cfac5b92c7e392880104a5c4280256fb2",
-  "native_video_playout_ms": 0,
-  "native_video_playout_max_ms": 10000,
-  "platform_policy_test_count": 10,
+  "patch_sha256": "1c21bfcb8b5c1cc1664b9260eb6af7013ab83618405e74e34b5f1e3515972316",
   "artifacts": {
     "macos": {
-      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc19/WebRTC.xcframework.zip",
-      "sha256": "61249212c418803d48648884048cf1eeabe8c5d9c7edead17db79b5b77cc3ab1",
-      "size_bytes": 6302877,
-      "arm64_uuid": "bf291718-0d17-38fa-a460-608cf37683cf",
-      "binary_sha256": "49099cd2e3295e88a1ea827d1236e3ce30a8a1b180e2b6691ccc77fd3797bcc0",
-      "release_artifact_version": "150.7871.04-vc19",
-      "patch_sha256": "27ff063cc705715dafbba6222de7347cfac5b92c7e392880104a5c4280256fb2",
-      "source_revision": "85015048b217abf6894a71e7e330dbb907e54725"
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc21/WebRTC.xcframework.zip",
+      "sha256": "be7e37e0eb82f18b61aae369e30e8c4be07569b43ebc4a0401b64edaff8c8f95",
+      "size_bytes": 6302751,
+      "arm64_uuid": "cb81ab92-7719-327d-8107-3519458d5584",
+      "binary_sha256": "02e8a3bf7dec8efd79b184bfa295f883448ca064286fba2e704e8a5083de88cd",
+      "release_artifact_version": "150.7871.04-vc21",
+      "patch_sha256": "1c21bfcb8b5c1cc1664b9260eb6af7013ab83618405e74e34b5f1e3515972316",
+      "source_revision": "e8ca3842d069949c9223585d7721d8af2cae86c5"
     }
-  }
+  },
+  "native_video_playout_ms": 0,
+  "native_video_playout_max_ms": 10000,
+  "platform_policy_test_count": 10
 }

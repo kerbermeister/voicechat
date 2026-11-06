@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "27ff063cc705715dafbba6222de7347cfac5b92c7e392880104a5c4280256fb2",
+  "patch_sha256": "1c21bfcb8b5c1cc1664b9260eb6af7013ab83618405e74e34b5f1e3515972316",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -36,8 +36,8 @@
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "03852fcee5c80880b5a376a0b4af88470e3b40537adefdd86fd9b53d5939e61e",
-    "modules/video_coding/timing/timing.cc": "3d4560606bceeb22391118da65754a399bb320e036d7c02b4b66b45490e74f43",
-    "modules/video_coding/timing/timing_unittest.cc": "ad0da6d66200643f258827f8aa42f6e1f37f3f1c535df9ac47e4c1e793ec9dea",
+    "modules/video_coding/timing/timing.cc": "de01766a5fa822cdb38c30e6b589f359920452b0fa3f8b1ae33ac18aad5bd87d",
+    "modules/video_coding/timing/timing_unittest.cc": "7a7026b07ef190ac113ee9175f683dc61da63ec891cdb4496d9bda8a9ba285da",
     "video/video_receive_stream2.cc": "68ba38bfa7e795a348078878ab6fe7faf5ab310ac71a1274f2f9fa0f34090975",
     "video/rtp_streams_synchronizer2.h": "38e0fcce58b14e9ff6f57709b55fac7f6bfb9d0fecb35db58c3c7eda4b6970d0",
     "video/rtp_streams_synchronizer2.cc": "c5e4ceb2cad3878096dcbdae8ab2f954caabd4b4bdac3f995bf8d672de64978f",
@@ -67,9 +67,9 @@
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey:SifTransformTest.StrictDisabledCryptorDropsFrames",
-  "release_artifact_version": "150.7871.04-vc19",
+  "release_artifact_version": "150.7871.04-vc21",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
-  "unit_test_count": 95,
+  "unit_test_count": 97,
   "regressions": [
     "VCMTimingTest.SyncDelayUsesCurrentDelayAfterVideoJitter",
     "VCMTimingTest.SyncDelayRespectsBoundsAndAudioDeviceMinimum",
@@ -92,7 +92,9 @@
     "RtpStreamsSynchronizerTest.UsesPresentationClockInsteadOfPacketArrival",
     "RtpStreamsSynchronizerTest.PresentationClockSurvivesRtpWrap",
     "RtpStreamsSynchronizerTest.ClampsPresentationTargetAtZero",
-    "SifTransformTest.StrictDisabledCryptorDropsFrames"
+    "SifTransformTest.StrictDisabledCryptorDropsFrames",
+    "VCMTimingTest.SyncDelayBoundsFutureRtpFramePrediction",
+    "VCMTimingTest.SyncDelayReanchorsClockOnEarlyFrameArrival"
   ],
   "native_video_playout_ms": 0,
   "platform_policy_test_count": 10,
