@@ -280,13 +280,21 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
     override fun onFrame(frame: VideoFrame) {
         if (!running) return
         val callbackTime = System.nanoTime() / 1e9
-        val pixels = frame.buffer.toI420() ?: return
+        val source = frame.buffer
+        val width = source.width
+        val height = source.height
+        if (width < 256 || height < 90) return
+        // The checksum occupies the upper-left marker rectangle. Read only
+        // that region to avoid holding the decoder texture for a full-frame copy.
+        val markerWidth = (width * 256 + 639) / 640
+        val markerHeight = (height * 80 + 359) / 360
+        val marker = source.cropAndScale(0, 0, markerWidth, markerHeight, markerWidth, markerHeight)
+        val pixels = try { marker.toI420() } finally { marker.release() } ?: return
         try {
-            if (pixels.width < 256 || pixels.height < 90) return
             var word = 0L
             for (bit in 0 until 32) {
-                val x = (bit % 16 * 16 + 8) * pixels.width / 640
-                val y = (bit / 16 * 40 + 20) * pixels.height / 360
+                val x = (bit % 16 * 16 + 8) * width / 640
+                val y = (bit / 16 * 40 + 20) * height / 360
                 if ((pixels.dataY.get(y * pixels.strideY + x).toInt() and 255) > 128) word = word or (1L shl bit)
             }
             val encoded = (word and 65535).toInt()
