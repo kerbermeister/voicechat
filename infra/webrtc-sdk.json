@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "605196aeb13703e68be5e9bdbc63e9d16569d1824ae14504e553ed4cb3ea8a36",
+  "patch_sha256": "1c21bfcb8b5c1cc1664b9260eb6af7013ab83618405e74e34b5f1e3515972316",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -36,7 +36,7 @@
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "03852fcee5c80880b5a376a0b4af88470e3b40537adefdd86fd9b53d5939e61e",
-    "modules/video_coding/timing/timing.cc": "527dfd62e3cf3ec38697aeeb885e3600917e65d1af23a8458e705f08e1da6fee",
+    "modules/video_coding/timing/timing.cc": "de01766a5fa822cdb38c30e6b589f359920452b0fa3f8b1ae33ac18aad5bd87d",
     "modules/video_coding/timing/timing_unittest.cc": "7a7026b07ef190ac113ee9175f683dc61da63ec891cdb4496d9bda8a9ba285da",
     "video/video_receive_stream2.cc": "68ba38bfa7e795a348078878ab6fe7faf5ab310ac71a1274f2f9fa0f34090975",
     "video/rtp_streams_synchronizer2.h": "38e0fcce58b14e9ff6f57709b55fac7f6bfb9d0fecb35db58c3c7eda4b6970d0",

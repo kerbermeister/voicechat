@@ -35,7 +35,7 @@
    TimeDelta TargetVideoDelay() const;
 --- a/modules/video_coding/timing/timing.cc
 +++ b/modules/video_coding/timing/timing.cc
-@@ -33,6 +33,14 @@
+@@ -33,6 +33,15 @@
  // Maximum `max_playout_delay` for a stream to use low-latency rendering.
  constexpr TimeDelta kLowLatencyStreamMaxPlayoutDelayThreshold =
      TimeDelta::Millis(500);
@@ -45,12 +45,13 @@
 +
 +bool HasFutureRtpClockPrediction(std::optional<Timestamp> local_time,
 +                                 Timestamp observed_time) {
-+  return local_time && *local_time - observed_time > kMaxFrameClockLead;
++  return observed_time.IsFinite() && local_time &&
++         *local_time - observed_time > kMaxFrameClockLead;
 +}
  
  void CheckDelaysValid(TimeDelta min_delay, TimeDelta max_delay) {
    if (min_delay > max_delay) {
-@@ -58,11 +66,20 @@
+@@ -58,11 +67,20 @@
    min_playout_delay = TimeDelta::Zero();
    stats_target_delay = TimeDelta::Zero();
    current_delay = TimeDelta::Zero();
@@ -71,7 +72,7 @@
  }
  
  TimeDelta VCMTiming::VideoDelayTimings::StatsTargetDelay() const {
-@@ -156,6 +173,12 @@
+@@ -156,6 +174,12 @@
  
  void VCMTiming::OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now) {
    MutexLock lock(&mutex_);
@@ -84,7 +85,7 @@
    ts_extrapolator_->Update(now, rtp_timestamp);
  }
  
-@@ -170,9 +193,36 @@
+@@ -170,9 +194,36 @@
    if (!local_time.has_value()) {
      return now;
    }
