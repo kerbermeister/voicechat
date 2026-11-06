@@ -29,6 +29,7 @@ Future<StreamSubscription<Map<String, dynamic>>?> collectNativeSyncLogs(
             (message.contains('Sync info stats:') ||
                 message.contains('Sync delay stats:') ||
                 message.contains('Resetting jitter estimator') ||
+                message.contains('Reanchoring video RTP clock') ||
                 message.contains('Frame has bad render timing') ||
                 message.contains('Target video delay is too large') ||
                 message.contains('Resetting filter.'))) {
@@ -292,6 +293,13 @@ Future<Map<String, dynamic>> measureP2PReceiver(
               'ssrc',
               'framesDecoded',
               'framesDropped',
+              if (const bool.fromEnvironment('P2P_NATIVE_SYNC_LOGS')) ...[
+                'framesReceived',
+                'keyFramesDecoded',
+                'totalDecodeTime',
+                'totalProcessingDelay',
+                'googTimingFrameInfo',
+              ],
               'framesPerSecond',
               'frameWidth',
               'frameHeight',
