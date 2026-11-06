@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "134a366662ec99c1c0318dc5d29414daa23f96b4f07cdb17242310129640a070",
+  "patch_sha256": "d8b742bcacce15127b6ebf68d1a37a2e7715869d4c78804c599e6a13d2bc7dcb",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -60,8 +60,8 @@
     "modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.cc": "07f961eba8f4645a5b2289ddb593fec8802e905bde801ce7ac497192b39d89f5",
     "modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.h": "d78af97333e92509c40ee9fd2c703daea6821803354e7883f57fb5cd95b6a4c3",
     "video/buffered_frame_decryptor.h": "048da153d844f6606eeaa8be2d44f91e9c1872defcd5607132a793b2fbd2ba84",
-    "video/rtp_video_stream_receiver2.cc": "cb0ebea1b8602106203b471d0f6efecbe19297ffe55b482d6530a99eff6d8f52",
-    "video/rtp_video_stream_receiver2.h": "087670309dbb1090b2066266f76f88e8c5b70293134faed3cc55555e687b1e27"
+    "video/rtp_video_stream_receiver2.cc": "b912c0fb74c06b489ee447a0ac3fcf095fb0c63b59886eabec4a8b49ed264e67",
+    "video/rtp_video_stream_receiver2.h": "3c1d3d24d033be481d410fe1ed485601c9cb953f7d741296aaf8480e3d8c305e"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey:SifTransformTest.StrictDisabledCryptorDropsFrames",

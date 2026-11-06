@@ -1209,16 +1209,17 @@
    // the OnDecryptedFrameCallback.
 --- a/video/rtp_video_stream_receiver2.cc
 +++ b/video/rtp_video_stream_receiver2.cc
-@@ -817,7 +817,15 @@
+@@ -817,7 +817,16 @@
 
  bool RtpVideoStreamReceiver2::IsDecryptable() const {
    RTC_DCHECK_RUN_ON(&worker_task_checker_);
++  RTC_DCHECK_RUN_ON(&packet_sequence_checker_);
 -  return frames_decryptable_;
 +  return frames_decryptable_ || UsesEncryptedFrameTransformer();
 +}
 +
 +bool RtpVideoStreamReceiver2::UsesEncryptedFrameTransformer() const {
-+  RTC_DCHECK_RUN_ON(&worker_task_checker_);
++  RTC_DCHECK_RUN_ON(&packet_sequence_checker_);
 +  return frame_transformer_delegate_ &&
 +         frame_transformer_delegate_->EnforcesFrameEncryption() &&
 +         (!buffered_frame_decryptor_ ||
@@ -1226,14 +1227,6 @@
  }
 
  void RtpVideoStreamReceiver2::OnInsertedPacket(
-@@ -927,6 +935,7 @@
- void RtpVideoStreamReceiver2::OnAssembledFrame(
-     std::unique_ptr<RtpFrameObject> frame) {
-   RTC_DCHECK_RUN_ON(&packet_sequence_checker_);
-+  RTC_DCHECK_RUN_ON(&worker_task_checker_);
-   RTC_DCHECK(frame);
-
-   const std::optional<RTPVideoHeader::GenericDescriptorInfo>& descriptor =
 @@ -982,7 +991,7 @@
      last_assembled_frame_rtp_timestamp_ = frame->RtpTimestamp();
    }
@@ -1250,7 +1243,7 @@
        const RtpPacketReceived& rtp_packet,
        RTPVideoHeader* video_header) RTC_RUN_ON(packet_sequence_checker_);
 +  bool UsesEncryptedFrameTransformer() const
-+      RTC_RUN_ON(&worker_task_checker_);
++      RTC_RUN_ON(packet_sequence_checker_);
    void OnAssembledFrame(std::unique_ptr<RtpFrameObject> frame)
        RTC_RUN_ON(packet_sequence_checker_);
    void UpdatePacketReceiveTimestamps(const RtpPacketReceived& packet,
