@@ -153,6 +153,7 @@ rtc_test("timing_sync_unittests") {
     "//common_video",
     "//modules/video_coding/timing:timing_unittests",
     "//modules/rtp_rtcp:rtp_video_header",
+    "//test:create_test_field_trials",
     "//rtc_base:byte_buffer",
     "//rtc_base:crypto_random",
   ]

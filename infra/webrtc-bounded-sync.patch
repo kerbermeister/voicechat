@@ -234,25 +234,28 @@
 --- a/video/rtp_streams_synchronizer2.h
 +++ b/video/rtp_streams_synchronizer2.h
 @@ -13,6 +13,8 @@
-
+ 
  #include <cstdint>
  #include <memory>
 +#include <optional>
 +#include <utility>
-
+ 
  #include "api/environment/environment.h"
  #include "api/sequence_checker.h"
 @@ -52,6 +54,7 @@
-
+ 
   private:
    void UpdateDelay();
 +  void ResetSyncDelays() RTC_RUN_ON(main_checker_);
-
+ 
    const Environment env_;
    TaskQueueBase* const task_queue_;
-@@ -66,11 +69,11 @@
+@@ -64,13 +67,15 @@
+   RTC_NO_UNIQUE_ADDRESS SequenceChecker main_checker_;
+ 
    Syncable* const syncable_video_;
-
++  const bool paired_audio_floor_enabled_;
+ 
    Syncable* syncable_audio_ RTC_GUARDED_BY(main_checker_) = nullptr;
 -  std::unique_ptr<StreamSynchronization> sync_ RTC_GUARDED_BY(main_checker_);
 -  StreamSynchronization::Measurements audio_measurement_
@@ -264,40 +267,59 @@
 +  std::optional<StreamSynchronization::Measurements> video_measurement_
 +      RTC_GUARDED_BY(main_checker_) {std::in_place};
 +  bool sync_suspended_ RTC_GUARDED_BY(main_checker_) = false;
++  bool paired_audio_floor_applied_ RTC_GUARDED_BY(main_checker_) = false;
    RepeatingTaskHandle repeating_task_ RTC_GUARDED_BY(main_checker_);
    int64_t last_stats_log_ms_ RTC_GUARDED_BY(&main_checker_);
  };
 --- a/video/rtp_streams_synchronizer2.cc
 +++ b/video/rtp_streams_synchronizer2.cc
-@@ -32,7 +32,8 @@
+@@ -32,7 +32,17 @@
  namespace {
  // Time interval for logging stats.
  constexpr int64_t kStatsLogIntervalMs = 10000;
 -constexpr TimeDelta kSyncInterval = TimeDelta::Millis(1000);
 +constexpr TimeDelta kSyncInterval = TimeDelta::Millis(200);
 +constexpr TimeDelta kStaleStreamTimeout = TimeDelta::Seconds(2);
-
++constexpr TimeDelta kPairedAudioFloor = TimeDelta::Millis(70);
++
++bool UsePairedAudioFloor(const Environment& env) {
++#if defined(WEBRTC_ANDROID)
++  return !env.field_trials().IsDisabled("WebRTC-PairedVideoAudioFloor");
++#else
++  return env.field_trials().IsEnabled("WebRTC-PairedVideoAudioFloor");
++#endif
++}
+ 
  bool UpdateMeasurements(StreamSynchronization::Measurements* stream,
                          const Syncable::Info& info) {
-@@ -58,6 +59,8 @@
+@@ -51,6 +61,7 @@
+     : env_(env),
+       task_queue_(main_queue),
+       syncable_video_(syncable_video),
++      paired_audio_floor_enabled_(UsePairedAudioFloor(env)),
+       last_stats_log_ms_(env_.clock().TimeInMilliseconds()) {
+   RTC_DCHECK(syncable_video);
+ }
+@@ -58,6 +69,8 @@
  RtpStreamsSynchronizer::~RtpStreamsSynchronizer() {
    RTC_DCHECK_RUN_ON(&main_checker_);
    repeating_task_.Stop();
 +  if (syncable_audio_)
 +    syncable_audio_->SetMinimumPlayoutDelay(TimeDelta::Zero());
  }
-
+ 
  void RtpStreamsSynchronizer::ConfigureSync(Syncable* syncable_audio) {
-@@ -67,15 +70,17 @@
+@@ -67,15 +80,18 @@
    if (syncable_audio == syncable_audio_)
      return;
-
+ 
 +  if (syncable_audio_)
 +    syncable_audio_->SetMinimumPlayoutDelay(TimeDelta::Zero());
 +  syncable_video_->SetVideoSyncDelay(std::nullopt);
 +  audio_measurement_.emplace();
 +  video_measurement_.emplace();
 +  sync_suspended_ = false;
++  paired_audio_floor_applied_ = false;
    syncable_audio_ = syncable_audio;
 -  sync_.reset(nullptr);
    if (!syncable_audio_) {
@@ -307,33 +329,35 @@
 -
 -  sync_.reset(
 -      new StreamSynchronization(syncable_video_->id(), syncable_audio_->id()));
-
+ 
    if (repeating_task_.Running())
      return;
-@@ -87,13 +92,17 @@
+@@ -87,13 +103,19 @@
        });
  }
-
+ 
 +void RtpStreamsSynchronizer::ResetSyncDelays() {
-+  // Natural NetEq/device delay and negotiated video bounds stay untouched.
-+  syncable_audio_->SetMinimumPlayoutDelay(TimeDelta::Zero());
++  // A paused video stream still belongs to the same call. Keep the audio
++  // floor until the receiver is detached so NetEq need not compress speech.
++  if (!paired_audio_floor_enabled_)
++    syncable_audio_->SetMinimumPlayoutDelay(TimeDelta::Zero());
 +  syncable_video_->SetVideoSyncDelay(std::nullopt);
 +}
 +
  void RtpStreamsSynchronizer::UpdateDelay() {
    RTC_DCHECK_RUN_ON(&main_checker_);
-
+ 
    if (!syncable_audio_)
      return;
 -
 -  RTC_DCHECK(sync_.get());
-
+ 
    bool log_stats = false;
    const int64_t now_ms = env_.clock().TimeInMilliseconds();
-@@ -102,41 +111,43 @@
+@@ -102,41 +124,47 @@
      log_stats = true;
    }
-
+ 
 -  int64_t last_audio_receive_time_ms =
 -      audio_measurement_.latest_receive_time_ms;
    std::optional<Syncable::Info> audio_info = syncable_audio_->GetInfo();
@@ -367,6 +391,10 @@
 +    return;
 +  }
 +  sync_suspended_ = false;
++  if (paired_audio_floor_enabled_ && !paired_audio_floor_applied_) {
++    paired_audio_floor_applied_ =
++        syncable_audio_->SetMinimumPlayoutDelay(kPairedAudioFloor);
++  }
 +
 +  const int64_t last_audio_receive_ms = audio_measurement_->latest_receive_time_ms;
 +  const int64_t last_video_receive_ms = video_measurement_->latest_receive_time_ms;
@@ -376,7 +404,7 @@
 +      last_video_receive_ms == video_measurement_->latest_receive_time_ms) {
      return;
    }
-
+ 
    int relative_delay_ms;
    // Calculate how much later or earlier the audio stream is compared to video.
    if (!StreamSynchronization::ComputeRelativeDelay(
@@ -384,7 +412,7 @@
 +          *audio_measurement_, *video_measurement_, &relative_delay_ms)) {
      return;
    }
-
+ 
    if (log_stats) {
      RTC_LOG(LS_INFO) << "Sync info stats: " << now_ms
 -                     << ", {ssrc: " << sync_->audio_stream_id() << ", "
@@ -395,10 +423,10 @@
                       << "cur_delay: " << video_info->current_delay
                       << "} {relative_delay_ms: " << relative_delay_ms << "} ";
    }
-@@ -147,31 +158,35 @@
+@@ -147,31 +175,35 @@
                   audio_info->current_delay.ms());
    TRACE_COUNTER1("webrtc", "SyncRelativeDelay", relative_delay_ms);
-
+ 
 -  int target_audio_delay_ms = 0;
 -  int target_video_delay_ms = video_info->current_delay.ms();
 -  // Calculate the necessary extra audio delay and desired total video
@@ -454,39 +482,39 @@
 +  syncable_video_->SetVideoSyncDelay(target);
 +
  }
-
+ 
  // TODO(https://bugs.webrtc.org/7065): Move RtpToNtpEstimator out of
-@@ -195,7 +210,7 @@
+@@ -195,7 +227,7 @@
    }
-
+ 
    NtpTime latest_audio_ntp =
 -      audio_measurement_.rtp_to_ntp.Estimate(audio->rtp_timestamp);
 +      audio_measurement_->rtp_to_ntp.Estimate(audio->rtp_timestamp);
    if (!latest_audio_ntp.Valid()) {
      return false;
    }
-@@ -205,7 +220,7 @@
+@@ -205,7 +237,7 @@
                                                     audio->time);
-
+ 
    NtpTime latest_video_ntp =
 -      video_measurement_.rtp_to_ntp.Estimate(rtp_timestamp);
 +      video_measurement_->rtp_to_ntp.Estimate(rtp_timestamp);
    if (!latest_video_ntp.Valid()) {
      return false;
    }
-@@ -223,7 +238,7 @@
-
+@@ -223,7 +255,7 @@
+ 
    *video_playout_ntp_ms = latest_video_ntp_ms;
    *stream_offset_ms = latest_audio_ntp_ms - latest_video_ntp_ms;
 -  *estimated_freq_khz = video_measurement_.rtp_to_ntp.EstimatedFrequencyKhz();
 +  *estimated_freq_khz = video_measurement_->rtp_to_ntp.EstimatedFrequencyKhz();
    return true;
  }
-
+ 
 --- a/video/stream_synchronization_unittest.cc
 +++ b/video/stream_synchronization_unittest.cc
-@@ -12,6 +12,13 @@
-
+@@ -12,6 +12,14 @@
+ 
  #include <algorithm>
  #include <cstdint>
 +#include <memory>
@@ -494,15 +522,16 @@
 +
 +#include "api/environment/environment_factory.h"
 +#include "call/syncable.h"
++#include "test/create_test_field_trials.h"
 +#include "test/time_controller/simulated_time_controller.h"
 +#include "video/rtp_streams_synchronizer2.h"
-
+ 
  #include "rtc_base/rtp_to_ntp_estimator.h"
  #include "system_wrappers/include/clock.h"
-@@ -531,4 +538,232 @@
+@@ -531,4 +539,260 @@
    BothDelayedVideoLaterTest(kBaseTargetDelayMs);
  }
-
+ 
 +
 +namespace {
 +class SyncTestStream : public Syncable {
@@ -566,14 +595,17 @@
 +
 +class RtpStreamsSynchronizerTest : public ::testing::Test {
 + protected:
-+  RtpStreamsSynchronizerTest()
++  explicit RtpStreamsSynchronizerTest(const char* field_trials = "",
++                                     bool video_active = true)
 +      : time_(Timestamp::Millis(1337)),
-+        env_(CreateEnvironment(time_.GetClock(), time_.GetTaskQueueFactory())),
++        env_(CreateEnvironment(CreateTestFieldTrialsPtr(field_trials),
++                               time_.GetClock(), time_.GetTaskQueueFactory())),
 +        audio_(time_.GetClock(), 1, 8000, 225),
 +        video_(time_.GetClock(), 2, 90000, 500),
 +        sync_(std::make_unique<internal::RtpStreamsSynchronizer>(
 +            env_, time_.GetMainThread(), &video_)) {
 +    video_.video_buffer = TimeDelta::Millis(500);
++    video_.has_info = video_active;
 +    sync_->ConfigureSync(&audio_);
 +    time_.AdvanceTime(TimeDelta::Seconds(12));
 +  }
@@ -583,6 +615,31 @@
 +  SyncTestStream video_;
 +  std::unique_ptr<internal::RtpStreamsSynchronizer> sync_;
 +};
++
++class RtpStreamsSynchronizerAudioFloorTest : public RtpStreamsSynchronizerTest {
++ protected:
++  RtpStreamsSynchronizerAudioFloorTest()
++      : RtpStreamsSynchronizerTest("WebRTC-PairedVideoAudioFloor/Enabled/",
++                                    /*video_active=*/false) {}
++};
++
++TEST_F(RtpStreamsSynchronizerAudioFloorTest, AppliesOnlyAfterVideoArrives) {
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++  video_.has_info = true;
++  time_.AdvanceTime(TimeDelta::Seconds(1));
++  EXPECT_EQ(audio_.floor, TimeDelta::Millis(70));
++}
++
++TEST_F(RtpStreamsSynchronizerAudioFloorTest, KeepsFloorUntilDetach) {
++  video_.has_info = true;
++  time_.AdvanceTime(TimeDelta::Seconds(1));
++  ASSERT_EQ(audio_.floor, TimeDelta::Millis(70));
++  video_.receiving = false;
++  time_.AdvanceTime(TimeDelta::Seconds(2));
++  EXPECT_EQ(audio_.floor, TimeDelta::Millis(70));
++  sync_->ConfigureSync(nullptr);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
 +
 +TEST_F(RtpStreamsSynchronizerTest, VideoFollowsAudioWithoutAudioBuffering) {
 +  EXPECT_EQ(video_.video_target, TimeDelta::Millis(225));
@@ -1526,7 +1583,20 @@
  constexpr TimeDelta kDefaultRtt = TimeDelta::Millis(100);
  // Number of times a packet can be nacked before giving up. Nack is sent at most
  // every RTT.
-@@ -165,6 +166,7 @@
+@@ -142,6 +143,12 @@
+ 
+ void NackRequester::ProcessNacks() {
+   RTC_DCHECK_RUN_ON(worker_thread_);
++  if (!nack_list_.empty() &&
++      clock_->CurrentTime() - newest_packet_time_ >= kStaleRetransmissionGap) {
++    // Do not fill the sender queue with old repair traffic during an outage.
++    nack_list_.clear();
++    return;
++  }
+   std::vector<uint16_t> nack_batch = GetNackBatch(kTimeOnly);
+   if (!nack_batch.empty()) {
+     // This batch of NACKs is triggered externally; there is no external
+@@ -165,6 +172,7 @@
  
    if (!initialized_) {
      newest_seq_num_ = seq_num;
@@ -1534,7 +1604,7 @@
      initialized_ = true;
      return 0;
    }
-@@ -196,6 +198,19 @@
+@@ -196,6 +204,19 @@
        recovered_list_.erase(recovered_list_.begin(), it);
  
      // Do not send nack for packets recovered by FEC or RTX.
@@ -1556,7 +1626,7 @@
  
 --- a/modules/video_coding/nack_requester_unittest.cc
 +++ b/modules/video_coding/nack_requester_unittest.cc
-@@ -103,6 +103,52 @@
+@@ -103,6 +103,65 @@
    bool waiting_for_send_nack_ = false;
    bool timed_out_ = false;
  };
@@ -1586,6 +1656,19 @@
 +  nack.OnReceivedPacket(4);
 +  EXPECT_TRUE(sent_nacks_.empty());
 +  EXPECT_EQ(keyframes_requested_, 1);
++}
++
++TEST_F(TestNackRequester, VideoResumeStopsRetryingAfterLongSilence) {
++  NackRequester& nack = CreateNackModule();
++  nack.OnReceivedPacket(10);
++  nack.OnReceivedPacket(12);
++  ASSERT_EQ(sent_nacks_, std::vector<uint16_t>({11}));
++  sent_nacks_.clear();
++
++  clock_->AdvanceTimeMilliseconds(2000);
++  nack.ProcessNacks();
++  EXPECT_TRUE(sent_nacks_.empty());
++  EXPECT_EQ(keyframes_requested_, 0);
 +}
 +
 +TEST_F(TestNackRequester, VideoResumeRetainsRepairForShortGap) {
