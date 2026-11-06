@@ -1,17 +1,5 @@
-val nativeWebRtcRepository = providers.exec {
-    workingDir(rootDir.resolve("../../.."))
-    commandLine("python3", "infra/prepare_android_webrtc.py")
-}.standardOutput.asText.get().trim()
-
 allprojects {
-    configurations.configureEach {
-        resolutionStrategy.force("io.github.webrtc-sdk:android:150.7871.04-vc9")
-    }
     repositories {
-        maven {
-            url = uri(nativeWebRtcRepository)
-            content { includeModule("io.github.webrtc-sdk", "android") }
-        }
         google()
         mavenCentral()
     }

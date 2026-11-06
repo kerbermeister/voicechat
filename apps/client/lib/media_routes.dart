@@ -104,21 +104,13 @@ lk.Room routedMediaRoom(
   required bool Function() canRecover,
   bool synchronizeNativeCall = false,
 }) {
-  // The video-only SDK policy is shipped for these two native platforms.
-  final transform =
-      synchronizeNativeCall &&
-          !kIsWeb &&
-          {
-            TargetPlatform.android,
-            TargetPlatform.macOS,
-          }.contains(defaultTargetPlatform)
-      ? synchronizeCallStreams
-      : null;
-  final requireSubscriberFrameEncryption =
+  final synchronizeMacCall =
       synchronizeNativeCall &&
       !kIsWeb &&
-      defaultTargetPlatform == TargetPlatform.macOS &&
-      options.encryption != null;
+      defaultTargetPlatform == TargetPlatform.macOS;
+  final transform = synchronizeMacCall ? synchronizeCallStreams : null;
+  final requireSubscriberFrameEncryption =
+      synchronizeMacCall && options.encryption != null;
   final network = routeTransportOf(client.httpClient);
   if (network == null || network.coordinator == null) {
     return lk.Room(

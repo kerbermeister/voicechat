@@ -47,7 +47,7 @@ class RestartVoip implements VoIP {
 
 void main() {
   test(
-    'call synchronization is confined to opted-in Android/macOS SDKs',
+    'call synchronization applies only to explicitly opted-in macOS calls',
     () async {
       final client = Client('native-call-policy', database: OutboxDatabase());
       addTearDown(client.dispose);
@@ -64,14 +64,7 @@ void main() {
           );
           // ignore: invalid_use_of_internal_member
           final transform = room.engine.subscriberDescriptionTransform;
-          expect(
-            transform != null,
-            call &&
-                {
-                  TargetPlatform.android,
-                  TargetPlatform.macOS,
-                }.contains(platform),
-          );
+          expect(transform != null, call && platform == TargetPlatform.macOS);
           // ignore: invalid_use_of_internal_member
           expect(room.engine.requireSubscriberFrameEncryption, isFalse);
           await room.dispose();
