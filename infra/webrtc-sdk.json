@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "aa0dde2a41aff3e912f20d7103509896e34ca19216e95b5a56294f0ef9b20309",
+  "patch_sha256": "8006eec2cd357e036c8ac23db4853f9344095da2c32f03d303dc9d1d9e0cbb9c",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -22,7 +22,9 @@
     "api/crypto/sif_payload_unittest.cc": "1d54491b52fb71bb40c188e47657359c52628b3f32d517435f4770c32152c7b5",
     "api/crypto/BUILD.gn": "6e92edc0d213f67b547de0a6729251a8df1bd63a0498de409f7e4f98aafe0ffb",
     "api/crypto/frame_crypto_transformer_unittest.cc": "ef6b53dfa57117f581af18fc262df88f18a7204d588827257d44f629b2877e26",
-    "api/crypto/frame_crypto_transformer.h": "97e5f1bdbfc6b9167668b12b895bff7fd72c5906a533e1a961bb78367d7e8a43"
+    "api/crypto/frame_crypto_transformer.h": "97e5f1bdbfc6b9167668b12b895bff7fd72c5906a533e1a961bb78367d7e8a43",
+    "sdk/android/src/java/org/webrtc/AndroidVideoDecoder.java": "b5deea4dfd47a868f71ba4fb2ea0b28842d06af576c6f680325f636ee42b4e21",
+    "sdk/android/tests/src/org/webrtc/AndroidVideoDecoderTest.java": "bd88fcc3cc57b936da232a3e26b2b960f7646b1e9658a8d7479899082df655bd"
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "03852fcee5c80880b5a376a0b4af88470e3b40537adefdd86fd9b53d5939e61e",
@@ -43,11 +45,13 @@
     "api/crypto/sif_payload_unittest.cc": "3db0a3b839530e35d39b65584297a7864f78b578f4150aded95519838c7d4973",
     "api/crypto/BUILD.gn": "6e92edc0d213f67b547de0a6729251a8df1bd63a0498de409f7e4f98aafe0ffb",
     "api/crypto/frame_crypto_transformer_unittest.cc": "3c0b3fc6e61fd9e70b5333d51ef9724237a38b37bf73a6f5b6b21c0b9d0c2f98",
-    "api/crypto/frame_crypto_transformer.h": "7c899722681bfe286435017608a82699fa5d84c3488c3d7f5f2377d521d920d3"
+    "api/crypto/frame_crypto_transformer.h": "7c899722681bfe286435017608a82699fa5d84c3488c3d7f5f2377d521d920d3",
+    "sdk/android/src/java/org/webrtc/AndroidVideoDecoder.java": "fb4270b1afd33a9193ecf2a99052dec6d3c81550d21c8d707254fb800ad6f3c4",
+    "sdk/android/tests/src/org/webrtc/AndroidVideoDecoderTest.java": "de4f4c4255888511886bdea1f409c6f63930a1c9248b860f903c7210e5320399"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey",
-  "release_artifact_version": "150.7871.04-vc9",
+  "release_artifact_version": "150.7871.04-vc11",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
   "unit_test_count": 93,
   "regressions": [

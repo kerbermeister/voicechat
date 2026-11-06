@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -268,8 +269,9 @@ def macos(source, work, output):
 
 def android(source, work, output):
     aar = output / 'libwebrtc.aar'
+    build_root = source / 'out/voicechat-aar'
     run([sys.executable, source / 'tools_webrtc/android/build_aar.py',
-         '--build-dir', source / 'out/voicechat-aar', '--output', aar,
+         '--build-dir', build_root, '--output', aar,
          '--arch', 'armeabi-v7a', 'arm64-v8a', 'x86_64',
          '--extra-gn-args=' + ANDROID_ARGS, '--extra-ninja-switches=-local_jobs=2'], cwd=source)
     with zipfile.ZipFile(aar) as archive:
@@ -286,6 +288,18 @@ def android(source, work, output):
             if destination in archive.namelist():
                 raise RuntimeError('Duplicate SDK license asset')
             archive.write(path, destination)
+    test_build = build_root / 'arm64-v8a'
+    gn_args = test_build / 'args.gn'
+    configured, count = re.subn(r'\brtc_include_tests\s*=\s*false\b',
+                                'rtc_include_tests = true', gn_args.read_text())
+    if count != 1:
+        raise RuntimeError('Expected the Android AAR test flag')
+    gn_args.write_text(configured)
+    run(['gn', 'gen', test_build], cwd=source)
+    run(['autoninja', '-C', test_build, 'android_sdk_junit_tests', '-local_jobs=2'], cwd=source)
+    run([test_build / 'bin/run_android_sdk_junit_tests', '-f',
+         'org.webrtc.AndroidVideoDecoderTest.testReportsStalledOutputOnlyDuringContinuousInput',
+         '--json-results-file', output / 'android-decoder-test-results.json'], cwd=source)
     return aar
 
 

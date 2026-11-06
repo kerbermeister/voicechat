@@ -1052,3 +1052,106 @@
    // The frame key length in bits that key derivation uses.
    unsigned int frame_key_bits() const {
      return key_size == 256 ? 256u : 128u;
+--- a/sdk/android/src/java/org/webrtc/AndroidVideoDecoder.java
++++ b/sdk/android/src/java/org/webrtc/AndroidVideoDecoder.java
+@@ -42,6 +42,8 @@
+   // running.  If it is, it will block on dequeue again.  Otherwise, it will stop and release the
+   // MediaCodec.
+   private static final int DEQUEUE_OUTPUT_BUFFER_TIMEOUT_US = 100000;
++  private static final long OUTPUT_STALL_TIMEOUT_MS = 2000;
++  private static final long CONTINUOUS_INPUT_MAX_GAP_MS = 500;
+
+   private final MediaCodecWrapperFactory mediaCodecWrapperFactory;
+   private final String codecName;
+@@ -90,6 +92,9 @@
+   // Whether the decoder has seen a key frame.  The first frame must be a key frame.  Only accessed
+   // on the decoder thread.
+   private boolean keyFrameRequired;
++  private long lastInputTimeMs;
++  private long continuousInputSinceMs;
++  private volatile long lastOutputTimeMs;
+
+   private final @Nullable EglBase.Context sharedContext;
+   // Valid and immutable while the decoder is running.
+@@ -166,6 +171,7 @@
+     sliceHeight = height;
+     hasDecodedFirstFrame = false;
+     keyFrameRequired = true;
++    lastInputTimeMs = continuousInputSinceMs = lastOutputTimeMs = SystemClock.elapsedRealtime();
+
+     try {
+       codec = mediaCodecWrapperFactory.createByCodecName(codecName);
+@@ -235,6 +241,19 @@
+         Logging.e(TAG, "decode() - key frame required first");
+         return VideoCodecStatus.NO_OUTPUT;
+       }
++    }
++
++    final long nowMs = SystemClock.elapsedRealtime();
++    if (nowMs - lastInputTimeMs >= CONTINUOUS_INPUT_MAX_GAP_MS) {
++      continuousInputSinceMs = nowMs;
++    }
++    lastInputTimeMs = nowMs;
++    if (nowMs - Math.max(continuousInputSinceMs, lastOutputTimeMs)
++        >= OUTPUT_STALL_TIMEOUT_MS) {
++      // The native wrapper restarts the decoder and the receive stream requests
++      // a keyframe on error. An idle track must not trigger this recovery.
++      Logging.w(TAG, "Decoder output stalled during continuous input");
++      return VideoCodecStatus.ERROR;
+     }
+
+     int index;
+@@ -436,6 +455,7 @@
+     // Change timestamp of frame.
+     final VideoFrame frameWithModifiedTimeStamp =
+         new VideoFrame(frame.getBuffer(), frame.getRotation(), timestampNs);
++    lastOutputTimeMs = SystemClock.elapsedRealtime();
+     callback.onDecodedFrame(frameWithModifiedTimeStamp, decodeTimeMs, null /* qp */);
+   }
+
+@@ -485,6 +505,7 @@
+     VideoFrame frame = new VideoFrame(frameBuffer, rotation, presentationTimeNs);
+
+     // Note that qp is parsed on the C++ side.
++    lastOutputTimeMs = SystemClock.elapsedRealtime();
+     callback.onDecodedFrame(frame, decodeTimeMs, null /* qp */);
+     frame.release();
+   }
+--- a/sdk/android/tests/src/org/webrtc/AndroidVideoDecoderTest.java
++++ b/sdk/android/tests/src/org/webrtc/AndroidVideoDecoderTest.java
+@@ -27,6 +27,7 @@
+ import android.media.MediaCodecInfo.CodecCapabilities;
+ import android.media.MediaFormat;
+ import android.os.Handler;
++import android.os.SystemClock;
+ import androidx.test.runner.AndroidJUnit4;
+ import java.nio.ByteBuffer;
+ import java.util.ArrayList;
+@@ -286,6 +287,27 @@
+   }
+
+   @Test
++  public void testReportsStalledOutputOnlyDuringContinuousInput() {
++    AndroidVideoDecoder decoder = new TestDecoderBuilder().build();
++    assertThat(decoder.initDecode(TEST_DECODER_SETTINGS, mockDecoderCallback))
++        .isEqualTo(VideoCodecStatus.OK);
++    DecodeInfo info = new DecodeInfo(/* isMissingFrames= */ false, /* renderTimeMs= */ 0);
++    try {
++      assertThat(decoder.decode(createTestEncodedImage(), info)).isEqualTo(VideoCodecStatus.OK);
++      SystemClock.sleep(2500);
++      assertThat(decoder.decode(createTestEncodedImage(), info)).isEqualTo(VideoCodecStatus.OK);
++      for (int frame = 0; frame < 4; ++frame) {
++        SystemClock.sleep(400);
++        assertThat(decoder.decode(createTestEncodedImage(), info)).isEqualTo(VideoCodecStatus.OK);
++      }
++      SystemClock.sleep(400);
++      assertThat(decoder.decode(createTestEncodedImage(), info)).isEqualTo(VideoCodecStatus.ERROR);
++    } finally {
++      assertThat(decoder.release()).isEqualTo(VideoCodecStatus.OK);
++    }
++  }
++
++  @Test
+   public void testDeliversOutputByteBuffers() throws InterruptedException {
+     final byte[] testOutputData = CodecTestHelper.generateRandomData(
+         TEST_DECODER_SETTINGS.width * TEST_DECODER_SETTINGS.height * 3 / 2);

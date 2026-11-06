@@ -10,6 +10,10 @@ on:
         description: Build only the macOS SDK
         type: boolean
         default: false
+      android_only:
+        description: Build only the Android SDK
+        type: boolean
+        default: false
       timing_tests_run:
         description: Reuse exact-source timing evidence from this successful test job's run
         type: string
@@ -74,7 +78,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.macos_only && '[{"platform":"macos","os":"macos-26"}]' || '[{"platform":"macos","os":"macos-26"},{"platform":"android","os":"ubuntu-24.04"}]') }}
+        include: ${{ fromJSON(inputs.macos_only && '[{"platform":"macos","os":"macos-26"}]' || inputs.android_only && '[{"platform":"android","os":"ubuntu-24.04"}]' || '[{"platform":"macos","os":"macos-26"},{"platform":"android","os":"ubuntu-24.04"}]') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     steps:
