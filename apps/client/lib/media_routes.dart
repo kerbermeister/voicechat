@@ -114,6 +114,11 @@ lk.Room routedMediaRoom(
           }.contains(defaultTargetPlatform)
       ? synchronizeCallStreams
       : null;
+  final requireSubscriberFrameEncryption =
+      synchronizeNativeCall &&
+      !kIsWeb &&
+      defaultTargetPlatform == TargetPlatform.macOS &&
+      options.encryption != null;
   final network = routeTransportOf(client.httpClient);
   if (network == null || network.coordinator == null) {
     return lk.Room(
@@ -122,6 +127,7 @@ lk.Room routedMediaRoom(
         connectOptions: const lk.ConnectOptions(),
         roomOptions: options,
         subscriberDescriptionTransform: transform,
+        requireSubscriberFrameEncryption: requireSubscriberFrameEncryption,
       ),
     );
   }
@@ -134,6 +140,7 @@ lk.Room routedMediaRoom(
       canRecover: canRecover,
       roomOptions: options,
       subscriberDescriptionTransform: transform,
+      requireSubscriberFrameEncryption: requireSubscriberFrameEncryption,
     ),
   );
 }

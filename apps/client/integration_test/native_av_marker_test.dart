@@ -237,11 +237,15 @@ void main() {
     final options = lk.RoomOptions(
       encryption: lk.E2EEOptions(keyProvider: receiveKeys),
     );
+    const requireFrameEncryption = bool.fromEnvironment(
+      'GROUP_TEST_REQUIRE_FRAME_ENCRYPTION',
+    );
     final bob = lk.Room(
       roomOptions: options,
       engine: Engine(
         connectOptions: const lk.ConnectOptions(),
         roomOptions: options,
+        requireSubscriberFrameEncryption: requireFrameEncryption,
         subscriberDescriptionTransform: nativeCallSync
             ? synchronizeCallStreams
             : null,
@@ -275,9 +279,15 @@ void main() {
             encryption: lk.E2EEOptions(keyProvider: voiceSendKeys),
           ),
         );
+        final voiceOptions = lk.RoomOptions(
+          encryption: lk.E2EEOptions(keyProvider: voiceReceiveKeys),
+        );
         voiceBob = lk.Room(
-          roomOptions: lk.RoomOptions(
-            encryption: lk.E2EEOptions(keyProvider: voiceReceiveKeys),
+          roomOptions: voiceOptions,
+          engine: Engine(
+            connectOptions: const lk.ConnectOptions(),
+            roomOptions: voiceOptions,
+            requireSubscriberFrameEncryption: requireFrameEncryption,
           ),
         );
         if (role != 'sender') {
@@ -296,6 +306,22 @@ void main() {
       }
       if (role != 'sender') {
         await bob.connect(url, const String.fromEnvironment('GROUP_TEST_BOB'));
+        if (requireFrameEncryption) {
+          for (final room in [bob, if (voiceBob != null) voiceBob]) {
+            final engine = room.engine;
+            final crypto =
+                engine.subscriber!.pc.getConfiguration['cryptoOptions'];
+            expect(crypto, {
+              'requireFrameEncryption': true,
+              'enableGcmCryptoSuites': true,
+              'enableEncryptedRtpHeaderExtensions': true,
+            });
+            expect(
+              engine.publisher!.pc.getConfiguration['cryptoOptions'],
+              isNull,
+            );
+          }
+        }
         if (dropKeylessSif) {
           // Diagnostic only: distinguish SFU blank-frame/PLC output from media.
           // Never used as a positive crypto or production-parity qualification.
@@ -545,6 +571,7 @@ void main() {
           'separate_native_sender': role == 'receiver',
           'discard_frame_when_cryptor_not_ready': true,
           'native_call_sync': nativeCallSync,
+          'require_frame_encryption': requireFrameEncryption,
           'native_receiver_playout': nativeReceiverPlayout,
           'shared_group': audio.mediaStream.id == video.mediaStream.id,
           'stream_groups': streamGroups,
@@ -581,6 +608,7 @@ void main() {
           'drop_keyless_sif_diagnostic': dropKeylessSif,
           'keys_installed': false,
           'native_call_sync': nativeCallSync,
+          'require_frame_encryption': requireFrameEncryption,
           'shared_group': audio.mediaStream.id == video.mediaStream.id,
           'stream_groups': streamGroups,
           'markers': await captureNativeMarkers(channel),
@@ -778,6 +806,7 @@ void main() {
         'rtp_playout_delay_negotiated': playoutNegotiated,
         'shared_group': audio.mediaStream.id == video.mediaStream.id,
         'native_call_sync': nativeCallSync,
+        'require_frame_encryption': requireFrameEncryption,
         'stream_groups': streamGroups,
         'encrypted_publications': true,
         'synthetic_media_only': true,

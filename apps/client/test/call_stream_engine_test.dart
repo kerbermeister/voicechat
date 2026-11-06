@@ -7,6 +7,7 @@ import 'package:livekit_client/livekit_client.dart' as lk;
 import 'package:livekit_client/src/core/engine.dart';
 import 'package:livekit_client/src/core/signal_client.dart';
 import 'package:livekit_client/src/core/transport.dart';
+import 'package:livekit_client/src/internal/events.dart';
 import 'package:livekit_client/src/proto/livekit_rtc.pb.dart' as protocol;
 import 'package:livekit_client/src/support/websocket.dart';
 import 'package:voicechat_probe/call_stream_sync.dart';
@@ -22,6 +23,13 @@ class AnswerSocket extends LiveKitWebSocket {
 
 class AnswerPeer implements rtc.RTCPeerConnection {
   final locals = <rtc.RTCSessionDescription>[];
+  final configured = Completer<Map<String, dynamic>>();
+
+  @override
+  Future<void> setConfiguration(Map<String, dynamic> configuration) async {
+    configured.complete(configuration);
+  }
+
   @override
   Future<rtc.RTCSignalingState?> getSignalingState() async =>
       rtc.RTCSignalingState.RTCSignalingStateStable;
@@ -78,6 +86,7 @@ void main() {
           subscriberDescriptionTransform: nativeCall
               ? synchronizeCallStreams
               : null,
+          requireSubscriberFrameEncryption: nativeCall,
         );
         addTearDown(engine.dispose);
         addTearDown(signal.dispose);
@@ -126,6 +135,38 @@ void main() {
         await publisher.received.future.timeout(const Duration(seconds: 2));
         expect(publisher.remotes.single.sdp, answer.sdp);
         expect(publisher.remotes.single.type, answer.type);
+
+        final joined = engine.events.waitFor<EngineJoinResponseEvent>(
+          duration: const Duration(seconds: 2),
+        );
+        incoming.onData!(
+          protocol.SignalResponse(
+            join: protocol.JoinResponse(subscriberPrimary: true),
+          ).writeToBuffer(),
+        );
+        await joined;
+        incoming.onData!(
+          protocol.SignalResponse(
+            reconnect: protocol.ReconnectResponse(),
+          ).writeToBuffer(),
+        );
+        final publisherConfig = await publisher.pc.configured.future.timeout(
+          const Duration(seconds: 2),
+        );
+        final subscriberConfig = await subscriber.pc.configured.future.timeout(
+          const Duration(seconds: 2),
+        );
+        expect(publisherConfig['cryptoOptions'], isNull);
+        expect(
+          subscriberConfig['cryptoOptions'],
+          nativeCall
+              ? {
+                  'requireFrameEncryption': true,
+                  'enableGcmCryptoSuites': true,
+                  'enableEncryptedRtpHeaderExtensions': true,
+                }
+              : null,
+        );
       },
     );
   }
