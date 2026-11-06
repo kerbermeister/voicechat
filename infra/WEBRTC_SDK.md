@@ -1,38 +1,33 @@
 # Native call synchronization SDK
 
-**SDK7 candidate, not release-qualified (2026-11-05).** Installed application
-channels remain1.19.14(62). Exact sourceb29604e passes86/86 C++ tests, zero skips
-and15 original-behavior negative regressions in run41983111458. Both platform
-libraries and their9 configuration cases passed in run42006621067; exact
-receipts, archive hashes, Mac signature/UUID and Android3ABI hashes/notices
-were verified locally. The complete SDK7 pair is pinned for internal native
-media qualification; it must not be released as an application yet. Earlier failed media attempts remain in the
+The macOS client pins SDK19 (WebRTC 150.7871.04, source `8501504`).
+Android still uses its existing dependency. Exact SDK19 source, compiler
+receipts and platform evidence are recorded in the
 [technical journal](../docs/iterations/native-av-sync-after62.md).
 
-The fork pins WebRTC150.7871.04, the official builder/depot_tools and19 source
-inputs in `webrtc-sdk.json`. SDK7 synchronizes video to natural audio delay
-without adding an audio synchronization buffer. Its video target combines
-audio delay, signed packet-arrival versus fitted RTP-clock offset and relative
-RTCP network delay. Effective render delay respects explicit minimum/maximum
-and low-latency bounds; the ordinary jitter target remains available for stats
-and reset logic. An unavailable RTP fit produces no custom target. Missing or
-stopped streams clear the target after two sync intervals; detach/reassignment
-and timing reset also clear it. The timestamp extrapolator resets full slope/
-offset covariance on alarms, preserving its existing explicit opt-out.
+The fork pins WebRTC, the official builder, depot_tools and source inputs in
+`webrtc-sdk.json`. It synchronizes video to natural audio presentation delay.
+The video target uses signed packet arrival versus fitted RTP-clock offset
+and relative RTCP network delay. Effective render delay respects explicit
+minimum, maximum and low-latency bounds. Missing or stopped streams clear the
+custom target after two sync intervals. Detach, reassignment and timing reset
+also clear it. The timestamp extrapolator resets slope and offset covariance
+on alarms while preserving its opt-out.
 
-Initialization defaults to
-`WebRTC-ForcePlayoutDelay/min_ms:90,max_ms:10000/` only when the caller has not
-provided this field-trial key. Explicit options and invalid-input validation
-remain. The default is a receiver policy; no outgoing hint is forced.
+The SDK sets `WebRTC-ForcePlayoutDelay/min_ms:0,max_ms:10000/` when the caller
+has not supplied the field-trial key. Explicit settings retain precedence.
+This receiver policy sends no outgoing playout hint. macOS schedules the audio
+encoder on the upstream audio-priority task queue.
 
-LiveKit assigns distinct MediaStreams to tracks. Opted-in macOS/Android call
-rooms associate subscriber audio/video by participant using a local SDP
-transform, preserving actual track IDs and transport/codec bytes. Publisher
-SDP, browser/iOS/Linux/Windows paths and other room types do not opt in. Unknown
-or conflicting stream formats remain unchanged. Participants with multiple
-audio/video sources retain their original associations: the native Call
-synchronizer supports only one A/V pair per group. No global SFU grouping policy
-is required. Test fixtures use the same subscriber transform.
+macOS LiveKit calls associate subscriber audio/video by participant using a
+local SDP transform. Publisher SDP, codecs, track IDs and transport bytes
+remain unchanged. Unknown and conflicting formats keep their original
+associations. The native synchronizer handles one pair per group, so multiple
+audio/video sources retain their associations. For subscribed camera tracks the
+Mac client sets a 70 ms minimum. It sets a 40 ms NetEq minimum on subscribed
+microphones only in calls started as video. Ordinary audio calls and direct
+calls keep their audio buffer policy. The production SFU sends its existing
+130 ms video playout hint. Opus DTX keeps its standard setting.
 
 Strict crypto readiness now also applies to already whitelisted server-injected
 blank frames: absent participant/shared current key, these frames stop before
@@ -52,18 +47,17 @@ python3 infra/build_webrtc_sdk.py test --builder sdk-builder/build --work /tmp/v
 ```
 
 Use fresh work/output paths. Substitute `macos` or `android` for `test` on the
-appropriate runner. The workflow selects Xcode26.0 and builds Mac arm64 and
-Android3ABIs. Each source/toolchain receipt must match exactly. Nine configuration
-cases per platform check the actual Objective-C initialization implementation
-and Android AAR initialization builder. The Android verifier uses the producer
+appropriate runner. The workflow builds Mac arm64 with Xcode 26.0 and can build Android for three
+ABIs. Each source/toolchain receipt must match exactly. Platform checks exercise
+actual Objective-C and Android factory initialization. The macOS check also
+verifies the typed audio/video receiver floor setters. The Android verifier uses the producer
 JDK when present. These checks do not exercise devices or media. Packaging
 includes generated third-party notices in framework resources and Android
 assets. The workflow has read-only permissions and no release secrets.
 
-Binary pins belong in `webrtc-sdk-artifacts.json`. The Android helper checks AAR
-hash/size and Maven metadata on download/reuse. Gradle must force both consumers
-to that same immutable module. CocoaPods overrides only WebRTC-SDK through its
-checksum-pinned archive. A changed same-version external podspec requires
+Binary pins belong in `webrtc-sdk-artifacts.json`. CocoaPods overrides only
+WebRTC-SDK through its checksum-pinned archive. Android does not consume this
+archive or manifest. A changed same-version external podspec requires
 `pod update WebRTC-SDK --no-repo-update`: verify the generated lock and actual
 embedded framework UUID; an edited lock is not proof of installation. Keep SPM
 disabled. Dependency prereleases are distinct from application updates.
