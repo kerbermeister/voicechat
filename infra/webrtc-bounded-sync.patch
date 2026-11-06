@@ -35,13 +35,14 @@
    TimeDelta TargetVideoDelay() const;
 --- a/modules/video_coding/timing/timing.cc
 +++ b/modules/video_coding/timing/timing.cc
-@@ -33,6 +33,17 @@
+@@ -33,6 +33,18 @@
  // Maximum `max_playout_delay` for a stream to use low-latency rendering.
  constexpr TimeDelta kLowLatencyStreamMaxPlayoutDelayThreshold =
      TimeDelta::Millis(500);
 +// An already received frame cannot be several hundred milliseconds ahead of
 +// the receiver's fitted arrival clock. Allow ordinary jitter before rebasing.
 +constexpr TimeDelta kMaxFrameClockLead = TimeDelta::Millis(250);
++constexpr TimeDelta kMaxLateFrameClockLag = TimeDelta::Millis(250);
 +// A sync correction must not hold a complete frame beyond ordinary playout.
 +constexpr TimeDelta kMaxSyncRenderLead = TimeDelta::Millis(250);
 +
@@ -53,7 +54,7 @@
  
  void CheckDelaysValid(TimeDelta min_delay, TimeDelta max_delay) {
    if (min_delay > max_delay) {
-@@ -58,11 +69,20 @@
+@@ -58,11 +70,20 @@
    min_playout_delay = TimeDelta::Zero();
    stats_target_delay = TimeDelta::Zero();
    current_delay = TimeDelta::Zero();
@@ -74,20 +75,26 @@
  }
  
  TimeDelta VCMTiming::VideoDelayTimings::StatsTargetDelay() const {
-@@ -156,6 +176,12 @@
+@@ -156,6 +177,18 @@
  
  void VCMTiming::OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now) {
    MutexLock lock(&mutex_);
-+  if (HasFutureRtpClockPrediction(
-+          ts_extrapolator_->ExtrapolateLocalTime(rtp_timestamp), now)) {
-+    RTC_LOG(LS_INFO) << "Reanchoring video RTP clock after early frame arrival";
++  const std::optional<Timestamp> predicted =
++      ts_extrapolator_->ExtrapolateLocalTime(rtp_timestamp);
++  // A late reordered frame does not represent a change in the RTP clock.
++  const bool late_forward_frame =
++      now.IsFinite() && predicted &&
++      ts_extrapolator_->IsNewerThanLastAccepted(rtp_timestamp) &&
++      now - *predicted > kMaxLateFrameClockLag;
++  if (HasFutureRtpClockPrediction(predicted, now) || late_forward_frame) {
++    RTC_LOG(LS_INFO) << "Reanchoring video RTP clock after a large timing error";
 +    ts_extrapolator_->Reset(now);
 +    timings_.sync_playout_delay.reset();
 +  }
    ts_extrapolator_->Update(now, rtp_timestamp);
  }
  
-@@ -170,9 +196,46 @@
+@@ -170,9 +203,46 @@
    if (!local_time.has_value()) {
      return now;
    }
@@ -139,7 +146,7 @@
  TimeDelta VCMTiming::TargetVideoDelay() const {
 --- a/modules/video_coding/timing/timing_unittest.cc
 +++ b/modules/video_coding/timing/timing_unittest.cc
-@@ -482,5 +482,171 @@
+@@ -482,5 +482,205 @@
    EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
  }
  
@@ -207,6 +214,40 @@
 +            Timestamp::Millis(1130));
 +  EXPECT_EQ(timing.VideoClockOffset(360000, clock.CurrentTime()),
 +            TimeDelta::Zero());
++}
++
++TEST(VCMTimingTest, SyncDelayReanchorsClockOnLateForwardFrame) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Seconds(10)});
++  timing.OnCompleteTemporalUnit(0xfffff000, clock.CurrentTime());
++  timing.SetSyncPlayoutDelay(TimeDelta::Seconds(2));
++  clock.AdvanceTime(TimeDelta::Seconds(3));
++
++  // The RTP timestamp advanced across the wrap, while the completed frame
++  // arrived several seconds after the old receive-clock prediction.
++  timing.OnCompleteTemporalUnit(0x00000400, clock.CurrentTime());
++  EXPECT_FALSE(timing.GetTimings().sync_playout_delay.has_value());
++  EXPECT_EQ(timing.VideoClockOffset(0x00000400, clock.CurrentTime()),
++            TimeDelta::Zero());
++  EXPECT_EQ(timing.RenderTime(0x00000400, clock.CurrentTime()),
++            Timestamp::Millis(4070));
++}
++
++TEST(VCMTimingTest, SyncDelayKeepsClockWhenAnOlderFrameArrivesLate) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Seconds(10)});
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++  clock.AdvanceTime(TimeDelta::Millis(100));
++  timing.OnCompleteTemporalUnit(99000, clock.CurrentTime());
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(180));
++  clock.AdvanceTime(TimeDelta::Seconds(1));
++
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++  EXPECT_EQ(timing.GetTimings().sync_playout_delay, TimeDelta::Millis(180));
 +}
 +
 +TEST(VCMTimingTest, SyncDelayRejectsUnreasonableFrameDeadline) {
@@ -924,7 +965,7 @@
 @@ -123,11 +123,10 @@
      // TODO(brandtr): Increase from this unreasonably low value.
      int acc_max_error = 7000;  // 77 ms <=> 2.3 frames@30fps.
-
+ 
 -    // If true, reset the entire uncertainty covariance matrix on alarms.
 -    // If false, only reset the offset variance term.
 -    // TODO(brandtr): Flip so that the frequency term won't get hit tpp badly
@@ -935,8 +976,21 @@
 +    // An explicit field trial can still request offset-only resetting.
 +    bool reset_full_cov_on_alarm = true;
    };
-
+ 
    TimestampExtrapolator(Timestamp start, const FieldTrialsView& field_trials);
+@@ -138,6 +137,12 @@
+ 
+   // Return the expected local timestamp for an RTP timestamp.
+   std::optional<Timestamp> ExtrapolateLocalTime(uint32_t timestamp90khz) const;
++
++  // Compare in the same unwrapped RTP clock as the last fitted sample.
++  bool IsNewerThanLastAccepted(uint32_t timestamp90khz) const {
++    return prev_unwrapped_timestamp_ &&
++           unwrapper_.PeekUnwrap(timestamp90khz) > *prev_unwrapped_timestamp_;
++  }
+ 
+   void Reset(Timestamp start);
+ 
 --- a/modules/video_coding/timing/timestamp_extrapolator_unittest.cc
 +++ b/modules/video_coding/timing/timestamp_extrapolator_unittest.cc
 @@ -10,11 +10,14 @@

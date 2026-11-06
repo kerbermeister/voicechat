@@ -198,6 +198,11 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
             raise RuntimeError('Expected exactly one RTP arrival-clock guard')
         before_timing = before_timing.replace(future_guard,
             b'constexpr TimeDelta kMaxFrameClockLead = TimeDelta::PlusInfinity();')
+        late_guard = b'constexpr TimeDelta kMaxLateFrameClockLag = TimeDelta::Millis(250);'
+        if before_timing.count(late_guard) != 1:
+            raise RuntimeError('Expected exactly one late RTP arrival-clock guard')
+        before_timing = before_timing.replace(late_guard,
+            b'constexpr TimeDelta kMaxLateFrameClockLag = TimeDelta::PlusInfinity();')
         timing.write_bytes(before_timing)
         for path in [synchronizer, sync_header, extrapolator_header, cryptor]:
             path.write_bytes(subprocess.check_output(
@@ -217,19 +222,25 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         extrapolator_header.write_bytes(patched_extrapolator_header)
         cryptor.write_bytes(patched_cryptor)
     verify_files(source, MANIFEST['patched_files_sha256'])
-    sync_render_guard = b'constexpr TimeDelta kMaxSyncRenderLead = TimeDelta::Millis(250);'
-    if patched.count(sync_render_guard) != 1:
-        raise RuntimeError('Expected exactly one final synchronization deadline guard')
-    render_regression = 'VCMTimingTest.SyncDelayRejectsUnreasonableFrameDeadline'
+    deadline_regressions = (
+        ('kMaxSyncRenderLead', 'VCMTimingTest.SyncDelayRejectsUnreasonableFrameDeadline',
+         'before-render-lead.log'),
+        ('kMaxLateFrameClockLag', 'VCMTimingTest.SyncDelayReanchorsClockOnLateForwardFrame',
+         'before-late-rtp-clock.log'),
+    )
     try:
-        timing.write_bytes(patched.replace(sync_render_guard,
-            b'constexpr TimeDelta kMaxSyncRenderLead = TimeDelta::PlusInfinity();'))
-        run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
-        before_render = subprocess.run([str(build / 'timing_sync_unittests'),
-            '--gtest_filter=' + render_regression], capture_output=True, text=True)
-        (output / 'before-render-lead.log').write_text(before_render.stdout + before_render.stderr)
-        if before_render.returncode != 1 or '[  FAILED  ] ' + render_regression not in before_render.stdout:
-            raise RuntimeError('Final render-deadline regression must fail with the former policy')
+        for guard, regression, log in deadline_regressions:
+            line = f'constexpr TimeDelta {guard} = TimeDelta::Millis(250);'.encode()
+            if patched.count(line) != 1:
+                raise RuntimeError(f'Expected exactly one {guard} limit')
+            timing.write_bytes(patched.replace(line,
+                f'constexpr TimeDelta {guard} = TimeDelta::PlusInfinity();'.encode()))
+            run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
+            before = subprocess.run([str(build / 'timing_sync_unittests'),
+                '--gtest_filter=' + regression], capture_output=True, text=True)
+            (output / log).write_text(before.stdout + before.stderr)
+            if before.returncode != 1 or '[  FAILED  ] ' + regression not in before.stdout:
+                raise RuntimeError(f'{regression} must fail with the former policy')
     finally:
         timing.write_bytes(patched)
     verify_files(source, MANIFEST['patched_files_sha256'])
