@@ -1253,3 +1253,198 @@
  TEST_F(RtpVideoStreamReceiver2Test, RequestKeyframeWhenPacketBufferGetsFull) {
    constexpr int kPacketBufferMaxSize = 2048;
  
+
+--- a/video/render/video_render_frames.cc
++++ b/video/render/video_render_frames.cc
+@@ -18,6 +18,7 @@
+ #include "api/environment/environment.h"
+ #include "api/video/video_frame.h"
+ #include "rtc_base/logging.h"
++#include "rtc_base/numerics/sequence_number_util.h"
+ #include "system_wrappers/include/metrics.h"
+
+ namespace webrtc {
+@@ -26,6 +27,8 @@
+ const int kOldRenderTimestampMS = 500;
+ // Don't render frames with timestamp more than 10s into the future.
+ const int kFutureRenderTimestampMS = 10000;
++// A large deadline reversal on newer RTP can follow recovery of the RTP clock.
++constexpr int kRenderTimelineDiscontinuityMs = 500;
+
+ const uint32_t kEventMaxWaitTimeMs = 200;
+ const uint32_t kMinRenderDelayMs = 10;
+@@ -72,13 +75,29 @@
+   }
+
+   if (new_frame.render_time_ms() < last_render_time_ms_) {
+-    RTC_LOG(LS_WARNING) << "Frame scheduled out of order, render_time="
+-                        << new_frame.render_time_ms()
+-                        << ", latest=" << last_render_time_ms_;
+-    // For more details, see bug:
+-    // https://bugs.chromium.org/p/webrtc/issues/detail?id=7253
+-    ++frames_dropped_;
+-    return -1;
++    const bool recovered_timeline =
++        !incoming_frames_.empty() &&
++        last_render_time_ms_ > time_now + kRenderTimelineDiscontinuityMs &&
++        last_render_time_ms_ - new_frame.render_time_ms() >
++            kRenderTimelineDiscontinuityMs &&
++        AheadOf(new_frame.rtp_timestamp(),
++                incoming_frames_.back().rtp_timestamp());
++    if (!recovered_timeline) {
++      RTC_LOG(LS_WARNING) << "Frame scheduled out of order, render_time="
++                          << new_frame.render_time_ms()
++                          << ", latest=" << last_render_time_ms_;
++      // For more details, see bug:
++      // https://bugs.chromium.org/p/webrtc/issues/detail?id=7253
++      ++frames_dropped_;
++      return -1;
++    }
++    // Preserve pending frames already scheduled on the near side of the
++    // corrected deadline. Old deadlines must not block the resumed video.
++    while (!incoming_frames_.empty() &&
++           incoming_frames_.back().render_time_ms() > new_frame.render_time_ms()) {
++      incoming_frames_.pop_back();
++      ++frames_dropped_;
++    }
+   }
+
+   last_render_time_ms_ = new_frame.render_time_ms();
+
+--- a/video/render/incoming_video_stream.h
++++ b/video/render/incoming_video_stream.h
+@@ -42,6 +42,7 @@
+
+   VideoRenderFrames render_buffers_ RTC_GUARDED_BY(incoming_render_queue_);
+   VideoSinkInterface<VideoFrame>* const callback_;
++  uint64_t render_generation_ RTC_GUARDED_BY(incoming_render_queue_) = 0;
+   std::unique_ptr<TaskQueueBase, TaskQueueDeleter> incoming_render_queue_;
+ };
+
+
+--- a/video/render/incoming_video_stream.cc
++++ b/video/render/incoming_video_stream.cc
+@@ -59,8 +59,12 @@
+   // OnFrame to take its frame argument by value instead of const reference.
+   incoming_render_queue_->PostTask([this, video_frame = video_frame]() mutable {
+     RTC_DCHECK_RUN_ON(incoming_render_queue_.get());
+-    if (render_buffers_.AddFrame(std::move(video_frame)) == 1)
++    if (render_buffers_.AddFrame(std::move(video_frame)) == 1) {
++      // A corrected timeline can replace the entire queue while its old
++      // delayed task is still pending.
++      ++render_generation_;
+       Dequeue();
++    }
+   });
+ }
+
+@@ -74,7 +78,13 @@
+   if (render_buffers_.HasPendingFrames()) {
+     uint32_t wait_time = render_buffers_.TimeToNextFrameRelease();
+     incoming_render_queue_->PostDelayedHighPrecisionTask(
+-        [this]() { Dequeue(); }, TimeDelta::Millis(wait_time));
++        [this, generation = render_generation_]() {
++          RTC_DCHECK_RUN_ON(incoming_render_queue_.get());
++          if (generation == render_generation_) {
++            Dequeue();
++          }
++        },
++        TimeDelta::Millis(wait_time));
+   }
+ }
+
+
+--- a/video/render/BUILD.gn
++++ b/video/render/BUILD.gn
+@@ -43,6 +43,7 @@
+     "../../api/video:video_frame",
+     "../../rtc_base:checks",
+     "../../rtc_base:logging",
++    "../../rtc_base:rtc_numerics",
+     "../../system_wrappers:metrics",
+   ]
+ }
+
+--- /dev/null
++++ b/video/render/incoming_video_stream_unittest.cc
+@@ -0,0 +1,80 @@
++/*
++ *  Copyright (c) 2026 The WebRTC project authors. All Rights Reserved.
++ *
++ *  Use of this source code is governed by a BSD-style license
++ *  that can be found in the LICENSE file in the root of the source
++ *  tree. An additional intellectual property rights grant can be found
++ *  in the file PATENTS.  All contributing project authors may
++ *  be found in the AUTHORS file in the root of the source tree.
++ */
++
++#include "video/render/incoming_video_stream.h"
++
++#include <cstdint>
++#include <vector>
++
++#include "api/environment/environment_factory.h"
++#include "api/units/time_delta.h"
++#include "api/units/timestamp.h"
++#include "api/video/i420_buffer.h"
++#include "api/video/video_frame.h"
++#include "api/video/video_sink_interface.h"
++#include "test/gtest.h"
++#include "test/time_controller/simulated_time_controller.h"
++
++namespace webrtc {
++namespace {
++
++class IncomingVideoStreamTest : public ::testing::Test,
++                                public VideoSinkInterface<VideoFrame> {
++ protected:
++  void OnFrame(const VideoFrame& frame) override {
++    rendered_.push_back(frame.rtp_timestamp());
++  }
++
++  void AddFrame(uint32_t rtp, TimeDelta delay) {
++    static_cast<VideoSinkInterface<VideoFrame>&>(stream_).OnFrame(
++        VideoFrame::Builder()
++            .set_video_frame_buffer(I420Buffer::Create(2, 2))
++            .set_timestamp_ms((time_.GetClock()->CurrentTime() + delay).ms())
++            .set_timestamp_rtp(rtp)
++            .build());
++    time_.AdvanceTime(TimeDelta::Zero());
++  }
++
++  GlobalSimulatedTimeController time_{Timestamp::Seconds(100)};
++  std::vector<uint32_t> rendered_;
++  IncomingVideoStream stream_{
++      CreateEnvironment(time_.CreateTaskQueueFactory(), time_.GetClock()), 10,
++      this};
++};
++
++TEST_F(IncomingVideoStreamTest, SupersedesFutureDeadlineAfterRtpClockRecovery) {
++  AddFrame(0xfffff000, TimeDelta::Seconds(8));
++  time_.AdvanceTime(TimeDelta::Seconds(2));
++  AddFrame(9000, TimeDelta::Millis(100));
++  time_.AdvanceTime(TimeDelta::Millis(100));
++  EXPECT_EQ(rendered_, std::vector<uint32_t>{9000});
++  AddFrame(13500, TimeDelta::Millis(130));
++  time_.AdvanceTime(TimeDelta::Seconds(6));
++  EXPECT_EQ(rendered_, (std::vector<uint32_t>{9000, 13500}));
++}
++
++TEST_F(IncomingVideoStreamTest, DropsOlderRtpAfterLargeDeadlineReversal) {
++  AddFrame(18000, TimeDelta::Seconds(8));
++  AddFrame(9000, TimeDelta::Millis(100));
++  time_.AdvanceTime(TimeDelta::Seconds(8));
++  EXPECT_EQ(rendered_, std::vector<uint32_t>{18000});
++}
++
++TEST_F(IncomingVideoStreamTest, KeepsNormalPlayoutAndRejectsSmallReordering) {
++  AddFrame(9000, TimeDelta::Millis(130));
++  AddFrame(13500, TimeDelta::Millis(100));
++  time_.AdvanceTime(TimeDelta::Millis(100));
++  EXPECT_TRUE(rendered_.empty());
++  time_.AdvanceTime(TimeDelta::Millis(30));
++  EXPECT_EQ(rendered_, std::vector<uint32_t>{9000});
++}
++
++}  // namespace
++}  // namespace webrtc

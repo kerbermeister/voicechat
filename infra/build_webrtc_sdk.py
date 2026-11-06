@@ -159,8 +159,17 @@ rtc_test("timing_sync_unittests") {
 }
 rtc_test("video_resume_unittests") {
   testonly = true
-  sources = []
-  deps = [ "//video:rtp_video_stream_receiver2_unittest" ]
+  sources = [ "//video/render/incoming_video_stream_unittest.cc" ]
+  deps = [
+    "//api/environment:environment_factory",
+    "//api/units:time_delta",
+    "//api/units:timestamp",
+    "//api/video:video_frame",
+    "//test:test_support",
+    "//test/time_controller:time_controller",
+    "//video:rtp_video_stream_receiver2_unittest",
+    "//video/render:incoming_video_stream",
+  ]
 }
 ''')
     # GN only loads BUILD.gn files reachable from the root build file.
@@ -233,22 +242,35 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     spec.loader.exec_module(evidence)
     evidence.verify_tests(output, MANIFEST)
 
-    receiver = source / 'video/rtp_video_stream_receiver2.cc'
-    patched_receiver = receiver.read_bytes()
-    test = 'RtpVideoStreamReceiver2Test.RequestsKeyframeWhenVideoResumesAfterLoss'
+    recovery_files = [
+        'video/rtp_video_stream_receiver2.cc',
+        'video/render/video_render_frames.cc',
+        'video/render/incoming_video_stream.cc',
+        'video/render/incoming_video_stream.h',
+    ]
+    patched_recovery = {name: (source / name).read_bytes() for name in recovery_files}
+    regressions = [
+        'RtpVideoStreamReceiver2Test.RequestsKeyframeWhenVideoResumesAfterLoss',
+        'IncomingVideoStreamTest.SupersedesFutureDeadlineAfterRtpClockRecovery',
+    ]
     binary = build / 'video_resume_unittests'
     try:
-        receiver.write_bytes(subprocess.check_output(
-            ['git', 'show', MANIFEST['webrtc_commit'] + ':video/rtp_video_stream_receiver2.cc'], cwd=source))
+        for name in recovery_files:
+            (source / name).write_bytes(subprocess.check_output(
+                ['git', 'show', MANIFEST['webrtc_commit'] + ':' + name], cwd=source))
         run(['autoninja', '-C', build, binary.name, '-j2'], cwd=source)
-        before = subprocess.run([str(binary), '--gtest_filter=' + test], capture_output=True, text=True)
+        before = subprocess.run([str(binary), '--gtest_filter=' + ':'.join(regressions)],
+                                capture_output=True, text=True)
         (output / 'video-resume-before.log').write_text(before.stdout + before.stderr)
-        if before.returncode != 1 or '[  FAILED  ] ' + test not in before.stdout:
-            raise RuntimeError('Video recovery test must detect delayed keyframe feedback')
+        if before.returncode != 1 or not all(
+                '[  FAILED  ] ' + name in before.stdout for name in regressions):
+            raise RuntimeError('Each video recovery regression must reproduce the old behavior')
     finally:
-        receiver.write_bytes(patched_receiver)
+        for name, content in patched_recovery.items():
+            (source / name).write_bytes(content)
+    verify_files(source, MANIFEST['patched_files_sha256'])
     run(['autoninja', '-C', build, binary.name, '-j2'], cwd=source)
-    run([binary, '--gtest_filter=RtpVideoStreamReceiver2Test.*',
+    run([binary, '--gtest_filter=RtpVideoStreamReceiver2Test.*:IncomingVideoStreamTest.*',
          '--gtest_output=xml:' + str(output / 'video-resume-tests.xml')], cwd=source)
 
 
