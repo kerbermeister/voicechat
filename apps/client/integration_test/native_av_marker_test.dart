@@ -681,6 +681,7 @@ void main() {
             {
               for (final field in [
                 'kind',
+                'ssrc',
                 'framesDecoded',
                 'framesDropped',
                 'framesPerSecond',
@@ -700,6 +701,8 @@ void main() {
                 'removedSamplesForAcceleration',
                 'packetsLost',
                 'packetsReceived',
+                'packetsDiscarded',
+                'relativePacketArrivalDelay',
                 'jitter',
               ])
                 if (report.values[field] != null) field: report.values[field],
