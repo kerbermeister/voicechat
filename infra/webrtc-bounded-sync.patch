@@ -1505,3 +1505,107 @@
 +
 +}  // namespace
 +}  // namespace webrtc
+--- a/modules/video_coding/nack_requester.h
++++ b/modules/video_coding/nack_requester.h
+@@ -137,6 +137,8 @@
+   bool initialized_ RTC_GUARDED_BY(worker_thread_);
+   TimeDelta rtt_ RTC_GUARDED_BY(worker_thread_);
+   uint16_t newest_seq_num_ RTC_GUARDED_BY(worker_thread_);
++  Timestamp newest_packet_time_ RTC_GUARDED_BY(worker_thread_) =
++      Timestamp::MinusInfinity();
+ 
+   // Adds a delay before send nack on packet received.
+   const TimeDelta send_nack_delay_;
+--- a/modules/video_coding/nack_requester.cc
++++ b/modules/video_coding/nack_requester.cc
+@@ -33,6 +33,7 @@
+ namespace {
+ constexpr int kMaxPacketAge = 10'000;
+ constexpr int kMaxNackPackets = 1000;
++constexpr TimeDelta kStaleRetransmissionGap = TimeDelta::Seconds(2);
+ constexpr TimeDelta kDefaultRtt = TimeDelta::Millis(100);
+ // Number of times a packet can be nacked before giving up. Nack is sent at most
+ // every RTT.
+@@ -165,6 +166,7 @@
+ 
+   if (!initialized_) {
+     newest_seq_num_ = seq_num;
++    newest_packet_time_ = clock_->CurrentTime();
+     initialized_ = true;
+     return 0;
+   }
+@@ -196,6 +198,19 @@
+       recovered_list_.erase(recovered_list_.begin(), it);
+ 
+     // Do not send nack for packets recovered by FEC or RTX.
++    return 0;
++  }
++
++  const Timestamp now = clock_->CurrentTime();
++  const bool long_gap = now - newest_packet_time_ >= kStaleRetransmissionGap;
++  newest_packet_time_ = now;
++  if (long_gap && ForwardDiff(newest_seq_num_, seq_num) > 1) {
++    // Old retransmissions can consume the first usable bandwidth after a
++    // prolonged outage. Restart repair from a fresh keyframe.
++    ClearUpTo(seq_num);
++    newest_seq_num_ = seq_num;
++    keyframe_request_sender_->RequestKeyFrame();
++    RTC_LOG(LS_INFO) << "Requested a fresh keyframe after a video packet gap";
+     return 0;
+   }
+ 
+--- a/modules/video_coding/nack_requester_unittest.cc
++++ b/modules/video_coding/nack_requester_unittest.cc
+@@ -103,6 +103,52 @@
+   bool waiting_for_send_nack_ = false;
+   bool timed_out_ = false;
+ };
++
++TEST_F(TestNackRequester, VideoResumeRequestsKeyframeAfterPacketGap) {
++  NackRequester& nack = CreateNackModule();
++  nack.OnReceivedPacket(10);
++  nack.OnReceivedPacket(12);
++  ASSERT_EQ(sent_nacks_, std::vector<uint16_t>({11}));
++  sent_nacks_.clear();
++
++  clock_->AdvanceTimeMilliseconds(2000);
++  nack.OnReceivedPacket(22);
++  nack.ProcessNacks();
++  EXPECT_TRUE(sent_nacks_.empty());
++  EXPECT_EQ(keyframes_requested_, 1);
++
++  nack.OnReceivedPacket(24);
++  EXPECT_EQ(sent_nacks_, std::vector<uint16_t>({23}));
++}
++
++TEST_F(TestNackRequester, VideoResumeIgnoresOldRepairAcrossWrap) {
++  NackRequester& nack = CreateNackModule();
++  nack.OnReceivedPacket(0xfffa);
++  clock_->AdvanceTimeMilliseconds(2000);
++  nack.OnReceivedPacket(0xfffd, /*is_recovered=*/true);
++  nack.OnReceivedPacket(4);
++  EXPECT_TRUE(sent_nacks_.empty());
++  EXPECT_EQ(keyframes_requested_, 1);
++}
++
++TEST_F(TestNackRequester, VideoResumeRetainsRepairForShortGap) {
++  NackRequester& nack = CreateNackModule();
++  nack.OnReceivedPacket(10);
++  clock_->AdvanceTimeMilliseconds(1999);
++  nack.OnReceivedPacket(14);
++  EXPECT_EQ(sent_nacks_, std::vector<uint16_t>({11, 12, 13}));
++  EXPECT_EQ(keyframes_requested_, 0);
++}
++
++TEST_F(TestNackRequester, VideoResumeRetainsRepairForContinuousSequence) {
++  NackRequester& nack = CreateNackModule();
++  nack.OnReceivedPacket(10);
++  clock_->AdvanceTimeMilliseconds(2000);
++  nack.OnReceivedPacket(11);
++  nack.OnReceivedPacket(13);
++  EXPECT_EQ(sent_nacks_, std::vector<uint16_t>({12}));
++  EXPECT_EQ(keyframes_requested_, 0);
++}
+ 
+ TEST_F(TestNackRequester, NackOnePacket) {
+   NackRequester& nack_module = CreateNackModule();

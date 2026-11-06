@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "7b31cf46732ec2e09d8754674ecc3d979422ffd2dbbe3985dfee049e33492595",
+  "patch_sha256": "7f7f89980abd5b7bc0b6439c569f53dff4c6eac5a3699728a9eeb5d9fb1db6e9",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -31,7 +31,10 @@
     "video/render/video_render_frames.cc": "a461e7b9ce0063cd2f641fb82ca7417010afcb55fc977c9daab8fbfd8e05171b",
     "video/render/incoming_video_stream.h": "de17949c2450ec084bf49d53d390bd87465209a7a53e3c6540e4d98aa235fbd7",
     "video/render/incoming_video_stream.cc": "5d694b14432e044b6ec0d9d5290a22aea2ad4b1498706327190e23da55c0d372",
-    "video/render/BUILD.gn": "f5495c1bebf44453604067fe0f5b615fe38d96d295ad376ef6e34e9302607d1a"
+    "video/render/BUILD.gn": "f5495c1bebf44453604067fe0f5b615fe38d96d295ad376ef6e34e9302607d1a",
+    "modules/video_coding/nack_requester.h": "c8007afbc89e4f1bf7b22fba4991676545f055e3c9e11acbd128edb14a171f8c",
+    "modules/video_coding/nack_requester.cc": "d02e46fc4fe9de8775baf25110333b39b9954704f80f666d6508f96c963802ab",
+    "modules/video_coding/nack_requester_unittest.cc": "4bf3e25847f089362ddbebf1989b8df8e66ed0211289b8aa35025f1d96aafa77"
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "03852fcee5c80880b5a376a0b4af88470e3b40537adefdd86fd9b53d5939e61e",
@@ -62,11 +65,14 @@
     "video/render/incoming_video_stream.h": "c17cfaaa87066d89b8412135754e978b45888126208593ee9c52d536bc05e36d",
     "video/render/incoming_video_stream.cc": "6c8c895c5e14bf8085db025ebeb3c9eab43b490f783e9657590212bbb0ffc9a4",
     "video/render/BUILD.gn": "8bd71128b3e212d2dc7d274c585533358fa183a96bf8b52fe8d096ef6dbfff40",
-    "video/render/incoming_video_stream_unittest.cc": "3b32b50bace182fee79c3823ec1b9362f0b8fede38d68bc55ca8a1e91d171857"
+    "video/render/incoming_video_stream_unittest.cc": "3b32b50bace182fee79c3823ec1b9362f0b8fede38d68bc55ca8a1e91d171857",
+    "modules/video_coding/nack_requester.h": "d8596a89c22813649943f510fc9dd7706b0d8b3b095e4822a55cc2060ee25c85",
+    "modules/video_coding/nack_requester.cc": "8e3b327b3de4c259c32dd78bfd51845bb9ad99e39051d7cdacf87f700f774213",
+    "modules/video_coding/nack_requester_unittest.cc": "a3b5ca05c1af1fb5b6ef8294c938703e418ad9cb20a7df163a5cb2fc3eff7cfb"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey",
-  "release_artifact_version": "150.7871.04-vc18",
+  "release_artifact_version": "150.7871.04-vc20",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
   "unit_test_count": 93,
   "regressions": [
@@ -95,10 +101,12 @@
   "native_video_playout_ms": 0,
   "platform_policy_test_count": 10,
   "native_video_playout_max_ms": 10000,
-  "video_recovery_test_count": 28,
+  "video_recovery_test_count": 32,
   "video_recovery_regressions": [
     "RtpVideoStreamReceiver2Test.RequestsKeyframeWhenVideoResumesAfterLoss",
     "IncomingVideoStreamTest.SupersedesFutureDeadlineAfterRtpClockRecovery",
-    "IncomingVideoStreamTest.ReleasesTextureWithFarFutureDeadline"
+    "IncomingVideoStreamTest.ReleasesTextureWithFarFutureDeadline",
+    "TestNackRequester.VideoResumeRequestsKeyframeAfterPacketGap",
+    "TestNackRequester.VideoResumeIgnoresOldRepairAcrossWrap"
   ]
 }

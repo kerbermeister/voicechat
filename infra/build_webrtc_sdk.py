@@ -159,14 +159,24 @@ rtc_test("timing_sync_unittests") {
 }
 rtc_test("video_resume_unittests") {
   testonly = true
-  sources = [ "//video/render/incoming_video_stream_unittest.cc" ]
+  sources = [
+    "//modules/video_coding/nack_requester_unittest.cc",
+    "//video/render/incoming_video_stream_unittest.cc",
+  ]
   deps = [
     "//api:make_ref_counted",
     "//api:scoped_refptr",
     "//api/environment:environment_factory",
+    "//api/task_queue",
     "//api/units:time_delta",
     "//api/units:timestamp",
     "//api/video:video_frame",
+    "//modules:module_api",
+    "//modules/video_coding:nack_requester",
+    "//rtc_base:checks",
+    "//system_wrappers",
+    "//test:create_test_field_trials",
+    "//test:run_loop",
     "//test:test_support",
     "//test/time_controller:time_controller",
     "//video:rtp_video_stream_receiver2_unittest",
@@ -245,6 +255,8 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     evidence.verify_tests(output, MANIFEST)
 
     recovery_files = [
+        'modules/video_coding/nack_requester.cc',
+        'modules/video_coding/nack_requester.h',
         'video/rtp_video_stream_receiver2.cc',
         'video/render/video_render_frames.cc',
         'video/render/incoming_video_stream.cc',
@@ -269,7 +281,8 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
             (source / name).write_bytes(content)
     verify_files(source, MANIFEST['patched_files_sha256'])
     run(['autoninja', '-C', build, binary.name, '-j2'], cwd=source)
-    run([binary, '--gtest_filter=RtpVideoStreamReceiver2Test.*:IncomingVideoStreamTest.*',
+    run([binary, '--gtest_filter=RtpVideoStreamReceiver2Test.*:IncomingVideoStreamTest.*:'
+         'TestNackRequester.VideoResume*',
          '--gtest_output=xml:' + str(output / 'video-resume-tests.xml')], cwd=source)
 
 
