@@ -225,6 +225,24 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     spec.loader.exec_module(evidence)
     evidence.verify_tests(output, MANIFEST)
 
+    receiver = source / 'video/rtp_video_stream_receiver2.cc'
+    patched_receiver = receiver.read_bytes()
+    test = 'RtpVideoStreamReceiver2Test.RequestsKeyframeWhenVideoResumesAfterLoss'
+    binary = build / 'rtp_video_stream_receiver2_unittest'
+    try:
+        receiver.write_bytes(subprocess.check_output(
+            ['git', 'show', MANIFEST['webrtc_commit'] + ':video/rtp_video_stream_receiver2.cc'], cwd=source))
+        run(['autoninja', '-C', build, binary.name, '-j2'], cwd=source)
+        before = subprocess.run([str(binary), '--gtest_filter=' + test], capture_output=True, text=True)
+        (output / 'video-resume-before.log').write_text(before.stdout + before.stderr)
+        if before.returncode != 1 or '[  FAILED  ] ' + test not in before.stdout:
+            raise RuntimeError('Video recovery test must detect delayed keyframe feedback')
+    finally:
+        receiver.write_bytes(patched_receiver)
+    run(['autoninja', '-C', build, binary.name, '-j2'], cwd=source)
+    run([binary, '--gtest_filter=RtpVideoStreamReceiver2Test.*',
+         '--gtest_output=xml:' + str(output / 'video-resume-tests.xml')], cwd=source)
+
 
 def macos(source, work, output):
     # The published macOS application is arm64; build its actual SDK architecture.

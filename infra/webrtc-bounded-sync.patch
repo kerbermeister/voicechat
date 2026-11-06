@@ -1155,3 +1155,101 @@
    public void testDeliversOutputByteBuffers() throws InterruptedException {
      final byte[] testOutputData = CodecTestHelper.generateRandomData(
          TEST_DECODER_SETTINGS.width * TEST_DECODER_SETTINGS.height * 3 / 2);
+--- a/video/rtp_video_stream_receiver2.cc
++++ b/video/rtp_video_stream_receiver2.cc
+@@ -192,6 +192,7 @@
+ }
+ 
+ const int kPacketLogIntervalMs = 10000;
++constexpr TimeDelta kVideoResumeFeedbackGap = TimeDelta::Seconds(2);
+ 
+ }  // namespace
+ 
+@@ -706,6 +707,21 @@
+     return false;
+   }
+ 
++  if (!rtp_packet.recovered() &&
++      (!last_primary_video_packet_ ||
++       unwrapped_rtp_seq_num > last_primary_video_packet_->sequence_number)) {
++    const Timestamp now = env_.clock().CurrentTime();
++    if (has_received_frame_ && last_primary_video_packet_ &&
++        unwrapped_rtp_seq_num - last_primary_video_packet_->sequence_number > 1 &&
++        now - last_primary_video_packet_->received_at >= kVideoResumeFeedbackGap &&
++        video_header.frame_type == VideoFrameType::kVideoFrameDelta) {
++      // The prediction chain may have broken during the gap. Resume feedback
++      // on fresh media instead of waiting for the next decoder timeout.
++      rtcp_feedback_buffer_.RequestKeyFrame();
++    }
++    last_primary_video_packet_ = PrimaryVideoPacket{unwrapped_rtp_seq_num, now};
++  }
++
+   if (packet->codec() == kVideoCodecH264) {
+     // Only when we start to receive packets will we know what payload type
+     // that will be used. When we know the payload type insert the correct
+@@ -1386,6 +1402,7 @@
+                                         /*remb_candidate=*/false);
+   }
+   receiving_ = false;
++  last_primary_video_packet_.reset();
+ }
+ 
+ void RtpVideoStreamReceiver2::InsertSpsPpsIntoTracker(uint8_t payload_type) {
+--- a/video/rtp_video_stream_receiver2.h
++++ b/video/rtp_video_stream_receiver2.h
+@@ -436,6 +436,12 @@
+   int16_t last_payload_type_ RTC_GUARDED_BY(packet_sequence_checker_) = -1;
+ 
+   bool has_received_frame_ RTC_GUARDED_BY(packet_sequence_checker_);
++  struct PrimaryVideoPacket {
++    int64_t sequence_number;
++    Timestamp received_at;
++  };
++  std::optional<PrimaryVideoPacket> last_primary_video_packet_
++      RTC_GUARDED_BY(packet_sequence_checker_);
+ 
+   std::optional<uint32_t> last_received_rtp_timestamp_
+       RTC_GUARDED_BY(packet_sequence_checker_);
+--- a/video/rtp_video_stream_receiver2_unittest.cc
++++ b/video/rtp_video_stream_receiver2_unittest.cc
+@@ -1104,6 +1104,40 @@
+   EXPECT_THAT(rtcp_packet_parser_.pli()->num_packets(), Eq(1));
+ }
+ 
++TEST_F(RtpVideoStreamReceiver2Test, RequestsKeyframeWhenVideoResumesAfterLoss) {
++  const CopyOnWriteBuffer data({'1', '2', '3', '4'});
++  mock_on_complete_frame_callback_.AppendExpectedBitstream(data.data(),
++                                                          data.size());
++  auto receive = [&](uint16_t sequence, VideoFrameType type) {
++    RtpPacketReceived packet;
++    packet.SetPayloadType(kPayloadType);
++    packet.SetSequenceNumber(sequence);
++    packet.SetTimestamp(sequence * 3000u);
++    rtp_video_stream_receiver_->OnReceivedPayloadData(
++        data, packet, GetGenericVideoHeader(type), 0);
++  };
++
++  receive(1, VideoFrameType::kVideoFrameKey);
++  // A camera can pause without any lost RTP sequence numbers.
++  time_controller_.AdvanceTime(TimeDelta::Seconds(2));
++  receive(2, VideoFrameType::kVideoFrameDelta);
++  EXPECT_EQ(rtcp_packet_parser_.pli()->num_packets(), 0);
++
++  time_controller_.AdvanceTime(TimeDelta::Millis(200));
++  receive(4, VideoFrameType::kVideoFrameDelta);
++  EXPECT_EQ(rtcp_packet_parser_.pli()->num_packets(), 0);
++
++  time_controller_.AdvanceTime(TimeDelta::Seconds(2));
++  receive(7, VideoFrameType::kVideoFrameDelta);
++  EXPECT_EQ(rtcp_packet_parser_.pli()->num_packets(), 1);
++  receive(8, VideoFrameType::kVideoFrameDelta);
++  EXPECT_EQ(rtcp_packet_parser_.pli()->num_packets(), 1);
++
++  time_controller_.AdvanceTime(TimeDelta::Seconds(2));
++  receive(11, VideoFrameType::kVideoFrameKey);
++  EXPECT_EQ(rtcp_packet_parser_.pli()->num_packets(), 1);
++}
++
+ TEST_F(RtpVideoStreamReceiver2Test, RequestKeyframeWhenPacketBufferGetsFull) {
+   constexpr int kPacketBufferMaxSize = 2048;
+ 
