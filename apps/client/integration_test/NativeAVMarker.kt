@@ -294,7 +294,8 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
             if (word ushr 16 != (encoded xor 65535).toLong() || id == lastMarker) return
             lastMarker = id
             synchronized(lock) {
-                videoMarkers.add(listOf(id.toDouble(), System.nanoTime() / 1e9))
+                // GPU readback identifies the frame after it reached the sink.
+                videoMarkers.add(listOf(id.toDouble(), callbackTime))
                 videoRenderClocks.add(listOf(id.toDouble(), callbackTime, frame.timestampNs / 1e9))
                 receivedVideoFrames.add(listOf(id.toDouble(), (encoded ushr 12).toDouble()))
             }
