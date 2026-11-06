@@ -35,13 +35,29 @@
    TimeDelta TargetVideoDelay() const;
 --- a/modules/video_coding/timing/timing.cc
 +++ b/modules/video_coding/timing/timing.cc
-@@ -58,11 +58,20 @@
+@@ -33,6 +33,15 @@
+ // Maximum `max_playout_delay` for a stream to use low-latency rendering.
+ constexpr TimeDelta kLowLatencyStreamMaxPlayoutDelayThreshold =
+     TimeDelta::Millis(500);
++// An already received frame cannot be several hundred milliseconds ahead of
++// the receiver's fitted arrival clock. Allow ordinary jitter before rebasing.
++constexpr TimeDelta kMaxFrameClockLead = TimeDelta::Millis(250);
++
++bool HasFutureRtpClockPrediction(std::optional<Timestamp> local_time,
++                                 Timestamp observed_time) {
++  return observed_time.IsFinite() && local_time &&
++         *local_time - observed_time > kMaxFrameClockLead;
++}
+ 
+ void CheckDelaysValid(TimeDelta min_delay, TimeDelta max_delay) {
+   if (min_delay > max_delay) {
+@@ -58,11 +67,20 @@
    min_playout_delay = TimeDelta::Zero();
    stats_target_delay = TimeDelta::Zero();
    current_delay = TimeDelta::Zero();
 +  sync_playout_delay.reset();
  }
-
+ 
  TimeDelta VCMTiming::VideoDelayTimings::TargetDelay() const {
    return std::max(min_playout_delay,
                    minimum_delay + estimated_max_decode_time + render_delay);
@@ -54,15 +70,35 @@
 +  return std::clamp(sync_playout_delay.value_or(current_delay),
 +                    min_playout_delay, max_playout_delay);
  }
-
+ 
  TimeDelta VCMTiming::VideoDelayTimings::StatsTargetDelay() const {
-@@ -170,9 +179,27 @@
+@@ -156,6 +174,12 @@
+ 
+ void VCMTiming::OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now) {
+   MutexLock lock(&mutex_);
++  if (HasFutureRtpClockPrediction(
++          ts_extrapolator_->ExtrapolateLocalTime(rtp_timestamp), now)) {
++    RTC_LOG(LS_INFO) << "Reanchoring video RTP clock after early frame arrival";
++    ts_extrapolator_->Reset(now);
++    timings_.sync_playout_delay.reset();
++  }
+   ts_extrapolator_->Update(now, rtp_timestamp);
+ }
+ 
+@@ -170,9 +194,36 @@
    if (!local_time.has_value()) {
      return now;
    }
 -  return *local_time + std::clamp(timings_.current_delay,
 -                                  timings_.min_playout_delay,
 -                                  timings_.max_playout_delay);
++  if (HasFutureRtpClockPrediction(local_time, now)) {
++    // A retransmitted frame can lack a timing sample. The old sync target
++    // was calculated from the invalid clock and cannot be reused here.
++    VideoDelayTimings fallback = timings_;
++    fallback.sync_playout_delay.reset();
++    return now + fallback.CurrentDelay();
++  }
 +  return *local_time + timings_.CurrentDelay();
 +}
 +
@@ -78,6 +114,8 @@
 +  auto local_time = ts_extrapolator_->ExtrapolateLocalTime(rtp_timestamp);
 +  if (!local_time.has_value())
 +    return std::nullopt;
++  if (HasFutureRtpClockPrediction(local_time, receive_time))
++    return TimeDelta::Zero();
 +  return receive_time - *local_time;
 +}
 +
@@ -85,14 +123,14 @@
 +  MutexLock lock(&mutex_);
 +  timings_.sync_playout_delay = delay;
  }
-
+ 
  TimeDelta VCMTiming::TargetVideoDelay() const {
 --- a/modules/video_coding/timing/timing_unittest.cc
 +++ b/modules/video_coding/timing/timing_unittest.cc
-@@ -482,5 +482,115 @@
+@@ -482,5 +482,150 @@
    EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
  }
-
+ 
 +TEST(VCMTimingTest, SyncDelayMeasuresRenderScheduleFromPacketReceipt) {
 +  FieldTrials field_trials = CreateTestFieldTrials();
 +  SimulatedClock clock(Timestamp::Millis(1000));
@@ -121,6 +159,41 @@
 +            TimeDelta::Zero());
 +  timing.set_playout_delay({TimeDelta::Zero(), TimeDelta::Millis(130)});
 +  EXPECT_EQ(timing.CurrentDelayFromReceive(90900, clock.CurrentTime()),
++            TimeDelta::Zero());
++}
++
++TEST(VCMTimingTest, SyncDelayBoundsFutureRtpFramePrediction) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Seconds(10)});
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++  clock.AdvanceTime(TimeDelta::Millis(60));
++
++  // A frame completed by retransmission can lack a timing sample. Its RTP
++  // clock predicts 4000 ms, even though it is already present at 1060 ms.
++  // Discard the stale synchronization target along with that prediction.
++  timing.SetSyncPlayoutDelay(TimeDelta::Seconds(2));
++  EXPECT_EQ(timing.RenderTime(360000, clock.CurrentTime()),
++            Timestamp::Millis(1130));
++  EXPECT_EQ(timing.VideoClockOffset(360000, clock.CurrentTime()),
++            TimeDelta::Zero());
++}
++
++TEST(VCMTimingTest, SyncDelayReanchorsClockOnEarlyFrameArrival) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Seconds(10)});
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++  timing.SetSyncPlayoutDelay(TimeDelta::Seconds(2));
++  clock.AdvanceTime(TimeDelta::Millis(60));
++
++  timing.OnCompleteTemporalUnit(360000, clock.CurrentTime());
++  EXPECT_FALSE(timing.GetTimings().sync_playout_delay.has_value());
++  EXPECT_EQ(timing.RenderTime(360000, clock.CurrentTime()),
++            Timestamp::Millis(1130));
++  EXPECT_EQ(timing.VideoClockOffset(360000, clock.CurrentTime()),
 +            TimeDelta::Zero());
 +}
 +
