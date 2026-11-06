@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "0a922bbe70512c988ede25bdc4a2e7486ac4698dbdd9f6bf7e9bdabb63e73818",
+  "patch_sha256": "7b31cf46732ec2e09d8754674ecc3d979422ffd2dbbe3985dfee049e33492595",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -58,15 +58,15 @@
     "video/rtp_video_stream_receiver2.cc": "8db56c68a83fec59a66179d44917b10ecc91eedef75c681ab5d4677cd3bd38e1",
     "video/rtp_video_stream_receiver2.h": "6a729cd34b72949c0daae3616f85ad1eccab15b80d6595dd1f42f64200da048f",
     "video/rtp_video_stream_receiver2_unittest.cc": "46a325761801ed79d53833b2040829853c32815311f46d467cf06e06cc5a1dfc",
-    "video/render/video_render_frames.cc": "2ddd68fff18ea561a61d65951a1c58436ad0e0ff2c7605638ffb346242121a59",
+    "video/render/video_render_frames.cc": "35120bf3db5c416b46397f0d5d758e8bc6a276ce514103450611f4f7ce6bd066",
     "video/render/incoming_video_stream.h": "c17cfaaa87066d89b8412135754e978b45888126208593ee9c52d536bc05e36d",
     "video/render/incoming_video_stream.cc": "6c8c895c5e14bf8085db025ebeb3c9eab43b490f783e9657590212bbb0ffc9a4",
     "video/render/BUILD.gn": "8bd71128b3e212d2dc7d274c585533358fa183a96bf8b52fe8d096ef6dbfff40",
-    "video/render/incoming_video_stream_unittest.cc": "37b7e6cb5013369167e16a3f6dae80ca4a5797a0fdb6269d9a65e544ed7f33ba"
+    "video/render/incoming_video_stream_unittest.cc": "3b32b50bace182fee79c3823ec1b9362f0b8fede38d68bc55ca8a1e91d171857"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey",
-  "release_artifact_version": "150.7871.04-vc16",
+  "release_artifact_version": "150.7871.04-vc18",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
   "unit_test_count": 93,
   "regressions": [
@@ -94,5 +94,11 @@
   ],
   "native_video_playout_ms": 0,
   "platform_policy_test_count": 10,
-  "native_video_playout_max_ms": 10000
+  "native_video_playout_max_ms": 10000,
+  "video_recovery_test_count": 28,
+  "video_recovery_regressions": [
+    "RtpVideoStreamReceiver2Test.RequestsKeyframeWhenVideoResumesAfterLoss",
+    "IncomingVideoStreamTest.SupersedesFutureDeadlineAfterRtpClockRecovery",
+    "IncomingVideoStreamTest.ReleasesTextureWithFarFutureDeadline"
+  ]
 }

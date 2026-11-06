@@ -1262,28 +1262,39 @@
  #include "rtc_base/logging.h"
 +#include "rtc_base/numerics/sequence_number_util.h"
  #include "system_wrappers/include/metrics.h"
-
+ 
  namespace webrtc {
-@@ -26,6 +27,8 @@
+@@ -26,6 +27,11 @@
  const int kOldRenderTimestampMS = 500;
  // Don't render frames with timestamp more than 10s into the future.
  const int kFutureRenderTimestampMS = 10000;
 +// A large deadline reversal on newer RTP can follow recovery of the RTP clock.
 +constexpr int kRenderTimelineDiscontinuityMs = 500;
-
++// A decoder may have only one native texture available. A long render wait
++// can retain that texture and prevent the next frame from reaching this queue.
++constexpr int kMaxNativeFrameHoldMs = 2000;
+ 
  const uint32_t kEventMaxWaitTimeMs = 200;
  const uint32_t kMinRenderDelayMs = 10;
-@@ -72,13 +75,29 @@
+@@ -71,14 +77,38 @@
+     return -1;
    }
-
-   if (new_frame.render_time_ms() < last_render_time_ms_) {
+ 
+-  if (new_frame.render_time_ms() < last_render_time_ms_) {
 -    RTC_LOG(LS_WARNING) << "Frame scheduled out of order, render_time="
 -                        << new_frame.render_time_ms()
 -                        << ", latest=" << last_render_time_ms_;
 -    // For more details, see bug:
 -    // https://bugs.chromium.org/p/webrtc/issues/detail?id=7253
--    ++frames_dropped_;
--    return -1;
++  if (new_frame.render_time_ms() > time_now + kMaxNativeFrameHoldMs &&
++      new_frame.video_frame_buffer()->type() == VideoFrameBuffer::Type::kNative) {
++    RTC_LOG(LS_WARNING) << "Dropping far-future native frame, timestamp="
++                        << new_frame.rtp_timestamp();
+     ++frames_dropped_;
+     return -1;
++  }
++
++  if (new_frame.render_time_ms() < last_render_time_ms_) {
 +    const bool recovered_timeline =
 +        !incoming_frames_.empty() &&
 +        last_render_time_ms_ > time_now + kRenderTimelineDiscontinuityMs &&
@@ -1308,7 +1319,7 @@
 +      ++frames_dropped_;
 +    }
    }
-
+ 
    last_render_time_ms_ = new_frame.render_time_ms();
 
 --- a/video/render/incoming_video_stream.h
@@ -1367,7 +1378,7 @@
 
 --- /dev/null
 +++ b/video/render/incoming_video_stream_unittest.cc
-@@ -0,0 +1,80 @@
+@@ -0,0 +1,126 @@
 +/*
 + *  Copyright (c) 2026 The WebRTC project authors. All Rights Reserved.
 + *
@@ -1381,19 +1392,39 @@
 +#include "video/render/incoming_video_stream.h"
 +
 +#include <cstdint>
++#include <utility>
 +#include <vector>
 +
 +#include "api/environment/environment_factory.h"
++#include "api/make_ref_counted.h"
++#include "api/scoped_refptr.h"
 +#include "api/units/time_delta.h"
 +#include "api/units/timestamp.h"
 +#include "api/video/i420_buffer.h"
 +#include "api/video/video_frame.h"
++#include "api/video/video_frame_buffer.h"
 +#include "api/video/video_sink_interface.h"
 +#include "test/gtest.h"
 +#include "test/time_controller/simulated_time_controller.h"
 +
 +namespace webrtc {
 +namespace {
++
++class TrackedNativeBuffer : public VideoFrameBuffer {
++ public:
++  explicit TrackedNativeBuffer(bool& released) : released_(released) {}
++  ~TrackedNativeBuffer() override { released_ = true; }
++
++  Type type() const override { return Type::kNative; }
++  int width() const override { return 2; }
++  int height() const override { return 2; }
++  scoped_refptr<I420BufferInterface> ToI420() override {
++    return I420Buffer::Create(width(), height());
++  }
++
++ private:
++  bool& released_;
++};
 +
 +class IncomingVideoStreamTest : public ::testing::Test,
 +                                public VideoSinkInterface<VideoFrame> {
@@ -1402,10 +1433,14 @@
 +    rendered_.push_back(frame.rtp_timestamp());
 +  }
 +
-+  void AddFrame(uint32_t rtp, TimeDelta delay) {
++  void AddFrame(uint32_t rtp,
++                TimeDelta delay,
++                scoped_refptr<VideoFrameBuffer> buffer = nullptr) {
++    if (!buffer)
++      buffer = I420Buffer::Create(2, 2);
 +    static_cast<VideoSinkInterface<VideoFrame>&>(stream_).OnFrame(
 +        VideoFrame::Builder()
-+            .set_video_frame_buffer(I420Buffer::Create(2, 2))
++            .set_video_frame_buffer(std::move(buffer))
 +            .set_timestamp_ms((time_.GetClock()->CurrentTime() + delay).ms())
 +            .set_timestamp_rtp(rtp)
 +            .build());
@@ -1413,6 +1448,7 @@
 +  }
 +
 +  GlobalSimulatedTimeController time_{Timestamp::Seconds(100)};
++  bool buffer_released_ = false;
 +  std::vector<uint32_t> rendered_;
 +  IncomingVideoStream stream_{
 +      CreateEnvironment(time_.CreateTaskQueueFactory(), time_.GetClock()), 10,
@@ -1435,6 +1471,27 @@
 +  AddFrame(9000, TimeDelta::Millis(100));
 +  time_.AdvanceTime(TimeDelta::Seconds(8));
 +  EXPECT_EQ(rendered_, std::vector<uint32_t>{18000});
++}
++
++TEST_F(IncomingVideoStreamTest, ReleasesTextureWithFarFutureDeadline) {
++  AddFrame(9000, TimeDelta::Seconds(8),
++           make_ref_counted<TrackedNativeBuffer>(buffer_released_));
++  EXPECT_TRUE(buffer_released_);
++  EXPECT_TRUE(rendered_.empty());
++
++  // The decoder cannot produce this frame until its first texture is released.
++  AddFrame(13500, TimeDelta::Millis(130));
++  time_.AdvanceTime(TimeDelta::Seconds(8));
++  EXPECT_EQ(rendered_, std::vector<uint32_t>{13500});
++}
++
++TEST_F(IncomingVideoStreamTest, KeepsNativeTextureUntilNormalDeadline) {
++  AddFrame(9000, TimeDelta::Millis(130),
++           make_ref_counted<TrackedNativeBuffer>(buffer_released_));
++  EXPECT_FALSE(buffer_released_);
++  time_.AdvanceTime(TimeDelta::Millis(130));
++  EXPECT_TRUE(buffer_released_);
++  EXPECT_EQ(rendered_, std::vector<uint32_t>{9000});
 +}
 +
 +TEST_F(IncomingVideoStreamTest, KeepsNormalPlayoutAndRejectsSmallReordering) {

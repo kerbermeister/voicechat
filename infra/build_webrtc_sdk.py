@@ -161,6 +161,8 @@ rtc_test("video_resume_unittests") {
   testonly = true
   sources = [ "//video/render/incoming_video_stream_unittest.cc" ]
   deps = [
+    "//api:make_ref_counted",
+    "//api:scoped_refptr",
     "//api/environment:environment_factory",
     "//api/units:time_delta",
     "//api/units:timestamp",
@@ -249,10 +251,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         'video/render/incoming_video_stream.h',
     ]
     patched_recovery = {name: (source / name).read_bytes() for name in recovery_files}
-    regressions = [
-        'RtpVideoStreamReceiver2Test.RequestsKeyframeWhenVideoResumesAfterLoss',
-        'IncomingVideoStreamTest.SupersedesFutureDeadlineAfterRtpClockRecovery',
-    ]
+    regressions = MANIFEST['video_recovery_regressions']
     binary = build / 'video_resume_unittests'
     try:
         for name in recovery_files:
