@@ -23,7 +23,7 @@ class MainFlutterWindow: NSWindow, NSDraggingDestination {
     calls = FlutterMethodChannel(name: "voicechat/calls",
       binaryMessenger: flutterViewController.engine.binaryMessenger)
     calls?.setMethodCallHandler { call, result in
-      guard call.method == "tuneVideoPlayout" else {
+      guard call.method == "tuneVideoPlayout" || call.method == "tuneAudioPlayout" else {
         result(FlutterMethodNotImplemented)
         return
       }
@@ -35,8 +35,11 @@ class MainFlutterWindow: NSWindow, NSDraggingDestination {
         result(false)
         return
       }
-      // The browser and other native call paths keep their own buffer policy.
-      result(receiver.setMinimumVideoPlayoutDelayMs(70))
+      if call.method == "tuneAudioPlayout" {
+        result(receiver.setMinimumAudioPlayoutDelayMs(40))
+      } else {
+        result(receiver.setMinimumVideoPlayoutDelayMs(70))
+      }
     }
     if #available(macOS 14.0, *) {
       screenCapture = ScreenCapture(messenger: flutterViewController.engine.binaryMessenger)

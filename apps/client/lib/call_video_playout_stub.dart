@@ -10,22 +10,38 @@ void tuneCallVideoPlayout(rtc.RTCRtpReceiver? receiver) {
   unawaited(tuneMacOSCallVideoPlayout(receiver));
 }
 
-Future<bool> tuneMacOSCallVideoPlayout(rtc.RTCRtpReceiver? receiver) async {
+void tuneCallAudioPlayout(rtc.RTCRtpReceiver? receiver) {
+  unawaited(tuneMacOSCallAudioPlayout(receiver));
+}
+
+Future<bool> tuneMacOSCallVideoPlayout(rtc.RTCRtpReceiver? receiver) {
+  return _tuneMacOSCallPlayout(receiver, 'video', 'tuneVideoPlayout');
+}
+
+Future<bool> tuneMacOSCallAudioPlayout(rtc.RTCRtpReceiver? receiver) {
+  return _tuneMacOSCallPlayout(receiver, 'audio', 'tuneAudioPlayout');
+}
+
+Future<bool> _tuneMacOSCallPlayout(
+  rtc.RTCRtpReceiver? receiver,
+  String kind,
+  String method,
+) async {
   if (defaultTargetPlatform != TargetPlatform.macOS ||
       receiver is! RTCRtpReceiverNative ||
-      receiver.track.kind != 'video') {
+      receiver.track.kind != kind) {
     return false;
   }
   try {
     return await const MethodChannel(
           'voicechat/calls',
-        ).invokeMethod<bool>('tuneVideoPlayout', {
+        ).invokeMethod<bool>(method, {
           'peerConnectionId': receiver.peerConnectionId,
           'receiverId': receiver.receiverId,
         }) ??
         false;
   } on PlatformException catch (error) {
-    debugPrint('Could not tune macOS camera playout: ${error.code}');
+    debugPrint('Could not tune macOS $kind playout: ${error.code}');
     return false;
   } on MissingPluginException {
     return false;

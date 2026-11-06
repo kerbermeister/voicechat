@@ -5,7 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:matrix/matrix.dart' as mx;
 import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
+// ignore: implementation_imports
+import 'package:flutter_webrtc/src/native/rtc_rtp_receiver_impl.dart';
 import 'package:voicechat_probe/call_audio.dart';
+import 'package:voicechat_probe/call_video_playout_stub.dart';
 import 'package:voicechat_probe/direct_call.dart';
 import 'chat_actions_test.dart' show VideoSession, OutboxRoom;
 import 'conversation_list_test.dart' show ListClient;
@@ -44,6 +47,39 @@ class GroupAudioCall extends Fake implements CallProbe {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('macOS tunes playout only for the matching native receiver', () async {
+    const channel = MethodChannel('voicechat/calls');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final calls = <MethodCall>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return true;
+    });
+    final originalPlatform = debugDefaultTargetPlatformOverride;
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(channel, null);
+      debugDefaultTargetPlatformOverride = originalPlatform;
+    });
+    final audio = RTCRtpReceiverNative(
+      'audio-receiver',
+      MediaTrack('microphone', 'audio'),
+      rtc.RTCRtpParameters(),
+      'peer',
+    );
+
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    expect(await tuneMacOSCallVideoPlayout(audio), isFalse);
+    expect(await tuneMacOSCallAudioPlayout(audio), isTrue);
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    expect(await tuneMacOSCallAudioPlayout(audio), isFalse);
+
+    expect(calls.single.method, 'tuneAudioPlayout');
+    expect(calls.single.arguments, {
+      'peerConnectionId': 'peer',
+      'receiverId': 'audio-receiver',
+    });
+  });
   test(
     'Android selection requires OS confirmation and preserves state on failure',
     () async {

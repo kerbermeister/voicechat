@@ -263,6 +263,10 @@ class CallProbe implements VoiceCall {
         if (event.publication.source == lk.TrackSource.camera &&
             track is lk.RemoteVideoTrack) {
           tuneCallVideoPlayout(track.receiver);
+        } else if (startedWithVideo &&
+            event.publication.source == lk.TrackSource.microphone &&
+            track is lk.RemoteAudioTrack) {
+          tuneCallAudioPlayout(track.receiver);
         }
         changed?.call();
       }
