@@ -84,16 +84,21 @@
    ts_extrapolator_->Update(now, rtp_timestamp);
  }
  
-@@ -170,9 +193,31 @@
+@@ -170,9 +193,36 @@
    if (!local_time.has_value()) {
      return now;
    }
 -  return *local_time + std::clamp(timings_.current_delay,
 -                                  timings_.min_playout_delay,
 -                                  timings_.max_playout_delay);
-+  // A retransmitted frame can be released without a fresh timing sample.
-+  return (HasFutureRtpClockPrediction(local_time, now) ? now : *local_time) +
-+         timings_.CurrentDelay();
++  if (HasFutureRtpClockPrediction(local_time, now)) {
++    // A retransmitted frame can lack a timing sample. The old sync target
++    // was calculated from the invalid clock and cannot be reused here.
++    VideoDelayTimings fallback = timings_;
++    fallback.sync_playout_delay.reset();
++    return now + fallback.CurrentDelay();
++  }
++  return *local_time + timings_.CurrentDelay();
 +}
 +
 +TimeDelta VCMTiming::CurrentDelayFromReceive(uint32_t rtp_timestamp,
@@ -121,7 +126,7 @@
  TimeDelta VCMTiming::TargetVideoDelay() const {
 --- a/modules/video_coding/timing/timing_unittest.cc
 +++ b/modules/video_coding/timing/timing_unittest.cc
-@@ -482,5 +482,148 @@
+@@ -482,5 +482,150 @@
    EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
  }
  
@@ -166,6 +171,8 @@
 +
 +  // A frame completed by retransmission can lack a timing sample. Its RTP
 +  // clock predicts 4000 ms, even though it is already present at 1060 ms.
++  // Discard the stale synchronization target along with that prediction.
++  timing.SetSyncPlayoutDelay(TimeDelta::Seconds(2));
 +  EXPECT_EQ(timing.RenderTime(360000, clock.CurrentTime()),
 +            Timestamp::Millis(1130));
 +  EXPECT_EQ(timing.VideoClockOffset(360000, clock.CurrentTime()),
