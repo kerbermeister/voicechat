@@ -157,6 +157,11 @@ rtc_test("timing_sync_unittests") {
     "//rtc_base:crypto_random",
   ]
 }
+rtc_test("video_resume_unittests") {
+  testonly = true
+  sources = []
+  deps = [ "//video:rtp_video_stream_receiver2_unittest" ]
+}
 ''')
     # GN only loads BUILD.gn files reachable from the root build file.
     root_build = source / 'BUILD.gn'
@@ -164,7 +169,10 @@ rtc_test("timing_sync_unittests") {
 if (rtc_include_tests) {
   group("voicechat_av_sync_tests") {
     testonly = true
-    deps = [ "//voicechat_av_sync_tests:timing_sync_unittests" ]
+    deps = [
+      "//voicechat_av_sync_tests:timing_sync_unittests",
+      "//voicechat_av_sync_tests:video_resume_unittests",
+    ]
   }
 }
 ''')
@@ -228,7 +236,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     receiver = source / 'video/rtp_video_stream_receiver2.cc'
     patched_receiver = receiver.read_bytes()
     test = 'RtpVideoStreamReceiver2Test.RequestsKeyframeWhenVideoResumesAfterLoss'
-    binary = build / 'rtp_video_stream_receiver2_unittest'
+    binary = build / 'video_resume_unittests'
     try:
         receiver.write_bytes(subprocess.check_output(
             ['git', 'show', MANIFEST['webrtc_commit'] + ':video/rtp_video_stream_receiver2.cc'], cwd=source))
