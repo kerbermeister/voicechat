@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "375c10f7ac10f8e22a3170c8f4f24577d7595b36f8fe65f474f529584c89c89a",
+  "patch_sha256": "3c18452e1cbe9a711170de3abaeb045d8fa9a7a94907da93f13b1a6fa6668fb4",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -38,8 +38,8 @@
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "03852fcee5c80880b5a376a0b4af88470e3b40537adefdd86fd9b53d5939e61e",
-    "modules/video_coding/timing/timing.cc": "de01766a5fa822cdb38c30e6b589f359920452b0fa3f8b1ae33ac18aad5bd87d",
-    "modules/video_coding/timing/timing_unittest.cc": "7a7026b07ef190ac113ee9175f683dc61da63ec891cdb4496d9bda8a9ba285da",
+    "modules/video_coding/timing/timing.cc": "4d034982b9aa4d1ac207e4d59c012aedc34c20a2ad48f9dcde2f0cf859d5dd3f",
+    "modules/video_coding/timing/timing_unittest.cc": "14e8146ee7ffa86a8811c294c5eb9c32a17e4c77c8e871e100053f03a2f7d4b8",
     "video/video_receive_stream2.cc": "68ba38bfa7e795a348078878ab6fe7faf5ab310ac71a1274f2f9fa0f34090975",
     "video/rtp_streams_synchronizer2.h": "656506464b31b7a9b8a5df59a07176434d09d6a01789c60a249edbe2eb28b06a",
     "video/rtp_streams_synchronizer2.cc": "bbbf2cb1fffd56024902eba12069053797f8c1b81f99bf257cbcca58d50acfd9",
@@ -72,9 +72,9 @@
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*:RtpStreamsSynchronizerAudioFloorTest.*",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey:RtpStreamsSynchronizerAudioFloorTest.*",
-  "release_artifact_version": "150.7871.04-vc22",
+  "release_artifact_version": "150.7871.04-vc24",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
-  "unit_test_count": 97,
+  "unit_test_count": 98,
   "regressions": [
     "VCMTimingTest.SyncDelayUsesCurrentDelayAfterVideoJitter",
     "VCMTimingTest.SyncDelayRespectsBoundsAndAudioDeviceMinimum",
@@ -100,7 +100,8 @@
     "RtpStreamsSynchronizerAudioFloorTest.AppliesOnlyAfterVideoArrives",
     "RtpStreamsSynchronizerAudioFloorTest.KeepsFloorUntilDetach",
     "VCMTimingTest.SyncDelayBoundsFutureRtpFramePrediction",
-    "VCMTimingTest.SyncDelayReanchorsClockOnEarlyFrameArrival"
+    "VCMTimingTest.SyncDelayReanchorsClockOnEarlyFrameArrival",
+    "VCMTimingTest.SyncDelayRejectsUnreasonableFrameDeadline"
   ],
   "native_video_playout_ms": 0,
   "platform_policy_test_count": 10,

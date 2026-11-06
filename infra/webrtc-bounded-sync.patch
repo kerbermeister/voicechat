@@ -35,13 +35,15 @@
    TimeDelta TargetVideoDelay() const;
 --- a/modules/video_coding/timing/timing.cc
 +++ b/modules/video_coding/timing/timing.cc
-@@ -33,6 +33,15 @@
+@@ -33,6 +33,17 @@
  // Maximum `max_playout_delay` for a stream to use low-latency rendering.
  constexpr TimeDelta kLowLatencyStreamMaxPlayoutDelayThreshold =
      TimeDelta::Millis(500);
 +// An already received frame cannot be several hundred milliseconds ahead of
 +// the receiver's fitted arrival clock. Allow ordinary jitter before rebasing.
 +constexpr TimeDelta kMaxFrameClockLead = TimeDelta::Millis(250);
++// A sync correction must not hold a complete frame beyond ordinary playout.
++constexpr TimeDelta kMaxSyncRenderLead = TimeDelta::Millis(250);
 +
 +bool HasFutureRtpClockPrediction(std::optional<Timestamp> local_time,
 +                                 Timestamp observed_time) {
@@ -51,7 +53,7 @@
  
  void CheckDelaysValid(TimeDelta min_delay, TimeDelta max_delay) {
    if (min_delay > max_delay) {
-@@ -58,11 +67,20 @@
+@@ -58,11 +69,20 @@
    min_playout_delay = TimeDelta::Zero();
    stats_target_delay = TimeDelta::Zero();
    current_delay = TimeDelta::Zero();
@@ -72,7 +74,7 @@
  }
  
  TimeDelta VCMTiming::VideoDelayTimings::StatsTargetDelay() const {
-@@ -156,6 +174,12 @@
+@@ -156,6 +176,12 @@
  
  void VCMTiming::OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now) {
    MutexLock lock(&mutex_);
@@ -85,7 +87,7 @@
    ts_extrapolator_->Update(now, rtp_timestamp);
  }
  
-@@ -170,9 +194,36 @@
+@@ -170,9 +196,46 @@
    if (!local_time.has_value()) {
      return now;
    }
@@ -99,7 +101,17 @@
 +    fallback.sync_playout_delay.reset();
 +    return now + fallback.CurrentDelay();
 +  }
-+  return *local_time + timings_.CurrentDelay();
++  const Timestamp render_time = *local_time + timings_.CurrentDelay();
++  if (timings_.sync_playout_delay && now.IsFinite()) {
++    const TimeDelta natural_delay =
++        std::clamp(timings_.current_delay, timings_.min_playout_delay,
++                   timings_.max_playout_delay);
++    // The RTP clock alone can be plausible while its sync correction makes
++    // the final deadline stale. Anchor that frame to receiver time instead.
++    if (render_time - now > std::max(kMaxSyncRenderLead, natural_delay))
++      return now + natural_delay;
++  }
++  return render_time;
 +}
 +
 +TimeDelta VCMTiming::CurrentDelayFromReceive(uint32_t rtp_timestamp,
@@ -127,7 +139,7 @@
  TimeDelta VCMTiming::TargetVideoDelay() const {
 --- a/modules/video_coding/timing/timing_unittest.cc
 +++ b/modules/video_coding/timing/timing_unittest.cc
-@@ -482,5 +482,150 @@
+@@ -482,5 +482,171 @@
    EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
  }
  
@@ -195,6 +207,27 @@
 +            Timestamp::Millis(1130));
 +  EXPECT_EQ(timing.VideoClockOffset(360000, clock.CurrentTime()),
 +            TimeDelta::Zero());
++}
++
++TEST(VCMTimingTest, SyncDelayRejectsUnreasonableFrameDeadline) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Seconds(10)});
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(180));
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1180));
++
++  // The fitted frame arrival is correct but the sync correction is stale.
++  timing.SetSyncPlayoutDelay(TimeDelta::Seconds(4));
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1070));
++
++  timing.set_playout_delay({TimeDelta::Millis(400), TimeDelta::Millis(400)});
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1400));
 +}
 +
 +TEST(VCMTimingTest, SyncTargetReducesStaleJitterAndPreservesBounds) {

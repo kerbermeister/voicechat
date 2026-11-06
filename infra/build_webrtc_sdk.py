@@ -248,6 +248,22 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         extrapolator_header.write_bytes(patched_extrapolator_header)
         cryptor.write_bytes(patched_cryptor)
     verify_files(source, MANIFEST['patched_files_sha256'])
+    sync_render_guard = b'constexpr TimeDelta kMaxSyncRenderLead = TimeDelta::Millis(250);'
+    if patched.count(sync_render_guard) != 1:
+        raise RuntimeError('Expected exactly one final synchronization deadline guard')
+    render_regression = 'VCMTimingTest.SyncDelayRejectsUnreasonableFrameDeadline'
+    try:
+        timing.write_bytes(patched.replace(sync_render_guard,
+            b'constexpr TimeDelta kMaxSyncRenderLead = TimeDelta::PlusInfinity();'))
+        run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
+        before_render = subprocess.run([str(build / 'timing_sync_unittests'),
+            '--gtest_filter=' + render_regression], capture_output=True, text=True)
+        (output / 'before-render-lead.log').write_text(before_render.stdout + before_render.stderr)
+        if before_render.returncode != 1 or '[  FAILED  ] ' + render_regression not in before_render.stdout:
+            raise RuntimeError('Final render-deadline regression must fail with the former policy')
+    finally:
+        timing.write_bytes(patched)
+    verify_files(source, MANIFEST['patched_files_sha256'])
     run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
     after = subprocess.run([str(build / 'timing_sync_unittests'),
         '--gtest_filter=' + MANIFEST['unit_filter'],
