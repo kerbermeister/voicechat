@@ -1,19 +1,19 @@
 {
   "schema": 1,
   "sdk_version": "150.7871.04",
-  "release_artifact_version": "150.7871.04-vc21",
+  "release_artifact_version": "150.7871.04-vc23",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
-  "patch_sha256": "1c21bfcb8b5c1cc1664b9260eb6af7013ab83618405e74e34b5f1e3515972316",
+  "patch_sha256": "29460bd86764482d9e96a79b66297905045dc6a0701e234467fc7ad0c0314e4a",
   "artifacts": {
     "macos": {
-      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc21/WebRTC.xcframework.zip",
-      "sha256": "be7e37e0eb82f18b61aae369e30e8c4be07569b43ebc4a0401b64edaff8c8f95",
-      "size_bytes": 6302751,
-      "arm64_uuid": "cb81ab92-7719-327d-8107-3519458d5584",
-      "binary_sha256": "02e8a3bf7dec8efd79b184bfa295f883448ca064286fba2e704e8a5083de88cd",
-      "release_artifact_version": "150.7871.04-vc21",
-      "patch_sha256": "1c21bfcb8b5c1cc1664b9260eb6af7013ab83618405e74e34b5f1e3515972316",
-      "source_revision": "e8ca3842d069949c9223585d7721d8af2cae86c5"
+      "url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc23/WebRTC.xcframework.zip",
+      "sha256": "67cd23a9b890aa9727fffc888e9e6b03d8e1818f9d64fe0b37d73c8e6622c847",
+      "size_bytes": 6302904,
+      "arm64_uuid": "7f97e150-6b12-3cb9-8919-8e6cb3dae45f",
+      "binary_sha256": "c4cbbbd4188d2afa2ef9071057661137f703bf2386e1a2a9e00bb885df4a5283",
+      "release_artifact_version": "150.7871.04-vc23",
+      "patch_sha256": "29460bd86764482d9e96a79b66297905045dc6a0701e234467fc7ad0c0314e4a",
+      "source_revision": "a39f79577c580b718aea8ff8677ae9e6d6144f62"
     }
   },
   "native_video_playout_ms": 0,
