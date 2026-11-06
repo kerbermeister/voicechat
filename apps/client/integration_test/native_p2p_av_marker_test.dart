@@ -10,6 +10,7 @@ import 'package:flutter_webrtc/flutter_webrtc.dart' as rtc;
 // ignore: implementation_imports
 import 'package:flutter_webrtc/src/native/event_channel.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:voicechat_probe/call_video_playout.dart';
 
 import 'native_av_marker_test.dart' show labPost, captureNativeMarkers;
 
@@ -150,6 +151,14 @@ Future<Map<String, dynamic>> measureP2PReceiver(
     'payload_types': payloads.toList(),
   });
   final audioOnly = video == null;
+  const productDirectAudio = bool.fromEnvironment('P2P_PRODUCT_DIRECT_AUDIO');
+  if (productDirectAudio && !audioOnly) {
+    expect(Platform.isMacOS, isTrue);
+    final microphone = (await receiver.getReceivers()).singleWhere(
+      (track) => track.track?.id == audio.track!.id,
+    );
+    expect(await tuneDirectCallAudioPlayout(microphone), isTrue);
+  }
   const impairAudio = bool.fromEnvironment('P2P_IMPAIR_AUDIO');
   const delayOnly = bool.fromEnvironment('P2P_DELAY_ONLY');
   if (impairAudio) {
@@ -343,6 +352,7 @@ Future<Map<String, dynamic>> measureP2PReceiver(
   return {
     'synthetic_media_only': true,
     'audio_only': audioOnly,
+    'product_direct_audio': productDirectAudio && !audioOnly,
     'delay_only': delayOnly,
     'markers': markers,
     'stats': samples,

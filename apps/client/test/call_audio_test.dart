@@ -18,6 +18,8 @@ class AudioStream extends Fake implements rtc.MediaStream {
   final tracks = <rtc.MediaStreamTrack>[];
   @override
   List<rtc.MediaStreamTrack> getAudioTracks() => tracks;
+  @override
+  List<rtc.MediaStreamTrack> getVideoTracks() => const [];
 }
 
 class AudioFeed extends Fake implements mx.WrappedMediaStream {
@@ -38,6 +40,27 @@ class AudioSession extends VideoSession {
   final feed = AudioFeed();
   @override
   List<mx.WrappedMediaStream> get getRemoteStreams => [feed];
+}
+
+class PlayoutPeer extends Fake implements rtc.RTCPeerConnection {
+  final remoteReceivers = <rtc.RTCRtpReceiver>[];
+
+  @override
+  Future<List<rtc.RTCRtpReceiver>> getReceivers() async => remoteReceivers;
+}
+
+class PlayoutSession extends VideoSession {
+  PlayoutSession(this.type);
+
+  @override
+  final mx.CallType type;
+  @override
+  bool get isLocalVideoMuted => true;
+  @override
+  final AudioFeed remoteUserMediaStream = AudioFeed();
+  final _peer = PlayoutPeer();
+  @override
+  PlayoutPeer get pc => _peer;
 }
 
 class GroupAudioCall extends Fake implements CallProbe {
@@ -78,6 +101,55 @@ void main() {
     expect(calls.single.arguments, {
       'peerConnectionId': 'peer',
       'receiverId': 'audio-receiver',
+    });
+  });
+  test('macOS direct video tunes only the current remote microphone', () async {
+    const channel = MethodChannel('voicechat/calls');
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    final calls = <MethodCall>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return true;
+    });
+    final originalPlatform = debugDefaultTargetPlatformOverride;
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(channel, null);
+      debugDefaultTargetPlatformOverride = originalPlatform;
+    });
+
+    final video = PlayoutSession(mx.CallType.kVideo);
+    final voice = PlayoutSession(mx.CallType.kVoice);
+    final videoCall = DirectCall(video, () {}, (_) {});
+    final voiceCall = DirectCall(voice, () {}, (_) {});
+    addTearDown(videoCall.close);
+    addTearDown(voiceCall.close);
+    final mic = MediaTrack('microphone', 'audio');
+    final share = MediaTrack('share-audio', 'audio');
+    final nativeMic = RTCRtpReceiverNative(
+      'microphone-receiver',
+      mic,
+      rtc.RTCRtpParameters(),
+      'peer',
+    );
+    final nativeShare = RTCRtpReceiverNative(
+      'share-receiver',
+      share,
+      rtc.RTCRtpParameters(),
+      'peer',
+    );
+    for (final session in [video, voice]) {
+      session.remoteUserMediaStream.stream.tracks.add(mic);
+      session.pc.remoteReceivers.addAll([nativeShare, nativeMic]);
+      session.onCallStreamsChanged.add(session);
+      session.onCallStreamsChanged.add(session);
+    }
+    await Future<void>.delayed(Duration.zero);
+    expect(calls.single.method, 'tuneDirectAudioPlayout');
+    expect(calls.single.arguments, {
+      'peerConnectionId': 'peer',
+      'receiverId': 'microphone-receiver',
     });
   });
   test(

@@ -9,6 +9,7 @@ import 'call_quality.dart';
 import 'camera_capture.dart';
 import 'audio_levels.dart';
 import 'call_renderer.dart';
+import 'call_video_playout.dart';
 
 /// Matrix authenticates SDP/ICE; WebRTC supplies DTLS-SRTP end to end, including over TURN.
 class DirectCall implements VoiceCall {
@@ -28,6 +29,7 @@ class DirectCall implements VoiceCall {
   final _renderedTracks = <rtc.RTCVideoRenderer, List<rtc.MediaStreamTrack>>{};
   final _statistics = CallStatistics();
   rtc.RTCPeerConnection? _statisticsPeer;
+  (rtc.RTCPeerConnection, String)? _remoteAudioPlayout;
   List<Map<String, Object>> get qualitySamples => _statistics.samples;
   final _stableQuality = StableCallQuality();
   final _stableOutgoingQuality = StableCallQuality();
@@ -133,6 +135,12 @@ class DirectCall implements VoiceCall {
     );
   }
   void _refreshStreams() {
+    if (!kIsWeb &&
+        defaultTargetPlatform == TargetPlatform.macOS &&
+        !isClosed &&
+        video) {
+      unawaited(_tuneRemoteMicrophone());
+    }
     // SDK feed changes include late tracks and mute metadata without a new call state.
     for (final entry in _streams.entries) {
       unawaited(
@@ -149,6 +157,32 @@ class DirectCall implements VoiceCall {
         if (!_streams.containsKey(stream)) unawaited(_render(stream));
       }
     }
+  }
+
+  Future<void> _tuneRemoteMicrophone() async {
+    final peer = call.pc;
+    final trackId = call.remoteUserMediaStream?.stream
+        ?.getAudioTracks()
+        .firstOrNull
+        ?.id;
+    if (peer == null || trackId == null) return;
+    final target = (peer, trackId);
+    if (_remoteAudioPlayout == target) return;
+    _remoteAudioPlayout = target;
+    try {
+      final receivers = await peer.getReceivers();
+      if (!isClosed &&
+          _remoteAudioPlayout == target &&
+          identical(peer, call.pc)) {
+        final receiver = receivers
+            .where((r) => r.track?.id == trackId)
+            .firstOrNull;
+        if (await tuneDirectCallAudioPlayout(receiver)) return;
+      }
+    } catch (_) {
+      // The connection can close while native receivers are being resolved.
+    }
+    if (_remoteAudioPlayout == target) _remoteAudioPlayout = null;
   }
 
   @override

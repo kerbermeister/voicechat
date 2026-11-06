@@ -22,6 +22,10 @@ Future<bool> tuneMacOSCallAudioPlayout(rtc.RTCRtpReceiver? receiver) {
   return _tuneMacOSCallPlayout(receiver, 'audio', 'tuneAudioPlayout');
 }
 
+Future<bool> tuneDirectCallAudioPlayout(rtc.RTCRtpReceiver? receiver) {
+  return _tuneMacOSCallPlayout(receiver, 'audio', 'tuneDirectAudioPlayout');
+}
+
 Future<bool> _tuneMacOSCallPlayout(
   rtc.RTCRtpReceiver? receiver,
   String kind,

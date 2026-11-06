@@ -23,7 +23,8 @@ class MainFlutterWindow: NSWindow, NSDraggingDestination {
     calls = FlutterMethodChannel(name: "voicechat/calls",
       binaryMessenger: flutterViewController.engine.binaryMessenger)
     calls?.setMethodCallHandler { call, result in
-      guard call.method == "tuneVideoPlayout" || call.method == "tuneAudioPlayout" else {
+      guard let delay = ["tuneVideoPlayout": 70, "tuneAudioPlayout": 40,
+                         "tuneDirectAudioPlayout": 60][call.method] else {
         result(FlutterMethodNotImplemented)
         return
       }
@@ -35,10 +36,10 @@ class MainFlutterWindow: NSWindow, NSDraggingDestination {
         result(false)
         return
       }
-      if call.method == "tuneAudioPlayout" {
-        result(receiver.setMinimumAudioPlayoutDelayMs(40))
+      if call.method == "tuneVideoPlayout" {
+        result(receiver.setMinimumVideoPlayoutDelayMs(delay))
       } else {
-        result(receiver.setMinimumVideoPlayoutDelayMs(70))
+        result(receiver.setMinimumAudioPlayoutDelayMs(delay))
       }
     }
     if #available(macOS 14.0, *) {

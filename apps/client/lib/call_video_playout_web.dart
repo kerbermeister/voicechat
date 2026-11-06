@@ -8,6 +8,9 @@ import 'package:web/web.dart' as web;
 
 void tuneCallAudioPlayout(rtc.RTCRtpReceiver? receiver) {}
 
+Future<bool> tuneDirectCallAudioPlayout(rtc.RTCRtpReceiver? receiver) async =>
+    false;
+
 void tuneCallVideoPlayout(rtc.RTCRtpReceiver? receiver) {
   if (receiver is RTCRtpReceiverWeb) {
     applyCallVideoPlayoutTarget(receiver.jsRtpReceiver);

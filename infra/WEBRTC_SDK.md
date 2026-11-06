@@ -25,8 +25,9 @@ remain unchanged. Unknown and conflicting formats keep their original
 associations. The native synchronizer handles one pair per group, so multiple
 audio/video sources retain their associations. For subscribed camera tracks the
 Mac client sets a 70 ms minimum. It sets a 40 ms NetEq minimum on subscribed
-microphones only in calls started as video. Ordinary audio calls and direct
-calls keep their audio buffer policy. The production SFU sends its existing
+microphones only in calls started as video. Direct video calls set a 60 ms
+minimum on the remote user's microphone receiver. Ordinary audio calls keep
+their existing buffer policy. The production SFU sends its existing
 130 ms video playout hint. Opus DTX keeps its standard setting.
 
 Strict crypto readiness now also applies to already whitelisted server-injected
