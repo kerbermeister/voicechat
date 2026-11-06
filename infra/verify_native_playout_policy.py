@@ -40,7 +40,7 @@ def invoke(args, cwd):
         raise RuntimeError(f'{Path(args[0]).name} exited {result.returncode}: ' + result.stdout + result.stderr)
 
 
-def verify_macos_video_receiver(work, framework_dir):
+def verify_macos_receivers(work, framework_dir):
     test = work / 'video-receiver.m'
     test.write_text('''#import <WebRTC/WebRTC.h>
 
@@ -62,7 +62,12 @@ int main(void) {
         ![video setMinimumVideoPlayoutDelayMs:0] ||
         [video setMinimumVideoPlayoutDelayMs:-1] ||
         [video setMinimumVideoPlayoutDelayMs:10001] ||
-        [audio setMinimumVideoPlayoutDelayMs:70]) {
+        [audio setMinimumVideoPlayoutDelayMs:70] ||
+        ![audio setMinimumAudioPlayoutDelayMs:40] ||
+        ![audio setMinimumAudioPlayoutDelayMs:0] ||
+        [audio setMinimumAudioPlayoutDelayMs:-1] ||
+        [audio setMinimumAudioPlayoutDelayMs:10001] ||
+        [video setMinimumAudioPlayoutDelayMs:40]) {
       result = 1;
     }
     [peer close];
@@ -148,8 +153,9 @@ static NSString *configure(NSString *fieldTrials) {
             identity = {'configuration_source_sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
                         'compiled_binary_checked': binary is not None}
             if binary is not None:
-                verify_macos_video_receiver(work, binary.parent.parent.resolve())
+                verify_macos_receivers(work, binary.parent.parent.resolve())
                 identity['compiled_video_receiver_checked'] = True
+                identity['compiled_audio_receiver_checked'] = True
         else:
             raise ValueError('Unknown native platform')
     report = {'platform': platform, 'test_count': len(CASES), 'pass_count': len(CASES),
