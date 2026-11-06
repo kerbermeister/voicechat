@@ -924,7 +924,31 @@
 
 --- a/api/crypto/frame_crypto_transformer.cc
 +++ b/api/crypto/frame_crypto_transformer.cc
-@@ -517,7 +517,9 @@
+@@ -468,12 +468,21 @@
+         encryptFrame(std::move(frame));
+       });
+       break;
+-    case webrtc::TransformableFrameInterface::Direction::kReceiver:
++    case webrtc::TransformableFrameInterface::Direction::kReceiver: {
+       RTC_DCHECK(thread_ != nullptr);
+-      thread_->PostTask([frame = std::move(frame), this]() mutable {
++      const int64_t posted_at = TimeMicros();
++      thread_->PostTask([frame = std::move(frame), this, posted_at]() mutable {
++        const int64_t started_at = TimeMicros();
++        if (type_ == MediaType::kAudioFrame && started_at - posted_at >= 25000) {
++          RTC_LOG(LS_INFO) << "VoiceChat audio stage=decrypt_queue ssrc="
++                           << frame->GetSsrc() << " rtp=" << frame->GetTimestamp()
++                           << " now_us=" << started_at
++                           << " wait_us=" << started_at - posted_at;
++        }
+         decryptFrame(std::move(frame));
+       });
+       break;
++    }
+     case webrtc::TransformableFrameInterface::Direction::kUnknown:
+       // do nothing
+       RTC_LOG(LS_INFO) << "FrameCryptorTransformer::Transform() kUnknown";
+@@ -517,7 +526,9 @@
      return;
    }
    if (!enabled_cryption) {
@@ -935,7 +959,7 @@
      return;
    }
 
-@@ -640,7 +642,9 @@
+@@ -640,7 +651,9 @@
      return;
    }
    if (!enabled_cryption) {
@@ -946,7 +970,7 @@
      return;
    }
 
-@@ -666,6 +670,20 @@
+@@ -666,6 +679,20 @@
          }
          return;
        }
@@ -967,6 +991,7 @@
        RTC_LOG(LS_INFO) << "FrameCryptorTransformer::decryptFrame() forwarding "
                            "server injected frame, size "
                         << payload.size();
+
 --- a/api/crypto/sif_payload_unittest.cc
 +++ b/api/crypto/sif_payload_unittest.cc
 @@ -171,9 +171,8 @@
@@ -1155,7 +1180,106 @@
        std::unique_ptr<TransformableFrameInterface> transformable_frame) = 0;
 --- a/audio/channel_receive.cc
 +++ b/audio/channel_receive.cc
-@@ -771,10 +771,12 @@
+@@ -287,6 +287,12 @@
+       RTC_GUARDED_BY(&worker_thread_checker_);
+   std::optional<Timestamp> last_received_rtp_system_time_
+       RTC_GUARDED_BY(&worker_thread_checker_);
++  std::optional<std::pair<uint32_t, Timestamp>> trace_rtp_arrival_
++      RTC_GUARDED_BY(worker_thread_checker_);
++  std::optional<Timestamp> trace_last_pull_
++      RTC_GUARDED_BY(audio_thread_race_checker_);
++  NetEqLifetimeStatistics trace_previous_neteq_stats_
++      RTC_GUARDED_BY(audio_thread_race_checker_);
+
+   mutable Mutex neteq_mutex_;
+   const std::unique_ptr<NetEq> neteq_ RTC_GUARDED_BY(neteq_mutex_);
+@@ -386,6 +392,13 @@
+
+   if (payload.empty()) {
+     return;
++  }
++
++  const Timestamp enqueue = env_.clock().CurrentTime();
++  if (receive_time.IsFinite() && enqueue - receive_time >= TimeDelta::Millis(25)) {
++    RTC_LOG(LS_INFO) << "VoiceChat audio stage=before_neteq ssrc=" << remote_ssrc_
++                     << " rtp=" << header.timestamp << " now_us=" << enqueue.us()
++                     << " wait_us=" << (enqueue - receive_time).us();
+   }
+
+   // Push the incoming payload (parsed and ready for decoding) into NetEq.
+@@ -428,6 +441,13 @@
+
+   env_.event_log().Log(std::make_unique<RtcEventAudioPlayout>(remote_ssrc_));
+
++  const Timestamp pull_start = env_.clock().CurrentTime();
++  const TimeDelta pull_gap = pull_start - trace_last_pull_.value_or(pull_start);
++  trace_last_pull_ = pull_start;
++  NetEqLifetimeStatistics neteq_stats;
++  bool adjusted = false;
++  int target_delay_ms = 0;
++  int buffered_ms = 0;
+   {
+     MutexLock lock(&neteq_mutex_);
+     if (neteq_->GetAudio(audio_frame) != NetEq::kOK) {
+@@ -441,7 +461,37 @@
+                        "error", 1);
+       return AudioMixer::Source::AudioFrameInfo::kError;
+     }
+-  }
++    neteq_stats = neteq_->GetLifetimeStatistics();
++    adjusted = neteq_stats.removed_samples_for_acceleration !=
++                   trace_previous_neteq_stats_.removed_samples_for_acceleration ||
++               neteq_stats.inserted_samples_for_deceleration !=
++                   trace_previous_neteq_stats_.inserted_samples_for_deceleration ||
++               neteq_stats.concealed_samples != trace_previous_neteq_stats_.concealed_samples;
++    if (adjusted) {
++      target_delay_ms = neteq_->TargetDelayMs();
++      buffered_ms = neteq_->FilteredCurrentDelayMs();
++    }
++  }
++
++  const Timestamp pull_end = env_.clock().CurrentTime();
++  if (audio_frame->timestamp_ != 0 && pull_gap >= TimeDelta::Millis(20)) {
++    RTC_LOG(LS_INFO) << "VoiceChat audio stage=neteq_pull_gap ssrc=" << remote_ssrc_
++                     << " rtp=" << audio_frame->timestamp_ << " now_us=" << pull_start.us()
++                     << " wait_us=" << pull_gap.us();
++  }
++  if (audio_frame->timestamp_ != 0 && adjusted) {
++    RTC_LOG(LS_INFO) << "VoiceChat audio stage=neteq_adjustment ssrc=" << remote_ssrc_
++                     << " rtp=" << audio_frame->timestamp_ << " now_us=" << pull_end.us()
++                     << " work_us=" << (pull_end - pull_start).us()
++                     << " target_ms=" << target_delay_ms << " buffered_ms=" << buffered_ms
++                     << " removed=" << (neteq_stats.removed_samples_for_acceleration -
++                                       trace_previous_neteq_stats_.removed_samples_for_acceleration)
++                     << " inserted=" << (neteq_stats.inserted_samples_for_deceleration -
++                                        trace_previous_neteq_stats_.inserted_samples_for_deceleration)
++                     << " concealed=" << (neteq_stats.concealed_samples -
++                                         trace_previous_neteq_stats_.concealed_samples);
++  }
++  trace_previous_neteq_stats_ = neteq_stats;
+
+   resampler_helper_.MaybeResample(sample_rate_hz, audio_frame);
+
+@@ -739,6 +789,18 @@
+                                    size_t packet_length,
+                                    const RTPHeader& header,
+                                    Timestamp receive_time) {
++  if (receive_time.IsFinite()) {
++    if (trace_rtp_arrival_ && header.timestamp - trace_rtp_arrival_->first == 960) {
++      const TimeDelta gap = receive_time - trace_rtp_arrival_->second;
++      if (gap >= TimeDelta::Millis(35)) {
++        RTC_LOG(LS_INFO) << "VoiceChat audio stage=rtp_arrival_gap ssrc=" << remote_ssrc_
++                         << " rtp=" << header.timestamp << " now_us=" << receive_time.us()
++                         << " wait_us=" << gap.us();
++      }
++    }
++    trace_rtp_arrival_.emplace(header.timestamp, receive_time);
++  }
++
+   const uint8_t* payload = packet + header.headerLength;
+   RTC_DCHECK_GE(packet_length, header.headerLength);
+   size_t payload_length = packet_length - header.headerLength;
+@@ -771,10 +833,12 @@
 
      payload = decrypted_audio_payload.data();
      payload_data_length = decrypted_audio_payload.size();
@@ -1172,6 +1296,7 @@
    }
 
    std::span<const uint8_t> payload_data(payload, payload_data_length);
+
 --- a/modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.cc
 +++ b/modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.cc
 @@ -158,6 +158,12 @@
