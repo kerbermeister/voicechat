@@ -354,6 +354,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
          'TestNackRequester.VideoResume*:'
          'TaskQueueFrameDecodeSchedulerTest.*:'
          'VideoStreamBufferController/VideoStreamBufferControllerTest.ChangedSyncDelay*:'
+         'VideoStreamBufferController/VideoStreamBufferControllerTest.RtpClockRecovery*:'
          'VideoStreamBufferController/VideoStreamBufferControllerTest.KeyFramesAreScheduled/*:'
          'VideoStreamBufferController/VideoStreamBufferControllerTest.FramesWaitForDecoderToComplete/*',
          '--gtest_output=xml:' + str(output / 'video-resume-tests.xml')], cwd=source)

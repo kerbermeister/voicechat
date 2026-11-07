@@ -777,3 +777,33 @@ pass all63 actual tests/11 negative regressions with zero skips. Builds and medi
 are unqualified. The candidate restores both client pins to the last complete
 SDK3 internal pair instead of pushing an incomplete Mac-only SDK5 pin. This is
 compiler preparation, not a released app change; published channels remain62.
+
+
+## 2026-11-08 — SDK30 receive-clock deadline candidate, not qualified
+
+SDK29 diagnostic `sdk29-mac26-small-readback-15` retained complete native
+P2P media, simultaneous ordinary speech, source markers, transport and hardware
+output-clock evidence. Recovery corrected A/V reached 505.839375 ms; clean
+corrected A/V reached 961.393709 ms. Speech noninferiority failed in the delayed
+phase. AudioTrack presentation mapping also failed 80 ms (recovery
+369.420042 ms, clean 1098.376917 ms). The host swapped about 3.8 GiB in each
+direction during 167 s of media; causality is not established. This is an
+emulator result, not physical Android or LiveKit E2EE acceptance. All failures
+remain retained; no release threshold has changed.
+
+A separate source inspection found a scheduling gap: timing reanchors an RTP
+clock and clears its sync target, while an already queued decode can retain
+its former deadline through the controller's same-RTP scheduling guard. SDK30
+returns an explicit reanchor result to the controller, cancels the old timer
+and recalculates the pending frame using the existing scheduling/dependency
+rules. Ordinary frame arrival keeps its existing timer. All callers and the
+virtual test override are covered. Audio buffering, DSP, encryption and
+negotiated playout bounds are unchanged by this increment.
+
+The new controller regression checks a clock jump while a frame is waiting,
+both with synchronized and ordinary decoding. Native CI must demonstrate
+failure of the former scheduling behavior and pass all 108 timing/crypto/NetEq
+tests plus 48 recovery cases. This candidate is isolated from main; Android
+SDK29 remains unqualified, published Android is 1.19.14(62), and Mac is
+1.19.17(65). Passing unit tests alone cannot authorize an Android SDK/app
+release: native media must still meet 80 ms, speech and actual LiveKit E2EE.
