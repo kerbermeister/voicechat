@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "build": 65,
+  "source": "af6904c50663cf47b18975f6641bd8eeb56b1749",
+  "zip_sha256": "c73f8055c5b50ee7d8aee87b155f3826aa54fc378b007641c0ebc487c041e40e",
+  "published": true,
+  "services_unchanged": true,
+  "profile_acceptance_pending": false,
+  "cache_control": "no-cache",
+  "published_at_unix": 1794037042,
+  "installed_via_normal_ui": true,
+  "installed_build_verified": 65,
+  "account_device_history_preserved": true,
+  "accepted_at": "2026-11-07T07:42:45.484889+00:00"
+}

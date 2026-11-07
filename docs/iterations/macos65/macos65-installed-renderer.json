@@ -1,0 +1,17 @@
+{
+  "production_renderer_component": true,
+  "physical_display_measured": false,
+  "synthetic_frames": true,
+  "mock_texture_registry": true,
+  "latest_frame_wins": true,
+  "retained_buffer_immutable": true,
+  "next_frame_correct": true,
+  "notifications_coalesced": true,
+  "retained_buffer_survives_dispose": true,
+  "track_change_discards_previous_frame": true,
+  "size_change_correct": true,
+  "pass": true,
+  "app_build": "65",
+  "app_version": "1.19.17",
+  "renderer_framework_sha256": "94197c34ed025432f93840406316f86c7e2a2aadfb24825aa8228748ba89302a"
+}

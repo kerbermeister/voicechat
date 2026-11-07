@@ -1,0 +1,15 @@
+{
+  "build": 65,
+  "entries": 287,
+  "exact_signed_zip_and_dmg_match": true,
+  "strict_codesign": true,
+  "installed_via_normal_ui_button": true,
+  "old_version_ui_offered65": true,
+  "account_device_history_ui_pending": false,
+  "same_account": true,
+  "same_device_id": true,
+  "old_history_visible": true,
+  "visible_history_tokens_compared": 47,
+  "visible_history_tokens_matched": 47,
+  "protected_keychain_owner_confirmed": true
+}
