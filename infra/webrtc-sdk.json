@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "38d293bbdae7f4897c58cba6545001a26339cd0c4679409257de5c96fe6ab3e5",
+  "patch_sha256": "4a810696660bf02d5f785c42ed16e1e7d74abeeff27c304bd923a5c56009cb09",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -34,7 +34,9 @@
     "video/render/BUILD.gn": "f5495c1bebf44453604067fe0f5b615fe38d96d295ad376ef6e34e9302607d1a",
     "modules/video_coding/nack_requester.h": "c8007afbc89e4f1bf7b22fba4991676545f055e3c9e11acbd128edb14a171f8c",
     "modules/video_coding/nack_requester.cc": "d02e46fc4fe9de8775baf25110333b39b9954704f80f666d6508f96c963802ab",
-    "modules/video_coding/nack_requester_unittest.cc": "4bf3e25847f089362ddbebf1989b8df8e66ed0211289b8aa35025f1d96aafa77"
+    "modules/video_coding/nack_requester_unittest.cc": "4bf3e25847f089362ddbebf1989b8df8e66ed0211289b8aa35025f1d96aafa77",
+    "modules/audio_coding/neteq/decision_logic.cc": "c4318864c577e7b1db9c5dcaf2cd456caf56403cc648b43f7cd68ae3c93e0ba3",
+    "modules/audio_coding/neteq/decision_logic_unittest.cc": "efb66e00c247868722e2e45de915c56f77bdf7721b2f6a695477034d4f6f945e"
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "03852fcee5c80880b5a376a0b4af88470e3b40537adefdd86fd9b53d5939e61e",
@@ -68,13 +70,15 @@
     "video/render/incoming_video_stream_unittest.cc": "3b32b50bace182fee79c3823ec1b9362f0b8fede38d68bc55ca8a1e91d171857",
     "modules/video_coding/nack_requester.h": "d8596a89c22813649943f510fc9dd7706b0d8b3b095e4822a55cc2060ee25c85",
     "modules/video_coding/nack_requester.cc": "2d562a71395e89ff48fad5baaf9dd4e4e54176ba212b4c06c5e1a4a7e77dd012",
-    "modules/video_coding/nack_requester_unittest.cc": "67d23db3fb7969730d6dc56a3391d8ee19e44e21cf6860a26862603a12b26cb4"
+    "modules/video_coding/nack_requester_unittest.cc": "67d23db3fb7969730d6dc56a3391d8ee19e44e21cf6860a26862603a12b26cb4",
+    "modules/audio_coding/neteq/decision_logic.cc": "a1c7649511791d9974a5cf4e1f87ef3e342fcae07a3b3726729fc2f84dfcea16",
+    "modules/audio_coding/neteq/decision_logic_unittest.cc": "9ba17f652fd6361e68b7756161f98cdf0b239cdd293a3307f959fd3522a15547"
   },
-  "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*",
-  "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey",
-  "release_artifact_version": "150.7871.04-vc25",
+  "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*:DecisionLogicTest.NormalOperation:DecisionLogicTest.Accelerate:DecisionLogicTest.FastAccelerate:DecisionLogicTest.PreemptiveExpand:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout",
+  "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout",
+  "release_artifact_version": "150.7871.04-vc27",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
-  "unit_test_count": 96,
+  "unit_test_count": 101,
   "regressions": [
     "VCMTimingTest.SyncDelayUsesCurrentDelayAfterVideoJitter",
     "VCMTimingTest.SyncDelayRespectsBoundsAndAudioDeviceMinimum",
@@ -99,7 +103,8 @@
     "RtpStreamsSynchronizerTest.ClampsPresentationTargetAtZero",
     "VCMTimingTest.SyncDelayBoundsFutureRtpFramePrediction",
     "VCMTimingTest.SyncDelayReanchorsClockOnEarlyFrameArrival",
-    "VCMTimingTest.SyncDelayRejectsUnreasonableFrameDeadline"
+    "VCMTimingTest.SyncDelayRejectsUnreasonableFrameDeadline",
+    "DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout"
   ],
   "native_video_playout_ms": 0,
   "platform_policy_test_count": 10,

@@ -144,11 +144,24 @@ rtc_library("sync_unittests") {
     "//test/time_controller:time_controller",
   ]
 }
+rtc_library("neteq_decision_unittests") {
+  testonly = true
+  sources = [ "//modules/audio_coding/neteq/decision_logic_unittest.cc" ]
+  deps = [
+    "//api/neteq:neteq_api",
+    "//api/neteq:neteq_controller_api",
+    "//api/neteq:tick_timer",
+    "//modules/audio_coding:neteq",
+    "//test:create_test_field_trials",
+    "//test:test_support",
+  ]
+}
 rtc_test("timing_sync_unittests") {
   testonly = true
   sources = []
   deps = [
     ":sync_unittests",
+    ":neteq_decision_unittests",
     "//api/crypto:crypto_unittests",
     "//common_video",
     "//modules/video_coding/timing:timing_unittests",
@@ -210,6 +223,8 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     patched_header = sync_header.read_bytes()
     extrapolator_header = source / 'modules/video_coding/timing/timestamp_extrapolator.h'
     patched_extrapolator_header = extrapolator_header.read_bytes()
+    neteq_decision = source / 'modules/audio_coding/neteq/decision_logic.cc'
+    patched_neteq_decision = neteq_decision.read_bytes()
     cryptor = source / 'api/crypto/frame_crypto_transformer.cc'
     patched_cryptor = cryptor.read_bytes()
     bounded = b'  if (UseLowLatencyRendering()) {\n    return TimeDelta::Zero();\n  }\n  return std::clamp(sync_playout_delay.value_or(current_delay),\n                    min_playout_delay, max_playout_delay);'
@@ -229,7 +244,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         before_timing = before_timing.replace(future_guard,
             b'constexpr TimeDelta kMaxFrameClockLead = TimeDelta::PlusInfinity();')
         timing.write_bytes(before_timing)
-        for path in [synchronizer, sync_header, extrapolator_header, cryptor]:
+        for path in (synchronizer, sync_header, extrapolator_header, cryptor, neteq_decision):
             path.write_bytes(subprocess.check_output(
                 ['git', 'show', MANIFEST['webrtc_commit'] + ':' + path.relative_to(source).as_posix()],
                 cwd=source))
@@ -246,6 +261,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         sync_header.write_bytes(patched_header)
         extrapolator_header.write_bytes(patched_extrapolator_header)
         cryptor.write_bytes(patched_cryptor)
+        neteq_decision.write_bytes(patched_neteq_decision)
     verify_files(source, MANIFEST['patched_files_sha256'])
     sync_render_guard = b'constexpr TimeDelta kMaxSyncRenderLead = TimeDelta::Millis(250);'
     if patched.count(sync_render_guard) != 1:

@@ -1741,3 +1741,47 @@
  
  TEST_F(TestNackRequester, NackOnePacket) {
    NackRequester& nack_module = CreateNackModule();
+--- a/modules/audio_coding/neteq/decision_logic.cc
++++ b/modules/audio_coding/neteq/decision_logic.cc
+@@ -274,7 +274,9 @@
+       return NetEq::Operation::kFastAccelerate;
+     }
+     if (TimescaleAllowed()) {
+-      if (playout_delay_ms >= high_limit) {
++      // Keep one adjustment step of headroom for ordinary acceleration.
++      // Small target changes should not compress speech when RTP is steady.
++      if (playout_delay_ms >= high_limit + kDelayAdjustmentGranularityMs) {
+         return NetEq::Operation::kAccelerate;
+       }
+       if (playout_delay_ms < low_limit) {
+--- a/modules/audio_coding/neteq/decision_logic_unittest.cc
++++ b/modules/audio_coding/neteq/decision_logic_unittest.cc
+@@ -121,6 +121,28 @@
+   EXPECT_FALSE(reset_decoder);
+ }
+ 
++TEST_F(DecisionLogicTest, SmallBufferOverfillKeepsNormalPlayout) {
++  EXPECT_CALL(*mock_delay_manager_, TargetDelayMs())
++      .WillRepeatedly(Return(60));
++  EXPECT_CALL(*mock_packet_arrival_history_, GetMaxDelayMs())
++      .WillRepeatedly(Return(3));
++  EXPECT_CALL(*mock_packet_arrival_history_, GetDelayMs(_))
++      .WillOnce(Return(102))
++      .WillOnce(Return(103))
++      .WillOnce(Return(332));
++
++  bool reset_decoder = false;
++  tick_timer_.Increment(kMinTimescaleInterval + 1);
++  const auto status = CreateNetEqStatus(NetEq::Mode::kNormal, 100);
++  EXPECT_EQ(decision_logic_->GetDecision(status, &reset_decoder),
++            NetEq::Operation::kNormal);
++  EXPECT_EQ(decision_logic_->GetDecision(status, &reset_decoder),
++            NetEq::Operation::kAccelerate);
++  EXPECT_EQ(decision_logic_->GetDecision(status, &reset_decoder),
++            NetEq::Operation::kFastAccelerate);
++  EXPECT_FALSE(reset_decoder);
++}
++
+ TEST_F(DecisionLogicTest, FastAccelerate) {
+   EXPECT_CALL(*mock_delay_manager_, TargetDelayMs())
+       .WillRepeatedly(Return(100));
