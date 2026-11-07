@@ -1,3 +1,5 @@
+require 'digest'
+
 platform :osx, '12.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
@@ -39,6 +41,21 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+    if target.name == 'flutter_webrtc'
+      renderers = target.source_build_phase.files_references.select do |reference|
+        File.basename(reference.path.to_s) == 'FlutterRTCVideoRenderer.m'
+      end
+      raise 'Expected one flutter_webrtc renderer source' unless renderers.length == 1
+      renderer = renderers.first
+      replacement = File.expand_path('Compatibility/FlutterRTCVideoRenderer.m', __dir__)
+      original = renderer.real_path.to_s
+      expected = '8878ef050b8c1d1dfc273ad053cb407c00cd26792f4c4e15899709b07ab08576'
+      unless original == replacement || Digest::SHA256.file(original).hexdigest == expected
+        raise 'Review the changed upstream flutter_webrtc renderer before building'
+      end
+      renderer.path = replacement
+      renderer.source_tree = '<absolute>'
+    end
     if target.name == 'connectivity_plus' && Gem::Version.new(`xcrun --sdk macosx --show-sdk-version`.strip) < Gem::Version.new('26.0')
       source = File.join(__dir__, 'Compatibility', 'LegacyNetworkSDK.swift')
       reference = installer.pods_project.main_group.new_file(source)
