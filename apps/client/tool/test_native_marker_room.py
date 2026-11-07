@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 from call_sfu_marker_lab import create_marker_room
+from check_route_livekit import token
 
 
 class MarkerRoomTest(unittest.TestCase):
@@ -26,6 +27,16 @@ class MarkerRoomTest(unittest.TestCase):
             create_marker_room('127.0.0.1:17880', 'fixture', 'test-secret')
         self.assertNotIn('min_playout_delay', json.loads(send.call_args.args[0].data))
 
+    def test_voice_control_uses_separate_room_and_scoped_join_token(self):
+        with patch('urllib.request.urlopen', return_value=BytesIO(b'{"name":"route-probe-voice"}')) as send:
+            create_marker_room('127.0.0.1:17880', 'fixture', 'test-secret', room_name='route-probe-voice')
+        self.assertEqual(json.loads(send.call_args.args[0].data)['name'], 'route-probe-voice')
+        join = token('voice-alice', 'fixture', 'test-secret', room_name='route-probe-voice')
+        claims = join.split('.')[1]
+        payload = json.loads(base64.urlsafe_b64decode(claims + '=' * (-len(claims) % 4)))
+        self.assertEqual(payload['video']['room'], 'route-probe-voice')
+        self.assertEqual(payload['sub'], 'voice-alice')
+
     def test_bad_destination_or_delay_cannot_send_admin_token(self):
         with patch('urllib.request.urlopen') as send:
             for address in ('example.org:17880', '127.0.0.1:99999', '127.0.0.1:7880/path', 'localhost:7880'):
@@ -34,6 +45,10 @@ class MarkerRoomTest(unittest.TestCase):
             for low, high in ((True, 130), (130, 120), (-10, 130), (135, 130), (130, 10010)):
                 with self.assertRaises(ValueError):
                     create_marker_room('127.0.0.1:17880', 'fixture', 'test-secret', False, low, high)
+            with self.assertRaises(ValueError):
+                create_marker_room('127.0.0.1:17880', 'fixture', 'test-secret', room_name='production')
+            with self.assertRaises(ValueError):
+                token('voice-alice', 'fixture', 'test-secret', room_name='production')
             send.assert_not_called()
 
 

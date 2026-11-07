@@ -16,6 +16,16 @@ from call_network_lab import (asset_path, require_local_docker, valid_marker_res
 
 
 class AssetBoundaryTest(unittest.TestCase):
+    def test_startup_grace_rejected_before_starting_docker(self):
+        for grace in ('-1', '1801'):
+            result = subprocess.run([
+                sys.executable, str(Path(__file__).with_name('call_network_lab.py')),
+                '--web-root', '/unused', '--output', '/unused',
+                '--setup-grace-seconds', grace,
+            ], capture_output=True, text=True, timeout=5)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn('Setup grace must', result.stderr)
+
     def test_delay_pause_control_requires_single_stream_scope(self):
         result = subprocess.run([
             sys.executable, str(Path(__file__).with_name('call_network_lab.py')),

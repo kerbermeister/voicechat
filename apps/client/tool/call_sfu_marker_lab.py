@@ -19,9 +19,11 @@ from check_route_turn import reserve_range
 from serve_key_epoch_fixture import fixture_server
 
 
-def create_marker_room(address, key, secret, shared_group=False, video_playout_ms=0, max_video_playout_ms=10000):
+def create_marker_room(address, key, secret, shared_group=False, video_playout_ms=0, max_video_playout_ms=10000, room_name='route-probe'):
     if not re.fullmatch(r'127\.0\.0\.1:\d{4,5}', address) or int(address.rsplit(':', 1)[1]) > 65535:
         raise ValueError('Loopback SFU required')
+    if room_name not in ('route-probe', 'route-probe-voice'):
+        raise ValueError('Use an isolated probe room')
     if (type(shared_group) is not bool or type(video_playout_ms) is not int or
             type(max_video_playout_ms) is not int or
             not 0 <= video_playout_ms <= max_video_playout_ms <= 10000 or
@@ -36,7 +38,7 @@ def create_marker_room(address, key, secret, shared_group=False, video_playout_m
     }).encode())
     jwt_body = f'{header}.{claims}'
     signature = b64(hmac.digest(secret.encode(), jwt_body.encode(), hashlib.sha256))
-    settings = {'name': 'route-probe', 'max_participants': 10, 'sync_streams': shared_group}
+    settings = {'name': room_name, 'max_participants': 10, 'sync_streams': shared_group}
     if video_playout_ms:
         settings.update(min_playout_delay=video_playout_ms, max_playout_delay=max_video_playout_ms)
     create = urllib.request.Request(
@@ -46,7 +48,7 @@ def create_marker_room(address, key, secret, shared_group=False, video_playout_m
     for attempt in range(15):
         try:
             with urllib.request.urlopen(create, timeout=2) as reply:
-                assert json.load(reply)['name'] == 'route-probe'
+                assert json.load(reply)['name'] == room_name
             return
         except OSError:
             if attempt == 14:

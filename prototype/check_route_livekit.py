@@ -19,13 +19,15 @@ from check_three_vps import ROOT, fault_server
 from check_route_turn import reserve_range
 
 
-def token(identity, key, secret):
+def token(identity, key, secret, room_name='route-probe'):
+    if room_name not in ('route-probe', 'route-probe-voice'):
+        raise ValueError('Use an isolated probe room')
     def encode(value):
         return base64.urlsafe_b64encode(json.dumps(value, separators=(',', ':')).encode()).decode().rstrip('=')
     now = int(time.time())
     body = encode({'alg': 'HS256', 'typ': 'JWT'}) + '.' + encode({
         'iss': key, 'sub': identity, 'nbf': now - 10, 'exp': now + 900,
-        'video': {'roomJoin': True, 'room': 'route-probe', 'canPublish': True,
+        'video': {'roomJoin': True, 'room': room_name, 'canPublish': True,
                   'canSubscribe': True, 'canPublishData': True}})
     signature = base64.urlsafe_b64encode(hmac.digest(secret.encode(), body.encode(), hashlib.sha256)).decode().rstrip('=')
     return body + '.' + signature

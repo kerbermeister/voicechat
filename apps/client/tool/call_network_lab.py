@@ -161,6 +161,8 @@ def main():
     parser.add_argument('--transport', choices=('udp', 'tcp'), default='udp')
     parser.add_argument('--direction', choices=('both', 'incoming', 'outgoing'), default='both')
     parser.add_argument('--marker-seconds', type=int, help='Run synthetic A/V playout markers for 60–3600 seconds')
+    parser.add_argument('--setup-grace-seconds', type=int, default=120,
+                        help='Additional bounded setup time before marker capture (0–1800 seconds)')
     parser.add_argument('--clean-only', action='store_true', help='A/V control without network impairment')
     parser.add_argument('--delay-then-pause', action='store_true',
                         help='Single-stream sync control: delay immediately followed by outage, without random loss')
@@ -174,6 +176,8 @@ def main():
         parser.error('Use an unprivileged port')
     if args.direction != 'both' and args.transport != 'udp':
         parser.error('Directional feedback checks currently require UDP')
+    if not 0 <= args.setup_grace_seconds <= 1800:
+        parser.error('Setup grace must be 0–1800 seconds')
     marker = args.marker_seconds is not None
     payload_types = args.video_payload_types or args.audio_payload_types
     impaired_media = 'video' if args.video_payload_types else 'audio' if args.audio_payload_types else None
@@ -187,7 +191,7 @@ def main():
     if marker and (not 60 <= args.marker_seconds <= 3600 or
                    (args.direction != 'both' and not payload_types)):
         parser.error('A/V markers require 60–3600 seconds and direction both')
-    lifetime = args.marker_seconds + 120 if marker else 900
+    lifetime = args.marker_seconds + args.setup_grace_seconds if marker else 900
     directional = args.direction != 'both'
     profiles = {**PROFILES, 'loss': ['loss', '15%' if directional else '2%']}
     if payload_types:
@@ -250,7 +254,9 @@ def main():
                 'ports': ['127.0.0.1::3478/tcp', '127.0.0.1::3478/udp'] + [
                     f'127.0.0.1:{p}:{p}/udp' for p in range(first, first + 8)
                 ],
-                'mem_limit': '128m', 'cpus': .5,
+                # Half-core CFS throttling added unintended audio jitter under
+                # video bursts. The impairment must come only from netem.
+                'mem_limit': '128m', 'cpus': 2,
             },
             'netem': {
                 'image': args.netem_image, 'entrypoint': ['/bin/sh', '-c'],
@@ -266,7 +272,7 @@ def main():
             services['other'] = {
                 'image': image('turn'), 'command': ['-c', '/other.conf'],
                 'volumes': ['./other.conf:/other.conf:ro'],
-                'network_mode': 'service:turn', 'mem_limit': '128m', 'cpus': .5,
+                'network_mode': 'service:turn', 'mem_limit': '128m', 'cpus': 2,
             }
         compose = folder / 'compose.json'
         compose.write_text(json.dumps({'name': project, 'services': services}))

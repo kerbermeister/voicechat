@@ -26,9 +26,13 @@ Future<web.MediaStream> connect(web.MediaStream input, bool split) async {
   final config = jsonDecode((await response.text().toDart).toDart) as Map;
   final random = Random.secure();
   final key = Uint8List.fromList(List.generate(32, (_) => random.nextInt(256)));
-  final outgoing = sendKeys = await lk.BaseKeyProvider.create(sharedKey: false);
+  final outgoing = sendKeys = await lk.BaseKeyProvider.create(
+    sharedKey: false,
+    discardFrameWhenCryptorNotReady: true,
+  );
   final incoming = receiveKeys = await lk.BaseKeyProvider.create(
     sharedKey: false,
+    discardFrameWhenCryptorNotReady: true,
   );
   await outgoing.setRawKey(key, participantId: 'alice');
   final alice = publisher = lk.Room(

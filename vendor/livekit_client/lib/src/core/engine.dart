@@ -75,6 +75,11 @@ class Engine extends Disposable with EventsEmittable<EngineEvent> {
 
   final PeerConnectionCreate _peerConnectionCreate;
 
+  /// Optional local subscriber metadata policy; publisher SDP is untouched.
+  final rtc.RTCSessionDescription Function(rtc.RTCSessionDescription)? subscriberDescriptionTransform;
+  /// Use the native fail-closed media receive policy on the subscriber.
+  final bool requireSubscriberFrameEncryption;
+
   @internal
   Transport? publisher;
 
@@ -209,6 +214,8 @@ class Engine extends Disposable with EventsEmittable<EngineEvent> {
     SignalClient? signalClient,
     PeerConnectionCreate? peerConnectionCreate,
     E2EEManager? e2eeManager,
+    this.subscriberDescriptionTransform,
+    this.requireSubscriberFrameEncryption = false,
   }) : signalClient = signalClient ?? SignalClient(LiveKitWebSocket.connect),
        _peerConnectionCreate = peerConnectionCreate ?? rtc.createPeerConnection,
        _e2eeManager = e2eeManager {
@@ -665,6 +672,10 @@ class Engine extends Disposable with EventsEmittable<EngineEvent> {
     return rtcConfiguration;
   }
 
+  RTCConfiguration _subscriberRtcConfiguration(RTCConfiguration configuration) => requireSubscriberFrameEncryption
+      ? configuration.copyWith(requireFrameEncryption: true)
+      : configuration;
+
   Future<void> _createPeerConnections(RTCConfiguration rtcConfiguration) async {
     publisher = await Transport.create(
       _peerConnectionCreate,
@@ -673,7 +684,7 @@ class Engine extends Disposable with EventsEmittable<EngineEvent> {
     );
     subscriber = await Transport.create(
       _peerConnectionCreate,
-      rtcConfig: rtcConfiguration,
+      rtcConfig: _subscriberRtcConfiguration(rtcConfiguration),
       connectOptions: connectOptions,
     );
 
@@ -1490,7 +1501,7 @@ class Engine extends Disposable with EventsEmittable<EngineEvent> {
       );
 
       await publisher?.pc.setConfiguration(rtcConfiguration.toMap());
-      await subscriber?.pc.setConfiguration(rtcConfiguration.toMap());
+      await subscriber?.pc.setConfiguration(_subscriberRtcConfiguration(rtcConfiguration).toMap());
 
       if (!_subscriberPrimary) {
         await negotiate();
@@ -1546,7 +1557,7 @@ class Engine extends Disposable with EventsEmittable<EngineEvent> {
       );
       logger.finer('sdp: ${event.sd.sdp}');
 
-      await subscriber!.setRemoteDescription(event.sd);
+      await subscriber!.setRemoteDescription(subscriberDescriptionTransform?.call(event.sd) ?? event.sd);
 
       try {
         final answer = await subscriber!.pc.createAnswer();

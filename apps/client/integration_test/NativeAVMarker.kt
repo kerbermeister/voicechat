@@ -2,7 +2,9 @@
 package dev.voicechat.voicechat_probe
 
 import com.cloudwebrtc.webrtc.FlutterWebRTCPlugin
+import com.cloudwebrtc.webrtc.MethodCallHandlerImpl
 import com.cloudwebrtc.webrtc.audio.AudioProcessingAdapter
+import org.webrtc.audio.JavaAudioDeviceModule
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodChannel
 import org.webrtc.AudioTrack
@@ -31,6 +33,7 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
     }
     private val lock = Any()
     @Volatile private var running = false
+    private var outputSilenced = false
     @Volatile private var origin = System.nanoTime() / 1e9
     private var sampleCursor = 0L
     @Volatile private var sourceMarker = 0
@@ -38,37 +41,91 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
     private var lastSourceAudio = -1
     private var lastSourceVideo = -1
     private val sourceAudioMarkers = mutableListOf<List<Double>>()
+    private val sourceAudioCallbackTimes = DoubleArray(14000)
+    private var sourceAudioCallbackCount = 0
     private val sourceVideoMarkers = mutableListOf<List<Double>>()
+    private val sourceVideoFrames = mutableListOf<List<Double>>()
+    private val receivedVideoFrames = mutableListOf<List<Double>>()
     private var rate = 48000
     private var speech = ShortArray(0)
     private val lowTones = doubleArrayOf(697.0, 770.0, 852.0, 941.0)
     private val highTones = doubleArrayOf(1209.0, 1336.0, 1477.0, 1633.0)
     private var frameCounter = 0
+    private var coherentMarkers = false
     private var backgrounds = emptyArray<ByteArray>()
     private val chroma = ByteArray(320 * 180) { 128.toByte() }
     private var source: VideoSource? = null
     private var timer: ScheduledExecutorService? = null
     private var audio: AudioTrack? = null
+    private var controlAudio: AudioTrack? = null
     private var video: VideoTrack? = null
     private var lastMarker = -1
     private var peak = 0.0
     // Keep allocations off the audio thread: GC pauses otherwise become part
     // of the latency being measured, especially on an emulated device.
-    private val audioPcm = ByteBuffer.allocate(14000 * 480 * 4).order(ByteOrder.LITTLE_ENDIAN)
+    private val audioPcm = ByteBuffer.allocateDirect(14000 * 480 * 4).order(ByteOrder.LITTLE_ENDIAN)
     private val audioTimes = DoubleArray(14000)
     private var audioCount = 0
+    private val controlPcm = ByteBuffer.allocateDirect(14000 * 480 * 4).order(ByteOrder.LITTLE_ENDIAN)
+    private val controlTimes = DoubleArray(14000)
+    private var controlCount = 0
+    private var controlPeak = 0.0
+    private val controlSink = object : AudioTrackSink {
+        override fun onData(data: ByteBuffer, bits: Int, sampleRate: Int, channels: Int, frames: Int, captureTime: Long) {
+            recordAudio(data, bits, sampleRate, channels, frames, true)
+        }
+    }
     private val framePool = ArrayBlockingQueue<ByteBuffer>(8).apply {
         repeat(8) { add(ByteBuffer.allocateDirect(640 * 360 * 3 / 2)) }
     }
     private val videoMarkers = mutableListOf<List<Double>>()
+    private val videoRenderClocks = mutableListOf<List<Double>>()
+    private var outputClockCallback: JavaAudioDeviceModule.PlaybackSamplesReadyCallback? = null
+    private val outputClock = mutableListOf<List<Double>>()
+
+    private fun observeOutputClock(plugin: FlutterWebRTCPlugin) {
+        check(outputClockCallback == null)
+        val output = checkNotNull(plugin.audioDeviceModule).audioOutput
+        // Test-only access to the pinned SDK's AudioTrack; never replace its
+        // output or assume the ADM's fixed delay equals the hardware queue.
+        val trackField = output.javaClass.getDeclaredField("audioTrack").apply { isAccessible = true }
+        check(trackField.get(output) == null) { "Attach the output clock before playout starts" }
+        val handlerField = plugin.javaClass.getDeclaredField("methodCallHandler").apply { isAccessible = true }
+        val handler = handlerField.get(plugin) as MethodCallHandlerImpl
+        val timestamp = android.media.AudioTimestamp()
+        var written = 0L
+        outputClockCallback = JavaAudioDeviceModule.PlaybackSamplesReadyCallback { samples ->
+            check(samples.audioFormat == android.media.AudioFormat.ENCODING_PCM_16BIT)
+            val frames = samples.data.size / (2 * samples.channelCount)
+            val start = written
+            written += frames
+            val track = trackField.get(output) as android.media.AudioTrack
+            val valid = track.getTimestamp(timestamp)
+            val instant = System.nanoTime() / 1e9
+            if (valid) synchronized(lock) {
+                if (outputClock.size < 14000) outputClock.add(listOf(instant, start.toDouble(),
+                    samples.sampleRate.toDouble(), timestamp.framePosition.toDouble(), timestamp.nanoTime / 1e9))
+            }
+        }
+        handler.playbackSamplesReadyCallbackAdapter.addCallback(outputClockCallback)
+    }
 
     init {
         MethodChannel(messenger, "voicechat/native-av-lab").setMethodCallHandler { call, result ->
             val plugin = FlutterWebRTCPlugin.sharedSingleton
             when (call.method) {
                 "clock" -> result.success(System.nanoTime() / 1e9)
-                "receive" -> { running = true; result.success(null) }
+                "receive" -> {
+                    checkNotNull(plugin.audioDeviceModule).setSpeakerMute(true)
+                    outputSilenced = true
+                    running = true
+                    result.success(null)
+                }
+                "observeOutputClock" -> { observeOutputClock(plugin); result.success(null) }
                 "create" -> {
+                    checkNotNull(plugin.audioDeviceModule).setSpeakerMute(true)
+                    outputSilenced = true
+                    coherentMarkers = call.argument<Boolean>("coherent") == true
                     val stream = plugin.getStreamForId(call.argument<String>("stream"), "")
                     backgrounds = Array(16) { frame -> ByteArray(640 * 360) { index ->
                         val row = index / 640; val col = index % 640
@@ -85,37 +142,77 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
                     origin = System.nanoTime() / 1e9
                     running = true
                     timer = Executors.newSingleThreadScheduledExecutor().apply {
-                        scheduleAtFixedRate({ emitVideo() }, 0, 50000, TimeUnit.MICROSECONDS)
+                        if (!coherentMarkers) scheduleAtFixedRate({ emitVideo() }, 0, 50000, TimeUnit.MICROSECONDS)
                     }
                     result.success(null)
                 }
                 "observe" -> {
                     audio = plugin.getRemoteTrack(call.argument<String>("audio")) as? AudioTrack
                     video = plugin.getRemoteTrack(call.argument<String>("video")) as? VideoTrack
-                    if (audio == null || video == null) result.error("fixture", "Missing remote media", null)
-                    else { audio!!.addSink(this); video!!.addSink(this); result.success(null) }
+                    if (audio == null || (call.hasArgument("video") && video == null)) result.error("fixture", "Missing remote media", null)
+                    else { audio!!.addSink(this); video?.addSink(this); result.success(null) }
+                }
+                "observeControl" -> {
+                    val track = plugin.getRemoteTrack(call.argument<String>("audio")) as? AudioTrack
+                    if (track == null || controlAudio != null) result.error("fixture", "Missing or duplicate ordinary voice track", null)
+                    else { controlAudio = track; track.addSink(controlSink); result.success(null) }
                 }
                 "gate" -> synchronized(lock) {
                     result.success(mapOf("audio_peak" to peak, "video_markers" to videoMarkers.size,
-                        "audio_chunks" to audioCount))
+                        "audio_chunks" to audioCount, "control_audio_peak" to controlPeak))
                 }
                 "result" -> synchronized(lock) {
-                    val chunks = (0 until audioCount).map { index ->
-                        mapOf("time" to audioTimes[index], "rate" to 48000, "frames" to 480,
-                            "pcm" to audioPcm.array().copyOfRange(index * 1920, (index + 1) * 1920))
+                    val includeAudio = call.argument<Boolean>("includeAudio") != false
+                    val chunks = if (includeAudio) audioChunks(false, 0, audioCount) else emptyList()
+                    val value = mutableMapOf<String, Any>("audio" to chunks, "video" to videoMarkers.toList(), "origin" to origin,
+                        "test_output_silenced" to outputSilenced,
+                        "video_render_clocks" to videoRenderClocks.toList(),
+                        "source_audio" to sourceAudioMarkers.toList(), "source_video" to sourceVideoMarkers.toList(),
+                        "source_audio_callbacks" to sourceAudioCallbackTimes.take(sourceAudioCallbackCount),
+                        "source_video_frames" to sourceVideoFrames.toList(), "received_video_frames" to receivedVideoFrames.toList())
+                    if (!includeAudio) value["audio_count"] = audioCount
+                    if (outputClockCallback != null) value["audio_output_clock"] = outputClock.toList()
+                    if (controlAudio != null) {
+                        value["control_audio"] = if (includeAudio) audioChunks(true, 0, controlCount) else emptyList<Map<String, Any>>()
+                        if (!includeAudio) value["control_audio_count"] = controlCount
                     }
-                    result.success(mapOf("audio" to chunks, "video" to videoMarkers.toList(), "origin" to origin,
-                        "source_audio" to sourceAudioMarkers.toList(), "source_video" to sourceVideoMarkers.toList()))
+                    result.success(value)
+                }
+                "audioChunks" -> synchronized(lock) {
+                    val control = call.argument<Boolean>("control") == true
+                    val offset = call.argument<Int>("offset") ?: -1
+                    val limit = call.argument<Int>("limit") ?: 0
+                    val count = if (control) controlCount else audioCount
+                    if (offset < 0 || offset > count || limit !in 1..128) {
+                        result.error("fixture", "Invalid PCM page", null)
+                    } else result.success(audioChunks(control, offset, minOf(limit, count - offset)))
                 }
                 "stop" -> {
                     running = false
                     timer?.shutdownNow()
                     audio?.removeSink(this); video?.removeSink(this)
-                    plugin.audioProcessingController.capturePostProcessing.removeProcessor(this)
+                    controlAudio?.removeSink(controlSink)
+                    outputClockCallback?.let { callback ->
+                        val field = plugin.javaClass.getDeclaredField("methodCallHandler").apply { isAccessible = true }
+                        (field.get(plugin) as MethodCallHandlerImpl).playbackSamplesReadyCallbackAdapter.removeCallback(callback)
+                    }
+                    outputClockCallback = null
+                    plugin.audioProcessingController?.capturePostProcessing?.removeProcessor(this)
                     result.success(null)
                 }
                 else -> result.notImplemented()
             }
+        }
+    }
+    private fun audioChunks(control: Boolean, offset: Int, count: Int): List<Map<String, Any>> {
+        val times = if (control) controlTimes else audioTimes
+        val pcm = (if (control) controlPcm else audioPcm).duplicate()
+        return (offset until offset + count).map { index ->
+            val bytes = ByteArray(1920)
+            pcm.position(index * 1920)
+            pcm.get(bytes)
+            mapOf("time" to times[index], "rate" to 48000, "frames" to 480,
+                "pcm" to bytes)
         }
     }
     override fun initialize(sampleRateHz: Int, numChannels: Int) { rate = sampleRateHz }
@@ -125,12 +222,18 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
         if (sampleCursor == 0L) origin = System.nanoTime() / 1e9
         val sourceTime = sampleCursor.toDouble() / rate
         synchronized(lock) {
+            if (sourceAudioCallbackCount < sourceAudioCallbackTimes.size) {
+                sourceAudioCallbackTimes[sourceAudioCallbackCount++] = System.nanoTime() / 1e9
+            }
             sourceMarker = (sourceTime / 2).toInt()
             sourceVisible = sourceTime - sourceMarker * 2 < .12
             if (sourceMarker != lastSourceAudio) {
                 lastSourceAudio = sourceMarker
                 sourceAudioMarkers.add(listOf(sourceMarker.toDouble(), System.nanoTime() / 1e9))
             }
+        }
+        if (coherentMarkers && sampleCursor % (rate / 20) == 0L) {
+            timer?.execute { emitVideo() }
         }
         val samples = buffer.order(ByteOrder.nativeOrder()).asFloatBuffer()
         for (index in 0 until numFrames) {
@@ -148,45 +251,67 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
         sampleCursor += numFrames
     }
     override fun onData(data: ByteBuffer, bits: Int, sampleRate: Int, channels: Int, frames: Int, captureTime: Long) {
+        recordAudio(data, bits, sampleRate, channels, frames, false)
+    }
+    private fun recordAudio(data: ByteBuffer, bits: Int, sampleRate: Int, channels: Int, frames: Int, control: Boolean) {
         if (!running) return
         check(bits == 16)
         val input = data.duplicate().order(ByteOrder.nativeOrder()).asShortBuffer()
         val arrived = System.nanoTime() / 1e9
         check(sampleRate == 48000 && frames == 480)
-        val chunk = audioCount
+        val chunk = if (control) controlCount else audioCount
+        val pcm = if (control) controlPcm else audioPcm
         var chunkPeak = 0.0
         for (index in 0 until frames) {
             val value = input.get(index * channels).toFloat() / 32768
-            if (chunk < audioTimes.size) audioPcm.putFloat((chunk * 480 + index) * 4, value)
+            if (chunk < audioTimes.size) pcm.putFloat((chunk * 480 + index) * 4, value)
             chunkPeak = maxOf(chunkPeak, abs(value.toDouble()))
         }
         synchronized(lock) {
-            peak = maxOf(peak, chunkPeak)
-            if (chunk < audioTimes.size) { audioTimes[chunk] = arrived; audioCount++ }
+            if (control) {
+                controlPeak = maxOf(controlPeak, chunkPeak)
+                if (chunk < controlTimes.size) { controlTimes[chunk] = arrived; controlCount++ }
+            } else {
+                peak = maxOf(peak, chunkPeak)
+                if (chunk < audioTimes.size) { audioTimes[chunk] = arrived; audioCount++ }
+            }
         }
     }
     override fun onFrame(frame: VideoFrame) {
         if (!running) return
-        val pixels = frame.buffer.toI420() ?: return
+        val callbackTime = System.nanoTime() / 1e9
+        val source = frame.buffer
+        val width = source.width
+        val height = source.height
+        if (width < 256 || height < 90) return
+        // The checksum occupies the upper-left marker rectangle. Read only
+        // that region to avoid holding the decoder texture for a full-frame copy.
+        val markerWidth = (width * 256 + 639) / 640
+        val markerHeight = (height * 80 + 359) / 360
+        val marker = source.cropAndScale(0, 0, markerWidth, markerHeight, markerWidth, markerHeight)
+        val pixels = try { marker.toI420() } finally { marker.release() } ?: return
         try {
-            if (pixels.width < 256 || pixels.height < 90) return
             var word = 0L
             for (bit in 0 until 32) {
-                val x = bit % 16 * 16 + 8; val y = bit / 16 * 40 + 20
+                val x = (bit % 16 * 16 + 8) * width / 640
+                val y = (bit / 16 * 40 + 20) * height / 360
                 if ((pixels.dataY.get(y * pixels.strideY + x).toInt() and 255) > 128) word = word or (1L shl bit)
             }
-            val id = (word and 65535).toInt()
-            if (word ushr 16 != (id xor 65535).toLong() || id == lastMarker) return
+            val encoded = (word and 65535).toInt()
+            val id = encoded and 4095
+            if (word ushr 16 != (encoded xor 65535).toLong() || id == lastMarker) return
             lastMarker = id
-            synchronized(lock) { videoMarkers.add(listOf(id.toDouble(), System.nanoTime() / 1e9)) }
+            synchronized(lock) {
+                // GPU readback identifies the frame after it reached the sink.
+                videoMarkers.add(listOf(id.toDouble(), callbackTime))
+                videoRenderClocks.add(listOf(id.toDouble(), callbackTime, frame.timestampNs / 1e9))
+                receivedVideoFrames.add(listOf(id.toDouble(), (encoded ushr 12).toDouble()))
+            }
         } finally { pixels.release() }
     }
     private fun emitVideo() {
         if (!running) return
-        val word = synchronized(lock) {
-            val id = sourceMarker.toLong() and 65535
-            if (sourceVisible) id or ((id xor 65535) shl 16) else 0L
-        }
+        val marker = synchronized(lock) { Pair(sourceMarker, sourceVisible) }
         val storage = framePool.poll() ?: return
         fun plane(offset: Int, length: Int): ByteBuffer = storage.duplicate().apply {
             position(offset); limit(offset + length)
@@ -197,6 +322,8 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
         val y = pixels.dataY; val u = pixels.dataU; val v = pixels.dataV
         check(pixels.strideY == 640 && pixels.strideU == 320 && pixels.strideV == 320)
         frameCounter++
+        val encoded = marker.first.toLong() or ((frameCounter.toLong() and 15) shl 12)
+        val word = if (marker.second) encoded or ((encoded xor 65535) shl 16) else 0L
         y.put(backgrounds[frameCounter % backgrounds.size])
         for (row in 0 until 80) for (col in 0 until 256) {
                 val bit = row / 40 * 16 + col / 16
@@ -205,7 +332,8 @@ class NativeAVMarker(messenger: BinaryMessenger) : AudioProcessingAdapter.Extern
         u.put(chroma); v.put(chroma)
         val captured = System.nanoTime()
         synchronized(lock) {
-            val id = (word and 65535).toInt()
+            val id = (word and 4095).toInt()
+            if (word != 0L) sourceVideoFrames.add(listOf(id.toDouble(), (frameCounter and 15).toDouble(), captured / 1e9))
             if (word != 0L && id != lastSourceVideo) {
                 lastSourceVideo = id
                 sourceVideoMarkers.add(listOf(id.toDouble(), captured / 1e9))

@@ -1,5 +1,10 @@
+// ignore_for_file: implementation_imports, invalid_use_of_internal_member
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:livekit_client/livekit_client.dart' as lk;
+import 'package:livekit_client/src/core/engine.dart';
 import 'package:matrix/matrix.dart' as mx;
+import 'call_stream_sync.dart';
 import 'route_config.dart';
 import 'route_transport.dart';
 import 'routed_livekit_engine.dart';
@@ -97,10 +102,26 @@ lk.Room routedMediaRoom(
   String canonicalUrl,
   lk.RoomOptions options, {
   required bool Function() canRecover,
+  bool synchronizeNativeCall = false,
 }) {
+  final synchronizeMacCall =
+      synchronizeNativeCall &&
+      !kIsWeb &&
+      defaultTargetPlatform == TargetPlatform.macOS;
+  final transform = synchronizeMacCall ? synchronizeCallStreams : null;
+  final requireSubscriberFrameEncryption =
+      synchronizeMacCall && options.encryption != null;
   final network = routeTransportOf(client.httpClient);
   if (network == null || network.coordinator == null) {
-    return lk.Room(roomOptions: options);
+    return lk.Room(
+      roomOptions: options,
+      engine: Engine(
+        connectOptions: const lk.ConnectOptions(),
+        roomOptions: options,
+        subscriberDescriptionTransform: transform,
+        requireSubscriberFrameEncryption: requireSubscriberFrameEncryption,
+      ),
+    );
   }
   return lk.Room(
     roomOptions: options,
@@ -110,6 +131,8 @@ lk.Room routedMediaRoom(
       loadOptions: () => routedMediaOptions(client),
       canRecover: canRecover,
       roomOptions: options,
+      subscriberDescriptionTransform: transform,
+      requireSubscriberFrameEncryption: requireSubscriberFrameEncryption,
     ),
   );
 }

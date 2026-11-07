@@ -43,13 +43,51 @@ def main():
     parser.add_argument('--failures', action='store_true', help='Exercise native capture/cryptor rollback')
     parser.add_argument('--av-marker-output', type=Path, help='Run the injected native synthetic A/V fixture')
     parser.add_argument('--shared-sync', action='store_true', help='Enable native A/V synchronization in the disposable room')
+    parser.add_argument('--native-call-sync', action='store_true', help='Use the native call subscriber stream policy without changing SFU/browser grouping')
+    parser.add_argument('--native-output-clock', action='store_true', help='Diagnostic Android fixture: observe AudioTrack presentation timestamps without retiming PCM')
     parser.add_argument('--video-playout-ms', type=int, choices=(0, 130), default=0)
+    parser.add_argument('--native-video-playout-ms', type=int, choices=(0, 70, 90, 100, 130, 10000), default=0)
+    parser.add_argument('--coherent-source', action='store_true', help='Queue video marker boundaries with the synthetic audio source')
+    parser.add_argument('--min-native-video-playout-ms', type=int, choices=(0, 20, 70, 90, 100, 130))
     parser.add_argument('--max-video-playout-ms', type=int, choices=(130, 10000), default=10000)
     parser.add_argument('--av-marker-network', action='store_true', help='Apply video-only delay and outage in the disposable SFU')
+    parser.add_argument('--timestamp-full-reset', action='store_true', help='Diagnostic macOS fixture: reset full timestamp-model covariance on alarms')
+    parser.add_argument('--ordinary-voice-reference', action='store_true', help='Run a simultaneous E2EE audio-only call in a separate disposable room (Mac fixture)')
+    parser.add_argument('--adaptive-video-playout', action='store_true', help='Diagnostic only: native adaptive video delay with full clock recovery and shared A/V streams')
+    parser.add_argument('--keyless-mute-cycle', action='store_true', help='Diagnostic only: mute/unmute before receiver keys, retain native SIF logs')
+    parser.add_argument('--drop-keyless-sif', action='store_true', help='Negative diagnostic only: disable SFU blank-frame bypass before keys')
+    parser.add_argument('--native-sif-trace', action='store_true', help='Record native SFU blank-frame handling during the media probe')
+    parser.add_argument('--native-startup-only', action='store_true', help='Stop after tracing the unmuted receiver before keys')
+    parser.add_argument('--native-receiver-playout', action='store_true', help='Apply the Mac app video receiver policy')
     parser.add_argument('--av-speech', type=Path, help='Synthetic mono48kHz PCM16 WAV; never use a personal recording')
     parser.add_argument('--av-sender-root', type=Path, help='Separate account-free macOS sender checkout (A/V fixture only)')
     parser.add_argument('--av-media-ip', help='Local private interface for encrypted RTP between Mac and the owned Android emulator')
     args = parser.parse_args()
+    if args.native_output_clock and not (args.av_marker_output and args.android_emulator):
+        parser.error('Output clock diagnostics require the owned Android A/V fixture')
+    if args.drop_keyless_sif and not args.keyless_mute_cycle:
+        parser.error('Dropping SFU blank frames is only a negative keyless diagnostic')
+    if args.native_call_sync and (not args.av_marker_output or args.web_root):
+        parser.error('Native call synchronization requires the native A/V marker fixture')
+    if args.native_receiver_playout and (args.device != 'macos' or not args.native_call_sync or
+                                        args.native_video_playout_ms or args.timestamp_full_reset):
+        parser.error('Receiver playout requires the Mac call fixture without a field trial override')
+    if args.timestamp_full_reset and (args.device != 'macos' or not args.av_marker_output or args.native_video_playout_ms != 0):
+        parser.error('Timestamp diagnostic requires the Mac A/V fixture with native SDK default playout')
+    if args.ordinary_voice_reference and (not args.av_marker_output or args.web_root or (args.device != 'macos' and not args.av_sender_root)):
+        parser.error('Ordinary voice comparison requires the Mac fixture or a separate Mac sender and owned Android receiver')
+    if args.adaptive_video_playout and not (args.ordinary_voice_reference and args.timestamp_full_reset and args.shared_sync and args.video_playout_ms == 130 and args.max_video_playout_ms == 130):
+        parser.error('Adaptive video diagnostic requires full clock recovery, ordinary voice reference, shared streams and the existing SFU130ms hint')
+    if args.keyless_mute_cycle and not args.ordinary_voice_reference:
+        parser.error('Keyless mute diagnostic requires the paired ordinary voice fixture')
+    if args.native_startup_only and not (args.native_sif_trace and args.ordinary_voice_reference and
+                                        not args.keyless_mute_cycle and not args.av_sender_root):
+        parser.error('Startup-only tracing requires an unmuted Mac A/V fixture with ordinary voice')
+    if args.min_native_video_playout_ms is not None and (args.native_video_playout_ms == 0 or args.min_native_video_playout_ms > args.native_video_playout_ms):
+        parser.error('Native minimum requires a nonzero maximum and must not exceed it')
+    if args.native_video_playout_ms == 10000 and not (args.device == 'macos' and
+                                                      args.av_marker_output and args.min_native_video_playout_ms is not None):
+        parser.error('Adaptive native ceiling requires the Mac fixture and an explicit minimum')
     if bool(args.av_sender_root) != bool(args.av_media_ip):
         parser.error('Separate sender requires its checkout and a local private media interface')
     if args.av_sender_root:
@@ -120,6 +158,8 @@ def main():
         network_profiles = []
         receiver_ready = False
         receiver_done = False
+        keyless_mute_requested = False
+        sender_muted_unmuted = False
         source_markers = None
         marker_key = base64.b64encode(secrets.token_bytes(32)).decode() if args.av_sender_root else ''
         helper = name + '-netem'
@@ -139,7 +179,9 @@ def main():
                         self.send_error(403)
                         return
                     data = json.dumps({'receiver_ready': receiver_ready,
-                                       'receiver_done': receiver_done}).encode()
+                                       'receiver_done': receiver_done,
+                                       'keyless_mute_requested': keyless_mute_requested,
+                                       'sender_muted_unmuted': sender_muted_unmuted}).encode()
                     self.send_response(200)
                     self.send_header('Content-Type', 'application/json')
                     self.send_header('Content-Length', str(len(data)))
@@ -148,19 +190,33 @@ def main():
 
                 def do_POST(self):
                     nonlocal payload_types, receiver_ready, receiver_done, source_markers
+                    nonlocal keyless_mute_requested, sender_muted_unmuted
                     paths = (marker_path, marker_path + '/profile')
                     if args.av_sender_root:
                         paths += (marker_path + '/ready', marker_path + '/source')
+                        if args.keyless_mute_cycle:
+                            paths += (marker_path + '/mute',)
                     if self.path not in paths or self.headers.get('Transfer-Encoding'):
                         self.send_error(403)
                         return
                     length = int(self.headers.get('Content-Length', '0'))
-                    if not 0 < length <= 64_000_000:
+                    # Paired capture exports two bounded synthetic PCM streams.
+                    limit = 128_000_000 if args.ordinary_voice_reference else 64_000_000
+                    if not 0 < length <= limit:
                         self.send_error(413)
                         return
                     data = self.rfile.read(length)
                     try:
                         value = json.loads(data)
+                        if self.path.endswith('/mute'):
+                            if value == {'keyless_mute_requested': True}:
+                                keyless_mute_requested = True
+                            else:
+                                assert keyless_mute_requested and value == {'sender_muted_unmuted': True}
+                                sender_muted_unmuted = True
+                            self.send_response(200)
+                            self.end_headers()
+                            return
                         if self.path.endswith('/ready'):
                             assert value == {'receiver_ready': True}
                             receiver_ready = True
@@ -169,11 +225,12 @@ def main():
                             return
                         if self.path.endswith('/source'):
                             assert value['synthetic_media_only'] is True and value['encrypted_publications'] is True
-                            assert len(value['source_audio']) >= 20 and len(value['source_video']) >= 20
+                            minimum = 1 if args.keyless_mute_cycle else 20
+                            assert len(value['source_audio']) >= minimum and len(value['source_video']) >= minimum
                             source_markers = value
                             media = json.loads(args.av_marker_output.read_text())
                             assert media['separate_native_sender'] is True
-                            for field in ('source_audio', 'source_video'):
+                            for field in ('source_audio', 'source_audio_callbacks', 'source_video', 'source_video_frames'):
                                 media['markers'][field] = value[field]
                             args.av_marker_output.write_text(json.dumps(media))
                             self.send_response(200)
@@ -254,6 +311,8 @@ def main():
             else:
                 raise RuntimeError('Local SFU not ready')
             create_marker_room(address, api_key, secret, args.shared_sync, args.video_playout_ms, args.max_video_playout_ms)
+            if args.ordinary_voice_reference:
+                create_marker_room(address, api_key, secret, room_name='route-probe-voice')
             client_address = address.replace('127.0.0.1:', '10.0.2.2:') if args.android_emulator else address
             defines = folder / 'client.json'
             defines.write_text(json.dumps({
@@ -264,6 +323,19 @@ def main():
                 'GROUP_TEST_REPEAT_RECEIVER_KEY': args.repeat_receiver_key,
                 'AV_MARKER_OUTPUT': marker_url,
                 'AV_VIDEO_PLAYOUT_MS': args.video_playout_ms,
+                'AV_NATIVE_VIDEO_PLAYOUT_MS': args.native_video_playout_ms,
+                'AV_TIMESTAMP_FULL_RESET': args.timestamp_full_reset,
+                'AV_ORDINARY_VOICE_REFERENCE': args.ordinary_voice_reference,
+                'AV_ADAPTIVE_VIDEO_PLAYOUT': args.adaptive_video_playout,
+                'AV_KEYLESS_MUTE_CYCLE': args.keyless_mute_cycle,
+                'AV_NATIVE_CALL_SYNC': args.native_call_sync,
+                'AV_NATIVE_OUTPUT_CLOCK': args.native_output_clock,
+                'AV_DROP_KEYLESS_SIF': args.drop_keyless_sif,
+                'AV_NATIVE_SIF_TRACE': args.native_sif_trace,
+                'AV_NATIVE_STARTUP_ONLY': args.native_startup_only,
+                'AV_NATIVE_RECEIVER_PLAYOUT': args.native_receiver_playout,
+                'AV_NATIVE_VIDEO_MIN_PLAYOUT_MS': args.min_native_video_playout_ms if args.min_native_video_playout_ms is not None else args.native_video_playout_ms,
+                'AV_COHERENT_MARKERS': args.coherent_source,
                 'AV_MARKER_NETWORK': args.av_marker_network,
                 'AV_MARKER_ROLE': 'receiver' if args.av_sender_root else 'both',
                 'AV_MARKER_KEY': marker_key,
@@ -271,6 +343,9 @@ def main():
                 'GROUP_TEST_ALICE': token('alice', api_key, secret),
                 'GROUP_TEST_BOB': token('bob', api_key, secret),
                 'GROUP_TEST_OBSERVER': token('observer', api_key, secret),
+                **({'AV_VOICE_ALICE': token('voice-alice', api_key, secret, room_name='route-probe-voice'),
+                    'AV_VOICE_BOB': token('voice-bob', api_key, secret, room_name='route-probe-voice')}
+                   if args.ordinary_voice_reference else {}),
             }))
             defines.chmod(0o600)
             if args.web_root:
@@ -329,19 +404,23 @@ def main():
                     raise RuntimeError('Separate native sender failed; inspect private sender log')
                 media = json.loads(args.av_marker_output.read_text())
                 assert media['separate_native_sender'] is True
-                for field in ('source_audio', 'source_video'):
+                for field in ('source_audio', 'source_audio_callbacks', 'source_video', 'source_video_frames'):
                     media['markers'][field] = source_markers[field]
                 args.av_marker_output.write_text(json.dumps(media))
             text = log.read_text()
             if result.returncode or 'All tests passed!' not in text:
                 raise RuntimeError('SDK assertions failed; inspect private log ' + str(log))
-            marker = 'SDK_AV_MARKER_PROOF' if args.av_marker_output else 'SDK_KEY_FAILURE_PROOF' if args.failures else 'SDK_KEY_PUBLICATION_PROOF'
+            key_gate_only = args.keyless_mute_cycle or args.native_startup_only
+            marker = 'SDK_AV_KEY_GATE_PROOF' if key_gate_only else 'SDK_AV_MARKER_PROOF' if args.av_marker_output else 'SDK_KEY_FAILURE_PROOF' if args.failures else 'SDK_KEY_PUBLICATION_PROOF'
             proofs = [json.loads(value) for value in re.findall(
                 marker + r' (\{[^\n]+\})', text)]
             expected = {'both': [False, True], 'baseline': [False], 'pinned': [True]}
-            if args.av_marker_output:
+            if key_gate_only:
+                assert len(proofs) == 1 and proofs[0]['missing_key_blocked'] and proofs[0]['ordinary_missing_key_blocked']
+                assert proofs[0]['keys_installed'] is False and proofs[0]['positive_media_qualified'] is False
+            elif args.av_marker_output:
                 assert len(proofs) == 1 and proofs[0]['missing_key_blocked']
-                assert proofs[0]['shared_group'] == args.shared_sync
+                assert proofs[0]['shared_group'] == (args.shared_sync or args.native_call_sync)
                 assert proofs[0]['audio_chunks'] > 1000 and proofs[0]['video_markers'] > 5
             elif args.failures:
                 assert len(proofs) == 12

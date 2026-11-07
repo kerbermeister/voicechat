@@ -245,6 +245,7 @@ class RTCConfiguration {
   final List<RTCIceServer>? iceServers;
   final RTCIceTransportPolicy? iceTransportPolicy;
   final bool? encodedInsertableStreams;
+  final bool requireFrameEncryption;
 
   /// Allows DSCP (Differentiated Services Code Point) codes to be set on
   /// outgoing packets for network level QoS.
@@ -260,6 +261,7 @@ class RTCConfiguration {
     this.iceServers,
     this.iceTransportPolicy,
     this.encodedInsertableStreams,
+    this.requireFrameEncryption = false,
     this.isDscpEnabled,
   });
 
@@ -273,6 +275,13 @@ class RTCConfiguration {
       // only supports unified plan
       'sdpSemantics': 'unified-plan',
       if (encodedInsertableStreams != null) 'encodedInsertableStreams': encodedInsertableStreams,
+      if (requireFrameEncryption)
+        'cryptoOptions': {
+          'requireFrameEncryption': true,
+          // Preserve native WebRTC defaults where the plugin defaults differ.
+          'enableGcmCryptoSuites': true,
+          'enableEncryptedRtpHeaderExtensions': true,
+        },
       if (isDscpEnabled != null) 'enableDscp': isDscpEnabled,
       if (iceServersMap.isNotEmpty) 'iceServers': iceServersMap,
       if (iceCandidatePoolSize != null) 'iceCandidatePoolSize': iceCandidatePoolSize,
@@ -286,12 +295,14 @@ class RTCConfiguration {
     List<RTCIceServer>? iceServers,
     RTCIceTransportPolicy? iceTransportPolicy,
     bool? encodedInsertableStreams,
+    bool? requireFrameEncryption,
     bool? isDscpEnabled,
   }) => RTCConfiguration(
     iceCandidatePoolSize: iceCandidatePoolSize ?? this.iceCandidatePoolSize,
     iceServers: iceServers ?? this.iceServers,
     iceTransportPolicy: iceTransportPolicy ?? this.iceTransportPolicy,
     encodedInsertableStreams: encodedInsertableStreams ?? this.encodedInsertableStreams,
+    requireFrameEncryption: requireFrameEncryption ?? this.requireFrameEncryption,
     isDscpEnabled: isDscpEnabled ?? this.isDscpEnabled,
   );
 }

@@ -1,3 +1,3 @@
 // Kept in sync with pubspec.yaml by infra/android_release.py check-version.
-const appVersion = '1.19.15';
-const appBuild = 63;
+const appVersion = '1.19.16';
+const appBuild = 64;
