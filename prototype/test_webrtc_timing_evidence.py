@@ -16,6 +16,8 @@ class TimingEvidenceTests(unittest.TestCase):
         self.directory = Path(temporary.name)
         self.manifest = {'patch_sha256': 'reviewed-source', 'webrtc_commit': 'pinned-revision',
                          'unit_test_count': 4, 'regressions': ['VCMTimingTest.Getter', 'RtpStreamsSynchronizerTest.Pause']}
+        self.manifest.update(video_recovery_test_count=2,
+                             video_recovery_regressions=['VideoRecoveryTest.FreshKeyframe'])
         self.receipt = {**self.manifest, 'platform': 'test', 'source_files_verified': True,
                         'shallow_checkout': True}
         (self.directory / 'build-receipt.json').write_text(json.dumps(self.receipt))
@@ -27,6 +29,15 @@ class TimingEvidenceTests(unittest.TestCase):
         self.save_xml()
         (self.directory / 'before-fix.log').write_text('\n'.join(
             '[  FAILED  ] ' + name for name in self.manifest['regressions']))
+
+        self.video_tests = ET.Element('testsuites', tests='2', failures='0', errors='0')
+        video_suite = ET.SubElement(self.video_tests, 'testsuite')
+        for name in ('FreshKeyframe', 'Other'):
+            ET.SubElement(video_suite, 'testcase', classname='VideoRecoveryTest',
+                          name=name, status='run')
+        ET.ElementTree(self.video_tests).write(self.directory / 'video-resume-tests.xml')
+        (self.directory / 'video-resume-before.log').write_text(
+            '[  FAILED  ] VideoRecoveryTest.FreshKeyframe')
 
     def save_xml(self):
         ET.ElementTree(self.tests).write(self.directory / 'timing-tests.xml')
@@ -59,4 +70,35 @@ class TimingEvidenceTests(unittest.TestCase):
     def test_old_timing_only_suite_cannot_prove_stale_floor_regression(self):
         (self.directory / 'before-fix.log').write_text('[  FAILED  ] VCMTimingTest.Getter')
         with self.assertRaisesRegex(ValueError, 'original timing/sync'):
+            evidence.verify(self.directory, self.manifest)
+
+    def test_previous_macos_timing_manifest_remains_supported(self):
+        for field in ('video_recovery_test_count', 'video_recovery_regressions'):
+            del self.manifest[field]
+            del self.receipt[field]
+        (self.directory / 'build-receipt.json').write_text(json.dumps(self.receipt))
+        (self.directory / 'video-resume-tests.xml').unlink()
+        evidence.verify(self.directory, self.manifest)
+
+    def test_missing_video_evidence_is_rejected(self):
+        (self.directory / 'video-resume-tests.xml').unlink()
+        with self.assertRaises(FileNotFoundError):
+            evidence.verify(self.directory, self.manifest)
+
+    def test_duplicate_video_cases_cannot_replace_missing_tests(self):
+        cases = self.video_tests.findall('.//testcase')
+        cases[-1].attrib.update(cases[0].attrib)
+        ET.ElementTree(self.video_tests).write(self.directory / 'video-resume-tests.xml')
+        with self.assertRaisesRegex(ValueError, 'video recovery'):
+            evidence.verify(self.directory, self.manifest)
+
+    def test_skipped_video_test_rejected_with_success_counters(self):
+        ET.SubElement(self.video_tests.find('.//testcase'), 'skipped')
+        ET.ElementTree(self.video_tests).write(self.directory / 'video-resume-tests.xml')
+        with self.assertRaisesRegex(ValueError, 'video recovery'):
+            evidence.verify(self.directory, self.manifest)
+
+    def test_video_requires_original_failure_proof(self):
+        (self.directory / 'video-resume-before.log').write_text('[  PASSED  ] 2 tests')
+        with self.assertRaisesRegex(ValueError, 'video recovery'):
             evidence.verify(self.directory, self.manifest)

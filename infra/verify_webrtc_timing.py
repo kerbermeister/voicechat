@@ -31,6 +31,21 @@ def verify(directory, manifest):
             or receipt.get('shallow_checkout') is not True):
         raise ValueError('Timing evidence lacks the verified source receipt')
     verify_tests(directory, manifest)
+    if 'video_recovery_test_count' not in manifest:
+        return
+    video = ET.parse(directory / 'video-resume-tests.xml').getroot()
+    video_cases = video.findall('.//testcase')
+    video_names = {case.get('classname', '') + '.' + case.get('name', '') for case in video_cases}
+    video_count = manifest['video_recovery_test_count']
+    before_video = (directory / 'video-resume-before.log').read_text()
+    if (video.get('tests') != str(video_count) or len(video_cases) != video_count
+            or len(video_names) != video_count or video.get('failures') != '0'
+            or video.get('errors') != '0' or video.findall('.//skipped')
+            or video.findall('.//failure') or video.findall('.//error')
+            or any(case.get('status') != 'run' for case in video_cases)
+            or not all(name in video_names and '[  FAILED  ] ' + name in before_video
+                       for name in manifest['video_recovery_regressions'])):
+        raise ValueError('Exact video recovery regression evidence is missing')
 
 
 def main():
