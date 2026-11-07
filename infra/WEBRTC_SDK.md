@@ -1,7 +1,7 @@
 # Native call synchronization SDK
 
-The macOS client pins SDK23 (WebRTC 150.7871.04, source `a39f795`).
-Android still uses its existing dependency. Exact SDK23 source, compiler
+The macOS client pins SDK26 (WebRTC 150.7871.04, source `7227897`).
+Android still uses its existing dependency. Exact SDK26 source, compiler
 receipts and platform evidence are recorded in the
 [technical journal](../docs/iterations/native-av-sync-after62.md).
 
