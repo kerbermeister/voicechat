@@ -24,7 +24,7 @@ class MainFlutterWindow: NSWindow, NSDraggingDestination {
       binaryMessenger: flutterViewController.engine.binaryMessenger)
     calls?.setMethodCallHandler { call, result in
       guard let delay = ["tuneVideoPlayout": 70, "tuneAudioPlayout": 40,
-                         "tuneDirectAudioPlayout": 60][call.method] else {
+                         "tuneDirectAudioPlayout": 80][call.method] else {
         result(FlutterMethodNotImplemented)
         return
       }
