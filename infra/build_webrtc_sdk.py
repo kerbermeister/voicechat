@@ -249,7 +249,12 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         before_timing = before_timing.replace(late_guard,
             b'constexpr TimeDelta kMaxLateFrameClockLag = TimeDelta::PlusInfinity();')
         timing.write_bytes(before_timing)
-        for path in (synchronizer, sync_header, extrapolator_header, cryptor, neteq_decision):
+        covariance_default = b'bool reset_full_cov_on_alarm = true;'
+        if patched_extrapolator_header.count(covariance_default) != 1:
+            raise RuntimeError('Expected exactly one RTP covariance reset default')
+        extrapolator_header.write_bytes(patched_extrapolator_header.replace(
+            covariance_default, b'bool reset_full_cov_on_alarm = false;'))
+        for path in (synchronizer, sync_header, cryptor, neteq_decision):
             path.write_bytes(subprocess.check_output(
                 ['git', 'show', MANIFEST['webrtc_commit'] + ':' + path.relative_to(source).as_posix()],
                 cwd=source))
