@@ -366,7 +366,7 @@
    return info;
  }
 
-@@ -823,6 +826,11 @@
+@@ -823,6 +826,12 @@
  void VideoReceiveStream2::SetEstimatedPlayoutNtpTimestamp(NtpTime ntp_time,
                                                            Timestamp time) {
    RTC_DCHECK_NOTREACHED();
@@ -375,6 +375,7 @@
 +void VideoReceiveStream2::SetVideoSyncDelay(std::optional<TimeDelta> delay) {
 +  RTC_DCHECK_RUN_ON(&worker_sequence_checker_);
 +  timing_->SetSyncPlayoutDelay(delay);
++  buffer_->OnPlayoutDelayChanged();
  }
 
  bool VideoReceiveStream2::SetMinimumPlayoutDelay(TimeDelta delay) {
@@ -1966,3 +1967,188 @@
  
    if (!last_received_rtp_timestamp_ || !last_received_rtp_system_time_) {
      return std::nullopt;
+--- a/video/task_queue_frame_decode_scheduler.cc
++++ b/video/task_queue_frame_decode_scheduler.cc
+@@ -48,16 +48,17 @@
+       << "Can not schedule two frames for release at the same time.";
+   RTC_DCHECK(cb);
+   scheduled_rtp_ = rtp;
++  const uint64_t generation = ++schedule_generation_;
+
+   TimeDelta wait = std::max(
+       TimeDelta::Zero(), schedule.latest_decode_time - clock_->CurrentTime());
+   bookkeeping_queue_->PostDelayedHighPrecisionTask(
+       SafeTask(task_safety_.flag(),
+-               [this, rtp, schedule, cb = std::move(cb)]() mutable {
++               [this, rtp, generation, schedule, cb = std::move(cb)]() mutable {
+                  RTC_DCHECK_RUN_ON(bookkeeping_queue_);
+-                 // If the next frame rtp has changed since this task was
+-                 // this scheduled release should be skipped.
+-                 if (scheduled_rtp_ != rtp)
++                 // A replacement can retain the same RTP timestamp.
++                 if (scheduled_rtp_ != rtp ||
++                     schedule_generation_ != generation)
+                    return;
+                  scheduled_rtp_ = std::nullopt;
+                  std::move(cb)(rtp, schedule.render_time);
+--- a/video/task_queue_frame_decode_scheduler.h
++++ b/video/task_queue_frame_decode_scheduler.h
+@@ -46,6 +46,7 @@
+   TaskQueueBase* const bookkeeping_queue_;
+
+   std::optional<uint32_t> scheduled_rtp_;
++  uint64_t schedule_generation_ = 0;
+   ScopedTaskSafetyDetached task_safety_;
+   bool stopped_ = false;
+ };
+--- a/video/task_queue_frame_decode_scheduler_unittest.cc
++++ b/video/task_queue_frame_decode_scheduler_unittest.cc
+@@ -98,4 +98,59 @@
+   scheduler.Stop();
+ }
+
++
++TEST(TaskQueueFrameDecodeSchedulerTest, ReplacedFrameDoesNotUseOldDeadline) {
++  GlobalSimulatedTimeController time_controller(Timestamp::Seconds(2000));
++  TaskQueueFrameDecodeScheduler scheduler(time_controller.GetClock(),
++                                         time_controller.GetMainThread());
++  const Timestamp now = time_controller.GetClock()->CurrentTime();
++  constexpr uint32_t rtp = 90000;
++  MockFunction<void(uint32_t, Timestamp)> old_callback;
++  MockFunction<void(uint32_t, Timestamp)> new_callback;
++  EXPECT_CALL(old_callback, Call).Times(0);
++  scheduler.ScheduleFrame(
++      rtp, {.latest_decode_time = now + TimeDelta::Millis(50),
++            .render_time = now + TimeDelta::Millis(70)},
++      old_callback.AsStdFunction());
++  time_controller.AdvanceTime(TimeDelta::Millis(20));
++  scheduler.CancelOutstanding();
++  const Timestamp new_render = now + TimeDelta::Millis(170);
++  scheduler.ScheduleFrame(
++      rtp, {.latest_decode_time = now + TimeDelta::Millis(150),
++            .render_time = new_render}, new_callback.AsStdFunction());
++  EXPECT_CALL(new_callback, Call).Times(0);
++  time_controller.AdvanceTime(TimeDelta::Millis(60));
++  EXPECT_THAT(scheduler.ScheduledRtpTimestamp(), Optional(rtp));
++  ::testing::Mock::VerifyAndClearExpectations(&new_callback);
++  EXPECT_CALL(new_callback, Call(rtp, new_render)).Times(1);
++  time_controller.AdvanceTime(TimeDelta::Millis(80));
++  scheduler.Stop();
++}
++
++TEST(TaskQueueFrameDecodeSchedulerTest, ReplacedFrameCanMoveDeadlineEarlier) {
++  GlobalSimulatedTimeController time_controller(Timestamp::Seconds(2000));
++  TaskQueueFrameDecodeScheduler scheduler(time_controller.GetClock(),
++                                         time_controller.GetMainThread());
++  const Timestamp now = time_controller.GetClock()->CurrentTime();
++  constexpr uint32_t rtp = 90000;
++  MockFunction<void(uint32_t, Timestamp)> old_callback;
++  MockFunction<void(uint32_t, Timestamp)> new_callback;
++  EXPECT_CALL(old_callback, Call).Times(0);
++  scheduler.ScheduleFrame(
++      rtp, {.latest_decode_time = now + TimeDelta::Millis(300),
++            .render_time = now + TimeDelta::Millis(320)},
++      old_callback.AsStdFunction());
++  time_controller.AdvanceTime(TimeDelta::Millis(20));
++  scheduler.CancelOutstanding();
++  const Timestamp new_render = now + TimeDelta::Millis(70);
++  EXPECT_CALL(new_callback, Call(rtp, new_render)).Times(1);
++  scheduler.ScheduleFrame(
++      rtp, {.latest_decode_time = now + TimeDelta::Millis(50),
++            .render_time = new_render}, new_callback.AsStdFunction());
++  time_controller.AdvanceTime(TimeDelta::Millis(40));
++  EXPECT_THAT(scheduler.ScheduledRtpTimestamp(), Eq(std::nullopt));
++  time_controller.AdvanceTime(TimeDelta::Millis(300));
++  scheduler.Stop();
++}
++
+ }  // namespace webrtc
+--- a/video/video_stream_buffer_controller.cc
++++ b/video/video_stream_buffer_controller.cc
+@@ -152,6 +152,12 @@
+   frame_decode_scheduler_->CancelOutstanding();
+ }
+
++void VideoStreamBufferController::OnPlayoutDelayChanged() {
++  RTC_DCHECK_RUN_ON(&worker_sequence_checker_);
++  frame_decode_scheduler_->CancelOutstanding();
++  MaybeScheduleFrameForRelease();
++}
++
+ std::optional<int64_t> VideoStreamBufferController::InsertFrame(
+     std::unique_ptr<EncodedFrame> frame) {
+   RTC_DCHECK_RUN_ON(&worker_sequence_checker_);
+--- a/video/video_stream_buffer_controller.h
++++ b/video/video_stream_buffer_controller.h
+@@ -91,6 +91,8 @@
+   void Stop();
+   void SetProtectionMode(VCMVideoProtection protection_mode);
+   void Clear();
++  // Refresh the deadline of a complete frame still waiting to decode.
++  void OnPlayoutDelayChanged();
+   std::optional<int64_t> InsertFrame(std::unique_ptr<EncodedFrame> frame);
+   void UpdateRtt(int64_t max_rtt_ms);
+   void SetMaxWaits(TimeDelta max_wait_for_keyframe,
+--- a/video/video_stream_buffer_controller_unittest.cc
++++ b/video/video_stream_buffer_controller_unittest.cc
+@@ -265,6 +265,60 @@
+   EXPECT_THAT(WaitForFrameOrTimeout(kMaxWaitForKeyframe), TimedOut());
+ }
+
++
++TEST_P(VideoStreamBufferControllerTest, ChangedSyncDelayReleasesScheduledFrame) {
++  StartNextDecodeForceKeyframe();
++  buffer_->InsertFrame(test::FakeFrameBuilder()
++                           .Id(0)
++                           .Time(0)
++                           .ReceivedTime(clock_->CurrentTime())
++                           .AsLast()
++                           .Build());
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Zero()), Frame(test::WithId(0)));
++  StartNextDecode();
++  time_controller_.AdvanceTime(kFps30Delay);
++  timing_.SetSyncPlayoutDelay(TimeDelta::Millis(300));
++  buffer_->InsertFrame(test::FakeFrameBuilder()
++                           .Id(1)
++                           .Time(kFps30Rtp)
++                           .ReceivedTime(clock_->CurrentTime())
++                           .AsLast()
++                           .Refs({0})
++                           .Build());
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(50)), Eq(std::nullopt));
++  timing_.SetSyncPlayoutDelay(TimeDelta::Millis(50));
++  buffer_->OnPlayoutDelayChanged();
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(50)), Frame(test::WithId(1)));
++  ResetLastResult();
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(300)), Eq(std::nullopt));
++}
++
++TEST_P(VideoStreamBufferControllerTest, ChangedSyncDelayWaitsForNewDeadline) {
++  StartNextDecodeForceKeyframe();
++  buffer_->InsertFrame(test::FakeFrameBuilder()
++                           .Id(0)
++                           .Time(0)
++                           .ReceivedTime(clock_->CurrentTime())
++                           .AsLast()
++                           .Build());
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Zero()), Frame(test::WithId(0)));
++  StartNextDecode();
++  time_controller_.AdvanceTime(kFps30Delay);
++  timing_.SetSyncPlayoutDelay(TimeDelta::Millis(100));
++  buffer_->InsertFrame(test::FakeFrameBuilder()
++                           .Id(1)
++                           .Time(kFps30Rtp)
++                           .ReceivedTime(clock_->CurrentTime())
++                           .AsLast()
++                           .Refs({0})
++                           .Build());
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(20)), Eq(std::nullopt));
++  timing_.SetSyncPlayoutDelay(TimeDelta::Millis(300));
++  buffer_->OnPlayoutDelayChanged();
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(120)), Eq(std::nullopt));
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(200)), Frame(test::WithId(1)));
++}
++
+ TEST_P(VideoStreamBufferControllerTest, KeyFramesAreScheduled) {
+   StartNextDecodeForceKeyframe();
+   time_controller_.AdvanceTime(TimeDelta::Millis(50));

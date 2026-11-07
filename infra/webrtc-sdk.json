@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "3c179e0eae86434d8af85f344a38cb592c3899528a9236402c424b4cc9052038",
+  "patch_sha256": "10786808ec835dbc68bb1ebf112b75bb06daecf0d8b4937a78d52fb3817ff8bc",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -37,13 +37,19 @@
     "modules/video_coding/nack_requester_unittest.cc": "4bf3e25847f089362ddbebf1989b8df8e66ed0211289b8aa35025f1d96aafa77",
     "modules/audio_coding/neteq/decision_logic.cc": "c4318864c577e7b1db9c5dcaf2cd456caf56403cc648b43f7cd68ae3c93e0ba3",
     "modules/audio_coding/neteq/decision_logic_unittest.cc": "efb66e00c247868722e2e45de915c56f77bdf7721b2f6a695477034d4f6f945e",
-    "audio/channel_receive.cc": "4b30d85289fbc98fa9a798385d9170358d04ddbefd9825da24785d4227bf1647"
+    "audio/channel_receive.cc": "4b30d85289fbc98fa9a798385d9170358d04ddbefd9825da24785d4227bf1647",
+    "video/video_stream_buffer_controller.h": "4c702ab32d4eaad232b98003f36e8d1d1da6281c36b371421a6bf3325be08a8e",
+    "video/task_queue_frame_decode_scheduler_unittest.cc": "328612fc2586724821823db1bb5d090d80813cecb0d71d8c762933775b469ad7",
+    "video/task_queue_frame_decode_scheduler.cc": "42ba43ed1f381ce4094fc3d6c606dca42c23e5d10c2c382bbf1b65059cfd2a5a",
+    "video/video_stream_buffer_controller.cc": "2b25a61cd0188b94b95730c656aa71733242f0e9d6d6e6ca44d3fef6df463e29",
+    "video/video_stream_buffer_controller_unittest.cc": "0359b7922e986c530ebab74a1519fb50192888774d094615339fd6cfd7abab37",
+    "video/task_queue_frame_decode_scheduler.h": "d806be3ac66a939d05e96ca5f73dc9eed18801d4e9bf26f66569360332706efc"
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "03852fcee5c80880b5a376a0b4af88470e3b40537adefdd86fd9b53d5939e61e",
     "modules/video_coding/timing/timing.cc": "275e2e7fef70042f0a3d141342bebae574eb53351074e8abba4eb27625c1def9",
     "modules/video_coding/timing/timing_unittest.cc": "7cdcf42e2354433d852a24786323b6f1bbc895949d4dbf5b6c8004d9f8ab5aa6",
-    "video/video_receive_stream2.cc": "68ba38bfa7e795a348078878ab6fe7faf5ab310ac71a1274f2f9fa0f34090975",
+    "video/video_receive_stream2.cc": "7b7e80a8b9fe47395652e1ad61f30a0b92aecadedbc20eb0f49f659b0a15da2c",
     "video/rtp_streams_synchronizer2.h": "38e0fcce58b14e9ff6f57709b55fac7f6bfb9d0fecb35db58c3c7eda4b6970d0",
     "video/rtp_streams_synchronizer2.cc": "ba69ece51d73c821ea0f854cb7719f55e01aa3e61368fa9ac9a88f18e41ca82b",
     "video/stream_synchronization_unittest.cc": "b995141c413f224a0459f4a69e3ea3a0319514e008565ee249b8f0d949282729",
@@ -74,11 +80,17 @@
     "modules/video_coding/nack_requester_unittest.cc": "67d23db3fb7969730d6dc56a3391d8ee19e44e21cf6860a26862603a12b26cb4",
     "modules/audio_coding/neteq/decision_logic.cc": "a1c7649511791d9974a5cf4e1f87ef3e342fcae07a3b3726729fc2f84dfcea16",
     "modules/audio_coding/neteq/decision_logic_unittest.cc": "9ba17f652fd6361e68b7756161f98cdf0b239cdd293a3307f959fd3522a15547",
-    "audio/channel_receive.cc": "dbf1aa67d6030847ca7df5282f8aa6cac7b60a04734180efeac71d3678a3a9e3"
+    "audio/channel_receive.cc": "dbf1aa67d6030847ca7df5282f8aa6cac7b60a04734180efeac71d3678a3a9e3",
+    "video/video_stream_buffer_controller.h": "f390320a8bd7069b9568226214448b4ee53c9432e309b9d1b1b32f6f26cd9df2",
+    "video/task_queue_frame_decode_scheduler_unittest.cc": "8da4e18b8047971cdea99fb445a2cf52b0202e072ac74f6a9fb14cd90a75507b",
+    "video/task_queue_frame_decode_scheduler.cc": "a7f48e2516ffd3beb1d2659177519f5e9c0a2e4a90f223543d2f2bb8296f21cc",
+    "video/video_stream_buffer_controller.cc": "cadfd4f3280a4f0b51e3293a2061b2afd121b4ff24e1b12de2106e1e18f70313",
+    "video/video_stream_buffer_controller_unittest.cc": "186d85cef00854fc0ccf154f928002d24f1d0a889c2b7bdbd351d46cefc90d89",
+    "video/task_queue_frame_decode_scheduler.h": "daf75ae3c74bd82c7e6cd4ccf5affb5c1623b14e9bdcae99bc4f853be2a189fd"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*:DecisionLogicTest.NormalOperation:DecisionLogicTest.Accelerate:DecisionLogicTest.FastAccelerate:DecisionLogicTest.PreemptiveExpand:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout",
-  "release_artifact_version": "150.7871.04-vc28",
+  "release_artifact_version": "150.7871.04-vc29",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
   "unit_test_count": 108,
   "regressions": [
@@ -116,13 +128,18 @@
   "native_video_playout_ms": 0,
   "platform_policy_test_count": 10,
   "native_video_playout_max_ms": 10000,
-  "video_recovery_test_count": 33,
+  "video_recovery_test_count": 46,
   "video_recovery_regressions": [
     "RtpVideoStreamReceiver2Test.RequestsKeyframeWhenVideoResumesAfterLoss",
     "IncomingVideoStreamTest.SupersedesFutureDeadlineAfterRtpClockRecovery",
     "IncomingVideoStreamTest.ReleasesTextureWithFarFutureDeadline",
     "TestNackRequester.VideoResumeRequestsKeyframeAfterPacketGap",
     "TestNackRequester.VideoResumeIgnoresOldRepairAcrossWrap",
-    "TestNackRequester.VideoResumeStopsRetryingAfterLongSilence"
+    "TestNackRequester.VideoResumeStopsRetryingAfterLongSilence",
+    "TaskQueueFrameDecodeSchedulerTest.ReplacedFrameDoesNotUseOldDeadline",
+    "VideoStreamBufferController/VideoStreamBufferControllerTest.ChangedSyncDelayReleasesScheduledFrame/SyncDecoding",
+    "VideoStreamBufferController/VideoStreamBufferControllerTest.ChangedSyncDelayReleasesScheduledFrame/UnsyncedDecoding",
+    "VideoStreamBufferController/VideoStreamBufferControllerTest.ChangedSyncDelayWaitsForNewDeadline/SyncDecoding",
+    "VideoStreamBufferController/VideoStreamBufferControllerTest.ChangedSyncDelayWaitsForNewDeadline/UnsyncedDecoding"
   ]
 }

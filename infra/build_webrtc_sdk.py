@@ -193,6 +193,8 @@ rtc_test("video_resume_unittests") {
     "//test:test_support",
     "//test/time_controller:time_controller",
     "//video:rtp_video_stream_receiver2_unittest",
+    "//video:task_queue_frame_decode_scheduler_unittest",
+    "//video:video_stream_buffer_controller_unittest",
     "//video/render:incoming_video_stream",
   ]
 }
@@ -314,14 +316,28 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         'video/render/video_render_frames.cc',
         'video/render/incoming_video_stream.cc',
         'video/render/incoming_video_stream.h',
+        'video/task_queue_frame_decode_scheduler.cc',
+        'video/task_queue_frame_decode_scheduler.h',
+        'video/video_stream_buffer_controller.cc',
     ]
     patched_recovery = {name: (source / name).read_bytes() for name in recovery_files}
     regressions = MANIFEST['video_recovery_regressions']
     binary = build / 'video_resume_unittests'
     try:
         for name in recovery_files:
-            (source / name).write_bytes(subprocess.check_output(
-                ['git', 'show', MANIFEST['webrtc_commit'] + ':' + name], cwd=source))
+            content = subprocess.check_output(
+                ['git', 'show', MANIFEST['webrtc_commit'] + ':' + name], cwd=source)
+            if name == 'video/video_stream_buffer_controller.cc':
+                # Keep the new interface so the negative control tests the
+                # former scheduling behavior with the identical test binary.
+                anchor = b'std::optional<int64_t> VideoStreamBufferController::InsertFrame(\n'
+                if content.count(anchor) != 1:
+                    raise RuntimeError('Expected exactly one frame insertion method')
+                content = content.replace(anchor,
+                    b'void VideoStreamBufferController::OnPlayoutDelayChanged() {\n'
+                    b'  RTC_DCHECK_RUN_ON(&worker_sequence_checker_);\n'
+                    b'}\n\n' + anchor)
+            (source / name).write_bytes(content)
         run(['autoninja', '-C', build, binary.name, '-j2'], cwd=source)
         before = subprocess.run([str(binary), '--gtest_filter=' + ':'.join(regressions)],
                                 capture_output=True, text=True)
@@ -335,7 +351,11 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     verify_files(source, MANIFEST['patched_files_sha256'])
     run(['autoninja', '-C', build, binary.name, '-j2'], cwd=source)
     run([binary, '--gtest_filter=RtpVideoStreamReceiver2Test.*:IncomingVideoStreamTest.*:'
-         'TestNackRequester.VideoResume*',
+         'TestNackRequester.VideoResume*:'
+         'TaskQueueFrameDecodeSchedulerTest.*:'
+         'VideoStreamBufferController/VideoStreamBufferControllerTest.ChangedSyncDelay*:'
+         'VideoStreamBufferController/VideoStreamBufferControllerTest.KeyFramesAreScheduled/*:'
+         'VideoStreamBufferController/VideoStreamBufferControllerTest.FramesWaitForDecoderToComplete/*',
          '--gtest_output=xml:' + str(output / 'video-resume-tests.xml')], cwd=source)
 
 
