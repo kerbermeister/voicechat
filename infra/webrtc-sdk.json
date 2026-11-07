@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "e4d5526d15387eb790a585a86f41c223c23c728538c5b38fbf7cf90840db4685",
+  "patch_sha256": "3c179e0eae86434d8af85f344a38cb592c3899528a9236402c424b4cc9052038",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -45,8 +45,8 @@
     "modules/video_coding/timing/timing_unittest.cc": "7cdcf42e2354433d852a24786323b6f1bbc895949d4dbf5b6c8004d9f8ab5aa6",
     "video/video_receive_stream2.cc": "68ba38bfa7e795a348078878ab6fe7faf5ab310ac71a1274f2f9fa0f34090975",
     "video/rtp_streams_synchronizer2.h": "38e0fcce58b14e9ff6f57709b55fac7f6bfb9d0fecb35db58c3c7eda4b6970d0",
-    "video/rtp_streams_synchronizer2.cc": "e771decdde034eb6fe41887a41b5d14d403ab2873fe4d51390b9517d9b20a8b9",
-    "video/stream_synchronization_unittest.cc": "259df8294ef53c493a87272737f8ae709c330a6b53d612593ab044a97e224bfb",
+    "video/rtp_streams_synchronizer2.cc": "ba69ece51d73c821ea0f854cb7719f55e01aa3e61368fa9ac9a88f18e41ca82b",
+    "video/stream_synchronization_unittest.cc": "b995141c413f224a0459f4a69e3ea3a0319514e008565ee249b8f0d949282729",
     "video/BUILD.gn": "ada847d6c82f6044d7e03aa840305ce749ceb29c041b008b2c9178788faa8bd5",
     "sdk/objc/api/peerconnection/RTCPeerConnectionFactory.mm": "bd479018f9e3e6b8b28780e5619f5ebd33343c4a99d22446eda90a4f869bec75",
     "sdk/android/api/org/webrtc/PeerConnectionFactory.java": "c75b55f3fabd1848d5b71d68caeb4b16bf18c48537aad852fab0c8156a898d21",
@@ -110,7 +110,8 @@
     "VCMTimingTest.SyncDelayReanchorsClockOnLateForwardFrame",
     "RtpStreamsSynchronizerTest.StartsWithSingleSenderReport",
     "RtpStreamsSynchronizerTest.SingleReportUsesPresentationClock",
-    "RtpStreamsSynchronizerTest.SingleReportSurvivesRtpWrap"
+    "RtpStreamsSynchronizerTest.SingleReportSurvivesRtpWrap",
+    "RtpStreamsSynchronizerTest.StaleSingleReportDoesNotBootstrap"
   ],
   "native_video_playout_ms": 0,
   "platform_policy_test_count": 10,

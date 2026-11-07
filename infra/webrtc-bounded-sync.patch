@@ -504,7 +504,7 @@
  
    bool log_stats = false;
    const int64_t now_ms = env_.clock().TimeInMilliseconds();
-@@ -102,41 +131,48 @@
+@@ -102,41 +131,52 @@
      log_stats = true;
    }
  
@@ -535,8 +535,6 @@
 -  // Calculate how much later or earlier the audio stream is compared to video.
 -  if (!StreamSynchronization::ComputeRelativeDelay(
 -          audio_measurement_, video_measurement_, &relative_delay_ms)) {
--    return;
--  }
 +  const Timestamp now = env_.clock().CurrentTime();
 +  // A transient gap shorter than two seconds keeps normal adaptation.
 +  // A stopped stream must not hold its peer's old synchronization delay.
@@ -564,13 +562,17 @@
 +      audio_info->latest_received_capture_rtp_timestamp);
 +  const auto video_capture_ms = CaptureTimeMs(*video_measurement_, *video_info,
 +      video_info->latest_received_capture_rtp_timestamp);
-+  if (!audio_capture_ms || !video_capture_ms)
++  if (!audio_capture_ms || !video_capture_ms) {
++    syncable_video_->SetVideoSyncDelay(std::nullopt);
 +    return;
++  }
 +  const int64_t relative_delay_ms =
 +      video_info->latest_receive_time.ms() - audio_info->latest_receive_time.ms() -
 +      (*video_capture_ms - *audio_capture_ms);
-+  if (std::abs(relative_delay_ms) > 10000)
-+    return;
++  if (std::abs(relative_delay_ms) > 10000) {
++    syncable_video_->SetVideoSyncDelay(std::nullopt);
+     return;
+   }
  
    if (log_stats) {
      RTC_LOG(LS_INFO) << "Sync info stats: " << now_ms
@@ -582,7 +584,7 @@
                       << "cur_delay: " << video_info->current_delay
                       << "} {relative_delay_ms: " << relative_delay_ms << "} ";
    }
-@@ -147,31 +183,33 @@
+@@ -147,31 +187,33 @@
                   audio_info->current_delay.ms());
    TRACE_COUNTER1("webrtc", "SyncRelativeDelay", relative_delay_ms);
  
@@ -641,7 +643,7 @@
  }
  
  // TODO(https://bugs.webrtc.org/7065): Move RtpToNtpEstimator out of
-@@ -195,7 +233,7 @@
+@@ -195,7 +237,7 @@
    }
  
    NtpTime latest_audio_ntp =
@@ -650,7 +652,7 @@
    if (!latest_audio_ntp.Valid()) {
      return false;
    }
-@@ -205,7 +243,7 @@
+@@ -205,7 +247,7 @@
                                                     audio->time);
  
    NtpTime latest_video_ntp =
@@ -659,7 +661,7 @@
    if (!latest_video_ntp.Valid()) {
      return false;
    }
-@@ -223,7 +261,7 @@
+@@ -223,7 +265,7 @@
  
    *video_playout_ntp_ms = latest_video_ntp_ms;
    *stream_offset_ms = latest_audio_ntp_ms - latest_video_ntp_ms;
@@ -684,7 +686,7 @@
  
  #include "rtc_base/rtp_to_ntp_estimator.h"
  #include "system_wrappers/include/clock.h"
-@@ -531,4 +538,295 @@
+@@ -531,4 +538,296 @@
    BothDelayedVideoLaterTest(kBaseTargetDelayMs);
  }
  
@@ -825,10 +827,11 @@
 +TEST_F(RtpStreamsSynchronizerTest, StaleSingleReportDoesNotBootstrap) {
 +  sync_->ConfigureSync(nullptr);
 +  audio_.expose_clock_rate = video_.expose_clock_rate = true;
-+  audio_.report_time = video_.report_time =
-+      time_.GetClock()->CurrentTime() - TimeDelta::Seconds(11);
++  audio_.report_time = video_.report_time = time_.GetClock()->CurrentTime();
 +  sync_->ConfigureSync(&audio_);
-+  time_.AdvanceTime(TimeDelta::Millis(400));
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target);
++  time_.AdvanceTime(TimeDelta::Seconds(11));
 +  EXPECT_FALSE(video_.video_target);
 +}
 +
