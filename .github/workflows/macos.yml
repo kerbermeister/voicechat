@@ -47,7 +47,12 @@ jobs:
         run: flutter test integration_test/macos_storage_test.dart -d macos
       - name: Build release candidate
         working-directory: apps/client
-        run: flutter build macos --release --target lib/main.dart --dart-define-from-file "$RUNNER_TEMP/client.json"
+        env:
+          XCODE_XCCONFIG_FILE: ${{ runner.temp }}/macos-arm64.xcconfig
+        run: |
+          printf 'ARCHS = arm64\n' > "$XCODE_XCCONFIG_FILE"
+          flutter build macos --release --target lib/main.dart --dart-define-from-file "$RUNNER_TEMP/client.json"
+          python3 tool/check_macos_renderer.py --app build/macos/Build/Products/Release/VoiceChat.app --output "$RUNNER_TEMP/macos-renderer.json"
       - name: Verify native boundaries
         working-directory: apps/client/macos
         run: xcodebuild -workspace Runner.xcworkspace -scheme Runner -configuration Debug -destination 'platform=macOS,arch=arm64' test
