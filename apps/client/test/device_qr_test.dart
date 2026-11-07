@@ -171,9 +171,9 @@ void main() {
         final image = await recorder.endRecording().toImage(512, 512);
         final png = await image.toByteData(format: ui.ImageByteFormat.png);
         expect(png, isNotNull);
-        await File(
-          '../../.prototype/qr-fixture.png',
-        ).writeAsBytes(png!.buffer.asUint8List());
+        final fixture = File('../../.prototype/qr-fixture.png');
+        await fixture.parent.create(recursive: true);
+        await fixture.writeAsBytes(png!.buffer.asUint8List());
         image.dispose();
       });
     },
