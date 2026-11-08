@@ -1,0 +1,20 @@
+{
+  "version": "150.7871.04-vc30",
+  "aar_sha256": "d8771c51d04f77e31e0778ffd0b1881138c0ff0f4e12d7f961cf58484b5a11d5",
+  "jni_sha256": {
+    "armeabi-v7a": "a2360ef801a6a926500089baee99d8a608af59555d6f1d71aed3d8e5e03df9d5",
+    "arm64-v8a": "8e3989fe0f8afa41947952ef9105f55033c5a7973cdf01bc2bea355a2d006ce1",
+    "x86_64": "6c123d9c6d844fd3be449946020ab6e614938b1bac6b1e9f537c0a604e006a8b"
+  },
+  "decoder_api_tests": [
+    29,
+    36
+  ],
+  "video_recovery_cpp_tests": 48,
+  "qualified_for_release": false,
+  "source_revision": "6ab88c53ef0265f5193db125ee471f1484fcd234",
+  "ci_run": 42427838758,
+  "artifact_ci_url": "https://github.com/kerbermeister/voicechat/actions/runs/42427838758",
+  "emulator_is_physical_device": false,
+  "media_qualified": false
+}
