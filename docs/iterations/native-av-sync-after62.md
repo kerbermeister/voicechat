@@ -807,3 +807,27 @@ tests plus 48 recovery cases. This candidate is isolated from main; Android
 SDK29 remains unqualified, published Android is 1.19.14(62), and Mac is
 1.19.17(65). Passing unit tests alone cannot authorize an Android SDK/app
 release: native media must still meet 80 ms, speech and actual LiveKit E2EE.
+
+
+SDK34 — кандидат, выпуск не разрешён медиаприёмкой. В реальном Mac SDK33
+наблюдены6 FrameCryptorTransformer workers с обычным QoS21. В одной
+согласованной паре на локальном SFU без искусственной CPU-квоты контроль
+дал max54,844/49,071 мс (чистая фаза/восстановление), временный OS QoS override
+в тестовом процессе —19,078/28,177 мс. Речь, required E2EE (keyless zero content,
+source checksums after key), added voice и полный120-sample capture прошли
+в обеих ветках. Это одиночный диагностический эксперимент с fixture,
+не квалификация SDK34 и не физический Android.
+
+Кандидат задаёт приоритет самому crypto worker до первых задач, сохраняя
+очередь, владение и остановку Thread. Mac использует USER_INTERACTIVE;
+Android — nice−16 для audio и−4 для video, только для собственного gettid().
+При отказе OS сохраняется существующая обработка шифрования и выдаётся
+предупреждение; незашифрованного fallback нет. Ключи, AES-GCM, ratchet,
+SIF-проверки, NetEq, видео clock guards и период синхронизации200 мс прежние.
+
+Новый macOS probe создаёт настоящие audio/video sender/receiver cryptors
+из собранного framework, без захвата или воспроизведения, и проверяет
+QOS всех4 OS threads. Точный SDK33 воспроизводит отказ2; SDK34 должен
+пройти этот тест,166 существующих native tests и реальные медиагейты.
+Прямой P2P использует DTLS-SRTP и требует отдельной проверки: новый
+приоритет FrameCryptor относится к SFrame-пути LiveKit.

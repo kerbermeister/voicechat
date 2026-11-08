@@ -489,6 +489,8 @@ def main():
         policy = verify_playout_policy(source, args.platform, report, artifact, binary)
         if policy['pass_count'] != MANIFEST['platform_policy_test_count']:
             raise RuntimeError('Incomplete native default-playout tests')
+        if args.platform == 'macos' and policy.get('compiled_crypto_priority_workers') != MANIFEST['macos_crypto_priority_worker_count']:
+            raise RuntimeError('Actual macOS crypto workers lack the required scheduling priority')
         policy['report_sha256'] = sha(report)
     verify_files(source, MANIFEST['patched_files_sha256'])
     receipt = {**MANIFEST, 'platform': args.platform,

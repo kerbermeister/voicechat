@@ -83,6 +83,19 @@ int main(void) {
     invoke([executable], work)
 
 
+def verify_macos_crypto_priority(work, framework_dir):
+    # Exercise constructors in the actual framework, not extracted source.
+    probe = Path(__file__).with_name('native_crypto_priority_probe.m')
+    executable = work / 'crypto-priority'
+    invoke(['xcrun', 'clang', '-fobjc-arc', '-Wall', '-Wextra', '-Werror',
+            '-mmacosx-version-min=12.0', '-F', framework_dir,
+            '-rpath', framework_dir, '-framework', 'Foundation',
+            '-framework', 'WebRTC', probe, '-o', executable], work)
+    invoke([executable], work)
+    return {'compiled_crypto_priority_workers': 4,
+            'crypto_priority_probe_sha256': hashlib.sha256(probe.read_bytes()).hexdigest()}
+
+
 def verify(source, platform, output, artifact=None, binary=None):
     with tempfile.TemporaryDirectory(prefix='webrtc-playout-policy-') as temporary:
         work = Path(temporary)
@@ -156,6 +169,7 @@ static NSString *configure(NSString *fieldTrials) {
                 verify_macos_receivers(work, binary.parent.parent.resolve())
                 identity['compiled_video_receiver_checked'] = True
                 identity['compiled_audio_receiver_checked'] = True
+                identity.update(verify_macos_crypto_priority(work, binary.parent.parent.resolve()))
         else:
             raise ValueError('Unknown native platform')
     report = {'platform': platform, 'test_count': len(CASES), 'pass_count': len(CASES),

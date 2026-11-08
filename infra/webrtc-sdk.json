@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "270a5d635f467243fc86861468a540df645dfc798909065a5dc90a739dc08336",
+  "patch_sha256": "63b93e08f9c573deb542515156325605ad92c8d1c7d3dc0d411ed06878ded65d",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -67,7 +67,7 @@
     "modules/video_coding/timing/timestamp_extrapolator_unittest.cc": "0f926712aa25fb3d74a7c4f76835dc46f961d10a9b82e5c51cad88e11f6f8b5a",
     "call/syncable.h": "7d05c90d59fb27c51db05d43e95b65aa8a8ebc1c4a7cbc522c5f93a00c703a9a",
     "video/video_receive_stream2.h": "a36a02346358c94eb33e19e273c06044fc19348e212d1c5bf03a305a00c81100",
-    "api/crypto/frame_crypto_transformer.cc": "6a985703ed230ff2ad64fdf318087079d8695d5f9968b1d20eba5a0cf1b5de0e",
+    "api/crypto/frame_crypto_transformer.cc": "dc5da9080d04621c44a7fe4aa69b1287d7827e9f7dc5b89703d14e263e109802",
     "api/crypto/sif_payload_unittest.cc": "26993b2e04531b7d687fc8fcc72fb8835c0a3db044f30be6544684da8869bb7e",
     "api/crypto/BUILD.gn": "6e92edc0d213f67b547de0a6729251a8df1bd63a0498de409f7e4f98aafe0ffb",
     "api/crypto/frame_crypto_transformer_unittest.cc": "3c0b3fc6e61fd9e70b5333d51ef9724237a38b37bf73a6f5b6b21c0b9d0c2f98",
@@ -104,7 +104,7 @@
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*:DecisionLogicTest.NormalOperation:DecisionLogicTest.Accelerate:DecisionLogicTest.FastAccelerate:DecisionLogicTest.PreemptiveExpand:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout:SifTransformTest.StrictDisabledCryptor*",
-  "release_artifact_version": "150.7871.04-vc33",
+  "release_artifact_version": "150.7871.04-vc34",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
   "unit_test_count": 113,
   "regressions": [
@@ -166,5 +166,6 @@
   "receive_presentation_regressions": [
     "RtpStreamsSynchronizerTest.RefreshesTargetWhileVideoReceiveTimestampStalls",
     "RtpStreamsSynchronizerTest.RefreshesTargetWhileReceiveTimestampsAreUnchanged"
-  ]
+  ],
+  "macos_crypto_priority_worker_count": 4
 }

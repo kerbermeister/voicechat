@@ -1248,7 +1248,60 @@
 
 --- a/api/crypto/frame_crypto_transformer.cc
 +++ b/api/crypto/frame_crypto_transformer.cc
-@@ -517,7 +517,9 @@
+@@ -28,6 +28,15 @@
+ #include <array>
+ #include <iostream>
+ #include <string>
++
++#if defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)
++#include <pthread.h>
++#include <sys/qos.h>
++#elif defined(WEBRTC_ANDROID)
++#include <cerrno>
++#include <sys/resource.h>
++#include <unistd.h>
++#endif
+
+ #include "absl/container/inlined_vector.h"
+ #include "absl/types/optional.h"
+@@ -373,6 +382,21 @@
+ }
+
+ namespace {
++
++#if (defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)) || defined(WEBRTC_ANDROID)
++// Encryption and decryption must keep pace with the media pipeline when the
++// application loses focus or competes with other interactive work.
++int SetFrameCryptoThreadPriority(bool audio) {
++#if defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)
++  static_cast<void>(audio);
++  return pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
++#elif defined(WEBRTC_ANDROID)
++  const int priority = audio ? -16 : -4;
++  return setpriority(PRIO_PROCESS, static_cast<id_t>(gettid()), priority) == 0
++             ? 0 : errno;
++#endif
++}
++#endif
+
+ // Blank frames the LiveKit SFU injects on mute and track close, byte-for-byte
+ // from livekit-server pkg/sfu/downtrack.go (client-sdk-js: sifPayload.ts).
+@@ -445,6 +469,14 @@
+   RTC_DCHECK(key_provider_ != nullptr);
+   thread_->SetName("FrameCryptorTransformer", this);
+   thread_->Start();
++#if (defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)) || defined(WEBRTC_ANDROID)
++  thread_->PostTask([audio = type == MediaType::kAudioFrame] {
++    const int result = SetFrameCryptoThreadPriority(audio);
++    if (result != 0) {
++      RTC_LOG(LS_WARNING) << "Frame cryptor thread priority unavailable: " << result;
++    }
++  });
++#endif
+ }
+
+ FrameCryptorTransformer::~FrameCryptorTransformer() {
+@@ -517,7 +549,9 @@
      return;
    }
    if (!enabled_cryption) {
@@ -1259,7 +1312,7 @@
      return;
    }
 
-@@ -640,7 +642,9 @@
+@@ -640,7 +674,9 @@
      return;
    }
    if (!enabled_cryption) {
@@ -1270,7 +1323,7 @@
      return;
    }
 
-@@ -666,6 +670,20 @@
+@@ -666,6 +702,20 @@
          }
          return;
        }
