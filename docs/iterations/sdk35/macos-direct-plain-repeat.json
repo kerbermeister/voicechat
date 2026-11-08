@@ -1,0 +1,87 @@
+{
+  "date": "2026-11-08",
+  "trial": "sdk35-macos-p2p-plain-repeat-1",
+  "source_revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "version": "150.7871.04-vc35",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "347479760ade78e190baf16f2b2be95a3147dcd5e3d32149a7f849ab6f290d2e",
+    "ci_signed_sha256": "210886f22fb2f22db3daf6c87145f4d4bfcf8db1cb09281681a5f6bc101e0a01",
+    "app_signed_sha256": "acb4ed7cedf1a0e2e75768377306324fa8ba4e7b7741c48281599a049b4f8d2b",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "1802e4a2-ff7c-38b7-8514-4152728ee630",
+  "sample_count": 120,
+  "product_direct_audio": true,
+  "timing": {
+    "outcome": "pass",
+    "clean": {
+      "count": 7,
+      "max_abs_ms": 42.60045834234916,
+      "max_source_corrected_abs_ms": 44.8245833395049
+    },
+    "recovery": {
+      "count": 27,
+      "max_abs_ms": 41.55287498724647,
+      "max_source_corrected_abs_ms": 42.82787497504614
+    }
+  },
+  "speech": "pass",
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 7,
+      "max_added_voice_delay_ms": 10.618208354571834
+    },
+    "video_paused": {
+      "count": 4,
+      "max_added_voice_delay_ms": 10.763458325527608
+    },
+    "recovery": {
+      "count": 27,
+      "max_added_voice_delay_ms": 10.895083338255063
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      175698.28257512505,
+      175815.05151950003
+    ],
+    "physical_speaker_measured": false,
+    "platform": "macos",
+    "complete_output_window": true,
+    "active_callback_gaps": [],
+    "output_callbacks": 12518,
+    "max_all_callback_gap_ms": 1345.6002500024624,
+    "pass": true
+  },
+  "crypto_control": {
+    "protocol": "DTLS-SRTP",
+    "positive_dtls_connected": true,
+    "srtp_cipher": "AES_CM_128_HMAC_SHA1_80",
+    "negative_dtls_failed": true,
+    "negative_received_media_packets": 0
+  },
+  "pass": true,
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "fixture_sources_sha256": {
+    "native_p2p_paired_speech_test.dart": "4febd81ed2dada588dcf8259be2dd627a2178d8632214430b0ac89be1609ae83",
+    "native_p2p_av_marker_test.dart": "068b62b2c8a3f7c318022436a609d5900707df50e0f5a022d4bcedb04151825e",
+    "native_av_marker_test.dart": "1d0365dd0d59a8b567ea6571ee0efb68abfc7368daf94c9d6f8847026caf3744",
+    "native_av_marker.swift": "e598784af2d54972608397037f9214d23874a54745ce2bbe214bddee8bae4d47"
+  },
+  "diagnostic_fast_retransmissions": false,
+  "media_gates_pass": true,
+  "release_package_qualified": false,
+  "evidence_sha256": {
+    ".media.json": "fae21274c4b5ddb1e4168a7f0a18eeae2651cea8a963f362870b90f38e9cc197",
+    ".control.media.json": "25e809ce1636a8ee324f1a2bfd6c8759f08d215adbcc65fb821a4e6386cf7309",
+    ".analysis.json": "ca967c98fc7326b56d67f4cd864c0805609bd3a04c647197967f07104d4ba902",
+    ".speech.json": "d829a2f8bbeb844b23d4a85eb543938e6725ffad353241b0f2f71b4beb317c9e",
+    ".diagnostic.json": "c57169f80aa37753eb611fcf79440660656dad55d23b4b9aed0d50711c81d99c"
+  }
+}

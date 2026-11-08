@@ -1,0 +1,79 @@
+{
+  "date": "2026-11-08",
+  "trial": "sdk35-macos-p2p-packet-timing-1",
+  "source_revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "version": "150.7871.04-vc35",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "347479760ade78e190baf16f2b2be95a3147dcd5e3d32149a7f849ab6f290d2e",
+    "ci_signed_sha256": "210886f22fb2f22db3daf6c87145f4d4bfcf8db1cb09281681a5f6bc101e0a01",
+    "app_signed_sha256": "acb4ed7cedf1a0e2e75768377306324fa8ba4e7b7741c48281599a049b4f8d2b",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "1802e4a2-ff7c-38b7-8514-4152728ee630",
+  "sample_count": 120,
+  "product_direct_audio": true,
+  "timing": {
+    "outcome": "pass",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 40.24137498345226,
+      "max_source_corrected_abs_ms": 42.78712498489767
+    },
+    "recovery": {
+      "count": 27,
+      "max_abs_ms": 41.84229165548459,
+      "max_source_corrected_abs_ms": 42.64341664384119
+    }
+  },
+  "speech": "pass",
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 22.13937501073815
+    },
+    "video_paused": {
+      "count": 4,
+      "max_added_voice_delay_ms": 10.575833352049813
+    },
+    "recovery": {
+      "count": 27,
+      "max_added_voice_delay_ms": 10.543583310209215
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      173218.28054408336,
+      173334.94431883338
+    ],
+    "physical_speaker_measured": false,
+    "platform": "macos",
+    "complete_output_window": true,
+    "active_callback_gaps": [],
+    "output_callbacks": 12483,
+    "max_all_callback_gap_ms": 1255.0913333252538,
+    "pass": true
+  },
+  "crypto_control": {
+    "protocol": "DTLS-SRTP",
+    "positive_dtls_connected": true,
+    "srtp_cipher": "AES_CM_128_HMAC_SHA1_80",
+    "negative_dtls_failed": true,
+    "negative_received_media_packets": 0
+  },
+  "pass": true,
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "release_package_qualified": false,
+  "evidence_sha256": {
+    ".media.json": "90b52ce0a5ad7a654acaceba7c945f1fbdaaf07c8658c26b66f388bfa1f05aba",
+    ".control.media.json": "5a38a37743fc0bc11dcb64a958e28df364e548fcf8132621a7dd05b0c960fe97",
+    ".analysis.json": "5ee8037d829bcf421bfb1e1116b060a08d64335b7cb13aa10aab57d3b8fb852a",
+    ".speech.json": "a9992d3b115aa65c2bdc7f1936aaea05b7e6563105cc0ef2d19815abf17b3bbc",
+    ".diagnostic.json": "9607c761bf49d31d80b629c666ba56ef71e5aaca7b0ff93f1712baa4d2e35212"
+  }
+}

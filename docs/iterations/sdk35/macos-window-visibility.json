@@ -1,0 +1,157 @@
+{
+  "source_revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "version": "150.7871.04-vc35",
+  "app_baseline_revision": "b416818adc69d9d0515d2a2b3156089636a86671",
+  "app_call_runtime_source_sha256": {
+    "vendor/livekit_client/lib/src/core/room.dart": "802b6749539bd3b0de239c9e9e81b2b44173d80a31de80ffebdf038768f8a1de",
+    "vendor/livekit_client/lib/src/managers/event.dart": "3d8240dda9a0d381b44f5f85e5673ac612d3554bd1b908807c1c68f38512de41",
+    "apps/client/macos/Compatibility/FlutterRTCVideoRenderer.m": "c1f9e532f152f77d17f9206ca15e29ed20ca1cb1c619397f7ef120141cc9a8f5"
+  },
+  "fixture_sources_sha256": {
+    "apps/client/integration_test/native_av_marker_test.dart": "36663a97f847381430989cc8728d9098706fb70013c926fcc096d18394eac16d",
+    "apps/client/integration_test/native_av_marker.swift": "0fc928b021601f970a05db729ba942e44399d83b6fe3fdb89e58ff4aa8f60d70",
+    "apps/client/tool/native_av_fixture.py": "50ba55bcc4db3c63fe0454cee57d0a019f6690e1a64ad8e837ef5804ca096186",
+    "apps/client/tool/check_sdk_key_publication.py": "05099fb5e510e0a80dd6248979a91823af2b181531b70055860d20d034127d27"
+  },
+  "actual_app_sdk_sha256": "acb4ed7cedf1a0e2e75768377306324fa8ba4e7b7741c48281599a049b4f8d2b",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "347479760ade78e190baf16f2b2be95a3147dcd5e3d32149a7f849ab6f290d2e",
+    "ci_signed_sha256": "210886f22fb2f22db3daf6c87145f4d4bfcf8db1cb09281681a5f6bc101e0a01",
+    "app_signed_sha256": "acb4ed7cedf1a0e2e75768377306324fa8ba4e7b7741c48281599a049b4f8d2b",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "1802e4a2-ff7c-38b7-8514-4152728ee630",
+  "trial": "sdk35-macos-window-visibility-1",
+  "pass": true,
+  "media_gates_pass": true,
+  "diagnostic_only": false,
+  "timing": {
+    "outcome": "pass",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 30.940916680265218,
+      "max_source_corrected_abs_ms": 31.958375009708107
+    },
+    "recovery": {
+      "count": 26,
+      "max_abs_ms": 29.385083325905725,
+      "max_source_corrected_abs_ms": 30.468708340777084
+    }
+  },
+  "speech": "pass",
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 12.667958333622664
+    },
+    "video_paused": {
+      "count": 3,
+      "max_added_voice_delay_ms": -32.287374982843176
+    },
+    "recovery": {
+      "count": 26,
+      "max_added_voice_delay_ms": -9.048041654750705
+    }
+  },
+  "missing_key_gate": {
+    "content": {
+      "control_audio_peak": 0.0,
+      "audio_chunks": 304,
+      "video_markers": 0,
+      "audio_peak": 0.0
+    },
+    "audio": {
+      "packets": 136,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 183,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 135,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      175993.52402495837,
+      176110.05647120837
+    ],
+    "physical_speaker_measured": false,
+    "platform": "macos",
+    "complete_output_window": true,
+    "active_callback_gaps": [],
+    "output_callbacks": 12595,
+    "max_all_callback_gap_ms": 11.657583323540166,
+    "pass": true
+  },
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "release_package_qualified": false,
+  "evidence_sha256": {
+    ".media.json": "075dcb2a7cff0053d0bdc58468bb407bf24923fc192a455b581fc296bf9b23a5",
+    ".control.media.json": "e7de7f1f7bd039561a0a0ab2f410e81c67f60557e758eac86de02d3e30eec7c4",
+    ".analysis.json": "cfe456e2ba2ad36e528b01e0aefc2d908841d8d4525bcf0db23278d8093e3d78",
+    ".speech.json": "d6f88975cf0800c40d9aeb23b7e14ec741565bd306923bd59a2e02531d54dfd6",
+    ".diagnostic.json": "2708e3e67f2f53e96b8e4cab1413685c2e96269ccf3e50aa36e4d97a0204580c"
+  },
+  "app_focus_events": [
+    {
+      "active": true,
+      "time": 175981.81565508334,
+      "hidden": false,
+      "event": "start"
+    },
+    {
+      "event": "hidden",
+      "active": true,
+      "hidden": true,
+      "time": 175998.131426875
+    },
+    {
+      "event": "inactive",
+      "active": false,
+      "hidden": true,
+      "time": 175998.1538701667
+    },
+    {
+      "time": 175998.9425311667,
+      "active": false,
+      "event": "visible",
+      "hidden": false
+    },
+    {
+      "time": 176033.14157358336,
+      "event": "hidden",
+      "hidden": true,
+      "active": false
+    },
+    {
+      "event": "visible",
+      "time": 176033.98263358333,
+      "active": false,
+      "hidden": false
+    },
+    {
+      "hidden": true,
+      "time": 176073.14074562502,
+      "active": false,
+      "event": "hidden"
+    },
+    {
+      "event": "visible",
+      "time": 176073.97966383334,
+      "hidden": false,
+      "active": false
+    }
+  ],
+  "actual_hide_unhide_cycles": 3,
+  "user_foreground_app_not_activated": true
+}
