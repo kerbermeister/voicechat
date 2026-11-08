@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "db0b576520f29064d3a3ad787800a8a07e839a7720ddc5deb076462765b8dbc2",
+  "patch_sha256": "1ec68186abc4be8fe6b3ed32109f28f7b04ddc2dca1868af8f091392c25133f6",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -56,7 +56,8 @@
     "sdk/android/src/jni/audio_device/audio_device_module.h": "1ab814189ff133626068536a0d1df5a2d369db66b2c441be2efc2d54d963b931",
     "sdk/android/src/jni/audio_device/audio_track_jni.cc": "096b454a81ee2019e471dafd79d0ecb53bb464afd4b414ef5f919d7452838da4",
     "sdk/android/src/jni/audio_device/audio_track_jni.h": "d5bb1563b655b0008c1e2cec7ab3bfb13cbe4e6d03b2b84f42bc93e74df41846",
-    "sdk/android/src/java/org/webrtc/audio/WebRtcAudioTrack.java": "96c77cbea46cb507e22c39118cbcff6989d7473d1061e3a5a09b46a631d8560b"
+    "sdk/android/src/java/org/webrtc/audio/WebRtcAudioTrack.java": "96c77cbea46cb507e22c39118cbcff6989d7473d1061e3a5a09b46a631d8560b",
+    "video/render/video_render_frames.h": "eb18ee3b361610e706579eead16363c538d875f4e806d12b7bb702659b683c32"
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "ef3117f70c50fba5acb835251acb9051b4adce53f5e9a8491d0793b2f848e939",
@@ -83,11 +84,11 @@
     "video/rtp_video_stream_receiver2.cc": "65211aec5005911c147645bd7a6874922d67c337f42a4e88b72e873035c2a505",
     "video/rtp_video_stream_receiver2.h": "f7e3571def831a25d2a6b6d3ea3e63e6e3bd28066fa49ba900db9ac76f3a22fe",
     "video/rtp_video_stream_receiver2_unittest.cc": "1b65e7b5c8c621c5aeb7c0edacf1f882cc72e8c3316a5364dc2489d90c4ca2fa",
-    "video/render/video_render_frames.cc": "35120bf3db5c416b46397f0d5d758e8bc6a276ce514103450611f4f7ce6bd066",
-    "video/render/incoming_video_stream.h": "c17cfaaa87066d89b8412135754e978b45888126208593ee9c52d536bc05e36d",
-    "video/render/incoming_video_stream.cc": "6c8c895c5e14bf8085db025ebeb3c9eab43b490f783e9657590212bbb0ffc9a4",
-    "video/render/BUILD.gn": "8bd71128b3e212d2dc7d274c585533358fa183a96bf8b52fe8d096ef6dbfff40",
-    "video/render/incoming_video_stream_unittest.cc": "3b32b50bace182fee79c3823ec1b9362f0b8fede38d68bc55ca8a1e91d171857",
+    "video/render/video_render_frames.cc": "1f3e9dbdcca0c4b9b743c612975761fb59f217f6d587b92fa28d7b303c2474ea",
+    "video/render/incoming_video_stream.h": "112ffcb330366d82d9ccac5c3d3de6ab495581e7af1703bb25e9ee3723c9738f",
+    "video/render/incoming_video_stream.cc": "4fd97de8bc05e7acb2c57b1c326e0decdf228cac1b60fa331e1631b589ff6784",
+    "video/render/BUILD.gn": "8f314b9c2bb348457883c2b443b4d5d45efb1d55e2f271701b61005b1ef898af",
+    "video/render/incoming_video_stream_unittest.cc": "6fcd37859825cd7a6d18468c7d11bdc69f435036b74a64ed066e60449fae289a",
     "modules/video_coding/nack_requester.h": "d8596a89c22813649943f510fc9dd7706b0d8b3b095e4822a55cc2060ee25c85",
     "modules/video_coding/nack_requester.cc": "2d562a71395e89ff48fad5baaf9dd4e4e54176ba212b4c06c5e1a4a7e77dd012",
     "modules/video_coding/nack_requester_unittest.cc": "67d23db3fb7969730d6dc56a3391d8ee19e44e21cf6860a26862603a12b26cb4",
@@ -113,11 +114,12 @@
     "sdk/android/src/jni/audio_device/audio_track_jni.cc": "49e72d23a7aebe2c46a478106a22556e9f620ba029cebff40f3c08587fcb787c",
     "sdk/android/src/jni/audio_device/audio_track_jni.h": "a12142cdb85cb736e009a62a40c3907ba4191cbe60421f2ed5812436ecf72c49",
     "sdk/android/src/java/org/webrtc/audio/WebRtcAudioTrack.java": "898195d99ad55068291b833d4c4d657d6ed3a274e39e2763c9ba554b62a126a5",
-    "sdk/android/tests/src/org/webrtc/audio/WebRtcAudioTrackDelayTest.java": "09b8cbb8e233fd3dff3f6b0db49b88dece8707d2b3975c2b2e69d363428e66f1"
+    "sdk/android/tests/src/org/webrtc/audio/WebRtcAudioTrackDelayTest.java": "09b8cbb8e233fd3dff3f6b0db49b88dece8707d2b3975c2b2e69d363428e66f1",
+    "video/render/video_render_frames.h": "9a6109609bba63447795b91c1137ab56dd90ea9385d096a7665de09fc38a3fde"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*:DecisionLogicTest.NormalOperation:DecisionLogicTest.Accelerate:DecisionLogicTest.FastAccelerate:DecisionLogicTest.PreemptiveExpand:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout:SifTransformTest.StrictDisabledCryptor*",
-  "release_artifact_version": "150.7871.04-vc35",
+  "release_artifact_version": "150.7871.04-vc36",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
   "unit_test_count": 117,
   "regressions": [
@@ -159,7 +161,7 @@
   "native_video_playout_ms": 0,
   "platform_policy_test_count": 10,
   "native_video_playout_max_ms": 10000,
-  "video_recovery_test_count": 53,
+  "video_recovery_test_count": 56,
   "video_recovery_regressions": [
     "RtpVideoStreamReceiver2Test.RequestsKeyframeWhenVideoResumesAfterLoss",
     "IncomingVideoStreamTest.SupersedesFutureDeadlineAfterRtpClockRecovery",
@@ -174,7 +176,8 @@
     "VideoStreamBufferController/VideoStreamBufferControllerTest.ChangedSyncDelayWaitsForNewDeadline/UnsyncedDecoding",
     "VideoStreamBufferController/VideoStreamBufferControllerTest.RtpClockRecoveryRefreshesQueuedDeadline/SyncDecoding",
     "VideoStreamBufferController/VideoStreamBufferControllerTest.RtpClockRecoveryRefreshesQueuedDeadline/UnsyncedDecoding",
-    "RtpVideoStreamReceiver2Test.RequiredEncryptionAllowsEnforcingTransformer"
+    "RtpVideoStreamReceiver2Test.RequiredEncryptionAllowsEnforcingTransformer",
+    "IncomingVideoStreamTest.CopiesDelayedTextureWithoutPixelOrMetadataLoss"
   ],
   "receive_presentation_regressions": [
     "RtpStreamsSynchronizerTest.RefreshesTargetWhileVideoReceiveTimestampStalls",

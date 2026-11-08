@@ -1947,19 +1947,17 @@
  #include "system_wrappers/include/metrics.h"
 
  namespace webrtc {
-@@ -26,6 +27,11 @@
+@@ -26,7 +27,8 @@
  const int kOldRenderTimestampMS = 500;
  // Don't render frames with timestamp more than 10s into the future.
  const int kFutureRenderTimestampMS = 10000;
+-
 +// A large deadline reversal on newer RTP can follow recovery of the RTP clock.
 +constexpr int kRenderTimelineDiscontinuityMs = 500;
-+// A decoder may have only one native texture available. A long render wait
-+// can retain that texture and prevent the next frame from reaching this queue.
-+constexpr int kMaxNativeFrameHoldMs = 2000;
-
  const uint32_t kEventMaxWaitTimeMs = 200;
  const uint32_t kMinRenderDelayMs = 10;
-@@ -71,14 +77,38 @@
+ const uint32_t kMaxRenderDelayMs = 500;
+@@ -71,14 +73,38 @@
      return -1;
    }
 
@@ -2006,31 +2004,126 @@
    last_render_time_ms_ = new_frame.render_time_ms();
 --- a/video/render/incoming_video_stream.h
 +++ b/video/render/incoming_video_stream.h
-@@ -42,6 +42,7 @@
+@@ -18,6 +18,7 @@
+ #include "api/environment/environment.h"
+ #include "api/sequence_checker.h"
+ #include "api/task_queue/task_queue_base.h"
++#include "api/units/timestamp.h"
+ #include "api/video/video_frame.h"
+ #include "api/video/video_sink_interface.h"
+ #include "rtc_base/race_checker.h"
+@@ -26,12 +27,17 @@
+
+ namespace webrtc {
+
++class Clock;
++
+ class IncomingVideoStream : public VideoSinkInterface<VideoFrame> {
+  public:
+   IncomingVideoStream(const Environment& env,
+                       int32_t delay_ms,
+                       VideoSinkInterface<VideoFrame>* callback);
+   ~IncomingVideoStream() override;
++
++  static VideoFrame CopyDelayedNativeFrame(const VideoFrame& frame,
++                                          Timestamp now);
+
+  private:
+   void OnFrame(const VideoFrame& video_frame) override;
+@@ -42,6 +48,10 @@
 
    VideoRenderFrames render_buffers_ RTC_GUARDED_BY(incoming_render_queue_);
    VideoSinkInterface<VideoFrame>* const callback_;
++#if defined(WEBRTC_ANDROID)
++  Clock* const clock_;
++#endif
 +  uint64_t render_generation_ RTC_GUARDED_BY(incoming_render_queue_) = 0;
    std::unique_ptr<TaskQueueBase, TaskQueueDeleter> incoming_render_queue_;
  };
 
 --- a/video/render/incoming_video_stream.cc
 +++ b/video/render/incoming_video_stream.cc
-@@ -59,8 +59,12 @@
-   // OnFrame to take its frame argument by value instead of const reference.
-   incoming_render_queue_->PostTask([this, video_frame = video_frame]() mutable {
-     RTC_DCHECK_RUN_ON(incoming_render_queue_.get());
--    if (render_buffers_.AddFrame(std::move(video_frame)) == 1)
-+    if (render_buffers_.AddFrame(std::move(video_frame)) == 1) {
-+      // A corrected timeline can replace the entire queue while its old
-+      // delayed task is still pending.
-+      ++render_generation_;
-       Dequeue();
-+    }
-   });
+@@ -19,11 +19,13 @@
+ #include "api/sequence_checker.h"
+ #include "api/task_queue/task_queue_factory.h"
+ #include "api/units/time_delta.h"
++#include "api/video/i420_buffer.h"
+ #include "api/video/video_frame.h"
+ #include "api/video/video_sink_interface.h"
+ #include "rtc_base/checks.h"
+ #include "rtc_base/race_checker.h"
+ #include "rtc_base/trace_event.h"
++#include "system_wrappers/include/clock.h"
+ #include "video/render/video_render_frames.h"
+
+ namespace webrtc {
+@@ -34,6 +36,9 @@
+     VideoSinkInterface<VideoFrame>* callback)
+     : render_buffers_(env, delay_ms),
+       callback_(callback),
++#if defined(WEBRTC_ANDROID)
++      clock_(&env.clock()),
++#endif
+       incoming_render_queue_(env.task_queue_factory().CreateTaskQueue(
+           "IncomingVideoStreamQueue",
+           env.field_trials().IsEnabled("WebRTC-MediaTaskQueuePriorities")
+@@ -50,18 +55,47 @@
+   incoming_render_queue_.release();
  }
 
-@@ -74,7 +78,13 @@
++VideoFrame IncomingVideoStream::CopyDelayedNativeFrame(const VideoFrame& frame,
++                                                      Timestamp now) {
++  if (!now.IsFinite() ||
++      frame.video_frame_buffer()->type() != VideoFrameBuffer::Type::kNative) {
++    return frame;
++  }
++  const int64_t wait_ms = frame.render_time_ms() - now.ms();
++  if (wait_ms <= 20 || wait_ms > VideoRenderFrames::kMaxNativeFrameHoldMs)
++    return frame;
++
++  // Android's SurfaceTextureHelper has one texture in flight. Holding it
++  // beyond the normal render tail can stop delivery of the next decoded frame.
++  auto pixels = frame.video_frame_buffer()->ToI420();
++  if (!pixels)
++    return frame;
++  VideoFrame copy = frame;
++  // ToI420 may still alias the decoder's storage; detach all three planes.
++  copy.set_video_frame_buffer(I420Buffer::Copy(*pixels));
++  return copy;
++}
++
+ void IncomingVideoStream::OnFrame(const VideoFrame& video_frame) {
+   TRACE_EVENT0("webrtc", "IncomingVideoStream::OnFrame");
+   RTC_CHECK_RUNS_SERIALIZED(&decoder_race_checker_);
+   RTC_DCHECK(!incoming_render_queue_->IsCurrent());
+-  // TODO(srte): Using video_frame = std::move(video_frame) would move the frame
+-  // into the lambda instead of copying it, but it doesn't work unless we change
+-  // OnFrame to take its frame argument by value instead of const reference.
+-  incoming_render_queue_->PostTask([this, video_frame = video_frame]() mutable {
+-    RTC_DCHECK_RUN_ON(incoming_render_queue_.get());
+-    if (render_buffers_.AddFrame(std::move(video_frame)) == 1)
+-      Dequeue();
+-  });
++#if defined(WEBRTC_ANDROID)
++  VideoFrame queued_frame = CopyDelayedNativeFrame(video_frame,
++                                                  clock_->CurrentTime());
++#else
++  VideoFrame queued_frame = video_frame;
++#endif
++  incoming_render_queue_->PostTask(
++      [this, video_frame = std::move(queued_frame)]() mutable {
++        RTC_DCHECK_RUN_ON(incoming_render_queue_.get());
++        if (render_buffers_.AddFrame(std::move(video_frame)) == 1) {
++          // A corrected timeline can replace the entire queue while its old
++          // delayed task is still pending.
++          ++render_generation_;
++          Dequeue();
++        }
++      });
+ }
+
+ void IncomingVideoStream::Dequeue() {
+@@ -74,7 +108,13 @@
    if (render_buffers_.HasPendingFrames()) {
      uint32_t wait_time = render_buffers_.TimeToNextFrameRelease();
      incoming_render_queue_->PostDelayedHighPrecisionTask(
@@ -2047,7 +2140,21 @@
 
 --- a/video/render/BUILD.gn
 +++ b/video/render/BUILD.gn
-@@ -43,6 +43,7 @@
+@@ -22,11 +22,13 @@
+     "../../api/environment",
+     "../../api/task_queue",
+     "../../api/units:time_delta",
++    "../../api/units:timestamp",
+     "../../api/video:video_frame",
+     "../../rtc_base:checks",
+     "../../rtc_base:event_tracer",
+     "../../rtc_base:macromagic",
+     "../../rtc_base:race_checker",
++    "../../system_wrappers",
+   ]
+ }
+
+@@ -43,6 +45,7 @@
      "../../api/video:video_frame",
      "../../rtc_base:checks",
      "../../rtc_base:logging",
@@ -2057,7 +2164,7 @@
  }
 --- /dev/null
 +++ b/video/render/incoming_video_stream_unittest.cc
-@@ -0,0 +1,126 @@
+@@ -0,0 +1,227 @@
 +/*
 + *  Copyright (c) 2026 The WebRTC project authors. All Rights Reserved.
 + *
@@ -2071,6 +2178,7 @@
 +#include "video/render/incoming_video_stream.h"
 +
 +#include <cstdint>
++#include <optional>
 +#include <utility>
 +#include <vector>
 +
@@ -2091,18 +2199,32 @@
 +
 +class TrackedNativeBuffer : public VideoFrameBuffer {
 + public:
-+  explicit TrackedNativeBuffer(bool& released) : released_(released) {}
++  explicit TrackedNativeBuffer(bool& released,
++                               scoped_refptr<I420Buffer> pixels = nullptr,
++                               bool mapping_available = true)
++      : released_(released),
++        pixels_(std::move(pixels)),
++        mapping_available_(mapping_available) {
++    if (!pixels_) {
++      pixels_ = I420Buffer::Create(2, 2);
++      I420Buffer::SetBlack(pixels_.get());
++    }
++  }
 +  ~TrackedNativeBuffer() override { released_ = true; }
 +
 +  Type type() const override { return Type::kNative; }
-+  int width() const override { return 2; }
-+  int height() const override { return 2; }
++  int width() const override { return pixels_->width(); }
++  int height() const override { return pixels_->height(); }
 +  scoped_refptr<I420BufferInterface> ToI420() override {
-+    return I420Buffer::Create(width(), height());
++    if (!mapping_available_)
++      return nullptr;
++    return pixels_;
 +  }
 +
 + private:
 +  bool& released_;
++  scoped_refptr<I420Buffer> pixels_;
++  const bool mapping_available_;
 +};
 +
 +class IncomingVideoStreamTest : public ::testing::Test,
@@ -2167,10 +2289,96 @@
 +TEST_F(IncomingVideoStreamTest, KeepsNativeTextureUntilNormalDeadline) {
 +  AddFrame(9000, TimeDelta::Millis(130),
 +           make_ref_counted<TrackedNativeBuffer>(buffer_released_));
++#if defined(WEBRTC_ANDROID)
++  EXPECT_TRUE(buffer_released_);
++#else
 +  EXPECT_FALSE(buffer_released_);
++#endif
 +  time_.AdvanceTime(TimeDelta::Millis(130));
 +  EXPECT_TRUE(buffer_released_);
 +  EXPECT_EQ(rendered_, std::vector<uint32_t>{9000});
++}
++
++TEST_F(IncomingVideoStreamTest, CopiesDelayedTextureWithoutPixelOrMetadataLoss) {
++  auto pixels = I420Buffer::Create(3, 3, 8, 4, 4);
++  for (int y = 0; y < 3; ++y)
++    for (int x = 0; x < 3; ++x)
++      pixels->MutableDataY()[y * pixels->StrideY() + x] = 20 + y * 3 + x;
++  for (int y = 0; y < 2; ++y) {
++    for (int x = 0; x < 2; ++x) {
++      pixels->MutableDataU()[y * pixels->StrideU() + x] = 100 + y * 2 + x;
++      pixels->MutableDataV()[y * pixels->StrideV() + x] = 140 + y * 2 + x;
++    }
++  }
++  std::optional<VideoFrame> prepared;
++  {
++    auto frame = VideoFrame::Builder()
++                     .set_video_frame_buffer(make_ref_counted<TrackedNativeBuffer>(
++                         buffer_released_, pixels))
++                     .set_timestamp_ms(100130)
++                     .set_timestamp_rtp(9000)
++                     .set_ntp_time_ms(456)
++                     .set_rotation(kVideoRotation_90)
++                     .set_id(42)
++                     .build();
++    prepared = IncomingVideoStream::CopyDelayedNativeFrame(
++        frame, Timestamp::Seconds(100));
++  }
++  EXPECT_TRUE(buffer_released_);
++  ASSERT_EQ(prepared->video_frame_buffer()->type(), VideoFrameBuffer::Type::kI420);
++  const auto* copy = prepared->video_frame_buffer()->GetI420();
++  EXPECT_NE(copy->DataY(), pixels->DataY());
++  EXPECT_EQ(copy->width(), pixels->width());
++  EXPECT_EQ(copy->height(), pixels->height());
++  for (int y = 0; y < 3; ++y)
++    for (int x = 0; x < 3; ++x)
++      EXPECT_EQ(copy->DataY()[y * copy->StrideY() + x],
++                pixels->DataY()[y * pixels->StrideY() + x]);
++  for (int y = 0; y < 2; ++y) {
++    for (int x = 0; x < 2; ++x) {
++      EXPECT_EQ(copy->DataU()[y * copy->StrideU() + x],
++                pixels->DataU()[y * pixels->StrideU() + x]);
++      EXPECT_EQ(copy->DataV()[y * copy->StrideV() + x],
++                pixels->DataV()[y * pixels->StrideV() + x]);
++    }
++  }
++  EXPECT_EQ(prepared->render_time_ms(), 100130);
++  EXPECT_EQ(prepared->rtp_timestamp(), 9000u);
++  EXPECT_EQ(prepared->ntp_time_ms(), 456);
++  EXPECT_EQ(prepared->rotation(), kVideoRotation_90);
++  EXPECT_EQ(prepared->id(), 42);
++}
++
++TEST_F(IncomingVideoStreamTest, KeepsImmediateCpuAndFarFutureBufferPolicies) {
++  for (int delay_ms : {0, 20, 2001}) {
++    auto frame = VideoFrame::Builder()
++                     .set_video_frame_buffer(make_ref_counted<TrackedNativeBuffer>(
++                         buffer_released_))
++                     .set_timestamp_ms(100000 + delay_ms)
++                     .build();
++    auto prepared = IncomingVideoStream::CopyDelayedNativeFrame(
++        frame, Timestamp::Seconds(100));
++    EXPECT_EQ(prepared.video_frame_buffer(), frame.video_frame_buffer());
++  }
++  auto frame = VideoFrame::Builder()
++                   .set_video_frame_buffer(I420Buffer::Create(3, 3))
++                   .set_timestamp_ms(100130)
++                   .build();
++  auto prepared = IncomingVideoStream::CopyDelayedNativeFrame(
++      frame, Timestamp::Seconds(100));
++  EXPECT_EQ(prepared.video_frame_buffer(), frame.video_frame_buffer());
++}
++
++TEST_F(IncomingVideoStreamTest, KeepsNativeBufferWhenMappingIsUnavailable) {
++  auto frame = VideoFrame::Builder()
++                   .set_video_frame_buffer(make_ref_counted<TrackedNativeBuffer>(
++                       buffer_released_, nullptr, false))
++                   .set_timestamp_ms(100130)
++                   .build();
++  auto prepared = IncomingVideoStream::CopyDelayedNativeFrame(
++      frame, Timestamp::Seconds(100));
++  EXPECT_EQ(prepared.video_frame_buffer(), frame.video_frame_buffer());
++  EXPECT_EQ(prepared.render_time_ms(), frame.render_time_ms());
 +}
 +
 +TEST_F(IncomingVideoStreamTest, KeepsNormalPlayoutAndRejectsSmallReordering) {
@@ -3114,3 +3322,15 @@
 +    return timestamp;
 +  }
 +}
+--- a/video/render/video_render_frames.h
++++ b/video/render/video_render_frames.h
+@@ -25,6 +25,9 @@
+ // Class definitions
+ class VideoRenderFrames {
+  public:
++  // A far-future native frame must not monopolize a decoder texture.
++  static constexpr int kMaxNativeFrameHoldMs = 2000;
++
+   VideoRenderFrames(const Environment& env, uint32_t render_delay_ms);
+   VideoRenderFrames(const VideoRenderFrames&) = delete;
+   ~VideoRenderFrames();
