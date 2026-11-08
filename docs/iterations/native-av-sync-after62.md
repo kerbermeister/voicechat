@@ -1897,3 +1897,19 @@ uint16 сохраняют прежнюю запасную оценку. Пров
 ≤80 мс, речи, required E2EE, подписанных пакетов и штатного обновления.
 
 Свидетельства последнего сравнения: [Mac observe](sdk33/macos-native-crypto-qos-observe.json), [Mac scoped QoS override](sdk33/macos-native-crypto-qos-raise.json), [Android: оставшаяся очередь вывода](sdk33/android-no-cpu-quota-output-clock.json). Кандидат SDK34 уточнён в 24120d242c6704dbb47d258887a4c56ce53f5219; полный CI [42456803236](https://github.com/kerbermeister/voicechat/actions/runs/42456803236) начат. Его native/Java/platform/media-проверки ещё не закончены, версия не опубликована.
+
+
+Прямой P2P SDK33→Android, 2026-11-08, тот же production media stream
+(без старого separateVideoSync), неизменное разрешение запрошено через
+MAINTAIN_RESOLUTION, receiver default playout0: полный120-sample прогон
+завершён. decoded A/V raw57,330/71,448 мс, corrected56,333/70,417;
+речь во всех фазах побитово совпала с одновременным обычным звонком,
+added voice прошёл. Декодер: max active pause0, худшая готовая очередь181 мс,
+deadline от arrival197 мс, decode7 мс. DTLS-SRTP: отрицательный fingerprint
+не подключился и не принял медиапакеты; положительный подключился,
+source identity подтверждён. Это отдельный crypto-путь, не замена проверки
+SFrame LiveKit. **AudioTrack77,008/124,232 мс (corrected78,038/125,288)
+не прошёл восстановление**: дефект фактического output clock общий и для
+P2P. Оба PCM-потока перепроверены; ёмкость24000 не достигнута, вывод
+был заглушён, эмулятор штатно остановлен. [Свидетельства](sdk33/android-p2p-static-resolution-output-clock.json).
+Кандидат не опубликован; физический Xiaomi не проверен.
