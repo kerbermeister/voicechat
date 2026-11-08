@@ -1,0 +1,60 @@
+{
+  "release_id": 438406046,
+  "source_revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "tag": "webrtc-sdk-150.7871.04-vc35",
+  "draft": false,
+  "prerelease": true,
+  "all_uploaded_asset_hashes_verified": true,
+  "assets": [
+    {
+      "id": 724681516,
+      "name": "build-receipt.json",
+      "size": 19690,
+      "digest": "sha256:f1c084b03d513079dab3a4dd79a85f65d7f0f463f5751afec3d2f4ce3830951e",
+      "browser_download_url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc35/build-receipt.json"
+    },
+    {
+      "id": 724681503,
+      "name": "compiled-framework-receipt.json",
+      "size": 19105,
+      "digest": "sha256:c1b34daa35a3130338c002a7ffb423e01402bcfdb712b264211c76ac3bf30862",
+      "browser_download_url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc35/compiled-framework-receipt.json"
+    },
+    {
+      "id": 724681502,
+      "name": "LICENSE.md",
+      "size": 119828,
+      "digest": "sha256:5b08f62df6d3d7cf1191586b30386055596a1971d4d5fad8974e496096ff4e07",
+      "browser_download_url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc35/LICENSE.md"
+    },
+    {
+      "id": 724681504,
+      "name": "native-playout-policy-tests.json",
+      "size": 482,
+      "digest": "sha256:469588bb9f9dc18935ecc57ddb945d926e4bef971018c3131e8496f343281ea5",
+      "browser_download_url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc35/native-playout-policy-tests.json"
+    },
+    {
+      "id": 724681546,
+      "name": "timing-tests.xml",
+      "size": 31404,
+      "digest": "sha256:25c61459eeb8e1cb7c1cfa4a72e0422f2fc704889cf6b28d2fed131c3603fb0e",
+      "browser_download_url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc35/timing-tests.xml"
+    },
+    {
+      "id": 724681548,
+      "name": "video-resume-tests.xml",
+      "size": 15871,
+      "digest": "sha256:cfbb92aeb3844c1cbe9b44bfdad236b3b438cf773e67837a4a98be69867babcf",
+      "browser_download_url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc35/video-resume-tests.xml"
+    },
+    {
+      "id": 724681509,
+      "name": "WebRTC.xcframework.zip",
+      "size": 6305056,
+      "digest": "sha256:56f388eb6d89e8f8a7d531545dab8a89d46c845df464566326364be5f7bc2abf",
+      "browser_download_url": "https://github.com/kerbermeister/voicechat/releases/download/webrtc-sdk-150.7871.04-vc35/WebRTC.xcframework.zip"
+    }
+  ],
+  "application_update_published": false
+}

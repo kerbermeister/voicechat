@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-08",
+  "source_revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "sdk_version": "150.7871.04-vc35",
+  "actual_framework_uuid": "1802e4a2-ff7c-38b7-8514-4152728ee630",
+  "original_raw_and_corrected_av_budget_ms": 80,
+  "speech_stoi_margin": 0.005,
+  "speech_level_tolerance_db": 0.15,
+  "livekit_required_e2ee_calls_passed": 3,
+  "direct_dtls_srtp_calls_passed_without_override": 2,
+  "owned_app_hide_unhide_cycles": 3,
+  "output_continuity_and_added_voice_gates_passed": true,
+  "native_cpp_tests_passed": 170,
+  "runtime_flag_overrides_required": false,
+  "qualified_for_macos_application_build": true,
+  "signed_application_installation_and_channel_verification_pending": true,
+  "physical_speaker_or_display_latency_measured": false,
+  "physical_xiaomi_measured": false,
+  "prior_failed_trials_preserved": [
+    "sdk35-macos-p2p-product-output-quality-1"
+  ],
+  "published_application": false
+}
