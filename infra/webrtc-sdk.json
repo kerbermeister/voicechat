@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "63b93e08f9c573deb542515156325605ad92c8d1c7d3dc0d411ed06878ded65d",
+  "patch_sha256": "89927dae751fb039c0d2b238bad53c6d28a497c426129968049422f927716a32",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -50,7 +50,13 @@
     "video/buffered_frame_decryptor.h": "34ff2b9d7c56d06ebb4c2bd59bd597bd0b8c4f6711715f4dd21d5d4dadd352ed",
     "audio/channel_send.cc": "17b492c5f887aa87312fceaeb812a7be1a6c845552db55c7a1cfd2a6844a01c7",
     "sdk/objc/api/peerconnection/RTCRtpReceiver.h": "d269a7564b9a3612cdf6bb236a6a86cc41a72b21dc0e4d3d7991427717cd504a",
-    "sdk/objc/api/peerconnection/RTCRtpReceiver.mm": "8373ad2c4e94044d4298be749f2d84c2173223ab23a00ae441bc92e1390ffe9f"
+    "sdk/objc/api/peerconnection/RTCRtpReceiver.mm": "8373ad2c4e94044d4298be749f2d84c2173223ab23a00ae441bc92e1390ffe9f",
+    "sdk/android/BUILD.gn": "20d2cd1524eb8ff981ac99be3cb3c8a86da46857c6a4c29814d8a2c25852fdfc",
+    "sdk/android/src/jni/audio_device/audio_device_module.cc": "0dbc98c6f7c969094132c6e5975d2732692e2c2a0b4e82c72ff0767b73d4696a",
+    "sdk/android/src/jni/audio_device/audio_device_module.h": "1ab814189ff133626068536a0d1df5a2d369db66b2c441be2efc2d54d963b931",
+    "sdk/android/src/jni/audio_device/audio_track_jni.cc": "096b454a81ee2019e471dafd79d0ecb53bb464afd4b414ef5f919d7452838da4",
+    "sdk/android/src/jni/audio_device/audio_track_jni.h": "d5bb1563b655b0008c1e2cec7ab3bfb13cbe4e6d03b2b84f42bc93e74df41846",
+    "sdk/android/src/java/org/webrtc/audio/WebRtcAudioTrack.java": "96c77cbea46cb507e22c39118cbcff6989d7473d1061e3a5a09b46a631d8560b"
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "7fb9214c06238be7b78ffd12c51c776c2cb8e04996467b187c62af18d334132d",
@@ -67,7 +73,7 @@
     "modules/video_coding/timing/timestamp_extrapolator_unittest.cc": "0f926712aa25fb3d74a7c4f76835dc46f961d10a9b82e5c51cad88e11f6f8b5a",
     "call/syncable.h": "7d05c90d59fb27c51db05d43e95b65aa8a8ebc1c4a7cbc522c5f93a00c703a9a",
     "video/video_receive_stream2.h": "a36a02346358c94eb33e19e273c06044fc19348e212d1c5bf03a305a00c81100",
-    "api/crypto/frame_crypto_transformer.cc": "dc5da9080d04621c44a7fe4aa69b1287d7827e9f7dc5b89703d14e263e109802",
+    "api/crypto/frame_crypto_transformer.cc": "88091092481106c9a34b015a5a3b6653380045482abd9688b4bd2894027000d8",
     "api/crypto/sif_payload_unittest.cc": "26993b2e04531b7d687fc8fcc72fb8835c0a3db044f30be6544684da8869bb7e",
     "api/crypto/BUILD.gn": "6e92edc0d213f67b547de0a6729251a8df1bd63a0498de409f7e4f98aafe0ffb",
     "api/crypto/frame_crypto_transformer_unittest.cc": "3c0b3fc6e61fd9e70b5333d51ef9724237a38b37bf73a6f5b6b21c0b9d0c2f98",
@@ -100,7 +106,14 @@
     "video/buffered_frame_decryptor.h": "048da153d844f6606eeaa8be2d44f91e9c1872defcd5607132a793b2fbd2ba84",
     "audio/channel_send.cc": "1ba3d19de2a953a42cd7591446122f1c67acb220e7b63de2fdfbfbef23d9f7cd",
     "sdk/objc/api/peerconnection/RTCRtpReceiver.h": "ace72897349db08fe8ff575e3d39e5f5c26081c7558d7184572e070daeffa9f6",
-    "sdk/objc/api/peerconnection/RTCRtpReceiver.mm": "447456a03176af2e56a6a902a5e848e1586277fd83e6b50272f2899239c50895"
+    "sdk/objc/api/peerconnection/RTCRtpReceiver.mm": "447456a03176af2e56a6a902a5e848e1586277fd83e6b50272f2899239c50895",
+    "sdk/android/BUILD.gn": "cb9f65ff939f978787a3a0988bdd9c30408a83a340a3d9989e6d18ba4210b329",
+    "sdk/android/src/jni/audio_device/audio_device_module.cc": "9eeab65a7e65430f9ab2406787c0892250e4daaa78ad4cb83164928d716f88b6",
+    "sdk/android/src/jni/audio_device/audio_device_module.h": "f93b73868e182a08e4747ee0903b0bbbc20450d186382bd2f8ef8ca8ae5e61d9",
+    "sdk/android/src/jni/audio_device/audio_track_jni.cc": "49e72d23a7aebe2c46a478106a22556e9f620ba029cebff40f3c08587fcb787c",
+    "sdk/android/src/jni/audio_device/audio_track_jni.h": "a12142cdb85cb736e009a62a40c3907ba4191cbe60421f2ed5812436ecf72c49",
+    "sdk/android/src/java/org/webrtc/audio/WebRtcAudioTrack.java": "898195d99ad55068291b833d4c4d657d6ed3a274e39e2763c9ba554b62a126a5",
+    "sdk/android/tests/src/org/webrtc/audio/WebRtcAudioTrackDelayTest.java": "09b8cbb8e233fd3dff3f6b0db49b88dece8707d2b3975c2b2e69d363428e66f1"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*:DecisionLogicTest.NormalOperation:DecisionLogicTest.Accelerate:DecisionLogicTest.FastAccelerate:DecisionLogicTest.PreemptiveExpand:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout:SifTransformTest.StrictDisabledCryptor*",
@@ -167,5 +180,15 @@
     "RtpStreamsSynchronizerTest.RefreshesTargetWhileVideoReceiveTimestampStalls",
     "RtpStreamsSynchronizerTest.RefreshesTargetWhileReceiveTimestampsAreUnchanged"
   ],
-  "macos_crypto_priority_worker_count": 4
+  "macos_crypto_priority_worker_count": 4,
+  "android_audio_clock_tests": [
+    "testProjectsTimestampToCurrentOutput",
+    "testUsesDeviceRateAndRoundsUp",
+    "testUnwrapsPlaybackFramePosition",
+    "testRejectsUnknownAndStaleClocks",
+    "testRejectsInvalidCountersAndResetEpoch",
+    "testAcceptsFreshnessBoundaries",
+    "testRejectsDelayOutsideNativeRange",
+    "testClampsDrainedQueueAtZero"
+  ]
 }

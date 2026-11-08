@@ -48,6 +48,20 @@ def verify_files(source, hashes):
             raise RuntimeError(f'Unexpected SDK source: {relative}')
 
 
+def verify_android_audio_clock_tests(report):
+    evidence = json.loads(report.read_text())
+    expected = {f'org.webrtc.audio.WebRtcAudioTrackDelayTest#{name}[{api}]'
+                for name in MANIFEST['android_audio_clock_tests'] for api in (29, 36)}
+    iterations = evidence.get('per_iteration_data', [])
+    if evidence.get('disabled_tests') or len(iterations) != 1:
+        raise RuntimeError('Android output-clock tests were skipped or repeated')
+    results = iterations[0]
+    if set(evidence.get('all_tests', [])) != expected or set(results) != expected:
+        raise RuntimeError('Incomplete Android output-clock coverage')
+    if any(len(values) != 1 or values[0]['status'] != 'SUCCESS' for values in results.values()):
+        raise RuntimeError('Android output-clock regression')
+
+
 def prepare(builder, work, target):
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=builder.parent, text=True).strip()
     if revision != MANIFEST['builder_commit'] or sha(PATCH) != MANIFEST['patch_sha256']:
@@ -459,6 +473,11 @@ def android(source, work, output):
     run([test_build / 'bin/run_android_sdk_junit_tests', '-f',
          'org.webrtc.AndroidVideoDecoderTest.testReportsStalledOutputOnlyDuringContinuousInput',
          '--json-results-file', output / 'android-decoder-test-results.json'], cwd=source)
+    audio_report = output / 'android-audio-device-test-results.json'
+    run([test_build / 'bin/run_android_sdk_junit_tests', '-f',
+         'org.webrtc.audio.WebRtcAudioTrackDelayTest.*',
+         '--json-results-file', audio_report], cwd=source)
+    verify_android_audio_clock_tests(audio_report)
     return aar
 
 

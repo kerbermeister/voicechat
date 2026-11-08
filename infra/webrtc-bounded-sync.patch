@@ -166,7 +166,7 @@
 @@ -482,5 +482,205 @@
    EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
  }
- 
+
 +TEST(VCMTimingTest, SyncDelayMeasuresRenderScheduleFromPacketReceipt) {
 +  FieldTrials field_trials = CreateTestFieldTrials();
 +  SimulatedClock clock(Timestamp::Millis(1000));
@@ -1124,7 +1124,7 @@
 @@ -123,11 +123,10 @@
      // TODO(brandtr): Increase from this unreasonably low value.
      int acc_max_error = 7000;  // 77 ms <=> 2.3 frames@30fps.
- 
+
 -    // If true, reset the entire uncertainty covariance matrix on alarms.
 -    // If false, only reset the offset variance term.
 -    // TODO(brandtr): Flip so that the frequency term won't get hit tpp badly
@@ -1135,10 +1135,10 @@
 +    // An explicit field trial can still request offset-only resetting.
 +    bool reset_full_cov_on_alarm = true;
    };
- 
+
    TimestampExtrapolator(Timestamp start, const FieldTrialsView& field_trials);
 @@ -138,6 +137,12 @@
- 
+
    // Return the expected local timestamp for an RTP timestamp.
    std::optional<Timestamp> ExtrapolateLocalTime(uint32_t timestamp90khz) const;
 +
@@ -1147,9 +1147,9 @@
 +    return prev_unwrapped_timestamp_ &&
 +           unwrapper_.PeekUnwrap(timestamp90khz) > *prev_unwrapped_timestamp_;
 +  }
- 
+
    void Reset(Timestamp start);
- 
+
 --- a/modules/video_coding/timing/timestamp_extrapolator_unittest.cc
 +++ b/modules/video_coding/timing/timestamp_extrapolator_unittest.cc
 @@ -10,11 +10,14 @@
@@ -1219,13 +1219,13 @@
      NtpTime capture_time_ntp;
 +    // Negotiated payload clock, used only before two sender reports.
 +    int rtp_clock_rate_hz = 0;
- 
+
      // Current playout delay for the given `Syncable`.
      TimeDelta current_delay;
 +    // Packet arrival minus fitted RTP time, only when the video clock is ready.
 +    std::optional<TimeDelta> video_clock_offset;
    };
- 
+
    // Mapping between capture/render time in RTP timestamps and local clock.
 @@ -51,6 +55,8 @@
    virtual std::optional<Info> GetInfo() const = 0;
@@ -1264,7 +1264,7 @@
 
  #include "absl/container/inlined_vector.h"
  #include "absl/types/optional.h"
-@@ -373,6 +382,21 @@
+@@ -373,6 +382,25 @@
  }
 
  namespace {
@@ -1277,16 +1277,20 @@
 +  static_cast<void>(audio);
 +  return pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
 +#elif defined(WEBRTC_ANDROID)
++  const id_t thread = static_cast<id_t>(gettid());
 +  const int priority = audio ? -16 : -4;
-+  return setpriority(PRIO_PROCESS, static_cast<id_t>(gettid()), priority) == 0
-+             ? 0 : errno;
++  errno = 0;
++  const int current = getpriority(PRIO_PROCESS, thread);
++  if (errno != 0) return errno;
++  if (current <= priority) return 0;
++  return setpriority(PRIO_PROCESS, thread, priority) == 0 ? 0 : errno;
 +#endif
 +}
 +#endif
 
  // Blank frames the LiveKit SFU injects on mute and track close, byte-for-byte
  // from livekit-server pkg/sfu/downtrack.go (client-sdk-js: sifPayload.ts).
-@@ -445,6 +469,14 @@
+@@ -445,6 +473,14 @@
    RTC_DCHECK(key_provider_ != nullptr);
    thread_->SetName("FrameCryptorTransformer", this);
    thread_->Start();
@@ -1301,7 +1305,7 @@
  }
 
  FrameCryptorTransformer::~FrameCryptorTransformer() {
-@@ -517,7 +549,9 @@
+@@ -517,7 +553,9 @@
      return;
    }
    if (!enabled_cryption) {
@@ -1312,7 +1316,7 @@
      return;
    }
 
-@@ -640,7 +674,9 @@
+@@ -640,7 +678,9 @@
      return;
    }
    if (!enabled_cryption) {
@@ -1323,7 +1327,7 @@
      return;
    }
 
-@@ -666,6 +702,20 @@
+@@ -666,6 +706,20 @@
          }
          return;
        }
@@ -1853,7 +1857,7 @@
  #include "rtc_base/logging.h"
 +#include "rtc_base/numerics/sequence_number_util.h"
  #include "system_wrappers/include/metrics.h"
- 
+
  namespace webrtc {
 @@ -26,6 +27,11 @@
  const int kOldRenderTimestampMS = 500;
@@ -1864,13 +1868,13 @@
 +// A decoder may have only one native texture available. A long render wait
 +// can retain that texture and prevent the next frame from reaching this queue.
 +constexpr int kMaxNativeFrameHoldMs = 2000;
- 
+
  const uint32_t kEventMaxWaitTimeMs = 200;
  const uint32_t kMinRenderDelayMs = 10;
 @@ -71,14 +77,38 @@
      return -1;
    }
- 
+
 -  if (new_frame.render_time_ms() < last_render_time_ms_) {
 -    RTC_LOG(LS_WARNING) << "Frame scheduled out of order, render_time="
 -                        << new_frame.render_time_ms()
@@ -1910,7 +1914,7 @@
 +      ++frames_dropped_;
 +    }
    }
- 
+
    last_render_time_ms_ = new_frame.render_time_ms();
 
 --- a/video/render/incoming_video_stream.h
@@ -2104,7 +2108,7 @@
    uint16_t newest_seq_num_ RTC_GUARDED_BY(worker_thread_);
 +  Timestamp newest_packet_time_ RTC_GUARDED_BY(worker_thread_) =
 +      Timestamp::MinusInfinity();
- 
+
    // Adds a delay before send nack on packet received.
    const TimeDelta send_nack_delay_;
 --- a/modules/video_coding/nack_requester.cc
@@ -2118,7 +2122,7 @@
  // Number of times a packet can be nacked before giving up. Nack is sent at most
  // every RTT.
 @@ -142,6 +143,12 @@
- 
+
  void NackRequester::ProcessNacks() {
    RTC_DCHECK_RUN_ON(worker_thread_);
 +  if (!nack_list_.empty() &&
@@ -2131,7 +2135,7 @@
    if (!nack_batch.empty()) {
      // This batch of NACKs is triggered externally; there is no external
 @@ -165,6 +172,7 @@
- 
+
    if (!initialized_) {
      newest_seq_num_ = seq_num;
 +    newest_packet_time_ = clock_->CurrentTime();
@@ -2140,7 +2144,7 @@
    }
 @@ -196,6 +204,19 @@
        recovered_list_.erase(recovered_list_.begin(), it);
- 
+
      // Do not send nack for packets recovered by FEC or RTX.
 +    return 0;
 +  }
@@ -2157,7 +2161,7 @@
 +    RTC_LOG(LS_INFO) << "Requested a fresh keyframe after a video packet gap";
      return 0;
    }
- 
+
 --- a/modules/video_coding/nack_requester_unittest.cc
 +++ b/modules/video_coding/nack_requester_unittest.cc
 @@ -103,6 +103,65 @@
@@ -2223,7 +2227,7 @@
 +  EXPECT_EQ(sent_nacks_, std::vector<uint16_t>({12}));
 +  EXPECT_EQ(keyframes_requested_, 0);
 +}
- 
+
  TEST_F(TestNackRequester, NackOnePacket) {
    NackRequester& nack_module = CreateNackModule();
 --- a/modules/audio_coding/neteq/decision_logic.cc
@@ -2244,7 +2248,7 @@
 @@ -121,6 +121,28 @@
    EXPECT_FALSE(reset_decoder);
  }
- 
+
 +TEST_F(DecisionLogicTest, SmallBufferOverfillKeepsNormalPlayout) {
 +  EXPECT_CALL(*mock_delay_manager_, TargetDelayMs())
 +      .WillRepeatedly(Return(60));
@@ -2297,40 +2301,17 @@
 
    if (!last_received_rtp_timestamp_ || !last_received_rtp_system_time_) {
      return std::nullopt;
---- a/video/task_queue_frame_decode_scheduler.cc
-+++ b/video/task_queue_frame_decode_scheduler.cc
-@@ -48,16 +48,17 @@
-       << "Can not schedule two frames for release at the same time.";
-   RTC_DCHECK(cb);
-   scheduled_rtp_ = rtp;
-+  const uint64_t generation = ++schedule_generation_;
-
-   TimeDelta wait = std::max(
-       TimeDelta::Zero(), schedule.latest_decode_time - clock_->CurrentTime());
-   bookkeeping_queue_->PostDelayedHighPrecisionTask(
-       SafeTask(task_safety_.flag(),
--               [this, rtp, schedule, cb = std::move(cb)]() mutable {
-+               [this, rtp, generation, schedule, cb = std::move(cb)]() mutable {
-                  RTC_DCHECK_RUN_ON(bookkeeping_queue_);
--                 // If the next frame rtp has changed since this task was
--                 // this scheduled release should be skipped.
--                 if (scheduled_rtp_ != rtp)
-+                 // A replacement can retain the same RTP timestamp.
-+                 if (scheduled_rtp_ != rtp ||
-+                     schedule_generation_ != generation)
-                    return;
-                  scheduled_rtp_ = std::nullopt;
-                  std::move(cb)(rtp, schedule.render_time);
---- a/video/task_queue_frame_decode_scheduler.h
-+++ b/video/task_queue_frame_decode_scheduler.h
-@@ -46,6 +46,7 @@
-   TaskQueueBase* const bookkeeping_queue_;
-
-   std::optional<uint32_t> scheduled_rtp_;
-+  uint64_t schedule_generation_ = 0;
-   ScopedTaskSafetyDetached task_safety_;
-   bool stopped_ = false;
- };
+--- a/video/video_stream_buffer_controller.h
++++ b/video/video_stream_buffer_controller.h
+@@ -91,6 +91,8 @@
+   void Stop();
+   void SetProtectionMode(VCMVideoProtection protection_mode);
+   void Clear();
++  // Refresh the deadline of a complete frame still waiting to decode.
++  void OnPlayoutDelayChanged();
+   std::optional<int64_t> InsertFrame(std::unique_ptr<EncodedFrame> frame);
+   void UpdateRtt(int64_t max_rtt_ms);
+   void SetMaxWaits(TimeDelta max_wait_for_keyframe,
 --- a/video/task_queue_frame_decode_scheduler_unittest.cc
 +++ b/video/task_queue_frame_decode_scheduler_unittest.cc
 @@ -98,4 +98,59 @@
@@ -2393,6 +2374,30 @@
 +}
 +
  }  // namespace webrtc
+--- a/video/task_queue_frame_decode_scheduler.cc
++++ b/video/task_queue_frame_decode_scheduler.cc
+@@ -48,16 +48,17 @@
+       << "Can not schedule two frames for release at the same time.";
+   RTC_DCHECK(cb);
+   scheduled_rtp_ = rtp;
++  const uint64_t generation = ++schedule_generation_;
+
+   TimeDelta wait = std::max(
+       TimeDelta::Zero(), schedule.latest_decode_time - clock_->CurrentTime());
+   bookkeeping_queue_->PostDelayedHighPrecisionTask(
+       SafeTask(task_safety_.flag(),
+-               [this, rtp, schedule, cb = std::move(cb)]() mutable {
++               [this, rtp, generation, schedule, cb = std::move(cb)]() mutable {
+                  RTC_DCHECK_RUN_ON(bookkeeping_queue_);
+-                 // If the next frame rtp has changed since this task was
+-                 // this scheduled release should be skipped.
+-                 if (scheduled_rtp_ != rtp)
++                 // A replacement can retain the same RTP timestamp.
++                 if (scheduled_rtp_ != rtp ||
++                     schedule_generation_ != generation)
+                    return;
+                  scheduled_rtp_ = std::nullopt;
+                  std::move(cb)(rtp, schedule.render_time);
 --- a/video/video_stream_buffer_controller.cc
 +++ b/video/video_stream_buffer_controller.cc
 @@ -152,6 +152,12 @@ void VideoStreamBufferController::Clear() {
@@ -2437,17 +2442,6 @@
        MaybeScheduleFrameForRelease();
      }
    }
---- a/video/video_stream_buffer_controller.h
-+++ b/video/video_stream_buffer_controller.h
-@@ -91,6 +91,8 @@
-   void Stop();
-   void SetProtectionMode(VCMVideoProtection protection_mode);
-   void Clear();
-+  // Refresh the deadline of a complete frame still waiting to decode.
-+  void OnPlayoutDelayChanged();
-   std::optional<int64_t> InsertFrame(std::unique_ptr<EncodedFrame> frame);
-   void UpdateRtt(int64_t max_rtt_ms);
-   void SetMaxWaits(TimeDelta max_wait_for_keyframe,
 --- a/video/video_stream_buffer_controller_unittest.cc
 +++ b/video/video_stream_buffer_controller_unittest.cc
 @@ -85,9 +85,9 @@ std::unique_ptr<test::FakeEncodedFrame> WithReceiveTimeFromRtpTimestamp(
@@ -2558,6 +2552,16 @@
  TEST_P(VideoStreamBufferControllerTest, KeyFramesAreScheduled) {
    StartNextDecodeForceKeyframe();
    time_controller_.AdvanceTime(TimeDelta::Millis(50));
+--- a/video/task_queue_frame_decode_scheduler.h
++++ b/video/task_queue_frame_decode_scheduler.h
+@@ -46,6 +46,7 @@
+   TaskQueueBase* const bookkeeping_queue_;
+
+   std::optional<uint32_t> scheduled_rtp_;
++  uint64_t schedule_generation_ = 0;
+   ScopedTaskSafetyDetached task_safety_;
+   bool stopped_ = false;
+ };
 --- a/api/frame_transformer_interface.h
 +++ b/api/frame_transformer_interface.h
 @@ -171,6 +171,9 @@
@@ -2669,3 +2673,359 @@
  }
 
  - (RTC_OBJC_TYPE(RTCRtpParameters) *)parameters {
+--- a/sdk/android/BUILD.gn
++++ b/sdk/android/BUILD.gn
+@@ -1986,6 +1986,7 @@
+       "tests/src/org/webrtc/RenderSynchronizerTest.java",
+       "tests/src/org/webrtc/ScalingSettingsTest.java",
+       "tests/src/org/webrtc/audio/LowLatencyAudioBufferManagerTest.java",
++      "tests/src/org/webrtc/audio/WebRtcAudioTrackDelayTest.java",
+     ]
+
+     deps = [
+--- a/sdk/android/src/jni/audio_device/audio_device_module.cc
++++ b/sdk/android/src/jni/audio_device/audio_device_module.cc
+@@ -505,9 +505,9 @@
+   }
+
+   int32_t PlayoutDelay(uint16_t* delay_ms) const override {
+-    // Best guess we can do is to use half of the estimated total delay.
+-    *delay_ms = playout_delay_ms_ / 2;
+-    RTC_DCHECK_GT(*delay_ms, 0);
++    // Java AudioTrack can report its real presentation queue. Other outputs
++    // and unavailable timestamps retain the existing platform fallback.
++    *delay_ms = output_->PlayoutDelayMs().value_or(playout_delay_ms_ / 2);
+     return 0;
+   }
+
+--- a/sdk/android/src/jni/audio_device/audio_device_module.h
++++ b/sdk/android/src/jni/audio_device/audio_device_module.h
+@@ -80,6 +80,8 @@
+   virtual std::optional<uint32_t> MinSpeakerVolume() const = 0;
+   virtual void AttachAudioBuffer(AudioDeviceBuffer* audioBuffer) = 0;
+   virtual int GetPlayoutUnderrunCount() = 0;
++  // Unknown output clocks retain the existing platform delay estimate.
++  virtual std::optional<uint16_t> PlayoutDelayMs() const { return std::nullopt; }
+   // Deprecated. Use GetStats(AudioDeviceModule::Stats*) instead.
+   virtual std::optional<AudioDeviceModule::Stats> GetStats() const {
+     return std::nullopt;
+--- a/sdk/android/src/jni/audio_device/audio_track_jni.cc
++++ b/sdk/android/src/jni/audio_device/audio_track_jni.cc
+@@ -15,6 +15,7 @@
+ #include <cstddef>
+ #include <cstdint>
+ #include <cstdlib>
++#include <limits>
+ #include <optional>
+
+ #include "api/audio/audio_device_defines.h"
+@@ -221,6 +222,15 @@
+   return volume;
+ }
+
++std::optional<uint16_t> AudioTrackJni::PlayoutDelayMs() const {
++  const int delay_ms = Java_WebRtcAudioTrack_getPlayoutDelayMs(
++      AttachCurrentThreadIfNeeded(), j_audio_track_);
++  if (delay_ms < 0 || delay_ms > std::numeric_limits<uint16_t>::max()) {
++    return std::nullopt;
++  }
++  return static_cast<uint16_t>(delay_ms);
++}
++
+ int AudioTrackJni::GetPlayoutUnderrunCount() {
+   return Java_WebRtcAudioTrack_GetPlayoutUnderrunCount(env_, j_audio_track_);
+ }
+--- a/sdk/android/src/jni/audio_device/audio_track_jni.h
++++ b/sdk/android/src/jni/audio_device/audio_track_jni.h
+@@ -70,6 +70,7 @@
+   std::optional<uint32_t> MaxSpeakerVolume() const override;
+   std::optional<uint32_t> MinSpeakerVolume() const override;
+   int GetPlayoutUnderrunCount() override;
++  std::optional<uint16_t> PlayoutDelayMs() const override;
+
+   void AttachAudioBuffer(AudioDeviceBuffer* audioBuffer) override;
+
+--- a/sdk/android/src/java/org/webrtc/audio/WebRtcAudioTrack.java
++++ b/sdk/android/src/java/org/webrtc/audio/WebRtcAudioTrack.java
+@@ -15,6 +15,7 @@
+ import android.media.AudioAttributes;
+ import android.media.AudioFormat;
+ import android.media.AudioManager;
++import android.media.AudioTimestamp;
+ import android.media.AudioTrack;
+ import android.os.Build;
+ import android.os.Process;
+@@ -57,6 +58,9 @@
+   // Indicates the AudioTrack has stopped playing audio.
+   private static final int AUDIO_TRACK_STOP = 1;
+
++  private static final long TIMESTAMP_POLL_INTERVAL_NS = 50_000_000L;
++  private static final long MAX_TIMESTAMP_AGE_NS = 1_000_000_000L;
++
+   private long nativeAudioTrack;
+   private final Context context;
+   private final AudioManager audioManager;
+@@ -75,6 +79,11 @@
+   private byte[] emptyBytes;
+   private boolean useLowLatency;
+   private int initialBufferSizeInFrames;
++
++  // Published timestamps are never mutated after becoming visible to JNI readers.
++  private volatile @Nullable AudioTimestamp playoutTimestamp;
++  private volatile long writtenFrames;
++  private volatile int playoutSampleRate;
+
+   private final @Nullable AudioTrackErrorCallback errorCallback;
+   private final @Nullable AudioTrackStateCallback stateCallback;
+@@ -112,6 +121,8 @@
+       // Fixed size in bytes of each 10ms block of audio data that we ask for
+       // using callbacks to the native WebRTC client.
+       final int sizeInBytes = byteBuffer.capacity();
++      final int bytesPerFrame = audioTrack.getChannelCount() * (BITS_PER_SAMPLE / 8);
++      long lastTimestampPollNs = 0;
+
+       while (keepAlive) {
+         // Get 10ms of PCM data from the native WebRTC client. Audio data is
+@@ -138,6 +149,23 @@
+           }
+         }
+
++        if (bytesWritten > 0 && keepAlive) {
++          writtenFrames += bytesWritten / bytesPerFrame;
++          long nowNs = System.nanoTime();
++          if (nowNs - lastTimestampPollNs >= TIMESTAMP_POLL_INTERVAL_NS) {
++            AudioTimestamp timestamp = new AudioTimestamp();
++            try {
++              if (audioTrack.getTimestamp(timestamp)) {
++                playoutTimestamp = timestamp;
++              }
++            } catch (IllegalStateException e) {
++              playoutTimestamp = null;
++              Logging.d(TAG, "AudioTrack timestamp unavailable");
++            }
++            lastTimestampPollNs = nowNs;
++          }
++        }
++
+         if (audioSamplesReadyCallback != null && keepAlive) {
+           // Copy the entire byte buffer array. The start of the byteBuffer is not necessarily
+           // at index 0.
+@@ -156,9 +184,6 @@
+         // next call to AudioTrack.write() will fail.
+         byteBuffer.rewind();
+
+-        // TODO(henrika): it is possible to create a delay estimate here by
+-        // counting number of written frames and subtracting the result from
+-        // audioTrack.getPlaybackHeadPosition().
+       }
+     }
+
+@@ -197,9 +222,67 @@
+     this.nativeAudioTrack = nativeAudioTrack;
+   }
+
++  /**
++   * Возвращает задержку до фактического вывода, либо -1 при неизвестных часах.
++   * Обнуление или смена snapshot при перезапуске AudioTrack отменяет старую оценку.
++   */
++  @CalledByNative
++  private int getPlayoutDelayMs() {
++
++    AudioTimestamp timestamp = playoutTimestamp;
++    long frames = writtenFrames;
++    int sampleRate = playoutSampleRate;
++    if (timestamp != playoutTimestamp) {
++
++      return -1;
++    }
++
++    return calculatePlayoutDelayMs(frames, sampleRate, timestamp, System.nanoTime());
++  }
++
++  /**
++   * Сопоставляет подтверждённые записи с AudioTimestamp; сеть и PCM не меняются.
++   * Позиция Android может оборачиваться по 32 битам. -1 означает, что оценке
++   * нельзя доверять; вызывающий сохраняет прежнюю запасную оценку устройства.
++   */
++  static int calculatePlayoutDelayMs(long framesWritten, int sampleRate,
++      @Nullable AudioTimestamp timestamp, long nowNs) {
++
++    if (framesWritten < 0 || sampleRate <= 0 || timestamp == null || timestamp.nanoTime <= 0
++        || timestamp.framePosition < 0) {
++
++      return -1;
++    }
++
++    long ageNs = nowNs - timestamp.nanoTime;
++    if (ageNs < -MAX_TIMESTAMP_AGE_NS || ageNs > MAX_TIMESTAMP_AGE_NS) {
++
++      return -1;
++    }
++
++    long queuedAtTimestamp = (int) (framesWritten - timestamp.framePosition);
++    if (queuedAtTimestamp < 0) {
++
++      return -1;
++    }
++
++    long queuedFrames = Math.max(0L, queuedAtTimestamp - ageNs * sampleRate / 1_000_000_000L);
++    long delayMs = (queuedFrames * 1000L + sampleRate - 1) / sampleRate;
++
++    return delayMs <= 0xffff ? (int) delayMs : -1;
++  }
++
++  private void resetPlayoutClock(int sampleRate) {
++
++    playoutTimestamp = null;
++    writtenFrames = 0;
++    playoutSampleRate = sampleRate;
++  }
++
+   @CalledByNative
+   private int initPlayout(int sampleRate, int channels, double bufferSizeFactor) {
+     threadChecker.checkIsOnValidThread();
++    resetPlayoutClock(sampleRate);
+     Logging.d(TAG,
+         "initPlayout(sampleRate=" + sampleRate + ", channels=" + channels
+             + ", bufferSizeFactor=" + bufferSizeFactor + ")");
+@@ -558,6 +641,7 @@
+
+   // Releases the native AudioTrack resources.
+   private void releaseAudioResources() {
++    resetPlayoutClock(0);
+     Logging.d(TAG, "releaseAudioResources");
+     if (audioTrack != null) {
+       audioTrack.release();
+--- /dev/null
++++ b/sdk/android/tests/src/org/webrtc/audio/WebRtcAudioTrackDelayTest.java
+@@ -0,0 +1,130 @@
++/*
++ *  Copyright 2026 The WebRTC project authors. All Rights Reserved.
++ *
++ *  Use of this source code is governed by a BSD-style license
++ *  that can be found in the LICENSE file in the root of the source
++ *  tree. An additional intellectual property rights grant can be found
++ *  in the file PATENTS. All contributing project authors may
++ *  be found in the AUTHORS file in the root of the source tree.
++ */
++
++package org.webrtc.audio;
++
++import static org.junit.Assert.assertEquals;
++
++import android.media.AudioTimestamp;
++import androidx.test.runner.AndroidJUnit4;
++import org.junit.Test;
++import org.junit.runner.RunWith;
++import org.robolectric.annotation.Config;
++
++@RunWith(AndroidJUnit4.class)
++@Config(manifest = Config.NONE, sdk = {29, 36})
++public class WebRtcAudioTrackDelayTest {
++
++  private static final long NOW_NS = 10_000_000_000L;
++
++  /** При старом показании уже проигранные 20 мс вычитаются; исходные 100 мс неверны. */
++  @Test
++  public void testProjectsTimestampToCurrentOutput() {
++
++    AudioTimestamp timestamp = timestamp(1000, NOW_NS - 20_000_000L);
++
++    int delayMs = WebRtcAudioTrack.calculatePlayoutDelayMs(5800, 48000, timestamp, NOW_NS);
++
++    assertEquals(80, delayMs);
++  }
++
++  /** Частоты 8/48/192 кГц и неполная миллисекунда сохраняют единицы и округление вверх. */
++  @Test
++  public void testUsesDeviceRateAndRoundsUp() {
++
++    for (int rate : new int[] {8000, 48000, 192000}) {
++      AudioTimestamp timestamp = timestamp(0, NOW_NS);
++
++      int delayMs = WebRtcAudioTrack.calculatePlayoutDelayMs(rate / 10, rate, timestamp, NOW_NS);
++      int partialMs = WebRtcAudioTrack.calculatePlayoutDelayMs(1, rate, timestamp, NOW_NS);
++
++      assertEquals(100, delayMs);
++      assertEquals(1, partialMs);
++    }
++  }
++
++  /** После оборота 32-битной позиции остаётся очередь 100 мс, а не огромная задержка. */
++  @Test
++  public void testUnwrapsPlaybackFramePosition() {
++
++    AudioTimestamp timestamp = timestamp(1600, NOW_NS);
++
++    int delayMs = WebRtcAudioTrack.calculatePlayoutDelayMs(
++        (1L << 32) + 6400, 48000, timestamp, NOW_NS);
++
++    assertEquals(100, delayMs);
++  }
++
++  /** Отсутствующие и просроченные часы дают -1, чтобы прежняя оценка оставалась доступна. */
++  @Test
++  public void testRejectsUnknownAndStaleClocks() {
++
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(4800, 48000, null, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        4800, 48000, timestamp(0, 0), NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        4800, 48000, timestamp(0, NOW_NS - 1_000_000_001L), NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        4800, 48000, timestamp(0, NOW_NS + 1_000_000_001L), NOW_NS));
++  }
++
++  /** Неверные счётчики, частота и позиция из другой эпохи отвергаются, а не дают ноль. */
++  @Test
++  public void testRejectsInvalidCountersAndResetEpoch() {
++
++    AudioTimestamp timestamp = timestamp(1000, NOW_NS);
++
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(-1, 48000, timestamp, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(4800, 0, timestamp, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(4800, -1, timestamp, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(999, 48000, timestamp, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        4800, 48000, timestamp(-1, NOW_NS), NOW_NS));
++  }
++
++  /** На обеих границах свежести 1 с показание допустимо; будущая позиция проецируется назад. */
++  @Test
++  public void testAcceptsFreshnessBoundaries() {
++
++    assertEquals(100, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        52800, 48000, timestamp(0, NOW_NS - 1_000_000_000L), NOW_NS));
++    assertEquals(1100, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        4800, 48000, timestamp(0, NOW_NS + 1_000_000_000L), NOW_NS));
++  }
++
++  /** Граница uint16_t проходит без обрезания; следующая миллисекунда даёт неизвестную оценку. */
++  @Test
++  public void testRejectsDelayOutsideNativeRange() {
++
++    AudioTimestamp timestamp = timestamp(0, NOW_NS);
++
++    assertEquals(65535, WebRtcAudioTrack.calculatePlayoutDelayMs(65535, 1000, timestamp, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(65536, 1000, timestamp, NOW_NS));
++  }
++
++  /** Пустая или уже проигранная очередь даёт ноль, а не отрицательную задержку. */
++  @Test
++  public void testClampsDrainedQueueAtZero() {
++
++    assertEquals(0, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        1000, 48000, timestamp(1000, NOW_NS), NOW_NS));
++    assertEquals(0, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        1000, 48000, timestamp(0, NOW_NS - 100_000_000L), NOW_NS));
++  }
++
++  private static AudioTimestamp timestamp(long frames, long timeNs) {
++
++    AudioTimestamp timestamp = new AudioTimestamp();
++    timestamp.framePosition = frames;
++    timestamp.nanoTime = timeNs;
++
++    return timestamp;
++  }
++}
