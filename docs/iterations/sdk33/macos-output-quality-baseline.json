@@ -1,0 +1,103 @@
+{
+  "source_revision": "5a4f0d288b7a66b2992bb781f7aab92cfb6a7df0",
+  "version": "150.7871.04-vc33",
+  "app_baseline_revision": "b416818adc69d9d0515d2a2b3156089636a86671",
+  "app_call_runtime_source_sha256": {
+    "vendor/livekit_client/lib/src/core/room.dart": "802b6749539bd3b0de239c9e9e81b2b44173d80a31de80ffebdf038768f8a1de",
+    "vendor/livekit_client/lib/src/managers/event.dart": "3d8240dda9a0d381b44f5f85e5673ac612d3554bd1b908807c1c68f38512de41",
+    "apps/client/macos/Compatibility/FlutterRTCVideoRenderer.m": "c1f9e532f152f77d17f9206ca15e29ed20ca1cb1c619397f7ef120141cc9a8f5"
+  },
+  "actual_app_sdk_sha256": "ae136479390b563d18f7f7a2068d521274e8888bedc3e05d75b23f4e51a2b54d",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "dd3275e665f8e244daf4d9d2de013e68cf804b97c4cd5b6711af2db28ed52c64",
+    "ci_signed_sha256": "31f1f83e05026daf71c9f9da74f7eb4918e93acdff773f84e0ce79bbd59e1ad5",
+    "app_signed_sha256": "ae136479390b563d18f7f7a2068d521274e8888bedc3e05d75b23f4e51a2b54d",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "d396d7aa-cb5c-3aa6-95bf-f985221bc72c",
+  "trial": "sdk33-macos-output-quality-baseline-1",
+  "pass": false,
+  "media_gates_pass": false,
+  "diagnostic_only": false,
+  "timing": {
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 57.65958334086463,
+      "max_source_corrected_abs_ms": 58.51737502962351
+    },
+    "recovery": {
+      "count": 26,
+      "max_abs_ms": 86.67974997661076,
+      "max_source_corrected_abs_ms": 87.50970830442384
+    }
+  },
+  "speech": "speech_regression",
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 58.00300001283176
+    },
+    "video_paused": {
+      "count": 3,
+      "max_added_voice_delay_ms": 58.95887498627417
+    },
+    "recovery": {
+      "count": 26,
+      "max_added_voice_delay_ms": 59.032499993918464
+    }
+  },
+  "missing_key_gate": {
+    "content": {
+      "audio_peak": 0.0,
+      "audio_chunks": 304,
+      "control_audio_peak": 0.0,
+      "video_markers": 0
+    },
+    "audio": {
+      "packets": 135,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 178,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 135,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      151372.61549583336,
+      151488.9153351667
+    ],
+    "physical_speaker_measured": false,
+    "platform": "macos",
+    "complete_output_window": true,
+    "active_callback_gaps": [],
+    "output_callbacks": 12580,
+    "max_all_callback_gap_ms": 11.833041673526168,
+    "pass": true
+  },
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "date": "2026-11-08",
+  "sample_count": 120,
+  "qualified_for_release": false,
+  "actual_physical_listening": false,
+  "evidence_sha256": {
+    ".media.json": "0c18deef82c3dcad0c4278123860fe6c16162520d3fd1e02fad5036dd8d981cc",
+    ".control.media.json": "be431758b529a601bf52cddf642df08e70cdcdf4a2d9cfdbb8fa5467ced3899c",
+    ".diagnostic.json": "5108e671cd0e16111e5549437de599ef4d1295b25da3ea49a4296be31836393b",
+    ".analysis.json": "5c141f26e8fddb662218d3c3ff51f3bc3bd0dcc5218980de8e41b8ba4bdbf41a",
+    ".speech.json": "7a2e142d631b781080528185d18e62d8f9c4aeb5c6a6528878ddda43633cf6be",
+    ".proof.json": "148de25f67d04f6b2adefb167f857e40bc7f5fa1a7282f08a4ca7f5ad907d2c8"
+  }
+}

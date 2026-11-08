@@ -1,0 +1,190 @@
+{
+  "date": "2026-11-08",
+  "version": "150.7871.04-vc34",
+  "source_revision": "fc7678748ad6e21ed97e5c0119874632a2c1c384",
+  "aar_sha256": "0c43cd1ef4739e0224905c8f999268c9ba1e6620e1b876e918de30652a90e5c5",
+  "jni_sha256": "2fe486ac668c65a1a95449c36813631ca236c3bd9bf8dcb44c8464a00dd832f6",
+  "sample_count": 120,
+  "decoded_timing": {
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 7,
+      "max_abs_ms": 196.09083366665914,
+      "max_source_corrected_abs_ms": 196.9730420139797
+    },
+    "recovery": {
+      "count": 22,
+      "max_abs_ms": 104.87566666665771,
+      "max_source_corrected_abs_ms": 103.76958333176844
+    },
+    "recovery_transport": {
+      "pass": true,
+      "packet_deltas": {
+        "audio": 507,
+        "video": 1378
+      },
+      "decoded_video_frames": 203,
+      "longest_active_video_decode_pause_ms": 0
+    }
+  },
+  "audio_device_output": {
+    "schema": 1,
+    "pass": false,
+    "decoded_sink_outcome": "budget_exceeded",
+    "audio_device_timestamp_observed": true,
+    "physical_speaker_measured": false,
+    "video_sink_before_display": true,
+    "phases": {
+      "clean": {
+        "count": 7,
+        "missing_output_markers": [],
+        "max_abs_ms": 310.81254166666383,
+        "max_source_corrected_abs_ms": 311.6947500139844,
+        "pass": false
+      },
+      "recovery": {
+        "count": 22,
+        "missing_output_markers": [],
+        "max_abs_ms": 40.89604166668437,
+        "max_source_corrected_abs_ms": 41.70862500771477,
+        "pass": true
+      }
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      113.749336926,
+      231.162408901
+    ],
+    "physical_speaker_measured": false,
+    "platform": "android",
+    "actual_audio_track_underrun_counter": true,
+    "same_output_track": true,
+    "active_output_underruns": 1.0,
+    "timestamp_query_mean_us": 3.564270778881338,
+    "timestamp_query_max_us": 153.084,
+    "pass": false
+  },
+  "speech": {
+    "schema": 1,
+    "outcome": "pass",
+    "synthetic_reference_only": true,
+    "physical_listening_test": false,
+    "paired_trials": 1,
+    "stoi_noninferiority_margin": 0.005,
+    "level_tolerance_db": 0.15,
+    "phases": {
+      "clean": {
+        "paired_clips": 9,
+        "control": {
+          "stoi": 0.9530252027233078,
+          "si_sdr_db": 4.082311611115958,
+          "rms_dbfs": -23.43374025324428
+        },
+        "candidate": {
+          "stoi": 0.9530252027233078,
+          "si_sdr_db": 4.082311611115958,
+          "rms_dbfs": -23.43374025324428
+        }
+      },
+      "delay": {
+        "paired_clips": 13,
+        "control": {
+          "stoi": 0.9784074111359148,
+          "si_sdr_db": 6.367868333858922,
+          "rms_dbfs": -23.3180602267276
+        },
+        "candidate": {
+          "stoi": 0.979614770971996,
+          "si_sdr_db": 6.469405656201727,
+          "rms_dbfs": -23.30446560478629
+        }
+      },
+      "pause": {
+        "paired_clips": 10,
+        "control": {
+          "stoi": 0.9912789485628444,
+          "si_sdr_db": 9.03673326624226,
+          "rms_dbfs": -23.213743278161992
+        },
+        "candidate": {
+          "stoi": 0.9912789485628444,
+          "si_sdr_db": 9.03673326624226,
+          "rms_dbfs": -23.213743278161992
+        }
+      },
+      "recovery": {
+        "paired_clips": 22,
+        "control": {
+          "stoi": 0.9883356577922721,
+          "si_sdr_db": 7.668560587026897,
+          "rms_dbfs": -23.191377730032304
+        },
+        "candidate": {
+          "stoi": 0.9850511481346115,
+          "si_sdr_db": 7.438552818286849,
+          "rms_dbfs": -23.197792985339408
+        }
+      }
+    }
+  },
+  "added_voice": {
+    "pass": true,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 19.317041666653267
+    },
+    "video_paused": {
+      "count": 8,
+      "max_added_voice_delay_ms": 24.76649966666855
+    },
+    "recovery": {
+      "count": 22,
+      "max_added_voice_delay_ms": 23.927916666650617
+    }
+  },
+  "video_queue": {
+    "pass": true,
+    "max_active_decode_pause_ms": 0,
+    "observed_decoded_frames": 29,
+    "worst_assembled_frame": {
+      "assembled_wait_ms": 250,
+      "deadline_from_arrival_ms": 271,
+      "decode_ms": 7
+    }
+  },
+  "crypto_control": {
+    "protocol": "DTLS-SRTP",
+    "negative_dtls_failed": true,
+    "negative_received_media_packets": 0,
+    "positive_dtls_connected": true,
+    "srtp_cipher": "AES_CM_128_HMAC_SHA1_80"
+  },
+  "receiver_same_media_stream": true,
+  "separate_streams": false,
+  "product_sync": false,
+  "test_output_silenced": true,
+  "actual_zero_pcm_frames": 1030800,
+  "physical_android": false,
+  "qualified_for_release": false,
+  "published": false,
+  "evidence_sha256": {
+    ".media.json": "ce04981b10c1d813a8e60bc2aad7ea6078fa86aa7b3615d18e20cea8b153988c",
+    ".control.media.json": "9007c1a1cb4abc47d6017c2478d656af37e9354fbbebb164b8b4d4b66e77b012",
+    ".analysis.json": "c4dbca7a110a24bf93d0f3346c24436968a38ac71893d8c9a212bb47827a7305",
+    ".output-clock.json": "9394302b08bdc0b0f17657a921cbdba3cb5f8eafb6d2b7fd57b46879f2bd526c",
+    ".audio-continuity.json": "d32cff7dbb994684123d75471c08fe2e585d721cec95d809f15abc6b6a412be7",
+    ".speech.json": "a7e5b17174feb679009bbceab8146b526a7ddb167c7d5169994c63a1ab659e6a",
+    ".voice.json": "9b86bbdad54d511f3fcdc3a07d276b97a6a384f02f1232863b31b601e3bb1d62",
+    ".video-queue.json": "4a30999320033a61bcb7220910acb889cc76f15d37adaa697952125705c4390e"
+  },
+  "observed_render_guard_conflict": {
+    "time_after_clean_start_s": 5.115,
+    "measured_audio_delay_ms": 397,
+    "synchronizer_video_target_ms": 401.941,
+    "observed_video_current_delay_ms": 51.727,
+    "fixed_render_guard_ms": 250,
+    "status": "Source path identified; SDK35 carries independent audio delay into guard. Native negative controls and real-call verification pending."
+  }
+}

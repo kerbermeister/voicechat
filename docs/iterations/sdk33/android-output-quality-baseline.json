@@ -1,0 +1,217 @@
+{
+  "date": "2026-11-08",
+  "version": "150.7871.04-vc33",
+  "source_revision": "5a4f0d288b7a66b2992bb781f7aab92cfb6a7df0",
+  "sample_count": 120,
+  "decoded_timing": {
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 79.12341699999104,
+      "max_source_corrected_abs_ms": 77.63229199632349
+    },
+    "recovery": {
+      "count": 27,
+      "max_abs_ms": 89.75191633334134,
+      "max_source_corrected_abs_ms": 90.57724965504121
+    }
+  },
+  "audio_device_output": {
+    "schema": 1,
+    "pass": false,
+    "decoded_sink_outcome": "budget_exceeded",
+    "audio_device_timestamp_observed": true,
+    "physical_speaker_measured": false,
+    "video_sink_before_display": true,
+    "phases": {
+      "clean": {
+        "count": 8,
+        "missing_output_markers": [],
+        "max_abs_ms": 68.08183333333773,
+        "max_source_corrected_abs_ms": 68.86616669208934,
+        "pass": true
+      },
+      "recovery": {
+        "count": 27,
+        "missing_output_markers": [],
+        "max_abs_ms": 215.32712533331733,
+        "max_source_corrected_abs_ms": 216.1524586550172,
+        "pass": false
+      }
+    }
+  },
+  "speech": {
+    "schema": 1,
+    "outcome": "pass",
+    "synthetic_reference_only": true,
+    "physical_listening_test": false,
+    "paired_trials": 1,
+    "stoi_noninferiority_margin": 0.005,
+    "level_tolerance_db": 0.15,
+    "phases": {
+      "clean": {
+        "paired_clips": 8,
+        "control": {
+          "stoi": 0.9952903934590163,
+          "si_sdr_db": 9.185811646808993,
+          "rms_dbfs": -23.202204897189695
+        },
+        "candidate": {
+          "stoi": 0.9942172961174268,
+          "si_sdr_db": 9.376887116933057,
+          "rms_dbfs": -23.1183330256108
+        }
+      },
+      "delay": {
+        "paired_clips": 13,
+        "control": {
+          "stoi": 0.9949916309388207,
+          "si_sdr_db": 9.56095540216182,
+          "rms_dbfs": -23.190355048592735
+        },
+        "candidate": {
+          "stoi": 0.9944544910803239,
+          "si_sdr_db": 9.410539855048901,
+          "rms_dbfs": -23.148003193030267
+        }
+      },
+      "pause": {
+        "paired_clips": 5,
+        "control": {
+          "stoi": 0.9953946994579193,
+          "si_sdr_db": 9.555984859649811,
+          "rms_dbfs": -23.15825955437583
+        },
+        "candidate": {
+          "stoi": 0.9953876567666516,
+          "si_sdr_db": 9.471151367403998,
+          "rms_dbfs": -23.121692482013714
+        }
+      },
+      "recovery": {
+        "paired_clips": 25,
+        "control": {
+          "stoi": 0.9941007827890097,
+          "si_sdr_db": 8.734540149341468,
+          "rms_dbfs": -23.121383956909956
+        },
+        "candidate": {
+          "stoi": 0.9960001567154458,
+          "si_sdr_db": 9.431166261448892,
+          "rms_dbfs": -23.046711108235773
+        }
+      }
+    }
+  },
+  "added_voice": {
+    "pass": false,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 87.3438336666652
+    },
+    "video_paused": {
+      "count": 3,
+      "max_added_voice_delay_ms": -45.776625000002014
+    },
+    "recovery": {
+      "count": 27,
+      "max_added_voice_delay_ms": 2.2274166666704787
+    }
+  },
+  "missing_key_gate": {
+    "content": {
+      "audio_peak": 0.0,
+      "video_markers": 0,
+      "audio_chunks": 302,
+      "control_audio_peak": 0.0,
+      "output_signal_peak": 0.0,
+      "output_signal_frames": 0
+    },
+    "audio": {
+      "packets": 132,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 182,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 131,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "audio_output_underrun_counter_changes": [
+    {
+      "previous": [
+        92.510078918,
+        54804479.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "current": [
+        93.523832544,
+        54804479.0,
+        1.0,
+        98.0,
+        92.0
+      ]
+    },
+    {
+      "previous": [
+        208.561552349,
+        54804479.0,
+        1.0,
+        11550.0,
+        11544.0
+      ],
+      "current": [
+        209.582542016,
+        54804479.0,
+        2.0,
+        11655.0,
+        11649.0
+      ]
+    }
+  ],
+  "phases": [
+    [
+      "clean",
+      96.721004379
+    ],
+    [
+      "delay",
+      117.337633888
+    ],
+    [
+      "offline",
+      147.923739111
+    ],
+    [
+      "clean",
+      160.337789576
+    ]
+  ],
+  "audio_timestamp_queries": {
+    "count": 1864,
+    "total_ns": 49949227,
+    "max_ns": 1434958,
+    "unavailable": 1
+  },
+  "output_continuity_complete": false,
+  "continuity_limit": "Older capture has no final hardware counter; one active-call underrun observed nonetheless",
+  "test_output_silenced": true,
+  "physical_android": false,
+  "qualified_for_release": false,
+  "published": false,
+  "evidence_sha256": {
+    ".media.json": "488b46daf112dc8c21973552d36748896012791b20f4bcb2b826b1cf1a6ffce2",
+    ".control.media.json": "334ed4e08b0930036e30c94491bc0fcb7e5f9d5cba58eb36109c7ed671a36492",
+    ".output-clock.json": "48d07003ea3d0d84a2eeac5f63623177defa409bb9acd98ae468ae9c70d37dfd",
+    ".analysis.json": "bfbe50da5c84ccf640cbd673f127e2af0f4ed574b0e32118e985611fe24e9e45",
+    ".speech.json": "650a1f586aa06acc258cf3217dcf743722c9649a2be1bc93e44a83039f308711",
+    ".voice.json": "89ed9f908888dee9c4ec51c3212a5616337400258aae35bcafe0a362a9e2c482",
+    ".proof.json": "0ba72f8d9f08cb278bac0971f33fbce75e90f5b23d4246b29e3a8b14f5e63bd6"
+  }
+}

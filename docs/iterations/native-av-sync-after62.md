@@ -1991,3 +1991,79 @@ active-call AudioTrack underrun. Эти данные показывают, по�
 После проверки полных SHA удалены только завершённые download chunks
 и байтово одинаковый дополнительный Mac ZIP:82 605 216 байт логически.
 [Квитанция](sdk34/completed-download-duplicates-cleanup.json).
+
+Первый полный SDK34 Android LiveKit (API35 arm64 emulator, no-audio,
+SFU без искусственной CPU-квоты,2 workers) завершён:120 samples, реальный
+APK JNI совпал с точным AAR. Required E2EE keyless-negative/source-positive,
+речь, added voice и полный hardware-underrun window прошли:0 active underruns,
+тот же output track, final counter покрывает хвост. Crypto nice реально
+[-16,-10,-16], прежний video-10 сохранён. Однако decoded raw92,514/76,872 мс
+(corrected91,430/75,835), AudioTrack72,446/81,489 мс
+(corrected73,342/82,371) **не проходят все80-мс гейты**. Улучшение очереди
+вывода после сбоя относительно предыдущих215 мс существенно, но это
+один сравнительный прогон, не повод игнорировать оставшиеся превышения.
+Timestamp observer mean2,744 мкс/max204,291 мкс; весь вывод заглушён
+и подтверждён нулевым PCM. [Точное свидетельство](sdk34/android-livekit-output-quality-first.json).
+Дальше проверяются повторяемость Mac, Android P2P и причина оставшейся
+ошибки clocks/scheduling; клиентские версии остаются прежними.
+
+Чистый Mac34 повтор без mid-test AX-инспекции прошёл Flutter test и
+весь120-sample capture. Raw A/V9,932/40,494 мс, corrected10,580/41,503;
+added voice и required E2EE прошли,12605 callbacks/max gap11,745 мс,
+активных разрывов нет. Но **speech recovery не прошла**: STOI candidate
+0,990421/control0,996400, разность−0,005980 при допуске0,005. Поэтому
+успешный первый звонок не считается повторяемой приёмкой речи. В candidate
+NetEq видны2 concealment events при packetsLost0, один после восстановления;
+это локализует следующий анализ на входе/времени декодирования, а не
+на паузе AudioUnit output. Причина ещё не доказана. [Полный повтор](sdk34/macos-clean-repeat-speech-regression.json).
+
+Когда media-процессы завершились, удалены937626969 байт старых generated
+intermediate/test кешей оригинального checkout (даты3/4 ноября). Все
+17 APK output hashes и Git WIP status совпали до/после; профили, ключи
+и резервные копии сохранены. [Квитанция](sdk34/inactive-original-root-generated-cleanup.json).
+
+08.11.2026 пользователь явно согласовал достигнутый Android LiveKit SDK34
+результат. Приёмка относится к конкретному полному emulator-прогону:
+AudioTrack recovery raw81,489/corrected82,371 мс, decoded clean
+raw92,514/corrected91,430 мс; речь/E2EE/added voice/0 active underruns
+прошли. Это согласованное численное отклонение, исходные80-мс тесты
+не переписаны и результат не выдан за их прохождение. [Запись приёмки](sdk34/android-livekit-output-quality-first.json).
+Физический Xiaomi, установка APK, P2P и Mac speech этой приёмкой
+не покрыты. SDK пока не опубликован: общий Android-пакет также
+затронет P2P, где остаётся существенный стартовый рассинхрон.
+
+SDK34 direct P2P завершён: transport/DTLS-SRTP controls, речь и added voice
+прошли, активного зависания decoder не было. Но raw decoded196,091/104,876
+мс, фактический AudioTrack310,813/40,896 мс;1 active output underrun.
+Это открытый дефект, не покрытый пользовательской приёмкой LiveKit.
+[Отчёт](sdk34/android-p2p-output-quality-first.json). В native trace на
+5,115с чистой фазы audio current_delay397 мс, sync target401,941 мс,
+video current_delay51,727 мс. Исходник VCMTiming.RenderTime при корректном
+RTP fit отбрасывает sync render wait>250 мс и возвращает natural wait;
+реальная очередь аудио в этот предел не попадала.
+
+КандидатSDK35 d5c8be1 передаёт измеренную локальную audio current_delay
+через все custom Syncable/VideoReceiveStream/VCMTiming вызовы и использует
+её как независимое дополнение к прежнему250-мс пределу render wait.
+Без данных, с отрицательными/неfinite данными, после detach/reset/reanchor
+сохраняется прежняя защита; отдельные future/late RTP clock guards250 мс
+не ослаблены. При audio397 мс цель402 мс допустима, ложная цель4с
+по-прежнему должна отклоняться. PCM, NetEq, codec, буфер и E2EE не менялись.
+Добавлены4 native cases и2 контроля, которые обязаны воспроизвести
+прежний fixed-bound/потерю metadata на настоящем compiled SUT. Patch
+проверен на53 pristine/55 output файлах,47 неизменённых SHA SDK34
+сохранены;21 целевой Python-тест прошёл. Native117+53 и обе платформенные
+сборки запущены в [CI42465826333](https://github.com/kerbermeister/voicechat/actions/runs/42465826333);
+до их результата и медиапроверок исправление кандидата не объявляется
+подтверждённым. [Source checks](sdk35/candidate-source-checks.json).
+
+Mac speech разобрана по отдельным клипам без изменения гейта: клип45
+STOI0,911 против0,995 совпал по времени с400 samples NetEq acceleration;
+клип43 также пересёк acceleration554/580 samples. Источник и output
+callbacks имели max gaps около12 мс. Это согласуется со штатным
+[NetEq time stretching](https://chromium.googlesource.com/external/webrtc/+/refs/heads/main/modules/audio_coding/neteq/g3doc/index.md),
+но ещё не отличает чувствительность alignment метрики от слышимого
+искажения; исходный speech failure сохранён. [Поклиповая диагностика](sdk34/macos-speech-per-clip-forensics.json).
+Новый полный Mac34 прогон дополнен пассивными host-resource samples;
+завершённый Gradle worker остановлен штатно после проверки, что все48
+build contexts относятся только к изолированному Android-стенду.

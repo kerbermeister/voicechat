@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-08",
+  "source_revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "ci_run": 42465826333,
+  "patch_sha256": "db0b576520f29064d3a3ad787800a8a07e839a7720ddc5deb076462765b8dbc2",
+  "original_files_verified": 53,
+  "patched_files_verified": 55,
+  "unchanged_sdk34_outputs": 47,
+  "local_python_targeted_tests_passed": 21,
+  "expected_native_timing_crypto_neteq_tests": 117,
+  "expected_recovery_tests": 53,
+  "new_native_tests": 4,
+  "sdk34_policy_negative_controls": [
+    "VCMTimingTest.SyncDelayAllowsMeasuredAudioQueue",
+    "RtpStreamsSynchronizerTest.PassesMeasuredAudioQueueToRenderGuard"
+  ],
+  "native_compilation_and_platform_media_status": "in progress, no native media qualification",
+  "runtime_artifact_pins_changed": false,
+  "audio_pcm_codec_neteq_buffer_changes": false,
+  "crypto_changes": false,
+  "published": false
+}
