@@ -14,7 +14,7 @@
     "VCMTimingTest.SyncDelayAllowsMeasuredAudioQueue",
     "RtpStreamsSynchronizerTest.PassesMeasuredAudioQueueToRenderGuard"
   ],
-  "native_compilation_and_platform_media_status": "Native117+53 PASS, no skips; exact receipts and old-policy negative controls verified locally. Both platform artifacts building; no SDK35 media qualification.",
+  "native_compilation_and_platform_media_status": "Native117+53 PASS, no skips; both platform artifacts strictly verified. Two consecutive full Mac35 LiveKit calls pass all original timing/speech/E2EE/output gates; Android35 P2P in progress.",
   "runtime_artifact_pins_changed": false,
   "audio_pcm_codec_neteq_buffer_changes": false,
   "crypto_changes": false,

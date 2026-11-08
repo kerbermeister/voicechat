@@ -9,18 +9,27 @@
      TimeDelta StatsTargetDelay() const;
      // Returns whether the low-latency path should be used, i.e., frames should
      // be decoded and rendered as soon as possible.
-@@ -62,6 +64,7 @@
+@@ -62,6 +64,8 @@
      TimeDelta stats_target_delay = TimeDelta::Zero();
      // Current total delay. Obtained by smoothening the `target_delay`.
      TimeDelta current_delay = TimeDelta::Zero();
 +    std::optional<TimeDelta> sync_playout_delay;
++    TimeDelta sync_audio_delay = TimeDelta::Zero();
    };
 
    VCMTiming(Clock* clock, const FieldTrialsView& field_trials);
-@@ -102,6 +105,15 @@
+@@ -96,11 +100,22 @@
+
+   // Used to report that a frame is passed to decoding. Updates the timestamp
+   // filter which is used to map between timestamps and receiver system time.
+-  virtual void OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now);
++  // Returns true when queued decode deadlines must be recalculated.
++  virtual bool OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now);
+
+   // Returns the receiver system time when the frame with `rtp_timestamp`
    // should be rendered, assuming that the system time currently is `now`.
    Timestamp RenderTime(uint32_t rtp_timestamp, Timestamp now) const;
-
++
 +  // Relative network delay is already measured from the last packet's arrival.
 +  // Report the remaining render wait, including the RTP extrapolator's offset.
 +  TimeDelta CurrentDelayFromReceive(uint32_t rtp_timestamp,
@@ -28,11 +37,11 @@
 +
 +  std::optional<TimeDelta> VideoClockOffset(uint32_t rtp_timestamp,
 +                                           Timestamp receive_time) const;
-+  void SetSyncPlayoutDelay(std::optional<TimeDelta> delay);
-+
++  void SetSyncPlayoutDelay(std::optional<TimeDelta> delay,
++                           TimeDelta audio_delay = TimeDelta::Zero());
+
    // Returns the current target delay which is minimum delay + decode time +
    // render delay.
-   TimeDelta TargetVideoDelay() const;
 --- a/modules/video_coding/timing/timing.cc
 +++ b/modules/video_coding/timing/timing.cc
 @@ -33,6 +33,18 @@
@@ -43,7 +52,7 @@
 +// the receiver's fitted arrival clock. Allow ordinary jitter before rebasing.
 +constexpr TimeDelta kMaxFrameClockLead = TimeDelta::Millis(250);
 +constexpr TimeDelta kMaxLateFrameClockLag = TimeDelta::Millis(250);
-+// A sync correction must not hold a complete frame beyond ordinary playout.
++// Reject a stale sync target beyond the independently measured audio queue.
 +constexpr TimeDelta kMaxSyncRenderLead = TimeDelta::Millis(250);
 +
 +bool HasFutureRtpClockPrediction(std::optional<Timestamp> local_time,
@@ -51,16 +60,17 @@
 +  return observed_time.IsFinite() && local_time &&
 +         *local_time - observed_time > kMaxFrameClockLead;
 +}
- 
+
  void CheckDelaysValid(TimeDelta min_delay, TimeDelta max_delay) {
    if (min_delay > max_delay) {
-@@ -58,11 +70,20 @@
+@@ -58,11 +70,21 @@
    min_playout_delay = TimeDelta::Zero();
    stats_target_delay = TimeDelta::Zero();
    current_delay = TimeDelta::Zero();
 +  sync_playout_delay.reset();
++  sync_audio_delay = TimeDelta::Zero();
  }
- 
+
  TimeDelta VCMTiming::VideoDelayTimings::TargetDelay() const {
    return std::max(min_playout_delay,
                    minimum_delay + estimated_max_decode_time + render_delay);
@@ -73,12 +83,16 @@
 +  return std::clamp(sync_playout_delay.value_or(current_delay),
 +                    min_playout_delay, max_playout_delay);
  }
- 
+
  TimeDelta VCMTiming::VideoDelayTimings::StatsTargetDelay() const {
-@@ -156,6 +177,18 @@
- 
- void VCMTiming::OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now) {
-   MutexLock lock(&mutex_);
+@@ -154,9 +176,25 @@
+       TimeDelta::Millis(decode_time_filter_->GetPercentileMs());
+ }
+
+-void VCMTiming::OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now) {
+-  MutexLock lock(&mutex_);
++bool VCMTiming::OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now) {
++  MutexLock lock(&mutex_);
 +  const std::optional<Timestamp> predicted =
 +      ts_extrapolator_->ExtrapolateLocalTime(rtp_timestamp);
 +  // A late reordered frame does not represent a change in the RTP clock.
@@ -86,15 +100,20 @@
 +      now.IsFinite() && predicted &&
 +      ts_extrapolator_->IsNewerThanLastAccepted(rtp_timestamp) &&
 +      now - *predicted > kMaxLateFrameClockLag;
-+  if (HasFutureRtpClockPrediction(predicted, now) || late_forward_frame) {
++  const bool reanchored =
++      HasFutureRtpClockPrediction(predicted, now) || late_forward_frame;
++  if (reanchored) {
 +    RTC_LOG(LS_INFO) << "Reanchoring video RTP clock after a large timing error";
 +    ts_extrapolator_->Reset(now);
 +    timings_.sync_playout_delay.reset();
++    timings_.sync_audio_delay = TimeDelta::Zero();
 +  }
    ts_extrapolator_->Update(now, rtp_timestamp);
++  return reanchored;
  }
- 
-@@ -170,9 +203,46 @@
+
+ Timestamp VCMTiming::RenderTime(uint32_t rtp_timestamp, Timestamp now) const {
+@@ -170,9 +208,53 @@
    if (!local_time.has_value()) {
      return now;
    }
@@ -115,7 +134,9 @@
 +                   timings_.max_playout_delay);
 +    // The RTP clock alone can be plausible while its sync correction makes
 +    // the final deadline stale. Anchor that frame to receiver time instead.
-+    if (render_time - now > std::max(kMaxSyncRenderLead, natural_delay))
++    const TimeDelta sync_limit =
++        timings_.sync_audio_delay + kMaxSyncRenderLead;
++    if (render_time - now > std::max(sync_limit, natural_delay))
 +      return now + natural_delay;
 +  }
 +  return render_time;
@@ -138,18 +159,23 @@
 +  return receive_time - *local_time;
 +}
 +
-+void VCMTiming::SetSyncPlayoutDelay(std::optional<TimeDelta> delay) {
++void VCMTiming::SetSyncPlayoutDelay(std::optional<TimeDelta> delay,
++                                    TimeDelta audio_delay) {
 +  MutexLock lock(&mutex_);
 +  timings_.sync_playout_delay = delay;
++  timings_.sync_audio_delay =
++      delay && audio_delay.IsFinite() && audio_delay > TimeDelta::Zero()
++          ? audio_delay
++          : TimeDelta::Zero();
  }
- 
+
  TimeDelta VCMTiming::TargetVideoDelay() const {
 --- a/modules/video_coding/timing/timing_unittest.cc
 +++ b/modules/video_coding/timing/timing_unittest.cc
-@@ -482,5 +482,205 @@
+@@ -482,5 +482,264 @@
    EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
  }
- 
+
 +TEST(VCMTimingTest, SyncDelayMeasuresRenderScheduleFromPacketReceipt) {
 +  FieldTrials field_trials = CreateTestFieldTrials();
 +  SimulatedClock clock(Timestamp::Millis(1000));
@@ -271,6 +297,65 @@
 +            Timestamp::Millis(1400));
 +}
 +
++TEST(VCMTimingTest, SyncDelayAllowsMeasuredAudioQueue) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Seconds(10)});
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++
++  // The real Android startup had 397 ms of audio delay and a 402 ms target.
++  // A fixed 250 ms render guard discarded this valid synchronization wait.
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(402), TimeDelta::Millis(397));
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1402));
++  EXPECT_EQ(timing.CurrentDelayFromReceive(90000, clock.CurrentTime()),
++            TimeDelta::Millis(402));
++
++  // Independently measured audio cannot justify a stale multi-second target.
++  timing.SetSyncPlayoutDelay(TimeDelta::Seconds(4), TimeDelta::Millis(397));
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1070));
++}
++
++TEST(VCMTimingTest, SyncAudioQueueNeverValidatesFutureRtpClock) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Seconds(10)});
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(600), TimeDelta::Millis(600));
++  clock.AdvanceTime(TimeDelta::Millis(60));
++  EXPECT_EQ(timing.RenderTime(360000, clock.CurrentTime()),
++            Timestamp::Millis(1130));
++  timing.OnCompleteTemporalUnit(360000, clock.CurrentTime());
++  EXPECT_EQ(timing.GetTimings().sync_audio_delay, TimeDelta::Zero());
++}
++
++TEST(VCMTimingTest, SyncAudioQueueRequiresFiniteCurrentEvidence) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Seconds(10)});
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(600), TimeDelta::Millis(600));
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1600));
++
++  for (TimeDelta invalid : {TimeDelta::Millis(-1), TimeDelta::PlusInfinity(),
++                            TimeDelta::MinusInfinity(), TimeDelta::Zero()}) {
++    timing.SetSyncPlayoutDelay(TimeDelta::Millis(600), invalid);
++    EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++              Timestamp::Millis(1070));
++  }
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(600), TimeDelta::Millis(600));
++  timing.SetSyncPlayoutDelay(std::nullopt);
++  EXPECT_EQ(timing.GetTimings().sync_audio_delay, TimeDelta::Zero());
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(600));
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1070));
++}
++
 +TEST(VCMTimingTest, SyncTargetReducesStaleJitterAndPreservesBounds) {
 +  FieldTrials field_trials = CreateTestFieldTrials();
 +  SimulatedClock clock(Timestamp::Millis(1000));
@@ -366,15 +451,17 @@
    return info;
  }
 
-@@ -823,6 +826,11 @@
+@@ -823,6 +826,13 @@
  void VideoReceiveStream2::SetEstimatedPlayoutNtpTimestamp(NtpTime ntp_time,
                                                            Timestamp time) {
    RTC_DCHECK_NOTREACHED();
 +}
 +
-+void VideoReceiveStream2::SetVideoSyncDelay(std::optional<TimeDelta> delay) {
++void VideoReceiveStream2::SetVideoSyncDelay(std::optional<TimeDelta> delay,
++                                             TimeDelta audio_delay) {
 +  RTC_DCHECK_RUN_ON(&worker_sequence_checker_);
-+  timing_->SetSyncPlayoutDelay(delay);
++  timing_->SetSyncPlayoutDelay(delay, audio_delay);
++  buffer_->OnPlayoutDelayChanged();
  }
 
  bool VideoReceiveStream2::SetMinimumPlayoutDelay(TimeDelta delay) {
@@ -416,17 +503,44 @@
  };
 --- a/video/rtp_streams_synchronizer2.cc
 +++ b/video/rtp_streams_synchronizer2.cc
-@@ -32,7 +32,8 @@
+@@ -11,6 +11,7 @@
+ #include "video/rtp_streams_synchronizer2.h"
+
+ #include <cstdint>
++#include <cstdlib>
+ #include <optional>
+
+ #include "api/environment/environment.h"
+@@ -32,7 +33,27 @@
  namespace {
  // Time interval for logging stats.
  constexpr int64_t kStatsLogIntervalMs = 10000;
 -constexpr TimeDelta kSyncInterval = TimeDelta::Millis(1000);
 +constexpr TimeDelta kSyncInterval = TimeDelta::Millis(200);
 +constexpr TimeDelta kStaleStreamTimeout = TimeDelta::Seconds(2);
++
++std::optional<int64_t> CaptureTimeMs(
++    const StreamSynchronization::Measurements& stream,
++    const Syncable::Info& info,
++    uint32_t rtp_timestamp) {
++  const NtpTime measured = stream.rtp_to_ntp.Estimate(rtp_timestamp);
++  if (measured.Valid())
++    return measured.ToMs();
++  if (!info.capture_time_ntp.Valid() || info.rtp_clock_rate_hz <= 0)
++    return std::nullopt;
++  // One authenticated sender report and the negotiated rate are enough for
++  // startup. Do not seed the fitted clock with a synthetic second report.
++  const int64_t delta = static_cast<int32_t>(rtp_timestamp - info.capture_time_rtp);
++  if (std::abs(delta) > int64_t{info.rtp_clock_rate_hz} * 10)
++    return std::nullopt;
++  const int64_t capture_ms = info.capture_time_ntp.ToMs() +
++      delta * 1000 / info.rtp_clock_rate_hz;
++  return capture_ms > 0 ? std::optional<int64_t>(capture_ms) : std::nullopt;
++}
 
  bool UpdateMeasurements(StreamSynchronization::Measurements* stream,
                          const Syncable::Info& info) {
-@@ -58,6 +59,8 @@
+@@ -58,6 +79,8 @@
  RtpStreamsSynchronizer::~RtpStreamsSynchronizer() {
    RTC_DCHECK_RUN_ON(&main_checker_);
    repeating_task_.Stop();
@@ -435,7 +549,7 @@
  }
 
  void RtpStreamsSynchronizer::ConfigureSync(Syncable* syncable_audio) {
-@@ -67,15 +70,17 @@
+@@ -67,15 +90,17 @@
    if (syncable_audio == syncable_audio_)
      return;
 
@@ -457,7 +571,7 @@
 
    if (repeating_task_.Running())
      return;
-@@ -87,13 +92,17 @@
+@@ -87,13 +112,17 @@
        });
  }
 
@@ -477,7 +591,7 @@
 
    bool log_stats = false;
    const int64_t now_ms = env_.clock().TimeInMilliseconds();
-@@ -102,41 +111,43 @@
+@@ -102,41 +131,50 @@
      log_stats = true;
    }
 
@@ -501,6 +615,13 @@
 -
 -  if (last_video_receive_ms == video_measurement_.latest_receive_time_ms) {
 -    // No new video packet has been received since last update.
+-    return;
+-  }
+-
+-  int relative_delay_ms;
+-  // Calculate how much later or earlier the audio stream is compared to video.
+-  if (!StreamSynchronization::ComputeRelativeDelay(
+-          audio_measurement_, video_measurement_, &relative_delay_ms)) {
 +  const Timestamp now = env_.clock().CurrentTime();
 +  // A transient gap shorter than two seconds keeps normal adaptation.
 +  // A stopped stream must not hold its peer's old synchronization delay.
@@ -515,20 +636,26 @@
 +  }
 +  sync_suspended_ = false;
 +
-+  const int64_t last_audio_receive_ms = audio_measurement_->latest_receive_time_ms;
-+  const int64_t last_video_receive_ms = video_measurement_->latest_receive_time_ms;
++  // Audio playout can drain or change delay while video is already queued.
++  // A valid clock mapping does not require another RTP packet from both tracks.
 +  if (!UpdateMeasurements(&*audio_measurement_, *audio_info) ||
-+      !UpdateMeasurements(&*video_measurement_, *video_info) ||
-+      last_audio_receive_ms == audio_measurement_->latest_receive_time_ms ||
-+      last_video_receive_ms == video_measurement_->latest_receive_time_ms) {
-     return;
-   }
-
-   int relative_delay_ms;
-   // Calculate how much later or earlier the audio stream is compared to video.
-   if (!StreamSynchronization::ComputeRelativeDelay(
--          audio_measurement_, video_measurement_, &relative_delay_ms)) {
-+          *audio_measurement_, *video_measurement_, &relative_delay_ms)) {
++      !UpdateMeasurements(&*video_measurement_, *video_info)) {
++    return;
++  }
++
++  const auto audio_capture_ms = CaptureTimeMs(*audio_measurement_, *audio_info,
++      audio_info->latest_received_capture_rtp_timestamp);
++  const auto video_capture_ms = CaptureTimeMs(*video_measurement_, *video_info,
++      video_info->latest_received_capture_rtp_timestamp);
++  if (!audio_capture_ms || !video_capture_ms) {
++    syncable_video_->SetVideoSyncDelay(std::nullopt);
++    return;
++  }
++  const int64_t relative_delay_ms =
++      video_info->latest_receive_time.ms() - audio_info->latest_receive_time.ms() -
++      (*video_capture_ms - *audio_capture_ms);
++  if (std::abs(relative_delay_ms) > 10000) {
++    syncable_video_->SetVideoSyncDelay(std::nullopt);
      return;
    }
 
@@ -542,7 +669,7 @@
                       << "cur_delay: " << video_info->current_delay
                       << "} {relative_delay_ms: " << relative_delay_ms << "} ";
    }
-@@ -147,31 +158,35 @@
+@@ -147,31 +185,45 @@
                   audio_info->current_delay.ms());
    TRACE_COUNTER1("webrtc", "SyncRelativeDelay", relative_delay_ms);
 
@@ -555,22 +682,6 @@
 -    return;
 -  }
 -
--  if (log_stats) {
--    RTC_LOG(LS_INFO) << "Sync delay stats: " << now_ms
--                     << ", {ssrc: " << sync_->audio_stream_id() << ", "
--                     << "target_delay_ms: " << target_audio_delay_ms
--                     << "} {ssrc: " << sync_->video_stream_id() << ", "
--                     << "target_delay_ms: " << target_video_delay_ms << "} ";
--  }
--
--  if (!syncable_audio_->SetMinimumPlayoutDelay(
--          TimeDelta::Millis(target_audio_delay_ms))) {
--    sync_->ReduceAudioDelay();
--  }
--  if (!syncable_video_->SetMinimumPlayoutDelay(
--          TimeDelta::Millis(target_video_delay_ms))) {
--    sync_->ReduceVideoDelay();
--  }
 +  if (!video_info->video_clock_offset.has_value())
 +    return;
 +
@@ -585,25 +696,49 @@
 +  const auto audio_playout = syncable_audio_->GetPlayoutRtpTimestamp();
 +  if (audio_playout && audio_playout->time <= now &&
 +      now - audio_playout->time < kStaleStreamTimeout) {
-+    const NtpTime audio_ntp = audio_measurement_->rtp_to_ntp.Estimate(
++    const auto audio_playout_ms = CaptureTimeMs(*audio_measurement_, *audio_info,
 +        audio_playout->rtp_timestamp);
-+    const NtpTime video_ntp = video_measurement_->rtp_to_ntp.Estimate(
-+        video_info->latest_received_capture_rtp_timestamp);
-+    if (audio_ntp.Valid() && video_ntp.Valid()) {
++    if (audio_playout_ms) {
 +      const TimeDelta capture_offset =
-+          TimeDelta::Millis(video_ntp.ToMs() - audio_ntp.ToMs());
++          TimeDelta::Millis(*video_capture_ms - *audio_playout_ms);
 +      target = capture_offset - (now - audio_playout->time) +
 +          (now - video_info->latest_receive_time) +
 +          *video_info->video_clock_offset;
++      if (log_stats) {
++        RTC_LOG(LS_INFO) << "Sync delay stats: " << now_ms
++                        << ", audio_playout_age: " << now - audio_playout->time
++                        << ", audio_capture_ms: " << *audio_playout_ms
++                        << ", video_capture_ms: " << *video_capture_ms
++                        << ", target: " << target;
++      }
 +    }
 +  }
 +  target = std::max(TimeDelta::Zero(), target);
-+  syncable_video_->SetVideoSyncDelay(target);
+   if (log_stats) {
+     RTC_LOG(LS_INFO) << "Sync delay stats: " << now_ms
+-                     << ", {ssrc: " << sync_->audio_stream_id() << ", "
+-                     << "target_delay_ms: " << target_audio_delay_ms
+-                     << "} {ssrc: " << sync_->video_stream_id() << ", "
+-                     << "target_delay_ms: " << target_video_delay_ms << "} ";
+-  }
+-
+-  if (!syncable_audio_->SetMinimumPlayoutDelay(
+-          TimeDelta::Millis(target_audio_delay_ms))) {
+-    sync_->ReduceAudioDelay();
+-  }
+-  if (!syncable_video_->SetMinimumPlayoutDelay(
+-          TimeDelta::Millis(target_video_delay_ms))) {
+-    sync_->ReduceVideoDelay();
+-  }
++                    << ", final_target: " << target
++                    << ", video_clock_offset: " << *video_info->video_clock_offset;
++  }
++  syncable_video_->SetVideoSyncDelay(target, audio_info->current_delay);
 +
  }
 
  // TODO(https://bugs.webrtc.org/7065): Move RtpToNtpEstimator out of
-@@ -195,7 +210,7 @@
+@@ -195,7 +247,7 @@
    }
 
    NtpTime latest_audio_ntp =
@@ -612,7 +747,7 @@
    if (!latest_audio_ntp.Valid()) {
      return false;
    }
-@@ -205,7 +220,7 @@
+@@ -205,7 +257,7 @@
                                                     audio->time);
 
    NtpTime latest_video_ntp =
@@ -621,7 +756,7 @@
    if (!latest_video_ntp.Valid()) {
      return false;
    }
-@@ -223,7 +238,7 @@
+@@ -223,7 +275,7 @@
 
    *video_playout_ntp_ms = latest_video_ntp_ms;
    *stream_offset_ms = latest_audio_ntp_ms - latest_video_ntp_ms;
@@ -646,7 +781,7 @@
 
  #include "rtc_base/rtp_to_ntp_estimator.h"
  #include "system_wrappers/include/clock.h"
-@@ -531,4 +538,232 @@
+@@ -531,4 +538,342 @@
    BothDelayedVideoLaterTest(kBaseTargetDelayMs);
  }
 
@@ -661,12 +796,14 @@
 +  std::optional<Info> GetInfo() const override {
 +    if (!has_info) return std::nullopt;
 +    if (receiving) last_receive_ = clock_->CurrentTime() - receive_age;
-+    const uint32_t timestamp = last_receive_.ms() * frequency_ / 1000;
-+    const int64_t ntp_ms = last_receive_.ms() + 100000;
++    const uint32_t timestamp = last_receive_.ms() * frequency_ / 1000 + rtp_offset;
++    const Timestamp report = report_time.value_or(last_receive_);
++    const int64_t ntp_ms = report.ms() + 100000;
 +    Info info;
 +    info.latest_receive_time = last_receive_;
 +    info.latest_received_capture_rtp_timestamp = timestamp;
-+    info.capture_time_rtp = timestamp;
++    info.capture_time_rtp = report.ms() * frequency_ / 1000 + rtp_offset;
++    info.rtp_clock_rate_hz = expose_clock_rate ? frequency_ : 0;
 +    info.capture_time_ntp = NtpTime(ntp_ms / 1000,
 +        static_cast<uint32_t>((ntp_ms % 1000) * (uint64_t{1} << 32) / 1000));
 +    info.current_delay = std::max(TimeDelta::Millis(delay_ms), floor);
@@ -681,18 +818,23 @@
 +    if (!actual_playout_delay) return std::nullopt;
 +    const Timestamp instant = clock_->CurrentTime() - playout_age;
 +    const uint32_t rtp = (instant - *actual_playout_delay).ms() *
-+        frequency_ / 1000;
++        frequency_ / 1000 + rtp_offset;
 +    return PlayoutInfo{.time = instant, .rtp_timestamp = rtp};
 +  }
 +  bool SetMinimumPlayoutDelay(TimeDelta delay) override {
 +    floor = delay;
 +    return true;
 +  }
-+  void SetVideoSyncDelay(std::optional<TimeDelta> delay) override {
++  void SetVideoSyncDelay(std::optional<TimeDelta> delay,
++                         TimeDelta audio_delay) override {
 +    video_target = delay;
++    video_audio_delay = audio_delay;
 +    ++video_updates;
 +  }
 +  void SetEstimatedPlayoutNtpTimestamp(NtpTime, Timestamp) override {}
++  std::optional<Timestamp> report_time;
++  bool expose_clock_rate = false;
++  uint32_t rtp_offset = 0;
 +  bool receiving = true;
 +  bool has_info = true;
 +  int delay_ms;
@@ -702,6 +844,7 @@
 +  TimeDelta floor = TimeDelta::Zero();
 +  std::optional<TimeDelta> video_buffer;
 +  std::optional<TimeDelta> video_target;
++  TimeDelta video_audio_delay = TimeDelta::Zero();
 +  TimeDelta transport_offset = TimeDelta::Zero();
 +  int video_updates = 0;
 + private:
@@ -730,6 +873,79 @@
 +  SyncTestStream video_;
 +  std::unique_ptr<internal::RtpStreamsSynchronizer> sync_;
 +};
++
++TEST_F(RtpStreamsSynchronizerTest, PassesMeasuredAudioQueueToRenderGuard) {
++  audio_.delay_ms = 397;
++  audio_.actual_playout_delay = TimeDelta::Millis(402);
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target);
++  EXPECT_NEAR(video_.video_target->ms(), 402, 1);
++  EXPECT_EQ(video_.video_audio_delay, TimeDelta::Millis(397));
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++
++  sync_->ConfigureSync(nullptr);
++  EXPECT_FALSE(video_.video_target.has_value());
++  EXPECT_EQ(video_.video_audio_delay, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest, StartsWithSingleSenderReport) {
++  sync_->ConfigureSync(nullptr);
++  audio_.expose_clock_rate = video_.expose_clock_rate = true;
++  audio_.report_time = video_.report_time = time_.GetClock()->CurrentTime();
++  sync_->ConfigureSync(&audio_);
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target);
++  EXPECT_NEAR(video_.video_target->ms(), 225, 1);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest, SingleReportUsesPresentationClock) {
++  sync_->ConfigureSync(nullptr);
++  audio_.expose_clock_rate = video_.expose_clock_rate = true;
++  audio_.report_time = video_.report_time = time_.GetClock()->CurrentTime();
++  audio_.actual_playout_delay = TimeDelta::Millis(80);
++  sync_->ConfigureSync(&audio_);
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target);
++  EXPECT_NEAR(video_.video_target->ms(), 80, 1);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest, SingleReportSurvivesRtpWrap) {
++  sync_->ConfigureSync(nullptr);
++  const Timestamp now = time_.GetClock()->CurrentTime();
++  audio_.expose_clock_rate = video_.expose_clock_rate = true;
++  audio_.report_time = video_.report_time = now;
++  audio_.rtp_offset = uint32_t{0xffffff00} - now.ms() * 8000 / 1000;
++  video_.rtp_offset = uint32_t{0xffffff00} - now.ms() * 90000 / 1000;
++  sync_->ConfigureSync(&audio_);
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target);
++  EXPECT_NEAR(video_.video_target->ms(), 225, 1);
++}
++
++TEST_F(RtpStreamsSynchronizerTest, UnknownRateWaitsForMeasuredClock) {
++  sync_->ConfigureSync(nullptr);
++  audio_.report_time = video_.report_time = time_.GetClock()->CurrentTime();
++  sync_->ConfigureSync(&audio_);
++  time_.AdvanceTime(TimeDelta::Millis(400));
++  EXPECT_FALSE(video_.video_target);
++  audio_.report_time = video_.report_time = time_.GetClock()->CurrentTime();
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target);
++  EXPECT_NEAR(video_.video_target->ms(), 225, 1);
++}
++
++TEST_F(RtpStreamsSynchronizerTest, StaleSingleReportDoesNotBootstrap) {
++  sync_->ConfigureSync(nullptr);
++  audio_.expose_clock_rate = video_.expose_clock_rate = true;
++  audio_.report_time = video_.report_time = time_.GetClock()->CurrentTime();
++  sync_->ConfigureSync(&audio_);
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target);
++  time_.AdvanceTime(TimeDelta::Seconds(11));
++  EXPECT_FALSE(video_.video_target);
++}
 +
 +TEST_F(RtpStreamsSynchronizerTest, VideoFollowsAudioWithoutAudioBuffering) {
 +  EXPECT_EQ(video_.video_target, TimeDelta::Millis(225));
@@ -821,6 +1037,35 @@
 +}
 +
 +TEST_F(RtpStreamsSynchronizerTest, TracksAudioPlayoutWithinTwoHundredMilliseconds) {
++  audio_.actual_playout_delay = TimeDelta::Millis(80);
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target.has_value());
++  EXPECT_NEAR(video_.video_target->ms(), 80, 1);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest,
++       RefreshesTargetWhileVideoReceiveTimestampStalls) {
++  audio_.actual_playout_delay = TimeDelta::Millis(350);
++  time_.AdvanceTime(TimeDelta::Millis(400));
++  ASSERT_TRUE(video_.video_target.has_value());
++  EXPECT_NEAR(video_.video_target->ms(), 350, 1);
++  video_.receiving = false;
++  audio_.actual_playout_delay = TimeDelta::Millis(80);
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target.has_value());
++  EXPECT_NEAR(video_.video_target->ms(), 80, 1);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest,
++       RefreshesTargetWhileReceiveTimestampsAreUnchanged) {
++  audio_.actual_playout_delay = TimeDelta::Millis(350);
++  time_.AdvanceTime(TimeDelta::Millis(400));
++  ASSERT_TRUE(video_.video_target.has_value());
++  EXPECT_NEAR(video_.video_target->ms(), 350, 1);
++  audio_.receiving = false;
++  video_.receiving = false;
 +  audio_.actual_playout_delay = TimeDelta::Millis(80);
 +  time_.AdvanceTime(TimeDelta::Millis(200));
 +  ASSERT_TRUE(video_.video_target.has_value());
@@ -965,7 +1210,7 @@
 @@ -123,11 +123,10 @@
      // TODO(brandtr): Increase from this unreasonably low value.
      int acc_max_error = 7000;  // 77 ms <=> 2.3 frames@30fps.
- 
+
 -    // If true, reset the entire uncertainty covariance matrix on alarms.
 -    // If false, only reset the offset variance term.
 -    // TODO(brandtr): Flip so that the frequency term won't get hit tpp badly
@@ -976,10 +1221,10 @@
 +    // An explicit field trial can still request offset-only resetting.
 +    bool reset_full_cov_on_alarm = true;
    };
- 
+
    TimestampExtrapolator(Timestamp start, const FieldTrialsView& field_trials);
 @@ -138,6 +137,12 @@
- 
+
    // Return the expected local timestamp for an RTP timestamp.
    std::optional<Timestamp> ExtrapolateLocalTime(uint32_t timestamp90khz) const;
 +
@@ -988,9 +1233,9 @@
 +    return prev_unwrapped_timestamp_ &&
 +           unwrapper_.PeekUnwrap(timestamp90khz) > *prev_unwrapped_timestamp_;
 +  }
- 
+
    void Reset(Timestamp start);
- 
+
 --- a/modules/video_coding/timing/timestamp_extrapolator_unittest.cc
 +++ b/modules/video_coding/timing/timestamp_extrapolator_unittest.cc
 @@ -10,11 +10,14 @@
@@ -1054,7 +1299,12 @@
  TEST(TimestampExtrapolatorTest, SetsValidConfig) {
 --- a/call/syncable.h
 +++ b/call/syncable.h
-@@ -37,6 +37,8 @@
+@@ -34,9 +34,13 @@
+     // NTP and RTP timestamp from the last RTCP sender report received.
+     uint32_t capture_time_rtp = 0;
+     NtpTime capture_time_ntp;
++    // Negotiated payload clock, used only before two sender reports.
++    int rtp_clock_rate_hz = 0;
 
      // Current playout delay for the given `Syncable`.
      TimeDelta current_delay;
@@ -1063,28 +1313,87 @@
    };
 
    // Mapping between capture/render time in RTP timestamps and local clock.
-@@ -51,6 +53,8 @@
+@@ -51,6 +55,9 @@
    virtual std::optional<Info> GetInfo() const = 0;
    virtual std::optional<PlayoutInfo> GetPlayoutRtpTimestamp() const = 0;
    virtual bool SetMinimumPlayoutDelay(TimeDelta delay) = 0;
 +  // Video can follow audio without changing NetEq or its natural device delay.
-+  virtual void SetVideoSyncDelay(std::optional<TimeDelta>) {}
++  virtual void SetVideoSyncDelay(
++      std::optional<TimeDelta>, TimeDelta audio_delay = TimeDelta::Zero()) {}
    virtual void SetEstimatedPlayoutNtpTimestamp(NtpTime ntp_time,
                                                 Timestamp time) = 0;
  };
 --- a/video/video_receive_stream2.h
 +++ b/video/video_receive_stream2.h
-@@ -200,6 +200,7 @@
+@@ -200,6 +200,8 @@
 
    // SetMinimumPlayoutDelay is only called by A/V sync.
    bool SetMinimumPlayoutDelay(TimeDelta delay) override;
-+  void SetVideoSyncDelay(std::optional<TimeDelta> delay) override;
++  void SetVideoSyncDelay(std::optional<TimeDelta> delay,
++                         TimeDelta audio_delay = TimeDelta::Zero()) override;
 
    std::vector<webrtc::RtpSource> GetSources() const override;
 
 --- a/api/crypto/frame_crypto_transformer.cc
 +++ b/api/crypto/frame_crypto_transformer.cc
-@@ -517,7 +517,9 @@
+@@ -28,6 +28,15 @@
+ #include <array>
+ #include <iostream>
+ #include <string>
++
++#if defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)
++#include <pthread.h>
++#include <sys/qos.h>
++#elif defined(WEBRTC_ANDROID)
++#include <cerrno>
++#include <sys/resource.h>
++#include <unistd.h>
++#endif
+
+ #include "absl/container/inlined_vector.h"
+ #include "absl/types/optional.h"
+@@ -373,6 +382,25 @@
+ }
+
+ namespace {
++
++#if (defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)) || defined(WEBRTC_ANDROID)
++// Encryption and decryption must keep pace with the media pipeline when the
++// application loses focus or competes with other interactive work.
++int SetFrameCryptoThreadPriority(bool audio) {
++#if defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)
++  static_cast<void>(audio);
++  return pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0);
++#elif defined(WEBRTC_ANDROID)
++  const id_t thread = static_cast<id_t>(gettid());
++  const int priority = audio ? -16 : -4;
++  errno = 0;
++  const int current = getpriority(PRIO_PROCESS, thread);
++  if (errno != 0) return errno;
++  if (current <= priority) return 0;
++  return setpriority(PRIO_PROCESS, thread, priority) == 0 ? 0 : errno;
++#endif
++}
++#endif
+
+ // Blank frames the LiveKit SFU injects on mute and track close, byte-for-byte
+ // from livekit-server pkg/sfu/downtrack.go (client-sdk-js: sifPayload.ts).
+@@ -445,6 +473,14 @@
+   RTC_DCHECK(key_provider_ != nullptr);
+   thread_->SetName("FrameCryptorTransformer", this);
+   thread_->Start();
++#if (defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)) || defined(WEBRTC_ANDROID)
++  thread_->PostTask([audio = type == MediaType::kAudioFrame] {
++    const int result = SetFrameCryptoThreadPriority(audio);
++    if (result != 0) {
++      RTC_LOG(LS_WARNING) << "Frame cryptor thread priority unavailable: " << result;
++    }
++  });
++#endif
+ }
+
+ FrameCryptorTransformer::~FrameCryptorTransformer() {
+@@ -517,7 +553,9 @@
      return;
    }
    if (!enabled_cryption) {
@@ -1095,7 +1404,7 @@
      return;
    }
 
-@@ -640,7 +642,9 @@
+@@ -640,7 +678,9 @@
      return;
    }
    if (!enabled_cryption) {
@@ -1106,7 +1415,7 @@
      return;
    }
 
-@@ -666,6 +670,20 @@
+@@ -666,6 +706,20 @@
          }
          return;
        }
@@ -1129,7 +1438,7 @@
                         << payload.size();
 --- a/api/crypto/sif_payload_unittest.cc
 +++ b/api/crypto/sif_payload_unittest.cc
-@@ -171,9 +171,8 @@
+@@ -171,14 +171,16 @@
      signaling_thread_->Stop();
    }
 
@@ -1137,11 +1446,20 @@
 -  // transformer wrote back with SetData, if any.
 -  std::vector<uint8_t> Transform(std::vector<uint8_t> payload) {
 +  // Feed an incoming frame; tests inspect written_ only after sink/observer events.
-+  void Transform(std::vector<uint8_t> payload) {
++  void Transform(
++      std::vector<uint8_t> payload,
++      TransformableFrameInterface::Direction direction =
++          TransformableFrameInterface::Direction::kReceiver) {
      data_ = payload;
      data_.insert(data_.end(), trailer_.begin(), trailer_.end());
      auto frame = std::make_unique<NiceMock<MockTransformableVideoFrame>>();
-@@ -189,7 +188,6 @@
+     ON_CALL(*frame, GetDirection())
+-        .WillByDefault(Return(TransformableFrameInterface::Direction::kReceiver));
++        .WillByDefault(Return(direction));
+     ON_CALL(*frame, GetSsrc()).WillByDefault(Return(kSsrc));
+     ON_CALL(*frame, GetData())
+         .WillByDefault(Return(std::span<const uint8_t>(data_)));
+@@ -189,7 +191,6 @@
          });
      scoped_refptr<FrameTransformerInterface> as_interface = transformer_;
      as_interface->Transform(std::move(frame));
@@ -1149,7 +1467,7 @@
    }
 
    scoped_refptr<DefaultKeyProviderImpl> key_provider_;
-@@ -202,13 +200,67 @@
+@@ -202,13 +203,75 @@
    std::vector<uint8_t> written_;
  };
 
@@ -1159,6 +1477,14 @@
 +  transformer_->SetEnabled(false);
 +  EXPECT_TRUE(transformer_->EnforcesFrameEncryption());
 +  Transform(kVp8KeyFrame8x8);
++  EXPECT_FALSE(sink_->event.Wait(TimeDelta::Millis(250)));
++}
++
++TEST_F(SifTransformTest, StrictDisabledCryptorDropsOutgoingFrames) {
++  key_provider_->options().discard_frame_when_cryptor_not_ready = true;
++  transformer_->SetEnabled(false);
++  Transform(kVp8KeyFrame8x8,
++            TransformableFrameInterface::Direction::kSender);
 +  EXPECT_FALSE(sink_->event.Wait(TimeDelta::Millis(250)));
 +}
 +
@@ -1268,66 +1594,770 @@
 
   protected:
    virtual void RegisterTransformedFrameCallback(
---- a/sdk/objc/api/peerconnection/RTCRtpReceiver.h
-+++ b/sdk/objc/api/peerconnection/RTCRtpReceiver.h
-@@ -100,6 +100,18 @@
- 
- - (instancetype)init NS_UNAVAILABLE;
- 
-+/** Sets the minimum playout delay of this video receiver, in milliseconds.
-+ *  Zero clears the application minimum. Returns NO for an invalid delay or
-+ *  a receiver that does not handle video.
-+ */
-+- (BOOL)setMinimumVideoPlayoutDelayMs:(NSInteger)delayMs;
+--- a/sdk/android/src/java/org/webrtc/AndroidVideoDecoder.java
++++ b/sdk/android/src/java/org/webrtc/AndroidVideoDecoder.java
+@@ -42,6 +42,8 @@
+   // running.  If it is, it will block on dequeue again.  Otherwise, it will stop and release the
+   // MediaCodec.
+   private static final int DEQUEUE_OUTPUT_BUFFER_TIMEOUT_US = 100000;
++  private static final long OUTPUT_STALL_TIMEOUT_MS = 2000;
++  private static final long CONTINUOUS_INPUT_MAX_GAP_MS = 500;
+
+   private final MediaCodecWrapperFactory mediaCodecWrapperFactory;
+   private final String codecName;
+@@ -90,6 +92,9 @@
+   // Whether the decoder has seen a key frame.  The first frame must be a key frame.  Only accessed
+   // on the decoder thread.
+   private boolean keyFrameRequired;
++  private long lastInputTimeMs;
++  private long continuousInputSinceMs;
++  private volatile long lastOutputTimeMs;
+
+   private final @Nullable EglBase.Context sharedContext;
+   // Valid and immutable while the decoder is running.
+@@ -166,6 +171,7 @@
+     sliceHeight = height;
+     hasDecodedFirstFrame = false;
+     keyFrameRequired = true;
++    lastInputTimeMs = continuousInputSinceMs = lastOutputTimeMs = SystemClock.elapsedRealtime();
+
+     try {
+       codec = mediaCodecWrapperFactory.createByCodecName(codecName);
+@@ -235,6 +241,19 @@
+         Logging.e(TAG, "decode() - key frame required first");
+         return VideoCodecStatus.NO_OUTPUT;
+       }
++    }
 +
-+/** Sets the minimum playout delay of this audio receiver, in milliseconds.
-+ *  Zero clears the application minimum. Returns NO for an invalid delay or
-+ *  a receiver that does not handle audio.
-+ */
-+- (BOOL)setMinimumAudioPlayoutDelayMs:(NSInteger)delayMs;
-+
- @end
- 
- NS_ASSUME_NONNULL_END
---- a/sdk/objc/api/peerconnection/RTCRtpReceiver.mm
-+++ b/sdk/objc/api/peerconnection/RTCRtpReceiver.mm
-@@ -63,6 +63,24 @@
- 
- - (NSString *)receiverId {
-   return [NSString stringForStdString:_nativeRtpReceiver->id()];
-+}
-+
-+- (BOOL)setMinimumVideoPlayoutDelayMs:(NSInteger)delayMs {
-+  if (delayMs < 0 || delayMs > 10000 ||
-+      _nativeRtpReceiver->media_type() != webrtc::MediaType::VIDEO) {
-+    return NO;
++    final long nowMs = SystemClock.elapsedRealtime();
++    if (nowMs - lastInputTimeMs >= CONTINUOUS_INPUT_MAX_GAP_MS) {
++      continuousInputSinceMs = nowMs;
++    }
++    lastInputTimeMs = nowMs;
++    if (nowMs - Math.max(continuousInputSinceMs, lastOutputTimeMs)
++        >= OUTPUT_STALL_TIMEOUT_MS) {
++      // The native wrapper restarts the decoder and the receive stream requests
++      // a keyframe on error. An idle track must not trigger this recovery.
++      Logging.w(TAG, "Decoder output stalled during continuous input");
++      return VideoCodecStatus.ERROR;
+     }
+
+     int index;
+@@ -436,6 +455,7 @@
+     // Change timestamp of frame.
+     final VideoFrame frameWithModifiedTimeStamp =
+         new VideoFrame(frame.getBuffer(), frame.getRotation(), timestampNs);
++    lastOutputTimeMs = SystemClock.elapsedRealtime();
+     callback.onDecodedFrame(frameWithModifiedTimeStamp, decodeTimeMs, null /* qp */);
+   }
+
+@@ -485,6 +505,7 @@
+     VideoFrame frame = new VideoFrame(frameBuffer, rotation, presentationTimeNs);
+
+     // Note that qp is parsed on the C++ side.
++    lastOutputTimeMs = SystemClock.elapsedRealtime();
+     callback.onDecodedFrame(frame, decodeTimeMs, null /* qp */);
+     frame.release();
+   }
+--- a/sdk/android/tests/src/org/webrtc/AndroidVideoDecoderTest.java
++++ b/sdk/android/tests/src/org/webrtc/AndroidVideoDecoderTest.java
+@@ -27,6 +27,7 @@
+ import android.media.MediaCodecInfo.CodecCapabilities;
+ import android.media.MediaFormat;
+ import android.os.Handler;
++import android.os.SystemClock;
+ import androidx.test.runner.AndroidJUnit4;
+ import java.nio.ByteBuffer;
+ import java.util.ArrayList;
+@@ -286,6 +287,27 @@
+   }
+
+   @Test
++  public void testReportsStalledOutputOnlyDuringContinuousInput() {
++    AndroidVideoDecoder decoder = new TestDecoderBuilder().build();
++    assertThat(decoder.initDecode(TEST_DECODER_SETTINGS, mockDecoderCallback))
++        .isEqualTo(VideoCodecStatus.OK);
++    DecodeInfo info = new DecodeInfo(/* isMissingFrames= */ false, /* renderTimeMs= */ 0);
++    try {
++      assertThat(decoder.decode(createTestEncodedImage(), info)).isEqualTo(VideoCodecStatus.OK);
++      SystemClock.sleep(2500);
++      assertThat(decoder.decode(createTestEncodedImage(), info)).isEqualTo(VideoCodecStatus.OK);
++      for (int frame = 0; frame < 4; ++frame) {
++        SystemClock.sleep(400);
++        assertThat(decoder.decode(createTestEncodedImage(), info)).isEqualTo(VideoCodecStatus.OK);
++      }
++      SystemClock.sleep(400);
++      assertThat(decoder.decode(createTestEncodedImage(), info)).isEqualTo(VideoCodecStatus.ERROR);
++    } finally {
++      assertThat(decoder.release()).isEqualTo(VideoCodecStatus.OK);
++    }
 +  }
-+  _nativeRtpReceiver->SetJitterBufferMinimumDelay(delayMs / 1000.0);
-+  return YES;
-+}
 +
-+- (BOOL)setMinimumAudioPlayoutDelayMs:(NSInteger)delayMs {
-+  if (delayMs < 0 || delayMs > 10000 ||
-+      _nativeRtpReceiver->media_type() != webrtc::MediaType::AUDIO) {
-+    return NO;
-+  }
-+  _nativeRtpReceiver->SetJitterBufferMinimumDelay(delayMs / 1000.0);
-+  return YES;
++  @Test
+   public void testDeliversOutputByteBuffers() throws InterruptedException {
+     final byte[] testOutputData = CodecTestHelper.generateRandomData(
+         TEST_DECODER_SETTINGS.width * TEST_DECODER_SETTINGS.height * 3 / 2);
+--- a/video/rtp_video_stream_receiver2.cc
++++ b/video/rtp_video_stream_receiver2.cc
+@@ -192,6 +192,7 @@
  }
- 
- - (RTC_OBJC_TYPE(RTCRtpParameters) *)parameters {
---- a/api/frame_transformer_interface.h
-+++ b/api/frame_transformer_interface.h
-@@ -171,6 +171,9 @@
- // the TransformedFrameCallback interface (see above).
- class FrameTransformerInterface : public RefCountInterface {
-  public:
-+  // Whether this transformer keeps the media path closed until crypto is ready.
-+  virtual bool EnforcesFrameEncryption() const { return false; }
+
+ const int kPacketLogIntervalMs = 10000;
++constexpr TimeDelta kVideoResumeFeedbackGap = TimeDelta::Seconds(2);
+
+ }  // namespace
+
+@@ -431,6 +432,7 @@
+   }
+   info.capture_time_ntp = last_sr->last_remote_ntp_timestamp;
+   info.capture_time_rtp = last_sr->last_remote_rtp_timestamp;
++  info.rtp_clock_rate_hz = kVideoPayloadTypeFrequency;
+
+   if (!last_received_rtp_timestamp_ || !last_received_rtp_system_time_) {
+     return std::nullopt;
+@@ -706,6 +708,21 @@
+     return false;
+   }
+
++  if (!rtp_packet.recovered() &&
++      (!last_primary_video_packet_ ||
++       unwrapped_rtp_seq_num > last_primary_video_packet_->sequence_number)) {
++    const Timestamp now = env_.clock().CurrentTime();
++    if (has_received_frame_ && last_primary_video_packet_ &&
++        unwrapped_rtp_seq_num - last_primary_video_packet_->sequence_number > 1 &&
++        now - last_primary_video_packet_->received_at >= kVideoResumeFeedbackGap &&
++        video_header.frame_type == VideoFrameType::kVideoFrameDelta) {
++      // The prediction chain may have broken during the gap. Resume feedback
++      // on fresh media instead of waiting for the next decoder timeout.
++      rtcp_feedback_buffer_.RequestKeyFrame();
++    }
++    last_primary_video_packet_ = PrimaryVideoPacket{unwrapped_rtp_seq_num, now};
++  }
 +
-   // Transforms `frame` using the implementing class' processing logic.
-   virtual void Transform(
-       std::unique_ptr<TransformableFrameInterface> transformable_frame) = 0;
+   if (packet->codec() == kVideoCodecH264) {
+     // Only when we start to receive packets will we know what payload type
+     // that will be used. When we know the payload type insert the correct
+@@ -817,7 +834,16 @@
+
+ bool RtpVideoStreamReceiver2::IsDecryptable() const {
+   RTC_DCHECK_RUN_ON(&worker_task_checker_);
+-  return frames_decryptable_;
++  RTC_DCHECK_RUN_ON(&packet_sequence_checker_);
++  return frames_decryptable_ || UsesEncryptedFrameTransformer();
++}
++
++bool RtpVideoStreamReceiver2::UsesEncryptedFrameTransformer() const {
++  RTC_DCHECK_RUN_ON(&packet_sequence_checker_);
++  return frame_transformer_delegate_ &&
++         frame_transformer_delegate_->EnforcesFrameEncryption() &&
++         (!buffered_frame_decryptor_ ||
++          !buffered_frame_decryptor_->HasFrameDecryptor());
+ }
+
+ void RtpVideoStreamReceiver2::OnInsertedPacket(
+@@ -982,7 +1008,7 @@
+     last_assembled_frame_rtp_timestamp_ = frame->RtpTimestamp();
+   }
+
+-  if (buffered_frame_decryptor_ != nullptr) {
++  if (buffered_frame_decryptor_ != nullptr && !UsesEncryptedFrameTransformer()) {
+     buffered_frame_decryptor_->ManageEncryptedFrame(std::move(frame));
+   } else if (frame_transformer_delegate_) {
+     frame_transformer_delegate_->TransformFrame(std::move(frame));
+@@ -1386,6 +1412,7 @@
+                                         /*remb_candidate=*/false);
+   }
+   receiving_ = false;
++  last_primary_video_packet_.reset();
+ }
+
+ void RtpVideoStreamReceiver2::InsertSpsPpsIntoTracker(uint8_t payload_type) {
+--- a/video/rtp_video_stream_receiver2.h
++++ b/video/rtp_video_stream_receiver2.h
+@@ -326,6 +326,8 @@
+   ParseGenericDependenciesResult ParseGenericDependenciesExtension(
+       const RtpPacketReceived& rtp_packet,
+       RTPVideoHeader* video_header) RTC_RUN_ON(packet_sequence_checker_);
++  bool UsesEncryptedFrameTransformer() const
++      RTC_RUN_ON(packet_sequence_checker_);
+   void OnAssembledFrame(std::unique_ptr<RtpFrameObject> frame)
+       RTC_RUN_ON(packet_sequence_checker_);
+   void UpdatePacketReceiveTimestamps(const RtpPacketReceived& packet,
+@@ -436,6 +438,12 @@
+   int16_t last_payload_type_ RTC_GUARDED_BY(packet_sequence_checker_) = -1;
+
+   bool has_received_frame_ RTC_GUARDED_BY(packet_sequence_checker_);
++  struct PrimaryVideoPacket {
++    int64_t sequence_number;
++    Timestamp received_at;
++  };
++  std::optional<PrimaryVideoPacket> last_primary_video_packet_
++      RTC_GUARDED_BY(packet_sequence_checker_);
+
+   std::optional<uint32_t> last_received_rtp_timestamp_
+       RTC_GUARDED_BY(packet_sequence_checker_);
+--- a/video/rtp_video_stream_receiver2_unittest.cc
++++ b/video/rtp_video_stream_receiver2_unittest.cc
+@@ -113,6 +113,27 @@
+   return video_header;
+ }
+
++class EncryptionEnforcingFrameTransformer : public MockFrameTransformer {
++ public:
++  bool EnforcesFrameEncryption() const override { return true; }
++};
++
++class RejectingFrameDecryptor : public FrameDecryptorInterface {
++ public:
++  Result Decrypt(MediaType,
++                 const std::vector<uint32_t>&,
++                 std::span<const uint8_t>,
++                 std::span<const uint8_t>,
++                 std::span<uint8_t>) override {
++    ++calls;
++    return Result(Status::kFailedToDecrypt, 0);
++  }
++  size_t GetMaxPlaintextByteSize(MediaType, size_t encrypted_size) override {
++    return encrypted_size;
++  }
++  int calls = 0;
++};
++
+ class MockNackSender : public NackSender {
+  public:
+   MOCK_METHOD(void,
+@@ -209,6 +230,42 @@
+             [this](std::span<const uint8_t> packet, ::testing::Unused) {
+               return rtcp_packet_parser_.Parse(packet);
+             });
++  }
++
++  void ExpectEncryptionRoute(bool required,
++                             bool has_transformer,
++                             bool enforces_encryption,
++                             bool has_decryptor) {
++    config_.crypto_options.sframe.require_frame_encryption = required;
++    scoped_refptr<MockFrameTransformer> transformer;
++    if (has_transformer) {
++      if (enforces_encryption) {
++        transformer = make_ref_counted<
++            testing::NiceMock<EncryptionEnforcingFrameTransformer>>();
++      } else {
++        transformer = make_ref_counted<testing::NiceMock<MockFrameTransformer>>();
++      }
++      EXPECT_CALL(*transformer, Transform(_))
++          .Times(!has_decryptor && (!required || enforces_encryption) ? 1 : 0);
++    }
++    auto decryptor = make_ref_counted<RejectingFrameDecryptor>();
++    auto receiver = std::make_unique<RtpVideoStreamReceiver2>(
++        env_, TaskQueueBase::Current(), &mock_transport_, nullptr, nullptr,
++        &config_, rtp_receive_statistics_.get(), nullptr, nullptr,
++        &nack_periodic_processor_, &mock_on_complete_frame_callback_,
++        has_decryptor ? decryptor : nullptr, transformer);
++    receiver->AddReceiveCodec(kPayloadType, kVideoCodecGeneric, {},
++                              /*raw_payload=*/false);
++    EXPECT_CALL(mock_on_complete_frame_callback_, DoOnCompleteFrame).Times(0);
++    RtpPacketReceived packet;
++    packet.SetPayloadType(kPayloadType);
++    packet.SetSequenceNumber(1);
++    receiver->OnReceivedPayloadData(
++        CopyOnWriteBuffer({'1', '2', '3', '4'}), packet,
++        GetGenericVideoHeader(VideoFrameType::kVideoFrameKey), 0);
++    EXPECT_EQ(decryptor->calls, has_decryptor ? 1 : 0);
++    EXPECT_EQ(receiver->IsDecryptable(),
++              has_transformer && enforces_encryption && !has_decryptor);
+   }
+
+   RTPVideoHeader GetDefaultH264VideoHeader() {
+@@ -1104,6 +1161,40 @@
+   EXPECT_THAT(rtcp_packet_parser_.pli()->num_packets(), Eq(1));
+ }
+
++TEST_F(RtpVideoStreamReceiver2Test, RequestsKeyframeWhenVideoResumesAfterLoss) {
++  const CopyOnWriteBuffer data({'1', '2', '3', '4'});
++  mock_on_complete_frame_callback_.AppendExpectedBitstream(data.data(),
++                                                          data.size());
++  auto receive = [&](uint16_t sequence, VideoFrameType type) {
++    RtpPacketReceived packet;
++    packet.SetPayloadType(kPayloadType);
++    packet.SetSequenceNumber(sequence);
++    packet.SetTimestamp(sequence * 3000u);
++    rtp_video_stream_receiver_->OnReceivedPayloadData(
++        data, packet, GetGenericVideoHeader(type), 0);
++  };
++
++  receive(1, VideoFrameType::kVideoFrameKey);
++  // A camera can pause without any lost RTP sequence numbers.
++  time_controller_.AdvanceTime(TimeDelta::Seconds(2));
++  receive(2, VideoFrameType::kVideoFrameDelta);
++  EXPECT_EQ(rtcp_packet_parser_.pli()->num_packets(), 0);
++
++  time_controller_.AdvanceTime(TimeDelta::Millis(200));
++  receive(4, VideoFrameType::kVideoFrameDelta);
++  EXPECT_EQ(rtcp_packet_parser_.pli()->num_packets(), 0);
++
++  time_controller_.AdvanceTime(TimeDelta::Seconds(2));
++  receive(7, VideoFrameType::kVideoFrameDelta);
++  EXPECT_EQ(rtcp_packet_parser_.pli()->num_packets(), 1);
++  receive(8, VideoFrameType::kVideoFrameDelta);
++  EXPECT_EQ(rtcp_packet_parser_.pli()->num_packets(), 1);
++
++  time_controller_.AdvanceTime(TimeDelta::Seconds(2));
++  receive(11, VideoFrameType::kVideoFrameKey);
++  EXPECT_EQ(rtcp_packet_parser_.pli()->num_packets(), 1);
++}
++
+ TEST_F(RtpVideoStreamReceiver2Test, RequestKeyframeWhenPacketBufferGetsFull) {
+   constexpr int kPacketBufferMaxSize = 2048;
+
+@@ -1614,6 +1705,26 @@
+   InjectPacketWith(stream_structure3, deltaframe3_descriptor);
+   InjectPacketWith(stream_structure2, keyframe2_descriptor);
+   InjectPacketWith(stream_structure3, keyframe3_descriptor);
++}
++
++TEST_F(RtpVideoStreamReceiver2Test, RequiredEncryptionAllowsEnforcingTransformer) {
++  ExpectEncryptionRoute(true, true, true, false);
++}
++
++TEST_F(RtpVideoStreamReceiver2Test, RequiredEncryptionBlocksUntrustedTransformer) {
++  ExpectEncryptionRoute(true, true, false, false);
++}
++
++TEST_F(RtpVideoStreamReceiver2Test, RequiredEncryptionBlocksMissingTransformer) {
++  ExpectEncryptionRoute(true, false, false, false);
++}
++
++TEST_F(RtpVideoStreamReceiver2Test, RequiredEncryptionPreservesDecryptorPriority) {
++  ExpectEncryptionRoute(true, true, true, true);
++}
++
++TEST_F(RtpVideoStreamReceiver2Test, OptionalEncryptionKeepsLegacyTransformer) {
++  ExpectEncryptionRoute(false, true, false, false);
+ }
+
+ TEST_F(RtpVideoStreamReceiver2Test, TransformFrame) {
+--- a/video/render/video_render_frames.cc
++++ b/video/render/video_render_frames.cc
+@@ -18,6 +18,7 @@
+ #include "api/environment/environment.h"
+ #include "api/video/video_frame.h"
+ #include "rtc_base/logging.h"
++#include "rtc_base/numerics/sequence_number_util.h"
+ #include "system_wrappers/include/metrics.h"
+
+ namespace webrtc {
+@@ -26,6 +27,11 @@
+ const int kOldRenderTimestampMS = 500;
+ // Don't render frames with timestamp more than 10s into the future.
+ const int kFutureRenderTimestampMS = 10000;
++// A large deadline reversal on newer RTP can follow recovery of the RTP clock.
++constexpr int kRenderTimelineDiscontinuityMs = 500;
++// A decoder may have only one native texture available. A long render wait
++// can retain that texture and prevent the next frame from reaching this queue.
++constexpr int kMaxNativeFrameHoldMs = 2000;
+
+ const uint32_t kEventMaxWaitTimeMs = 200;
+ const uint32_t kMinRenderDelayMs = 10;
+@@ -71,14 +77,38 @@
+     return -1;
+   }
+
+-  if (new_frame.render_time_ms() < last_render_time_ms_) {
+-    RTC_LOG(LS_WARNING) << "Frame scheduled out of order, render_time="
+-                        << new_frame.render_time_ms()
+-                        << ", latest=" << last_render_time_ms_;
+-    // For more details, see bug:
+-    // https://bugs.chromium.org/p/webrtc/issues/detail?id=7253
++  if (new_frame.render_time_ms() > time_now + kMaxNativeFrameHoldMs &&
++      new_frame.video_frame_buffer()->type() == VideoFrameBuffer::Type::kNative) {
++    RTC_LOG(LS_WARNING) << "Dropping far-future native frame, timestamp="
++                        << new_frame.rtp_timestamp();
+     ++frames_dropped_;
+     return -1;
++  }
++
++  if (new_frame.render_time_ms() < last_render_time_ms_) {
++    const bool recovered_timeline =
++        !incoming_frames_.empty() &&
++        last_render_time_ms_ > time_now + kRenderTimelineDiscontinuityMs &&
++        last_render_time_ms_ - new_frame.render_time_ms() >
++            kRenderTimelineDiscontinuityMs &&
++        AheadOf(new_frame.rtp_timestamp(),
++                incoming_frames_.back().rtp_timestamp());
++    if (!recovered_timeline) {
++      RTC_LOG(LS_WARNING) << "Frame scheduled out of order, render_time="
++                          << new_frame.render_time_ms()
++                          << ", latest=" << last_render_time_ms_;
++      // For more details, see bug:
++      // https://bugs.chromium.org/p/webrtc/issues/detail?id=7253
++      ++frames_dropped_;
++      return -1;
++    }
++    // Preserve pending frames already scheduled on the near side of the
++    // corrected deadline. Old deadlines must not block the resumed video.
++    while (!incoming_frames_.empty() &&
++           incoming_frames_.back().render_time_ms() > new_frame.render_time_ms()) {
++      incoming_frames_.pop_back();
++      ++frames_dropped_;
++    }
+   }
+
+   last_render_time_ms_ = new_frame.render_time_ms();
+--- a/video/render/incoming_video_stream.h
++++ b/video/render/incoming_video_stream.h
+@@ -42,6 +42,7 @@
+
+   VideoRenderFrames render_buffers_ RTC_GUARDED_BY(incoming_render_queue_);
+   VideoSinkInterface<VideoFrame>* const callback_;
++  uint64_t render_generation_ RTC_GUARDED_BY(incoming_render_queue_) = 0;
+   std::unique_ptr<TaskQueueBase, TaskQueueDeleter> incoming_render_queue_;
+ };
+
+--- a/video/render/incoming_video_stream.cc
++++ b/video/render/incoming_video_stream.cc
+@@ -59,8 +59,12 @@
+   // OnFrame to take its frame argument by value instead of const reference.
+   incoming_render_queue_->PostTask([this, video_frame = video_frame]() mutable {
+     RTC_DCHECK_RUN_ON(incoming_render_queue_.get());
+-    if (render_buffers_.AddFrame(std::move(video_frame)) == 1)
++    if (render_buffers_.AddFrame(std::move(video_frame)) == 1) {
++      // A corrected timeline can replace the entire queue while its old
++      // delayed task is still pending.
++      ++render_generation_;
+       Dequeue();
++    }
+   });
+ }
+
+@@ -74,7 +78,13 @@
+   if (render_buffers_.HasPendingFrames()) {
+     uint32_t wait_time = render_buffers_.TimeToNextFrameRelease();
+     incoming_render_queue_->PostDelayedHighPrecisionTask(
+-        [this]() { Dequeue(); }, TimeDelta::Millis(wait_time));
++        [this, generation = render_generation_]() {
++          RTC_DCHECK_RUN_ON(incoming_render_queue_.get());
++          if (generation == render_generation_) {
++            Dequeue();
++          }
++        },
++        TimeDelta::Millis(wait_time));
+   }
+ }
+
+--- a/video/render/BUILD.gn
++++ b/video/render/BUILD.gn
+@@ -43,6 +43,7 @@
+     "../../api/video:video_frame",
+     "../../rtc_base:checks",
+     "../../rtc_base:logging",
++    "../../rtc_base:rtc_numerics",
+     "../../system_wrappers:metrics",
+   ]
+ }
+--- /dev/null
++++ b/video/render/incoming_video_stream_unittest.cc
+@@ -0,0 +1,126 @@
++/*
++ *  Copyright (c) 2026 The WebRTC project authors. All Rights Reserved.
++ *
++ *  Use of this source code is governed by a BSD-style license
++ *  that can be found in the LICENSE file in the root of the source
++ *  tree. An additional intellectual property rights grant can be found
++ *  in the file PATENTS.  All contributing project authors may
++ *  be found in the AUTHORS file in the root of the source tree.
++ */
++
++#include "video/render/incoming_video_stream.h"
++
++#include <cstdint>
++#include <utility>
++#include <vector>
++
++#include "api/environment/environment_factory.h"
++#include "api/make_ref_counted.h"
++#include "api/scoped_refptr.h"
++#include "api/units/time_delta.h"
++#include "api/units/timestamp.h"
++#include "api/video/i420_buffer.h"
++#include "api/video/video_frame.h"
++#include "api/video/video_frame_buffer.h"
++#include "api/video/video_sink_interface.h"
++#include "test/gtest.h"
++#include "test/time_controller/simulated_time_controller.h"
++
++namespace webrtc {
++namespace {
++
++class TrackedNativeBuffer : public VideoFrameBuffer {
++ public:
++  explicit TrackedNativeBuffer(bool& released) : released_(released) {}
++  ~TrackedNativeBuffer() override { released_ = true; }
++
++  Type type() const override { return Type::kNative; }
++  int width() const override { return 2; }
++  int height() const override { return 2; }
++  scoped_refptr<I420BufferInterface> ToI420() override {
++    return I420Buffer::Create(width(), height());
++  }
++
++ private:
++  bool& released_;
++};
++
++class IncomingVideoStreamTest : public ::testing::Test,
++                                public VideoSinkInterface<VideoFrame> {
++ protected:
++  void OnFrame(const VideoFrame& frame) override {
++    rendered_.push_back(frame.rtp_timestamp());
++  }
++
++  void AddFrame(uint32_t rtp,
++                TimeDelta delay,
++                scoped_refptr<VideoFrameBuffer> buffer = nullptr) {
++    if (!buffer)
++      buffer = I420Buffer::Create(2, 2);
++    static_cast<VideoSinkInterface<VideoFrame>&>(stream_).OnFrame(
++        VideoFrame::Builder()
++            .set_video_frame_buffer(std::move(buffer))
++            .set_timestamp_ms((time_.GetClock()->CurrentTime() + delay).ms())
++            .set_timestamp_rtp(rtp)
++            .build());
++    time_.AdvanceTime(TimeDelta::Zero());
++  }
++
++  GlobalSimulatedTimeController time_{Timestamp::Seconds(100)};
++  bool buffer_released_ = false;
++  std::vector<uint32_t> rendered_;
++  IncomingVideoStream stream_{
++      CreateEnvironment(time_.CreateTaskQueueFactory(), time_.GetClock()), 10,
++      this};
++};
++
++TEST_F(IncomingVideoStreamTest, SupersedesFutureDeadlineAfterRtpClockRecovery) {
++  AddFrame(0xfffff000, TimeDelta::Seconds(8));
++  time_.AdvanceTime(TimeDelta::Seconds(2));
++  AddFrame(9000, TimeDelta::Millis(100));
++  time_.AdvanceTime(TimeDelta::Millis(100));
++  EXPECT_EQ(rendered_, std::vector<uint32_t>{9000});
++  AddFrame(13500, TimeDelta::Millis(130));
++  time_.AdvanceTime(TimeDelta::Seconds(6));
++  EXPECT_EQ(rendered_, (std::vector<uint32_t>{9000, 13500}));
++}
++
++TEST_F(IncomingVideoStreamTest, DropsOlderRtpAfterLargeDeadlineReversal) {
++  AddFrame(18000, TimeDelta::Seconds(8));
++  AddFrame(9000, TimeDelta::Millis(100));
++  time_.AdvanceTime(TimeDelta::Seconds(8));
++  EXPECT_EQ(rendered_, std::vector<uint32_t>{18000});
++}
++
++TEST_F(IncomingVideoStreamTest, ReleasesTextureWithFarFutureDeadline) {
++  AddFrame(9000, TimeDelta::Seconds(8),
++           make_ref_counted<TrackedNativeBuffer>(buffer_released_));
++  EXPECT_TRUE(buffer_released_);
++  EXPECT_TRUE(rendered_.empty());
++
++  // The decoder cannot produce this frame until its first texture is released.
++  AddFrame(13500, TimeDelta::Millis(130));
++  time_.AdvanceTime(TimeDelta::Seconds(8));
++  EXPECT_EQ(rendered_, std::vector<uint32_t>{13500});
++}
++
++TEST_F(IncomingVideoStreamTest, KeepsNativeTextureUntilNormalDeadline) {
++  AddFrame(9000, TimeDelta::Millis(130),
++           make_ref_counted<TrackedNativeBuffer>(buffer_released_));
++  EXPECT_FALSE(buffer_released_);
++  time_.AdvanceTime(TimeDelta::Millis(130));
++  EXPECT_TRUE(buffer_released_);
++  EXPECT_EQ(rendered_, std::vector<uint32_t>{9000});
++}
++
++TEST_F(IncomingVideoStreamTest, KeepsNormalPlayoutAndRejectsSmallReordering) {
++  AddFrame(9000, TimeDelta::Millis(130));
++  AddFrame(13500, TimeDelta::Millis(100));
++  time_.AdvanceTime(TimeDelta::Millis(100));
++  EXPECT_TRUE(rendered_.empty());
++  time_.AdvanceTime(TimeDelta::Millis(30));
++  EXPECT_EQ(rendered_, std::vector<uint32_t>{9000});
++}
++
++}  // namespace
++}  // namespace webrtc
+--- a/modules/video_coding/nack_requester.h
++++ b/modules/video_coding/nack_requester.h
+@@ -137,6 +137,8 @@
+   bool initialized_ RTC_GUARDED_BY(worker_thread_);
+   TimeDelta rtt_ RTC_GUARDED_BY(worker_thread_);
+   uint16_t newest_seq_num_ RTC_GUARDED_BY(worker_thread_);
++  Timestamp newest_packet_time_ RTC_GUARDED_BY(worker_thread_) =
++      Timestamp::MinusInfinity();
+
+   // Adds a delay before send nack on packet received.
+   const TimeDelta send_nack_delay_;
+--- a/modules/video_coding/nack_requester.cc
++++ b/modules/video_coding/nack_requester.cc
+@@ -33,6 +33,7 @@
+ namespace {
+ constexpr int kMaxPacketAge = 10'000;
+ constexpr int kMaxNackPackets = 1000;
++constexpr TimeDelta kStaleRetransmissionGap = TimeDelta::Seconds(2);
+ constexpr TimeDelta kDefaultRtt = TimeDelta::Millis(100);
+ // Number of times a packet can be nacked before giving up. Nack is sent at most
+ // every RTT.
+@@ -142,6 +143,12 @@
+
+ void NackRequester::ProcessNacks() {
+   RTC_DCHECK_RUN_ON(worker_thread_);
++  if (!nack_list_.empty() &&
++      clock_->CurrentTime() - newest_packet_time_ >= kStaleRetransmissionGap) {
++    // Do not fill the sender queue with old repair traffic during an outage.
++    nack_list_.clear();
++    return;
++  }
+   std::vector<uint16_t> nack_batch = GetNackBatch(kTimeOnly);
+   if (!nack_batch.empty()) {
+     // This batch of NACKs is triggered externally; there is no external
+@@ -165,6 +172,7 @@
+
+   if (!initialized_) {
+     newest_seq_num_ = seq_num;
++    newest_packet_time_ = clock_->CurrentTime();
+     initialized_ = true;
+     return 0;
+   }
+@@ -196,6 +204,19 @@
+       recovered_list_.erase(recovered_list_.begin(), it);
+
+     // Do not send nack for packets recovered by FEC or RTX.
++    return 0;
++  }
++
++  const Timestamp now = clock_->CurrentTime();
++  const bool long_gap = now - newest_packet_time_ >= kStaleRetransmissionGap;
++  newest_packet_time_ = now;
++  if (long_gap && ForwardDiff(newest_seq_num_, seq_num) > 1) {
++    // Old retransmissions can consume the first usable bandwidth after a
++    // prolonged outage. Restart repair from a fresh keyframe.
++    ClearUpTo(seq_num);
++    newest_seq_num_ = seq_num;
++    keyframe_request_sender_->RequestKeyFrame();
++    RTC_LOG(LS_INFO) << "Requested a fresh keyframe after a video packet gap";
+     return 0;
+   }
+
+--- a/modules/video_coding/nack_requester_unittest.cc
++++ b/modules/video_coding/nack_requester_unittest.cc
+@@ -103,6 +103,65 @@
+   bool waiting_for_send_nack_ = false;
+   bool timed_out_ = false;
+ };
++
++TEST_F(TestNackRequester, VideoResumeRequestsKeyframeAfterPacketGap) {
++  NackRequester& nack = CreateNackModule();
++  nack.OnReceivedPacket(10);
++  nack.OnReceivedPacket(12);
++  ASSERT_EQ(sent_nacks_, std::vector<uint16_t>({11}));
++  sent_nacks_.clear();
++
++  clock_->AdvanceTimeMilliseconds(2000);
++  nack.OnReceivedPacket(22);
++  nack.ProcessNacks();
++  EXPECT_TRUE(sent_nacks_.empty());
++  EXPECT_EQ(keyframes_requested_, 1);
++
++  nack.OnReceivedPacket(24);
++  EXPECT_EQ(sent_nacks_, std::vector<uint16_t>({23}));
++}
++
++TEST_F(TestNackRequester, VideoResumeIgnoresOldRepairAcrossWrap) {
++  NackRequester& nack = CreateNackModule();
++  nack.OnReceivedPacket(0xfffa);
++  clock_->AdvanceTimeMilliseconds(2000);
++  nack.OnReceivedPacket(0xfffd, /*is_recovered=*/true);
++  nack.OnReceivedPacket(4);
++  EXPECT_TRUE(sent_nacks_.empty());
++  EXPECT_EQ(keyframes_requested_, 1);
++}
++
++TEST_F(TestNackRequester, VideoResumeStopsRetryingAfterLongSilence) {
++  NackRequester& nack = CreateNackModule();
++  nack.OnReceivedPacket(10);
++  nack.OnReceivedPacket(12);
++  ASSERT_EQ(sent_nacks_, std::vector<uint16_t>({11}));
++  sent_nacks_.clear();
++
++  clock_->AdvanceTimeMilliseconds(2000);
++  nack.ProcessNacks();
++  EXPECT_TRUE(sent_nacks_.empty());
++  EXPECT_EQ(keyframes_requested_, 0);
++}
++
++TEST_F(TestNackRequester, VideoResumeRetainsRepairForShortGap) {
++  NackRequester& nack = CreateNackModule();
++  nack.OnReceivedPacket(10);
++  clock_->AdvanceTimeMilliseconds(1999);
++  nack.OnReceivedPacket(14);
++  EXPECT_EQ(sent_nacks_, std::vector<uint16_t>({11, 12, 13}));
++  EXPECT_EQ(keyframes_requested_, 0);
++}
++
++TEST_F(TestNackRequester, VideoResumeRetainsRepairForContinuousSequence) {
++  NackRequester& nack = CreateNackModule();
++  nack.OnReceivedPacket(10);
++  clock_->AdvanceTimeMilliseconds(2000);
++  nack.OnReceivedPacket(11);
++  nack.OnReceivedPacket(13);
++  EXPECT_EQ(sent_nacks_, std::vector<uint16_t>({12}));
++  EXPECT_EQ(keyframes_requested_, 0);
++}
+
+ TEST_F(TestNackRequester, NackOnePacket) {
+   NackRequester& nack_module = CreateNackModule();
+--- a/modules/audio_coding/neteq/decision_logic.cc
++++ b/modules/audio_coding/neteq/decision_logic.cc
+@@ -274,7 +274,9 @@
+       return NetEq::Operation::kFastAccelerate;
+     }
+     if (TimescaleAllowed()) {
+-      if (playout_delay_ms >= high_limit) {
++      // Keep one adjustment step of headroom for ordinary acceleration.
++      // Small target changes should not compress speech when RTP is steady.
++      if (playout_delay_ms >= high_limit + kDelayAdjustmentGranularityMs) {
+         return NetEq::Operation::kAccelerate;
+       }
+       if (playout_delay_ms < low_limit) {
+--- a/modules/audio_coding/neteq/decision_logic_unittest.cc
++++ b/modules/audio_coding/neteq/decision_logic_unittest.cc
+@@ -121,6 +121,28 @@
+   EXPECT_FALSE(reset_decoder);
+ }
+
++TEST_F(DecisionLogicTest, SmallBufferOverfillKeepsNormalPlayout) {
++  EXPECT_CALL(*mock_delay_manager_, TargetDelayMs())
++      .WillRepeatedly(Return(60));
++  EXPECT_CALL(*mock_packet_arrival_history_, GetMaxDelayMs())
++      .WillRepeatedly(Return(3));
++  EXPECT_CALL(*mock_packet_arrival_history_, GetDelayMs(_))
++      .WillOnce(Return(102))
++      .WillOnce(Return(103))
++      .WillOnce(Return(332));
++
++  bool reset_decoder = false;
++  tick_timer_.Increment(kMinTimescaleInterval + 1);
++  const auto status = CreateNetEqStatus(NetEq::Mode::kNormal, 100);
++  EXPECT_EQ(decision_logic_->GetDecision(status, &reset_decoder),
++            NetEq::Operation::kNormal);
++  EXPECT_EQ(decision_logic_->GetDecision(status, &reset_decoder),
++            NetEq::Operation::kAccelerate);
++  EXPECT_EQ(decision_logic_->GetDecision(status, &reset_decoder),
++            NetEq::Operation::kFastAccelerate);
++  EXPECT_FALSE(reset_decoder);
++}
++
+ TEST_F(DecisionLogicTest, FastAccelerate) {
+   EXPECT_CALL(*mock_delay_manager_, TargetDelayMs())
+       .WillRepeatedly(Return(100));
 --- a/audio/channel_receive.cc
 +++ b/audio/channel_receive.cc
 @@ -771,10 +771,12 @@
@@ -1347,6 +2377,288 @@
    }
 
    std::span<const uint8_t> payload_data(payload, payload_data_length);
+@@ -1133,6 +1135,7 @@
+   }
+   info.capture_time_ntp = last_sr->last_remote_ntp_timestamp;
+   info.capture_time_rtp = last_sr->last_remote_rtp_timestamp;
++  info.rtp_clock_rate_hz = GetRtpTimestampRateHz();
+
+   if (!last_received_rtp_timestamp_ || !last_received_rtp_system_time_) {
+     return std::nullopt;
+--- a/video/video_stream_buffer_controller.h
++++ b/video/video_stream_buffer_controller.h
+@@ -91,6 +91,8 @@
+   void Stop();
+   void SetProtectionMode(VCMVideoProtection protection_mode);
+   void Clear();
++  // Refresh the deadline of a complete frame still waiting to decode.
++  void OnPlayoutDelayChanged();
+   std::optional<int64_t> InsertFrame(std::unique_ptr<EncodedFrame> frame);
+   void UpdateRtt(int64_t max_rtt_ms);
+   void SetMaxWaits(TimeDelta max_wait_for_keyframe,
+--- a/video/task_queue_frame_decode_scheduler_unittest.cc
++++ b/video/task_queue_frame_decode_scheduler_unittest.cc
+@@ -98,4 +98,59 @@
+   scheduler.Stop();
+ }
+
++
++TEST(TaskQueueFrameDecodeSchedulerTest, ReplacedFrameDoesNotUseOldDeadline) {
++  GlobalSimulatedTimeController time_controller(Timestamp::Seconds(2000));
++  TaskQueueFrameDecodeScheduler scheduler(time_controller.GetClock(),
++                                         time_controller.GetMainThread());
++  const Timestamp now = time_controller.GetClock()->CurrentTime();
++  constexpr uint32_t rtp = 90000;
++  MockFunction<void(uint32_t, Timestamp)> old_callback;
++  MockFunction<void(uint32_t, Timestamp)> new_callback;
++  EXPECT_CALL(old_callback, Call).Times(0);
++  scheduler.ScheduleFrame(
++      rtp, {.latest_decode_time = now + TimeDelta::Millis(50),
++            .render_time = now + TimeDelta::Millis(70)},
++      old_callback.AsStdFunction());
++  time_controller.AdvanceTime(TimeDelta::Millis(20));
++  scheduler.CancelOutstanding();
++  const Timestamp new_render = now + TimeDelta::Millis(170);
++  scheduler.ScheduleFrame(
++      rtp, {.latest_decode_time = now + TimeDelta::Millis(150),
++            .render_time = new_render}, new_callback.AsStdFunction());
++  EXPECT_CALL(new_callback, Call).Times(0);
++  time_controller.AdvanceTime(TimeDelta::Millis(60));
++  EXPECT_THAT(scheduler.ScheduledRtpTimestamp(), Optional(rtp));
++  ::testing::Mock::VerifyAndClearExpectations(&new_callback);
++  EXPECT_CALL(new_callback, Call(rtp, new_render)).Times(1);
++  time_controller.AdvanceTime(TimeDelta::Millis(80));
++  scheduler.Stop();
++}
++
++TEST(TaskQueueFrameDecodeSchedulerTest, ReplacedFrameCanMoveDeadlineEarlier) {
++  GlobalSimulatedTimeController time_controller(Timestamp::Seconds(2000));
++  TaskQueueFrameDecodeScheduler scheduler(time_controller.GetClock(),
++                                         time_controller.GetMainThread());
++  const Timestamp now = time_controller.GetClock()->CurrentTime();
++  constexpr uint32_t rtp = 90000;
++  MockFunction<void(uint32_t, Timestamp)> old_callback;
++  MockFunction<void(uint32_t, Timestamp)> new_callback;
++  EXPECT_CALL(old_callback, Call).Times(0);
++  scheduler.ScheduleFrame(
++      rtp, {.latest_decode_time = now + TimeDelta::Millis(300),
++            .render_time = now + TimeDelta::Millis(320)},
++      old_callback.AsStdFunction());
++  time_controller.AdvanceTime(TimeDelta::Millis(20));
++  scheduler.CancelOutstanding();
++  const Timestamp new_render = now + TimeDelta::Millis(70);
++  EXPECT_CALL(new_callback, Call(rtp, new_render)).Times(1);
++  scheduler.ScheduleFrame(
++      rtp, {.latest_decode_time = now + TimeDelta::Millis(50),
++            .render_time = new_render}, new_callback.AsStdFunction());
++  time_controller.AdvanceTime(TimeDelta::Millis(40));
++  EXPECT_THAT(scheduler.ScheduledRtpTimestamp(), Eq(std::nullopt));
++  time_controller.AdvanceTime(TimeDelta::Millis(300));
++  scheduler.Stop();
++}
++
+ }  // namespace webrtc
+--- a/video/task_queue_frame_decode_scheduler.cc
++++ b/video/task_queue_frame_decode_scheduler.cc
+@@ -48,16 +48,17 @@
+       << "Can not schedule two frames for release at the same time.";
+   RTC_DCHECK(cb);
+   scheduled_rtp_ = rtp;
++  const uint64_t generation = ++schedule_generation_;
+
+   TimeDelta wait = std::max(
+       TimeDelta::Zero(), schedule.latest_decode_time - clock_->CurrentTime());
+   bookkeeping_queue_->PostDelayedHighPrecisionTask(
+       SafeTask(task_safety_.flag(),
+-               [this, rtp, schedule, cb = std::move(cb)]() mutable {
++               [this, rtp, generation, schedule, cb = std::move(cb)]() mutable {
+                  RTC_DCHECK_RUN_ON(bookkeeping_queue_);
+-                 // If the next frame rtp has changed since this task was
+-                 // this scheduled release should be skipped.
+-                 if (scheduled_rtp_ != rtp)
++                 // A replacement can retain the same RTP timestamp.
++                 if (scheduled_rtp_ != rtp ||
++                     schedule_generation_ != generation)
+                    return;
+                  scheduled_rtp_ = std::nullopt;
+                  std::move(cb)(rtp, schedule.render_time);
+--- a/video/video_stream_buffer_controller.cc
++++ b/video/video_stream_buffer_controller.cc
+@@ -152,6 +152,12 @@
+   frame_decode_scheduler_->CancelOutstanding();
+ }
+
++void VideoStreamBufferController::OnPlayoutDelayChanged() {
++  RTC_DCHECK_RUN_ON(&worker_sequence_checker_);
++  frame_decode_scheduler_->CancelOutstanding();
++  MaybeScheduleFrameForRelease();
++}
++
+ std::optional<int64_t> VideoStreamBufferController::InsertFrame(
+     std::unique_ptr<EncodedFrame> frame) {
+   RTC_DCHECK_RUN_ON(&worker_sequence_checker_);
+@@ -159,15 +165,25 @@
+   int complete_units = buffer_->GetTotalNumberOfContinuousTemporalUnits();
+   if (buffer_->InsertFrame(std::move(frame))) {
+     RTC_DCHECK(metadata.receive_time) << "Frame receive time must be set!";
++    bool clock_reanchored = false;
+     if (!metadata.delayed_by_retransmission && metadata.receive_time &&
+         (field_trials_.IsDisabled("WebRTC-IncomingTimestampOnMarkerBitOnly") ||
+          metadata.is_last_spatial_layer)) {
+-      timing_->OnCompleteTemporalUnit(metadata.rtp_timestamp,
+-                                      *metadata.receive_time);
+-    }
+-    if (complete_units < buffer_->GetTotalNumberOfContinuousTemporalUnits()) {
++      clock_reanchored = timing_->OnCompleteTemporalUnit(metadata.rtp_timestamp,
++                                                        *metadata.receive_time);
++    }
++    const bool new_complete_unit =
++        complete_units < buffer_->GetTotalNumberOfContinuousTemporalUnits();
++    if (new_complete_unit) {
+       stats_proxy_->OnCompleteFrame(metadata.is_keyframe, metadata.size,
+                                     metadata.contentType);
++    }
++    if (clock_reanchored) {
++      // The same queued frame now belongs to a different receive clock.
++      // Cancel before the same-RTP guard can retain its previous deadline.
++      frame_decode_scheduler_->CancelOutstanding();
++    }
++    if (clock_reanchored || new_complete_unit) {
+       MaybeScheduleFrameForRelease();
+     }
+   }
+--- a/video/video_stream_buffer_controller_unittest.cc
++++ b/video/video_stream_buffer_controller_unittest.cc
+@@ -85,9 +85,9 @@
+ class VCMTimingTest : public VCMTiming {
+  public:
+   using VCMTiming::VCMTiming;
+-  void OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now) override {
++  bool OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now) override {
+     OnCompleteTemporalUnitMocked(rtp_timestamp, now);
+-    VCMTiming::OnCompleteTemporalUnit(rtp_timestamp, now);
++    return VCMTiming::OnCompleteTemporalUnit(rtp_timestamp, now);
+   }
+
+   MOCK_METHOD(void,
+@@ -265,6 +265,95 @@
+   EXPECT_THAT(WaitForFrameOrTimeout(kMaxWaitForKeyframe), TimedOut());
+ }
+
++
++TEST_P(VideoStreamBufferControllerTest, RtpClockRecoveryRefreshesQueuedDeadline) {
++  StartNextDecodeForceKeyframe();
++  buffer_->InsertFrame(test::FakeFrameBuilder()
++                           .Id(0)
++                           .Time(0)
++                           .ReceivedTime(clock_->CurrentTime())
++                           .AsLast()
++                           .Build());
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Zero()), Frame(test::WithId(0)));
++  StartNextDecode();
++  time_controller_.AdvanceTime(kFps30Delay);
++  timing_.SetSyncPlayoutDelay(TimeDelta::Millis(200));
++  buffer_->InsertFrame(test::FakeFrameBuilder()
++                           .Id(1)
++                           .Time(kFps30Rtp)
++                           .ReceivedTime(clock_->CurrentTime())
++                           .AsLast()
++                           .Refs({0})
++                           .Build());
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(20)), Eq(std::nullopt));
++
++  // A changed capture clock rebases the arrival estimator and clears sync.
++  // A newer independent frame must not wait for the previous clock's timer.
++  buffer_->InsertFrame(test::FakeFrameBuilder()
++                           .Id(2)
++                           .Time(270000)
++                           .ReceivedTime(clock_->CurrentTime())
++                           .AsLast()
++                           .Build());
++  EXPECT_FALSE(timing_.GetTimings().sync_playout_delay.has_value());
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(40)), Frame(test::WithId(2)));
++  ResetLastResult();
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(300)), Eq(std::nullopt));
++}
++
++TEST_P(VideoStreamBufferControllerTest, ChangedSyncDelayReleasesScheduledFrame) {
++  StartNextDecodeForceKeyframe();
++  buffer_->InsertFrame(test::FakeFrameBuilder()
++                           .Id(0)
++                           .Time(0)
++                           .ReceivedTime(clock_->CurrentTime())
++                           .AsLast()
++                           .Build());
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Zero()), Frame(test::WithId(0)));
++  StartNextDecode();
++  time_controller_.AdvanceTime(kFps30Delay);
++  timing_.SetSyncPlayoutDelay(TimeDelta::Millis(200));
++  buffer_->InsertFrame(test::FakeFrameBuilder()
++                           .Id(1)
++                           .Time(kFps30Rtp)
++                           .ReceivedTime(clock_->CurrentTime())
++                           .AsLast()
++                           .Refs({0})
++                           .Build());
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(50)), Eq(std::nullopt));
++  timing_.SetSyncPlayoutDelay(TimeDelta::Millis(50));
++  buffer_->OnPlayoutDelayChanged();
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(50)), Frame(test::WithId(1)));
++  ResetLastResult();
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(300)), Eq(std::nullopt));
++}
++
++TEST_P(VideoStreamBufferControllerTest, ChangedSyncDelayWaitsForNewDeadline) {
++  StartNextDecodeForceKeyframe();
++  buffer_->InsertFrame(test::FakeFrameBuilder()
++                           .Id(0)
++                           .Time(0)
++                           .ReceivedTime(clock_->CurrentTime())
++                           .AsLast()
++                           .Build());
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Zero()), Frame(test::WithId(0)));
++  StartNextDecode();
++  time_controller_.AdvanceTime(kFps30Delay);
++  timing_.SetSyncPlayoutDelay(TimeDelta::Millis(100));
++  buffer_->InsertFrame(test::FakeFrameBuilder()
++                           .Id(1)
++                           .Time(kFps30Rtp)
++                           .ReceivedTime(clock_->CurrentTime())
++                           .AsLast()
++                           .Refs({0})
++                           .Build());
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(20)), Eq(std::nullopt));
++  timing_.SetSyncPlayoutDelay(TimeDelta::Millis(200));
++  buffer_->OnPlayoutDelayChanged();
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(120)), Eq(std::nullopt));
++  EXPECT_THAT(WaitForFrameOrTimeout(TimeDelta::Millis(200)), Frame(test::WithId(1)));
++}
++
+ TEST_P(VideoStreamBufferControllerTest, KeyFramesAreScheduled) {
+   StartNextDecodeForceKeyframe();
+   time_controller_.AdvanceTime(TimeDelta::Millis(50));
+--- a/video/task_queue_frame_decode_scheduler.h
++++ b/video/task_queue_frame_decode_scheduler.h
+@@ -46,6 +46,7 @@
+   TaskQueueBase* const bookkeeping_queue_;
+
+   std::optional<uint32_t> scheduled_rtp_;
++  uint64_t schedule_generation_ = 0;
+   ScopedTaskSafetyDetached task_safety_;
+   bool stopped_ = false;
+ };
+--- a/api/frame_transformer_interface.h
++++ b/api/frame_transformer_interface.h
+@@ -171,6 +171,9 @@
+ // the TransformedFrameCallback interface (see above).
+ class FrameTransformerInterface : public RefCountInterface {
+  public:
++  // Whether this transformer keeps the media path closed until crypto is ready.
++  virtual bool EnforcesFrameEncryption() const { return false; }
++
+   // Transforms `frame` using the implementing class' processing logic.
+   virtual void Transform(
+       std::unique_ptr<TransformableFrameInterface> transformable_frame) = 0;
 --- a/modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.cc
 +++ b/modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.cc
 @@ -158,6 +158,12 @@
@@ -1382,47 +2694,6 @@
 
    // Determines whether the frame should be stashed, dropped or handed off to
    // the OnDecryptedFrameCallback.
---- a/video/rtp_video_stream_receiver2.cc
-+++ b/video/rtp_video_stream_receiver2.cc
-@@ -817,7 +817,16 @@
-
- bool RtpVideoStreamReceiver2::IsDecryptable() const {
-   RTC_DCHECK_RUN_ON(&worker_task_checker_);
-+  RTC_DCHECK_RUN_ON(&packet_sequence_checker_);
--  return frames_decryptable_;
-+  return frames_decryptable_ || UsesEncryptedFrameTransformer();
-+}
-+
-+bool RtpVideoStreamReceiver2::UsesEncryptedFrameTransformer() const {
-+  RTC_DCHECK_RUN_ON(&packet_sequence_checker_);
-+  return frame_transformer_delegate_ &&
-+         frame_transformer_delegate_->EnforcesFrameEncryption() &&
-+         (!buffered_frame_decryptor_ ||
-+          !buffered_frame_decryptor_->HasFrameDecryptor());
- }
-
- void RtpVideoStreamReceiver2::OnInsertedPacket(
-@@ -982,7 +991,7 @@
-     last_assembled_frame_rtp_timestamp_ = frame->RtpTimestamp();
-   }
-
--  if (buffered_frame_decryptor_ != nullptr) {
-+  if (buffered_frame_decryptor_ != nullptr && !UsesEncryptedFrameTransformer()) {
-     buffered_frame_decryptor_->ManageEncryptedFrame(std::move(frame));
-   } else if (frame_transformer_delegate_) {
-     frame_transformer_delegate_->TransformFrame(std::move(frame));
---- a/video/rtp_video_stream_receiver2.h
-+++ b/video/rtp_video_stream_receiver2.h
-@@ -326,6 +326,8 @@
-   ParseGenericDependenciesResult ParseGenericDependenciesExtension(
-       const RtpPacketReceived& rtp_packet,
-       RTPVideoHeader* video_header) RTC_RUN_ON(packet_sequence_checker_);
-+  bool UsesEncryptedFrameTransformer() const
-+      RTC_RUN_ON(packet_sequence_checker_);
-   void OnAssembledFrame(std::unique_ptr<RtpFrameObject> frame)
-       RTC_RUN_ON(packet_sequence_checker_);
-   void UpdatePacketReceiveTimestamps(const RtpPacketReceived& packet,
-
 --- a/audio/channel_send.cc
 +++ b/audio/channel_send.cc
 @@ -519,7 +519,13 @@
@@ -1439,3 +2710,407 @@
                ? TaskQueueFactory::Priority::kAudio
                : TaskQueueFactory::Priority::kNormal)),
        encoder_queue_checker_(encoder_queue_.get()),
+--- a/sdk/objc/api/peerconnection/RTCRtpReceiver.h
++++ b/sdk/objc/api/peerconnection/RTCRtpReceiver.h
+@@ -100,6 +100,18 @@
+
+ - (instancetype)init NS_UNAVAILABLE;
+
++/** Sets the minimum playout delay of this video receiver, in milliseconds.
++ *  Zero clears the application minimum. Returns NO for an invalid delay or
++ *  a receiver that does not handle video.
++ */
++- (BOOL)setMinimumVideoPlayoutDelayMs:(NSInteger)delayMs;
++
++/** Sets the minimum playout delay of this audio receiver, in milliseconds.
++ *  Zero clears the application minimum. Returns NO for an invalid delay or
++ *  a receiver that does not handle audio.
++ */
++- (BOOL)setMinimumAudioPlayoutDelayMs:(NSInteger)delayMs;
++
+ @end
+
+ NS_ASSUME_NONNULL_END
+--- a/sdk/objc/api/peerconnection/RTCRtpReceiver.mm
++++ b/sdk/objc/api/peerconnection/RTCRtpReceiver.mm
+@@ -63,6 +63,24 @@
+
+ - (NSString *)receiverId {
+   return [NSString stringForStdString:_nativeRtpReceiver->id()];
++}
++
++- (BOOL)setMinimumVideoPlayoutDelayMs:(NSInteger)delayMs {
++  if (delayMs < 0 || delayMs > 10000 ||
++      _nativeRtpReceiver->media_type() != webrtc::MediaType::VIDEO) {
++    return NO;
++  }
++  _nativeRtpReceiver->SetJitterBufferMinimumDelay(delayMs / 1000.0);
++  return YES;
++}
++
++- (BOOL)setMinimumAudioPlayoutDelayMs:(NSInteger)delayMs {
++  if (delayMs < 0 || delayMs > 10000 ||
++      _nativeRtpReceiver->media_type() != webrtc::MediaType::AUDIO) {
++    return NO;
++  }
++  _nativeRtpReceiver->SetJitterBufferMinimumDelay(delayMs / 1000.0);
++  return YES;
+ }
+
+ - (RTC_OBJC_TYPE(RTCRtpParameters) *)parameters {
+--- a/sdk/android/BUILD.gn
++++ b/sdk/android/BUILD.gn
+@@ -1986,6 +1986,7 @@
+       "tests/src/org/webrtc/RenderSynchronizerTest.java",
+       "tests/src/org/webrtc/ScalingSettingsTest.java",
+       "tests/src/org/webrtc/audio/LowLatencyAudioBufferManagerTest.java",
++      "tests/src/org/webrtc/audio/WebRtcAudioTrackDelayTest.java",
+     ]
+
+     deps = [
+--- a/sdk/android/src/jni/audio_device/audio_device_module.cc
++++ b/sdk/android/src/jni/audio_device/audio_device_module.cc
+@@ -505,9 +505,9 @@
+   }
+
+   int32_t PlayoutDelay(uint16_t* delay_ms) const override {
+-    // Best guess we can do is to use half of the estimated total delay.
+-    *delay_ms = playout_delay_ms_ / 2;
+-    RTC_DCHECK_GT(*delay_ms, 0);
++    // Java AudioTrack can report its real presentation queue. Other outputs
++    // and unavailable timestamps retain the existing platform fallback.
++    *delay_ms = output_->PlayoutDelayMs().value_or(playout_delay_ms_ / 2);
+     return 0;
+   }
+
+--- a/sdk/android/src/jni/audio_device/audio_device_module.h
++++ b/sdk/android/src/jni/audio_device/audio_device_module.h
+@@ -80,6 +80,8 @@
+   virtual std::optional<uint32_t> MinSpeakerVolume() const = 0;
+   virtual void AttachAudioBuffer(AudioDeviceBuffer* audioBuffer) = 0;
+   virtual int GetPlayoutUnderrunCount() = 0;
++  // Unknown output clocks retain the existing platform delay estimate.
++  virtual std::optional<uint16_t> PlayoutDelayMs() const { return std::nullopt; }
+   // Deprecated. Use GetStats(AudioDeviceModule::Stats*) instead.
+   virtual std::optional<AudioDeviceModule::Stats> GetStats() const {
+     return std::nullopt;
+--- a/sdk/android/src/jni/audio_device/audio_track_jni.cc
++++ b/sdk/android/src/jni/audio_device/audio_track_jni.cc
+@@ -15,6 +15,7 @@
+ #include <cstddef>
+ #include <cstdint>
+ #include <cstdlib>
++#include <limits>
+ #include <optional>
+
+ #include "api/audio/audio_device_defines.h"
+@@ -221,6 +222,15 @@
+   return volume;
+ }
+
++std::optional<uint16_t> AudioTrackJni::PlayoutDelayMs() const {
++  const int delay_ms = Java_WebRtcAudioTrack_getPlayoutDelayMs(
++      AttachCurrentThreadIfNeeded(), j_audio_track_);
++  if (delay_ms < 0 || delay_ms > std::numeric_limits<uint16_t>::max()) {
++    return std::nullopt;
++  }
++  return static_cast<uint16_t>(delay_ms);
++}
++
+ int AudioTrackJni::GetPlayoutUnderrunCount() {
+   return Java_WebRtcAudioTrack_GetPlayoutUnderrunCount(env_, j_audio_track_);
+ }
+--- a/sdk/android/src/jni/audio_device/audio_track_jni.h
++++ b/sdk/android/src/jni/audio_device/audio_track_jni.h
+@@ -70,6 +70,7 @@
+   std::optional<uint32_t> MaxSpeakerVolume() const override;
+   std::optional<uint32_t> MinSpeakerVolume() const override;
+   int GetPlayoutUnderrunCount() override;
++  std::optional<uint16_t> PlayoutDelayMs() const override;
+
+   void AttachAudioBuffer(AudioDeviceBuffer* audioBuffer) override;
+
+--- a/sdk/android/src/java/org/webrtc/audio/WebRtcAudioTrack.java
++++ b/sdk/android/src/java/org/webrtc/audio/WebRtcAudioTrack.java
+@@ -15,6 +15,7 @@
+ import android.media.AudioAttributes;
+ import android.media.AudioFormat;
+ import android.media.AudioManager;
++import android.media.AudioTimestamp;
+ import android.media.AudioTrack;
+ import android.os.Build;
+ import android.os.Process;
+@@ -57,6 +58,9 @@
+   // Indicates the AudioTrack has stopped playing audio.
+   private static final int AUDIO_TRACK_STOP = 1;
+
++  private static final long TIMESTAMP_POLL_INTERVAL_NS = 50_000_000L;
++  private static final long MAX_TIMESTAMP_AGE_NS = 1_000_000_000L;
++
+   private long nativeAudioTrack;
+   private final Context context;
+   private final AudioManager audioManager;
+@@ -75,6 +79,11 @@
+   private byte[] emptyBytes;
+   private boolean useLowLatency;
+   private int initialBufferSizeInFrames;
++
++  // Published timestamps are never mutated after becoming visible to JNI readers.
++  private volatile @Nullable AudioTimestamp playoutTimestamp;
++  private volatile long writtenFrames;
++  private volatile int playoutSampleRate;
+
+   private final @Nullable AudioTrackErrorCallback errorCallback;
+   private final @Nullable AudioTrackStateCallback stateCallback;
+@@ -112,6 +121,8 @@
+       // Fixed size in bytes of each 10ms block of audio data that we ask for
+       // using callbacks to the native WebRTC client.
+       final int sizeInBytes = byteBuffer.capacity();
++      final int bytesPerFrame = audioTrack.getChannelCount() * (BITS_PER_SAMPLE / 8);
++      long lastTimestampPollNs = 0;
+
+       while (keepAlive) {
+         // Get 10ms of PCM data from the native WebRTC client. Audio data is
+@@ -138,6 +149,23 @@
+           }
+         }
+
++        if (bytesWritten > 0 && keepAlive) {
++          writtenFrames += bytesWritten / bytesPerFrame;
++          long nowNs = System.nanoTime();
++          if (nowNs - lastTimestampPollNs >= TIMESTAMP_POLL_INTERVAL_NS) {
++            AudioTimestamp timestamp = new AudioTimestamp();
++            try {
++              if (audioTrack.getTimestamp(timestamp)) {
++                playoutTimestamp = timestamp;
++              }
++            } catch (IllegalStateException e) {
++              playoutTimestamp = null;
++              Logging.d(TAG, "AudioTrack timestamp unavailable");
++            }
++            lastTimestampPollNs = nowNs;
++          }
++        }
++
+         if (audioSamplesReadyCallback != null && keepAlive) {
+           // Copy the entire byte buffer array. The start of the byteBuffer is not necessarily
+           // at index 0.
+@@ -156,9 +184,6 @@
+         // next call to AudioTrack.write() will fail.
+         byteBuffer.rewind();
+
+-        // TODO(henrika): it is possible to create a delay estimate here by
+-        // counting number of written frames and subtracting the result from
+-        // audioTrack.getPlaybackHeadPosition().
+       }
+     }
+
+@@ -197,9 +222,67 @@
+     this.nativeAudioTrack = nativeAudioTrack;
+   }
+
++  /**
++   * Возвращает задержку до фактического вывода, либо -1 при неизвестных часах.
++   * Обнуление или смена snapshot при перезапуске AudioTrack отменяет старую оценку.
++   */
++  @CalledByNative
++  private int getPlayoutDelayMs() {
++
++    AudioTimestamp timestamp = playoutTimestamp;
++    long frames = writtenFrames;
++    int sampleRate = playoutSampleRate;
++    if (timestamp != playoutTimestamp) {
++
++      return -1;
++    }
++
++    return calculatePlayoutDelayMs(frames, sampleRate, timestamp, System.nanoTime());
++  }
++
++  /**
++   * Сопоставляет подтверждённые записи с AudioTimestamp; сеть и PCM не меняются.
++   * Позиция Android может оборачиваться по 32 битам. -1 означает, что оценке
++   * нельзя доверять; вызывающий сохраняет прежнюю запасную оценку устройства.
++   */
++  static int calculatePlayoutDelayMs(long framesWritten, int sampleRate,
++      @Nullable AudioTimestamp timestamp, long nowNs) {
++
++    if (framesWritten < 0 || sampleRate <= 0 || timestamp == null || timestamp.nanoTime <= 0
++        || timestamp.framePosition < 0) {
++
++      return -1;
++    }
++
++    long ageNs = nowNs - timestamp.nanoTime;
++    if (ageNs < -MAX_TIMESTAMP_AGE_NS || ageNs > MAX_TIMESTAMP_AGE_NS) {
++
++      return -1;
++    }
++
++    long queuedAtTimestamp = (int) (framesWritten - timestamp.framePosition);
++    if (queuedAtTimestamp < 0) {
++
++      return -1;
++    }
++
++    long queuedFrames = Math.max(0L, queuedAtTimestamp - ageNs * sampleRate / 1_000_000_000L);
++    long delayMs = (queuedFrames * 1000L + sampleRate - 1) / sampleRate;
++
++    return delayMs <= 0xffff ? (int) delayMs : -1;
++  }
++
++  private void resetPlayoutClock(int sampleRate) {
++
++    playoutTimestamp = null;
++    writtenFrames = 0;
++    playoutSampleRate = sampleRate;
++  }
++
+   @CalledByNative
+   private int initPlayout(int sampleRate, int channels, double bufferSizeFactor) {
+     threadChecker.checkIsOnValidThread();
++    resetPlayoutClock(sampleRate);
+     Logging.d(TAG,
+         "initPlayout(sampleRate=" + sampleRate + ", channels=" + channels
+             + ", bufferSizeFactor=" + bufferSizeFactor + ")");
+@@ -558,6 +641,7 @@
+
+   // Releases the native AudioTrack resources.
+   private void releaseAudioResources() {
++    resetPlayoutClock(0);
+     Logging.d(TAG, "releaseAudioResources");
+     if (audioTrack != null) {
+       audioTrack.release();
+--- /dev/null
++++ b/sdk/android/tests/src/org/webrtc/audio/WebRtcAudioTrackDelayTest.java
+@@ -0,0 +1,130 @@
++/*
++ *  Copyright 2026 The WebRTC project authors. All Rights Reserved.
++ *
++ *  Use of this source code is governed by a BSD-style license
++ *  that can be found in the LICENSE file in the root of the source
++ *  tree. An additional intellectual property rights grant can be found
++ *  in the file PATENTS. All contributing project authors may
++ *  be found in the AUTHORS file in the root of the source tree.
++ */
++
++package org.webrtc.audio;
++
++import static org.junit.Assert.assertEquals;
++
++import android.media.AudioTimestamp;
++import androidx.test.runner.AndroidJUnit4;
++import org.junit.Test;
++import org.junit.runner.RunWith;
++import org.robolectric.annotation.Config;
++
++@RunWith(AndroidJUnit4.class)
++@Config(manifest = Config.NONE, sdk = {29, 36})
++public class WebRtcAudioTrackDelayTest {
++
++  private static final long NOW_NS = 10_000_000_000L;
++
++  /** При старом показании уже проигранные 20 мс вычитаются; исходные 100 мс неверны. */
++  @Test
++  public void testProjectsTimestampToCurrentOutput() {
++
++    AudioTimestamp timestamp = timestamp(1000, NOW_NS - 20_000_000L);
++
++    int delayMs = WebRtcAudioTrack.calculatePlayoutDelayMs(5800, 48000, timestamp, NOW_NS);
++
++    assertEquals(80, delayMs);
++  }
++
++  /** Частоты 8/48/192 кГц и неполная миллисекунда сохраняют единицы и округление вверх. */
++  @Test
++  public void testUsesDeviceRateAndRoundsUp() {
++
++    for (int rate : new int[] {8000, 48000, 192000}) {
++      AudioTimestamp timestamp = timestamp(0, NOW_NS);
++
++      int delayMs = WebRtcAudioTrack.calculatePlayoutDelayMs(rate / 10, rate, timestamp, NOW_NS);
++      int partialMs = WebRtcAudioTrack.calculatePlayoutDelayMs(1, rate, timestamp, NOW_NS);
++
++      assertEquals(100, delayMs);
++      assertEquals(1, partialMs);
++    }
++  }
++
++  /** После оборота 32-битной позиции остаётся очередь 100 мс, а не огромная задержка. */
++  @Test
++  public void testUnwrapsPlaybackFramePosition() {
++
++    AudioTimestamp timestamp = timestamp(1600, NOW_NS);
++
++    int delayMs = WebRtcAudioTrack.calculatePlayoutDelayMs(
++        (1L << 32) + 6400, 48000, timestamp, NOW_NS);
++
++    assertEquals(100, delayMs);
++  }
++
++  /** Отсутствующие и просроченные часы дают -1, чтобы прежняя оценка оставалась доступна. */
++  @Test
++  public void testRejectsUnknownAndStaleClocks() {
++
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(4800, 48000, null, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        4800, 48000, timestamp(0, 0), NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        4800, 48000, timestamp(0, NOW_NS - 1_000_000_001L), NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        4800, 48000, timestamp(0, NOW_NS + 1_000_000_001L), NOW_NS));
++  }
++
++  /** Неверные счётчики, частота и позиция из другой эпохи отвергаются, а не дают ноль. */
++  @Test
++  public void testRejectsInvalidCountersAndResetEpoch() {
++
++    AudioTimestamp timestamp = timestamp(1000, NOW_NS);
++
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(-1, 48000, timestamp, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(4800, 0, timestamp, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(4800, -1, timestamp, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(999, 48000, timestamp, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        4800, 48000, timestamp(-1, NOW_NS), NOW_NS));
++  }
++
++  /** На обеих границах свежести 1 с показание допустимо; будущая позиция проецируется назад. */
++  @Test
++  public void testAcceptsFreshnessBoundaries() {
++
++    assertEquals(100, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        52800, 48000, timestamp(0, NOW_NS - 1_000_000_000L), NOW_NS));
++    assertEquals(1100, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        4800, 48000, timestamp(0, NOW_NS + 1_000_000_000L), NOW_NS));
++  }
++
++  /** Граница uint16_t проходит без обрезания; следующая миллисекунда даёт неизвестную оценку. */
++  @Test
++  public void testRejectsDelayOutsideNativeRange() {
++
++    AudioTimestamp timestamp = timestamp(0, NOW_NS);
++
++    assertEquals(65535, WebRtcAudioTrack.calculatePlayoutDelayMs(65535, 1000, timestamp, NOW_NS));
++    assertEquals(-1, WebRtcAudioTrack.calculatePlayoutDelayMs(65536, 1000, timestamp, NOW_NS));
++  }
++
++  /** Пустая или уже проигранная очередь даёт ноль, а не отрицательную задержку. */
++  @Test
++  public void testClampsDrainedQueueAtZero() {
++
++    assertEquals(0, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        1000, 48000, timestamp(1000, NOW_NS), NOW_NS));
++    assertEquals(0, WebRtcAudioTrack.calculatePlayoutDelayMs(
++        1000, 48000, timestamp(0, NOW_NS - 100_000_000L), NOW_NS));
++  }
++
++  private static AudioTimestamp timestamp(long frames, long timeNs) {
++
++    AudioTimestamp timestamp = new AudioTimestamp();
++    timestamp.framePosition = frames;
++    timestamp.nanoTime = timeNs;
++
++    return timestamp;
++  }
++}

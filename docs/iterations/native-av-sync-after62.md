@@ -2107,3 +2107,26 @@ SHA исходных байтов совпал после обратного ч�
 Текущие SDK34 и выбранные SDK33 baselines оставлены raw. Завершённый
 owned CI-download/wrapper fixture также удалён после сохранения receipt/log;
 owner Gradle home, профили, Keychain и signed backups не затронуты.
+
+
+SDK35 платформенные библиотеки собраны в CI42465826333. Точный Mac framework
+прошёл подписи/UUID/receipt/compiled policy/4-worker crypto probe; фактически
+встроенный в тестовое приложение код совпал со всеми байтами CI, кроме
+проверенных signing/linkedit данных. Два полных120-sample LiveKit-звонка подряд
+прошли **все исходные гейты** без QoS override и без изменения допуска речи:
+raw clean/recovery21,660/37,454 мс и10,048/32,850 мс; corrected20,261/40,183
+и9,641/33,830. Speech, added voice, required E2EE прошли; до ключа были
+зашифрованные пакеты без decoded media/content, после ключа проверен исходник.
+Output12607/12536 callbacks, max gaps11,819/11,695 мс, активных пауз нет.
+[Первый полный звонок](sdk35/macos-first-full-call.json),
+[последовательный повтор](sdk35/macos-second-full-call.json). Ранее неуспешные
+SDK34-прогоны сохранены; причинность NetEq/speech пока не доказана. Физическая
+слышимость/экран и рабочий сценарий переключения окон в подписанном продукте
+не подменены этими тестами. Публикации SDK35/новых клиентов ещё нет.
+
+Android35 AAR также строго сверён: exact source/receipt,170 native tests,
+16 audio-clock и2 decoder API cases,3 ABI/16KiB ELF alignment/classes hash.
+Начат direct P2P35 с продуктовым shared stream и без искусственного playout;
+required E2EE LiveKit35 будет проверен отдельно. PR14 (готовая приёмка
+Android LiveKit34 и восстановление проверенных CI downloads) влит как
+`ee18405c79905a073f034243cdc76ce9e08985f6`: оба check jobs прошли на точномd7.
