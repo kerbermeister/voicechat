@@ -1,0 +1,18 @@
+{
+  "source_revision": "6ab88c53ef0265f5193db125ee471f1484fcd234",
+  "test_run": 42426308795,
+  "artifact_sha256": "e22c6c2b88860e582663eb40da44ef73ed00f9a6ab67d9db8391db755f9e3808",
+  "timing_crypto_neteq_tests": 108,
+  "video_recovery_tests": 48,
+  "all_exact_source_negative_controls_verified": true,
+  "media_qualified": false,
+  "native_ci": "https://github.com/kerbermeister/voicechat/actions/runs/42426308795",
+  "prototype_ci": "https://github.com/kerbermeister/voicechat/actions/runs/42426307926",
+  "android_build_ci": "https://github.com/kerbermeister/voicechat/actions/runs/42427838758",
+  "skipped_native_tests": 0,
+  "old_policy_failures": [
+    "VideoStreamBufferController/VideoStreamBufferControllerTest.RtpClockRecoveryRefreshesQueuedDeadline/SyncDecoding",
+    "VideoStreamBufferController/VideoStreamBufferControllerTest.RtpClockRecoveryRefreshesQueuedDeadline/UnsyncedDecoding"
+  ],
+  "application_release_published": false
+}
