@@ -167,6 +167,16 @@ void main() {
       expect(service.transfers, isEmpty);
     },
   );
+  test('Invitation allows 30 minutes and still bounds untrusted expiry', () async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await emit({...offer('a' * 32), 'expires': now + 31 * 60 * 1000});
+    expect(service.transfers, isEmpty);
+    await emit({...offer('b' * 32), 'expires': now + 30 * 60 * 1000});
+    await emit({...offer('c' * 32), 'expires': now + 5 * 60 * 1000});
+    expect(service.transfers, hasLength(2));
+    expect(service.transfers.every((t) => t.state == P2pState.offered), isTrue);
+    expect(service.transfers.every((t) => t.wire == null), isTrue);
+  });
   test(
     'Offer sends no bytes; cancel releases a shared source only after last recipient session',
     () async {
@@ -185,8 +195,14 @@ void main() {
           },
         ),
       ];
+      final before = DateTime.now().millisecondsSinceEpoch;
       await service.send(['@peer:local'], sources);
+      final after = DateTime.now().millisecondsSinceEpoch;
       expect(client.sent.single['op'], 'offer');
+      expect(
+        client.sent.single['expires'],
+        inInclusiveRange(before + 30 * 60 * 1000, after + 30 * 60 * 1000),
+      );
       expect(reads, 0);
       expect(releases, 0);
       final first = service.transfers.single;

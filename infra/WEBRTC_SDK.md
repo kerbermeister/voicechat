@@ -1,5 +1,21 @@
 # Native call synchronization SDK
 
+SDK36 Android texture candidate (not media-qualified) is based on the exact
+SDK35 source. Android's SurfaceTextureHelper permits only one texture in flight;
+keeping that texture in a delayed render queue can block the next decoded frame.
+For a bounded render wait over20ms the Android smoother now detaches a pixel-exact
+I420 copy before queuing it, preserving frame metadata and the original deadline.
+Immediate/CPU frames, failed mappings and the existing far-future guard retain
+their previous policy. The copy is invoked only on Android; Mac native buffer
+behavior, PCM, audio buffers, NetEq, codecs and E2EE are unchanged.
+
+Expected evidence is117 timing/crypto/NetEq +56 recovery native cases. Three new
+cases cover decoder-texture release with exact strided Y/U/V samples and frame
+metadata, unchanged fast/far-future/CPU paths and unavailable conversion. The
+old ownership policy must fail the compiled copy regression before a platform
+artifact can qualify. Source/patch receipts and actual-call speech/output/crypto
+checks remain required. The user-accepted Android LiveKit34 result is retained.
+
 SDK35 compiler candidate (`d5c8be1`, 2026-11-08) is now integrated without
 changing application artifact pins. Its exact CI42465826333 passed117
 timing/crypto/NetEq +53 recovery C++ cases, old-policy negative controls,

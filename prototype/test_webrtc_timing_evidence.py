@@ -74,6 +74,21 @@ class TimingEvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'audio queue render-bound'):
             evidence.verify_tests(self.directory, self.manifest)
 
+    def test_texture_copy_requires_actual_old_ownership_failure(self):
+        case = 'IncomingVideoStreamTest.CopiesDelayedTextureWithoutPixelOrMetadataLoss'
+        self.manifest['video_recovery_regressions'].append(case)
+        self.receipt['video_recovery_regressions'] = self.manifest['video_recovery_regressions']
+        (self.directory / 'build-receipt.json').write_text(json.dumps(self.receipt))
+        testcase = self.video_tests.findall('.//testcase')[-1]
+        classname, name = case.split('.')
+        testcase.attrib.update(classname=classname, name=name)
+        ET.ElementTree(self.video_tests).write(self.directory / 'video-resume-tests.xml')
+        with self.assertRaisesRegex(ValueError, 'video recovery'):
+            evidence.verify(self.directory, self.manifest)
+        control = self.directory / 'video-resume-before.log'
+        control.write_text(control.read_text() + '\n[  FAILED  ] ' + case)
+        evidence.verify(self.directory, self.manifest)
+
     def test_changed_source_or_toolchain_cannot_reuse_evidence(self):
         with self.assertRaisesRegex(ValueError, 'pins'):
             evidence.verify(self.directory, {**self.manifest, 'webrtc_commit': 'different-source'})
