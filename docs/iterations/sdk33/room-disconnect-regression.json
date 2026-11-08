@@ -1,0 +1,16 @@
+{
+  "flutter_analyze": "pass; no issues",
+  "flutter_tests": {
+    "passed": 802,
+    "skipped": 4,
+    "failed": 0
+  },
+  "scope": "Actual Room/Engine fast acknowledgement, reconnect cancellation, normal wait, send failure and timeout cleanup; full existing Flutter suite. Mac26 real-call teardown also passed. Not physical phone acceptance or media quality qualification.",
+  "logs": {
+    "sdk33-room-disconnect-before2.private.log": "32c4bd0c7f6ca4e2367e22f0619389c407c88b3a96bc1a1571fbc3292813b202",
+    "sdk33-room-disconnect-final.private.log": "c72ec55d31e51215f0f4ae812ae02d244fa0313368d004b4a2b1ccf35a8d42b4",
+    "sdk33-room-fix-analyze-final.private.log": "c80e7f390dc330464f46ce4731d343e0b13581dd691f71585e39e6075e2d57e1",
+    "sdk33-room-fix-full-test.private.log": "db8818181c7e711e05d88d906e222a5bc0c0a46d109961d6554946de363736e8"
+  },
+  "published": false
+}

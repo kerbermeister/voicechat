@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "date": "2026-11-08",
+  "trial": "sdk33-macos-production-receiver-1",
+  "source_revision": "5a4f0d288b7a66b2992bb781f7aab92cfb6a7df0",
+  "version": "150.7871.04-vc33",
+  "complete_media_samples": 120,
+  "e2ee_missing_key_gate": {
+    "content": {
+      "audio_chunks": 300,
+      "audio_peak": 0.0,
+      "control_audio_peak": 0.0,
+      "video_markers": 0
+    },
+    "audio": {
+      "packets": 135,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 155,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 135,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "positive_source_frame_identity_verified": true,
+  "timing": {
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 7,
+      "max_abs_ms": 646.4723749959376,
+      "max_source_corrected_abs_ms": 700.1142916560639
+    },
+    "recovery": {
+      "count": 15,
+      "max_abs_ms": 867.166374984663,
+      "max_source_corrected_abs_ms": 865.988749981625
+    },
+    "source_validation_max_ms": 4.810666665434837
+  },
+  "speech": {
+    "schema": 1,
+    "outcome": "speech_regression",
+    "synthetic_reference_only": true,
+    "physical_listening_test": false,
+    "paired_trials": 1,
+    "stoi_noninferiority_margin": 0.005,
+    "level_tolerance_db": 0.15,
+    "phases": {
+      "clean": {
+        "paired_clips": 7,
+        "control": {
+          "stoi": 0.899706735305615,
+          "si_sdr_db": 4.7103067663628515,
+          "rms_dbfs": -23.63405137661884
+        },
+        "candidate": {
+          "stoi": 0.8867770646932586,
+          "si_sdr_db": 4.094109317085523,
+          "rms_dbfs": -23.704280091433795
+        }
+      },
+      "delay": {
+        "paired_clips": 14,
+        "control": {
+          "stoi": 0.9726778743515831,
+          "si_sdr_db": 5.6751147581618415,
+          "rms_dbfs": -23.263886109922343
+        },
+        "candidate": {
+          "stoi": 0.9854261999096423,
+          "si_sdr_db": 6.865010145373213,
+          "rms_dbfs": -23.17868762028389
+        }
+      },
+      "pause": {
+        "paired_clips": 5,
+        "control": {
+          "stoi": 0.995707291790948,
+          "si_sdr_db": 9.518854928017944,
+          "rms_dbfs": -23.129116490637536
+        },
+        "candidate": {
+          "stoi": 0.9958381484924804,
+          "si_sdr_db": 9.483179542816536,
+          "rms_dbfs": -23.077072534653883
+        }
+      },
+      "recovery": {
+        "paired_clips": 15,
+        "control": {
+          "stoi": 0.9365671101460243,
+          "si_sdr_db": 3.731701133087248,
+          "rms_dbfs": -23.51086039046013
+        },
+        "candidate": {
+          "stoi": 0.858329191529545,
+          "si_sdr_db": 0.19468001289702513,
+          "rms_dbfs": -23.165696524198317
+        }
+      }
+    }
+  },
+  "teardown_failed": "Room.disconnect awaited an event only after sendLeave completed; timed out after media export",
+  "framework_identity": {
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "dd3275e665f8e244daf4d9d2de013e68cf804b97c4cd5b6711af2db28ed52c64",
+    "ci_signed_sha256": "31f1f83e05026daf71c9f9da74f7eb4918e93acdff773f84e0ce79bbd59e1ad5",
+    "app_signed_sha256": "ae136479390b563d18f7f7a2068d521274e8888bedc3e05d75b23f4e51a2b54d",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true,
+    "valid_signature_but_modified_image_rejected": true
+  },
+  "qualified_for_release": false,
+  "physical_display_or_speaker_measured": false
+}

@@ -769,9 +769,13 @@ class Room extends DisposableChangeNotifier with EventsEmittable<RoomEvent> {
       logger.warning('Engine is already closed');
       return;
     }
-    await engine.disconnect();
-    if (!isPendingReconnect) {
-      await _engineListener.waitFor<EngineDisconnectedEvent>(duration: const Duration(seconds: 10));
+    if (isPendingReconnect) {
+      await engine.disconnect();
+    } else {
+      await _engineListener.waitFor<EngineDisconnectedEvent>(
+        duration: const Duration(seconds: 10),
+        trigger: engine.disconnect,
+      );
     }
     await _cleanUp();
   }

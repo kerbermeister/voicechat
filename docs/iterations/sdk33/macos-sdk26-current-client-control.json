@@ -1,0 +1,77 @@
+{
+  "source_revision": "72278977080675a2fbf7ea3e2ce7331e008aab91",
+  "version": "150.7871.04-vc26",
+  "app_baseline_revision": "b416818adc69d9d0515d2a2b3156089636a86671",
+  "app_call_runtime_source_sha256": {
+    "vendor/livekit_client/lib/src/core/room.dart": "802b6749539bd3b0de239c9e9e81b2b44173d80a31de80ffebdf038768f8a1de",
+    "vendor/livekit_client/lib/src/managers/event.dart": "3d8240dda9a0d381b44f5f85e5673ac612d3554bd1b908807c1c68f38512de41",
+    "apps/client/macos/Compatibility/FlutterRTCVideoRenderer.m": "c1f9e532f152f77d17f9206ca15e29ed20ca1cb1c619397f7ef120141cc9a8f5"
+  },
+  "actual_app_sdk_sha256": "bcfc6c6aaa57a6734dbd2557c6c374fe1c472c3fac7e903f4534800d67e201e5",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "decb9d4c57e44c3d6e15c7bad8915516abe30ec1b4581f329a2f8dffd77aa9e0",
+    "ci_signed_sha256": "be2bf7d5d4a59ac3134242ccb33490fa1209d30c269891dcdac4bd1dcd791609",
+    "app_signed_sha256": "bcfc6c6aaa57a6734dbd2557c6c374fe1c472c3fac7e903f4534800d67e201e5",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "676cd3ba-484c-3579-bd8d-9fe3d52e67d9",
+  "trial": "sdk26-macos-current-client-control-1",
+  "pass": false,
+  "timing": {
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 6,
+      "max_abs_ms": 35.13920833938755,
+      "max_source_corrected_abs_ms": 36.89508332172409
+    },
+    "recovery": {
+      "count": 20,
+      "max_abs_ms": 1067.206666659331,
+      "max_source_corrected_abs_ms": 1070.0627083424479
+    }
+  },
+  "speech": "speech_regression",
+  "voice": {
+    "pass": false,
+    "clean": {
+      "count": 5,
+      "max_added_voice_delay_ms": 125.66308333771303
+    },
+    "video_paused": {
+      "count": 4,
+      "max_added_voice_delay_ms": 296.9847916683648
+    },
+    "recovery": {
+      "count": 24,
+      "max_added_voice_delay_ms": 1120.2068333222996
+    }
+  },
+  "missing_key_gate": {
+    "content": {
+      "video_markers": 0,
+      "audio_peak": 0.0,
+      "audio_chunks": 301,
+      "control_audio_peak": 0.0
+    },
+    "audio": {
+      "packets": 126,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 155,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 114,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "scope": "Same current Mac65 application/fixture with published SDK26 and the disconnect acknowledgement fix; all test teardown completed; quality gates failed",
+  "note": "This matched control also fails, so SDK33-specific causality is unproven. No release qualified."
+}

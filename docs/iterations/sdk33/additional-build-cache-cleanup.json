@@ -1,0 +1,39 @@
+{
+  "schema": 1,
+  "removed_reproducible_build_caches": [
+    {
+      "path": "native-sdk26-av-source/apps/client/build/macos/ModuleCache.noindex",
+      "logical_bytes": 409960018
+    },
+    {
+      "path": "native-sdk26-av-source/apps/client/build/macos/Build/Intermediates.noindex/Pods.build",
+      "logical_bytes": 438998484
+    },
+    {
+      "path": "native-sdk26-av-source/apps/client/build/macos/Build/Intermediates.noindex/Runner.build",
+      "logical_bytes": 5426464
+    },
+    {
+      "path": "native-sdk26-av-source/apps/client/build/macos/Build/Intermediates.noindex/EagerLinkingTBDs",
+      "logical_bytes": 3699555
+    },
+    {
+      "path": "heartbeat51-android-source/apps/client/build/app/intermediates",
+      "logical_bytes": 563256501
+    },
+    {
+      "path": "heartbeat51-android-source/apps/client/build/flutter_vodozemac",
+      "logical_bytes": 659699206
+    }
+  ],
+  "logical_bytes_removed": 2081040228,
+  "free_before_bytes": 5509419008,
+  "free_after_bytes": 7401697280,
+  "retained_actual_apk_and_mac_sdk_sha256": {
+    "native-sdk26-av-source/apps/client/build/macos/Build/Products/Debug/VoiceChat.app/Contents/Frameworks/WebRTC.framework/WebRTC": "bcfc6c6aaa57a6734dbd2557c6c374fe1c472c3fac7e903f4534800d67e201e5",
+    "heartbeat51-android-source/apps/client/build/app/outputs/flutter-apk/app-debug.apk": "5bb0234930e26c52b22214165cb4198e041c2b3627f82653c3a4ac436086cafd"
+  },
+  "linked_cargokit_build_db_preserved": true,
+  "source_fixture_restoration_verified": true,
+  "user_profiles_or_release_backups_removed": false
+}

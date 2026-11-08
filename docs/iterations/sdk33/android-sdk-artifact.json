@@ -1,0 +1,23 @@
+{
+  "repository": "/Users/anton/IdeaProjects/VoiceChat/.prototype/sdk33-platform-ci42442189568/android/local-repository/a7de511f4f126bbe033db1130f28bc834eb74d4dd5395bfaba7b68911925e5d4/maven",
+  "version": "150.7871.04-vc33",
+  "aar_sha256": "a7de511f4f126bbe033db1130f28bc834eb74d4dd5395bfaba7b68911925e5d4",
+  "jni_sha256": {
+    "armeabi-v7a": "252c09577b9e83e0298053e35bee05acb8bb1b783a89ec8bbffde3ddc04172d2",
+    "arm64-v8a": "bf9f1769f407f61beb94a4e41959ee9a3186796010531674ec21c08dbdaf68da",
+    "x86_64": "a7903ae80964736a01c18c7653cffac82de3072a9e1ab1f02cc64662059dfcae"
+  },
+  "decoder_api_tests": [
+    29,
+    36
+  ],
+  "video_recovery_cpp_tests": 53,
+  "qualified_for_release": false,
+  "source_revision": "5a4f0d288b7a66b2992bb781f7aab92cfb6a7df0",
+  "ci_run": 42442189568,
+  "remote_head_verified": true,
+  "platform": "Android CI artifact, not a physical-device call",
+  "native_timing_crypto_recovery_tests": 166,
+  "metadata_only": true,
+  "published": false
+}
