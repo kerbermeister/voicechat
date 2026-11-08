@@ -1,0 +1,11 @@
+{
+  "all_non_signing_bytes_match": true,
+  "canonical_unsigned_sha256": "347479760ade78e190baf16f2b2be95a3147dcd5e3d32149a7f849ab6f290d2e",
+  "ci_signed_sha256": "210886f22fb2f22db3daf6c87145f4d4bfcf8db1cb09281681a5f6bc101e0a01",
+  "app_signed_sha256": "acb4ed7cedf1a0e2e75768377306324fa8ba4e7b7741c48281599a049b4f8d2b",
+  "both_framework_signatures_verified": true,
+  "only_signature_and_linkedit_vm_reservation_normalized": true,
+  "source_revision": "ee8c8e8bca837e3b4a69d4145bf960074349cc31",
+  "build": 66,
+  "uuid": "1802e4a2-ff7c-38b7-8514-4152728ee630"
+}

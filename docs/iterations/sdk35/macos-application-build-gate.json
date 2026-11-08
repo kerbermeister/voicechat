@@ -7,17 +7,25 @@
   "speech_stoi_margin": 0.005,
   "speech_level_tolerance_db": 0.15,
   "livekit_required_e2ee_calls_passed": 3,
-  "direct_dtls_srtp_calls_passed_without_override": 2,
+  "direct_dtls_srtp_calls_passed_without_override": 3,
   "owned_app_hide_unhide_cycles": 3,
   "output_continuity_and_added_voice_gates_passed": true,
   "native_cpp_tests_passed": 170,
   "runtime_flag_overrides_required": false,
   "qualified_for_macos_application_build": true,
-  "signed_application_installation_and_channel_verification_pending": true,
+  "signed_application_installation_and_channel_verification_pending": false,
   "physical_speaker_or_display_latency_measured": false,
   "physical_xiaomi_measured": false,
   "prior_failed_trials_preserved": [
     "sdk35-macos-p2p-product-output-quality-1"
   ],
-  "published_application": false
+  "published_application": true,
+  "direct_call_owned_app_hide_unhide_cycles": 3,
+  "signed_application_package_verified": true,
+  "application_build": 66,
+  "application_version": "1.19.18",
+  "normal_updater65_to66_verified": true,
+  "account_device_old_history_preserved": true,
+  "exact_signed_zip_dmg_and_installed_entries_equal": 287,
+  "source_revision_of_application": "ee8c8e8bca837e3b4a69d4145bf960074349cc31"
 }

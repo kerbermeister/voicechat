@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-08",
+  "workflow": 42509358639,
+  "mode": "full",
+  "commit": "8f3875b40aff40aa196f6a7c42feb2a9e611dfe3",
+  "control": "ghcr.io/kerbermeister/voicechat/control@sha256:9c767ff4d978f8272967b66d446aa6e71ea139bc35171d88ed128faaa64dfff6",
+  "web": "ghcr.io/kerbermeister/voicechat/web@sha256:9be820c666fc54d7d92301e343eaec260102e85934c154a6eebe4eb846aa9603",
+  "ci_and_running_digests_match": true,
+  "protected_source_fingerprint_match": true,
+  "all_services_running": true,
+  "healthchecks_pass": true,
+  "rollback_matches_previous_core_revision": true,
+  "previous_core_revision": "da0dd92edc2f72c2c50ded026509e76f748d978f",
+  "coturn_immutable_fix_preserved": true,
+  "web_version": "1.19.18",
+  "web_build": 66,
+  "web_cache_control": "no-cache",
+  "macos_application_published": false,
+  "macos_candidate_saved_login_pending": true,
+  "android_application_published": false
+}

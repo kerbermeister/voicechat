@@ -1,0 +1,135 @@
+{
+  "date": "2026-11-08",
+  "trial": "sdk35-macos-p2p-window-visibility-1",
+  "source_revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "version": "150.7871.04-vc35",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "347479760ade78e190baf16f2b2be95a3147dcd5e3d32149a7f849ab6f290d2e",
+    "ci_signed_sha256": "210886f22fb2f22db3daf6c87145f4d4bfcf8db1cb09281681a5f6bc101e0a01",
+    "app_signed_sha256": "acb4ed7cedf1a0e2e75768377306324fa8ba4e7b7741c48281599a049b4f8d2b",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "1802e4a2-ff7c-38b7-8514-4152728ee630",
+  "sample_count": 120,
+  "product_direct_audio": true,
+  "timing": {
+    "outcome": "pass",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 43.69070832035504,
+      "max_source_corrected_abs_ms": 44.611583318328485
+    },
+    "recovery": {
+      "count": 26,
+      "max_abs_ms": 46.91604166873731,
+      "max_source_corrected_abs_ms": 48.09791667503305
+    }
+  },
+  "speech": "pass",
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 10.137291683349758
+    },
+    "video_paused": {
+      "count": 3,
+      "max_added_voice_delay_ms": 33.157708356156945
+    },
+    "recovery": {
+      "count": 26,
+      "max_added_voice_delay_ms": 33.36941669113003
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      178101.39590070836,
+      178218.48266345836
+    ],
+    "physical_speaker_measured": false,
+    "platform": "macos",
+    "complete_output_window": true,
+    "active_callback_gaps": [],
+    "output_callbacks": 12624,
+    "max_all_callback_gap_ms": 1345.4307499923743,
+    "pass": true
+  },
+  "crypto_control": {
+    "protocol": "DTLS-SRTP",
+    "positive_dtls_connected": true,
+    "srtp_cipher": "AES_CM_128_HMAC_SHA1_80",
+    "negative_dtls_failed": true,
+    "negative_received_media_packets": 0
+  },
+  "pass": true,
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "fixture_sources_sha256": {
+    "native_p2p_paired_speech_test.dart": "4febd81ed2dada588dcf8259be2dd627a2178d8632214430b0ac89be1609ae83",
+    "native_p2p_av_marker_test.dart": "b844ea7573569b83a6538f044983714a0e796108c5280d15934fa77e7e270fec",
+    "native_av_marker_test.dart": "1d0365dd0d59a8b567ea6571ee0efb68abfc7368daf94c9d6f8847026caf3744",
+    "native_av_marker.swift": "0fc928b021601f970a05db729ba942e44399d83b6fe3fdb89e58ff4aa8f60d70"
+  },
+  "diagnostic_fast_retransmissions": false,
+  "window_visibility": {
+    "requested": true,
+    "app_focus_events": [
+      {
+        "hidden": false,
+        "time": 178090.52658475,
+        "active": true,
+        "event": "start"
+      },
+      {
+        "time": 178103.10443341668,
+        "event": "hidden",
+        "hidden": true,
+        "active": true
+      },
+      {
+        "hidden": true,
+        "event": "inactive",
+        "active": false,
+        "time": 178103.12524916668
+      },
+      {
+        "hidden": false,
+        "active": false,
+        "event": "visible",
+        "time": 178103.89685841667
+      },
+      {
+        "event": "hidden",
+        "time": 178137.96556008334,
+        "active": false,
+        "hidden": true
+      },
+      {
+        "active": false,
+        "event": "visible",
+        "hidden": false,
+        "time": 178138.804236125
+      },
+      {
+        "time": 178178.00939325002,
+        "hidden": true,
+        "event": "hidden",
+        "active": false
+      },
+      {
+        "time": 178178.857590375,
+        "event": "visible",
+        "hidden": false,
+        "active": false
+      }
+    ],
+    "hide_unhide_cycles_in_active_media_window": 3,
+    "real_active_to_inactive_observed": true,
+    "owner_app_or_other_apps_hidden": false
+  },
+  "media_gates_pass": true
+}
