@@ -1,0 +1,35 @@
+{
+  "trial": "native-av-macos-sdk33-macos-sfu-one-worker-control-1",
+  "quality_qualified": false,
+  "paired_comparison_qualified": false,
+  "rejection": "Ordinary voice reference checksum markers47<50; candidate also insufficient (49). Do not score this as an improvement or weaken marker requirements.",
+  "candidate_diagnostic": {
+    "outcome": "insufficient_markers",
+    "audio_checksum_markers": 49,
+    "clean": {
+      "count": 3,
+      "max_abs_ms": 149.42025000345893,
+      "max_source_corrected_abs_ms": 147.9551666707266
+    },
+    "recovery": {
+      "count": 23,
+      "max_abs_ms": 192.19737499952316,
+      "max_source_corrected_abs_ms": 246.55808330862783
+    }
+  },
+  "ordinary_voice_reference": {
+    "checksum_markers": 47,
+    "outcome": "insufficient_markers"
+  },
+  "sfu_cpu": {
+    "usage_usec": 48008690,
+    "user_usec": 30292124,
+    "system_usec": 17716566,
+    "nr_periods": 2088,
+    "nr_throttled": 80,
+    "throttled_usec": 3103167
+  },
+  "sfu_gomaxprocs": 1,
+  "sfu_cpu_quota": 1,
+  "published": false
+}

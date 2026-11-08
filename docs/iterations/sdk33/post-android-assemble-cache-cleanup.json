@@ -1,0 +1,21 @@
+{
+  "scope": "Completed and installed Android APK; remove only redundant JNI/Rust build intermediates. Running device APK and source AAR retained. No Dart debug assets removed.",
+  "apk_sha256": "8ba261c0faf87b3fdf0ef6b6e91679eb73b13350b0b2579e24340e49aa5057c2",
+  "apk_hash_unchanged": true,
+  "paths": [
+    {
+      "path": "heartbeat51-android-source/apps/client/build/app/intermediates/merged_native_libs/debug",
+      "logical_bytes": 676955008
+    },
+    {
+      "path": "heartbeat51-android-source/apps/client/build/app/intermediates/stripped_native_libs/debug",
+      "logical_bytes": 82034288
+    },
+    {
+      "path": "heartbeat51-android-source/apps/client/build/flutter_vodozemac",
+      "logical_bytes": 575306730
+    }
+  ],
+  "total_logical_bytes": 1334296026,
+  "free_bytes_after": 2556383232
+}

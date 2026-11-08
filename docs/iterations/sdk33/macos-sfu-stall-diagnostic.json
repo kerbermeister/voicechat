@@ -1,0 +1,101 @@
+{
+  "source_revision": "5a4f0d288b7a66b2992bb781f7aab92cfb6a7df0",
+  "version": "150.7871.04-vc33",
+  "app_baseline_revision": "b416818adc69d9d0515d2a2b3156089636a86671",
+  "app_call_runtime_source_sha256": {
+    "vendor/livekit_client/lib/src/core/room.dart": "802b6749539bd3b0de239c9e9e81b2b44173d80a31de80ffebdf038768f8a1de",
+    "vendor/livekit_client/lib/src/managers/event.dart": "3d8240dda9a0d381b44f5f85e5673ac612d3554bd1b908807c1c68f38512de41",
+    "apps/client/macos/Compatibility/FlutterRTCVideoRenderer.m": "c1f9e532f152f77d17f9206ca15e29ed20ca1cb1c619397f7ef120141cc9a8f5"
+  },
+  "actual_app_sdk_sha256": "ae136479390b563d18f7f7a2068d521274e8888bedc3e05d75b23f4e51a2b54d",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "dd3275e665f8e244daf4d9d2de013e68cf804b97c4cd5b6711af2db28ed52c64",
+    "ci_signed_sha256": "31f1f83e05026daf71c9f9da74f7eb4918e93acdff773f84e0ce79bbd59e1ad5",
+    "app_signed_sha256": "ae136479390b563d18f7f7a2068d521274e8888bedc3e05d75b23f4e51a2b54d",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "d396d7aa-cb5c-3aa6-95bf-f985221bc72c",
+  "trial": "sdk33-macos-sfu-goroutine-diagnostic-1",
+  "pass": false,
+  "timing": {
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 7,
+      "max_abs_ms": 168.12304165796377,
+      "max_source_corrected_abs_ms": 171.76783332251944
+    },
+    "recovery": {
+      "count": 22,
+      "max_abs_ms": 72.71312497323379,
+      "max_source_corrected_abs_ms": 73.69891661801375
+    }
+  },
+  "speech": "speech_regression",
+  "voice": {
+    "pass": false,
+    "clean": {
+      "count": 7,
+      "max_added_voice_delay_ms": 73.73820833163336
+    },
+    "video_paused": {
+      "count": 5,
+      "max_added_voice_delay_ms": 141.46370833623223
+    },
+    "recovery": {
+      "count": 22,
+      "max_added_voice_delay_ms": 209.97445829561912
+    }
+  },
+  "missing_key_gate": {
+    "content": {
+      "audio_chunks": 307,
+      "video_markers": 0,
+      "audio_peak": 0.0,
+      "control_audio_peak": 0.0
+    },
+    "audio": {
+      "packets": 138,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 168,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 135,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "quality_gates_pass": false,
+  "pass_for_release": false,
+  "diagnostic_only": true,
+  "local_sfu_goroutine_observer": true,
+  "scope": "Diagnostic only: local loopback-only SFU development endpoint, error-level logging and goroutine observer. Not a release qualification.",
+  "pcm_capture_limit_reached": true,
+  "pcm_tail_complete": false,
+  "stall_snapshots": {
+    "attempted": 6,
+    "http_timeouts": 4,
+    "received": 2,
+    "rtp_write_lock_waiters": 3
+  },
+  "sfu_cpu": {
+    "usage_usec": 82404640,
+    "user_usec": 51678325,
+    "system_usec": 30726315,
+    "nr_periods": 2958,
+    "nr_throttled": 302,
+    "throttled_usec": 23498177
+  },
+  "production_causality_established": false,
+  "primary_sources": [
+    "https://raw.githubusercontent.com/livekit/livekit/e5655ac20267fa5005dccaf3f0e3bfc3ea688c07/pkg/service/server.go",
+    "https://go.dev/blog/container-aware-gomaxprocs"
+  ]
+}
