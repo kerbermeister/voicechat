@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-08",
+  "source_revision": "fc7678748ad6e21ed97e5c0119874632a2c1c384",
+  "ci_run": 42457768600,
+  "platform_job": 128665331184,
+  "whole_github_artifact_sha256": "574598fa71ecf980055aa89bdcc04278132f6938ac8c0060062d962f74a5c298",
+  "whole_github_artifact_bytes": 18000596,
+  "exact_artifact_verified": true,
+  "identity": {
+    "version": "150.7871.04-vc34",
+    "aar_sha256": "0c43cd1ef4739e0224905c8f999268c9ba1e6620e1b876e918de30652a90e5c5",
+    "source_revision": "fc7678748ad6e21ed97e5c0119874632a2c1c384",
+    "jni_sha256": {
+      "armeabi-v7a": "6064ce302639ec10a82dfeaa732018c1a03a1090e876d22625ae7001456322b5",
+      "arm64-v8a": "2fe486ac668c65a1a95449c36813631ca236c3bd9bf8dcb44c8464a00dd832f6",
+      "x86_64": "a26a528196b2a874aa7c168b7f1a74d48924d4d3f5dd489efbb32da47a35d1d6"
+    },
+    "decoder_api_tests": [
+      29,
+      36
+    ],
+    "video_recovery_cpp_tests": 53,
+    "qualified_for_release": false
+  },
+  "audio_device_api_test_count": 16,
+  "decoder_api_test_count": 2,
+  "native_tests_passed": 166,
+  "compiled_policy_tests": {
+    "platform": "android",
+    "test_count": 10,
+    "pass_count": 10,
+    "outcome": "pass",
+    "configuration_only": true,
+    "classes_sha256": "b23fbfe23434ca4919b4c0fbb9fa4ec73c062ec303941b1cb81b1bc23af4e320"
+  },
+  "actual_sdk34_media_qualification": "in progress",
+  "physical_android": false,
+  "published": false
+}

@@ -1950,3 +1950,44 @@ Intermediates старого неактивного unread44 checkout; SDK в Pr
 по хешам до/после. Текущие кешиSDK33/26 сохранены для следующих проверок;
 свободно около6,6 GiB. Квитанция сохранена приватно в
 `.prototype/sdk34-inactive-unread44-cache-cleanup.json`.
+
+
+SDK34 fc76787, CI42457768600: обе платформенные сборки завершены. Mac
+проверен по точному архиву/UUID/подписи и4 compiled crypto workers; Android
+AAR/JNI проверен для3 ABI,16 KiB alignment, classes SHA, всех16 audio-clock
+и2 decoder API tests,166 native tests. [Mac](sdk34/macos-compiled-artifact.json),
+[Android](sdk34/android-compiled-artifact.json). Это проверка собранных SDK,
+а не выпуск приложения.
+
+Первый полный SDK34 Mac LiveKit без QoS override:120 samples, raw A/V
+45,734/74,249 мс, corrected46,626/75,081 мс; речь и added voice прошли,
+required E2EE проверен реальными пакетами без ключа/отсутствием decoded
+содержимого и положительным source identity после ключа. Output callbacks
+12586, max gap11,811 мс, активных разрывов>80 мс нет, окно покрыто полностью.
+Пять реальных переходов active/inactive собственного приложения попали
+в измеряемый интервал; они наблюдались через NSApp notifications, не
+инъецировались в fixture. [Полный отчёт](sdk34/macos-first-full-call.json).
+
+Повторный полный capture после AX-инспекции тестового окна **не принят**:
+Flutter test завершился SemanticsHandle assertion. Исходники Flutter
+показывают сравнение числа handles в начале/конце; платформенная
+accessibility activation посреди теста создаёт framework-owned handle.
+Это согласуется с инспекцией, но не объявлено доказанным product defect
+или успешной приёмкой. Assertions/accessibility не отключены; нужен
+чистый повтор без подключения AX в середине теста. Максимальный callback
+gap15,483 мс сам по себе не отменяет ошибку теста. [Запись неуспеха](sdk34/macos-second-call-test-environment-failure.json).
+
+Для сравнения SDK33 с тем же output instrumentation: Mac raw57,660/86,680
+мс и speech delay-phase regression не прошли; callbacks оставались
+непрерывными. Android SDK33 raw79,123/89,752 мс, фактический AudioTrack
+68,082/215,327 мс; decoded speech прошла, но наблюдён один несомненный
+active-call AudioTrack underrun. Эти данные показывают, почему успешной
+декодированной речи недостаточно для выпуска. Системный timestamp query
+в среднем26,8 мкс, максимум1,435 мс: само чтение не объясняет215 мс.
+Следующий SDK34 Android-звонок дополнительно требует final hardware counter
+для полноты проверки хвоста. Физический динамик/дисплей/Xiaomi здесь
+не измерены.
+
+После проверки полных SHA удалены только завершённые download chunks
+и байтово одинаковый дополнительный Mac ZIP:82 605 216 байт логически.
+[Квитанция](sdk34/completed-download-duplicates-cleanup.json).
