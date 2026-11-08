@@ -14,9 +14,13 @@
     "VCMTimingTest.SyncDelayAllowsMeasuredAudioQueue",
     "RtpStreamsSynchronizerTest.PassesMeasuredAudioQueueToRenderGuard"
   ],
-  "native_compilation_and_platform_media_status": "in progress, no native media qualification",
+  "native_compilation_and_platform_media_status": "Native117+53 PASS, no skips; exact receipts and old-policy negative controls verified locally. Both platform artifacts building; no SDK35 media qualification.",
   "runtime_artifact_pins_changed": false,
   "audio_pcm_codec_neteq_buffer_changes": false,
   "crypto_changes": false,
-  "published": false
+  "published": false,
+  "full_python_tests": 879,
+  "existing_python_skips": 4,
+  "full_python_outcome": "pass",
+  "full_python_log_sha256": "94df3b2749e4fe7ab80ad08e7ae3328f343035378e267cef85e1c11428c794c4"
 }

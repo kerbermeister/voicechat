@@ -2067,3 +2067,43 @@ callbacks имели max gaps около12 мс. Это согласуется �
 Новый полный Mac34 прогон дополнен пассивными host-resource samples;
 завершённый Gradle worker остановлен штатно после проверки, что все48
 build contexts относятся только к изолированному Android-стенду.
+
+SDK35 native117 timing/crypto/NetEq +53 recovery прошли,0 skips; точный
+receipt/manifest и оба прежних-policy negative controls сверены локально.
+Проверка действительно воспроизвела старое отбрасывание402-мс ожидания
+и отсутствие независимой audio metadata. [Native170](sdk35/native-tests.json).
+Full configured Python для d5c8be1:879 passed,4 existing skips; после
+сохранения лога удалён только одноразовый owned checkout. Платформенные
+библиотеки собираются, реальный SDK35-звонок ещё не проверен.
+
+Последний полный Mac34 resource repeat также не принят: raw80,152/77,053
+мс, corrected81,342/78,071; speech pause0,946452 против0,974168. Output
+callbacks12617/max gap11,702 мс, разрывов нет. Host observer165 samples
+без ошибок,0 swapouts/4800 swapins/1552 pageouts; это сопутствующие
+измерения, не доказательство причины speech regression.
+[Полный отчёт](sdk34/macos-resource-repeat-speech-regression.json).
+
+CI-блокировка установлена точно: GitHub release-download CDN для SQLite
+вернул HTTP504,92 байта; SHA тела ошибкиbef140a1… совпал с отклонённым
+в CI, в то время как официальный API возвращает библиотеку с ожидаемым
+1ff25026…. [Свидетельство](sdk35/upstream-cdn-error-body.json). Новый
+CI helper получает те же5 upstream assets через официальный API,
+проверяет размер/полный SHA, проверяет wrapper/package pins, повторно
+проверяет кеш и атомарно помещает файлы в стандартные generated caches.
+Большой ZIP запрашивается bounded ranges с проверкой206/Content-Range,
+после чего снова проверяется общий SHA; transient transport retries
+ограничены, checksum mismatch не принимается. Кеш не содержит credentials
+или runtime. В wrapper добавлен SHA-256 прежнего Gradle8.14.3-all.
+12 содержательных unit cases прошли; все5 настоящих файлов, холодная
+распаковка/проверка Gradle wrapper и --version8.14.3 без CDN прошли.
+[Real proof](sdk35/client-build-assets-real-verification.json).
+Версии/байты зависимостей и SQLCipher не заменены, необходимый full release
+baseline из-за защищённого workflow/infra не обходится. Подписанные
+клиентские выпуски пока не сделаны.
+
+Для места37 завершённых исторических captures упакованы lossless gzip:
+SHA исходных байтов совпал после обратного чтения до удаления только
+избыточной raw-копии; экономия944823033 байта. [Квитанция](sdk35/historical-media-lossless-compression.json).
+Текущие SDK34 и выбранные SDK33 baselines оставлены raw. Завершённый
+owned CI-download/wrapper fixture также удалён после сохранения receipt/log;
+owner Gradle home, профили, Keychain и signed backups не затронуты.

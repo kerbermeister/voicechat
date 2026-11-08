@@ -19,6 +19,15 @@ jobs:
       - run: node --test prototype/test_mobile_web.cjs
       - run: flutter pub get --enforce-lockfile
         working-directory: apps/client
+      - name: Restore checksum-pinned client build downloads
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25
+        with:
+          path: ~/.cache/voicechat-client-build-assets
+          key: client-build-inputs-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('infra/client-build-assets.json', 'infra/prepare_client_build_assets.py', 'infra/crypto-tools.json', 'infra/webrtc-sdk-artifacts.json', 'apps/client/pubspec.lock', 'apps/client/android/gradle/wrapper/gradle-wrapper.properties', '.github/workflows/prototype.yml') }}
+      - name: Prepare verified client build downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 infra/prepare_client_build_assets.py
       - run: flutter analyze
         working-directory: apps/client
       - run: flutter test

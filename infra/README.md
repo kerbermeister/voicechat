@@ -452,3 +452,21 @@ host callback; не переносите это исключение в producti
 сбоя; видео, аудио, текст чата и ключи не сохраняются. Сессии и шифротекст чата
 живут в RAM; рестарт завершает эфиры. Обычный managed `full` нужен для обновления
 control image, Synapse policy и web вместе. Ограничения/приёмка: `docs/user-acceptance.md`.
+
+
+### Проверенные внешние файлы клиентской CI-сборки
+
+Prototype checks после pub get запускает `prepare_client_build_assets.py`: получает
+точный Gradle ZIP и четыре SQLite FFI-библиотеки из публичных upstream release
+assets через GitHub API. Это обходит неисправный маршрут release-download CDN
+при HTTP504, сохраняя прежние байты и SHA-256. Скрипт до staging сверяет
+Gradle wrapper checksum и хеши с закреплённым sqlite3 hook; затем проверяет
+размер/полный SHA каждого файла, включая повторно используемый кеш.
+Gradle wrapper и SQLite hook выполняют собственную проверку повторно.
+Зависимости, SQLCipher-хранилище и native/WebRTC SDK этим не заменяются.
+
+Кеш содержит только перечисленные публичные бинарные build inputs; токены,
+профили и runtime в него не входят. Ключ включает ОС/архитектуру, manifest,
+скрипт, toolchain/SDK pins, lock, wrapper и workflow. При обновлении зависимости
+обновлять `client-build-assets.json` вместе с lock/wrapper и сверять upstream
+checksums; не принимать неожиданный хеш и не отключать проверки ради сборки.

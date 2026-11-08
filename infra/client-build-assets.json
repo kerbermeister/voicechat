@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "sqlite3_release": "sqlite3-3.7.1",
+  "gradle_distribution_url": "https://services.gradle.org/distributions/gradle-8.14.3-all.zip",
+  "assets": [
+    {"repo": "gradle/gradle-distributions", "id": 269969098, "name": "gradle-8.14.3-all.zip", "size": 224584249, "sha256": "ed1a8d686605fd7c23bdf62c7fc7add1c5b23b2bbc3721e661934ef4a4911d7c"},
+    {"repo": "simolus3/sqlite3.dart", "id": 637354701, "name": "libsqlite3.x64.linux.so", "size": 1823648, "sha256": "1ff25026f7bcd7e740f98d5b852ae6e79d2400c076f046096295f91a5b60aeb8"},
+    {"repo": "simolus3/sqlite3.dart", "id": 637354587, "name": "libsqlite3.arm.android.so", "size": 1898180, "sha256": "3a800a4da3def29f85cef1e40f27c463f2842206593a8a60cfeb6d0a52435e70"},
+    {"repo": "simolus3/sqlite3.dart", "id": 637354621, "name": "libsqlite3.arm64.android.so", "size": 1847744, "sha256": "b372f69dd455ad4c1b26015eb848acce7017cc7a95f8fb37b4962ddda70528ec"},
+    {"repo": "simolus3/sqlite3.dart", "id": 637354686, "name": "libsqlite3.x64.android.so", "size": 1825272, "sha256": "d9cd44fadd4f856ee5e0980811364e651f69b93c418cb02ccfc433eb6df1b65d"}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "url": "https://github.com/simolus3/sqlite3.dart/releases/download/sqlite3-3.7.1/libsqlite3.x64.linux.so",
+  "http_status": 504,
+  "bytes": 92,
+  "sha256": "bef140a1a96994029153dca8c00b1750b9a5a764fb9db2dc68d7bb40e8a29e8a",
+  "matches_ci_rejected_error_body": true,
+  "expected_library_sha256": "1ff25026f7bcd7e740f98d5b852ae6e79d2400c076f046096295f91a5b60aeb8"
+}

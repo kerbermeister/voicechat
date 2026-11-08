@@ -1,0 +1,208 @@
+{
+  "source_revision": "fc7678748ad6e21ed97e5c0119874632a2c1c384",
+  "version": "150.7871.04-vc34",
+  "app_baseline_revision": "b416818adc69d9d0515d2a2b3156089636a86671",
+  "app_call_runtime_source_sha256": {
+    "vendor/livekit_client/lib/src/core/room.dart": "802b6749539bd3b0de239c9e9e81b2b44173d80a31de80ffebdf038768f8a1de",
+    "vendor/livekit_client/lib/src/managers/event.dart": "3d8240dda9a0d381b44f5f85e5673ac612d3554bd1b908807c1c68f38512de41",
+    "apps/client/macos/Compatibility/FlutterRTCVideoRenderer.m": "c1f9e532f152f77d17f9206ca15e29ed20ca1cb1c619397f7ef120141cc9a8f5"
+  },
+  "actual_app_sdk_sha256": "eed7a088e8e7b5ef9054ed6ca720584c0487f660731e53287cfe21003979cfe9",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "b417b5549c53a3c3be9f9b32a99a9e33510466802bd981e1a04a42b9a62b9e98",
+    "ci_signed_sha256": "3caded9509a7c5f4570f82cda92340e7974370d16a472b3b6aff04ef165521bf",
+    "app_signed_sha256": "eed7a088e8e7b5ef9054ed6ca720584c0487f660731e53287cfe21003979cfe9",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "9a1ffc35-2ebf-38b5-a644-37e001f13967",
+  "trial": "sdk34-macos-output-quality-resource-repeat-1",
+  "pass": false,
+  "media_gates_pass": false,
+  "diagnostic_only": false,
+  "timing": {
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 80.15154165332206,
+      "max_source_corrected_abs_ms": 81.3416666642297
+    },
+    "recovery": {
+      "count": 26,
+      "max_abs_ms": 77.05304166302085,
+      "max_source_corrected_abs_ms": 78.07062499341555
+    }
+  },
+  "speech": "speech_regression",
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 70.08850001147948
+    },
+    "video_paused": {
+      "count": 3,
+      "max_added_voice_delay_ms": 70.06500000716187
+    },
+    "recovery": {
+      "count": 26,
+      "max_added_voice_delay_ms": 70.04433331894688
+    }
+  },
+  "missing_key_gate": {
+    "content": {
+      "control_audio_peak": 0.0,
+      "audio_peak": 0.0,
+      "video_markers": 0,
+      "audio_chunks": 303
+    },
+    "audio": {
+      "packets": 136,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 184,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 134,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      154899.11898912504,
+      155015.57986045835
+    ],
+    "physical_speaker_measured": false,
+    "platform": "macos",
+    "complete_output_window": true,
+    "active_callback_gaps": [],
+    "output_callbacks": 12617,
+    "max_all_callback_gap_ms": 11.702083313139156,
+    "pass": true
+  },
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "date": "2026-11-08",
+  "sample_count": 120,
+  "qualified_for_release": false,
+  "test_process_passed": true,
+  "speech_metrics": {
+    "schema": 1,
+    "outcome": "speech_regression",
+    "synthetic_reference_only": true,
+    "physical_listening_test": false,
+    "paired_trials": 1,
+    "stoi_noninferiority_margin": 0.005,
+    "level_tolerance_db": 0.15,
+    "phases": {
+      "clean": {
+        "paired_clips": 8,
+        "control": {
+          "stoi": 0.994196764396897,
+          "si_sdr_db": 9.375879874113371,
+          "rms_dbfs": -23.118466015356876
+        },
+        "candidate": {
+          "stoi": 0.9952903934590163,
+          "si_sdr_db": 9.185811646808993,
+          "rms_dbfs": -23.202204897189695
+        }
+      },
+      "delay": {
+        "paired_clips": 13,
+        "control": {
+          "stoi": 0.9762848137334001,
+          "si_sdr_db": 7.956477181966074,
+          "rms_dbfs": -23.163925225783444
+        },
+        "candidate": {
+          "stoi": 0.974791170612356,
+          "si_sdr_db": 7.300771242311212,
+          "rms_dbfs": -23.205834582883938
+        }
+      },
+      "pause": {
+        "paired_clips": 5,
+        "control": {
+          "stoi": 0.9741675429183139,
+          "si_sdr_db": 6.357825330193803,
+          "rms_dbfs": -23.177707526444248
+        },
+        "candidate": {
+          "stoi": 0.9464515480365915,
+          "si_sdr_db": 5.877475772375474,
+          "rms_dbfs": -23.240884113021963
+        }
+      },
+      "recovery": {
+        "paired_clips": 26,
+        "control": {
+          "stoi": 0.9960326123331334,
+          "si_sdr_db": 9.43189265254042,
+          "rms_dbfs": -23.046197279588444
+        },
+        "candidate": {
+          "stoi": 0.9963704637331497,
+          "si_sdr_db": 9.3080264508806,
+          "rms_dbfs": -23.113129302971362
+        }
+      }
+    }
+  },
+  "host_resources": {
+    "samples": 165,
+    "sampling_errors": 0,
+    "vm_delta_pages": {
+      "Pageouts": 1552,
+      "Swapins": 4800,
+      "Swapouts": 0
+    },
+    "owned_media_process_max_cpu_percent": 104.2
+  },
+  "own_app_focus_events": [
+    {
+      "time": 154887.25578745833,
+      "active": false,
+      "hidden": false,
+      "event": "start"
+    },
+    {
+      "active": true,
+      "hidden": false,
+      "time": 154947.8320435,
+      "event": "active"
+    },
+    {
+      "event": "inactive",
+      "time": 154949.01415666667,
+      "active": false,
+      "hidden": false
+    },
+    {
+      "event": "active",
+      "time": 154949.662424625,
+      "active": true,
+      "hidden": false
+    },
+    {
+      "active": false,
+      "hidden": false,
+      "time": 154951.02987654167,
+      "event": "inactive"
+    }
+  ],
+  "evidence_sha256": {
+    ".media.json": "bf5d132f20ce67ad129b88acd888aa7bb3ba03621491bd17b371617c76b9123b",
+    ".control.media.json": "eac91b1a9143527d47934c559a50c8a4de0e9d67c044b0cdbd939e3ec08b27c1",
+    ".analysis.json": "195fcac88cf0679008d3317629f417ee6cdfeb718bd345f0ac4fe8ee57c7e695",
+    ".speech.json": "47a45d47fb86849e6f7bebabfd0fe111956da5992d59961bb31d6acfc818904c",
+    ".proof.json": "c84be9dcb546ff4cc29d428a6bb75da1a6fa5e3ecf471ad30ee9e1d680999d99",
+    ".diagnostic.json": "65a04490d22e53117d34976181ef647cd191aa48b3ade3e75f0b6726e8057cd6"
+  }
+}

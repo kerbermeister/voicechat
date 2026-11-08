@@ -1,0 +1,47 @@
+{
+  "date": "2026-11-08",
+  "source_revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "ci_run": 42465826333,
+  "native_job": 128684993320,
+  "timing_crypto_neteq_passed": 117,
+  "recovery_passed": 53,
+  "skipped": 0,
+  "exact_receipt_and_source_pins_verified": true,
+  "sdk34_policy_negative_controls": [
+    "VCMTimingTest.SyncDelayAllowsMeasuredAudioQueue",
+    "RtpStreamsSynchronizerTest.PassesMeasuredAudioQueueToRenderGuard"
+  ],
+  "sdk34_policy_controls_reproduced_failure": true,
+  "suite_counts": {
+    "StreamSynchronizationTest": 17,
+    "RtpStreamsSynchronizerTest": 22,
+    "DecisionLogicTest": 5,
+    "FrameCryptor": 5,
+    "DataPacketCryptor": 3,
+    "KeyProvider": 3,
+    "SifPayload": 3,
+    "SifTransformTest": 10,
+    "TimestampExtrapolatorTest": 17,
+    "VCMTimingTest": 32,
+    "TestNackRequester": 5,
+    "IncomingVideoStreamTest": 5,
+    "RtpVideoStreamReceiver2Test": 28,
+    "TaskQueueFrameDecodeSchedulerTest": 5,
+    "VideoStreamBufferController/VideoStreamBufferControllerTest": 10
+  },
+  "evidence_sha256": {
+    "build-receipt.json": "f312cf333602a8579a091acb13c24d056321d2915ac895d00ef4de79679999f1",
+    "video-resume-tests.xml": "cfbb92aeb3844c1cbe9b44bfdad236b3b438cf773e67837a4a98be69867babcf",
+    "before-receive-presentation.log": "2d4c5ace77430bcb1fb65cc15c598b1c0c0daae208f33f570a4378673a68f8a2",
+    "timing-tests.xml": "25c61459eeb8e1cb7c1cfa4a72e0422f2fc704889cf6b28d2fed131c3603fb0e",
+    "before-late-rtp-clock.log": "070b734e3b098c91dc149590f87719971361d8122cf448f53c0829be83e93b9b",
+    "before-audio-queue-sync.log": "4fd01bf13db001f5dbfff225c50d39ad1f2dc5e2a83854f9a40fa59b20126139",
+    "after-fix.log": "62f91c4f3897f833a51bf17037b3ddb78c9b283647cb406643df8aefa3ddcfe1",
+    "video-resume-before.log": "aefe0f40fdf8c33cbfccf5e6fd4b0468da3f959c9e43e1221eb02b7356527f8a",
+    "before-fix.log": "084b761428dae92bade6a874c51e7a64fbee01489d178e1170abaed22b214b82",
+    "before-render-lead.log": "d3183ea4d0a81ee51bcd84ed7dfc157f0ffa27fcc7848bc2d9241d17680fe100"
+  },
+  "actual_sdk35_media_qualification": false,
+  "platform_artifacts": "building",
+  "published": false
+}
