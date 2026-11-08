@@ -1,5 +1,24 @@
 # Native call synchronization SDK
 
+**SDK35 compiler candidate (2026-11-08), not media-qualified.** Based on exact
+SDK34 fc76787. A real Android P2P startup required402ms video wait for397ms
+of locally measured audio delay; the fixed250ms render guard instead returned
+the natural short video delay. SDK35 carries that independent audio measurement
+through the existing custom sync API and bounds a sync deadline by audio delay
+plus the existing250ms allowance. Missing, negative and nonfinite evidence keeps
+the former guard. Detach/reset/reanchor clears the measurement. The separate
+250ms future/late RTP-clock protections and rejection of unrelated multi-second
+sync deadlines remain. Audio PCM, NetEq, codecs, buffers and E2EE are unchanged.
+
+Expected qualification is117 timing/crypto/NetEq +53 recovery C++ tests with
+four new cases, plus explicit SDK34-policy negative controls for the fixed bound
+and omitted propagation. SDK34 Android LiveKit's measured result was explicitly
+accepted by the user with its documented numerical deviations; that acceptance
+does not cover SDK35, P2P, Mac speech, physical devices or app installation.
+Canonical acceptance remains docs/user-acceptance.md on the current main-based
+application branch. Compiler worktrees do not update runtime artifact pins.
+The older candidate notes below are historical evidence, not the current policy.
+
 **SDK9 compiler candidate, not qualified.** Keep video synchronized to the
 actual audio presentation clock from SDK8. Set the default receiver floor to
 0ms and retain the 10000ms maximum, so synchronization can follow audio below

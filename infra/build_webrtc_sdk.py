@@ -318,6 +318,31 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
                 raise RuntimeError(f'{regression} must fail with the former policy')
     finally:
         timing.write_bytes(patched)
+    audio_queue_controls = (
+        (timing, patched,
+         b'timings_.sync_audio_delay + kMaxSyncRenderLead',
+         b'kMaxSyncRenderLead', MANIFEST['audio_queue_sync_regressions'][0]),
+        (synchronizer, patched_sync,
+         b'SetVideoSyncDelay(target, audio_info->current_delay);',
+         b'SetVideoSyncDelay(target);', MANIFEST['audio_queue_sync_regressions'][1]),
+    )
+    audio_queue_logs = []
+    try:
+        for path, fixed, current, former, regression in audio_queue_controls:
+            if fixed.count(current) != 1:
+                raise RuntimeError('Expected exactly one measured audio render-bound path')
+            path.write_bytes(fixed.replace(current, former))
+            run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
+            before = subprocess.run([str(build / 'timing_sync_unittests'),
+                '--gtest_filter=' + regression], capture_output=True, text=True)
+            audio_queue_logs.append(before.stdout + before.stderr)
+            (output / 'before-audio-queue-sync.log').write_text('\n'.join(audio_queue_logs))
+            if before.returncode != 1 or '[  FAILED  ] ' + regression not in before.stdout:
+                raise RuntimeError(f'{regression} must detect the former fixed render bound')
+            path.write_bytes(fixed)
+    finally:
+        timing.write_bytes(patched)
+        synchronizer.write_bytes(patched_sync)
     receive_guard = (
         b'  if (!UpdateMeasurements(&*audio_measurement_, *audio_info) ||\n'
         b'      !UpdateMeasurements(&*video_measurement_, *video_info)) {')

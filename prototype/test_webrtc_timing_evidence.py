@@ -56,6 +56,24 @@ class TimingEvidenceTests(unittest.TestCase):
         control.write_text('[  FAILED  ] VCMTimingTest.Getter')
         evidence.verify_tests(self.directory, self.manifest)
 
+    def test_audio_queue_bound_requires_old_policy_failure(self):
+        self.manifest['audio_queue_sync_regressions'] = ['VCMTimingTest.Getter']
+        with self.assertRaisesRegex(ValueError, 'audio queue render-bound'):
+            evidence.verify_tests(self.directory, self.manifest)
+        control = self.directory / 'before-audio-queue-sync.log'
+        control.write_text('[  PASSED  ] VCMTimingTest.Getter')
+        with self.assertRaisesRegex(ValueError, 'audio queue render-bound'):
+            evidence.verify_tests(self.directory, self.manifest)
+        control.write_text('[  FAILED  ] VCMTimingTest.Getter')
+        evidence.verify_tests(self.directory, self.manifest)
+
+    def test_audio_queue_control_must_match_an_executed_test(self):
+        self.manifest['audio_queue_sync_regressions'] = ['VCMTimingTest.NotExecuted']
+        (self.directory / 'before-audio-queue-sync.log').write_text(
+            '[  FAILED  ] VCMTimingTest.NotExecuted')
+        with self.assertRaisesRegex(ValueError, 'audio queue render-bound'):
+            evidence.verify_tests(self.directory, self.manifest)
+
     def test_changed_source_or_toolchain_cannot_reuse_evidence(self):
         with self.assertRaisesRegex(ValueError, 'pins'):
             evidence.verify(self.directory, {**self.manifest, 'webrtc_commit': 'different-source'})

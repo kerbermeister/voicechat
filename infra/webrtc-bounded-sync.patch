@@ -1,6 +1,6 @@
 --- a/modules/video_coding/timing/timing.h
 +++ b/modules/video_coding/timing/timing.h
-@@ -36,6 +36,8 @@ class VCMTiming {
+@@ -36,6 +36,8 @@
 
      void Reset();
      TimeDelta TargetDelay() const;
@@ -9,15 +9,16 @@
      TimeDelta StatsTargetDelay() const;
      // Returns whether the low-latency path should be used, i.e., frames should
      // be decoded and rendered as soon as possible.
-@@ -62,6 +64,7 @@ class VCMTiming {
+@@ -62,6 +64,8 @@
      TimeDelta stats_target_delay = TimeDelta::Zero();
      // Current total delay. Obtained by smoothening the `target_delay`.
      TimeDelta current_delay = TimeDelta::Zero();
 +    std::optional<TimeDelta> sync_playout_delay;
++    TimeDelta sync_audio_delay = TimeDelta::Zero();
    };
 
    VCMTiming(Clock* clock, const FieldTrialsView& field_trials);
-@@ -96,12 +99,22 @@ class VCMTiming {
+@@ -96,11 +100,22 @@
 
    // Used to report that a frame is passed to decoding. Updates the timestamp
    // filter which is used to map between timestamps and receiver system time.
@@ -28,7 +29,7 @@
    // Returns the receiver system time when the frame with `rtp_timestamp`
    // should be rendered, assuming that the system time currently is `now`.
    Timestamp RenderTime(uint32_t rtp_timestamp, Timestamp now) const;
-
++
 +  // Relative network delay is already measured from the last packet's arrival.
 +  // Report the remaining render wait, including the RTP extrapolator's offset.
 +  TimeDelta CurrentDelayFromReceive(uint32_t rtp_timestamp,
@@ -36,14 +37,14 @@
 +
 +  std::optional<TimeDelta> VideoClockOffset(uint32_t rtp_timestamp,
 +                                           Timestamp receive_time) const;
-+  void SetSyncPlayoutDelay(std::optional<TimeDelta> delay);
-+
++  void SetSyncPlayoutDelay(std::optional<TimeDelta> delay,
++                           TimeDelta audio_delay = TimeDelta::Zero());
+
    // Returns the current target delay which is minimum delay + decode time +
    // render delay.
-   TimeDelta TargetVideoDelay() const;
 --- a/modules/video_coding/timing/timing.cc
 +++ b/modules/video_coding/timing/timing.cc
-@@ -33,6 +33,18 @@ namespace {
+@@ -33,6 +33,18 @@
  // Maximum `max_playout_delay` for a stream to use low-latency rendering.
  constexpr TimeDelta kLowLatencyStreamMaxPlayoutDelayThreshold =
      TimeDelta::Millis(500);
@@ -51,7 +52,7 @@
 +// the receiver's fitted arrival clock. Allow ordinary jitter before rebasing.
 +constexpr TimeDelta kMaxFrameClockLead = TimeDelta::Millis(250);
 +constexpr TimeDelta kMaxLateFrameClockLag = TimeDelta::Millis(250);
-+// A sync correction must not hold a complete frame beyond ordinary playout.
++// Reject a stale sync target beyond the independently measured audio queue.
 +constexpr TimeDelta kMaxSyncRenderLead = TimeDelta::Millis(250);
 +
 +bool HasFutureRtpClockPrediction(std::optional<Timestamp> local_time,
@@ -62,36 +63,36 @@
 
  void CheckDelaysValid(TimeDelta min_delay, TimeDelta max_delay) {
    if (min_delay > max_delay) {
-@@ -58,6 +70,7 @@ void VCMTiming::VideoDelayTimings::Reset() {
+@@ -58,11 +70,21 @@
    min_playout_delay = TimeDelta::Zero();
    stats_target_delay = TimeDelta::Zero();
    current_delay = TimeDelta::Zero();
 +  sync_playout_delay.reset();
++  sync_audio_delay = TimeDelta::Zero();
  }
 
  TimeDelta VCMTiming::VideoDelayTimings::TargetDelay() const {
-@@ -65,6 +78,14 @@ TimeDelta VCMTiming::VideoDelayTimings::TargetDelay() const {
+   return std::max(min_playout_delay,
                    minimum_delay + estimated_max_decode_time + render_delay);
- }
-
++}
++
 +TimeDelta VCMTiming::VideoDelayTimings::CurrentDelay() const {
 +  if (UseLowLatencyRendering()) {
 +    return TimeDelta::Zero();
 +  }
 +  return std::clamp(sync_playout_delay.value_or(current_delay),
 +                    min_playout_delay, max_playout_delay);
-+}
-+
+ }
+
  TimeDelta VCMTiming::VideoDelayTimings::StatsTargetDelay() const {
-   TimeDelta delay = TargetDelay() - (estimated_max_decode_time + render_delay);
-   return std::max(TimeDelta::Zero(), delay);
-@@ -154,9 +175,24 @@ void VCMTiming::StopDecodeTimer(TimeDelta decode_time, Timestamp now) {
+@@ -154,9 +176,25 @@
        TimeDelta::Millis(decode_time_filter_->GetPercentileMs());
  }
 
 -void VCMTiming::OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now) {
+-  MutexLock lock(&mutex_);
 +bool VCMTiming::OnCompleteTemporalUnit(uint32_t rtp_timestamp, Timestamp now) {
-   MutexLock lock(&mutex_);
++  MutexLock lock(&mutex_);
 +  const std::optional<Timestamp> predicted =
 +      ts_extrapolator_->ExtrapolateLocalTime(rtp_timestamp);
 +  // A late reordered frame does not represent a change in the RTP clock.
@@ -105,13 +106,14 @@
 +    RTC_LOG(LS_INFO) << "Reanchoring video RTP clock after a large timing error";
 +    ts_extrapolator_->Reset(now);
 +    timings_.sync_playout_delay.reset();
++    timings_.sync_audio_delay = TimeDelta::Zero();
 +  }
    ts_extrapolator_->Update(now, rtp_timestamp);
 +  return reanchored;
  }
 
  Timestamp VCMTiming::RenderTime(uint32_t rtp_timestamp, Timestamp now) const {
-@@ -170,9 +206,46 @@ Timestamp VCMTiming::RenderTime(uint32_t rtp_timestamp, Timestamp now) const {
+@@ -170,9 +208,53 @@
    if (!local_time.has_value()) {
      return now;
    }
@@ -132,7 +134,9 @@
 +                   timings_.max_playout_delay);
 +    // The RTP clock alone can be plausible while its sync correction makes
 +    // the final deadline stale. Anchor that frame to receiver time instead.
-+    if (render_time - now > std::max(kMaxSyncRenderLead, natural_delay))
++    const TimeDelta sync_limit =
++        timings_.sync_audio_delay + kMaxSyncRenderLead;
++    if (render_time - now > std::max(sync_limit, natural_delay))
 +      return now + natural_delay;
 +  }
 +  return render_time;
@@ -155,15 +159,20 @@
 +  return receive_time - *local_time;
 +}
 +
-+void VCMTiming::SetSyncPlayoutDelay(std::optional<TimeDelta> delay) {
++void VCMTiming::SetSyncPlayoutDelay(std::optional<TimeDelta> delay,
++                                    TimeDelta audio_delay) {
 +  MutexLock lock(&mutex_);
 +  timings_.sync_playout_delay = delay;
++  timings_.sync_audio_delay =
++      delay && audio_delay.IsFinite() && audio_delay > TimeDelta::Zero()
++          ? audio_delay
++          : TimeDelta::Zero();
  }
 
  TimeDelta VCMTiming::TargetVideoDelay() const {
 --- a/modules/video_coding/timing/timing_unittest.cc
 +++ b/modules/video_coding/timing/timing_unittest.cc
-@@ -482,5 +482,205 @@
+@@ -482,5 +482,264 @@
    EXPECT_EQ(timing.TargetVideoDelay(), kMinPlayout);
  }
 
@@ -288,6 +297,65 @@
 +            Timestamp::Millis(1400));
 +}
 +
++TEST(VCMTimingTest, SyncDelayAllowsMeasuredAudioQueue) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Seconds(10)});
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++
++  // The real Android startup had 397 ms of audio delay and a 402 ms target.
++  // A fixed 250 ms render guard discarded this valid synchronization wait.
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(402), TimeDelta::Millis(397));
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1402));
++  EXPECT_EQ(timing.CurrentDelayFromReceive(90000, clock.CurrentTime()),
++            TimeDelta::Millis(402));
++
++  // Independently measured audio cannot justify a stale multi-second target.
++  timing.SetSyncPlayoutDelay(TimeDelta::Seconds(4), TimeDelta::Millis(397));
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1070));
++}
++
++TEST(VCMTimingTest, SyncAudioQueueNeverValidatesFutureRtpClock) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Seconds(10)});
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(600), TimeDelta::Millis(600));
++  clock.AdvanceTime(TimeDelta::Millis(60));
++  EXPECT_EQ(timing.RenderTime(360000, clock.CurrentTime()),
++            Timestamp::Millis(1130));
++  timing.OnCompleteTemporalUnit(360000, clock.CurrentTime());
++  EXPECT_EQ(timing.GetTimings().sync_audio_delay, TimeDelta::Zero());
++}
++
++TEST(VCMTimingTest, SyncAudioQueueRequiresFiniteCurrentEvidence) {
++  FieldTrials field_trials = CreateTestFieldTrials();
++  SimulatedClock clock(Timestamp::Millis(1000));
++  VCMTiming timing(&clock, field_trials);
++  timing.set_playout_delay({TimeDelta::Millis(70), TimeDelta::Seconds(10)});
++  timing.OnCompleteTemporalUnit(90000, clock.CurrentTime());
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(600), TimeDelta::Millis(600));
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1600));
++
++  for (TimeDelta invalid : {TimeDelta::Millis(-1), TimeDelta::PlusInfinity(),
++                            TimeDelta::MinusInfinity(), TimeDelta::Zero()}) {
++    timing.SetSyncPlayoutDelay(TimeDelta::Millis(600), invalid);
++    EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++              Timestamp::Millis(1070));
++  }
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(600), TimeDelta::Millis(600));
++  timing.SetSyncPlayoutDelay(std::nullopt);
++  EXPECT_EQ(timing.GetTimings().sync_audio_delay, TimeDelta::Zero());
++  timing.SetSyncPlayoutDelay(TimeDelta::Millis(600));
++  EXPECT_EQ(timing.RenderTime(90000, clock.CurrentTime()),
++            Timestamp::Millis(1070));
++}
++
 +TEST(VCMTimingTest, SyncTargetReducesStaleJitterAndPreservesBounds) {
 +  FieldTrials field_trials = CreateTestFieldTrials();
 +  SimulatedClock clock(Timestamp::Millis(1000));
@@ -383,15 +451,16 @@
    return info;
  }
 
-@@ -823,6 +826,12 @@
+@@ -823,6 +826,13 @@
  void VideoReceiveStream2::SetEstimatedPlayoutNtpTimestamp(NtpTime ntp_time,
                                                            Timestamp time) {
    RTC_DCHECK_NOTREACHED();
 +}
 +
-+void VideoReceiveStream2::SetVideoSyncDelay(std::optional<TimeDelta> delay) {
++void VideoReceiveStream2::SetVideoSyncDelay(std::optional<TimeDelta> delay,
++                                             TimeDelta audio_delay) {
 +  RTC_DCHECK_RUN_ON(&worker_sequence_checker_);
-+  timing_->SetSyncPlayoutDelay(delay);
++  timing_->SetSyncPlayoutDelay(delay, audio_delay);
 +  buffer_->OnPlayoutDelayChanged();
  }
 
@@ -664,7 +733,7 @@
 +                    << ", final_target: " << target
 +                    << ", video_clock_offset: " << *video_info->video_clock_offset;
 +  }
-+  syncable_video_->SetVideoSyncDelay(target);
++  syncable_video_->SetVideoSyncDelay(target, audio_info->current_delay);
 +
  }
 
@@ -712,7 +781,7 @@
 
  #include "rtc_base/rtp_to_ntp_estimator.h"
  #include "system_wrappers/include/clock.h"
-@@ -531,4 +538,325 @@
+@@ -531,4 +538,342 @@
    BothDelayedVideoLaterTest(kBaseTargetDelayMs);
  }
 
@@ -756,8 +825,10 @@
 +    floor = delay;
 +    return true;
 +  }
-+  void SetVideoSyncDelay(std::optional<TimeDelta> delay) override {
++  void SetVideoSyncDelay(std::optional<TimeDelta> delay,
++                         TimeDelta audio_delay) override {
 +    video_target = delay;
++    video_audio_delay = audio_delay;
 +    ++video_updates;
 +  }
 +  void SetEstimatedPlayoutNtpTimestamp(NtpTime, Timestamp) override {}
@@ -773,6 +844,7 @@
 +  TimeDelta floor = TimeDelta::Zero();
 +  std::optional<TimeDelta> video_buffer;
 +  std::optional<TimeDelta> video_target;
++  TimeDelta video_audio_delay = TimeDelta::Zero();
 +  TimeDelta transport_offset = TimeDelta::Zero();
 +  int video_updates = 0;
 + private:
@@ -801,6 +873,20 @@
 +  SyncTestStream video_;
 +  std::unique_ptr<internal::RtpStreamsSynchronizer> sync_;
 +};
++
++TEST_F(RtpStreamsSynchronizerTest, PassesMeasuredAudioQueueToRenderGuard) {
++  audio_.delay_ms = 397;
++  audio_.actual_playout_delay = TimeDelta::Millis(402);
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target);
++  EXPECT_NEAR(video_.video_target->ms(), 402, 1);
++  EXPECT_EQ(video_.video_audio_delay, TimeDelta::Millis(397));
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++
++  sync_->ConfigureSync(nullptr);
++  EXPECT_FALSE(video_.video_target.has_value());
++  EXPECT_EQ(video_.video_audio_delay, TimeDelta::Zero());
++}
 +
 +TEST_F(RtpStreamsSynchronizerTest, StartsWithSingleSenderReport) {
 +  sync_->ConfigureSync(nullptr);
@@ -1227,22 +1313,24 @@
    };
 
    // Mapping between capture/render time in RTP timestamps and local clock.
-@@ -51,6 +55,8 @@
+@@ -51,6 +55,9 @@
    virtual std::optional<Info> GetInfo() const = 0;
    virtual std::optional<PlayoutInfo> GetPlayoutRtpTimestamp() const = 0;
    virtual bool SetMinimumPlayoutDelay(TimeDelta delay) = 0;
 +  // Video can follow audio without changing NetEq or its natural device delay.
-+  virtual void SetVideoSyncDelay(std::optional<TimeDelta>) {}
++  virtual void SetVideoSyncDelay(
++      std::optional<TimeDelta>, TimeDelta audio_delay = TimeDelta::Zero()) {}
    virtual void SetEstimatedPlayoutNtpTimestamp(NtpTime ntp_time,
                                                 Timestamp time) = 0;
  };
 --- a/video/video_receive_stream2.h
 +++ b/video/video_receive_stream2.h
-@@ -200,6 +200,7 @@
+@@ -200,6 +200,8 @@
 
    // SetMinimumPlayoutDelay is only called by A/V sync.
    bool SetMinimumPlayoutDelay(TimeDelta delay) override;
-+  void SetVideoSyncDelay(std::optional<TimeDelta> delay) override;
++  void SetVideoSyncDelay(std::optional<TimeDelta> delay,
++                         TimeDelta audio_delay = TimeDelta::Zero()) override;
 
    std::vector<webrtc::RtpSource> GetSources() const override;
 
@@ -1916,7 +2004,6 @@
    }
 
    last_render_time_ms_ = new_frame.render_time_ms();
-
 --- a/video/render/incoming_video_stream.h
 +++ b/video/render/incoming_video_stream.h
 @@ -42,6 +42,7 @@
@@ -1926,7 +2013,6 @@
 +  uint64_t render_generation_ RTC_GUARDED_BY(incoming_render_queue_) = 0;
    std::unique_ptr<TaskQueueBase, TaskQueueDeleter> incoming_render_queue_;
  };
-
 
 --- a/video/render/incoming_video_stream.cc
 +++ b/video/render/incoming_video_stream.cc
@@ -1959,7 +2045,6 @@
    }
  }
 
-
 --- a/video/render/BUILD.gn
 +++ b/video/render/BUILD.gn
 @@ -43,6 +43,7 @@
@@ -1970,7 +2055,6 @@
      "../../system_wrappers:metrics",
    ]
  }
-
 --- /dev/null
 +++ b/video/render/incoming_video_stream_unittest.cc
 @@ -0,0 +1,126 @@
@@ -2400,7 +2484,7 @@
                   std::move(cb)(rtp, schedule.render_time);
 --- a/video/video_stream_buffer_controller.cc
 +++ b/video/video_stream_buffer_controller.cc
-@@ -152,6 +152,12 @@ void VideoStreamBufferController::Clear() {
+@@ -152,6 +152,12 @@
    frame_decode_scheduler_->CancelOutstanding();
  }
 
@@ -2413,7 +2497,7 @@
  std::optional<int64_t> VideoStreamBufferController::InsertFrame(
      std::unique_ptr<EncodedFrame> frame) {
    RTC_DCHECK_RUN_ON(&worker_sequence_checker_);
-@@ -159,15 +165,25 @@ std::optional<int64_t> VideoStreamBufferController::InsertFrame(
+@@ -159,15 +165,25 @@
    int complete_units = buffer_->GetTotalNumberOfContinuousTemporalUnits();
    if (buffer_->InsertFrame(std::move(frame))) {
      RTC_DCHECK(metadata.receive_time) << "Frame receive time must be set!";
@@ -2423,10 +2507,11 @@
           metadata.is_last_spatial_layer)) {
 -      timing_->OnCompleteTemporalUnit(metadata.rtp_timestamp,
 -                                      *metadata.receive_time);
+-    }
+-    if (complete_units < buffer_->GetTotalNumberOfContinuousTemporalUnits()) {
 +      clock_reanchored = timing_->OnCompleteTemporalUnit(metadata.rtp_timestamp,
 +                                                        *metadata.receive_time);
-     }
--    if (complete_units < buffer_->GetTotalNumberOfContinuousTemporalUnits()) {
++    }
 +    const bool new_complete_unit =
 +        complete_units < buffer_->GetTotalNumberOfContinuousTemporalUnits();
 +    if (new_complete_unit) {
@@ -2444,7 +2529,7 @@
    }
 --- a/video/video_stream_buffer_controller_unittest.cc
 +++ b/video/video_stream_buffer_controller_unittest.cc
-@@ -85,9 +85,9 @@ std::unique_ptr<test::FakeEncodedFrame> WithReceiveTimeFromRtpTimestamp(
+@@ -85,9 +85,9 @@
  class VCMTimingTest : public VCMTiming {
   public:
    using VCMTiming::VCMTiming;
@@ -2456,7 +2541,7 @@
    }
 
    MOCK_METHOD(void,
-@@ -265,6 +265,95 @@ TEST_P(VideoStreamBufferControllerTest,
+@@ -265,6 +265,95 @@
    EXPECT_THAT(WaitForFrameOrTimeout(kMaxWaitForKeyframe), TimedOut());
  }
 
