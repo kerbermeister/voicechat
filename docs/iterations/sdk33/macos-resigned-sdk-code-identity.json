@@ -1,0 +1,9 @@
+{
+  "all_non_signing_bytes_match": true,
+  "canonical_unsigned_sha256": "dd3275e665f8e244daf4d9d2de013e68cf804b97c4cd5b6711af2db28ed52c64",
+  "ci_signed_sha256": "31f1f83e05026daf71c9f9da74f7eb4918e93acdff773f84e0ce79bbd59e1ad5",
+  "app_signed_sha256": "ae136479390b563d18f7f7a2068d521274e8888bedc3e05d75b23f4e51a2b54d",
+  "both_framework_signatures_verified": true,
+  "only_signature_and_linkedit_vm_reservation_normalized": true,
+  "valid_signature_but_modified_image_rejected": true
+}

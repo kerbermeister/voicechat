@@ -1,0 +1,9 @@
+{
+  "outcome": "pass",
+  "forced_receiver_disconnect": true,
+  "original_fixture_restored": true,
+  "failed_call_preserved_pcm_and_timing": true,
+  "incomplete_media_rejected": true,
+  "fixture_sha256": "122ade48327aa0f2828c5213653a43b504d1c0728dd164d06114fdd9f0aaba7c",
+  "media_quality_qualified": false
+}

@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "date": "2026-11-08",
+  "trial": "native-av-android-sdk32-livekit-sync-target-2",
+  "source_revision": "c4c6636844def5ee0e363f5689a26d165592d3fc",
+  "version": "150.7871.04-vc32",
+  "aar_sha256": "e32911c1b786fc56f08c24ae2eaca7517f8657197f3aced142cea96c169d8882",
+  "actual_apk_arm64_jni_sha256": "912d9409fb91abbd6c5f11a84c259d6df5889adcfa66fcc50ee8a819c85004da",
+  "complete_samples": 120,
+  "require_frame_encryption": true,
+  "native_call_sync": true,
+  "host_audio_disabled": true,
+  "e2ee_missing_key_gate": {
+    "content": {
+      "audio_peak": 0.0,
+      "video_markers": 0,
+      "audio_chunks": 304,
+      "control_audio_peak": 0.0,
+      "output_signal_peak": 0.0,
+      "output_signal_frames": 0
+    },
+    "audio": {
+      "packets": 114,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 193,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 114,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "positive_source_frame_identity_verified": true,
+  "silent_output_frames": 1131680,
+  "timing": {
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 9,
+      "max_abs_ms": 140.40416599999617,
+      "max_source_corrected_abs_ms": 84.9558329925344
+    },
+    "recovery": {
+      "count": 19,
+      "max_abs_ms": 1246.168042000022,
+      "max_source_corrected_abs_ms": 1242.4408336718216
+    },
+    "source_validation_max_ms": 3.727208328200504,
+    "recovery_transport": {
+      "pass": true,
+      "packet_deltas": {
+        "audio": 623,
+        "video": 1079
+      },
+      "decoded_video_frames": 51
+    }
+  },
+  "audio_output_clock": {
+    "pass": false,
+    "audio_device_timestamp_observed": true,
+    "physical_speaker_measured": false,
+    "phases": {
+      "clean": {
+        "count": 9,
+        "missing_output_markers": [],
+        "max_abs_ms": 106.51862499997833,
+        "max_source_corrected_abs_ms": 109.48329201175966,
+        "pass": false
+      },
+      "recovery": {
+        "count": 19,
+        "missing_output_markers": [],
+        "max_abs_ms": 1105.2722080000308,
+        "max_source_corrected_abs_ms": 1101.5449996718303,
+        "pass": false
+      }
+    }
+  },
+  "speech": {
+    "schema": 1,
+    "outcome": "speech_regression",
+    "synthetic_reference_only": true,
+    "physical_listening_test": false,
+    "paired_trials": 1,
+    "stoi_noninferiority_margin": 0.005,
+    "level_tolerance_db": 0.15,
+    "phases": {
+      "clean": {
+        "paired_clips": 9,
+        "control": {
+          "stoi": 0.9823143402362403,
+          "si_sdr_db": 7.745966485910999,
+          "rms_dbfs": -23.209634129545208
+        },
+        "candidate": {
+          "stoi": 0.9611763369175467,
+          "si_sdr_db": 4.744791284971251,
+          "rms_dbfs": -23.2157467519681
+        }
+      },
+      "delay": {
+        "paired_clips": 15,
+        "control": {
+          "stoi": 0.8261073140731622,
+          "si_sdr_db": 1.822486510140349,
+          "rms_dbfs": -23.594478279314778
+        },
+        "candidate": {
+          "stoi": 0.8224617760898743,
+          "si_sdr_db": -0.4214556102861683,
+          "rms_dbfs": -23.319299267251004
+        }
+      },
+      "pause": {
+        "paired_clips": 6,
+        "control": {
+          "stoi": 0.9958542871613844,
+          "si_sdr_db": 9.544405672485253,
+          "rms_dbfs": -23.084388020363594
+        },
+        "candidate": {
+          "stoi": 0.9745024799430885,
+          "si_sdr_db": 6.307804530763117,
+          "rms_dbfs": -23.117529989273994
+        }
+      },
+      "recovery": {
+        "paired_clips": 26,
+        "control": {
+          "stoi": 0.8626065921108015,
+          "si_sdr_db": 2.9216419682285064,
+          "rms_dbfs": -23.669590776168405
+        },
+        "candidate": {
+          "stoi": 0.8977574215324983,
+          "si_sdr_db": 2.065986936110166,
+          "rms_dbfs": -23.50634968618217
+        }
+      }
+    }
+  },
+  "voice_latency": {
+    "pass": false,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 359.2012510000018
+    },
+    "video_paused": {
+      "count": 4,
+      "max_added_voice_delay_ms": 89.11587500000451
+    },
+    "recovery": {
+      "count": 27,
+      "max_added_voice_delay_ms": 3110.2528763333908
+    }
+  },
+  "selected_sync_targets_ms": [
+    742.824,
+    228.995,
+    215.019,
+    352.068,
+    215.557,
+    677.865,
+    465.437,
+    2327.99,
+    379.789,
+    7993.963,
+    202.36,
+    1038.093,
+    4735.575,
+    3634.476,
+    1228.659
+  ],
+  "source_audio_marker_max_seconds_per_id": 2.005367749981815,
+  "qualified_for_release": false,
+  "physical_xiaomi_verified": false
+}

@@ -204,6 +204,7 @@ abstract class EventsListenable<T> extends Disposable {
     required Duration duration,
     bool Function(E)? filter,
     FutureOr<E> Function()? onTimeout,
+    FutureOr<void> Function()? trigger,
   }) async {
     final completer = Completer<E>();
 
@@ -217,6 +218,8 @@ abstract class EventsListenable<T> extends Disposable {
     );
 
     try {
+      // A fast reply can arrive before the operation's own future completes.
+      if (trigger != null) await trigger();
       // wait to complete with timeout
       return await completer.future.timeout(
         duration,

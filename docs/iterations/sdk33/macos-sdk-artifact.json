@@ -1,0 +1,18 @@
+{
+  "commit": "5a4f0d288b7a66b2992bb781f7aab92cfb6a7df0",
+  "ci_run": 42442189568,
+  "remote_source_revision_verified": "5a4f0d288b7a66b2992bb781f7aab92cfb6a7df0",
+  "pin": {
+    "sha256": "130e39be0ce36997826d05624b1b5ddf05aa3e54f7eb2e162f56f7c91380b1e7",
+    "size_bytes": 6304952,
+    "arm64_uuid": "d396d7aa-cb5c-3aa6-95bf-f985221bc72c",
+    "binary_sha256": "31f1f83e05026daf71c9f9da74f7eb4918e93acdff773f84e0ce79bbd59e1ad5",
+    "release_artifact_version": "150.7871.04-vc33",
+    "patch_sha256": "270a5d635f467243fc86861468a540df645dfc798909065a5dc90a739dc08336",
+    "source_revision": "5a4f0d288b7a66b2992bb781f7aab92cfb6a7df0"
+  },
+  "native_cpp_tests_verified": 166,
+  "platform_policy_compiled_binary_verified": true,
+  "media_qualification_complete": false,
+  "published": false
+}

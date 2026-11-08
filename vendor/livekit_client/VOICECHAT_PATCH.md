@@ -25,6 +25,8 @@ published handler reuses the cryptor instead of creating another disabled one.
 - `lib/src/core/engine.dart`, `lib/src/utils.dart`: inactive copies of initial
   encodings with all bitrate, frame rate, RID and scalability options preserved.
 - `lib/src/core/room.dart`: release cryptors after RTP transports stop.
+- `lib/src/core/room.dart`, `lib/src/managers/event.dart`: listen for the leave
+  acknowledgement before sending it; cancel the waiter when sending fails.
 - `lib/src/e2ee/key_provider.dart`: reject a false native key-installation result;
   expose a new sender slot/shared key only after successful installation. A
   rejected or delayed operation retains the last confirmed cache state.

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "date": "2026-11-08",
+  "trial": "sdk32-livekit-sync-target-1",
+  "source_revision": "c4c6636844def5ee0e363f5689a26d165592d3fc",
+  "actual_apk_arm64_jni_sha256": "912d9409fb91abbd6c5f11a84c259d6df5889adcfa66fcc50ee8a819c85004da",
+  "outcome": "incomplete",
+  "quality_qualified": false,
+  "complete_e2ee_media_qualification": false,
+  "failure": "Ordinary voice subscriber became null during a reconnect; fixture failed before saving full markers/PCM. No VoiceChat native crash observed.",
+  "sync_target_samples_ms": [
+    31.117,
+    242.775,
+    8314.886,
+    277.977,
+    25.998,
+    121.373
+  ],
+  "max_sync_target_ms": 8314.886,
+  "target_log_sha256": "f90d4a410e159cf5f16b5b3c99ef44cde53a03e7ea4c44a19b6024260245c771",
+  "conclusion": "Native synchronizer selected an 8314.886ms target while reported current audio delay was2700ms and the mapped audio presentation timestamp was8210ms behind the latest video capture. No complete A/V or speech qualification; root cause of presentation clock jump remains open."
+}
