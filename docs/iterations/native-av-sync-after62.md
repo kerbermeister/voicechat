@@ -1926,3 +1926,27 @@ checkout тестов с одноразовой конфигурацией:104,4
 smoke start/stop/очистки подписок прошёл, активации окон не было. Это подготовка
 наблюдения следующего звонка, не закрытие UA-08.C09. Точный SDK34 всё ещё
 должен пройти native/platform/media gates; клиентский выпуск не выполнен.
+
+Точный SDK34 fc76787 прошёл нативный job128660355390 в CI42457768600:
+113 timing/crypto/NetEq +53 recovery, без пропусков; прежние отрицательные
+контроли и receive-timestamp-stall controls проверены штатным verifier,
+manifest/toolchain совпали. [Свидетельства](sdk34/native-tests.json).
+Начаты обе платформенные сборки; actual4-worker Mac probe,16 Android
+audio API tests,2 decoder tests, реальные media gates ещё впереди.
+
+В текущем изолированном Mac-клиенте с точным SDK33 и Room/event fix изmain
+повторён существующий route_livekit_test: реальный обрыв WSS-маршрутаB
+при продолжающемся положительном health endpoint → возобновление черезC
+за407 мс с тем же участником; принудительный full peer reconnect →197 мс.
+Данные реально доставлены до сбоя, после перехода и после полного restart;
+обновление credentials/options произошло2 раза, KeyProvider сохранён.
+Это **проверка signaling/data recovery**, без микрофона/камеры/аудио- или
+видеодорожек; она не подменяет media E2EE/A/V или весь сценарий обратного
+вызова iPhone. Собственные контейнеры и сеть штатно удалены, установленное
+приложение/профиль не затронуты. [Отчёт](sdk33/livekit-route-recovery-current-room-fix.json).
+
+Дополнительно удалены только439,30 MiB неиспользуемых ModuleCache и
+Intermediates старого неактивного unread44 checkout; SDK в Products совпал
+по хешам до/после. Текущие кешиSDK33/26 сохранены для следующих проверок;
+свободно около6,6 GiB. Квитанция сохранена приватно в
+`.prototype/sdk34-inactive-unread44-cache-cleanup.json`.

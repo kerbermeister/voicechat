@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-08T07:39:00.327063+00:00",
+  "sdk_version": "150.7871.04-vc33",
+  "actual_mac_sdk_uuid": "d396d7aa-cb5c-3aa6-95bf-f985221bc72c",
+  "actual_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "dd3275e665f8e244daf4d9d2de013e68cf804b97c4cd5b6711af2db28ed52c64",
+    "ci_signed_sha256": "31f1f83e05026daf71c9f9da74f7eb4918e93acdff773f84e0ce79bbd59e1ad5",
+    "app_signed_sha256": "ae136479390b563d18f7f7a2068d521274e8888bedc3e05d75b23f4e51a2b54d",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "room_fast_ack_fix_matches_main": true,
+  "runtime_sources": {
+    "vendor/livekit_client/lib/src/core/room.dart": "802b6749539bd3b0de239c9e9e81b2b44173d80a31de80ffebdf038768f8a1de",
+    "vendor/livekit_client/lib/src/managers/event.dart": "3d8240dda9a0d381b44f5f85e5673ac612d3554bd1b908807c1c68f38512de41"
+  },
+  "existing_test": "apps/client/integration_test/route_livekit_test.dart",
+  "outcome": "pass",
+  "metrics": {
+    "recovery_ms": 407,
+    "turn_refreshes": 2,
+    "same_participant_on_resume": true,
+    "data_before_after": true,
+    "full_restart_ms": 197,
+    "data_after_full_restart": true
+  },
+  "microphone_or_camera_capture": false,
+  "audio_or_video_tracks_published": false,
+  "media_e2ee_or_av_quality_qualified": false,
+  "data_route_recovery_only": true,
+  "private_loopback_sfu_and_proxy_faults": true,
+  "fixtures_removed_after_test": true,
+  "log_sha256": "fa30f63801db55f35dfef8b84ed68601397f360ec2a464b42b8e4c79a6b2f5cf",
+  "owner_profile_keychain_installed_app_untouched": true
+}
