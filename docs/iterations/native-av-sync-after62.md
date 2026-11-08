@@ -2153,3 +2153,41 @@ decoder stall. [P2P35](sdk35/android-p2p-output-quality-first.json).
 каждого сохранены. Source WIP и APK hashes совпали до/после; профили, Keychain,
 подписанные резервные копии не тронуты. Это позволило запустить проверку
 после штатного free-space guard, без снижения его порога.
+
+
+Продолжение08.11: по прямому указанию пользователя Android LiveKit оставлен
+на принятомSDK34 результате; остаток выпуска — прямые Android/Mac и точные
+подписанные клиенты. PR15 исходниковSDK35/свидетельств влит в main как
+`fd543fa` после двух зелёных CI на точном3d5008c; runtime pins ещё прежние.
+
+ПервыйSDK35 Mac direct с настоящим продуктовым80ms audio floor прошёл
+речь/added voice/DTLS-SRTP controls и active output continuity, но не A/V:
+clean35,191 мс, один recovery marker207,336 мс на+5,483с; остальные recovery
+13–41 мс. В соседней frame timing статистике first→last packet receive198ms,
+decode сразу после last; это поздняя сборка кадра, а не доказанная пауза
+после готового декодирования. Запущен повтор с metadata-only RTP packet
+trace и пассивной sender queue статистикой. [Direct Mac35](sdk35/macos-first-direct-call.json).
+
+Проверка Android через host GPU (официально поддержанный
+[режим аппаратной графики эмулятора](https://developer.android.com/studio/run/emulator-acceleration))
+подтвердила AppleM1Pro/Vulkan, но остановилась до измеряемого окна на строгом
+remote candidate type assertion: `prflx` вместо `relay`. Она не засчитана
+за медиапроверку. Проверка маршрута не отключена; следующий сбор диагностик
+сверит фактический выбранный endpoint/сигнализированные relay addresses.
+[ICE peer-reflexive processing](https://www.rfc-editor.org/rfc/rfc8445.html#section-7.3.1.3)
+допускает обученный адрес; сам тип ещё не доказывает обход TURN.
+
+Исправлены две независимые ошибки методики без изменения output80ms,
+речи или crypto controls. AudioTrack теперь сравнивает video sink с **выводом**
+аудио; decoded-sink skew остаётся диагностикой. Для100ms device queue
+идеальная output синхронизация даёт100ms до очереди: прежний двойной гейт
+ошибочно её отклонял. Source-frame identity/CRC, исходная согласованность,
+transport recovery, полное покрытие выходных маркеров, raw/corrected80ms
+обязательны. [Воспроизведение старой ошибки/15 тестов](sdk35/native-output-clock-locus-regression-proof.json).
+Video recovery отдельно проверяет завершение decode относительно **назначенного
+render deadline** и активные паузы: легитимное ожидание395ms для deadline420ms
+не является stall. Прежний fixed250ms wait отвергал его; настоящий decode,
+опоздавший более80ms, freeze>1100ms и неполные/повторные свидетельства
+по-прежнему отвергаются. [Отрицательный контроль/6 тестов](sdk35/native-video-recovery-deadline-regression-proof.json).
+Эти проверки не заменяют итоговый A/V/output/speech/E2EE. Исторические
+результаты SDK33/34/35 и пользовательское исключение LiveKit34 не переписаны.

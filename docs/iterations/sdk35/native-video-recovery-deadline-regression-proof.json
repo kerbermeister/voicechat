@@ -1,0 +1,13 @@
+{
+  "date": "2026-11-08",
+  "old_script_sha256": "3b17b496b40f047d49947210c4e02cf05a72f8bab6dd75112547d7e6e3fbff4f",
+  "new_script_sha256": "067f7f81b46589c18894cee38ae091d44cc91728f140cf879b5fde76877da2c4",
+  "old_fixed_250ms_wait_rejection_reproduced": true,
+  "synthetic_wait_ms": 395,
+  "synthetic_deadline_ms": 420,
+  "synthetic_completion_ms": 405,
+  "new_deadline_late_completion_budget_ms": 80,
+  "active_decode_freeze_limit_ms": 1100,
+  "av_output_speech_crypto_gates_still_required": true,
+  "new_tests_passed": 6
+}
