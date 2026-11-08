@@ -166,5 +166,17 @@
     ".speech.json": "b53f255502f040847610e476041ea074497f526cea1efdac227c1a89285f3874",
     ".video-queue.json": "db9061c9048f166fd0b74a9da884f5340a32917e9f6ab4cba15ea8c72938d73e",
     ".voice.json": "8225a1bc3b6108cac0ac0684c1ced7bd99e365cb3a7533ddd5c4ecc65e87c965"
-  }
+  },
+  "observed_sent_video_sizes": [
+    [
+      640,
+      360
+    ]
+  ],
+  "observed_received_video_sizes": [
+    [
+      640,
+      360
+    ]
+  ]
 }
