@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "1ec68186abc4be8fe6b3ed32109f28f7b04ddc2dca1868af8f091392c25133f6",
+  "patch_sha256": "ed7f65eb3ee87350ab9290bf6304d786b782641a06f4c7d846067f6226e734f6",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -88,7 +88,7 @@
     "video/render/incoming_video_stream.h": "112ffcb330366d82d9ccac5c3d3de6ab495581e7af1703bb25e9ee3723c9738f",
     "video/render/incoming_video_stream.cc": "4fd97de8bc05e7acb2c57b1c326e0decdf228cac1b60fa331e1631b589ff6784",
     "video/render/BUILD.gn": "8f314b9c2bb348457883c2b443b4d5d45efb1d55e2f271701b61005b1ef898af",
-    "video/render/incoming_video_stream_unittest.cc": "6fcd37859825cd7a6d18468c7d11bdc69f435036b74a64ed066e60449fae289a",
+    "video/render/incoming_video_stream_unittest.cc": "908943ce2fc0efdd4ba9049c1a39088dd599cd0adfe7a1bb2f4c2cd81477fa3b",
     "modules/video_coding/nack_requester.h": "d8596a89c22813649943f510fc9dd7706b0d8b3b095e4822a55cc2060ee25c85",
     "modules/video_coding/nack_requester.cc": "2d562a71395e89ff48fad5baaf9dd4e4e54176ba212b4c06c5e1a4a7e77dd012",
     "modules/video_coding/nack_requester_unittest.cc": "67d23db3fb7969730d6dc56a3391d8ee19e44e21cf6860a26862603a12b26cb4",

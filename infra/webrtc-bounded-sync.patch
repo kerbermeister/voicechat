@@ -2164,7 +2164,7 @@
  }
 --- /dev/null
 +++ b/video/render/incoming_video_stream_unittest.cc
-@@ -0,0 +1,227 @@
+@@ -0,0 +1,234 @@
 +/*
 + *  Copyright (c) 2026 The WebRTC project authors. All Rights Reserved.
 + *
@@ -2179,6 +2179,7 @@
 +
 +#include <cstdint>
 +#include <optional>
++#include <span>
 +#include <utility>
 +#include <vector>
 +
@@ -2301,13 +2302,16 @@
 +
 +TEST_F(IncomingVideoStreamTest, CopiesDelayedTextureWithoutPixelOrMetadataLoss) {
 +  auto pixels = I420Buffer::Create(3, 3, 8, 4, 4);
++  auto source_y = std::span(pixels->MutableDataY(), pixels->StrideY() * 3);
++  auto source_u = std::span(pixels->MutableDataU(), pixels->StrideU() * 2);
++  auto source_v = std::span(pixels->MutableDataV(), pixels->StrideV() * 2);
 +  for (int y = 0; y < 3; ++y)
 +    for (int x = 0; x < 3; ++x)
-+      pixels->MutableDataY()[y * pixels->StrideY() + x] = 20 + y * 3 + x;
++      source_y[y * pixels->StrideY() + x] = 20 + y * 3 + x;
 +  for (int y = 0; y < 2; ++y) {
 +    for (int x = 0; x < 2; ++x) {
-+      pixels->MutableDataU()[y * pixels->StrideU() + x] = 100 + y * 2 + x;
-+      pixels->MutableDataV()[y * pixels->StrideV() + x] = 140 + y * 2 + x;
++      source_u[y * pixels->StrideU() + x] = 100 + y * 2 + x;
++      source_v[y * pixels->StrideV() + x] = 140 + y * 2 + x;
 +    }
 +  }
 +  std::optional<VideoFrame> prepared;
@@ -2330,16 +2334,19 @@
 +  EXPECT_NE(copy->DataY(), pixels->DataY());
 +  EXPECT_EQ(copy->width(), pixels->width());
 +  EXPECT_EQ(copy->height(), pixels->height());
++  const auto copy_y = std::span(copy->DataY(), copy->StrideY() * 3);
++  const auto copy_u = std::span(copy->DataU(), copy->StrideU() * 2);
++  const auto copy_v = std::span(copy->DataV(), copy->StrideV() * 2);
 +  for (int y = 0; y < 3; ++y)
 +    for (int x = 0; x < 3; ++x)
-+      EXPECT_EQ(copy->DataY()[y * copy->StrideY() + x],
-+                pixels->DataY()[y * pixels->StrideY() + x]);
++      EXPECT_EQ(copy_y[y * copy->StrideY() + x],
++                source_y[y * pixels->StrideY() + x]);
 +  for (int y = 0; y < 2; ++y) {
 +    for (int x = 0; x < 2; ++x) {
-+      EXPECT_EQ(copy->DataU()[y * copy->StrideU() + x],
-+                pixels->DataU()[y * pixels->StrideU() + x]);
-+      EXPECT_EQ(copy->DataV()[y * copy->StrideV() + x],
-+                pixels->DataV()[y * pixels->StrideV() + x]);
++      EXPECT_EQ(copy_u[y * copy->StrideU() + x],
++                source_u[y * pixels->StrideU() + x]);
++      EXPECT_EQ(copy_v[y * copy->StrideV() + x],
++                source_v[y * pixels->StrideV() + x]);
 +    }
 +  }
 +  EXPECT_EQ(prepared->render_time_ms(), 100130);

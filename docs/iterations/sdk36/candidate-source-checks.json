@@ -1,7 +1,7 @@
 {
   "verified_originals": 54,
   "verified_patched": 56,
-  "patch_sha256": "1ec68186abc4be8fe6b3ed32109f28f7b04ddc2dca1868af8f091392c25133f6",
+  "patch_sha256": "ed7f65eb3ee87350ab9290bf6304d786b782641a06f4c7d846067f6226e734f6",
   "unchanged_sdk35_outputs": 50,
   "changed_existing_outputs": [
     "video/render/BUILD.gn",
