@@ -1,0 +1,112 @@
+{
+  "source_revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "version": "150.7871.04-vc35",
+  "app_baseline_revision": "b416818adc69d9d0515d2a2b3156089636a86671",
+  "app_call_runtime_source_sha256": {
+    "vendor/livekit_client/lib/src/core/room.dart": "802b6749539bd3b0de239c9e9e81b2b44173d80a31de80ffebdf038768f8a1de",
+    "vendor/livekit_client/lib/src/managers/event.dart": "3d8240dda9a0d381b44f5f85e5673ac612d3554bd1b908807c1c68f38512de41",
+    "apps/client/macos/Compatibility/FlutterRTCVideoRenderer.m": "c1f9e532f152f77d17f9206ca15e29ed20ca1cb1c619397f7ef120141cc9a8f5"
+  },
+  "fixture_sources_sha256": {
+    "apps/client/integration_test/native_av_marker_test.dart": "c02a138f9219346ae15518deae619c3ba246fd70377f945b5e41c34803b52515",
+    "apps/client/integration_test/native_av_marker.swift": "f024d7c2a31580c93ee1b90358a3601689bd8b7d60e31b34aba44fbb3ee95e8c",
+    "apps/client/tool/native_av_fixture.py": "50ba55bcc4db3c63fe0454cee57d0a019f6690e1a64ad8e837ef5804ca096186",
+    "apps/client/tool/check_sdk_key_publication.py": "05099fb5e510e0a80dd6248979a91823af2b181531b70055860d20d034127d27"
+  },
+  "actual_app_sdk_sha256": "acb4ed7cedf1a0e2e75768377306324fa8ba4e7b7741c48281599a049b4f8d2b",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "347479760ade78e190baf16f2b2be95a3147dcd5e3d32149a7f849ab6f290d2e",
+    "ci_signed_sha256": "210886f22fb2f22db3daf6c87145f4d4bfcf8db1cb09281681a5f6bc101e0a01",
+    "app_signed_sha256": "acb4ed7cedf1a0e2e75768377306324fa8ba4e7b7741c48281599a049b4f8d2b",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "1802e4a2-ff7c-38b7-8514-4152728ee630",
+  "trial": "sdk35-macos-output-quality-bitrate-repeat-1",
+  "pass": true,
+  "media_gates_pass": true,
+  "diagnostic_only": false,
+  "timing": {
+    "outcome": "pass",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 10.047833347925916,
+      "max_source_corrected_abs_ms": 9.64058333192952
+    },
+    "recovery": {
+      "count": 27,
+      "max_abs_ms": 32.85033331485465,
+      "max_source_corrected_abs_ms": 33.830083324573934
+    }
+  },
+  "speech": "pass",
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 1.727541646687314
+    },
+    "video_paused": {
+      "count": 4,
+      "max_added_voice_delay_ms": 1.6839999880176038
+    },
+    "recovery": {
+      "count": 27,
+      "max_added_voice_delay_ms": 23.091041657608002
+    }
+  },
+  "missing_key_gate": {
+    "content": {
+      "audio_chunks": 303,
+      "video_markers": 0,
+      "audio_peak": 0.0,
+      "control_audio_peak": 0.0
+    },
+    "audio": {
+      "packets": 135,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 180,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 133,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      159585.11834533338,
+      159701.70220795835
+    ],
+    "physical_speaker_measured": false,
+    "platform": "macos",
+    "complete_output_window": true,
+    "active_callback_gaps": [],
+    "output_callbacks": 12536,
+    "max_all_callback_gap_ms": 11.695458320900798,
+    "pass": true
+  },
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "date": "2026-11-08",
+  "sample_count": 120,
+  "evidence_sha256": {
+    ".media.json": "b11bdb3a4502e296fca819a08bd6d6f2b2ef9b2505396e8086258934439c2c6e",
+    ".control.media.json": "52dcc4f54f9acd924ebeb3753a53b4df40175d37ea87da40297e32b6fea64fef",
+    ".analysis.json": "3bd7c34531564ce41d045c03214c9bc3b9b51b5f51aab9810e6a0aff0f2ea79a",
+    ".speech.json": "8a9e04dd704fe75019f9c4097582c309e10d248c75478af749131438f6ef3a2c",
+    ".proof.json": "ef2bc9f169055e9ad6b9a5757e7c5df9cf33e8904fb50f75387818fe82b0df3c",
+    ".diagnostic.json": "6bd32984ff7537b03fca97ae7317b39480dbf1cfdd749906e2586d0ce7cef049"
+  },
+  "release_package_qualified": false,
+  "limitations": [
+    "Synthetic speech comparison; physical listening and display-to-speaker latency not measured",
+    "Signed product update and owner window-switching scenario remain to be checked"
+  ]
+}

@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -45,6 +46,28 @@ def verify_files(source, hashes):
     for relative, expected in hashes.items():
         if sha(source / relative) != expected:
             raise RuntimeError(f'Unexpected SDK source: {relative}')
+
+
+def source_hashes(key, target):
+    # The pinned Android builder also adds WebrtcBuildVersion.java to BUILD.gn.
+    hashes = MANIFEST[key]
+    if target == 'android':
+        return {**hashes, **MANIFEST['android_' + key]}
+    return hashes
+
+
+def verify_android_audio_clock_tests(report):
+    evidence = json.loads(report.read_text())
+    expected = {f'org.webrtc.audio.WebRtcAudioTrackDelayTest#{name}[{api}]'
+                for name in MANIFEST['android_audio_clock_tests'] for api in (29, 36)}
+    iterations = evidence.get('per_iteration_data', [])
+    if evidence.get('disabled_tests') or len(iterations) != 1:
+        raise RuntimeError('Android output-clock tests were skipped or repeated')
+    results = iterations[0]
+    if set(evidence.get('all_tests', [])) != expected or set(results) != expected:
+        raise RuntimeError('Incomplete Android output-clock coverage')
+    if any(len(values) != 1 or values[0]['status'] != 'SUCCESS' for values in results.values()):
+        raise RuntimeError('Android output-clock regression')
 
 
 def prepare(builder, work, target):
@@ -97,10 +120,10 @@ def prepare(builder, work, target):
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=source, text=True).strip()
     if head != MANIFEST['webrtc_commit']:
         raise RuntimeError('Unexpected WebRTC source revision')
-    verify_files(source, MANIFEST['original_files_sha256'])
+    verify_files(source, source_hashes('original_files_sha256', target))
     run(['git', 'apply', '--check', PATCH], cwd=source)
     run(['git', 'apply', PATCH], cwd=source)
-    verify_files(source, MANIFEST['patched_files_sha256'])
+    verify_files(source, source_hashes('patched_files_sha256', target))
     return source
 
 
@@ -143,17 +166,58 @@ rtc_library("sync_unittests") {
     "//test/time_controller:time_controller",
   ]
 }
+rtc_library("neteq_decision_unittests") {
+  testonly = true
+  sources = [ "//modules/audio_coding/neteq/decision_logic_unittest.cc" ]
+  deps = [
+    "//api/neteq:neteq_api",
+    "//api/neteq:neteq_controller_api",
+    "//api/neteq:tick_timer",
+    "//modules/audio_coding:neteq",
+    "//test:create_test_field_trials",
+    "//test:test_support",
+  ]
+}
 rtc_test("timing_sync_unittests") {
   testonly = true
   sources = []
   deps = [
     ":sync_unittests",
+    ":neteq_decision_unittests",
     "//api/crypto:crypto_unittests",
     "//common_video",
     "//modules/video_coding/timing:timing_unittests",
     "//modules/rtp_rtcp:rtp_video_header",
     "//rtc_base:byte_buffer",
     "//rtc_base:crypto_random",
+  ]
+}
+rtc_test("video_resume_unittests") {
+  testonly = true
+  sources = [
+    "//modules/video_coding/nack_requester_unittest.cc",
+    "//video/render/incoming_video_stream_unittest.cc",
+  ]
+  deps = [
+    "//api:make_ref_counted",
+    "//api:scoped_refptr",
+    "//api/environment:environment_factory",
+    "//api/task_queue",
+    "//api/units:time_delta",
+    "//api/units:timestamp",
+    "//api/video:video_frame",
+    "//modules:module_api",
+    "//modules/video_coding:nack_requester",
+    "//rtc_base:checks",
+    "//system_wrappers",
+    "//test:create_test_field_trials",
+    "//test:run_loop",
+    "//test:test_support",
+    "//test/time_controller:time_controller",
+    "//video:rtp_video_stream_receiver2_unittest",
+    "//video:task_queue_frame_decode_scheduler_unittest",
+    "//video:video_stream_buffer_controller_unittest",
+    "//video/render:incoming_video_stream",
   ]
 }
 ''')
@@ -163,7 +227,10 @@ rtc_test("timing_sync_unittests") {
 if (rtc_include_tests) {
   group("voicechat_av_sync_tests") {
     testonly = true
-    deps = [ "//voicechat_av_sync_tests:timing_sync_unittests" ]
+    deps = [
+      "//voicechat_av_sync_tests:timing_sync_unittests",
+      "//voicechat_av_sync_tests:video_resume_unittests",
+    ]
   }
 }
 ''')
@@ -180,6 +247,8 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     patched_header = sync_header.read_bytes()
     extrapolator_header = source / 'modules/video_coding/timing/timestamp_extrapolator.h'
     patched_extrapolator_header = extrapolator_header.read_bytes()
+    neteq_decision = source / 'modules/audio_coding/neteq/decision_logic.cc'
+    patched_neteq_decision = neteq_decision.read_bytes()
     cryptor = source / 'api/crypto/frame_crypto_transformer.cc'
     patched_cryptor = cryptor.read_bytes()
     bounded = b'  if (UseLowLatencyRendering()) {\n    return TimeDelta::Zero();\n  }\n  return std::clamp(sync_playout_delay.value_or(current_delay),\n                    min_playout_delay, max_playout_delay);'
@@ -209,7 +278,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
             raise RuntimeError('Expected exactly one RTP covariance reset default')
         extrapolator_header.write_bytes(patched_extrapolator_header.replace(
             covariance_default, b'bool reset_full_cov_on_alarm = false;'))
-        for path in [synchronizer, sync_header, cryptor]:
+        for path in (synchronizer, sync_header, cryptor, neteq_decision):
             path.write_bytes(subprocess.check_output(
                 ['git', 'show', MANIFEST['webrtc_commit'] + ':' + path.relative_to(source).as_posix()],
                 cwd=source))
@@ -226,6 +295,7 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         sync_header.write_bytes(patched_header)
         extrapolator_header.write_bytes(patched_extrapolator_header)
         cryptor.write_bytes(patched_cryptor)
+        neteq_decision.write_bytes(patched_neteq_decision)
     verify_files(source, MANIFEST['patched_files_sha256'])
     deadline_regressions = (
         ('kMaxSyncRenderLead', 'VCMTimingTest.SyncDelayRejectsUnreasonableFrameDeadline',
@@ -248,6 +318,56 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
                 raise RuntimeError(f'{regression} must fail with the former policy')
     finally:
         timing.write_bytes(patched)
+    audio_queue_controls = (
+        (timing, patched,
+         b'timings_.sync_audio_delay + kMaxSyncRenderLead',
+         b'kMaxSyncRenderLead', MANIFEST['audio_queue_sync_regressions'][0]),
+        (synchronizer, patched_sync,
+         b'SetVideoSyncDelay(target, audio_info->current_delay);',
+         b'SetVideoSyncDelay(target);', MANIFEST['audio_queue_sync_regressions'][1]),
+    )
+    audio_queue_logs = []
+    try:
+        for path, fixed, current, former, regression in audio_queue_controls:
+            if fixed.count(current) != 1:
+                raise RuntimeError('Expected exactly one measured audio render-bound path')
+            path.write_bytes(fixed.replace(current, former))
+            run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
+            before = subprocess.run([str(build / 'timing_sync_unittests'),
+                '--gtest_filter=' + regression], capture_output=True, text=True)
+            audio_queue_logs.append(before.stdout + before.stderr)
+            (output / 'before-audio-queue-sync.log').write_text('\n'.join(audio_queue_logs))
+            if before.returncode != 1 or '[  FAILED  ] ' + regression not in before.stdout:
+                raise RuntimeError(f'{regression} must detect the former fixed render bound')
+            path.write_bytes(fixed)
+    finally:
+        timing.write_bytes(patched)
+        synchronizer.write_bytes(patched_sync)
+    receive_guard = (
+        b'  if (!UpdateMeasurements(&*audio_measurement_, *audio_info) ||\n'
+        b'      !UpdateMeasurements(&*video_measurement_, *video_info)) {')
+    former_guard = (
+        b'  const int64_t last_audio_receive_ms = audio_measurement_->latest_receive_time_ms;\n'
+        b'  const int64_t last_video_receive_ms = video_measurement_->latest_receive_time_ms;\n'
+        b'  if (!UpdateMeasurements(&*audio_measurement_, *audio_info) ||\n'
+        b'      !UpdateMeasurements(&*video_measurement_, *video_info) ||\n'
+        b'      last_audio_receive_ms == audio_measurement_->latest_receive_time_ms ||\n'
+        b'      last_video_receive_ms == video_measurement_->latest_receive_time_ms) {')
+    if patched_sync.count(receive_guard) != 1:
+        raise RuntimeError('Expected exactly one presentation clock update guard')
+    try:
+        synchronizer.write_bytes(patched_sync.replace(receive_guard, former_guard))
+        run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
+        before = subprocess.run([str(build / 'timing_sync_unittests'),
+            '--gtest_filter=' + ':'.join(MANIFEST['receive_presentation_regressions'])],
+            capture_output=True, text=True)
+        (output / 'before-receive-presentation.log').write_text(before.stdout + before.stderr)
+        if before.returncode != 1 or not all(
+                '[  FAILED  ] ' + name in before.stdout
+                for name in MANIFEST['receive_presentation_regressions']):
+            raise RuntimeError('Each presentation regression must detect the former receive guard')
+    finally:
+        synchronizer.write_bytes(patched_sync)
     verify_files(source, MANIFEST['patched_files_sha256'])
     run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
     after = subprocess.run([str(build / 'timing_sync_unittests'),
@@ -260,6 +380,56 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
     evidence = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(evidence)
     evidence.verify_tests(output, MANIFEST)
+
+    recovery_files = [
+        'modules/video_coding/nack_requester.cc',
+        'modules/video_coding/nack_requester.h',
+        'video/rtp_video_stream_receiver2.cc',
+        'video/render/video_render_frames.cc',
+        'video/render/incoming_video_stream.cc',
+        'video/render/incoming_video_stream.h',
+        'video/task_queue_frame_decode_scheduler.cc',
+        'video/task_queue_frame_decode_scheduler.h',
+        'video/video_stream_buffer_controller.cc',
+    ]
+    patched_recovery = {name: (source / name).read_bytes() for name in recovery_files}
+    regressions = MANIFEST['video_recovery_regressions']
+    binary = build / 'video_resume_unittests'
+    try:
+        for name in recovery_files:
+            content = subprocess.check_output(
+                ['git', 'show', MANIFEST['webrtc_commit'] + ':' + name], cwd=source)
+            if name == 'video/video_stream_buffer_controller.cc':
+                # Keep the new interface so the negative control tests the
+                # former scheduling behavior with the identical test binary.
+                anchor = b'std::optional<int64_t> VideoStreamBufferController::InsertFrame(\n'
+                if content.count(anchor) != 1:
+                    raise RuntimeError('Expected exactly one frame insertion method')
+                content = content.replace(anchor,
+                    b'void VideoStreamBufferController::OnPlayoutDelayChanged() {\n'
+                    b'  RTC_DCHECK_RUN_ON(&worker_sequence_checker_);\n'
+                    b'}\n\n' + anchor)
+            (source / name).write_bytes(content)
+        run(['autoninja', '-C', build, binary.name, '-j2'], cwd=source)
+        before = subprocess.run([str(binary), '--gtest_filter=' + ':'.join(regressions)],
+                                capture_output=True, text=True)
+        (output / 'video-resume-before.log').write_text(before.stdout + before.stderr)
+        if before.returncode != 1 or not all(
+                '[  FAILED  ] ' + name in before.stdout for name in regressions):
+            raise RuntimeError('Each video recovery regression must reproduce the old behavior')
+    finally:
+        for name, content in patched_recovery.items():
+            (source / name).write_bytes(content)
+    verify_files(source, MANIFEST['patched_files_sha256'])
+    run(['autoninja', '-C', build, binary.name, '-j2'], cwd=source)
+    run([binary, '--gtest_filter=RtpVideoStreamReceiver2Test.*:IncomingVideoStreamTest.*:'
+         'TestNackRequester.VideoResume*:'
+         'TaskQueueFrameDecodeSchedulerTest.*:'
+         'VideoStreamBufferController/VideoStreamBufferControllerTest.ChangedSyncDelay*:'
+         'VideoStreamBufferController/VideoStreamBufferControllerTest.RtpClockRecovery*:'
+         'VideoStreamBufferController/VideoStreamBufferControllerTest.KeyFramesAreScheduled/*:'
+         'VideoStreamBufferController/VideoStreamBufferControllerTest.FramesWaitForDecoderToComplete/*',
+         '--gtest_output=xml:' + str(output / 'video-resume-tests.xml')], cwd=source)
 
 
 def macos(source, work, output):
@@ -305,8 +475,9 @@ def macos(source, work, output):
 
 def android(source, work, output):
     aar = output / 'libwebrtc.aar'
+    build_root = source / 'out/voicechat-aar'
     run([sys.executable, source / 'tools_webrtc/android/build_aar.py',
-         '--build-dir', source / 'out/voicechat-aar', '--output', aar,
+         '--build-dir', build_root, '--output', aar,
          '--arch', 'armeabi-v7a', 'arm64-v8a', 'x86_64',
          '--extra-gn-args=' + ANDROID_ARGS, '--extra-ninja-switches=-local_jobs=2'], cwd=source)
     with zipfile.ZipFile(aar) as archive:
@@ -323,6 +494,23 @@ def android(source, work, output):
             if destination in archive.namelist():
                 raise RuntimeError('Duplicate SDK license asset')
             archive.write(path, destination)
+    test_build = build_root / 'arm64-v8a'
+    gn_args = test_build / 'args.gn'
+    configured, count = re.subn(r'\brtc_include_tests\s*=\s*false\b',
+                                'rtc_include_tests = true', gn_args.read_text())
+    if count != 1:
+        raise RuntimeError('Expected the Android AAR test flag')
+    gn_args.write_text(configured)
+    run(['gn', 'gen', test_build], cwd=source)
+    run(['autoninja', '-C', test_build, 'android_sdk_junit_tests', '-local_jobs=2'], cwd=source)
+    run([test_build / 'bin/run_android_sdk_junit_tests', '-f',
+         'org.webrtc.AndroidVideoDecoderTest.testReportsStalledOutputOnlyDuringContinuousInput',
+         '--json-results-file', output / 'android-decoder-test-results.json'], cwd=source)
+    audio_report = output / 'android-audio-device-test-results.json'
+    run([test_build / 'bin/run_android_sdk_junit_tests', '-f',
+         'org.webrtc.audio.WebRtcAudioTrackDelayTest.*',
+         '--json-results-file', audio_report], cwd=source)
+    verify_android_audio_clock_tests(audio_report)
     return aar
 
 
@@ -353,8 +541,10 @@ def main():
         policy = verify_playout_policy(source, args.platform, report, artifact, binary)
         if policy['pass_count'] != MANIFEST['platform_policy_test_count']:
             raise RuntimeError('Incomplete native default-playout tests')
+        if args.platform == 'macos' and policy.get('compiled_crypto_priority_workers') != MANIFEST['macos_crypto_priority_worker_count']:
+            raise RuntimeError('Actual macOS crypto workers lack the required scheduling priority')
         policy['report_sha256'] = sha(report)
-    verify_files(source, MANIFEST['patched_files_sha256'])
+    verify_files(source, source_hashes('patched_files_sha256', target))
     receipt = {**MANIFEST, 'platform': args.platform,
                'artifact': artifact.name if artifact else None,
                'artifact_sha256': sha(artifact) if artifact else None,

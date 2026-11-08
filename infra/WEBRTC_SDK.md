@@ -1,5 +1,25 @@
 # Native call synchronization SDK
 
+SDK35 compiler candidate (`d5c8be1`, 2026-11-08) is now integrated without
+changing application artifact pins. Its exact CI42465826333 passed117
+timing/crypto/NetEq +53 recovery C++ cases, old-policy negative controls,
+Mac compiled policy/crypto-worker checks and Android16 audio-clock/2 decoder
+API cases. Both exact platform artifacts were independently verified.
+Two consecutive full Mac LiveKit calls passed original raw/corrected80ms,
+speech, added-voice, required E2EE and output-continuity gates. Android35
+media qualification and exact signed application release checks remain open.
+
+The candidate gives each crypto worker native media scheduling priority;
+Android never lowers an already stronger priority. Android AudioTimestamp
+provides the measured device queue instead of a fixed estimate. The measured
+local audio delay also accompanies the video sync target, so a legitimate
+402ms wait for397ms audio is not rejected by the former fixed250ms final
+render guard. The separate250ms RTP-clock guards, stale-state cleanup and
+rejection of unrelated multi-second targets remain. PCM, NetEq, codecs,
+audio-buffer policy and E2EE algorithms are unchanged from SDK34.
+The accepted Android LiveKit34 measurement is a documented exception only
+for that emulator run, not P2P, physical hardware or a signed APK.
+
 The macOS client pins SDK26 (WebRTC 150.7871.04, source `7227897`).
 Android still uses its existing dependency. Exact SDK26 source, compiler
 receipts and platform evidence are recorded in the

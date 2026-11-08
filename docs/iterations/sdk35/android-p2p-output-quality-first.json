@@ -1,0 +1,209 @@
+{
+  "date": "2026-11-08",
+  "source_revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "version": "150.7871.04-vc35",
+  "trial": "sdk35-p2p-output-quality-1",
+  "platform": "Android API35 arm64 emulator",
+  "physical_device": false,
+  "sample_count": 120,
+  "shared_stream": true,
+  "product_sync": false,
+  "static_video_resolution": [
+    640,
+    360
+  ],
+  "native_video_playout_ms": 0,
+  "decoded_sink": {
+    "schema": 1,
+    "outcome": "budget_exceeded",
+    "recovery_transport": {
+      "pass": true,
+      "packet_deltas": {
+        "audio": 504,
+        "video": 1394
+      },
+      "decoded_video_frames": 202,
+      "longest_active_video_decode_pause_ms": 0
+    },
+    "audio_checksum_markers": 62,
+    "matched_pairs": 49,
+    "shared_group": true,
+    "source_frame_identity_verified": true,
+    "clean": {
+      "count": 7,
+      "max_abs_ms": 264.00762433334535,
+      "max_source_corrected_abs_ms": 156.75012433351299
+    },
+    "recovery": {
+      "count": 22,
+      "max_abs_ms": 208.86620799998923,
+      "max_source_corrected_abs_ms": 207.72574966528623
+    },
+    "max_source_offset_ms": 107.25749999983236,
+    "max_all_source_offset_ms": 1.5483333263546228,
+    "source_validation_max_ms": 1.5483333263546228,
+    "physical_latency_measured": false,
+    "decoder_window_ms": 21.333333333333332,
+    "recovery_guard_after_seconds": 5
+  },
+  "audio_output_clock": {
+    "schema": 1,
+    "pass": false,
+    "decoded_sink_outcome": "budget_exceeded",
+    "audio_device_timestamp_observed": true,
+    "physical_speaker_measured": false,
+    "video_sink_before_display": true,
+    "phases": {
+      "clean": {
+        "count": 7,
+        "missing_output_markers": [],
+        "max_abs_ms": 152.9524163333349,
+        "max_source_corrected_abs_ms": 45.69491633350253,
+        "pass": false
+      },
+      "recovery": {
+        "count": 22,
+        "missing_output_markers": [],
+        "max_abs_ms": 86.34883299998819,
+        "max_source_corrected_abs_ms": 85.20837466528519,
+        "pass": false
+      }
+    }
+  },
+  "speech": {
+    "schema": 1,
+    "outcome": "speech_regression",
+    "synthetic_reference_only": true,
+    "physical_listening_test": false,
+    "paired_trials": 1,
+    "stoi_noninferiority_margin": 0.005,
+    "level_tolerance_db": 0.15,
+    "phases": {
+      "clean": {
+        "paired_clips": 8,
+        "control": {
+          "stoi": 0.9796853228364327,
+          "si_sdr_db": 6.474790836597677,
+          "rms_dbfs": -23.371819540240327
+        },
+        "candidate": {
+          "stoi": 0.9665090230571516,
+          "si_sdr_db": 4.783658855703534,
+          "rms_dbfs": -23.422675727749258
+        }
+      },
+      "delay": {
+        "paired_clips": 14,
+        "control": {
+          "stoi": 0.9849763428858318,
+          "si_sdr_db": 7.6481927516900114,
+          "rms_dbfs": -23.27794280357213
+        },
+        "candidate": {
+          "stoi": 0.9749306936145775,
+          "si_sdr_db": 6.7120173596619,
+          "rms_dbfs": -23.30899272817479
+        }
+      },
+      "pause": {
+        "paired_clips": 10,
+        "control": {
+          "stoi": 0.9872594260093598,
+          "si_sdr_db": 8.020203157523293,
+          "rms_dbfs": -23.214702596187877
+        },
+        "candidate": {
+          "stoi": 0.9912789485628444,
+          "si_sdr_db": 9.03673326624226,
+          "rms_dbfs": -23.213743278161992
+        }
+      },
+      "recovery": {
+        "paired_clips": 22,
+        "control": {
+          "stoi": 0.994518364069263,
+          "si_sdr_db": 8.995293022483697,
+          "rms_dbfs": -23.170353757040832
+        },
+        "candidate": {
+          "stoi": 0.993755444665915,
+          "si_sdr_db": 8.903909192302674,
+          "rms_dbfs": -23.17813936771103
+        }
+      }
+    }
+  },
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 7,
+      "max_added_voice_delay_ms": 19.335667333336914
+    },
+    "video_paused": {
+      "count": 8,
+      "max_added_voice_delay_ms": 7.40150033331588
+    },
+    "recovery": {
+      "count": 22,
+      "max_added_voice_delay_ms": 32.12362466666718
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      130.582470225,
+      247.997062242
+    ],
+    "physical_speaker_measured": false,
+    "platform": "android",
+    "actual_audio_track_underrun_counter": true,
+    "same_output_track": true,
+    "active_output_underruns": 1.0,
+    "timestamp_query_mean_us": 2.8321247346072185,
+    "timestamp_query_max_us": 93.0,
+    "pass": false
+  },
+  "video_queue_diagnostic": {
+    "pass": false,
+    "max_active_decode_pause_ms": 0,
+    "observed_decoded_frames": 28,
+    "worst_assembled_frame": {
+      "assembled_wait_ms": 254,
+      "deadline_from_arrival_ms": 273,
+      "decode_ms": 9
+    }
+  },
+  "crypto_controls": {
+    "protocol": "DTLS-SRTP",
+    "negative_dtls_failed": true,
+    "negative_received_media_packets": 0,
+    "positive_dtls_connected": true,
+    "srtp_cipher": "AES_CM_128_HMAC_SHA1_80"
+  },
+  "qualified_for_release": false,
+  "published": false,
+  "user_accepted": false,
+  "original_measurement_gates_unchanged": true,
+  "comparison_sdk34_output_ms": [
+    310.813,
+    40.896
+  ],
+  "notes": [
+    "Full capture/transport/source identity and DTLS-SRTP positive/negative controls passed; no active decode pause",
+    "Actual output max clean152.952ms/recovery86.349ms; original80ms gate still fails",
+    "Clean worst marker first delivered frame was107.257ms later than original source onset; corrected output45.695ms is preserved but cannot erase raw failure",
+    "One active AudioTrack underrun; speech clean and delay noninferiority failed",
+    "The historical fixed250ms decode-wait diagnostic also fails at254ms against scheduled273ms deadline; this is not evidence of an active decoder stall",
+    "Does not alter the separately user-accepted Android LiveKit34 result"
+  ],
+  "evidence_sha256": {
+    ".media.json": "8e46e12a4f5c7001a883c42664d0b355c3c6c520a6aea2a5b547ffa07919cc81",
+    ".control.media.json": "1f894a418f977e9359b12d6cebba7bb1658971929560dfe1867fe0c784f0be23",
+    ".analysis.json": "5a24887a48c1cee35bf04f9e2c07359102f2148e026b21f07901c0b2d3e7a629",
+    ".output-clock.json": "2affac29b4bef493153d9fc88a3e895d18ec1068165f4bdce9528d6a5aa8b958",
+    ".speech.json": "3131d251f3595eb9d0e01fd11adcf90c14fb5fa06eeb0fbc60bfb0728f216b0b",
+    ".voice.json": "b55c4110cd56b2defa7b45ec9883a6c8f4c720f3211b01f54f61247fd1ce94f4",
+    ".audio-continuity.json": "4821477a9a79618ecc0116a91cdf97ca1e81f30fe09b3e8dabd6fbeea798eb29",
+    ".video-queue.json": "7ae3ad0a0b78d19d56378b4275cd9e1fda559faf8642afb1f94aea0be9ce458c"
+  }
+}

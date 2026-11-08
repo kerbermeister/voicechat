@@ -21,6 +21,19 @@ def verify_tests(directory, manifest):
     if not all(name in names and '[  FAILED  ] ' + name in before
                for name in manifest['regressions']):
         raise ValueError('Every regression must detect the original timing/sync behavior')
+    if manifest.get('receive_presentation_regressions'):
+        control = directory / 'before-receive-presentation.log'
+        if not control.is_file() or not all(
+                name in names and '[  FAILED  ] ' + name in control.read_text()
+                for name in manifest['receive_presentation_regressions']):
+            raise ValueError('Former receive guard regression evidence is missing')
+
+    if manifest.get('audio_queue_sync_regressions'):
+        control = directory / 'before-audio-queue-sync.log'
+        if not control.is_file() or not all(
+                name in names and '[  FAILED  ] ' + name in control.read_text()
+                for name in manifest['audio_queue_sync_regressions']):
+            raise ValueError('Former fixed audio queue render-bound evidence is missing')
 
 
 def verify(directory, manifest):
