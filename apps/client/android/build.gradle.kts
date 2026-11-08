@@ -1,5 +1,22 @@
+import groovy.json.JsonSlurper
+
+val nativeSdk = JsonSlurper().parseText(
+    providers.exec {
+        commandLine("python3", file("../../../infra/prepare_android_webrtc.py"))
+    }.standardOutput.asText.get()
+) as Map<*, *>
+
 allprojects {
+    configurations.configureEach {
+        resolutionStrategy.force("io.github.webrtc-sdk:android:${nativeSdk["version"]}")
+    }
     repositories {
+        exclusiveContent {
+            forRepository {
+                maven { url = uri(nativeSdk["repository"] as String) }
+            }
+            filter { includeModule("io.github.webrtc-sdk", "android") }
+        }
         google()
         mavenCentral()
     }
