@@ -2130,3 +2130,26 @@ Android35 AAR также строго сверён: exact source/receipt,170 nat
 required E2EE LiveKit35 будет проверен отдельно. PR14 (готовая приёмка
 Android LiveKit34 и восстановление проверенных CI downloads) влит как
 `ee18405c79905a073f034243cdc76ce9e08985f6`: оба check jobs прошли на точномd7.
+
+
+Первый полный Android35 P2P завершён и не принят: AudioTrack raw152,952/86,349
+мс, corrected45,695/85,208; clean worst marker пришёл лишь третьим исходным
+кадром (+107,257 мс), поэтому малая corrected-ошибка не закрывает raw failure.
+Один active underrun, speech clean/delay regression; added voice и DTLS-SRTP
+controls прошли. Активного decoder freeze нет. Старый fixed250ms queue
+heuristic также не прошёл при254ms ожидания и deadline273ms; это не доказанный
+decoder stall. [P2P35](sdk35/android-p2p-output-quality-first.json).
+
+Полный Android35 LiveKit: AudioTrack66,155/81,160 мс (corrected67,082/82,226),
+речь, added voice и required E2EE с отрицательным контролем до ключа/проверенной
+расшифровкой после ключа прошли. Но отмечен1 active underrun, причина пока
+не установлена. [LiveKit35](sdk35/android-livekit-output-quality-first.json).
+Оба исходных результата сохранены; допуски не менялись. **Пользовательская
+приёмка Android LiveKit34 остаётся действующей и не расширена на35/P2P/APK.**
+Публикация нового Android SDK/пакета пока не допущена.
+
+Перед LiveKit35 удалены только завершённые поколения Flutter compiler cache
+на трёх собственных стендах:1814704669 logical bytes, два последних поколения
+каждого сохранены. Source WIP и APK hashes совпали до/после; профили, Keychain,
+подписанные резервные копии не тронуты. Это позволило запустить проверку
+после штатного free-space guard, без снижения его порога.
