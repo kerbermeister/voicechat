@@ -1913,3 +1913,16 @@ SFrame LiveKit. **AudioTrack77,008/124,232 мс (corrected78,038/125,288)
 P2P. Оба PCM-потока перепроверены; ёмкость24000 не достигнута, вывод
 был заглушён, эмулятор штатно остановлен. [Свидетельства](sdk33/android-p2p-static-resolution-output-clock.json).
 Кандидат не опубликован; физический Xiaomi не проверен.
+
+Уточнение compiler baseline: [42456803236](https://github.com/kerbermeister/voicechat/actions/runs/42456803236) отменён до выпуска. Закреплённый Android builder добавляет строку WebrtcBuildVersion.java в BUILD.gn; для неё теперь заданы отдельные исходный/итоговый SHA, все прочие хеши и проверки сохранены. Совместное применение official+owned patch перепроверено в отдельном Git checkout. Два новых теста отклоняют изменённый version source и требуют неизменности остальных хешей. Точный текущий SDK34 source — fc76787, полный новый [CI42457768600](https://github.com/kerbermeister/voicechat/actions/runs/42457768600). Java-файл реального AudioTrack локально скомпилирован против точного SDK33 AAR и API36; это compile check, не замена16 Robolectric/JNI/media gates. Python875/4 existing skips для24120d2 прошёл; после уточнения запускается новый полный набор.
+
+Для точного fc76787 полный Python-набор завершён: **877 passed,4 existing skips**;
+23 целевых проверки также прошли. [Проверки кандидата](sdk34/candidate-source-checks.json).
+После сохранения результатов удалён только созданный агентом временный
+checkout тестов с одноразовой конфигурацией:104,48 MiB логических файлов;
+[квитанция](sdk34/completed-test-checkout-cleanup.json). Профили, Keychain,
+исходные SDK/APK, пакеты обновлений и резервные копии не затронуты.
+Приватный Mac-стенд дополнен read-only событиями фокуса собственного процесса;
+smoke start/stop/очистки подписок прошёл, активации окон не было. Это подготовка
+наблюдения следующего звонка, не закрытие UA-08.C09. Точный SDK34 всё ещё
+должен пройти native/platform/media gates; клиентский выпуск не выполнен.
