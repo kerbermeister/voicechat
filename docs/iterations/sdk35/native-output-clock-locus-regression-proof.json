@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "date": "2026-11-08",
+  "old_source_sha256": "db2649f42b6999632646c9fe7ec56213d5c48197ccb9eadca66853c92e5e38c9",
+  "new_source_sha256": "4ab4159eaca0b6d3ccbda8e9f749347ee7394f4e4507b0b3327183b7254954dd",
+  "old_policy_reproduced_failure": true,
+  "negative_case": "Measured100msdevicequeue; actual output0ms, decoded sink100ms",
+  "new_tests_passed": 15,
+  "actual_output_budget_ms": 80,
+  "raw_and_source_corrected_required": true,
+  "missing_clock_source_identity_and_transport_controls_required": true,
+  "historical_results_unchanged": true
+}

@@ -1,0 +1,92 @@
+{
+  "date": "2026-11-08",
+  "trial": "sdk35-macos-p2p-product-output-quality-1",
+  "source_revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "version": "150.7871.04-vc35",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "347479760ade78e190baf16f2b2be95a3147dcd5e3d32149a7f849ab6f290d2e",
+    "ci_signed_sha256": "210886f22fb2f22db3daf6c87145f4d4bfcf8db1cb09281681a5f6bc101e0a01",
+    "app_signed_sha256": "acb4ed7cedf1a0e2e75768377306324fa8ba4e7b7741c48281599a049b4f8d2b",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "1802e4a2-ff7c-38b7-8514-4152728ee630",
+  "sample_count": 120,
+  "product_direct_audio": true,
+  "timing": {
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 7,
+      "max_abs_ms": 35.190833325032145,
+      "max_source_corrected_abs_ms": 36.229083314538
+    },
+    "recovery": {
+      "count": 27,
+      "max_abs_ms": 207.3355833417736,
+      "max_source_corrected_abs_ms": 206.3038333435543
+    }
+  },
+  "speech": "pass",
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 7,
+      "max_added_voice_delay_ms": 22.891291650012136
+    },
+    "video_paused": {
+      "count": 4,
+      "max_added_voice_delay_ms": 22.812458337284625
+    },
+    "recovery": {
+      "count": 27,
+      "max_added_voice_delay_ms": 22.458791645476595
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      172848.5656022917,
+      172965.45365016672
+    ],
+    "physical_speaker_measured": false,
+    "platform": "macos",
+    "complete_output_window": true,
+    "active_callback_gaps": [],
+    "output_callbacks": 12537,
+    "max_all_callback_gap_ms": 1311.0527916578576,
+    "pass": true
+  },
+  "crypto_control": {
+    "protocol": "DTLS-SRTP",
+    "positive_dtls_connected": true,
+    "srtp_cipher": "AES_CM_128_HMAC_SHA1_80",
+    "negative_dtls_failed": true,
+    "negative_received_media_packets": 0
+  },
+  "pass": false,
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "fixture_sources_sha256": {
+    "native_p2p_paired_speech_test.dart": "b3a9fe823f09867e30a35e13a85bfb2c10bc8b878db5faef5f23fc8db8dbd788",
+    "native_p2p_av_marker_test.dart": "068b62b2c8a3f7c318022436a609d5900707df50e0f5a022d4bcedb04151825e",
+    "native_av_marker_test.dart": "1d0365dd0d59a8b567ea6571ee0efb68abfc7368daf94c9d6f8847026caf3744",
+    "native_av_marker.swift": "f024d7c2a31580c93ee1b90358a3601689bd8b7d60e31b34aba44fbb3ee95e8c"
+  },
+  "qualified_for_release": false,
+  "evidence_sha256": {
+    ".media.json": "6febe56780a7dabdcaff33832eaa87be5ebaf0e99653f1fa62cf76da27ef33ec",
+    ".control.media.json": "072788ad07723036ed5ec54e9324956cbc79f168571cd358b69a4bdf39ecaca5",
+    ".analysis.json": "21bdb88b1b0e366416fad6390b2caadd0630aab8041e9abd35114065360677d2",
+    ".speech.json": "d829a2f8bbeb844b23d4a85eb543938e6725ffad353241b0f2f71b4beb317c9e",
+    ".diagnostic.json": "bfc92c94fb03582f497bcdbccde3bb8e2de45dcbc5079f1add2fecf763443880"
+  },
+  "notes": [
+    "Full120-sample direct Mac call with current product80ms audio floor; shared stream, no extra video playout",
+    "Speech, added voice and DTLS-SRTP negative/positive controls pass; no active output gaps",
+    "One recovery marker at+5.483s was207.336ms late, other post-recovery markers13-41ms; first/last packet receive gap approximately198ms near that frame",
+    "Diagnostic repeat captures RTP packet metadata and sender queue statistics; exact cause not established",
+    "The max1311ms output callback gap was before the measured active call window; active coverage/gap list preserved"
+  ]
+}

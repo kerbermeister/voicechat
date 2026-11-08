@@ -1,4 +1,4 @@
-"""Supplement decoded-sink A/V with the observed AudioTrack presentation clock."""
+"""Measure A/V at AudioTrack presentation, retaining decoded-sink diagnostics."""
 import bisect
 import gzip
 import json
@@ -82,8 +82,20 @@ def analyze(data, report):
                          'pass': len(pairs) >= minimum and not missing and
                          max(map(abs, raw), default=float('inf')) <= 80 and
                          max(map(abs, corrected), default=float('inf')) <= 80}
-    return {'schema': 1, 'pass': report['outcome'] == 'pass' and
+    source_delay = report.get('source_validation_max_ms')
+    source_limit = 20 if data.get('coherent_source') else 75
+    source_and_recovery_valid = (
+        report.get('outcome') in ('pass', 'budget_exceeded') and
+        report.get('source_frame_identity_verified') is True and
+        type(source_delay) in (int, float) and math.isfinite(source_delay) and
+        0 <= source_delay <= source_limit and
+        report.get('recovery_transport', {}).get('pass') is True)
+    # Decoded PCM precedes the device queue. Applying the output budget there
+    # too would reject correct synchronization to that measured queue.
+    return {'schema': 1, 'pass': source_and_recovery_valid and
             all(row['pass'] for row in results.values()),
+            'measurement_locus': 'audio_device_presentation_vs_video_sink',
+            'source_and_recovery_valid': source_and_recovery_valid,
             'decoded_sink_outcome': report['outcome'],
             'audio_device_timestamp_observed': True,
             'physical_speaker_measured': False,
