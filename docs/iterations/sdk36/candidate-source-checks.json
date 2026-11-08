@@ -1,0 +1,22 @@
+{
+  "verified_originals": 54,
+  "verified_patched": 56,
+  "patch_sha256": "ed7f65eb3ee87350ab9290bf6304d786b782641a06f4c7d846067f6226e734f6",
+  "unchanged_sdk35_outputs": 50,
+  "changed_existing_outputs": [
+    "video/render/BUILD.gn",
+    "video/render/incoming_video_stream.cc",
+    "video/render/incoming_video_stream.h",
+    "video/render/incoming_video_stream_unittest.cc",
+    "video/render/video_render_frames.cc"
+  ],
+  "new_native_recovery_tests": 3,
+  "expected_timing_tests": 117,
+  "expected_recovery_tests": 56,
+  "android_only_copy_invocation": true,
+  "macos_native_buffer_policy_unchanged": true,
+  "audio_pcm_codec_neteq_buffer_changes": false,
+  "crypto_changes": false,
+  "fast_retransmissions_default_change": false,
+  "runtime_artifact_pins_changed": false
+}

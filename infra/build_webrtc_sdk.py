@@ -399,6 +399,23 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
         for name in recovery_files:
             content = subprocess.check_output(
                 ['git', 'show', MANIFEST['webrtc_commit'] + ':' + name], cwd=source)
+            if name == 'video/render/incoming_video_stream.h':
+                anchor = b'  ~IncomingVideoStream() override;'
+                if content.count(anchor) != 1:
+                    raise RuntimeError('Expected the original render stream interface')
+                content = content.replace(anchor, anchor +
+                    b'\n  static VideoFrame CopyDelayedNativeFrame(const VideoFrame&, Timestamp);')
+                content = content.replace(b'#include "api/video/video_frame.h"',
+                    b'#include "api/units/timestamp.h"\n#include "api/video/video_frame.h"')
+            if name == 'video/render/incoming_video_stream.cc':
+                anchor = b'IncomingVideoStream::IncomingVideoStream('
+                if content.count(anchor) != 1:
+                    raise RuntimeError('Expected the original render stream constructor')
+                # Retain the callable interface, but reproduce SDK35 ownership:
+                # queuing the native frame keeps its sole decoder texture alive.
+                content = content.replace(anchor,
+                    b'VideoFrame IncomingVideoStream::CopyDelayedNativeFrame(\n'
+                    b'    const VideoFrame& frame, Timestamp) { return frame; }\n\n' + anchor)
             if name == 'video/video_stream_buffer_controller.cc':
                 # Keep the new interface so the negative control tests the
                 # former scheduling behavior with the identical test binary.
