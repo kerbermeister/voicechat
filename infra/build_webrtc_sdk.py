@@ -48,6 +48,14 @@ def verify_files(source, hashes):
             raise RuntimeError(f'Unexpected SDK source: {relative}')
 
 
+def source_hashes(key, target):
+    # The pinned Android builder also adds WebrtcBuildVersion.java to BUILD.gn.
+    hashes = MANIFEST[key]
+    if target == 'android':
+        return {**hashes, **MANIFEST['android_' + key]}
+    return hashes
+
+
 def verify_android_audio_clock_tests(report):
     evidence = json.loads(report.read_text())
     expected = {f'org.webrtc.audio.WebRtcAudioTrackDelayTest#{name}[{api}]'
@@ -112,10 +120,10 @@ def prepare(builder, work, target):
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=source, text=True).strip()
     if head != MANIFEST['webrtc_commit']:
         raise RuntimeError('Unexpected WebRTC source revision')
-    verify_files(source, MANIFEST['original_files_sha256'])
+    verify_files(source, source_hashes('original_files_sha256', target))
     run(['git', 'apply', '--check', PATCH], cwd=source)
     run(['git', 'apply', PATCH], cwd=source)
-    verify_files(source, MANIFEST['patched_files_sha256'])
+    verify_files(source, source_hashes('patched_files_sha256', target))
     return source
 
 
@@ -511,7 +519,7 @@ def main():
         if args.platform == 'macos' and policy.get('compiled_crypto_priority_workers') != MANIFEST['macos_crypto_priority_worker_count']:
             raise RuntimeError('Actual macOS crypto workers lack the required scheduling priority')
         policy['report_sha256'] = sha(report)
-    verify_files(source, MANIFEST['patched_files_sha256'])
+    verify_files(source, source_hashes('patched_files_sha256', target))
     receipt = {**MANIFEST, 'platform': args.platform,
                'artifact': artifact.name if artifact else None,
                'artifact_sha256': sha(artifact) if artifact else None,

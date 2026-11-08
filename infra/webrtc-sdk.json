@@ -190,5 +190,11 @@
     "testAcceptsFreshnessBoundaries",
     "testRejectsDelayOutsideNativeRange",
     "testClampsDrainedQueueAtZero"
-  ]
+  ],
+  "android_original_files_sha256": {
+    "sdk/android/BUILD.gn": "906e7042aebd73d845a1a8f3ed04e3eb40a566109656c0e519c95572892b5401"
+  },
+  "android_patched_files_sha256": {
+    "sdk/android/BUILD.gn": "5fe030c74c5c730ba1891c6e3c9be0b4e66cd181fed5695e65a53d9764389f12"
+  }
 }
