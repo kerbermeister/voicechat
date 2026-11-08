@@ -7,7 +7,7 @@ const p2pBlockBytes = 4 * 1024 * 1024;
 const p2pFrameBytes = 16 * 1024;
 const p2pHeaderBytes = 16;
 const p2pManifestBytes = 65536;
-const p2pInvitationSeconds = 300;
+const p2pInvitationSeconds = 30 * 60;
 
 int boundedInt(Object? value, int min, int max) {
   if (value is! int || value < min || value > max) {
