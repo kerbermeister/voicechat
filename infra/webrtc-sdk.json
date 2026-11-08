@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "3413ec081de0ff8600387f4b177f4ffd659f01dbdf2a478dbf7a29aa4195ec85",
+  "patch_sha256": "f53f7fe24db11854b48b9ed5e10b0f24a67737b7c88f318854fa6ffb77300101",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -47,7 +47,10 @@
     "api/frame_transformer_interface.h": "ee15b4e9d1346d46868cdbf9a77b2bf46b7086882d1ef957f5d930a4c4bc70f1",
     "modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.cc": "2805654c9d23b7bd1fbb4e0643af27ba6e9defc27536e39c46e2a4b077002cc5",
     "modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.h": "6fc4651b508dde881c6ee0cade57a7d5e845e4fdb7dbc2ad522e5049403f07ff",
-    "video/buffered_frame_decryptor.h": "34ff2b9d7c56d06ebb4c2bd59bd597bd0b8c4f6711715f4dd21d5d4dadd352ed"
+    "video/buffered_frame_decryptor.h": "34ff2b9d7c56d06ebb4c2bd59bd597bd0b8c4f6711715f4dd21d5d4dadd352ed",
+    "audio/channel_send.cc": "17b492c5f887aa87312fceaeb812a7be1a6c845552db55c7a1cfd2a6844a01c7",
+    "sdk/objc/api/peerconnection/RTCRtpReceiver.h": "d269a7564b9a3612cdf6bb236a6a86cc41a72b21dc0e4d3d7991427717cd504a",
+    "sdk/objc/api/peerconnection/RTCRtpReceiver.mm": "8373ad2c4e94044d4298be749f2d84c2173223ab23a00ae441bc92e1390ffe9f"
   },
   "patched_files_sha256": {
     "modules/video_coding/timing/timing.h": "7fb9214c06238be7b78ffd12c51c776c2cb8e04996467b187c62af18d334132d",
@@ -94,11 +97,14 @@
     "api/frame_transformer_interface.h": "c933a8b612fd9ddd3b5df00cf2d47d21ab4fba8c632adcf66c3a7850096ea2bf",
     "modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.cc": "07f961eba8f4645a5b2289ddb593fec8802e905bde801ce7ac497192b39d89f5",
     "modules/rtp_rtcp/source/rtp_video_stream_receiver_frame_transformer_delegate.h": "d78af97333e92509c40ee9fd2c703daea6821803354e7883f57fb5cd95b6a4c3",
-    "video/buffered_frame_decryptor.h": "048da153d844f6606eeaa8be2d44f91e9c1872defcd5607132a793b2fbd2ba84"
+    "video/buffered_frame_decryptor.h": "048da153d844f6606eeaa8be2d44f91e9c1872defcd5607132a793b2fbd2ba84",
+    "audio/channel_send.cc": "1ba3d19de2a953a42cd7591446122f1c67acb220e7b63de2fdfbfbef23d9f7cd",
+    "sdk/objc/api/peerconnection/RTCRtpReceiver.h": "ace72897349db08fe8ff575e3d39e5f5c26081c7558d7184572e070daeffa9f6",
+    "sdk/objc/api/peerconnection/RTCRtpReceiver.mm": "447456a03176af2e56a6a902a5e848e1586277fd83e6b50272f2899239c50895"
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*:DecisionLogicTest.NormalOperation:DecisionLogicTest.Accelerate:DecisionLogicTest.FastAccelerate:DecisionLogicTest.PreemptiveExpand:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout:SifTransformTest.StrictDisabledCryptor*",
-  "release_artifact_version": "150.7871.04-vc31",
+  "release_artifact_version": "150.7871.04-vc32",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
   "unit_test_count": 111,
   "regressions": [
