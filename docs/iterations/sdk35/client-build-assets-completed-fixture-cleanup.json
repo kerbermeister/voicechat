@@ -1,0 +1,6 @@
+{
+  "date_utc": "2026-11-08T09:51:20.976149+00:00",
+  "scope": "Completed owned CI-download/wrapper-verification fixture only; exact SHA receipts and version log retained",
+  "logical_bytes_removed": 924901564,
+  "owner_gradle_home_profiles_keychain_backups_untouched": true
+}

@@ -1,0 +1,174 @@
+{
+  "source_revision": "fc7678748ad6e21ed97e5c0119874632a2c1c384",
+  "version": "150.7871.04-vc34",
+  "app_baseline_revision": "b416818adc69d9d0515d2a2b3156089636a86671",
+  "app_call_runtime_source_sha256": {
+    "vendor/livekit_client/lib/src/core/room.dart": "802b6749539bd3b0de239c9e9e81b2b44173d80a31de80ffebdf038768f8a1de",
+    "vendor/livekit_client/lib/src/managers/event.dart": "3d8240dda9a0d381b44f5f85e5673ac612d3554bd1b908807c1c68f38512de41",
+    "apps/client/macos/Compatibility/FlutterRTCVideoRenderer.m": "c1f9e532f152f77d17f9206ca15e29ed20ca1cb1c619397f7ef120141cc9a8f5"
+  },
+  "actual_app_sdk_sha256": "eed7a088e8e7b5ef9054ed6ca720584c0487f660731e53287cfe21003979cfe9",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "b417b5549c53a3c3be9f9b32a99a9e33510466802bd981e1a04a42b9a62b9e98",
+    "ci_signed_sha256": "3caded9509a7c5f4570f82cda92340e7974370d16a472b3b6aff04ef165521bf",
+    "app_signed_sha256": "eed7a088e8e7b5ef9054ed6ca720584c0487f660731e53287cfe21003979cfe9",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "9a1ffc35-2ebf-38b5-a644-37e001f13967",
+  "trial": "sdk34-macos-output-quality-repeat-1",
+  "pass": false,
+  "media_gates_pass": false,
+  "diagnostic_only": false,
+  "timing": {
+    "outcome": "pass",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 9.932041662978008,
+      "max_source_corrected_abs_ms": 10.579708294244483
+    },
+    "recovery": {
+      "count": 26,
+      "max_abs_ms": 40.494291693903506,
+      "max_source_corrected_abs_ms": 41.502541687805206
+    }
+  },
+  "speech": "speech_regression",
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": -9.687208337709308
+    },
+    "video_paused": {
+      "count": 3,
+      "max_added_voice_delay_ms": -31.95799997774884
+    },
+    "recovery": {
+      "count": 25,
+      "max_added_voice_delay_ms": -31.687833310570568
+    }
+  },
+  "missing_key_gate": {
+    "content": {
+      "audio_chunks": 304,
+      "video_markers": 0,
+      "audio_peak": 0.0,
+      "control_audio_peak": 0.0
+    },
+    "audio": {
+      "packets": 136,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 178,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 134,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      153544.8761569167,
+      153661.36075262504
+    ],
+    "physical_speaker_measured": false,
+    "platform": "macos",
+    "complete_output_window": true,
+    "active_callback_gaps": [],
+    "output_callbacks": 12605,
+    "max_all_callback_gap_ms": 11.744958348572254,
+    "pass": true
+  },
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "date": "2026-11-08",
+  "sample_count": 120,
+  "own_app_focus_events": [
+    {
+      "time": 153532.71490783335,
+      "hidden": false,
+      "event": "start",
+      "active": false
+    }
+  ],
+  "test_process_passed": true,
+  "qualified_for_release": false,
+  "speech_metrics": {
+    "schema": 1,
+    "outcome": "speech_regression",
+    "synthetic_reference_only": true,
+    "physical_listening_test": false,
+    "paired_trials": 1,
+    "stoi_noninferiority_margin": 0.005,
+    "level_tolerance_db": 0.15,
+    "phases": {
+      "clean": {
+        "paired_clips": 8,
+        "control": {
+          "stoi": 0.9901800812191474,
+          "si_sdr_db": 7.5262921603673485,
+          "rms_dbfs": -23.19753690605278
+        },
+        "candidate": {
+          "stoi": 0.994196764396897,
+          "si_sdr_db": 9.375879874113371,
+          "rms_dbfs": -23.118466015356876
+        }
+      },
+      "delay": {
+        "paired_clips": 13,
+        "control": {
+          "stoi": 0.9949916309388207,
+          "si_sdr_db": 9.56095540216182,
+          "rms_dbfs": -23.190355048592735
+        },
+        "candidate": {
+          "stoi": 0.9944544910803239,
+          "si_sdr_db": 9.410539855048901,
+          "rms_dbfs": -23.148003193030267
+        }
+      },
+      "pause": {
+        "paired_clips": 5,
+        "control": {
+          "stoi": 0.9953946994579193,
+          "si_sdr_db": 9.555984859649811,
+          "rms_dbfs": -23.15825955437583
+        },
+        "candidate": {
+          "stoi": 0.9953876567666516,
+          "si_sdr_db": 9.471151367403998,
+          "rms_dbfs": -23.121692482013714
+        }
+      },
+      "recovery": {
+        "paired_clips": 25,
+        "control": {
+          "stoi": 0.9964004318855817,
+          "si_sdr_db": 9.298334357768908,
+          "rms_dbfs": -23.114703289072025
+        },
+        "candidate": {
+          "stoi": 0.9904206876235272,
+          "si_sdr_db": 8.48034636121694,
+          "rms_dbfs": -23.062742712273497
+        }
+      }
+    }
+  },
+  "evidence_sha256": {
+    ".media.json": "27aae9fe3a58a964d5dca8f3abfaf6876eccbd5823cbe579185aff3198db6e25",
+    ".control.media.json": "62f3efb90e58bd899c3a8b4c70f671d49952b7094c6f83a968a66dd7dbc0723d",
+    ".analysis.json": "ec0b8c6d3693fa4935289a44b55d1884cd67f796c536d69b9c93c7c814baa217",
+    ".speech.json": "718910e2ccafe6b417fd35b479648aca59182e169aa5d74805b25631becaaa96",
+    ".diagnostic.json": "5a67da68786b1242d13808fe2d4a12b94d05308d365dd39c838ece01fe22571b",
+    ".proof.json": "9dde3e3913b6854ac66bcea9aba082c9c1b1f7517b738c30e86b11c190dc19bd"
+  }
+}

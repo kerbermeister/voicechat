@@ -1,0 +1,718 @@
+{
+  "trial": "sdk34-macos-output-quality-repeat-1",
+  "original_gate_unchanged": true,
+  "per_clip": [
+    {
+      "id": 4,
+      "phase": "clean",
+      "candidate": {
+        "stoi": 0.9952954405270781,
+        "rms_dbfs": -23.153619751221576
+      },
+      "control": {
+        "stoi": 0.9968259341541513,
+        "rms_dbfs": -23.228768121127867
+      },
+      "stoi_difference": -0.0015304936270732483
+    },
+    {
+      "id": 5,
+      "phase": "clean",
+      "candidate": {
+        "stoi": 0.9952169278390588,
+        "rms_dbfs": -23.137096536064288
+      },
+      "control": {
+        "stoi": 0.9968259341541513,
+        "rms_dbfs": -23.228768121127867
+      },
+      "stoi_difference": -0.0016090063150925316
+    },
+    {
+      "id": 6,
+      "phase": "clean",
+      "candidate": {
+        "stoi": 0.9953230560500402,
+        "rms_dbfs": -23.150722989437973
+      },
+      "control": {
+        "stoi": 0.9968259341541513,
+        "rms_dbfs": -23.228768121127867
+      },
+      "stoi_difference": -0.001502878104111094
+    },
+    {
+      "id": 7,
+      "phase": "clean",
+      "candidate": {
+        "stoi": 0.9952171040931524,
+        "rms_dbfs": -23.16020009299971
+      },
+      "control": {
+        "stoi": 0.9968259341541513,
+        "rms_dbfs": -23.228768121127867
+      },
+      "stoi_difference": -0.0016088300609988782
+    },
+    {
+      "id": 8,
+      "phase": "clean",
+      "candidate": {
+        "stoi": 0.9926356278876532,
+        "rms_dbfs": -23.101559959910922
+      },
+      "control": {
+        "stoi": 0.9959708692643144,
+        "rms_dbfs": -23.23298272819208
+      },
+      "stoi_difference": -0.003335241376661191
+    },
+    {
+      "id": 9,
+      "phase": "clean",
+      "candidate": {
+        "stoi": 0.9928345588620592,
+        "rms_dbfs": -23.07287764375696
+      },
+      "control": {
+        "stoi": 0.9930263035537938,
+        "rms_dbfs": -23.172533795690562
+      },
+      "stoi_difference": -0.00019174469173466324
+    },
+    {
+      "id": 10,
+      "phase": "clean",
+      "candidate": {
+        "stoi": 0.9925125328562937,
+        "rms_dbfs": -23.09359148376395
+      },
+      "control": {
+        "stoi": 0.9474180100023195,
+        "rms_dbfs": -23.10131518153286
+      },
+      "stoi_difference": 0.045094522853974195
+    },
+    {
+      "id": 11,
+      "phase": "clean",
+      "candidate": {
+        "stoi": 0.9911069017167722,
+        "rms_dbfs": -23.081189835237055
+      },
+      "control": {
+        "stoi": 0.9934478050184,
+        "rms_dbfs": -23.161554144149964
+      },
+      "stoi_difference": -0.002340903301627839
+    },
+    {
+      "id": 14,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.9913499813172529,
+        "rms_dbfs": -23.117322418793922
+      },
+      "control": {
+        "stoi": 0.9929919720032482,
+        "rms_dbfs": -23.185912585279365
+      },
+      "stoi_difference": -0.0016419906859952427
+    },
+    {
+      "id": 15,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.9911676181784552,
+        "rms_dbfs": -23.121643875038593
+      },
+      "control": {
+        "stoi": 0.992729015511985,
+        "rms_dbfs": -23.211543909066602
+      },
+      "stoi_difference": -0.0015613973335297793
+    },
+    {
+      "id": 16,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.9917439558396188,
+        "rms_dbfs": -23.14156986627595
+      },
+      "control": {
+        "stoi": 0.9938318440724563,
+        "rms_dbfs": -23.263167562524348
+      },
+      "stoi_difference": -0.0020878882328374537
+    },
+    {
+      "id": 17,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.993737792499774,
+        "rms_dbfs": -23.154929741745903
+      },
+      "control": {
+        "stoi": 0.995177807186833,
+        "rms_dbfs": -23.18035887589838
+      },
+      "stoi_difference": -0.0014400146870590103
+    },
+    {
+      "id": 18,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.9939773781504546,
+        "rms_dbfs": -23.147569808520956
+      },
+      "control": {
+        "stoi": 0.9950057545799145,
+        "rms_dbfs": -23.1850899358555
+      },
+      "stoi_difference": -0.001028376429459854
+    },
+    {
+      "id": 19,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.9936688289715403,
+        "rms_dbfs": -23.165679626328327
+      },
+      "control": {
+        "stoi": 0.9951780093052346,
+        "rms_dbfs": -23.179357347092836
+      },
+      "stoi_difference": -0.0015091803336942933
+    },
+    {
+      "id": 20,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.9939144550687332,
+        "rms_dbfs": -23.15928539147093
+      },
+      "control": {
+        "stoi": 0.9953582217479164,
+        "rms_dbfs": -23.18352618101465
+      },
+      "stoi_difference": -0.0014437666791832227
+    },
+    {
+      "id": 21,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.993846598465343,
+        "rms_dbfs": -23.1596025296056
+      },
+      "control": {
+        "stoi": 0.9951847430695719,
+        "rms_dbfs": -23.194868331647438
+      },
+      "stoi_difference": -0.0013381446042289857
+    },
+    {
+      "id": 22,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.993915800088867,
+        "rms_dbfs": -23.151312371747238
+      },
+      "control": {
+        "stoi": 0.9952278304054375,
+        "rms_dbfs": -23.18756472997636
+      },
+      "stoi_difference": -0.001312030316570456
+    },
+    {
+      "id": 23,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.9938630021257486,
+        "rms_dbfs": -23.155444344829654
+      },
+      "control": {
+        "stoi": 0.9953322861426978,
+        "rms_dbfs": -23.180270093946124
+      },
+      "stoi_difference": -0.001469284016949124
+    },
+    {
+      "id": 24,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.9940571699421654,
+        "rms_dbfs": -23.13761623236301
+      },
+      "control": {
+        "stoi": 0.9952246676732044,
+        "rms_dbfs": -23.175324303239535
+      },
+      "stoi_difference": -0.001167497731038969
+    },
+    {
+      "id": 25,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.9938930716972882,
+        "rms_dbfs": -23.155918133734176
+      },
+      "control": {
+        "stoi": 0.9952143841261573,
+        "rms_dbfs": -23.17264480740341
+      },
+      "stoi_difference": -0.0013213124288690148
+    },
+    {
+      "id": 26,
+      "phase": "delay",
+      "candidate": {
+        "stoi": 0.9938859049689917,
+        "rms_dbfs": -23.160685676159915
+      },
+      "control": {
+        "stoi": 0.9952939786936743,
+        "rms_dbfs": -23.179699825681194
+      },
+      "stoi_difference": -0.001408073724682657
+    },
+    {
+      "id": 29,
+      "phase": "pause",
+      "candidate": {
+        "stoi": 0.9939552168093154,
+        "rms_dbfs": -23.162313452952553
+      },
+      "control": {
+        "stoi": 0.9951986138596763,
+        "rms_dbfs": -23.171671874737804
+      },
+      "stoi_difference": -0.001243397050360917
+    },
+    {
+      "id": 30,
+      "phase": "pause",
+      "candidate": {
+        "stoi": 0.9937765066744406,
+        "rms_dbfs": -23.169097880767076
+      },
+      "control": {
+        "stoi": 0.9951780093052346,
+        "rms_dbfs": -23.179357347092836
+      },
+      "stoi_difference": -0.0014015026307939715
+    },
+    {
+      "id": 31,
+      "phase": "pause",
+      "candidate": {
+        "stoi": 0.9943108948013316,
+        "rms_dbfs": -23.14724772865157
+      },
+      "control": {
+        "stoi": 0.9953219785207972,
+        "rms_dbfs": -23.165342232719635
+      },
+      "stoi_difference": -0.0010110837194655664
+    },
+    {
+      "id": 32,
+      "phase": "pause",
+      "candidate": {
+        "stoi": 0.9953587179395236,
+        "rms_dbfs": -23.09429205144741
+      },
+      "control": {
+        "stoi": 0.9951319880658999,
+        "rms_dbfs": -23.191405340599122
+      },
+      "stoi_difference": 0.00022672987362371
+    },
+    {
+      "id": 33,
+      "phase": "pause",
+      "candidate": {
+        "stoi": 0.99550703689515,
+        "rms_dbfs": -23.03856159376441
+      },
+      "control": {
+        "stoi": 0.9956112549318681,
+        "rms_dbfs": -23.085835632714318
+      },
+      "stoi_difference": -0.0001042180367181178
+    },
+    {
+      "id": 37,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9957196666683966,
+        "rms_dbfs": -23.0338777477545
+      },
+      "control": {
+        "stoi": 0.995322228821866,
+        "rms_dbfs": -23.090183396099604
+      },
+      "stoi_difference": 0.00039743784653056835
+    },
+    {
+      "id": 38,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.995470400637699,
+        "rms_dbfs": -23.045058411554614
+      },
+      "control": {
+        "stoi": 0.9952073048880191,
+        "rms_dbfs": -23.0938855829621
+      },
+      "stoi_difference": 0.0002630957496798647
+    },
+    {
+      "id": 39,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9957186838381274,
+        "rms_dbfs": -23.03500207058284
+      },
+      "control": {
+        "stoi": 0.9952073048880191,
+        "rms_dbfs": -23.0938855829621
+      },
+      "stoi_difference": 0.0005113789501083321
+    },
+    {
+      "id": 40,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9952824797423891,
+        "rms_dbfs": -23.075374918849914
+      },
+      "control": {
+        "stoi": 0.9956601809728444,
+        "rms_dbfs": -23.08753122358992
+      },
+      "stoi_difference": -0.00037770123045521853
+    },
+    {
+      "id": 41,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9954750196691929,
+        "rms_dbfs": -23.034972477504674
+      },
+      "control": {
+        "stoi": 0.9950957071727743,
+        "rms_dbfs": -23.093461780137645
+      },
+      "stoi_difference": 0.00037931249641864895
+    },
+    {
+      "id": 42,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.995483357586903,
+        "rms_dbfs": -23.037109895798555
+      },
+      "control": {
+        "stoi": 0.9954425519497256,
+        "rms_dbfs": -23.076982316731517
+      },
+      "stoi_difference": 4.0805637177343534e-05
+    },
+    {
+      "id": 43,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9739285036022347,
+        "rms_dbfs": -23.149366598398522
+      },
+      "control": {
+        "stoi": 0.9954341023775487,
+        "rms_dbfs": -23.074925086240917
+      },
+      "stoi_difference": -0.021505598775313994
+    },
+    {
+      "id": 44,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9951148167903567,
+        "rms_dbfs": -23.037931035162394
+      },
+      "control": {
+        "stoi": 0.9953434601961563,
+        "rms_dbfs": -23.076266746436996
+      },
+      "stoi_difference": -0.00022864340579953346
+    },
+    {
+      "id": 45,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9112085611599176,
+        "rms_dbfs": -23.330902564817613
+      },
+      "control": {
+        "stoi": 0.9952441720578097,
+        "rms_dbfs": -23.09107308314328
+      },
+      "stoi_difference": -0.08403561089789213
+    },
+    {
+      "id": 46,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9954206687684483,
+        "rms_dbfs": -23.08473926306309
+      },
+      "control": {
+        "stoi": 0.9956761206122284,
+        "rms_dbfs": -23.076005681332475
+      },
+      "stoi_difference": -0.0002554518437801745
+    },
+    {
+      "id": 47,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9953225709291236,
+        "rms_dbfs": -23.082661905606443
+      },
+      "control": {
+        "stoi": 0.9953286998485134,
+        "rms_dbfs": -23.093924760392227
+      },
+      "stoi_difference": -6.128919389780663e-06
+    },
+    {
+      "id": 48,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.99550703689515,
+        "rms_dbfs": -23.038561627804338
+      },
+      "control": {
+        "stoi": 0.9951827159067612,
+        "rms_dbfs": -23.09566678892014
+      },
+      "stoi_difference": 0.0003243209883887488
+    },
+    {
+      "id": 49,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9955136886007577,
+        "rms_dbfs": -23.031354064620054
+      },
+      "control": {
+        "stoi": 0.9951537963759763,
+        "rms_dbfs": -23.093696601352857
+      },
+      "stoi_difference": 0.0003598922247813885
+    },
+    {
+      "id": 50,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9951148167903567,
+        "rms_dbfs": -23.037931035162394
+      },
+      "control": {
+        "stoi": 0.9977917117348212,
+        "rms_dbfs": -23.21382638936945
+      },
+      "stoi_difference": -0.0026768949444644363
+    },
+    {
+      "id": 51,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9953218019806715,
+        "rms_dbfs": -23.049091644850918
+      },
+      "control": {
+        "stoi": 0.997396445695142,
+        "rms_dbfs": -23.18040444400043
+      },
+      "stoi_difference": -0.0020746437144704144
+    },
+    {
+      "id": 52,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9951064866528027,
+        "rms_dbfs": -23.03786258917968
+      },
+      "control": {
+        "stoi": 0.997396445695142,
+        "rms_dbfs": -23.18040444400043
+      },
+      "stoi_difference": -0.002289959042339307
+    },
+    {
+      "id": 53,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9954854009470927,
+        "rms_dbfs": -23.03586845704302
+      },
+      "control": {
+        "stoi": 0.997396445695142,
+        "rms_dbfs": -23.18040444400043
+      },
+      "stoi_difference": -0.001911044748049262
+    },
+    {
+      "id": 54,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9956898526566683,
+        "rms_dbfs": -23.039822169075332
+      },
+      "control": {
+        "stoi": 0.997396445695142,
+        "rms_dbfs": -23.18040444400043
+      },
+      "stoi_difference": -0.0017065930384736472
+    },
+    {
+      "id": 55,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9950800895342934,
+        "rms_dbfs": -23.052731900533317
+      },
+      "control": {
+        "stoi": 0.997396445695142,
+        "rms_dbfs": -23.18040444400043
+      },
+      "stoi_difference": -0.002316356160848576
+    },
+    {
+      "id": 56,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9953219427822539,
+        "rms_dbfs": -23.048564682129072
+      },
+      "control": {
+        "stoi": 0.997396445695142,
+        "rms_dbfs": -23.18040444400043
+      },
+      "stoi_difference": -0.002074502912888021
+    },
+    {
+      "id": 57,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9953219427822539,
+        "rms_dbfs": -23.048564682129072
+      },
+      "control": {
+        "stoi": 0.9953292269717328,
+        "rms_dbfs": -23.095309533775833
+      },
+      "stoi_difference": -7.284189478817815e-06
+    },
+    {
+      "id": 58,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9953218019806715,
+        "rms_dbfs": -23.049091644850918
+      },
+      "control": {
+        "stoi": 0.9955817640868547,
+        "rms_dbfs": -23.099378423578717
+      },
+      "stoi_difference": -0.00025996210618317583
+    },
+    {
+      "id": 59,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9953149806052931,
+        "rms_dbfs": -23.056392391691972
+      },
+      "control": {
+        "stoi": 0.9953689114234954,
+        "rms_dbfs": -23.08887523188469
+      },
+      "stoi_difference": -5.393081820226353e-05
+    },
+    {
+      "id": 60,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9952607123412823,
+        "rms_dbfs": -23.063597999114055
+      },
+      "control": {
+        "stoi": 0.9955946975927381,
+        "rms_dbfs": -23.084625753291114
+      },
+      "stoi_difference": -0.00033398525145578173
+    },
+    {
+      "id": 61,
+      "phase": "recovery",
+      "candidate": {
+        "stoi": 0.9953219427822539,
+        "rms_dbfs": -23.04856468589059
+      },
+      "control": {
+        "stoi": 0.9954037595491029,
+        "rms_dbfs": -23.076581578007335
+      },
+      "stoi_difference": -8.181676684893002e-05
+    }
+  ],
+  "concealment_events": [
+    {
+      "role": "candidate",
+      "time": 153592.7159311667,
+      "from_call_start_s": 52.83977424999466,
+      "concealed_samples_delta": 2764,
+      "packets_lost": 0,
+      "acceleration_samples": 0
+    },
+    {
+      "role": "candidate",
+      "time": 153617.10121900003,
+      "from_call_start_s": 77.22506208333652,
+      "concealed_samples_delta": 913,
+      "packets_lost": 0,
+      "acceleration_samples": 637
+    },
+    {
+      "role": "control",
+      "time": 153556.97002200002,
+      "from_call_start_s": 17.09386508332682,
+      "concealed_samples_delta": 458,
+      "packets_lost": 0,
+      "acceleration_samples": 0
+    },
+    {
+      "role": "control",
+      "time": 153592.7159311667,
+      "from_call_start_s": 52.83977424999466,
+      "concealed_samples_delta": 2006,
+      "packets_lost": 0,
+      "acceleration_samples": 0
+    },
+    {
+      "role": "control",
+      "time": 153617.10121900003,
+      "from_call_start_s": 77.22506208333652,
+      "concealed_samples_delta": 387,
+      "packets_lost": 0,
+      "acceleration_samples": 756
+    }
+  ],
+  "physical_listening_test": false,
+  "gate_changed": false,
+  "correlation_not_proven_causality": {
+    "clip43": "speech begins82.331s; candidate acceleration554 samples at82.258s and580 by83.264s",
+    "clip45": "speech begins86.296s; candidate acceleration400 samples by87.282s; per-clip STOI0.911 vs control0.995",
+    "interpretation": "Timing overlaps ordinary NetEq time-stretch; source/output callback cadence remained continuous. Need distinguish temporal-alignment metric sensitivity from audible distortion. No gate waiver or DSP change."
+  }
+}

@@ -1,0 +1,207 @@
+{
+  "date": "2026-11-08",
+  "version": "150.7871.04-vc34",
+  "source_revision": "fc7678748ad6e21ed97e5c0119874632a2c1c384",
+  "aar_sha256": "0c43cd1ef4739e0224905c8f999268c9ba1e6620e1b876e918de30652a90e5c5",
+  "jni_sha256": "2fe486ac668c65a1a95449c36813631ca236c3bd9bf8dcb44c8464a00dd832f6",
+  "local_sfu_cpu_quota": null,
+  "local_sfu_gomaxprocs": 2,
+  "sample_count": 120,
+  "decoded_timing": {
+    "outcome": "budget_exceeded",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 92.51424966666377,
+      "max_source_corrected_abs_ms": 91.42958299659654
+    },
+    "recovery": {
+      "count": 26,
+      "max_abs_ms": 76.8721246666928,
+      "max_source_corrected_abs_ms": 75.83470797806058
+    },
+    "recovery_transport": {
+      "pass": true,
+      "packet_deltas": {
+        "audio": 405,
+        "video": 653
+      },
+      "decoded_video_frames": 201
+    }
+  },
+  "audio_device_output": {
+    "schema": 1,
+    "pass": false,
+    "decoded_sink_outcome": "budget_exceeded",
+    "audio_device_timestamp_observed": true,
+    "physical_speaker_measured": false,
+    "video_sink_before_display": true,
+    "phases": {
+      "clean": {
+        "count": 8,
+        "missing_output_markers": [],
+        "max_abs_ms": 72.44624999999871,
+        "max_source_corrected_abs_ms": 73.34249998508824,
+        "pass": true
+      },
+      "recovery": {
+        "count": 26,
+        "missing_output_markers": [],
+        "max_abs_ms": 81.48895833332404,
+        "max_source_corrected_abs_ms": 82.37070834019278,
+        "pass": false
+      }
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      88.215002872,
+      204.786168888
+    ],
+    "physical_speaker_measured": false,
+    "platform": "android",
+    "actual_audio_track_underrun_counter": true,
+    "same_output_track": true,
+    "active_output_underruns": 0.0,
+    "timestamp_query_mean_us": 2.74369875608437,
+    "timestamp_query_max_us": 204.291,
+    "pass": true
+  },
+  "speech": {
+    "schema": 1,
+    "outcome": "pass",
+    "synthetic_reference_only": true,
+    "physical_listening_test": false,
+    "paired_trials": 1,
+    "stoi_noninferiority_margin": 0.005,
+    "level_tolerance_db": 0.15,
+    "phases": {
+      "clean": {
+        "paired_clips": 8,
+        "control": {
+          "stoi": 0.9941971304932153,
+          "si_sdr_db": 9.389514774181828,
+          "rms_dbfs": -23.113216200705903
+        },
+        "candidate": {
+          "stoi": 0.9921890901283592,
+          "si_sdr_db": 7.049377183479482,
+          "rms_dbfs": -23.157848115849756
+        }
+      },
+      "delay": {
+        "paired_clips": 13,
+        "control": {
+          "stoi": 0.9909224412186397,
+          "si_sdr_db": 7.996338338104235,
+          "rms_dbfs": -23.168888133296445
+        },
+        "candidate": {
+          "stoi": 0.9949916309388207,
+          "si_sdr_db": 9.56095540216182,
+          "rms_dbfs": -23.190355048592735
+        }
+      },
+      "pause": {
+        "paired_clips": 5,
+        "control": {
+          "stoi": 0.9953876567666516,
+          "si_sdr_db": 9.471151367403998,
+          "rms_dbfs": -23.121692482013714
+        },
+        "candidate": {
+          "stoi": 0.9953946994579193,
+          "si_sdr_db": 9.555984859649811,
+          "rms_dbfs": -23.15825955437583
+        }
+      },
+      "recovery": {
+        "paired_clips": 26,
+        "control": {
+          "stoi": 0.9867783021295523,
+          "si_sdr_db": 7.982257421689649,
+          "rms_dbfs": -23.068621913888194
+        },
+        "candidate": {
+          "stoi": 0.9963704637331497,
+          "si_sdr_db": 9.3080264508806,
+          "rms_dbfs": -23.113129302971362
+        }
+      }
+    }
+  },
+  "added_voice": {
+    "pass": true,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 46.18499933333453
+    },
+    "video_paused": {
+      "count": 3,
+      "max_added_voice_delay_ms": 46.149499333353106
+    },
+    "recovery": {
+      "count": 26,
+      "max_added_voice_delay_ms": 66.94379133332973
+    }
+  },
+  "missing_key_gate": {
+    "content": {
+      "audio_peak": 0.0,
+      "video_markers": 0,
+      "audio_chunks": 301,
+      "control_audio_peak": 0.0,
+      "output_signal_peak": 0.0,
+      "output_signal_frames": 0
+    },
+    "audio": {
+      "packets": 127,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 173,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 126,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "test_output_silenced": true,
+  "crypto_thread_priorities": [
+    -16,
+    -10,
+    -16
+  ],
+  "actual_zero_pcm_frames": 1003680,
+  "physical_android": false,
+  "host_audio_disabled": true,
+  "qualified_for_release": false,
+  "published": false,
+  "evidence_sha256": {
+    ".media.json": "69f53ae428ae7aeda3a45e1eebb1811dd09ee40e400f8c688306ccae7750f8af",
+    ".control.media.json": "628659b8c5696ce6aad9c08e4467024a72d8e5dcf627e51c6e87129cc6bfa0a5",
+    ".analysis.json": "9d844f274e4962938f33b96b7208f2f147c334b68e0404635d80268120813d7e",
+    ".output-clock.json": "e467549764ce6e027aa097c8aef7aca2e2854941eeceb6e69aa46d99f8ac6524",
+    ".audio-continuity.json": "087a6533ec807787dab1f387de0a2781e9b3b4c647d7f4569f79a69687c486dd",
+    ".speech.json": "feddc3581666d59107de294790d342dc6352c05fd68f904d3b71f470193a758e",
+    ".voice.json": "06b26ea5e389d121ce1ccb02dbd0726c0c25fceedd5775200acc33d94a6fa3f5",
+    ".proof.json": "8eb1d00b2268c3a0184b6ae9bb0ca8d817143b12a5791906de0e657ef42b793b"
+  },
+  "user_acceptance": {
+    "date": "2026-11-08",
+    "source": "User explicitly accepted this Android LiveKit result in the conversation",
+    "scope": "SDK34 Android LiveKit measured emulator result; known raw/corrected AV and output-clock deviations accepted",
+    "known_deviations": {
+      "decoded_clean_raw_ms": 92.51424966666377,
+      "decoded_clean_corrected_ms": 91.42958299659654,
+      "output_recovery_raw_ms": 81.48895833332404,
+      "output_recovery_corrected_ms": 82.37070834019278
+    },
+    "original_80ms_test_outcome_preserved": true,
+    "physical_device_acceptance": false,
+    "p2p_acceptance": false,
+    "release_package_acceptance": false
+  }
+}

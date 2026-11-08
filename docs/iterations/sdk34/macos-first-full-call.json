@@ -1,0 +1,142 @@
+{
+  "source_revision": "fc7678748ad6e21ed97e5c0119874632a2c1c384",
+  "version": "150.7871.04-vc34",
+  "app_baseline_revision": "b416818adc69d9d0515d2a2b3156089636a86671",
+  "app_call_runtime_source_sha256": {
+    "vendor/livekit_client/lib/src/core/room.dart": "802b6749539bd3b0de239c9e9e81b2b44173d80a31de80ffebdf038768f8a1de",
+    "vendor/livekit_client/lib/src/managers/event.dart": "3d8240dda9a0d381b44f5f85e5673ac612d3554bd1b908807c1c68f38512de41",
+    "apps/client/macos/Compatibility/FlutterRTCVideoRenderer.m": "c1f9e532f152f77d17f9206ca15e29ed20ca1cb1c619397f7ef120141cc9a8f5"
+  },
+  "actual_app_sdk_sha256": "eed7a088e8e7b5ef9054ed6ca720584c0487f660731e53287cfe21003979cfe9",
+  "actual_app_sdk_code_identity": {
+    "raw_sha256_matches_ci": false,
+    "all_non_signing_bytes_match": true,
+    "canonical_unsigned_sha256": "b417b5549c53a3c3be9f9b32a99a9e33510466802bd981e1a04a42b9a62b9e98",
+    "ci_signed_sha256": "3caded9509a7c5f4570f82cda92340e7974370d16a472b3b6aff04ef165521bf",
+    "app_signed_sha256": "eed7a088e8e7b5ef9054ed6ca720584c0487f660731e53287cfe21003979cfe9",
+    "both_framework_signatures_verified": true,
+    "only_signature_and_linkedit_vm_reservation_normalized": true
+  },
+  "actual_app_sdk_uuid": "9a1ffc35-2ebf-38b5-a644-37e001f13967",
+  "trial": "sdk34-macos-output-quality-1",
+  "pass": true,
+  "media_gates_pass": true,
+  "diagnostic_only": false,
+  "timing": {
+    "outcome": "pass",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 45.7337083062157,
+      "max_source_corrected_abs_ms": 46.62599999574013
+    },
+    "recovery": {
+      "count": 26,
+      "max_abs_ms": 74.24870831891894,
+      "max_source_corrected_abs_ms": 75.08104163571261
+    }
+  },
+  "speech": "pass",
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 14.012499974342063
+    },
+    "video_paused": {
+      "count": 3,
+      "max_added_voice_delay_ms": 13.143666641553864
+    },
+    "recovery": {
+      "count": 26,
+      "max_added_voice_delay_ms": 13.215750019298866
+    }
+  },
+  "missing_key_gate": {
+    "content": {
+      "video_markers": 0,
+      "control_audio_peak": 0.0,
+      "audio_peak": 0.0,
+      "audio_chunks": 304
+    },
+    "audio": {
+      "packets": 136,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 178,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 134,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      152188.54958812502,
+      152304.9343082917
+    ],
+    "physical_speaker_measured": false,
+    "platform": "macos",
+    "complete_output_window": true,
+    "active_callback_gaps": [],
+    "output_callbacks": 12586,
+    "max_all_callback_gap_ms": 11.811166681582108,
+    "pass": true
+  },
+  "physical_display_or_speaker_measured": false,
+  "published": false,
+  "date": "2026-11-08",
+  "sample_count": 120,
+  "own_app_focus_events": [
+    {
+      "event": "start",
+      "hidden": false,
+      "time": 152175.68198575,
+      "active": true
+    },
+    {
+      "event": "inactive",
+      "hidden": false,
+      "active": false,
+      "time": 152205.82972550002
+    },
+    {
+      "hidden": false,
+      "time": 152206.53430225002,
+      "active": true,
+      "event": "active"
+    },
+    {
+      "time": 152207.60467395835,
+      "active": false,
+      "hidden": false,
+      "event": "inactive"
+    },
+    {
+      "time": 152208.3646205,
+      "active": true,
+      "event": "active",
+      "hidden": false
+    },
+    {
+      "time": 152210.23672108335,
+      "hidden": false,
+      "event": "inactive",
+      "active": false
+    }
+  ],
+  "test_output_silenced": true,
+  "evidence_sha256": {
+    ".media.json": "2fa793a0b8af3fe8dbfbb12f49dd3fde7d1eca5d9e8d284b3b69e11929854d17",
+    ".control.media.json": "fc400ce2f88b053df72441164d66ee1cac6398dfe92b4dfb824025d7acd34b46",
+    ".analysis.json": "6522f74444a27addb4f55a3335b298b50436fd256f408edc5cd70b1e28cbc9e3",
+    ".speech.json": "a0301ce39e730ca99c73151b5ce3cf1523e3a906064f10938860690f963bd359",
+    ".diagnostic.json": "34bd017cd91dce2848cfaf192807ad2acbab39f66e0345ee01192d7a3df0f6b6",
+    ".proof.json": "b137cfbc7c146d5eeab57e37b5b1f8bb1e72cc088f8e3d9301b691abc8f49a84"
+  },
+  "qualified_for_release": false,
+  "remaining": "Repeatability, Android gates, signed release/update verification and physical-device acceptance remain"
+}

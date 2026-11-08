@@ -1,0 +1,43 @@
+{
+  "date_utc": "2026-11-08T08:50:47.517860+00:00",
+  "scope": "Inactive generated intermediate/test caches dated Nov3/4 in original root; no running media test; all code WIP and APK outputs preserved",
+  "removed": [
+    {
+      "path": "apps/client/build/app/intermediates",
+      "logical_bytes": 352767469,
+      "last_modified_utc": "2026-11-03T09:36:35.097160+00:00"
+    },
+    {
+      "path": "apps/client/build/flutter_vodozemac/build",
+      "logical_bytes": 182137340,
+      "last_modified_utc": "2026-11-04T09:12:19.507025+00:00"
+    },
+    {
+      "path": "apps/client/build/test_cache",
+      "logical_bytes": 402722160,
+      "last_modified_utc": "2026-11-03T04:49:45.709902+00:00"
+    }
+  ],
+  "total_logical_bytes": 937626969,
+  "apk_outputs_before_after": {
+    "flutter-apk/app-release.apk.sha1": "fa3ab1ecdb08620b0f884adc1f62dde82041bd1064fa4713181afd41f299b6b3",
+    "flutter-apk/app-debug.apk.sha1": "0d6c44df1accb885380ac69f9aa35ffbfb3783c8c77b1cfb415121e480bd257c",
+    "flutter-apk/app-release.apk": "664aabb2fdff4f04aabca914ec41cfa194645ccf07a4f3c8716a7ec7ab34cf9b",
+    "logs/manifest-merger-debug-report.txt": "9faf4cbaea58ff48ffacaa3aa575f22d35c8b93849174e987af004744874fd8f",
+    "logs/manifest-merger-release-report.txt": "5a1e03631d2646d5dc77cdcb589cd8920786c0ac3095aed274e203b6f27d5907",
+    "sdk-dependencies/release/sdkDependencies.txt": "d8e1a5b34e92af7769551c49f4f49a99d07319a8f25fbcb5c179707f6eaed70f",
+    "apk/release/output-metadata.json": "64a4ca0b475a9d89b20c4590d22931877844f97d99cbe1942db4f37964f05f1e",
+    "apk/release/app-release.apk": "664aabb2fdff4f04aabca914ec41cfa194645ccf07a4f3c8716a7ec7ab34cf9b",
+    "apk/debug/output-metadata.json": "970e23f55e434bae2654e9a4af36cab1e1585363fb1917c7f149412c805051ae",
+    "apk/release/baselineProfiles/0/app-release.dm": "3ec07ed906f48ae46648869bc42ebd28a26ce7c03e4d0e6e57c609f3aa2dd659",
+    "apk/release/baselineProfiles/1/app-release.dm": "823a9d02bfc04f97e2c54cf35de36484f4b5ac014855c8c90e35002da1f7f716",
+    "native-debug-symbols/release/native-debug-symbols.zip": "b2bb7194212d269edaee9bdf6ffdf62444247c5dea686c11bcffa3d80d1f96e0",
+    "mapping/release/configuration.txt": "910f4486f3f809aad4c29e08b0aa0957e4b7643f8d93611d0a45d9ab1a6157a5",
+    "mapping/release/seeds.txt": "fbeebc5b3bb2704bb68659394b2c6f644b0e0b9318b27bcaeab3d1fccc49a5f9",
+    "mapping/release/mapping.txt": "109ab61e7cf2ab0c7b942d3f22b91ba5509d93a7429b2797fb3732e1775dc866",
+    "mapping/release/usage.txt": "151e0c491cd8942e28492485d5383f06d3e2869cc8cd8bb631bddead8c6128f0",
+    "mapping/release/resources.txt": "2e147c31e58080c3a9cd268b6505e694eb696708076262e5ac8e9b278167e7ad"
+  },
+  "source_git_status_unchanged": true,
+  "owner_profiles_keychain_backups_untouched": true
+}

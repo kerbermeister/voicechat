@@ -1,0 +1,32 @@
+{
+  "date": "2026-11-08",
+  "source_revision": "fc7678748ad6e21ed97e5c0119874632a2c1c384",
+  "version": "150.7871.04-vc34",
+  "trial": "sdk34-macos-focus-output-quality-1",
+  "qualified_for_release": false,
+  "test_exit_code": 1,
+  "test_failure": "A SemanticsHandle was active at the end of the test",
+  "platform_accessibility_inspected_during_test": true,
+  "root_cause_status": "Flutter records outstanding handles at test entry; platform accessibility enabled mid-test acquires a framework handle. Consistent with AX inspection; clean repeat required, no assertion bypass.",
+  "sample_count": 120,
+  "output_callback_continuity": {
+    "frames": 6045120,
+    "max_gap_ms": 15.48258334514685,
+    "overflow": 0,
+    "invalid": 0,
+    "first": 152586.3007946667,
+    "count": 12594,
+    "last": 152712.22119783337,
+    "gaps_over_80ms": []
+  },
+  "own_app_focus_events": [
+    {
+      "time": 152584.17766862502,
+      "event": "start",
+      "active": false,
+      "hidden": false
+    }
+  ],
+  "media_sha256": "467cf9d9b332e9605d0faa82e99447eab806a44c010926a0b8c054c3095f18fd",
+  "physical_display_or_speaker_measured": false
+}

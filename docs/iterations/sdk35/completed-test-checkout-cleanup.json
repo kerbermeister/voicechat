@@ -1,0 +1,14 @@
+{
+  "date_utc": "2026-11-08T09:16:00.630211+00:00",
+  "revision": "d5c8be19658ca564eaa9411243cbf916aec1ceb8",
+  "full_python_tests": 879,
+  "existing_skips": 4,
+  "outcome": "pass",
+  "log_sha256": "94df3b2749e4fe7ab80ad08e7ae3328f343035378e267cef85e1c11428c794c4",
+  "temporary_detached_test_checkout_only": true,
+  "generated_local_fixture_only": true,
+  "owner_profile_keychain_backups_untouched": true,
+  "logical_bytes_removed": 109576037,
+  "free_bytes_before": 2975567872,
+  "free_bytes_after": 3096055808
+}

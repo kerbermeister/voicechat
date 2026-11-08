@@ -1,0 +1,19 @@
+{
+  "utc": "2026-11-08T08:41:09.676755+00:00",
+  "scope": "completed owned ranged-download chunks and byte-identical duplicate; preserved verified archives, extracted SDKs, evidence, owner data",
+  "removed": [
+    {
+      "path": "sdk34-macos-artifact-ranges.zip",
+      "logical_bytes": 32302310
+    },
+    {
+      "path": "sdk34-macos-artifact-ranges",
+      "logical_bytes": 32302310
+    },
+    {
+      "path": "sdk34-android-artifact-ranges",
+      "logical_bytes": 18000596
+    }
+  ],
+  "total_logical_bytes": 82605216
+}

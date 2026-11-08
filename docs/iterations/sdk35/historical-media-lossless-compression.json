@@ -1,0 +1,307 @@
+{
+  "utc": "2026-11-08T09:20:30.147047+00:00",
+  "scope": "Completed owned historical SDK<=33 raw media captures; currentSDK34+ and selected currentSDK33 baselines preserved raw; gzip roundtrip SHA verified before removing redundant raw copy",
+  "data_deleted": false,
+  "restore": "gzip -dk <gzip_name> restores exact original bytes; media readers generally support .media.json.gz",
+  "files": [
+    {
+      "original_name": "native-av-android-sdk30-livekit-hostclock-6.control.media.json",
+      "gzip_name": "native-av-android-sdk30-livekit-hostclock-6.control.media.json.gz",
+      "raw_sha256": "10d13a290e0b1c771251055958e349c0fcff193c3c0a72b91c3db81d35399323",
+      "gzip_sha256": "d318d9fa9c385220d858bbf9d777d4b437b603784fa17a656cfbda1090f48c6a",
+      "raw_bytes": 37716550,
+      "gzip_bytes": 11650476
+    },
+    {
+      "original_name": "native-av-android-sdk30-livekit-hostclock-6.media.json",
+      "gzip_name": "native-av-android-sdk30-livekit-hostclock-6.media.json.gz",
+      "raw_sha256": "65bd31eea8d19269f12bedae5b49d11ab548c8317be398c7568bf2adc709ac29",
+      "gzip_sha256": "05d41d2d55f260f0c2ae15b873f72f8b203d9b38fd3b96e974c1021d320834e0",
+      "raw_bytes": 37804146,
+      "gzip_bytes": 11918544
+    },
+    {
+      "original_name": "native-av-android-sdk30-livekit-hostgpu-4.control.media.json",
+      "gzip_name": "native-av-android-sdk30-livekit-hostgpu-4.control.media.json.gz",
+      "raw_sha256": "0fdff13c3674b39717f960fe27187699d95f4e7ecec48765ea88d603b00b6f33",
+      "gzip_sha256": "e57b3fb4897a3c147be1dddf72d8d09aa4efdd7ca0ee0e4ca0f546195474a918",
+      "raw_bytes": 37693116,
+      "gzip_bytes": 12022166
+    },
+    {
+      "original_name": "native-av-android-sdk30-livekit-hostgpu-4.media.json",
+      "gzip_name": "native-av-android-sdk30-livekit-hostgpu-4.media.json.gz",
+      "raw_sha256": "eba4409fe59b850d7301b194a1ead997c57f5f92b249f693e52472c5a8f25fa7",
+      "gzip_sha256": "b449f90218cf6e73007b14ff79bbf6b101ac870db4076d8ab1327b5e7a95aecd",
+      "raw_bytes": 37756308,
+      "gzip_bytes": 12166706
+    },
+    {
+      "original_name": "native-av-android-sdk30-livekit-production-crypto-2.media.json",
+      "gzip_name": "native-av-android-sdk30-livekit-production-crypto-2.media.json.gz",
+      "raw_sha256": "219b6ab49c2e4802eea7066d9ee8f669b7429b104624cad4e861e33b519d5138",
+      "gzip_sha256": "6061579deb18037e87dc0753e07a5d7e8222613d97224ab471292233cba6100b",
+      "raw_bytes": 29972856,
+      "gzip_bytes": 7813256
+    },
+    {
+      "original_name": "native-av-android-sdk30-livekit-production-crypto-3.control.media.json",
+      "gzip_name": "native-av-android-sdk30-livekit-production-crypto-3.control.media.json.gz",
+      "raw_sha256": "4da822e99ba36a0c07e45e0cd719bfd92e1782b1e266f3e513dcf4bce566ce15",
+      "gzip_sha256": "baca2067b5fa034b3cd6b0f3aef9f6ab48ac5a2acd37d08a84e0ae8f0d9cf18f",
+      "raw_bytes": 38479385,
+      "gzip_bytes": 11883477
+    },
+    {
+      "original_name": "native-av-android-sdk30-livekit-production-crypto-3.media.json",
+      "gzip_name": "native-av-android-sdk30-livekit-production-crypto-3.media.json.gz",
+      "raw_sha256": "623945ada709429a8d74916900f92f3185e01947af8212d9ac12001684be1cb3",
+      "gzip_sha256": "7816ad3e9e8b86e2b9bbf6a7d0e8748256058535572caa7ea7ec836cee215e89",
+      "raw_bytes": 32572060,
+      "gzip_bytes": 10487390
+    },
+    {
+      "original_name": "native-av-android-sdk30-livekit-small-readback-5.control.media.json",
+      "gzip_name": "native-av-android-sdk30-livekit-small-readback-5.control.media.json.gz",
+      "raw_sha256": "7949080c75cfd799313c9c8d7f695890281ffc237da02d7f0c7190d0a915b7c5",
+      "gzip_sha256": "528c4cb230ec6dbd42bfeaafc15978252c703382ca8bda07d7bd2132290a4b00",
+      "raw_bytes": 39810441,
+      "gzip_bytes": 12663484
+    },
+    {
+      "original_name": "native-av-android-sdk30-livekit-small-readback-5.media.json",
+      "gzip_name": "native-av-android-sdk30-livekit-small-readback-5.media.json.gz",
+      "raw_sha256": "ddd86eb538209690a10f81fed99bc8ab9ada2443b3b54ee26836ff854c26ccb8",
+      "gzip_sha256": "aa91ce20a1692c315c540181decc777aaac6b15767c84c1ebc58b32d5b64d4a3",
+      "raw_bytes": 39883206,
+      "gzip_bytes": 13404772
+    },
+    {
+      "original_name": "native-av-android-sdk31-livekit-required-noaudio-2.control.media.json",
+      "gzip_name": "native-av-android-sdk31-livekit-required-noaudio-2.control.media.json.gz",
+      "raw_sha256": "9ace0aabf9f0fb3deec8fe6997f0d403eb18287530fa418d613736cdc8668978",
+      "gzip_sha256": "1742f58680235a01ff86ff2cc5aa39289920ade5640c38ed3f519727c876273d",
+      "raw_bytes": 37821284,
+      "gzip_bytes": 11542347
+    },
+    {
+      "original_name": "native-av-android-sdk31-livekit-required-noaudio-2.media.json",
+      "gzip_name": "native-av-android-sdk31-livekit-required-noaudio-2.media.json.gz",
+      "raw_sha256": "41cbcae73630f4820471a5b528ec99748322c89365bcaf7d69add80437a7701f",
+      "gzip_sha256": "310a473568b9732635b6dc2bc76147f54eb7c56192971042e84c4911e32744f1",
+      "raw_bytes": 37882026,
+      "gzip_bytes": 11790576
+    },
+    {
+      "original_name": "native-av-android-sdk32-controlled-disconnect-evidence-3.media.json",
+      "gzip_name": "native-av-android-sdk32-controlled-disconnect-evidence-3.media.json.gz",
+      "raw_sha256": "9b1a1ab8d79291010842e72637dfa43d65d524261c1429c7f234268bd50ee404",
+      "gzip_sha256": "72bbfa0dba181f4ffa9b6f94cfd5d559df84039461ee675a929e5f924fb86179",
+      "raw_bytes": 5342590,
+      "gzip_bytes": 1446419
+    },
+    {
+      "original_name": "native-av-android-sdk32-livekit-sync-target-2.control.media.json",
+      "gzip_name": "native-av-android-sdk32-livekit-sync-target-2.control.media.json.gz",
+      "raw_sha256": "0261b3e0216a18a57b8bbaa04713df095786997733d7f8c46580ab7903f9bf42",
+      "gzip_sha256": "558effbbee2d9490edaca34176b2ca1d5577838b809e7f5f49b3a4522078827d",
+      "raw_bytes": 38487988,
+      "gzip_bytes": 12003284
+    },
+    {
+      "original_name": "native-av-android-sdk32-livekit-sync-target-2.media.json",
+      "gzip_name": "native-av-android-sdk32-livekit-sync-target-2.media.json.gz",
+      "raw_sha256": "893464e5d78359c5340ac491f243e7b45ca9c0082c613d04305a5cd06e04bbbb",
+      "gzip_sha256": "67e637749b1b03211c7fb52afa3bb330194a4cdc229bf5f2090483824c8b3407",
+      "raw_bytes": 38557263,
+      "gzip_bytes": 12305774
+    },
+    {
+      "original_name": "native-av-android-sdk33-livekit-sync-target-1.control.media.json",
+      "gzip_name": "native-av-android-sdk33-livekit-sync-target-1.control.media.json.gz",
+      "raw_sha256": "d28de21a562bbc920f23423f691e9d417c98d3c8e7b9943538c1f7a36e85a478",
+      "gzip_sha256": "a44d20c375e9fd2da56c44e0832dbfbcef018f4e3b8915aef89647b2dcc634fa",
+      "raw_bytes": 39164000,
+      "gzip_bytes": 12601259
+    },
+    {
+      "original_name": "native-av-android-sdk33-livekit-sync-target-1.media.json",
+      "gzip_name": "native-av-android-sdk33-livekit-sync-target-1.media.json.gz",
+      "raw_sha256": "f7b13819a57eedfffeccc8ff3ff585c236a8c1156407cd9a1ed6e5d0a6010e3d",
+      "gzip_sha256": "a488fd0ffbdccb96dc9160db35e027ab41a77111ec5c8ab0f7099d076d2e4848",
+      "raw_bytes": 39240599,
+      "gzip_bytes": 13126827
+    },
+    {
+      "original_name": "native-av-macos-sdk26-macos-current-client-control-1.control.media.json",
+      "gzip_name": "native-av-macos-sdk26-macos-current-client-control-1.control.media.json.gz",
+      "raw_sha256": "7dc394a87e9821167c09a05188df67ef384fa1cd0fa9f773ac13c5290e52bcde",
+      "gzip_sha256": "46dd8e56676e02f504846ae0899ed273af1df61370123826e03368835be79bba",
+      "raw_bytes": 35576241,
+      "gzip_bytes": 10545054
+    },
+    {
+      "original_name": "native-av-macos-sdk26-macos-current-client-control-1.media.json",
+      "gzip_name": "native-av-macos-sdk26-macos-current-client-control-1.media.json.gz",
+      "raw_sha256": "03c613d27bb7950a0c6b27390adb947f55dce0e5b71873eb6fbcd026fba049af",
+      "gzip_sha256": "df06fec1e83fe9758caa13be63e60935a97cf62a179d7f2532e5b9bbeffd2378",
+      "raw_bytes": 35640597,
+      "gzip_bytes": 10668319
+    },
+    {
+      "original_name": "native-av-macos-sdk33-failed-teardown-diagnostic.control.media.json",
+      "gzip_name": "native-av-macos-sdk33-failed-teardown-diagnostic.control.media.json.gz",
+      "raw_sha256": "7123220804ab25cfc83ab030ca1557a0d9807d24ba15b55a0545519ab64ed81a",
+      "gzip_sha256": "e14fe05644f392cec94693bc4a2296ec70d835bb4ea311c8106e571d125c3d73",
+      "raw_bytes": 35472534,
+      "gzip_bytes": 10069784
+    },
+    {
+      "original_name": "native-av-macos-sdk33-failed-teardown-diagnostic.media.json",
+      "gzip_name": "native-av-macos-sdk33-failed-teardown-diagnostic.media.json.gz",
+      "raw_sha256": "2dea034368415b544cae80c4914768c27950672544851600ada08319f5fccd36",
+      "gzip_sha256": "47d9dbd104ce164d38d35ecd05587157167f243eff1832588d6bbc6b12238c25",
+      "raw_bytes": 35533403,
+      "gzip_bytes": 9891068
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-crypto-qos-observe-1.control.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-crypto-qos-observe-1.control.media.json.gz",
+      "raw_sha256": "14d4445b4dfc16d3d87db6472f25bb5c56841ca84eaa4fd8d386626776f6b5e4",
+      "gzip_sha256": "84f236ca7226be507c5b2fd1df24274fc4e9d9d94e4290d3c9442f2942f2c5ed",
+      "raw_bytes": 33711057,
+      "gzip_bytes": 10332293
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-crypto-qos-observe-1.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-crypto-qos-observe-1.media.json.gz",
+      "raw_sha256": "13444b6ae826c841b9007548d879c15c227486f9009ddcb4de05dc7011e602df",
+      "gzip_sha256": "2c571a92f4bb30315e3983b88f6943b4faedc47b71485c44afca6ba80ef1874e",
+      "raw_bytes": 33780226,
+      "gzip_bytes": 10342051
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-flutter-texture-packet-trace-2.control.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-flutter-texture-packet-trace-2.control.media.json.gz",
+      "raw_sha256": "a34499b8c21df6d233bde7e7dd6a112b4f853c60234713356b75a3e4c8b7ea60",
+      "gzip_sha256": "4cf73f8e4bae22f73c10ca4a01bd7fb0864de7365e532d65e847590f6c773350",
+      "raw_bytes": 36114224,
+      "gzip_bytes": 10326227
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-flutter-texture-packet-trace-2.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-flutter-texture-packet-trace-2.media.json.gz",
+      "raw_sha256": "2314bf9da8ca247f53666695b30bbf25aaf1d06fecbe35565d7316678e808926",
+      "gzip_sha256": "2f31b337a3f024c971dd76adfb7dfee4ffccb6c433d0198393b86bab9d39ec57",
+      "raw_bytes": 36186491,
+      "gzip_bytes": 10289681
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-native-crypto-qos-observe-1.control.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-native-crypto-qos-observe-1.control.media.json.gz",
+      "raw_sha256": "82faa41bf2eac7ceff2eb7334073cc406d146177dbd567d281dd5e57cdc825d4",
+      "gzip_sha256": "8357a02b0343db45a077e8e1b002a3a108d59c8aa147d615176a796cc6f5d024",
+      "raw_bytes": 33724882,
+      "gzip_bytes": 10332002
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-native-crypto-qos-observe-1.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-native-crypto-qos-observe-1.media.json.gz",
+      "raw_sha256": "5865d1e8b9d55ec61b6798f9e66c396d321b0b6e8e072492fcc43d30df258fd0",
+      "gzip_sha256": "1afb379e4e830439b1a6378a79cd2a42b96b8a8e22b04c529cc8d21a16635f5c",
+      "raw_bytes": 33794327,
+      "gzip_bytes": 10344391
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-native-crypto-qos-raise-1.control.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-native-crypto-qos-raise-1.control.media.json.gz",
+      "raw_sha256": "fc6cc1b4570ed77bd319503825e2800748f5ba0908178ea23272dce895e71997",
+      "gzip_sha256": "b63c956b635b548708ca0e8904b52e1c9c1d8cbb39c812c5fdf74aeade05b121",
+      "raw_bytes": 33708595,
+      "gzip_bytes": 10234531
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-native-crypto-qos-raise-1.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-native-crypto-qos-raise-1.media.json.gz",
+      "raw_sha256": "505b8d9e7ce6816488d8dcb2bb2cd1241e4203205d410ed94f965b59adc49a4a",
+      "gzip_sha256": "c80ec53d36248177ff44741698d107d9c74f5edf42c0310004a71a803f4bbf6b",
+      "raw_bytes": 33775369,
+      "gzip_bytes": 10249262
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-production-receiver-1.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-production-receiver-1.media.json.gz",
+      "raw_sha256": "96bb1b96741880f973c02f09a918ba0de0559b95d86a7996e2c2d35343ae82c1",
+      "gzip_sha256": "7ba316f513cbdb94a59df1a57017888580f58338ceaf407cb7031a3d9f0bff5a",
+      "raw_bytes": 70717994,
+      "gzip_bytes": 19866202
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-sfu-goroutine-diagnostic-1.control.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-sfu-goroutine-diagnostic-1.control.media.json.gz",
+      "raw_sha256": "3a52bbcdda204c9f2800404f5810652ade323ae5dba23861900301da338e2984",
+      "gzip_sha256": "a338adb7a2b4a126fd12c4c8c2a24077c209cc254c9113e41482c2a108e0bd90",
+      "raw_bytes": 37611251,
+      "gzip_bytes": 9523644
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-sfu-goroutine-diagnostic-1.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-sfu-goroutine-diagnostic-1.media.json.gz",
+      "raw_sha256": "066dcedaf7a626b2658c75e02209521f5d654c01d3226bef4d05074fc55f87e4",
+      "gzip_sha256": "7b124746cc38f5d660655bda6887d0285858ac2cf6ced693605db702b7e200e9",
+      "raw_bytes": 37672221,
+      "gzip_bytes": 9098056
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-sfu-one-worker-control-1.control.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-sfu-one-worker-control-1.control.media.json.gz",
+      "raw_sha256": "b44fe58ad37857bd0c639e2eb629c57f82e940d77fcc1e7ac69a4a4e5ff3bb31",
+      "gzip_sha256": "50f245eeb8dc72e82a4b4f5cdb27c39d09d3320125292bf7b48dc63036ff6a2c",
+      "raw_bytes": 35669739,
+      "gzip_bytes": 9260981
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-sfu-one-worker-control-1.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-sfu-one-worker-control-1.media.json.gz",
+      "raw_sha256": "aacf427247bb5102ea01b936e598ec61ef892b7ac2d975d64a35ff01dc97ee59",
+      "gzip_sha256": "64c3a0e3031cfee5d5964a2a3e3dbca225c478f7b04577459e444438ed78a6f6",
+      "raw_bytes": 35741177,
+      "gzip_bytes": 9211906
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-sfu-two-workers-control-2.control.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-sfu-two-workers-control-2.control.media.json.gz",
+      "raw_sha256": "a488164c80e81ca539f64bddbbf5c4e127b8a99d445ddd19c785d8a2e4d57eb0",
+      "gzip_sha256": "4c5e2fa8746c78d567a3664a3be6f40c31448745d6b3ba6ed7dc0bc799955703",
+      "raw_bytes": 34308340,
+      "gzip_bytes": 10525675
+    },
+    {
+      "original_name": "native-av-macos-sdk33-macos-sfu-two-workers-control-2.media.json",
+      "gzip_name": "native-av-macos-sdk33-macos-sfu-two-workers-control-2.media.json.gz",
+      "raw_sha256": "c97f881104dc0e8e692fe3a1e0f76899cedc0a27bdc843d138a36834345fabc1",
+      "gzip_sha256": "498b6b7ec94f6497cf19540ff0575d0bee4e1bd68db03362f51f590da281ceeb",
+      "raw_bytes": 34383546,
+      "gzip_bytes": 10553158
+    },
+    {
+      "original_name": "native-p2p-android-cross-sdk29-mac26-small-readback-15.control.media.json",
+      "gzip_name": "native-p2p-android-cross-sdk29-mac26-small-readback-15.control.media.json.gz",
+      "raw_sha256": "44f3552c58f03c1c330eb8c34cbfcb94b2eda9e76aaa13b1c07abf7bb4537d76",
+      "gzip_sha256": "8e595b95fb7912d88d98f65ae6104e737c90b80bdf84e993c2bb88cddea0ec7f",
+      "raw_bytes": 38790428,
+      "gzip_bytes": 11748511
+    },
+    {
+      "original_name": "native-p2p-android-cross-sdk29-mac26-small-readback-15.media.json",
+      "gzip_name": "native-p2p-android-cross-sdk29-mac26-small-readback-15.media.json.gz",
+      "raw_sha256": "2efca40a18aab5ac21c9df876794606d97662829995507ca9c99b2ea40c34dc5",
+      "gzip_sha256": "2682efce35a7879a638d532b389e5706022dffc7cfc16dd230ab375c3aadc323",
+      "raw_bytes": 38784247,
+      "gzip_bytes": 11818121
+    }
+  ],
+  "raw_bytes": 1348880707,
+  "gzip_bytes": 404057674,
+  "bytes_saved": 944823033
+}

@@ -1,0 +1,27 @@
+{
+  "date": "2026-11-08",
+  "source_revision": "fc7678748ad6e21ed97e5c0119874632a2c1c384",
+  "ci_run": 42457768600,
+  "native_job": 128660355390,
+  "job_outcome": "success",
+  "exact_manifest_and_toolchain_verified": true,
+  "patch_sha256": "89927dae751fb039c0d2b238bad53c6d28a497c426129968049422f927716a32",
+  "timing_crypto_neteq_tests": 113,
+  "video_recovery_tests": 53,
+  "native_test_skips": 0,
+  "existing_negative_controls_verified": true,
+  "receive_timestamp_stall_negative_controls_verified": true,
+  "platform_artifacts_and_audio_api_tests": "still building",
+  "media_release_qualified": false,
+  "evidence_sha256": {
+    "build-receipt.json": "dd5437eb42b45216a1ab55d1eab68761fc40baefe113993deec6d0e8358ccbe3",
+    "video-resume-tests.xml": "b89f51f67d2e1ca7b207877c618384e687244e7324be06e8af0547f7f3343f30",
+    "before-receive-presentation.log": "f4794046581a730f485bd4f00e4d8fd288ff702795d8b7ba09840e73cd7c7350",
+    "timing-tests.xml": "095a4aa9fed169cb09e58607bc6e8d64118df19edeebca81b63bf415891fe3c8",
+    "before-late-rtp-clock.log": "96a70156dd5780432173fe200a0427d9c63aea8097269bedf63a820b52786219",
+    "after-fix.log": "e973017dcd1dd800f6973432ae17719ca4ed2a8f26820599d6048a13546f5c78",
+    "video-resume-before.log": "5273f61ce1830ff68593d322644eed0be0ea7b77f28117bbaed10de450da6df8",
+    "before-fix.log": "7c4e3cbada5b35b8147006bbfaaf97d37c4b23494440490134fa8881ce4bd976",
+    "before-render-lead.log": "86f19941792923a18ebf764b50e5381a9b419e6b984f5006921193867159794b"
+  }
+}
