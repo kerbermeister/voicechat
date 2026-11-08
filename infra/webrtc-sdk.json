@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "f53f7fe24db11854b48b9ed5e10b0f24a67737b7c88f318854fa6ffb77300101",
+  "patch_sha256": "7a269aa605f9c8f69e56e30eda6684fb1483893787451cfbde42ef381ef9b6e1",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -58,7 +58,7 @@
     "modules/video_coding/timing/timing_unittest.cc": "7cdcf42e2354433d852a24786323b6f1bbc895949d4dbf5b6c8004d9f8ab5aa6",
     "video/video_receive_stream2.cc": "7b7e80a8b9fe47395652e1ad61f30a0b92aecadedbc20eb0f49f659b0a15da2c",
     "video/rtp_streams_synchronizer2.h": "38e0fcce58b14e9ff6f57709b55fac7f6bfb9d0fecb35db58c3c7eda4b6970d0",
-    "video/rtp_streams_synchronizer2.cc": "ba69ece51d73c821ea0f854cb7719f55e01aa3e61368fa9ac9a88f18e41ca82b",
+    "video/rtp_streams_synchronizer2.cc": "5424a3a204cb4c867669861bad012e2a1eb77e531c3a21b87f42f6921eb07851",
     "video/stream_synchronization_unittest.cc": "b995141c413f224a0459f4a69e3ea3a0319514e008565ee249b8f0d949282729",
     "video/BUILD.gn": "ada847d6c82f6044d7e03aa840305ce749ceb29c041b008b2c9178788faa8bd5",
     "sdk/objc/api/peerconnection/RTCPeerConnectionFactory.mm": "bd479018f9e3e6b8b28780e5619f5ebd33343c4a99d22446eda90a4f869bec75",

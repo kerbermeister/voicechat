@@ -436,11 +436,11 @@
 +++ b/video/rtp_streams_synchronizer2.cc
 @@ -11,6 +11,7 @@
  #include "video/rtp_streams_synchronizer2.h"
- 
+
  #include <cstdint>
 +#include <cstdlib>
  #include <optional>
- 
+
  #include "api/environment/environment.h"
 @@ -32,7 +33,27 @@
  namespace {
@@ -468,7 +468,7 @@
 +      delta * 1000 / info.rtp_clock_rate_hz;
 +  return capture_ms > 0 ? std::optional<int64_t>(capture_ms) : std::nullopt;
 +}
- 
+
  bool UpdateMeasurements(StreamSynchronization::Measurements* stream,
                          const Syncable::Info& info) {
 @@ -58,6 +79,8 @@
@@ -478,12 +478,12 @@
 +  if (syncable_audio_)
 +    syncable_audio_->SetMinimumPlayoutDelay(TimeDelta::Zero());
  }
- 
+
  void RtpStreamsSynchronizer::ConfigureSync(Syncable* syncable_audio) {
 @@ -67,15 +90,17 @@
    if (syncable_audio == syncable_audio_)
      return;
- 
+
 +  if (syncable_audio_)
 +    syncable_audio_->SetMinimumPlayoutDelay(TimeDelta::Zero());
 +  syncable_video_->SetVideoSyncDelay(std::nullopt);
@@ -499,13 +499,13 @@
 -
 -  sync_.reset(
 -      new StreamSynchronization(syncable_video_->id(), syncable_audio_->id()));
- 
+
    if (repeating_task_.Running())
      return;
 @@ -87,13 +112,17 @@
        });
  }
- 
+
 +void RtpStreamsSynchronizer::ResetSyncDelays() {
 +  // Natural NetEq/device delay and negotiated video bounds stay untouched.
 +  syncable_audio_->SetMinimumPlayoutDelay(TimeDelta::Zero());
@@ -514,18 +514,18 @@
 +
  void RtpStreamsSynchronizer::UpdateDelay() {
    RTC_DCHECK_RUN_ON(&main_checker_);
- 
+
    if (!syncable_audio_)
      return;
 -
 -  RTC_DCHECK(sync_.get());
- 
+
    bool log_stats = false;
    const int64_t now_ms = env_.clock().TimeInMilliseconds();
 @@ -102,41 +131,52 @@
      log_stats = true;
    }
- 
+
 -  int64_t last_audio_receive_time_ms =
 -      audio_measurement_.latest_receive_time_ms;
    std::optional<Syncable::Info> audio_info = syncable_audio_->GetInfo();
@@ -591,7 +591,7 @@
 +    syncable_video_->SetVideoSyncDelay(std::nullopt);
      return;
    }
- 
+
    if (log_stats) {
      RTC_LOG(LS_INFO) << "Sync info stats: " << now_ms
 -                     << ", {ssrc: " << sync_->audio_stream_id() << ", "
@@ -602,10 +602,10 @@
                       << "cur_delay: " << video_info->current_delay
                       << "} {relative_delay_ms: " << relative_delay_ms << "} ";
    }
-@@ -147,31 +187,33 @@
+@@ -147,31 +187,45 @@
                   audio_info->current_delay.ms());
    TRACE_COUNTER1("webrtc", "SyncRelativeDelay", relative_delay_ms);
- 
+
 -  int target_audio_delay_ms = 0;
 -  int target_video_delay_ms = video_info->current_delay.ms();
 -  // Calculate the necessary extra audio delay and desired total video
@@ -615,22 +615,6 @@
 -    return;
 -  }
 -
--  if (log_stats) {
--    RTC_LOG(LS_INFO) << "Sync delay stats: " << now_ms
--                     << ", {ssrc: " << sync_->audio_stream_id() << ", "
--                     << "target_delay_ms: " << target_audio_delay_ms
--                     << "} {ssrc: " << sync_->video_stream_id() << ", "
--                     << "target_delay_ms: " << target_video_delay_ms << "} ";
--  }
--
--  if (!syncable_audio_->SetMinimumPlayoutDelay(
--          TimeDelta::Millis(target_audio_delay_ms))) {
--    sync_->ReduceAudioDelay();
--  }
--  if (!syncable_video_->SetMinimumPlayoutDelay(
--          TimeDelta::Millis(target_video_delay_ms))) {
--    sync_->ReduceVideoDelay();
--  }
 +  if (!video_info->video_clock_offset.has_value())
 +    return;
 +
@@ -653,41 +637,67 @@
 +      target = capture_offset - (now - audio_playout->time) +
 +          (now - video_info->latest_receive_time) +
 +          *video_info->video_clock_offset;
++      if (log_stats) {
++        RTC_LOG(LS_INFO) << "Sync delay stats: " << now_ms
++                        << ", audio_playout_age: " << now - audio_playout->time
++                        << ", audio_capture_ms: " << *audio_playout_ms
++                        << ", video_capture_ms: " << *video_capture_ms
++                        << ", target: " << target;
++      }
 +    }
 +  }
 +  target = std::max(TimeDelta::Zero(), target);
+   if (log_stats) {
+     RTC_LOG(LS_INFO) << "Sync delay stats: " << now_ms
+-                     << ", {ssrc: " << sync_->audio_stream_id() << ", "
+-                     << "target_delay_ms: " << target_audio_delay_ms
+-                     << "} {ssrc: " << sync_->video_stream_id() << ", "
+-                     << "target_delay_ms: " << target_video_delay_ms << "} ";
+-  }
+-
+-  if (!syncable_audio_->SetMinimumPlayoutDelay(
+-          TimeDelta::Millis(target_audio_delay_ms))) {
+-    sync_->ReduceAudioDelay();
+-  }
+-  if (!syncable_video_->SetMinimumPlayoutDelay(
+-          TimeDelta::Millis(target_video_delay_ms))) {
+-    sync_->ReduceVideoDelay();
+-  }
++                    << ", final_target: " << target
++                    << ", video_clock_offset: " << *video_info->video_clock_offset;
++  }
 +  syncable_video_->SetVideoSyncDelay(target);
 +
  }
- 
+
  // TODO(https://bugs.webrtc.org/7065): Move RtpToNtpEstimator out of
-@@ -195,7 +237,7 @@
+@@ -195,7 +249,7 @@
    }
- 
+
    NtpTime latest_audio_ntp =
 -      audio_measurement_.rtp_to_ntp.Estimate(audio->rtp_timestamp);
 +      audio_measurement_->rtp_to_ntp.Estimate(audio->rtp_timestamp);
    if (!latest_audio_ntp.Valid()) {
      return false;
    }
-@@ -205,7 +247,7 @@
+@@ -205,7 +259,7 @@
                                                     audio->time);
- 
+
    NtpTime latest_video_ntp =
 -      video_measurement_.rtp_to_ntp.Estimate(rtp_timestamp);
 +      video_measurement_->rtp_to_ntp.Estimate(rtp_timestamp);
    if (!latest_video_ntp.Valid()) {
      return false;
    }
-@@ -223,7 +265,7 @@
- 
+@@ -223,7 +277,7 @@
+
    *video_playout_ntp_ms = latest_video_ntp_ms;
    *stream_offset_ms = latest_audio_ntp_ms - latest_video_ntp_ms;
 -  *estimated_freq_khz = video_measurement_.rtp_to_ntp.EstimatedFrequencyKhz();
 +  *estimated_freq_khz = video_measurement_->rtp_to_ntp.EstimatedFrequencyKhz();
    return true;
  }
- 
+
 --- a/video/stream_synchronization_unittest.cc
 +++ b/video/stream_synchronization_unittest.cc
 @@ -12,6 +12,13 @@
