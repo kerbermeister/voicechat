@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "date": "2026-11-08",
+  "trial": "sdk31-livekit-required-hostclock-1",
+  "outcome": "incomplete",
+  "qualified": false,
+  "emulator_version": "37.2.13",
+  "owned_emulator_pid": 65827,
+  "report_sha256": "6f6b8ba3b675f932012fc054f17aa6e563ce3297b7ef000627128b461a8c2a81",
+  "exception": {
+    "codes": "0x0000000000000001, 0x0000000000000000",
+    "rawCodes": [
+      1,
+      0
+    ],
+    "type": "EXC_BAD_ACCESS",
+    "signal": "SIGSEGV",
+    "subtype": "KERN_INVALID_ADDRESS at 0x0000000000000000"
+  },
+  "termination": {
+    "flags": 0,
+    "code": 11,
+    "namespace": "SIGNAL",
+    "indicator": "Segmentation fault: 11",
+    "byProc": "exc handler",
+    "byPid": 65827
+  },
+  "hang_detector_frames": [
+    "android::crashreport::CrashReporter::GenerateDumpAndDie(char const*)",
+    "_ZZN7android11crashreport13CrashReporter12hangDetectorEvENK3$_0clINSt3__117basic_string_viewIcNS4_11char_traitsIcEEEEEEDaT_",
+    "std::__1::__function::__func<android::crashreport::CrashReporter::hangDetector()::$_0, std::__1::allocator<android::crashreport::CrashReporter::hangDetector()::$_0>, void (std::__1::basic_string_view<char, std::__1::char_traits<char>>)>::operator()(std::__1::basic_string_view<char, std::__1::char_traits<char>>&&)",
+    "std::__1::function<void (std::__1::basic_string_view<char, std::__1::char_traits<char>>)>::operator()(std::__1::basic_string_view<char, std::__1::char_traits<char>>) const",
+    "android::crashreport::HangDetector::LooperWatcher::process(std::__1::function<void (std::__1::basic_string_view<char, std::__1::char_traits<char>>)> const&)",
+    "android::crashreport::HangDetector::workerThread()"
+  ],
+  "audio_start_frames": [
+    "__psynch_mutexwait",
+    "_pthread_mutex_firstfit_lock_wait",
+    "_pthread_mutex_firstfit_lock_slow",
+    "_pthread_cond_wait",
+    "HALB_Guard::WaitFor(unsigned long long)",
+    "HALB_IOThread::_WaitForState(unsigned int)",
+    "HALB_IOThread::StartAndWaitForState(unsigned int)",
+    "HALC_ProxyIOContext::_StartIO(HALC_ProxyIOContext::StartIO_RetryMethod)",
+    "HALC_ProxyIOContext::StartIOProc(int (*)(unsigned int, AudioTimeStamp const*, AudioBufferList const*, AudioTimeStamp const*, AudioBufferList*, AudioTimeStamp const*, void*))",
+    "HAL_HardwarePlugIn_DeviceStart(AudioHardwarePlugInInterface**, unsigned int, int (*)(unsigned int, AudioTimeStamp const*, AudioBufferList const*, AudioTimeStamp const*, AudioBufferList*, AudioTimeStamp const*, void*))",
+    "AudioDeviceStart_mac_imp",
+    "ca_update_voice_running_state_locked",
+    "coreaudio_enable_impl",
+    "coreaudio_ctl_out",
+    "AUD_set_active_out",
+    "virtio_snd_stream_prepare0_locked",
+    "virtio_snd_handle_ctl",
+    "memory_region_dispatch_write",
+    "flatview_write",
+    "address_space_rw"
+  ],
+  "main_loop_waiting_for_iothread_mutex": true,
+  "voicechat_native_crash_observed": false,
+  "quality_and_crypto_qualification": false,
+  "conclusion": "Host emulator CoreAudio startup blocked the emulator; test ended before complete negative/positive E2EE and A/V measurements. Does not establish the cause of earlier A/V failures."
+}

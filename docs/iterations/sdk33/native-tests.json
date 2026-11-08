@@ -1,0 +1,11 @@
+{
+  "source_revision": "5a4f0d288b7a66b2992bb781f7aab92cfb6a7df0",
+  "ci_run": 42440959919,
+  "timing_cpp_tests": 113,
+  "video_recovery_cpp_tests": 53,
+  "tests_skipped": 0,
+  "original_negative_controls_verified": true,
+  "former_sdk32_receive_guard_negative_controls_verified": true,
+  "artifact_zip_sha256": "41437ea65fbedd92b2214706ba70cbfa3a58400cfe18808af54ac588de434154",
+  "qualified_for_media_release": false
+}
