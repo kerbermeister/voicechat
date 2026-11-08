@@ -296,6 +296,31 @@ rtc_use_pipewire=false rtc_use_h264=false is_component_build=false use_rtti=true
                 raise RuntimeError(f'{regression} must fail with the former policy')
     finally:
         timing.write_bytes(patched)
+    receive_guard = (
+        b'  if (!UpdateMeasurements(&*audio_measurement_, *audio_info) ||\n'
+        b'      !UpdateMeasurements(&*video_measurement_, *video_info)) {')
+    former_guard = (
+        b'  const int64_t last_audio_receive_ms = audio_measurement_->latest_receive_time_ms;\n'
+        b'  const int64_t last_video_receive_ms = video_measurement_->latest_receive_time_ms;\n'
+        b'  if (!UpdateMeasurements(&*audio_measurement_, *audio_info) ||\n'
+        b'      !UpdateMeasurements(&*video_measurement_, *video_info) ||\n'
+        b'      last_audio_receive_ms == audio_measurement_->latest_receive_time_ms ||\n'
+        b'      last_video_receive_ms == video_measurement_->latest_receive_time_ms) {')
+    if patched_sync.count(receive_guard) != 1:
+        raise RuntimeError('Expected exactly one presentation clock update guard')
+    try:
+        synchronizer.write_bytes(patched_sync.replace(receive_guard, former_guard))
+        run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
+        before = subprocess.run([str(build / 'timing_sync_unittests'),
+            '--gtest_filter=' + ':'.join(MANIFEST['receive_presentation_regressions'])],
+            capture_output=True, text=True)
+        (output / 'before-receive-presentation.log').write_text(before.stdout + before.stderr)
+        if before.returncode != 1 or not all(
+                '[  FAILED  ] ' + name in before.stdout
+                for name in MANIFEST['receive_presentation_regressions']):
+            raise RuntimeError('Each presentation regression must detect the former receive guard')
+    finally:
+        synchronizer.write_bytes(patched_sync)
     verify_files(source, MANIFEST['patched_files_sha256'])
     run(['autoninja', '-C', build, 'timing_sync_unittests', '-j2'], cwd=source)
     after = subprocess.run([str(build / 'timing_sync_unittests'),

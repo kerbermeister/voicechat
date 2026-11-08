@@ -21,6 +21,12 @@ def verify_tests(directory, manifest):
     if not all(name in names and '[  FAILED  ] ' + name in before
                for name in manifest['regressions']):
         raise ValueError('Every regression must detect the original timing/sync behavior')
+    if manifest.get('receive_presentation_regressions'):
+        control = directory / 'before-receive-presentation.log'
+        if not control.is_file() or not all(
+                name in names and '[  FAILED  ] ' + name in control.read_text()
+                for name in manifest['receive_presentation_regressions']):
+            raise ValueError('Former receive guard regression evidence is missing')
 
 
 def verify(directory, manifest):

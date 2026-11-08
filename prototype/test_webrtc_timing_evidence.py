@@ -45,6 +45,17 @@ class TimingEvidenceTests(unittest.TestCase):
     def test_exact_complete_evidence_passes(self):
         evidence.verify(self.directory, self.manifest)
 
+    def test_presentation_refresh_requires_former_receive_guard_failure(self):
+        self.manifest['receive_presentation_regressions'] = ['VCMTimingTest.Getter']
+        with self.assertRaisesRegex(ValueError, 'Former receive guard'):
+            evidence.verify_tests(self.directory, self.manifest)
+        control = self.directory / 'before-receive-presentation.log'
+        control.write_text('[  PASSED  ] VCMTimingTest.Getter')
+        with self.assertRaisesRegex(ValueError, 'Former receive guard'):
+            evidence.verify_tests(self.directory, self.manifest)
+        control.write_text('[  FAILED  ] VCMTimingTest.Getter')
+        evidence.verify_tests(self.directory, self.manifest)
+
     def test_changed_source_or_toolchain_cannot_reuse_evidence(self):
         with self.assertRaisesRegex(ValueError, 'pins'):
             evidence.verify(self.directory, {**self.manifest, 'webrtc_commit': 'different-source'})

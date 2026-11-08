@@ -2,7 +2,7 @@
   "sdk_version": "150.7871.04",
   "webrtc_commit": "a545de45259b47dfac5f3635863e47cb601f1bb2",
   "builder_commit": "717ec1dc5a94389d691e09cccaf3d7b3364fb4b7",
-  "patch_sha256": "7a269aa605f9c8f69e56e30eda6684fb1483893787451cfbde42ef381ef9b6e1",
+  "patch_sha256": "270a5d635f467243fc86861468a540df645dfc798909065a5dc90a739dc08336",
   "original_files_sha256": {
     "modules/video_coding/timing/timing.h": "6b9a76cdcd90009efd7d57154dd7906af1372f685865bb12f4b886651dc3c910",
     "modules/video_coding/timing/timing.cc": "2f7130331349de871930253189c24f9b582b3fed3cf532b4a519a5e26ad89367",
@@ -58,8 +58,8 @@
     "modules/video_coding/timing/timing_unittest.cc": "7cdcf42e2354433d852a24786323b6f1bbc895949d4dbf5b6c8004d9f8ab5aa6",
     "video/video_receive_stream2.cc": "7b7e80a8b9fe47395652e1ad61f30a0b92aecadedbc20eb0f49f659b0a15da2c",
     "video/rtp_streams_synchronizer2.h": "38e0fcce58b14e9ff6f57709b55fac7f6bfb9d0fecb35db58c3c7eda4b6970d0",
-    "video/rtp_streams_synchronizer2.cc": "5424a3a204cb4c867669861bad012e2a1eb77e531c3a21b87f42f6921eb07851",
-    "video/stream_synchronization_unittest.cc": "b995141c413f224a0459f4a69e3ea3a0319514e008565ee249b8f0d949282729",
+    "video/rtp_streams_synchronizer2.cc": "ee8b03490473fc482d173c5aef1c22aa56756d195f3ced28927fa0eb290b05e9",
+    "video/stream_synchronization_unittest.cc": "fcf89224cb662ab5d21ae73ce4acbdac99a18d1c8ce35f146dd0c46c9f1ed6eb",
     "video/BUILD.gn": "ada847d6c82f6044d7e03aa840305ce749ceb29c041b008b2c9178788faa8bd5",
     "sdk/objc/api/peerconnection/RTCPeerConnectionFactory.mm": "bd479018f9e3e6b8b28780e5619f5ebd33343c4a99d22446eda90a4f869bec75",
     "sdk/android/api/org/webrtc/PeerConnectionFactory.java": "c75b55f3fabd1848d5b71d68caeb4b16bf18c48537aad852fab0c8156a898d21",
@@ -104,9 +104,9 @@
   },
   "unit_filter": "VCMTimingTest.*:StreamSynchronizationTest.*:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.*:SifPayload.*:SifTransformTest.*:FrameCryptor.*:DataPacketCryptor.*:KeyProvider.*:DecisionLogicTest.NormalOperation:DecisionLogicTest.Accelerate:DecisionLogicTest.FastAccelerate:DecisionLogicTest.PreemptiveExpand:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout",
   "regression_filter": "VCMTimingTest.SyncDelay*:VCMTimingTest.SyncTargetReducesStaleJitterAndPreservesBounds:RtpStreamsSynchronizerTest.*:TimestampExtrapolatorTest.RecoversClockRateAfterNetworkDelay:SifTransformTest.StrictReadyDropsBlankWithoutSharedKey:SifTransformTest.StrictReadyDoesNotUseAnotherParticipantsKey:DecisionLogicTest.SmallBufferOverfillKeepsNormalPlayout:SifTransformTest.StrictDisabledCryptor*",
-  "release_artifact_version": "150.7871.04-vc32",
+  "release_artifact_version": "150.7871.04-vc33",
   "depot_tools_commit": "3c975ac7d75b10799ef97c00452c4c0f18f322b3",
-  "unit_test_count": 111,
+  "unit_test_count": 113,
   "regressions": [
     "VCMTimingTest.SyncDelayUsesCurrentDelayAfterVideoJitter",
     "VCMTimingTest.SyncDelayRespectsBoundsAndAudioDeviceMinimum",
@@ -139,7 +139,9 @@
     "RtpStreamsSynchronizerTest.SingleReportSurvivesRtpWrap",
     "RtpStreamsSynchronizerTest.StaleSingleReportDoesNotBootstrap",
     "SifTransformTest.StrictDisabledCryptorDropsFrames",
-    "SifTransformTest.StrictDisabledCryptorDropsOutgoingFrames"
+    "SifTransformTest.StrictDisabledCryptorDropsOutgoingFrames",
+    "RtpStreamsSynchronizerTest.RefreshesTargetWhileVideoReceiveTimestampStalls",
+    "RtpStreamsSynchronizerTest.RefreshesTargetWhileReceiveTimestampsAreUnchanged"
   ],
   "native_video_playout_ms": 0,
   "platform_policy_test_count": 10,
@@ -160,5 +162,9 @@
     "VideoStreamBufferController/VideoStreamBufferControllerTest.RtpClockRecoveryRefreshesQueuedDeadline/SyncDecoding",
     "VideoStreamBufferController/VideoStreamBufferControllerTest.RtpClockRecoveryRefreshesQueuedDeadline/UnsyncedDecoding",
     "RtpVideoStreamReceiver2Test.RequiredEncryptionAllowsEnforcingTransformer"
+  ],
+  "receive_presentation_regressions": [
+    "RtpStreamsSynchronizerTest.RefreshesTargetWhileVideoReceiveTimestampStalls",
+    "RtpStreamsSynchronizerTest.RefreshesTargetWhileReceiveTimestampsAreUnchanged"
   ]
 }

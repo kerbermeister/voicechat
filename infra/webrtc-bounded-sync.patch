@@ -522,7 +522,7 @@
 
    bool log_stats = false;
    const int64_t now_ms = env_.clock().TimeInMilliseconds();
-@@ -102,41 +131,52 @@
+@@ -102,41 +131,50 @@
      log_stats = true;
    }
 
@@ -567,12 +567,10 @@
 +  }
 +  sync_suspended_ = false;
 +
-+  const int64_t last_audio_receive_ms = audio_measurement_->latest_receive_time_ms;
-+  const int64_t last_video_receive_ms = video_measurement_->latest_receive_time_ms;
++  // Audio playout can drain or change delay while video is already queued.
++  // A valid clock mapping does not require another RTP packet from both tracks.
 +  if (!UpdateMeasurements(&*audio_measurement_, *audio_info) ||
-+      !UpdateMeasurements(&*video_measurement_, *video_info) ||
-+      last_audio_receive_ms == audio_measurement_->latest_receive_time_ms ||
-+      last_video_receive_ms == video_measurement_->latest_receive_time_ms) {
++      !UpdateMeasurements(&*video_measurement_, *video_info)) {
 +    return;
 +  }
 +
@@ -602,7 +600,7 @@
                       << "cur_delay: " << video_info->current_delay
                       << "} {relative_delay_ms: " << relative_delay_ms << "} ";
    }
-@@ -147,31 +187,45 @@
+@@ -147,31 +185,45 @@
                   audio_info->current_delay.ms());
    TRACE_COUNTER1("webrtc", "SyncRelativeDelay", relative_delay_ms);
 
@@ -671,7 +669,7 @@
  }
 
  // TODO(https://bugs.webrtc.org/7065): Move RtpToNtpEstimator out of
-@@ -195,7 +249,7 @@
+@@ -195,7 +247,7 @@
    }
 
    NtpTime latest_audio_ntp =
@@ -680,7 +678,7 @@
    if (!latest_audio_ntp.Valid()) {
      return false;
    }
-@@ -205,7 +259,7 @@
+@@ -205,7 +257,7 @@
                                                     audio->time);
 
    NtpTime latest_video_ntp =
@@ -689,7 +687,7 @@
    if (!latest_video_ntp.Valid()) {
      return false;
    }
-@@ -223,7 +277,7 @@
+@@ -223,7 +275,7 @@
 
    *video_playout_ntp_ms = latest_video_ntp_ms;
    *stream_offset_ms = latest_audio_ntp_ms - latest_video_ntp_ms;
@@ -701,7 +699,7 @@
 --- a/video/stream_synchronization_unittest.cc
 +++ b/video/stream_synchronization_unittest.cc
 @@ -12,6 +12,13 @@
- 
+
  #include <algorithm>
  #include <cstdint>
 +#include <memory>
@@ -711,13 +709,13 @@
 +#include "call/syncable.h"
 +#include "test/time_controller/simulated_time_controller.h"
 +#include "video/rtp_streams_synchronizer2.h"
- 
+
  #include "rtc_base/rtp_to_ntp_estimator.h"
  #include "system_wrappers/include/clock.h"
-@@ -531,4 +538,296 @@
+@@ -531,4 +538,325 @@
    BothDelayedVideoLaterTest(kBaseTargetDelayMs);
  }
- 
+
 +
 +namespace {
 +class SyncTestStream : public Syncable {
@@ -953,6 +951,35 @@
 +}
 +
 +TEST_F(RtpStreamsSynchronizerTest, TracksAudioPlayoutWithinTwoHundredMilliseconds) {
++  audio_.actual_playout_delay = TimeDelta::Millis(80);
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target.has_value());
++  EXPECT_NEAR(video_.video_target->ms(), 80, 1);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest,
++       RefreshesTargetWhileVideoReceiveTimestampStalls) {
++  audio_.actual_playout_delay = TimeDelta::Millis(350);
++  time_.AdvanceTime(TimeDelta::Millis(400));
++  ASSERT_TRUE(video_.video_target.has_value());
++  EXPECT_NEAR(video_.video_target->ms(), 350, 1);
++  video_.receiving = false;
++  audio_.actual_playout_delay = TimeDelta::Millis(80);
++  time_.AdvanceTime(TimeDelta::Millis(200));
++  ASSERT_TRUE(video_.video_target.has_value());
++  EXPECT_NEAR(video_.video_target->ms(), 80, 1);
++  EXPECT_EQ(audio_.floor, TimeDelta::Zero());
++}
++
++TEST_F(RtpStreamsSynchronizerTest,
++       RefreshesTargetWhileReceiveTimestampsAreUnchanged) {
++  audio_.actual_playout_delay = TimeDelta::Millis(350);
++  time_.AdvanceTime(TimeDelta::Millis(400));
++  ASSERT_TRUE(video_.video_target.has_value());
++  EXPECT_NEAR(video_.video_target->ms(), 350, 1);
++  audio_.receiving = false;
++  video_.receiving = false;
 +  audio_.actual_playout_delay = TimeDelta::Millis(80);
 +  time_.AdvanceTime(TimeDelta::Millis(200));
 +  ASSERT_TRUE(video_.video_target.has_value());
