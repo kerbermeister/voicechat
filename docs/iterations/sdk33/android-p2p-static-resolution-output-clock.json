@@ -1,0 +1,182 @@
+{
+  "date": "2026-11-08",
+  "sdk_version": "150.7871.04-vc33",
+  "source_revision": "5a4f0d288b7a66b2992bb781f7aab92cfb6a7df0",
+  "platform": "Android API35 arm64 emulator, macOS SDK26 native sender",
+  "production_same_media_stream": true,
+  "maintain_resolution_requested": true,
+  "sample_count": 120,
+  "decoded_av": {
+    "outcome": "pass",
+    "clean": {
+      "count": 7,
+      "max_abs_ms": 57.330458666669415,
+      "max_source_corrected_abs_ms": 56.33275031298979
+    },
+    "recovery": {
+      "count": 23,
+      "max_abs_ms": 71.44754133332754,
+      "max_source_corrected_abs_ms": 70.41666631266708
+    },
+    "recovery_transport": {
+      "pass": true,
+      "packet_deltas": {
+        "audio": 503,
+        "video": 1380
+      },
+      "decoded_video_frames": 201,
+      "longest_active_video_decode_pause_ms": 0
+    },
+    "source_frame_identity_verified": true
+  },
+  "audio_device_output": {
+    "pass": false,
+    "phases": {
+      "clean": {
+        "count": 7,
+        "missing_output_markers": [],
+        "max_abs_ms": 77.00825000000577,
+        "max_source_corrected_abs_ms": 78.03812501305174,
+        "pass": true
+      },
+      "recovery": {
+        "count": 23,
+        "missing_output_markers": [],
+        "max_abs_ms": 124.2318336666699,
+        "max_source_corrected_abs_ms": 125.28808367682132,
+        "pass": false
+      }
+    },
+    "audio_device_timestamp_observed": true,
+    "physical_speaker_measured": false,
+    "video_sink_before_display": true
+  },
+  "speech": {
+    "schema": 1,
+    "outcome": "pass",
+    "synthetic_reference_only": true,
+    "physical_listening_test": false,
+    "paired_trials": 1,
+    "stoi_noninferiority_margin": 0.005,
+    "level_tolerance_db": 0.15,
+    "phases": {
+      "clean": {
+        "paired_clips": 8,
+        "control": {
+          "stoi": 0.9924853265188717,
+          "si_sdr_db": 8.814867302934276,
+          "rms_dbfs": -23.321500080224627
+        },
+        "candidate": {
+          "stoi": 0.9924853265188717,
+          "si_sdr_db": 8.814867302934276,
+          "rms_dbfs": -23.321500080224627
+        }
+      },
+      "delay": {
+        "paired_clips": 14,
+        "control": {
+          "stoi": 0.9892445313194208,
+          "si_sdr_db": 8.912401267569367,
+          "rms_dbfs": -23.25062154878782
+        },
+        "candidate": {
+          "stoi": 0.9892445313194208,
+          "si_sdr_db": 8.912401267569367,
+          "rms_dbfs": -23.25062154878782
+        }
+      },
+      "pause": {
+        "paired_clips": 9,
+        "control": {
+          "stoi": 0.9885200120977679,
+          "si_sdr_db": 8.518650139826496,
+          "rms_dbfs": -23.233524997918458
+        },
+        "candidate": {
+          "stoi": 0.9885200120977679,
+          "si_sdr_db": 8.518650139826496,
+          "rms_dbfs": -23.233524997918458
+        }
+      },
+      "recovery": {
+        "paired_clips": 21,
+        "control": {
+          "stoi": 0.9847556399630346,
+          "si_sdr_db": 7.962151431922807,
+          "rms_dbfs": -23.191763587486165
+        },
+        "candidate": {
+          "stoi": 0.9847556399630346,
+          "si_sdr_db": 7.962151431922807,
+          "rms_dbfs": -23.191763587486165
+        }
+      }
+    }
+  },
+  "added_voice": {
+    "pass": true,
+    "clean": {
+      "count": 7,
+      "max_added_voice_delay_ms": -2.442916666652195
+    },
+    "video_paused": {
+      "count": 8,
+      "max_added_voice_delay_ms": -2.4934586666915948
+    },
+    "recovery": {
+      "count": 23,
+      "max_added_voice_delay_ms": 21.51454166667577
+    }
+  },
+  "native_decode_queue": {
+    "pass": true,
+    "max_active_decode_pause_ms": 0,
+    "observed_decoded_frames": 31,
+    "worst_assembled_frame": {
+      "assembled_wait_ms": 181,
+      "deadline_from_arrival_ms": 197,
+      "decode_ms": 7
+    }
+  },
+  "crypto_control": {
+    "protocol": "DTLS-SRTP",
+    "negative_dtls_failed": true,
+    "negative_received_media_packets": 0,
+    "positive_dtls_connected": true,
+    "srtp_cipher": "AES_CM_128_HMAC_SHA1_80"
+  },
+  "crypto_scope": "DTLS-SRTP; this does not replace LiveKit SFrame/E2EE qualification",
+  "test_output_silenced": true,
+  "silent_pcm_frames": 1029600,
+  "actual_saved_both_pcm_streams_validated": true,
+  "pcm_chunks": [
+    12646,
+    12650
+  ],
+  "pcm_capacity": 24000,
+  "qualified_for_release": false,
+  "published": false,
+  "physical_android": false,
+  "evidence_sha256": {
+    ".media.json": "802acbe83c94709aaa019925039b8cb32eb41aa51b684b0802d4f34972b9f31b",
+    ".control.media.json": "4e7beb74ad890c8afa5c3e03585c40b56fd90d741891c5ccc01dd83d7899cafe",
+    ".analysis.json": "4d606065e7b22707e5336175398731022523051aa6494fb1d8c2d7af68b34a9b",
+    ".output-clock.json": "57de4ac05065a20b82359828f9ab0059bf8334f6a26b17fe5a090bc445f1166c",
+    ".speech.json": "b53f255502f040847610e476041ea074497f526cea1efdac227c1a89285f3874",
+    ".video-queue.json": "db9061c9048f166fd0b74a9da884f5340a32917e9f6ab4cba15ea8c72938d73e",
+    ".voice.json": "8225a1bc3b6108cac0ac0684c1ced7bd99e365cb3a7533ddd5c4ecc65e87c965"
+  },
+  "observed_sent_video_sizes": [
+    [
+      640,
+      360
+    ]
+  ],
+  "observed_received_video_sizes": [
+    [
+      640,
+      360
+    ]
+  ]
+}

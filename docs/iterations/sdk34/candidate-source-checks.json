@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-08",
+  "source_revision": "fc7678748ad6e21ed97e5c0119874632a2c1c384",
+  "candidate_version": "150.7871.04-vc34",
+  "patch_sha256": "89927dae751fb039c0d2b238bad53c6d28a497c426129968049422f927716a32",
+  "original_files_verified": 53,
+  "patched_files_verified": 55,
+  "official_android_builder_version_file_before": {
+    "sdk/android/BUILD.gn": "906e7042aebd73d845a1a8f3ed04e3eb40a566109656c0e519c95572892b5401"
+  },
+  "official_android_builder_version_file_after": {
+    "sdk/android/BUILD.gn": "5fe030c74c5c730ba1891c6e3c9be0b4e66cd181fed5695e65a53d9764389f12"
+  },
+  "all_other_platform_hashes_unchanged": true,
+  "complete_official_and_owned_patch_application_verified": true,
+  "targeted_python_tests": 23,
+  "full_python_tests": 877,
+  "existing_python_skips": 4,
+  "full_python_outcome": "pass",
+  "full_python_log_sha256": "47a8dfce4c6cf3abb89ecce114aa4a449b48a57dd8366c8cda2364ba3a3722a3",
+  "actual_java_compile": {
+    "pass": true,
+    "sdk33_aar_sha256": "a7de511f4f126bbe033db1130f28bc834eb74d4dd5395bfaba7b68911925e5d4",
+    "modified_java_sha256": "898195d99ad55068291b833d4c4d657d6ed3a274e39e2763c9ba554b62a126a5",
+    "compiled_against_api": 36,
+    "robolectric_or_android_runtime_test": false,
+    "release_qualified": false
+  },
+  "ci_run": 42457768600,
+  "ci_native_platform_and_robolectric_gates": "pending at recording; previous runs42454094646/42456803236 cancelled before release",
+  "expected_native_tests": 166,
+  "expected_audio_java_api_tests": 16,
+  "expected_decoder_java_api_tests": 2,
+  "actual_sdk34_media_gates": "not yet run; compiled artifacts pending",
+  "local_scoped_focus_observer_smoke": "passed start/stop idempotency and own-process notification cleanup; no UI activation",
+  "published": false,
+  "release_qualified": false
+}

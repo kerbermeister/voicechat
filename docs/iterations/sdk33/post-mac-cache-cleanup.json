@@ -1,0 +1,30 @@
+{
+  "generated_caches_only": true,
+  "paths": [
+    {
+      "path": "native-sdk33-macos-qualification/apps/client/build/macos/ModuleCache.noindex",
+      "logical_bytes": 410309392
+    },
+    {
+      "path": "native-sdk33-macos-qualification/apps/client/build/macos/Build/Intermediates.noindex/Pods.build",
+      "logical_bytes": 439971102
+    },
+    {
+      "path": "native-sdk33-macos-qualification/apps/client/build/macos/Build/Intermediates.noindex/Runner.build",
+      "logical_bytes": 6454986
+    },
+    {
+      "path": "native-sdk33-macos-qualification/apps/client/build/macos/Build/Intermediates.noindex/EagerLinkingTBDs",
+      "logical_bytes": 3699555
+    },
+    {
+      "path": "native-sdk33-macos-qualification/apps/client/.dart_tool/flutter_build",
+      "logical_bytes": 315651014
+    }
+  ],
+  "total_logical_bytes": 1176086049,
+  "retained_tested_sdk_sha256": "ae136479390b563d18f7f7a2068d521274e8888bedc3e05d75b23f4e51a2b54d",
+  "sdk_sha256_unchanged": true,
+  "profiles_keychain_packages_evidence_untouched": true,
+  "free_bytes_after": 2558607360
+}

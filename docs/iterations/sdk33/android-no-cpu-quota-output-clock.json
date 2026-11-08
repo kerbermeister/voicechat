@@ -1,0 +1,165 @@
+{
+  "date": "2026-11-08",
+  "sdk_version": "150.7871.04-vc33",
+  "source_revision": "5a4f0d288b7a66b2992bb781f7aab92cfb6a7df0",
+  "aar_sha256": "a7de511f4f126bbe033db1130f28bc834eb74d4dd5395bfaba7b68911925e5d4",
+  "jni_sha256": "bf9f1769f407f61beb94a4e41959ee9a3186796010531674ec21c08dbdaf68da",
+  "local_sfu_cpu_quota": null,
+  "local_sfu_gomaxprocs": 2,
+  "sample_count": 120,
+  "decoded_timing": {
+    "outcome": "pass",
+    "clean": {
+      "count": 8,
+      "max_abs_ms": 47.22091700000419,
+      "max_source_corrected_abs_ms": 46.23387534570611
+    },
+    "recovery": {
+      "count": 26,
+      "max_abs_ms": 57.019666333332,
+      "max_source_corrected_abs_ms": 55.89812467351862
+    },
+    "source_frame_identity_verified": true
+  },
+  "audio_device_output": {
+    "pass": false,
+    "phases": {
+      "clean": {
+        "count": 8,
+        "missing_output_markers": [],
+        "max_abs_ms": 112.19616666666354,
+        "max_source_corrected_abs_ms": 113.41649999839376,
+        "pass": false
+      },
+      "recovery": {
+        "count": 26,
+        "missing_output_markers": [],
+        "max_abs_ms": 123.16579200000888,
+        "max_source_corrected_abs_ms": 124.25445867143026,
+        "pass": false
+      }
+    },
+    "audio_device_timestamp_observed": true,
+    "physical_speaker_measured": false,
+    "video_sink_before_display": true
+  },
+  "speech": {
+    "schema": 1,
+    "outcome": "pass",
+    "synthetic_reference_only": true,
+    "physical_listening_test": false,
+    "paired_trials": 1,
+    "stoi_noninferiority_margin": 0.005,
+    "level_tolerance_db": 0.15,
+    "phases": {
+      "clean": {
+        "paired_clips": 8,
+        "control": {
+          "stoi": 0.9952903934590163,
+          "si_sdr_db": 9.185811646808993,
+          "rms_dbfs": -23.202204897189695
+        },
+        "candidate": {
+          "stoi": 0.9952903934590163,
+          "si_sdr_db": 9.185811646808993,
+          "rms_dbfs": -23.202204897189695
+        }
+      },
+      "delay": {
+        "paired_clips": 13,
+        "control": {
+          "stoi": 0.9949916309388207,
+          "si_sdr_db": 9.56095540216182,
+          "rms_dbfs": -23.190355048592735
+        },
+        "candidate": {
+          "stoi": 0.9949916309388207,
+          "si_sdr_db": 9.56095540216182,
+          "rms_dbfs": -23.190355048592735
+        }
+      },
+      "pause": {
+        "paired_clips": 6,
+        "control": {
+          "stoi": 0.9954514436844566,
+          "si_sdr_db": 9.557722541459533,
+          "rms_dbfs": -23.162253833796523
+        },
+        "candidate": {
+          "stoi": 0.9954514436844566,
+          "si_sdr_db": 9.557722541459533,
+          "rms_dbfs": -23.162253833796523
+        }
+      },
+      "recovery": {
+        "paired_clips": 26,
+        "control": {
+          "stoi": 0.9909264443265555,
+          "si_sdr_db": 8.608775902774426,
+          "rms_dbfs": -23.128037588323437
+        },
+        "candidate": {
+          "stoi": 0.9909264443265555,
+          "si_sdr_db": 8.608775902774426,
+          "rms_dbfs": -23.128037588323437
+        }
+      }
+    }
+  },
+  "added_voice": {
+    "pass": true,
+    "clean": {
+      "count": 8,
+      "max_added_voice_delay_ms": 25.216666666651122
+    },
+    "video_paused": {
+      "count": 4,
+      "max_added_voice_delay_ms": 15.806291666649486
+    },
+    "recovery": {
+      "count": 26,
+      "max_added_voice_delay_ms": 22.052083666665112
+    }
+  },
+  "missing_key_gate": {
+    "content": {
+      "audio_peak": 0.0,
+      "video_markers": 0,
+      "audio_chunks": 296,
+      "control_audio_peak": 0.0,
+      "output_signal_peak": 0.0,
+      "output_signal_frames": 0
+    },
+    "audio": {
+      "packets": 133,
+      "decoded": 0
+    },
+    "video": {
+      "packets": 182,
+      "decoded": 0
+    },
+    "ordinary_voice": {
+      "packets": 133,
+      "decoded": 0,
+      "plaintext_audio_peak": 0.0
+    }
+  },
+  "test_output_silenced": true,
+  "crypto_thread_priorities": [
+    -10,
+    -10,
+    -10
+  ],
+  "qualified_for_release": false,
+  "physical_android": false,
+  "published": false,
+  "evidence_sha256": {
+    ".media.json": "b1b58b4a7d4746abbf85da6a90a96656a6cc6aacf81e3b52141f9102fa609a0b",
+    ".control.media.json": "4b2fec24f5b4a879f6ca0b6aee9d6667be24e7f95ae9731d71e9d0ef1045fc7f",
+    ".analysis.json": "67a72def7d22d74295dafaddad418ab17ea7863df82ec6f6df7cb272b5d218d0",
+    ".output-clock.json": "220f5ecb3185bba8b7fd891ba95044932bb7d9387274e35ff6d76ee0daf969f6",
+    ".speech.json": "c4d322dfe44a4d99209a6ed9d5bbf113f1555f3edb51a3447b0fb0994befc45b",
+    ".voice.json": "2452ae5335140489593c2bb878ee8e910f6091bfb6f97ebccd54205a373cb665",
+    ".proof.json": "9c135b64858fe0680d34c6785c18b3c0bbaeec40b8a4938c83bacbfeca111380"
+  }
+}
