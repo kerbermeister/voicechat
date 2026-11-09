@@ -1,0 +1,12 @@
+{
+  "all_non_signing_bytes_match": true,
+  "canonical_unsigned_sha256": "347479760ade78e190baf16f2b2be95a3147dcd5e3d32149a7f849ab6f290d2e",
+  "app_signed_sha256": "acb4ed7cedf1a0e2e75768377306324fa8ba4e7b7741c48281599a049b4f8d2b",
+  "both_framework_signatures_verified": true,
+  "only_signature_and_linkedit_vm_reservation_normalized": true,
+  "source_revision": "ba70bd2680068b2abc470e7493f4ba9b98fe8be9",
+  "build": 68,
+  "compared_with_installed_build": 67,
+  "installed67_signed_sha256": "acb4ed7cedf1a0e2e75768377306324fa8ba4e7b7741c48281599a049b4f8d2b",
+  "comparison_baseline": "Exact installed67 SDK35, previously verified against qualified SDK35 CI"
+}

@@ -1,0 +1,11 @@
+{
+  "owner_decision": "Explicit user request to release SDK36 despite incomplete verification; record potential regressions and mandatory follow-up.",
+  "source_decision": "sdk36-owner-release-decision.json",
+  "build": 68,
+  "apk_sha256": "024ce45307d2db1bbe51c90982031b4cd79ff636360ead139448ed723dfe8e8b",
+  "aar_sha256": "8ca2d35c304075ae1c03344f5b4b66fbfdd80dad8bf6cd11a6524c26e3e98384",
+  "media_qualified": false,
+  "physical_device_tested": false,
+  "exception_scope": "This SDK36/app68 release, not future unverified binaries",
+  "bound_utc": "2026-11-09T11:16:22.522593+00:00"
+}

@@ -1,0 +1,10 @@
+{
+  "checked_utc": "2026-11-09T11:22:54.429714+00:00",
+  "build": 68,
+  "manifest_equals_candidate": true,
+  "manifest_cache_control": "no-cache",
+  "apk_cache_control": "public, max-age=31536000, immutable",
+  "apk_sha256": "024ce45307d2db1bbe51c90982031b4cd79ff636360ead139448ed723dfe8e8b",
+  "apk_bytes": 160128681,
+  "https_download_verified": true
+}

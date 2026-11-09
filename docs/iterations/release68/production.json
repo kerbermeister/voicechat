@@ -1,0 +1,18 @@
+{
+  "checked_utc": "2026-11-09T11:13:53.486087+00:00",
+  "workflow": 42604866078,
+  "mode": "full",
+  "commit": "ba70bd2680068b2abc470e7493f4ba9b98fe8be9",
+  "control": "ghcr.io/kerbermeister/voicechat/control@sha256:748b8bbcfe11e1fb13e84b1ca38c05932900c77578273fd5e26961a2684e628b",
+  "web": "ghcr.io/kerbermeister/voicechat/web@sha256:f76012a42e224c91f7c283342df4cfb345208c3b58d8b25746c227e63fa5ecae",
+  "ci_and_running_digests_match": true,
+  "protected_source_fingerprint_match": true,
+  "all_services_running": true,
+  "healthchecks_pass": true,
+  "service_count": 13,
+  "rollback_core_commit": "66ed6ae9f4356267bc9da98835a8505e5bda85fb",
+  "coturn_immutable_fix_preserved": true,
+  "web_version": "1.19.20",
+  "web_build": 68,
+  "web_cache_control": "no-cache"
+}
