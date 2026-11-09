@@ -1,0 +1,61 @@
+{
+  "date": "2026-11-08",
+  "trial": "sdk35-two-ordinary-speech-calibration-3",
+  "calibration_only": true,
+  "video_negotiated": false,
+  "two_simultaneous_ordinary_audio_paths": true,
+  "same_native_source_and_negotiated_opus": true,
+  "exact_sdk35_jni_verified": true,
+  "both_dtls_srtp_positive_and_wrong_fingerprint_negative_controls_passed": true,
+  "sample_count": 120,
+  "speech_outcome": "speech_regression",
+  "speech_margins_unchanged": true,
+  "phases": {
+    "clean": {
+      "rms_delta_db": 0.19214940101989342,
+      "stoi_delta": 0.01748947675117596,
+      "paired_clips": 8
+    },
+    "delay": {
+      "rms_delta_db": 0.1316916416949674,
+      "stoi_delta": -0.0005324788770839639,
+      "paired_clips": 14
+    },
+    "pause": {
+      "rms_delta_db": 0.12292817510820697,
+      "stoi_delta": 0.00012067311831875926,
+      "paired_clips": 6
+    },
+    "recovery": {
+      "rms_delta_db": 0.07001824681598023,
+      "stoi_delta": 0.0002880006691332593,
+      "paired_clips": 26
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      178.74318479,
+      296.509124807
+    ],
+    "physical_speaker_measured": false,
+    "platform": "android",
+    "actual_audio_track_underrun_counter": true,
+    "same_output_track": true,
+    "active_output_underruns": 1.0,
+    "timestamp_query_mean_us": 6.493955161626695,
+    "timestamp_query_max_us": 2381.083,
+    "pass": false
+  },
+  "sdk36_or_av_or_application_release_qualified": false,
+  "physical_listening_test": false,
+  "underrun_diagnostic": {
+    "inside_active_window": true,
+    "counter_increase_interval_android_monotonic_seconds": [
+      266.082467667,
+      267.089834293
+    ],
+    "during_export_or_teardown": false,
+    "gate_not_relaxed": true
+  }
+}

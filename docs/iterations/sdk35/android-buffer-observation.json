@@ -1,0 +1,72 @@
+{
+  "date": "2026-11-08",
+  "trial": "sdk35-p2p-buffer-observation-1",
+  "sdk": "150.7871.04-vc35",
+  "diagnostic_only": true,
+  "runtime_audio_or_codec_or_crypto_defaults_changed": false,
+  "actual_audio_output_rates_hz": [
+    8000.0
+  ],
+  "actual_audio_track_performance_modes": [
+    0.0
+  ],
+  "buffer_frames_observed": [
+    260.0,
+    740.0
+  ],
+  "capacity_frames_observed": [
+    740.0
+  ],
+  "legacy_emulator_8000hz_override_found_in_pinned_source": true,
+  "physical_xiaomi_native_output_rate_observed": false,
+  "output_timing": {
+    "clean": {
+      "count": 7,
+      "missing_output_markers": [],
+      "max_abs_ms": 36.182500000023765,
+      "max_source_corrected_abs_ms": 36.98608335983522,
+      "pass": true
+    },
+    "recovery": {
+      "count": 21,
+      "missing_output_markers": [],
+      "max_abs_ms": 106.18962533334297,
+      "max_source_corrected_abs_ms": 105.33816701644128,
+      "pass": false
+    }
+  },
+  "output_continuity": {
+    "schema": 1,
+    "active_window": [
+      158.158178906,
+      275.331801172
+    ],
+    "physical_speaker_measured": false,
+    "platform": "android",
+    "actual_audio_track_underrun_counter": true,
+    "same_output_track": true,
+    "active_output_underruns": 0.0,
+    "timestamp_query_mean_us": 4.355160455486542,
+    "timestamp_query_max_us": 167.834,
+    "pass": true
+  },
+  "speech_outcome": "pass",
+  "voice": {
+    "pass": true,
+    "clean": {
+      "count": 7,
+      "max_added_voice_delay_ms": 21.54379166663034
+    },
+    "video_paused": {
+      "count": 8,
+      "max_added_voice_delay_ms": 19.772791666639478
+    },
+    "recovery": {
+      "count": 22,
+      "max_added_voice_delay_ms": 22.89058366665131
+    }
+  },
+  "av80_pass": false,
+  "application_release_qualified": false,
+  "accepted_android_livekit_sdk34_result_unchanged": true
+}
