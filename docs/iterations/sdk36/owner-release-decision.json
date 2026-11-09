@@ -1,0 +1,24 @@
+{
+  "approved_utc": "2026-11-09T10:50:57.186497+00:00",
+  "source_revision": "fead3036d3bcb4b1802c8afb8327d3a348046e2f",
+  "sdk": "150.7871.04-vc36",
+  "aar_sha256": "8ca2d35c304075ae1c03344f5b4b66fbfdd80dad8bf6cd11a6524c26e3e98384",
+  "owner_decision": "Explicit user request to publish AndroidSDK36 now, update available apps/environments, record incomplete verification and potential regressions as mandatory TODO for later correction",
+  "exception_scope": [
+    "SDK36 actual-call AV80/speech/voice/continuity/crypto media qualification incomplete",
+    "Physical Android unavailable; hardware acceptance remains TODO"
+  ],
+  "not_claimed_passed": [
+    "AV80ms in SDK36 call",
+    "Speech noninferiority SDK36 call",
+    "LiveKit actual-media E2EE SDK36 call",
+    "Physical Xiaomi"
+  ],
+  "retained_checks": [
+    "Source/CI173native/API/ABI provenance",
+    "Checksum-pinned dependency and release artifacts",
+    "App build/analyze/tests/signature and exact installedJNI",
+    "Normal signed update without data/key deletion"
+  ],
+  "fallback": "Keep signed67APK/Mac67/profile backups and previous server pointer; regressions require higher-build corrective release, no destructive profile downgrade"
+}
