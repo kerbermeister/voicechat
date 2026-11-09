@@ -1,0 +1,27 @@
+{
+  "source": "ba70bd2680068b2abc470e7493f4ba9b98fe8be9",
+  "build": 68,
+  "previous_build": 67,
+  "emulator": "VoiceChat_Push_GMS35",
+  "physical_device": false,
+  "installed_apk_equals_signed_candidate": true,
+  "apk_sha256": "024ce45307d2db1bbe51c90982031b4cd79ff636360ead139448ed723dfe8e8b",
+  "certificate_sha256": "37d98de9eaf7151d8df38fe326711107d4ba4ac30bb03c6870269af84ac79ce4",
+  "native_webrtc_sdk36_jni_matches_verified_aar": true,
+  "previous67_runtime_differs": true,
+  "sdk36_media_qualified": false,
+  "physical_acceptance_todo": true,
+  "explicit_owner_sdk36_release_exception": true,
+  "native_jni": {
+    "lib/arm64-v8a/libjingle_peerconnection_so.so": "718a09079b4fdcba60cc607d6027185fe844656625081e3999cfdb4d778e682f",
+    "lib/armeabi-v7a/libjingle_peerconnection_so.so": "b925e75cf06b15e871f70fe16d30ed3d4fc4f721eac02b2f8d7b83fa435ad4da",
+    "lib/x86_64/libjingle_peerconnection_so.so": "e6139f05cd50c670a26626af5cdbbb8be5796ae348f75c745efda0c51d17e265"
+  },
+  "package_uid_unchanged": true,
+  "first_install_time_unchanged": true,
+  "data_cleared": false,
+  "launch_status_ok": true,
+  "account_identity_compared": false,
+  "release_media_call_tested": false,
+  "scope": "Signed APK upgrade/exact bytes/same installation sandbox/app launch, not physical device or SDK36 media qualification"
+}

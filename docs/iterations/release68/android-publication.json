@@ -1,0 +1,23 @@
+{
+  "published_utc": "2026-11-09T11:21:05.377491+00:00",
+  "build": 68,
+  "source": "ba70bd2680068b2abc470e7493f4ba9b98fe8be9",
+  "apk_sha256": "024ce45307d2db1bbe51c90982031b4cd79ff636360ead139448ed723dfe8e8b",
+  "published": true,
+  "same_signed_candidate_not_rebuilt": true,
+  "sdk": "150.7871.04-vc36",
+  "aar_sha256": "8ca2d35c304075ae1c03344f5b4b66fbfdd80dad8bf6cd11a6524c26e3e98384",
+  "native_sdk36_jni_verified_in_apk": true,
+  "physical_device_tested": false,
+  "media_qualified": false,
+  "explicit_owner_sdk36_release_exception": true,
+  "pending": [
+    "Actual-call AV80ms",
+    "Matched speech/output continuity",
+    "Video recovery",
+    "Actual-media LiveKitE2EE negative/positive controls",
+    "PhysicalAndroid"
+  ],
+  "emulator67_to68_verified": true,
+  "fix_confirmed_regressions_in_later_release": true
+}

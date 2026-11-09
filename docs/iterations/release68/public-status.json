@@ -1,0 +1,28 @@
+{
+  "checked_utc": "2026-11-09T11:25:10.011192+00:00",
+  "installed_macos_build": 68,
+  "macos_sdk": 35,
+  "android_emulator_build": 68,
+  "android_sdk": 36,
+  "sdk36_media_qualified": false,
+  "physical_android_updated_by_agent": false,
+  "explicit_owner_sdk36_release_exception": true,
+  "web": {
+    "version": "1.19.20",
+    "build": "68",
+    "cache_control": "no-cache",
+    "http_status": 200
+  },
+  "macos": {
+    "version": "1.19.20",
+    "build": "68",
+    "cache_control": "no-cache",
+    "http_status": 200
+  },
+  "android": {
+    "version": "1.19.20",
+    "build": "68",
+    "cache_control": "no-cache",
+    "http_status": 200
+  }
+}

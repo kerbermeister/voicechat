@@ -1,0 +1,5 @@
+{
+  "macos_prebuilt_config_equals_fresh_android_ci_config": true,
+  "source_config_sha256": "4d304f859c8616b2677f29c16524f90208c24cea9f65bed3b32b098c0151a07b",
+  "no_private_credentials": true
+}
