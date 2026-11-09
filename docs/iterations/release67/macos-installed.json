@@ -1,0 +1,20 @@
+{
+  "build": 67,
+  "version": "1.19.19",
+  "previous_build": 66,
+  "entries": 287,
+  "exact_signed_zip_and_dmg_match": true,
+  "strict_codesign": true,
+  "installed_via_normal_ui_button": true,
+  "old_version_ui_offered67": true,
+  "account_device_history_ui_pending": false,
+  "no_profile_or_keychain_deletion": true,
+  "backup_before67_and_before_install_verified": true,
+  "same_account": true,
+  "same_device_id": true,
+  "old_history_visible": true,
+  "visible_history_containers_matched": 8,
+  "keychain_request_observed": false,
+  "accepted_at": "2026-11-09T10:41:32.492987+00:00",
+  "normal_about_ui_reports_no_compatible_updates": true
+}

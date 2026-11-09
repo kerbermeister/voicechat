@@ -1,0 +1,23 @@
+{
+  "source": "66ed6ae9f4356267bc9da98835a8505e5bda85fb",
+  "build": 67,
+  "previous_build": 62,
+  "emulator": "VoiceChat_Push_GMS35",
+  "physical_device": false,
+  "installed_apk_equals_signed_candidate": true,
+  "apk_sha256": "419252bd6cf1bf04d8781e7d65c700da25183acfab2f5da7cc4c0dc5c68b6385",
+  "certificate_sha256": "37d98de9eaf7151d8df38fe326711107d4ba4ac30bb03c6870269af84ac79ce4",
+  "native_webrtc_jni_unchanged_from62": true,
+  "native_jni": {
+    "lib/arm64-v8a/libjingle_peerconnection_so.so": "2b561520298d9fec3e216baf58a53fbddf4a46dfd247880cbc3821875ed20200",
+    "lib/armeabi-v7a/libjingle_peerconnection_so.so": "5415e7a02ce83e983329575e7c2e46b8ced6c75baea3c41aa52b5699ccb54eda",
+    "lib/x86_64/libjingle_peerconnection_so.so": "b87bbb6d6c81c50f04538cd809575de633a789cc3555af2c5eb6ec414b148908"
+  },
+  "package_uid_unchanged": true,
+  "first_install_time_unchanged": true,
+  "data_cleared": false,
+  "launch_status_ok": true,
+  "account_identity_compared": false,
+  "release_media_call_tested": false,
+  "scope": "Signed APK upgrade/exact bytes/same installation sandbox/app launch, not physical device or media qualification"
+}

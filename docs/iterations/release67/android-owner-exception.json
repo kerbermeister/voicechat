@@ -1,0 +1,11 @@
+{
+  "approved_utc": "2026-11-09T10:37:34.285432+00:00",
+  "build": 67,
+  "version": "1.19.19",
+  "apk_sha256": "419252bd6cf1bf04d8781e7d65c700da25183acfab2f5da7cc4c0dc5c68b6385",
+  "explicit_owner_reply": "Опубликовать 67, записать исключение и физическую проверку в TODO",
+  "exception": "Publication after signed CI and emulator62→67 verification without physical Android acceptance; physical test remains TODO",
+  "physical_device_tested": false,
+  "native_sdk36_included": false,
+  "not_a_blanket_waiver_for_future_builds": true
+}

@@ -1,0 +1,14 @@
+{
+  "published_utc": "2026-11-09T10:39:11.140135+00:00",
+  "build": 67,
+  "source": "66ed6ae9f4356267bc9da98835a8505e5bda85fb",
+  "apk_sha256": "419252bd6cf1bf04d8781e7d65c700da25183acfab2f5da7cc4c0dc5c68b6385",
+  "published": true,
+  "same_signed_candidate_not_rebuilt": true,
+  "physical_device_tested": false,
+  "explicit_owner_exception": true,
+  "physical_acceptance_todo": true,
+  "emulator62_to67_verified": true,
+  "native_webrtc_unchanged_from62": true,
+  "native_sdk36_included": false
+}
