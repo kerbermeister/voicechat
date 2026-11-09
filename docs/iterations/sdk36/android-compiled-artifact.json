@@ -1,0 +1,28 @@
+{
+  "version": "150.7871.04-vc36",
+  "aar_sha256": "8ca2d35c304075ae1c03344f5b4b66fbfdd80dad8bf6cd11a6524c26e3e98384",
+  "source_revision": "fead3036d3bcb4b1802c8afb8327d3a348046e2f",
+  "jni_sha256": {
+    "armeabi-v7a": "b925e75cf06b15e871f70fe16d30ed3d4fc4f721eac02b2f8d7b83fa435ad4da",
+    "arm64-v8a": "718a09079b4fdcba60cc607d6027185fe844656625081e3999cfdb4d778e682f",
+    "x86_64": "e6139f05cd50c670a26626af5cdbbb8be5796ae348f75c745efda0c51d17e265"
+  },
+  "decoder_api_tests": [
+    29,
+    36
+  ],
+  "video_recovery_cpp_tests": 56,
+  "qualified_for_release": false,
+  "schema": 1,
+  "ci_run": 42507901563,
+  "native_tests_passed": 173,
+  "native_tests_skipped": 0,
+  "old_texture_ownership_negative_control_passed": true,
+  "audio_clock_api_tests": 16,
+  "decoder_api_test_count": 2,
+  "abi_count": 3,
+  "elf_16k_alignment_verified": true,
+  "application_runtime_pin_changed": false,
+  "media_qualified": false,
+  "published": false
+}

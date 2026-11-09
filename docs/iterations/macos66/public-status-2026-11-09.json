@@ -1,0 +1,23 @@
+{
+  "checked_utc": "2026-11-09T10:04:48.393450+00:00",
+  "production_health_rechecked": false,
+  "installed_macos_build": 66,
+  "web": {
+    "http_status": 200,
+    "cache_control": "no-cache",
+    "version": "1.19.18",
+    "build": "66"
+  },
+  "macos": {
+    "http_status": 200,
+    "cache_control": "no-cache",
+    "version": "1.19.18",
+    "build": "66"
+  },
+  "android": {
+    "http_status": 200,
+    "cache_control": "no-cache",
+    "version": "1.19.14",
+    "build": "62"
+  }
+}
