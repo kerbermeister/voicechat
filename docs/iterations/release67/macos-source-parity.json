@@ -1,0 +1,15 @@
+{
+  "candidate_source": "2f7fdac2c1e109547c81e0dd71a110cb49ead6f3",
+  "ready_release_source": "66ed6ae9f4356267bc9da98835a8505e5bda85fb",
+  "runtime_tree_paths": [
+    "apps/client/lib",
+    "apps/client/pubspec.yaml",
+    "apps/client/pubspec.lock",
+    "apps/client/macos",
+    "vendor"
+  ],
+  "runtime_tree_diff_empty": true,
+  "mac_sdk_unchanged": 35,
+  "android_sdk36_included": false,
+  "candidate_source_ancestor_of_main": true
+}

@@ -1,0 +1,17 @@
+{
+  "appcast.xml": {
+    "sha256": "7bb1db5d0ed743a5af60e7c27f1a7e81826fab1e31eee3a55630a8ab5ea8c10c",
+    "bytes": 60368,
+    "cache_control": "no-cache"
+  },
+  "VoiceChat.zip": {
+    "sha256": "876d081d1877999c0c3e93d91beaeded33004a7a371a214ed51b622e51712891",
+    "bytes": 24540724,
+    "cache_control": "public, max-age=31536000, immutable"
+  },
+  "VoiceChat.dmg": {
+    "sha256": "e31936a63404d5142c299c9274014ba56ce1605d116f38d2150ff6978dea2b7e",
+    "bytes": 27301746,
+    "cache_control": "public, max-age=31536000, immutable"
+  }
+}
