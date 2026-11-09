@@ -24,5 +24,8 @@
   "elf_16k_alignment_verified": true,
   "application_runtime_pin_changed": false,
   "media_qualified": false,
-  "published": false
+  "published": false,
+  "dependency_published": true,
+  "publication_via_explicit_owner_exception": true,
+  "dependency_release_url": "https://github.com/kerbermeister/voicechat/releases/tag/webrtc-sdk-150.7871.04-vc36"
 }

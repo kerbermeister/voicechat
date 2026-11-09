@@ -1,0 +1,52 @@
+{
+  "published_utc": "2026-11-09T10:54:45.471083+00:00",
+  "url": "https://github.com/kerbermeister/voicechat/releases/tag/webrtc-sdk-150.7871.04-vc36",
+  "source_revision": "fead3036d3bcb4b1802c8afb8327d3a348046e2f",
+  "sdk": "150.7871.04-vc36",
+  "assets": [
+    {
+      "name": "android-audio-device-test-results.json",
+      "sha256": "88986327a30f66c197738951b1446e9d4e9c0dabd77d467cac1d87ce0a0ca8a1",
+      "bytes": 6529
+    },
+    {
+      "name": "android-decoder-test-results.json",
+      "sha256": "8fe5c3dcf619884f671f4faba9dee0a94db4c0fe261ab46990cb194f74a1ef41",
+      "bytes": 963
+    },
+    {
+      "name": "build-receipt.json",
+      "sha256": "d02f512654dfdbadf9036bb5fdef93f5de2876f8d1b2d9cb5e18326a74c58783",
+      "bytes": 19696
+    },
+    {
+      "name": "libwebrtc.aar",
+      "sha256": "8ca2d35c304075ae1c03344f5b4b66fbfdd80dad8bf6cd11a6524c26e3e98384",
+      "bytes": 36314095
+    },
+    {
+      "name": "LICENSE.md",
+      "sha256": "f851751c645ded1b53ac12ff643557c5a10f8c8db45637c0ba525e62739d68f3",
+      "bytes": 202324
+    },
+    {
+      "name": "native-playout-policy-tests.json",
+      "sha256": "0e7bfdc6b995cd0c408d86804bc0c217574d43f09ececd4788069286b947c44a",
+      "bytes": 207
+    },
+    {
+      "name": "timing-tests.xml",
+      "sha256": "769328aed19f27ded1658fe33d2e5ac96cd08e004882e185b18bf4051e4a9f54",
+      "bytes": 31403
+    },
+    {
+      "name": "video-resume-tests.xml",
+      "sha256": "6935500c181ee79fd8345ad95a7993b0ff41be3c1d0a4296a32a6e211cd45358",
+      "bytes": 16678
+    }
+  ],
+  "anonymous_aar_download_sha256_verified": true,
+  "media_qualified": false,
+  "explicit_owner_release_exception": true,
+  "physical_device_tested": false
+}

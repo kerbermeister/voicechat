@@ -1,5 +1,16 @@
 # Native call synchronization SDK
 
+**Owner release exception, 2026-11-09:** the owner explicitly requested Android
+SDK36 publication despite incomplete actual-call qualification, with potential
+sync/video-recovery/speech regressions and mandatory follow-up recorded in
+[UA-08.C06/C09](../docs/user-acceptance.md) and the
+[technical TODO](../docs/iterations/native-av-sync-after62.md). Application68
+is being prepared under that exception. Missing A/V80ms, speech, output and
+actual-media E2EE measurements remain incomplete, not passed. Native/security
+tests, artifact hashes, signatures and update-data checks remain mandatory.
+The exception applies only to this SDK36 release, not future unverified SDKs.
+
+
 SDK36 Android texture candidate (not media-qualified) is based on the exact
 SDK35 source. Android's SurfaceTextureHelper permits only one texture in flight;
 keeping that texture in a delayed render queue can block the next decoded frame.
@@ -36,9 +47,10 @@ audio-buffer policy and E2EE algorithms are unchanged from SDK34.
 The accepted Android LiveKit34 measurement is a documented exception only
 for that emulator run, not P2P, physical hardware or a signed APK.
 
-The macOS client pins SDK26 (WebRTC 150.7871.04, source `7227897`).
-Android still uses its existing dependency. Exact SDK26 source, compiler
-receipts and platform evidence are recorded in the
+The macOS client pins SDK35 (WebRTC 150.7871.04, source `d5c8be1`).
+The Android68 candidate pins SDK36 (`fead3036`) by exact SHA256 in
+`webrtc-sdk-artifacts.json`; both Flutter plugins resolve the same AAR.
+Source, compiler receipts and platform evidence are recorded in the
 [technical journal](../docs/iterations/native-av-sync-after62.md).
 
 The fork pins WebRTC, the official builder, depot_tools and source inputs in
@@ -93,8 +105,10 @@ includes generated third-party notices in framework resources and Android
 assets. The workflow has read-only permissions and no release secrets.
 
 Binary pins belong in `webrtc-sdk-artifacts.json`. CocoaPods overrides only
-WebRTC-SDK through its checksum-pinned archive. Android does not consume this
-archive or manifest. A changed same-version external podspec requires
+WebRTC-SDK through its checksum-pinned archive. Android consumes its separate checksum-pinned AAR from the same manifest
+through `prepare_android_webrtc.py`, an exclusive local Maven repository and
+a forced version shared by flutter_webrtc and LiveKit. macOS keeps its own
+platform pin; the Android version does not change the Mac framework. A changed same-version external podspec requires
 `pod update WebRTC-SDK --no-repo-update`: verify the generated lock and actual
 embedded framework UUID; an edited lock is not proof of installation. Keep SPM
 disabled. Dependency prereleases are distinct from application updates.
